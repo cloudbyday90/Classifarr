@@ -136,7 +136,7 @@ CREATE TABLE library_custom_rules (
 -- Radarr configuration
 CREATE TABLE radarr_config (
     id SERIAL PRIMARY KEY,
-    library_id INTEGER REFERENCES libraries(id) ON DELETE CASCADE,
+    library_id INTEGER REFERENCES libraries(id) ON DELETE CASCADE UNIQUE,
     url VARCHAR(255) NOT NULL,
     api_key TEXT NOT NULL,
     quality_profile_id INTEGER,
@@ -150,7 +150,7 @@ CREATE TABLE radarr_config (
 -- Sonarr configuration
 CREATE TABLE sonarr_config (
     id SERIAL PRIMARY KEY,
-    library_id INTEGER REFERENCES libraries(id) ON DELETE CASCADE,
+    library_id INTEGER REFERENCES libraries(id) ON DELETE CASCADE UNIQUE,
     url VARCHAR(255) NOT NULL,
     api_key TEXT NOT NULL,
     quality_profile_id INTEGER,
