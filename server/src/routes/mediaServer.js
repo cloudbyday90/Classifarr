@@ -134,17 +134,17 @@ router.post('/test', async (req, res) => {
 
     let result;
     switch (type) {
-      case 'plex':
-        result = await plexService.testConnection(host, port, token);
-        break;
-      case 'emby':
-        result = await embyService.testConnection(host, port, apiKey);
-        break;
-      case 'jellyfin':
-        result = await jellyfinService.testConnection(host, port, apiKey);
-        break;
-      default:
-        return res.status(400).json({ error: 'Invalid media server type' });
+    case 'plex':
+      result = await plexService.testConnection(host, port, token);
+      break;
+    case 'emby':
+      result = await embyService.testConnection(host, port, apiKey);
+      break;
+    case 'jellyfin':
+      result = await jellyfinService.testConnection(host, port, apiKey);
+      break;
+    default:
+      return res.status(400).json({ error: 'Invalid media server type' });
     }
 
     res.json({
@@ -182,17 +182,17 @@ router.post('/sync', async (req, res) => {
 
     let libraries;
     switch (type) {
-      case 'plex':
-        libraries = await plexService.getLibraries(host, port, token);
-        break;
-      case 'emby':
-        libraries = await embyService.getLibraries(host, port, apiKey);
-        break;
-      case 'jellyfin':
-        libraries = await jellyfinService.getLibraries(host, port, apiKey);
-        break;
-      default:
-        return res.status(400).json({ error: 'Invalid media server type' });
+    case 'plex':
+      libraries = await plexService.getLibraries(host, port, token);
+      break;
+    case 'emby':
+      libraries = await embyService.getLibraries(host, port, apiKey);
+      break;
+    case 'jellyfin':
+      libraries = await jellyfinService.getLibraries(host, port, apiKey);
+      break;
+    default:
+      return res.status(400).json({ error: 'Invalid media server type' });
     }
 
     // TODO: Save libraries to database

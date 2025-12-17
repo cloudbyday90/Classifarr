@@ -96,9 +96,9 @@ async function classify(host, port, model, mediaData, libraryDefinitions, pastCo
  * @returns {string} Classification prompt
  */
 function buildClassificationPrompt(mediaData, libraryDefinitions, pastCorrections) {
-  let prompt = `You are a media classification assistant. Your task is to classify the following media item into one of the available libraries.\n\n`;
+  let prompt = 'You are a media classification assistant. Your task is to classify the following media item into one of the available libraries.\n\n';
   
-  prompt += `Media Information:\n`;
+  prompt += 'Media Information:\n';
   prompt += `Title: ${mediaData.title}\n`;
   prompt += `Type: ${mediaData.type}\n`;
   if (mediaData.year) prompt += `Year: ${mediaData.year}\n`;
@@ -106,7 +106,7 @@ function buildClassificationPrompt(mediaData, libraryDefinitions, pastCorrection
   if (mediaData.keywords) prompt += `Keywords: ${mediaData.keywords.join(', ')}\n`;
   if (mediaData.overview) prompt += `Overview: ${mediaData.overview}\n`;
   
-  prompt += `\nAvailable Libraries:\n`;
+  prompt += '\nAvailable Libraries:\n';
   libraryDefinitions.forEach(lib => {
     prompt += `- ${lib.name}: ${lib.description || 'No description'}\n`;
     if (lib.rules && lib.rules.length > 0) {
@@ -115,13 +115,13 @@ function buildClassificationPrompt(mediaData, libraryDefinitions, pastCorrection
   });
   
   if (pastCorrections && pastCorrections.length > 0) {
-    prompt += `\nPast Corrections (learn from these):\n`;
+    prompt += '\nPast Corrections (learn from these):\n';
     pastCorrections.slice(-10).forEach(correction => {
       prompt += `- "${correction.title}" was corrected to library "${correction.correctLibrary}"\n`;
     });
   }
   
-  prompt += `\nRespond with ONLY the library name that best matches this media item.`;
+  prompt += '\nRespond with ONLY the library name that best matches this media item.';
   
   return prompt;
 }
