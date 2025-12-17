@@ -120,7 +120,7 @@ function extractMediaData(payload) {
  * @param {Object} mediaData - Basic media data
  * @returns {Promise<Object>} Enriched media data
  */
-async enrichWithTMDB(mediaData) {
+async function enrichWithTMDB(mediaData) {
   try {
     const tmdbApiKey = process.env.TMDB_API_KEY;
     if (!tmdbApiKey) {
@@ -190,7 +190,7 @@ async enrichWithTMDB(mediaData) {
  * @param {number} libraryId - Target library ID
  * @returns {Promise<Object>} Routing result
  */
-async routeToService(mediaData, libraryId) {
+async function routeToService(mediaData, libraryId) {
   try {
     // Get library configuration
     const libraryResult = await db.query(
