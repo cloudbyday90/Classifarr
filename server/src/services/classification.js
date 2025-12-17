@@ -8,6 +8,10 @@ const tavilyService = require('./tavily');
 const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 
 class ClassificationService {
+  // Content analysis scoring constants
+  static CONTENT_ANALYSIS_BOOST = 35;
+  static DEFAULT_MIN_CONFIDENCE = 75;
+  
   async classify(overseerrPayload) {
     try {
       // Parse Overseerr payload
@@ -321,7 +325,7 @@ class ClassificationService {
         for (const label of labels.filter(l => l.rule_type === 'include')) {
           // Check if any content type label matches library labels
           if (metadata.content_type_labels.includes(label.name)) {
-            score += 35; // Higher weight for content-analyzed matches
+            score += ClassificationService.CONTENT_ANALYSIS_BOOST;
             reasons.push(`Content analysis: ${metadata.detected_content_type} matches ${label.display_name}`);
           }
         }
@@ -559,7 +563,7 @@ Example: 2|Action movie with high rating`;
       return result.rows.length > 0 && result.rows[0].value === 'true';
     } catch (error) {
       console.error('Error checking content analysis setting:', error);
-      return true; // Default to enabled
+      return false; // Safe default - don't enable if there's an error
     }
   }
 
@@ -568,10 +572,10 @@ Example: 2|Action movie with high rating`;
       const result = await db.query(
         "SELECT value FROM settings WHERE key = 'content_analysis_min_confidence' LIMIT 1"
       );
-      return result.rows.length > 0 ? parseInt(result.rows[0].value) : 75;
+      return result.rows.length > 0 ? parseInt(result.rows[0].value) : ClassificationService.DEFAULT_MIN_CONFIDENCE;
     } catch (error) {
       console.error('Error getting content analysis min confidence:', error);
-      return 75; // Default value
+      return ClassificationService.DEFAULT_MIN_CONFIDENCE;
     }
   }
 

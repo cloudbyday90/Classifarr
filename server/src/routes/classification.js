@@ -7,6 +7,15 @@ const tmdbService = require('../services/tmdb');
 const router = express.Router();
 
 /**
+ * Helper function to extract keywords from TMDB details
+ */
+function extractKeywords(details) {
+  return details.keywords?.keywords?.map(k => k.name) || 
+         details.keywords?.results?.map(k => k.name) || 
+         [];
+}
+
+/**
  * @swagger
  * /api/classification/classify:
  *   post:
@@ -300,7 +309,7 @@ router.post('/analyze-content', async (req, res) => {
       year: details.release_date?.substring(0, 4) || details.first_air_date?.substring(0, 4),
       overview: details.overview,
       genres: details.genres?.map(g => g.name) || [],
-      keywords: details.keywords?.keywords?.map(k => k.name) || details.keywords?.results?.map(k => k.name) || [],
+      keywords: extractKeywords(details),
       certification: certification,
       original_language: details.original_language,
     };

@@ -1,4 +1,52 @@
+/**
+ * ContentTypeAnalyzer - Analyzes media metadata to determine TRUE content type
+ * 
+ * This service examines plot/overview text to detect the actual content type,
+ * which can differ from surface-level TMDB genre labels. It helps prevent
+ * false positives in media classification.
+ * 
+ * Key Features:
+ * - Stand-up specials vs documentaries about comedians
+ * - Concert films vs music documentaries vs biopics
+ * - Adult animation vs family animation
+ * - Reality TV vs documentary series
+ * - True crime vs general documentaries
+ * - Sports events vs sports documentaries
+ * - Anime with adult content detection
+ * 
+ * @example
+ * const analysis = contentTypeAnalyzer.analyze(metadata);
+ * if (analysis.detected_type && analysis.confidence >= 75) {
+ *   // Use analysis.suggested_labels for classification
+ * }
+ */
 class ContentTypeAnalyzer {
+  
+  // Confidence calculation constants
+  static MAX_CONFIDENCE = 95;
+  static BASE_CONFIDENCE = 60;
+  static SCORE_MULTIPLIER = 10;
+  static MIN_DETECTION_SCORE = 3;
+  
+  // Scoring weights
+  static WEIGHT_HIGH = 3;
+  static WEIGHT_MEDIUM = 2;
+  static WEIGHT_LOW = 1;
+  
+  // Anime genre keywords
+  static ANIME_KEYWORDS = ['shounen', 'shoujo', 'seinen', 'josei', 'isekai', 'mecha', 'slice of life'];
+  
+  // Adult content keywords
+  static ADULT_KEYWORDS = ['adult animation', 'adult swim', 'mature themes', 'adult content'];
+  
+  // Reality TV keywords
+  static REALITY_KEYWORDS = ['reality', 'reality tv', 'competition', 'game show', 'dating show'];
+  
+  // True crime keywords
+  static TRUE_CRIME_KEYWORDS = ['true crime', 'crime documentary', 'murder', 'investigation'];
+  
+  // Adult certifications
+  static ADULT_CERTIFICATIONS = ['R', 'NC-17', 'TV-MA', '18+', 'X', 'NR'];
   
   /**
    * Analyze plot/overview to determine TRUE content type
@@ -27,9 +75,12 @@ class ContentTypeAnalyzer {
       const performanceScore = this.scoreRecordedPerformance(overview, title);
       const biographicalScore = this.scoreBiographical(overview);
       
-      if (performanceScore > biographicalScore && performanceScore >= 3) {
+      if (performanceScore > biographicalScore && performanceScore >= ContentTypeAnalyzer.MIN_DETECTION_SCORE) {
         analysis.detected_type = 'standup_special';
-        analysis.confidence = Math.min(95, 60 + performanceScore * 10);
+        analysis.confidence = Math.min(
+          ContentTypeAnalyzer.MAX_CONFIDENCE, 
+          ContentTypeAnalyzer.BASE_CONFIDENCE + performanceScore * ContentTypeAnalyzer.SCORE_MULTIPLIER
+        );
         analysis.reasoning.push('Plot indicates recorded live stand-up performance');
         analysis.reasoning.push(`Performance indicators: ${performanceScore}, Biographical indicators: ${biographicalScore}`);
         analysis.suggested_labels = ['standup', 'comedy_special', 'live_performance'];
@@ -37,9 +88,12 @@ class ContentTypeAnalyzer {
           analysis.overrides_genre = true;
           analysis.reasoning.push('Overriding Documentary genre - this is a performance recording');
         }
-      } else if (biographicalScore > performanceScore && biographicalScore >= 3) {
+      } else if (biographicalScore > performanceScore && biographicalScore >= ContentTypeAnalyzer.MIN_DETECTION_SCORE) {
         analysis.detected_type = 'documentary';
-        analysis.confidence = Math.min(95, 60 + biographicalScore * 10);
+        analysis.confidence = Math.min(
+          ContentTypeAnalyzer.MAX_CONFIDENCE, 
+          ContentTypeAnalyzer.BASE_CONFIDENCE + biographicalScore * ContentTypeAnalyzer.SCORE_MULTIPLIER
+        );
         analysis.reasoning.push('Plot indicates biographical documentary about a comedian');
         analysis.reasoning.push(`Biographical indicators: ${biographicalScore}, Performance indicators: ${performanceScore}`);
         analysis.suggested_labels = ['documentary', 'biography'];
@@ -56,23 +110,32 @@ class ContentTypeAnalyzer {
       
       const maxScore = Math.max(concertScore, musicDocScore, biopicScore);
       
-      if (concertScore === maxScore && concertScore >= 3) {
+      if (concertScore === maxScore && concertScore >= ContentTypeAnalyzer.MIN_DETECTION_SCORE) {
         analysis.detected_type = 'concert_film';
-        analysis.confidence = Math.min(95, 60 + concertScore * 10);
+        analysis.confidence = Math.min(
+          ContentTypeAnalyzer.MAX_CONFIDENCE, 
+          ContentTypeAnalyzer.BASE_CONFIDENCE + concertScore * ContentTypeAnalyzer.SCORE_MULTIPLIER
+        );
         analysis.reasoning.push('Plot indicates recorded concert or tour performance');
         analysis.suggested_labels = ['concert', 'live_performance', 'music'];
         if (genres.includes('documentary')) {
           analysis.overrides_genre = true;
           analysis.reasoning.push('Overriding Documentary genre - this is a concert recording');
         }
-      } else if (biopicScore === maxScore && biopicScore >= 3) {
+      } else if (biopicScore === maxScore && biopicScore >= ContentTypeAnalyzer.MIN_DETECTION_SCORE) {
         analysis.detected_type = 'biopic';
-        analysis.confidence = Math.min(95, 60 + biopicScore * 10);
+        analysis.confidence = Math.min(
+          ContentTypeAnalyzer.MAX_CONFIDENCE, 
+          ContentTypeAnalyzer.BASE_CONFIDENCE + biopicScore * ContentTypeAnalyzer.SCORE_MULTIPLIER
+        );
         analysis.reasoning.push('Plot indicates dramatized biopic about a musician');
         analysis.suggested_labels = ['biopic', 'drama', 'biography'];
-      } else if (musicDocScore === maxScore && musicDocScore >= 3) {
+      } else if (musicDocScore === maxScore && musicDocScore >= ContentTypeAnalyzer.MIN_DETECTION_SCORE) {
         analysis.detected_type = 'music_documentary';
-        analysis.confidence = Math.min(95, 60 + musicDocScore * 10);
+        analysis.confidence = Math.min(
+          ContentTypeAnalyzer.MAX_CONFIDENCE, 
+          ContentTypeAnalyzer.BASE_CONFIDENCE + musicDocScore * ContentTypeAnalyzer.SCORE_MULTIPLIER
+        );
         analysis.reasoning.push('Plot indicates music documentary');
         analysis.suggested_labels = ['documentary', 'music'];
       }
@@ -112,9 +175,12 @@ class ContentTypeAnalyzer {
     if (metadata.media_type === 'tv' && genres.includes('documentary')) {
       const realityScore = this.scoreRealityTV(overview, keywords);
       
-      if (realityScore >= 3) {
+      if (realityScore >= ContentTypeAnalyzer.MIN_DETECTION_SCORE) {
         analysis.detected_type = 'reality_tv';
-        analysis.confidence = Math.min(90, 60 + realityScore * 10);
+        analysis.confidence = Math.min(
+          90, 
+          ContentTypeAnalyzer.BASE_CONFIDENCE + realityScore * ContentTypeAnalyzer.SCORE_MULTIPLIER
+        );
         analysis.reasoning.push('Reality TV format detected, not traditional documentary');
         analysis.suggested_labels = ['reality', 'unscripted'];
         analysis.overrides_genre = true;
@@ -127,9 +193,12 @@ class ContentTypeAnalyzer {
     if (genres.includes('documentary') || genres.includes('crime')) {
       const trueCrimeScore = this.scoreTrueCrime(overview, keywords);
       
-      if (trueCrimeScore >= 3) {
+      if (trueCrimeScore >= ContentTypeAnalyzer.MIN_DETECTION_SCORE) {
         analysis.detected_type = 'true_crime';
-        analysis.confidence = Math.min(90, 60 + trueCrimeScore * 10);
+        analysis.confidence = Math.min(
+          90, 
+          ContentTypeAnalyzer.BASE_CONFIDENCE + trueCrimeScore * ContentTypeAnalyzer.SCORE_MULTIPLIER
+        );
         analysis.reasoning.push('True crime content detected');
         analysis.suggested_labels = ['true_crime', 'documentary', 'crime'];
       }
@@ -142,17 +211,23 @@ class ContentTypeAnalyzer {
       const recordedGameScore = this.scoreRecordedGame(overview, title);
       const sportsDocScore = this.scoreSportsDocumentary(overview);
       
-      if (recordedGameScore > sportsDocScore && recordedGameScore >= 3) {
+      if (recordedGameScore > sportsDocScore && recordedGameScore >= ContentTypeAnalyzer.MIN_DETECTION_SCORE) {
         analysis.detected_type = 'sports_event';
-        analysis.confidence = Math.min(90, 60 + recordedGameScore * 10);
+        analysis.confidence = Math.min(
+          90, 
+          ContentTypeAnalyzer.BASE_CONFIDENCE + recordedGameScore * ContentTypeAnalyzer.SCORE_MULTIPLIER
+        );
         analysis.reasoning.push('Recorded sports event/game detected');
         analysis.suggested_labels = ['sports', 'live_event'];
         if (genres.includes('documentary')) {
           analysis.overrides_genre = true;
         }
-      } else if (sportsDocScore >= 3) {
+      } else if (sportsDocScore >= ContentTypeAnalyzer.MIN_DETECTION_SCORE) {
         analysis.detected_type = 'sports_documentary';
-        analysis.confidence = Math.min(90, 60 + sportsDocScore * 10);
+        analysis.confidence = Math.min(
+          90, 
+          ContentTypeAnalyzer.BASE_CONFIDENCE + sportsDocScore * ContentTypeAnalyzer.SCORE_MULTIPLIER
+        );
         analysis.reasoning.push('Sports documentary detected');
         analysis.suggested_labels = ['documentary', 'sports'];
       }
@@ -168,20 +243,20 @@ class ContentTypeAnalyzer {
   scoreRecordedPerformance(overview, title) {
     let score = 0;
     const performanceIndicators = [
-      { pattern: /\bperforms\b/, weight: 2 },
-      { pattern: /\bperformance\b/, weight: 1 },
-      { pattern: /\blive at\b/, weight: 2 },
-      { pattern: /\brecorded (at|live)\b/, weight: 2 },
-      { pattern: /\bfilmed (at|live|in front)\b/, weight: 2 },
-      { pattern: /\bstand-?up (routine|special|show)\b/, weight: 3 },
-      { pattern: /\bcomedy (routine|special|show)\b/, weight: 2 },
-      { pattern: /\btakes the stage\b/, weight: 2 },
-      { pattern: /\bin front of (a |an )?(live )?audience\b/, weight: 2 },
-      { pattern: /\bone-(wo)?man show\b/, weight: 2 },
-      { pattern: /\bsolo show\b/, weight: 2 },
-      { pattern: /\bcomedy club\b/, weight: 1 },
-      { pattern: /\btheater\b/, weight: 1 },
-      { pattern: /\btheatre\b/, weight: 1 }
+      { pattern: /\bperforms\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bperformance\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\blive at\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\brecorded (at|live)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bfilmed (at|live|in front)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bstand-?up (routine|special|show)\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bcomedy (routine|special|show)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\btakes the stage\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bin front of (a |an )?(live )?audience\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bone-(wo)?man show\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bsolo show\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bcomedy club\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\btheater\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\btheatre\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW }
     ];
     
     for (const { pattern, weight } of performanceIndicators) {
@@ -196,24 +271,24 @@ class ContentTypeAnalyzer {
   scoreBiographical(overview) {
     let score = 0;
     const bioIndicators = [
-      { pattern: /\b(the )?life (of|and)\b/, weight: 2 },
-      { pattern: /\bstory of\b/, weight: 2 },
-      { pattern: /\bjourney of\b/, weight: 2 },
-      { pattern: /\brise (of|to)\b/, weight: 2 },
-      { pattern: /\bchronicles\b/, weight: 2 },
-      { pattern: /\bexplores the life\b/, weight: 2 },
-      { pattern: /\bintimate (look|portrait)\b/, weight: 2 },
-      { pattern: /\bbehind the scenes\b/, weight: 1 },
-      { pattern: /\bearly (days|years|life)\b/, weight: 2 },
-      { pattern: /\bcareer of\b/, weight: 2 },
-      { pattern: /\blegacy of\b/, weight: 2 },
-      { pattern: /\bfrom humble beginnings\b/, weight: 2 },
-      { pattern: /\bbiography\b/, weight: 3 },
-      { pattern: /\bgrew up\b/, weight: 1 },
-      { pattern: /\bchildhood\b/, weight: 1 },
-      { pattern: /\bpath to (fame|success|stardom)\b/, weight: 2 },
-      { pattern: /\bthrough the years\b/, weight: 1 },
-      { pattern: /\bpersonal (life|journey|struggles)\b/, weight: 2 }
+      { pattern: /\b(the )?life (of|and)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bstory of\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bjourney of\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\brise (of|to)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bchronicles\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bexplores the life\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bintimate (look|portrait)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bbehind the scenes\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bearly (days|years|life)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bcareer of\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\blegacy of\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bfrom humble beginnings\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bbiography\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bgrew up\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bchildhood\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bpath to (fame|success|stardom)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bthrough the years\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bpersonal (life|journey|struggles)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM }
     ];
     
     for (const { pattern, weight } of bioIndicators) {
@@ -228,20 +303,20 @@ class ContentTypeAnalyzer {
   scoreConcertFilm(overview, title) {
     let score = 0;
     const concertIndicators = [
-      { pattern: /\bconcert\b/, weight: 3 },
-      { pattern: /\btour\b/, weight: 2 },
-      { pattern: /\blive performance\b/, weight: 2 },
-      { pattern: /\bperforms live\b/, weight: 2 },
-      { pattern: /\bstadium\b/, weight: 2 },
-      { pattern: /\barena\b/, weight: 2 },
-      { pattern: /\bon stage\b/, weight: 2 },
-      { pattern: /\bsetlist\b/, weight: 2 },
-      { pattern: /\bworld tour\b/, weight: 3 },
-      { pattern: /\beras tour\b/, weight: 3 },
-      { pattern: /\bfarewell tour\b/, weight: 3 },
-      { pattern: /\breunion tour\b/, weight: 3 },
-      { pattern: /\bsold[- ]out (show|concert)\b/, weight: 2 },
-      { pattern: /\bnight(s)? of music\b/, weight: 2 }
+      { pattern: /\bconcert\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\btour\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\blive performance\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bperforms live\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bstadium\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\barena\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bon stage\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bsetlist\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bworld tour\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\beras tour\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bfarewell tour\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\breunion tour\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bsold[- ]out (show|concert)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bnight(s)? of music\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM }
     ];
     
     for (const { pattern, weight } of concertIndicators) {
@@ -256,17 +331,17 @@ class ContentTypeAnalyzer {
   scoreMusicDocumentary(overview) {
     let score = 0;
     const docIndicators = [
-      { pattern: /\bdocumentary\b/, weight: 2 },
-      { pattern: /\bexplores\b/, weight: 1 },
-      { pattern: /\bexamines\b/, weight: 1 },
-      { pattern: /\bchronicles\b/, weight: 2 },
-      { pattern: /\bhistory of\b/, weight: 2 },
-      { pattern: /\bmaking of\b/, weight: 2 },
-      { pattern: /\binside look\b/, weight: 2 },
-      { pattern: /\barchive footage\b/, weight: 2 },
-      { pattern: /\binterviews\b/, weight: 2 },
-      { pattern: /\brare footage\b/, weight: 2 },
-      { pattern: /\bnever[- ]before[- ]seen\b/, weight: 2 }
+      { pattern: /\bdocumentary\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bexplores\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bexamines\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bchronicles\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bhistory of\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bmaking of\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\binside look\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\barchive footage\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\binterviews\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\brare footage\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bnever[- ]before[- ]seen\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM }
     ];
     
     for (const { pattern, weight } of docIndicators) {
@@ -283,20 +358,20 @@ class ContentTypeAnalyzer {
     
     // Biopics typically have Drama genre
     if (genres.includes('drama')) {
-      score += 2;
+      score += ContentTypeAnalyzer.WEIGHT_MEDIUM;
     }
     
     const biopicIndicators = [
-      { pattern: /\bportrays\b/, weight: 2 },
-      { pattern: /\bstars as\b/, weight: 2 },
-      { pattern: /\brise to fame\b/, weight: 2 },
-      { pattern: /\bstruggles\b/, weight: 1 },
-      { pattern: /\bbased on the (true |real )?life\b/, weight: 3 },
-      { pattern: /\btrue story\b/, weight: 2 },
-      { pattern: /\binspired by\b/, weight: 1 },
-      { pattern: /\bdramatizes\b/, weight: 2 },
-      { pattern: /\bdramatic retelling\b/, weight: 2 },
-      { pattern: /\bfrom rags to riches\b/, weight: 2 }
+      { pattern: /\bportrays\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bstars as\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\brise to fame\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bstruggles\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bbased on the (true |real )?life\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\btrue story\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\binspired by\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bdramatizes\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bdramatic retelling\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bfrom rags to riches\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM }
     ];
     
     for (const { pattern, weight } of biopicIndicators) {
@@ -311,21 +386,21 @@ class ContentTypeAnalyzer {
   scoreRealityTV(overview, keywords) {
     let score = 0;
     const realityIndicators = [
-      { pattern: /\bcompetition\b/, weight: 2 },
-      { pattern: /\bcontestants\b/, weight: 3 },
-      { pattern: /\belimination\b/, weight: 3 },
-      { pattern: /\bchallenges\b/, weight: 2 },
-      { pattern: /\bdating\b/, weight: 2 },
-      { pattern: /\bbachelor(ette)?\b/, weight: 3 },
-      { pattern: /\bhousewives\b/, weight: 3 },
-      { pattern: /\breal lives\b/, weight: 2 },
-      { pattern: /\bfollows the\b/, weight: 1 },
-      { pattern: /\bcameras follow\b/, weight: 2 },
-      { pattern: /\breality\b/, weight: 2 },
-      { pattern: /\bunscripted\b/, weight: 2 },
-      { pattern: /\bcompete for\b/, weight: 2 },
-      { pattern: /\bvote(d)? off\b/, weight: 3 },
-      { pattern: /\brose ceremony\b/, weight: 3 }
+      { pattern: /\bcompetition\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bcontestants\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\belimination\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bchallenges\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bdating\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bbachelor(ette)?\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bhousewives\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\breal lives\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bfollows the\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bcameras follow\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\breality\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bunscripted\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bcompete for\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bvote(d)? off\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\brose ceremony\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH }
     ];
     
     for (const { pattern, weight } of realityIndicators) {
@@ -335,10 +410,9 @@ class ContentTypeAnalyzer {
     }
     
     // Check keywords too
-    const realityKeywords = ['reality', 'reality tv', 'competition', 'game show', 'dating show'];
     for (const kw of keywords) {
-      if (realityKeywords.some(rk => kw.includes(rk))) {
-        score += 2;
+      if (ContentTypeAnalyzer.REALITY_KEYWORDS.some(rk => kw.includes(rk))) {
+        score += ContentTypeAnalyzer.WEIGHT_MEDIUM;
       }
     }
     
@@ -348,21 +422,21 @@ class ContentTypeAnalyzer {
   scoreTrueCrime(overview, keywords) {
     let score = 0;
     const trueCrimeIndicators = [
-      { pattern: /\bmurder(s|er|ed)?\b/, weight: 2 },
-      { pattern: /\bkill(ing|er|ed)?\b/, weight: 2 },
-      { pattern: /\bserial killer\b/, weight: 3 },
-      { pattern: /\binvestigation\b/, weight: 2 },
-      { pattern: /\bdetective(s)?\b/, weight: 1 },
-      { pattern: /\bcrime scene\b/, weight: 2 },
-      { pattern: /\bvictim(s)?\b/, weight: 1 },
-      { pattern: /\bsuspect(s)?\b/, weight: 1 },
-      { pattern: /\btrial\b/, weight: 1 },
-      { pattern: /\bconvicted\b/, weight: 2 },
-      { pattern: /\bunsolved\b/, weight: 2 },
-      { pattern: /\bcold case\b/, weight: 3 },
-      { pattern: /\btrue crime\b/, weight: 3 },
-      { pattern: /\bdisappearance\b/, weight: 2 },
-      { pattern: /\bforensic\b/, weight: 2 }
+      { pattern: /\bmurder(s|er|ed)?\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bkill(ing|er|ed)?\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bserial killer\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\binvestigation\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bdetective(s)?\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bcrime scene\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bvictim(s)?\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bsuspect(s)?\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\btrial\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bconvicted\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bunsolved\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bcold case\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\btrue crime\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bdisappearance\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bforensic\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM }
     ];
     
     for (const { pattern, weight } of trueCrimeIndicators) {
@@ -371,10 +445,9 @@ class ContentTypeAnalyzer {
       }
     }
     
-    const trueCrimeKeywords = ['true crime', 'crime documentary', 'murder', 'investigation'];
     for (const kw of keywords) {
-      if (trueCrimeKeywords.some(tc => kw.includes(tc))) {
-        score += 2;
+      if (ContentTypeAnalyzer.TRUE_CRIME_KEYWORDS.some(tc => kw.includes(tc))) {
+        score += ContentTypeAnalyzer.WEIGHT_MEDIUM;
       }
     }
     
@@ -384,15 +457,15 @@ class ContentTypeAnalyzer {
   scoreRecordedGame(overview, title) {
     let score = 0;
     const gameIndicators = [
-      { pattern: /\b(super ?bowl|world series|world cup|stanley cup|nba finals)\b/i, weight: 3 },
-      { pattern: /\bchampionship (game|match|final)\b/, weight: 3 },
-      { pattern: /\bfinal(s)? (game|match)\b/, weight: 2 },
-      { pattern: /\bplayoff(s)?\b/, weight: 2 },
-      { pattern: /\b(game|match) \d+\b/, weight: 2 },
-      { pattern: /\bvs\.?\b/, weight: 1 },
-      { pattern: /\bversus\b/, weight: 1 },
-      { pattern: /\bfull (game|match)\b/, weight: 3 },
-      { pattern: /\bhighlights\b/, weight: 2 }
+      { pattern: /\b(super ?bowl|world series|world cup|stanley cup|nba finals)\b/i, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bchampionship (game|match|final)\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bfinal(s)? (game|match)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bplayoff(s)?\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\b(game|match) \d+\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bvs\.?\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bversus\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bfull (game|match)\b/, weight: ContentTypeAnalyzer.WEIGHT_HIGH },
+      { pattern: /\bhighlights\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM }
     ];
     
     for (const { pattern, weight } of gameIndicators) {
@@ -407,16 +480,16 @@ class ContentTypeAnalyzer {
   scoreSportsDocumentary(overview) {
     let score = 0;
     const sportsDocIndicators = [
-      { pattern: /\blegendary\b/, weight: 1 },
-      { pattern: /\bcareer\b/, weight: 1 },
-      { pattern: /\bathlete(s)?\b/, weight: 1 },
-      { pattern: /\bteam('s)? (story|journey|history)\b/, weight: 2 },
-      { pattern: /\bbehind the scenes\b/, weight: 2 },
-      { pattern: /\brises? to\b/, weight: 1 },
-      { pattern: /\btriumph\b/, weight: 1 },
-      { pattern: /\bdefeat\b/, weight: 1 },
-      { pattern: /\binterviews\b/, weight: 1 },
-      { pattern: /\barchive footage\b/, weight: 2 }
+      { pattern: /\blegendary\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bcareer\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bathlete(s)?\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bteam('s)? (story|journey|history)\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\bbehind the scenes\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM },
+      { pattern: /\brises? to\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\btriumph\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\bdefeat\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\binterviews\b/, weight: ContentTypeAnalyzer.WEIGHT_LOW },
+      { pattern: /\barchive footage\b/, weight: ContentTypeAnalyzer.WEIGHT_MEDIUM }
     ];
     
     for (const { pattern, weight } of sportsDocIndicators) {
@@ -465,12 +538,11 @@ class ContentTypeAnalyzer {
     
     return metadata.original_language === 'ja' ||
            keywords.includes('anime') ||
-           keywords.some(k => ['shounen', 'shoujo', 'seinen', 'josei', 'isekai', 'mecha', 'slice of life'].includes(k));
+           keywords.some(k => ContentTypeAnalyzer.ANIME_KEYWORDS.includes(k));
   }
   
   isAdultContent(metadata, overview) {
-    const adultCertifications = ['R', 'NC-17', 'TV-MA', '18+', 'X', 'NR'];
-    const hasAdultCert = adultCertifications.includes(metadata.certification);
+    const hasAdultCert = ContentTypeAnalyzer.ADULT_CERTIFICATIONS.includes(metadata.certification);
     
     const adultIndicators = [
       /\badult\b/,
@@ -487,9 +559,8 @@ class ContentTypeAnalyzer {
     
     const hasAdultOverview = adultIndicators.some(pattern => pattern.test(overview));
     
-    const adultKeywords = ['adult animation', 'adult swim', 'mature themes', 'adult content'];
     const hasAdultKeywords = (metadata.keywords || []).some(k => 
-      adultKeywords.some(ak => k.toLowerCase().includes(ak))
+      ContentTypeAnalyzer.ADULT_KEYWORDS.some(ak => k.toLowerCase().includes(ak))
     );
     
     return hasAdultCert || hasAdultOverview || hasAdultKeywords;
