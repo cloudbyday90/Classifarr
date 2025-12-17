@@ -44,13 +44,14 @@ CREATE TABLE libraries (
     media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('movie', 'tv')),
     priority INTEGER DEFAULT 0,
     
-    -- Radarr/Sonarr Mapping (legacy fields, kept for backward compatibility)
+    -- Radarr/Sonarr Mapping (legacy fields, maintained for backward compatibility and as fallbacks)
+    -- New implementations should use radarr_settings/sonarr_settings JSONB fields
     arr_type VARCHAR(20) CHECK (arr_type IN ('radarr', 'sonarr')),
     arr_id INTEGER,
     root_folder VARCHAR(500),
     quality_profile_id INTEGER,
     
-    -- Full Radarr/Sonarr Settings
+    -- Full Radarr/Sonarr Settings (preferred method for new implementations)
     radarr_settings JSONB DEFAULT '{}',
     sonarr_settings JSONB DEFAULT '{}',
     

@@ -587,7 +587,10 @@ Example: 2|Action movie with high rating`;
           const appliedLabels = labelsResult.rows.map(r => r.name);
           
           // Suggest series type if not explicitly set
-          const seriesType = settings.series_type || this.suggestSeriesType(metadata, appliedLabels);
+          let seriesType = settings.series_type;
+          if (!seriesType) {
+            seriesType = this.suggestSeriesType(metadata, appliedLabels);
+          }
           
           // Note: We'd need to get TVDB ID from TMDB external IDs
           // This is a simplified version
