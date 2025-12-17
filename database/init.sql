@@ -108,7 +108,7 @@ INSERT INTO library_definitions (name, media_type, description, rules, priority,
  10, '/movies/family', NULL),
 
 ('Movies', 'movie', 'All other movies - the default category',
- ARRAY['Any movie rated PG-13, R, or NC-17 (unless it fits another category)', 'Action, drama, thriller, horror, sci-fi, etc.', 'Default for any movie that doesnt fit above categories'],
+ ARRAY['Any movie rated PG-13, R, or NC-17 (unless it fits another category)', 'Action, drama, thriller, horror, sci-fi, etc.', 'Default for any movie that doesn''t fit above categories'],
  1, '/movies/general', NULL),
 
 -- TV Shows
@@ -129,5 +129,5 @@ INSERT INTO library_definitions (name, media_type, description, rules, priority,
  10, NULL, '/tv/reality'),
 
 ('TV Shows', 'tv', 'All other TV series - the default category',
- ARRAY['Any TV show rated TV-14 or TV-MA (unless it fits another category)', 'Scripted comedies, dramas, thrillers', 'Actors play fictional characters', 'Default for any TV that doesnt fit above categories'],
+ ARRAY['Any TV show rated TV-14 or TV-MA (unless it fits another category)', 'Scripted comedies, dramas, thrillers', 'Actors play fictional characters', 'Default for any TV that doesn''t fit above categories'],
  1, NULL, '/tv/general');
