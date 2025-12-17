@@ -249,6 +249,100 @@ class DiscordBotService {
     if (confidence >= 50) return 0xf59e0b; // Yellow
     return 0xef4444; // Red
   }
+
+  async testConnection(botToken) {
+    try {
+      const testClient = new Client({
+        intents: [GatewayIntentBits.Guilds],
+      });
+      
+      await testClient.login(botToken);
+      const user = testClient.user;
+      await testClient.destroy();
+      
+      return {
+        username: user.username,
+        id: user.id,
+        discriminator: user.discriminator
+      };
+    } catch (error) {
+      throw new Error(`Failed to connect to Discord: ${error.message}`);
+    }
+  }
+
+  async reinitialize() {
+    try {
+      if (this.client) {
+        await this.client.destroy();
+      }
+      this.isInitialized = false;
+      await this.initialize();
+    } catch (error) {
+      console.error('Failed to reinitialize Discord bot:', error);
+      throw error;
+    }
+  }
+
+  async getServers() {
+    if (!this.isInitialized || !this.client) {
+      throw new Error('Discord bot not initialized');
+    }
+    
+    try {
+      const guilds = await this.client.guilds.fetch();
+      return guilds.map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        icon: guild.iconURL()
+      }));
+    } catch (error) {
+      throw new Error(`Failed to fetch servers: ${error.message}`);
+    }
+  }
+
+  async getChannels(serverId) {
+    if (!this.isInitialized || !this.client) {
+      throw new Error('Discord bot not initialized');
+    }
+    
+    try {
+      const guild = await this.client.guilds.fetch(serverId);
+      const channels = await guild.channels.fetch();
+      
+      return channels
+        .filter(channel => channel.isTextBased())
+        .map(channel => ({
+          id: channel.id,
+          name: channel.name,
+          type: channel.type
+        }));
+    } catch (error) {
+      throw new Error(`Failed to fetch channels: ${error.message}`);
+    }
+  }
+
+  async sendTestMessage() {
+    if (!this.isInitialized || !this.client) {
+      throw new Error('Discord bot not initialized');
+    }
+    
+    try {
+      const channel = await this.client.channels.fetch(this.channelId);
+      if (!channel) {
+        throw new Error('Channel not found');
+      }
+      
+      const embed = new EmbedBuilder()
+        .setTitle('🧪 Test Notification')
+        .setDescription('This is a test notification from Classifarr!')
+        .setColor(0x3b82f6)
+        .setTimestamp();
+      
+      await channel.send({ embeds: [embed] });
+    } catch (error) {
+      throw new Error(`Failed to send test message: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new DiscordBotService();

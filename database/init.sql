@@ -144,9 +144,21 @@ CREATE TABLE tmdb_config (
 CREATE TABLE notification_config (
     id SERIAL PRIMARY KEY,
     type VARCHAR(20) NOT NULL DEFAULT 'discord',
+    name VARCHAR(100),
+    webhook_url VARCHAR(500),
     bot_token VARCHAR(500),
     channel_id VARCHAR(100),
     enabled BOOLEAN DEFAULT false,
+    on_classification BOOLEAN DEFAULT true,
+    on_correction BOOLEAN DEFAULT true,
+    notify_on_error BOOLEAN DEFAULT false,
+    notify_daily_summary BOOLEAN DEFAULT false,
+    show_poster BOOLEAN DEFAULT true,
+    show_confidence BOOLEAN DEFAULT true,
+    show_reason BOOLEAN DEFAULT true,
+    show_correction_buttons BOOLEAN DEFAULT true,
+    quick_correct_count INT DEFAULT 3,
+    show_library_dropdown BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -159,6 +171,41 @@ CREATE TABLE settings (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- ============================================
+-- Table: webhook_config
+-- Incoming webhook settings
+-- ============================================
+CREATE TABLE webhook_config (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) DEFAULT 'Overseerr',
+    enabled BOOLEAN DEFAULT true,
+    require_auth BOOLEAN DEFAULT false,
+    api_key VARCHAR(255),
+    ip_whitelist TEXT[],
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
+-- Table: webhook_log
+-- Log of incoming webhooks
+-- ============================================
+CREATE TABLE webhook_log (
+    id SERIAL PRIMARY KEY,
+    source VARCHAR(50),
+    media_title VARCHAR(255),
+    media_type VARCHAR(10),
+    tmdb_id INT,
+    status VARCHAR(20),
+    error_message TEXT,
+    ip_address VARCHAR(45),
+    raw_payload JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Index for webhook logs
+CREATE INDEX idx_webhook_log_created ON webhook_log(created_at DESC);
 
 -- ===========================================
 -- CLASSIFICATION & LEARNING TABLES
@@ -292,3 +339,6 @@ INSERT INTO settings (key, value) VALUES
 -- Default Ollama Configuration
 INSERT INTO ollama_config (host, port, model, temperature, is_active) VALUES
 ('host.docker.internal', 11434, 'qwen3:14b', 0.30, true);
+
+-- Insert default webhook config
+INSERT INTO webhook_config (name, enabled) VALUES ('Overseerr', true);

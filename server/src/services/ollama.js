@@ -7,20 +7,40 @@ class OllamaService {
     this.baseUrl = `http://${this.host}:${this.port}`;
   }
 
-  async testConnection() {
+  async testConnection(host, port) {
     try {
-      const response = await axios.get(`${this.baseUrl}/api/tags`, {
+      const testHost = host || this.host;
+      const testPort = port || this.port;
+      const testUrl = `http://${testHost}:${testPort}`;
+      
+      const response = await axios.get(`${testUrl}/api/version`, {
         timeout: 5000,
       });
-      return { success: true, models: response.data.models };
+      return { success: true, version: response.data.version || 'unknown' };
     } catch (error) {
-      return { success: false, error: error.message };
+      // If version endpoint doesn't exist, try tags endpoint
+      try {
+        const testHost = host || this.host;
+        const testPort = port || this.port;
+        const testUrl = `http://${testHost}:${testPort}`;
+        
+        await axios.get(`${testUrl}/api/tags`, {
+          timeout: 5000,
+        });
+        return { success: true, version: 'connected' };
+      } catch (err) {
+        return { success: false, error: error.message };
+      }
     }
   }
 
-  async getModels() {
+  async getModels(host, port) {
     try {
-      const response = await axios.get(`${this.baseUrl}/api/tags`);
+      const testHost = host || this.host;
+      const testPort = port || this.port;
+      const testUrl = `http://${testHost}:${testPort}`;
+      
+      const response = await axios.get(`${testUrl}/api/tags`);
       return response.data.models || [];
     } catch (error) {
       throw new Error(`Failed to fetch models: ${error.message}`);

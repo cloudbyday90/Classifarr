@@ -6,6 +6,25 @@ class TMDBService {
     this.apiKey = process.env.TMDB_API_KEY;
   }
 
+  async testConnection(apiKey) {
+    try {
+      const key = apiKey || this.apiKey;
+      const response = await axios.get(`${this.baseUrl}/configuration`, {
+        params: {
+          api_key: key,
+        },
+        timeout: 5000,
+      });
+      return { 
+        success: true, 
+        version: 3,
+        baseUrl: response.data.images?.base_url || 'https://image.tmdb.org/t/p/'
+      };
+    } catch (error) {
+      throw new Error(`Failed to connect to TMDB: ${error.message}`);
+    }
+  }
+
   async getMovieDetails(tmdbId) {
     try {
       const response = await axios.get(`${this.baseUrl}/movie/${tmdbId}`, {

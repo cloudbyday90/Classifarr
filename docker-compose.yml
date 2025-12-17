@@ -13,12 +13,9 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=classifarr
       - POSTGRES_USER=classifarr
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-classifarr_secret}
-      - TMDB_API_KEY=${TMDB_API_KEY}
-      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
-      - DISCORD_CHANNEL_ID=${DISCORD_CHANNEL_ID}
-      - OLLAMA_HOST=${OLLAMA_HOST:-host.docker.internal}
-      - OLLAMA_PORT=${OLLAMA_PORT:-11434}
+      # Password auto-generated on first run
+    volumes:
+      - classifarr_data:/app/data  # Persistent storage for generated password
     depends_on:
       postgres:
         condition: service_healthy
@@ -32,10 +29,11 @@ services:
     environment:
       - POSTGRES_DB=classifarr
       - POSTGRES_USER=classifarr
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-classifarr_secret}
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - classifarr_data:/run/secrets:ro  # Read password from shared volume
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U classifarr -d classifarr"]
       interval: 5s
@@ -47,6 +45,7 @@ services:
 
 volumes:
   postgres_data:
+  classifarr_data:  # Shared config storage
 
 networks:
   classifarr-network:
