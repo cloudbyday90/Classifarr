@@ -179,6 +179,7 @@ router.post('/radarr/test', async (req, res) => {
         });
       } catch (detailError) {
         // If fetching details fails, still return basic success
+        console.log('Could not fetch Radarr details:', detailError.message);
         res.json({
           success: true,
           details: {
@@ -388,6 +389,7 @@ router.post('/sonarr/test', async (req, res) => {
         });
       } catch (detailError) {
         // If fetching details fails, still return basic success
+        console.log('Could not fetch Sonarr details:', detailError.message);
         res.json({
           success: true,
           details: {

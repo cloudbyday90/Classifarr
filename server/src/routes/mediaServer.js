@@ -115,7 +115,8 @@ router.post('/test', async (req, res) => {
         }
         libraryCount = libraries?.length || 0;
       } catch (libError) {
-        // Ignore library fetch errors
+        // Ignore library fetch errors - basic connection succeeded
+        console.log('Could not fetch library details:', libError.message);
       }
 
       const serverTypeNames = {
