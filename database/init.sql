@@ -82,9 +82,10 @@ CREATE TABLE IF NOT EXISTS classifications (
     reason TEXT,
     method VARCHAR(50),
     metadata JSONB,
-    created_at TIMESTAMP DEFAULT NOW(),
-    INDEX idx_tmdb_id (tmdb_id, media_type)
+    created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX idx_tmdb_id ON classifications(tmdb_id, media_type);
 
 -- ============================================
 -- Table: corrections
@@ -100,9 +101,10 @@ CREATE TABLE IF NOT EXISTS corrections (
     corrected_by VARCHAR(100),
     correction_source VARCHAR(50), -- 'discord', 'web_ui', 'api'
     metadata JSONB,
-    created_at TIMESTAMP DEFAULT NOW(),
-    INDEX idx_corrections_tmdb (tmdb_id, media_type)
+    created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX idx_corrections_tmdb ON corrections(tmdb_id, media_type);
 
 -- ============================================
 -- Table: learned_patterns

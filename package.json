@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/src/index.js",
     "dev": "nodemon server/src/index.js",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "node test.js"
   },
   "keywords": [
     "radarr",
