@@ -4,6 +4,7 @@ const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
 const ollamaService = require('../services/ollama');
 const tavilyService = require('../services/tavily');
+const webhookService = require('../services/webhook');
 
 const router = express.Router();
 
@@ -648,6 +649,128 @@ router.post('/tavily/search', async (req, res) => {
     });
 
     res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// WEBHOOK CONFIGURATION
+// ============================================
+
+/**
+ * GET /api/settings/webhook
+ * Get webhook configuration
+ */
+router.get('/webhook', async (req, res) => {
+  try {
+    const config = await webhookService.getConfig();
+    // Mask secret key
+    if (config.secret_key) {
+      config.secret_key_masked = '••••••••' + config.secret_key.slice(-4);
+      config.has_secret = true;
+    } else {
+      config.has_secret = false;
+    }
+    delete config.secret_key;
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/settings/webhook
+ * Update webhook configuration
+ */
+router.put('/webhook', async (req, res) => {
+  try {
+    const config = req.body;
+    // Don't overwrite secret if masked value sent
+    if (config.secret_key === '••••••••' || config.secret_key?.startsWith('••••')) {
+      const existing = await webhookService.getConfig();
+      config.secret_key = existing.secret_key;
+    }
+    const result = await webhookService.updateConfig(config);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/settings/webhook/generate-key
+ * Generate a new webhook secret key
+ */
+router.post('/webhook/generate-key', async (req, res) => {
+  try {
+    const newKey = webhookService.generateSecretKey();
+    res.json({ key: newKey });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/settings/webhook/logs
+ * Get recent webhook logs
+ */
+router.get('/webhook/logs', async (req, res) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+    const logs = await webhookService.getRecentLogs(parseInt(limit), parseInt(offset));
+    res.json(logs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/settings/webhook/stats
+ * Get webhook statistics
+ */
+router.get('/webhook/stats', async (req, res) => {
+  try {
+    const stats = await webhookService.getStats();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/settings/webhook/requests
+ * Get media requests
+ */
+router.get('/webhook/requests', async (req, res) => {
+  try {
+    const { status, limit = 50, offset = 0 } = req.query;
+    const requests = await webhookService.getRequests({ status, limit: parseInt(limit), offset: parseInt(offset) });
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/settings/webhook/url
+ * Get the webhook URL for configuration in Overseerr
+ */
+router.get('/webhook/url', async (req, res) => {
+  try {
+    const config = await webhookService.getConfig();
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 21324}`;
+    let webhookUrl = `${baseUrl}/api/webhook/overseerr`;
+    
+    if (config.secret_key) {
+      webhookUrl += `?key=${config.secret_key}`;
+    }
+    
+    res.json({ 
+      url: webhookUrl,
+      url_without_key: `${baseUrl}/api/webhook/overseerr`,
+      has_key: !!config.secret_key
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -2,6 +2,17 @@
   <div class="space-y-6">
     <h1 class="text-2xl font-bold">Settings</h1>
 
+    <Card title="Webhook Integration" description="Configure Overseerr/Jellyseerr webhook integration">
+      <div class="space-y-4">
+        <p class="text-sm text-gray-400">
+          Set up webhook integration to automatically classify media requests from Overseerr/Jellyseerr.
+        </p>
+        <router-link to="/settings/webhook">
+          <Button variant="primary">Configure Webhooks →</Button>
+        </router-link>
+      </div>
+    </Card>
+
     <Card title="Media Server" description="Configure your Plex, Emby, or Jellyfin server">
       <div class="space-y-4">
         <Select

@@ -384,3 +384,104 @@ INSERT INTO ollama_config (host, port, model, temperature, is_active) VALUES
 -- Default Tavily Configuration
 INSERT INTO tavily_config (search_depth, max_results, is_active) VALUES
 ('basic', 5, false);
+
+-- ============================================
+-- WEBHOOK TABLES
+-- ============================================
+
+-- Table: webhook_config
+-- Webhook settings and authentication
+CREATE TABLE webhook_config (
+    id SERIAL PRIMARY KEY,
+    webhook_type VARCHAR(50) DEFAULT 'overseerr',
+    secret_key VARCHAR(255),
+    -- Event handling toggles
+    process_pending BOOLEAN DEFAULT true,
+    process_approved BOOLEAN DEFAULT true,
+    process_auto_approved BOOLEAN DEFAULT true,
+    process_declined BOOLEAN DEFAULT false,
+    -- Notification options
+    notify_on_receive BOOLEAN DEFAULT true,
+    notify_on_error BOOLEAN DEFAULT true,
+    -- Status
+    enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Insert default config
+INSERT INTO webhook_config (webhook_type, enabled) VALUES ('overseerr', true);
+
+-- Table: webhook_log
+-- Audit trail of all received webhooks
+CREATE TABLE webhook_log (
+    id SERIAL PRIMARY KEY,
+    webhook_type VARCHAR(50) DEFAULT 'overseerr',
+    notification_type VARCHAR(50),
+    event_name VARCHAR(100),
+    payload JSONB,
+    -- Media info
+    media_title VARCHAR(500),
+    media_type VARCHAR(20),
+    tmdb_id INT,
+    tvdb_id INT,
+    -- Request info
+    request_id INT,
+    requested_by_username VARCHAR(255),
+    requested_by_email VARCHAR(255),
+    is_4k BOOLEAN DEFAULT false,
+    -- Processing info
+    processing_status VARCHAR(20) DEFAULT 'received', -- 'received', 'processing', 'completed', 'failed', 'skipped'
+    classification_id INT REFERENCES classification_history(id),
+    routed_to_library VARCHAR(255),
+    error_message TEXT,
+    processing_time_ms INT,
+    -- Request metadata
+    ip_address VARCHAR(50),
+    user_agent VARCHAR(500),
+    received_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_webhook_log_received ON webhook_log(received_at DESC);
+CREATE INDEX idx_webhook_log_status ON webhook_log(processing_status);
+CREATE INDEX idx_webhook_log_tmdb ON webhook_log(tmdb_id);
+CREATE INDEX idx_webhook_log_type ON webhook_log(notification_type);
+
+-- Table: media_requests
+-- Track media request lifecycle from Overseerr
+CREATE TABLE media_requests (
+    id SERIAL PRIMARY KEY,
+    overseerr_request_id INT UNIQUE,
+    tmdb_id INT,
+    tvdb_id INT,
+    media_type VARCHAR(20),
+    title VARCHAR(500),
+    year INT,
+    poster_path VARCHAR(500),
+    -- Requester info
+    requested_by_username VARCHAR(255),
+    requested_by_email VARCHAR(255),
+    requested_by_avatar VARCHAR(500),
+    -- Request details
+    is_4k BOOLEAN DEFAULT false,
+    requested_seasons TEXT, -- For TV shows
+    -- Status tracking
+    request_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'approved', 'declined', 'processing', 'available', 'failed'
+    -- Classification results
+    classification_id INT REFERENCES classification_history(id),
+    routed_to_library_id INT REFERENCES libraries(id),
+    routed_to_library_name VARCHAR(255),
+    -- *arr tracking
+    arr_type VARCHAR(20), -- 'radarr' or 'sonarr'
+    arr_id INT, -- ID in Radarr/Sonarr once added
+    -- Timestamps
+    requested_at TIMESTAMP,
+    approved_at TIMESTAMP,
+    available_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_media_requests_status ON media_requests(request_status);
+CREATE INDEX idx_media_requests_tmdb ON media_requests(tmdb_id);
+CREATE INDEX idx_media_requests_user ON media_requests(requested_by_username);

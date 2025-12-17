@@ -194,4 +194,30 @@ export default {
   testTavilySearch(data) {
     return apiClient.post('/settings/tavily/search', data)
   },
+
+  // Webhook
+  getWebhookConfig() {
+    return apiClient.get('/settings/webhook')
+  },
+  updateWebhookConfig(data) {
+    return apiClient.put('/settings/webhook', data)
+  },
+  generateWebhookKey() {
+    return apiClient.post('/settings/webhook/generate-key')
+  },
+  getWebhookUrl() {
+    return apiClient.get('/settings/webhook/url')
+  },
+  getWebhookLogs(params) {
+    return apiClient.get('/settings/webhook/logs', { params })
+  },
+  getWebhookStats() {
+    return apiClient.get('/settings/webhook/stats')
+  },
+  getWebhookRequests(params) {
+    return apiClient.get('/settings/webhook/requests', { params })
+  },
+  testWebhook(data) {
+    return apiClient.post('/webhook/test', data)
+  },
 }

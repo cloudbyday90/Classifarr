@@ -38,6 +38,11 @@ const router = createRouter({
           name: 'Settings',
           component: () => import('@/views/Settings.vue'),
         },
+        {
+          path: '/settings/webhook',
+          name: 'WebhookSettings',
+          component: () => import('@/views/settings/Webhook.vue'),
+        },
       ],
     },
   ],
