@@ -197,7 +197,7 @@ class ClassificationService {
 
       // Get library labels
       const labelsResult = await db.query(
-        `SELECT ll.rule_type, lp.category, lp.label 
+        `SELECT ll.rule_type, lp.category, lp.name, lp.display_name, lp.tmdb_match_field, lp.tmdb_match_values
          FROM library_labels ll
          JOIN label_presets lp ON ll.label_preset_id = lp.id
          WHERE ll.library_id = $1`,
@@ -222,7 +222,7 @@ class ClassificationService {
       for (const label of includeLabels) {
         if (this.metadataMatchesLabel(metadata, label)) {
           score += 25;
-          reasons.push(`Matches ${label.category}: ${label.label}`);
+          reasons.push(`Matches ${label.category}: ${label.display_name}`);
         }
       }
 
@@ -256,34 +256,39 @@ class ClassificationService {
   }
 
   metadataMatchesLabel(metadata, label) {
-    const { category, label: labelValue } = label;
+    const { tmdb_match_field, tmdb_match_values } = label;
 
-    switch (category) {
-      case 'rating':
-        return metadata.certification === labelValue;
-      case 'genre':
-        return metadata.genres.some(g => 
-          g.toLowerCase().includes(labelValue.toLowerCase())
+    // If no match field/values defined, cannot match
+    if (!tmdb_match_field || !tmdb_match_values || tmdb_match_values.length === 0) {
+      return false;
+    }
+
+    switch (tmdb_match_field) {
+      case 'certification':
+        // Check if metadata certification matches any of the values
+        return tmdb_match_values.some(value => 
+          metadata.certification && metadata.certification.toLowerCase() === value.toLowerCase()
         );
-      case 'content_type':
-        // Enhanced content type detection
+
+      case 'genres':
+        // Check if any metadata genre matches any of the label values
+        return tmdb_match_values.some(value => 
+          metadata.genres.some(g => g.toLowerCase() === value.toLowerCase())
+        );
+
+      case 'keywords':
+        // Check if any metadata keyword matches any of the label values
         const keywords = metadata.keywords.map(k => k.toLowerCase());
-        const overview = metadata.overview?.toLowerCase() || '';
-        
-        switch (labelValue.toLowerCase()) {
-          case 'animated':
-            return metadata.genres.some(g => g.toLowerCase().includes('animation'));
-          case 'anime':
-            return keywords.includes('anime') || metadata.original_language === 'ja';
-          case 'documentary':
-            return metadata.genres.some(g => g.toLowerCase().includes('documentary'));
-          case 'kids':
-          case 'family':
-            return metadata.genres.some(g => g.toLowerCase().includes('family'));
-          default:
-            return keywords.includes(labelValue.toLowerCase()) || 
-                   overview.includes(labelValue.toLowerCase());
-        }
+        return tmdb_match_values.some(value => 
+          keywords.includes(value.toLowerCase())
+        );
+
+      case 'original_language':
+        // Check if metadata original_language matches any of the values
+        return tmdb_match_values.some(value => 
+          metadata.original_language && metadata.original_language.toLowerCase() === value.toLowerCase()
+        );
+
       default:
         return false;
     }

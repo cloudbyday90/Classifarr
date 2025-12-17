@@ -60,13 +60,16 @@ CREATE TABLE libraries (
 -- Label Presets (system-defined classification labels)
 CREATE TABLE label_presets (
     id SERIAL PRIMARY KEY,
-    category VARCHAR(50) NOT NULL CHECK (category IN ('rating', 'content_type', 'genre')),
-    label VARCHAR(100) NOT NULL,
+    category VARCHAR(50) NOT NULL CHECK (category IN ('rating', 'content_type', 'genre', 'language')),
+    name VARCHAR(100) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
     description TEXT,
     media_type VARCHAR(20) CHECK (media_type IN ('movie', 'tv', 'both')),
+    tmdb_match_field VARCHAR(50),
+    tmdb_match_values TEXT[],
     created_at TIMESTAMP DEFAULT NOW(),
     
-    UNIQUE(category, label)
+    UNIQUE(category, name)
 );
 
 -- Library Labels (assigned to libraries for include/exclude rules)
@@ -226,61 +229,133 @@ CREATE INDEX idx_classification_corrections_classification ON classification_cor
 CREATE INDEX idx_learning_patterns_tmdb ON learning_patterns(tmdb_id);
 CREATE INDEX idx_learning_patterns_library ON learning_patterns(library_id);
 
--- ===========================================
--- SEED DATA
--- ===========================================
+-- ============================================
+-- SEED DATA - LABEL PRESETS
+-- Comprehensive Media Classification (83 labels)
+-- ============================================
 
--- Label Presets - Movie Ratings
-INSERT INTO label_presets (category, label, description, media_type) VALUES
-('rating', 'G', 'General Audiences - All ages admitted', 'movie'),
-('rating', 'PG', 'Parental Guidance Suggested', 'movie'),
-('rating', 'PG-13', 'Parents Strongly Cautioned - Some material may be inappropriate for children under 13', 'movie'),
-('rating', 'R', 'Restricted - Under 17 requires accompanying parent or adult guardian', 'movie'),
-('rating', 'NC-17', 'Adults Only - No one 17 and under admitted', 'movie'),
-('rating', 'NR', 'Not Rated', 'both');
+-- ============================================
+-- MOVIE RATINGS (6)
+-- ============================================
+INSERT INTO label_presets (category, name, display_name, media_type, description, tmdb_match_field, tmdb_match_values) VALUES
+('rating', 'g', 'G', 'movie', 'General Audiences - All ages admitted', 'certification', ARRAY['G']),
+('rating', 'pg', 'PG', 'movie', 'Parental Guidance Suggested', 'certification', ARRAY['PG']),
+('rating', 'pg13', 'PG-13', 'movie', 'Parents Strongly Cautioned - Some material may be inappropriate for children under 13', 'certification', ARRAY['PG-13']),
+('rating', 'r', 'R', 'movie', 'Restricted - Under 17 requires accompanying parent or adult guardian', 'certification', ARRAY['R']),
+('rating', 'nc17', 'NC-17', 'movie', 'Adults Only - No one 17 and under admitted', 'certification', ARRAY['NC-17']),
+('rating', 'unrated', 'Unrated', 'movie', 'Not Rated or Unrated', 'certification', ARRAY['NR', 'Unrated']);
 
--- Label Presets - TV Ratings
-INSERT INTO label_presets (category, label, description, media_type) VALUES
-('rating', 'TV-Y', 'All Children - Appropriate for all children', 'tv'),
-('rating', 'TV-Y7', 'Directed to Older Children - Designed for children age 7 and above', 'tv'),
-('rating', 'TV-G', 'General Audience - Most parents would find this program suitable for all ages', 'tv'),
-('rating', 'TV-PG', 'Parental Guidance Suggested - May contain material parents find unsuitable for younger children', 'tv'),
-('rating', 'TV-14', 'Parents Strongly Cautioned - May be unsuitable for children under 14', 'tv'),
-('rating', 'TV-MA', 'Mature Audience Only - Specifically designed for adults', 'tv');
+-- ============================================
+-- TV RATINGS (6)
+-- ============================================
+INSERT INTO label_presets (category, name, display_name, media_type, description, tmdb_match_field, tmdb_match_values) VALUES
+('rating', 'tv_y', 'TV-Y', 'tv', 'All Children - Appropriate for all children', 'certification', ARRAY['TV-Y']),
+('rating', 'tv_y7', 'TV-Y7', 'tv', 'Directed to Older Children - Designed for children age 7 and above', 'certification', ARRAY['TV-Y7']),
+('rating', 'tv_g', 'TV-G', 'tv', 'General Audience - Most parents would find this program suitable for all ages', 'certification', ARRAY['TV-G']),
+('rating', 'tv_pg', 'TV-PG', 'tv', 'Parental Guidance Suggested - May contain material parents find unsuitable for younger children', 'certification', ARRAY['TV-PG']),
+('rating', 'tv_14', 'TV-14', 'tv', 'Parents Strongly Cautioned - May be unsuitable for children under 14', 'certification', ARRAY['TV-14']),
+('rating', 'tv_ma', 'TV-MA', 'tv', 'Mature Audience Only - Specifically designed for adults', 'certification', ARRAY['TV-MA']);
 
--- Label Presets - Content Types
-INSERT INTO label_presets (category, label, description, media_type) VALUES
-('content_type', 'Animated', 'Animated content', 'both'),
-('content_type', 'Anime', 'Japanese animation', 'both'),
-('content_type', 'Holiday', 'Holiday-themed content', 'both'),
-('content_type', 'Standup', 'Stand-up comedy specials', 'both'),
-('content_type', 'Documentary', 'Non-fiction documentary content', 'both'),
-('content_type', 'Reality', 'Reality television', 'tv'),
-('content_type', 'Kids', 'Content specifically for children', 'both'),
-('content_type', 'Family', 'Family-friendly content', 'both'),
-('content_type', 'Foreign', 'Foreign language content', 'both'),
-('content_type', 'Independent', 'Independent films', 'movie'),
-('content_type', 'Short', 'Short films or episodes', 'both');
+-- ============================================
+-- MOVIE GENRES (18)
+-- ============================================
+INSERT INTO label_presets (category, name, display_name, media_type, description, tmdb_match_field, tmdb_match_values) VALUES
+('genre', 'action', 'Action', 'movie', 'Action movies', 'genres', ARRAY['Action']),
+('genre', 'adventure', 'Adventure', 'movie', 'Adventure movies', 'genres', ARRAY['Adventure']),
+('genre', 'animation', 'Animation', 'movie', 'Animated movies', 'genres', ARRAY['Animation']),
+('genre', 'comedy', 'Comedy', 'movie', 'Comedy movies', 'genres', ARRAY['Comedy']),
+('genre', 'crime', 'Crime', 'movie', 'Crime movies', 'genres', ARRAY['Crime']),
+('genre', 'documentary', 'Documentary', 'movie', 'Documentary movies', 'genres', ARRAY['Documentary']),
+('genre', 'drama', 'Drama', 'movie', 'Drama movies', 'genres', ARRAY['Drama']),
+('genre', 'family', 'Family', 'movie', 'Family movies', 'genres', ARRAY['Family']),
+('genre', 'fantasy', 'Fantasy', 'movie', 'Fantasy movies', 'genres', ARRAY['Fantasy']),
+('genre', 'history', 'History', 'movie', 'Historical movies', 'genres', ARRAY['History']),
+('genre', 'horror', 'Horror', 'movie', 'Horror movies', 'genres', ARRAY['Horror']),
+('genre', 'music', 'Music', 'movie', 'Music movies', 'genres', ARRAY['Music']),
+('genre', 'mystery', 'Mystery', 'movie', 'Mystery movies', 'genres', ARRAY['Mystery']),
+('genre', 'romance', 'Romance', 'movie', 'Romance movies', 'genres', ARRAY['Romance']),
+('genre', 'scifi', 'Science Fiction', 'movie', 'Science fiction movies', 'genres', ARRAY['Science Fiction']),
+('genre', 'thriller', 'Thriller', 'movie', 'Thriller movies', 'genres', ARRAY['Thriller']),
+('genre', 'war', 'War', 'movie', 'War movies', 'genres', ARRAY['War']),
+('genre', 'western', 'Western', 'movie', 'Western movies', 'genres', ARRAY['Western']);
 
--- Label Presets - Genres
-INSERT INTO label_presets (category, label, description, media_type) VALUES
-('genre', 'Action', 'Action and adventure', 'both'),
-('genre', 'Adventure', 'Adventure stories', 'both'),
-('genre', 'Comedy', 'Comedy content', 'both'),
-('genre', 'Drama', 'Dramatic content', 'both'),
-('genre', 'Horror', 'Horror and thriller', 'both'),
-('genre', 'Sci-Fi', 'Science fiction', 'both'),
-('genre', 'Fantasy', 'Fantasy worlds', 'both'),
-('genre', 'Mystery', 'Mystery and detective stories', 'both'),
-('genre', 'Thriller', 'Suspense and thriller', 'both'),
-('genre', 'Romance', 'Romantic stories', 'both'),
-('genre', 'Crime', 'Crime stories', 'both'),
-('genre', 'Western', 'Western genre', 'both'),
-('genre', 'War', 'War films', 'both'),
-('genre', 'Musical', 'Musicals', 'both'),
-('genre', 'Biography', 'Biographical content', 'both'),
-('genre', 'History', 'Historical content', 'both'),
-('genre', 'Sport', 'Sports-related content', 'both');
+-- ============================================
+-- TV GENRES (16)
+-- ============================================
+INSERT INTO label_presets (category, name, display_name, media_type, description, tmdb_match_field, tmdb_match_values) VALUES
+('genre', 'action_adventure', 'Action & Adventure', 'tv', 'Action & Adventure TV shows', 'genres', ARRAY['Action & Adventure']),
+('genre', 'animation_tv', 'Animation', 'tv', 'Animated TV shows', 'genres', ARRAY['Animation']),
+('genre', 'comedy_tv', 'Comedy', 'tv', 'Comedy TV shows', 'genres', ARRAY['Comedy']),
+('genre', 'crime_tv', 'Crime', 'tv', 'Crime TV shows', 'genres', ARRAY['Crime']),
+('genre', 'documentary_tv', 'Documentary', 'tv', 'Documentary TV shows', 'genres', ARRAY['Documentary']),
+('genre', 'drama_tv', 'Drama', 'tv', 'Drama TV shows', 'genres', ARRAY['Drama']),
+('genre', 'family_tv', 'Family', 'tv', 'Family TV shows', 'genres', ARRAY['Family']),
+('genre', 'kids', 'Kids', 'tv', 'Kids TV shows', 'genres', ARRAY['Kids']),
+('genre', 'mystery_tv', 'Mystery', 'tv', 'Mystery TV shows', 'genres', ARRAY['Mystery']),
+('genre', 'news', 'News', 'tv', 'News programs', 'genres', ARRAY['News']),
+('genre', 'reality', 'Reality', 'tv', 'Reality TV shows', 'genres', ARRAY['Reality']),
+('genre', 'scifi_fantasy', 'Sci-Fi & Fantasy', 'tv', 'Sci-Fi & Fantasy TV shows', 'genres', ARRAY['Sci-Fi & Fantasy']),
+('genre', 'soap', 'Soap', 'tv', 'Soap operas', 'genres', ARRAY['Soap']),
+('genre', 'talk', 'Talk', 'tv', 'Talk shows', 'genres', ARRAY['Talk']),
+('genre', 'war_politics', 'War & Politics', 'tv', 'War & Politics TV shows', 'genres', ARRAY['War & Politics']),
+('genre', 'western_tv', 'Western', 'tv', 'Western TV shows', 'genres', ARRAY['Western']);
+
+-- ============================================
+-- CONTENT TYPES - BOTH (10)
+-- ============================================
+INSERT INTO label_presets (category, name, display_name, media_type, description, tmdb_match_field, tmdb_match_values) VALUES
+('content_type', 'anime', 'Anime', 'both', 'Japanese animation', 'keywords', ARRAY['anime', 'manga', 'based on manga', 'japanese animation']),
+('content_type', 'standup', 'Stand-Up Comedy', 'both', 'Live comedy performances', 'keywords', ARRAY['stand-up comedy', 'comedy special', 'standup']),
+('content_type', 'holiday', 'Holiday/Christmas', 'both', 'Seasonal holiday content', 'keywords', ARRAY['christmas', 'holiday', 'santa claus', 'xmas']),
+('content_type', 'halloween', 'Halloween', 'both', 'Halloween themed content', 'keywords', ARRAY['halloween', 'trick or treat', 'haunted house']),
+('content_type', 'superhero', 'Superhero', 'both', 'Comic book heroes and superheroes', 'keywords', ARRAY['superhero', 'marvel comics', 'dc comics', 'based on comic']),
+('content_type', 'true_crime', 'True Crime', 'both', 'Real crime stories and investigations', 'keywords', ARRAY['true crime', 'murder', 'serial killer', 'investigation']),
+('content_type', 'sports', 'Sports', 'both', 'Sports focused content', 'keywords', ARRAY['sports', 'football', 'basketball', 'baseball', 'olympics']),
+('content_type', 'concert', 'Concert/Music', 'both', 'Live music performances and concerts', 'keywords', ARRAY['concert', 'live performance', 'tour', 'concert film']),
+('content_type', 'martial_arts', 'Martial Arts', 'both', 'Fighting and martial arts focused', 'keywords', ARRAY['martial arts', 'kung fu', 'karate', 'mma']),
+('content_type', 'adult', 'Adult/Explicit', 'both', 'Explicit adult content', 'keywords', ARRAY['erotic', 'adult film', 'explicit']);
+
+-- ============================================
+-- CONTENT TYPES - MOVIE SPECIFIC (5)
+-- ============================================
+INSERT INTO label_presets (category, name, display_name, media_type, description, tmdb_match_field, tmdb_match_values) VALUES
+('content_type', 'hallmark', 'Hallmark/Romance TV Movie', 'movie', 'Hallmark-style romance TV movies', 'keywords', ARRAY['hallmark', 'lifetime movie', 'made for tv']),
+('content_type', 'found_footage', 'Found Footage', 'movie', 'Found footage style movies', 'keywords', ARRAY['found footage', 'pov', 'handheld']),
+('content_type', 'slasher', 'Slasher', 'movie', 'Slasher horror movies', 'keywords', ARRAY['slasher', 'serial killer', 'masked killer']),
+('content_type', 'noir', 'Film Noir', 'movie', 'Film noir style movies', 'keywords', ARRAY['film noir', 'noir', 'neo-noir']),
+('content_type', 'b_movie', 'B-Movie/Cult', 'movie', 'B-movies and cult films', 'keywords', ARRAY['b-movie', 'cult film', 'exploitation', 'grindhouse']);
+
+-- ============================================
+-- CONTENT TYPES - TV SPECIFIC (12)
+-- ============================================
+INSERT INTO label_presets (category, name, display_name, media_type, description, tmdb_match_field, tmdb_match_values) VALUES
+('content_type', 'late_night', 'Late Night/Talk Show', 'tv', 'Late night and talk shows', 'keywords', ARRAY['talk show', 'late night', 'interview show']),
+('content_type', 'game_show', 'Game Show', 'tv', 'Game shows and quiz shows', 'keywords', ARRAY['game show', 'quiz show', 'trivia']),
+('content_type', 'reality_competition', 'Reality Competition', 'tv', 'Reality competition shows', 'keywords', ARRAY['reality competition', 'talent show', 'cooking competition']),
+('content_type', 'dating_show', 'Dating Show', 'tv', 'Dating and relationship shows', 'keywords', ARRAY['dating show', 'bachelor', 'love island']),
+('content_type', 'home_lifestyle', 'Home & Lifestyle', 'tv', 'Home improvement and lifestyle shows', 'keywords', ARRAY['home improvement', 'renovation', 'cooking show']),
+('content_type', 'soap_opera', 'Soap Opera', 'tv', 'Soap operas and daytime dramas', 'keywords', ARRAY['soap opera', 'daytime drama', 'telenovela']),
+('content_type', 'miniseries', 'Miniseries/Limited', 'tv', 'Miniseries and limited series', 'keywords', ARRAY['miniseries', 'limited series']),
+('content_type', 'anthology', 'Anthology', 'tv', 'Anthology series', 'keywords', ARRAY['anthology', 'anthology series']),
+('content_type', 'variety', 'Variety Show', 'tv', 'Variety and sketch comedy shows', 'keywords', ARRAY['variety show', 'sketch comedy', 'snl']),
+('content_type', 'adult_animation', 'Adult Animation', 'tv', 'Adult animated shows', 'keywords', ARRAY['adult animation', 'adult cartoon', 'animated sitcom']),
+('content_type', 'kdrama', 'K-Drama', 'tv', 'Korean dramas', 'keywords', ARRAY['korean drama', 'k-drama', 'kdrama']),
+('content_type', 'british', 'British/UK', 'tv', 'British and UK series', 'keywords', ARRAY['british', 'bbc', 'itv', 'uk series']);
+
+-- ============================================
+-- LANGUAGES (10)
+-- ============================================
+INSERT INTO label_presets (category, name, display_name, media_type, description, tmdb_match_field, tmdb_match_values) VALUES
+('language', 'english', 'English', 'both', 'English language content', 'original_language', ARRAY['en']),
+('language', 'japanese', 'Japanese', 'both', 'Japanese language content', 'original_language', ARRAY['ja']),
+('language', 'korean', 'Korean', 'both', 'Korean language content', 'original_language', ARRAY['ko']),
+('language', 'spanish', 'Spanish', 'both', 'Spanish language content', 'original_language', ARRAY['es']),
+('language', 'french', 'French', 'both', 'French language content', 'original_language', ARRAY['fr']),
+('language', 'german', 'German', 'both', 'German language content', 'original_language', ARRAY['de']),
+('language', 'italian', 'Italian', 'both', 'Italian language content', 'original_language', ARRAY['it']),
+('language', 'chinese', 'Chinese', 'both', 'Chinese language content', 'original_language', ARRAY['zh', 'cn']),
+('language', 'hindi', 'Hindi', 'both', 'Hindi language content', 'original_language', ARRAY['hi']),
+('language', 'portuguese', 'Portuguese', 'both', 'Portuguese language content', 'original_language', ARRAY['pt']);
 
 -- Default Settings
 INSERT INTO settings (key, value) VALUES

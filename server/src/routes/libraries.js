@@ -91,11 +91,11 @@ router.get('/:id/labels', async (req, res) => {
     const { id } = req.params;
     
     const result = await db.query(`
-      SELECT ll.id, ll.rule_type, lp.id as preset_id, lp.category, lp.label, lp.description
+      SELECT ll.id, ll.rule_type, lp.id as preset_id, lp.category, lp.name, lp.display_name, lp.description
       FROM library_labels ll
       JOIN label_presets lp ON ll.label_preset_id = lp.id
       WHERE ll.library_id = $1
-      ORDER BY lp.category, lp.label
+      ORDER BY lp.category, lp.name
     `, [id]);
 
     res.json(result.rows);
@@ -256,7 +256,7 @@ router.delete('/:id/rules/:ruleId', async (req, res) => {
 router.get('/label-presets/all', async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT * FROM label_presets ORDER BY category, label'
+      'SELECT * FROM label_presets ORDER BY category, name'
     );
     res.json(result.rows);
   } catch (error) {
