@@ -191,7 +191,7 @@ Classifarr is built on the shoulders of giants and wouldn't be possible without 
 - **[Overseerr](https://overseerr.dev/)** - Request management for Plex
 - **[Jellyseerr](https://github.com/Fallenbagel/jellyseerr)** - Request management for Jellyfin
 - **[n8n](https://n8n.io/)** - Workflow automation platform
-- **[Ollama](https://ollama.ai/)** - Local LLM inference
+- **[Ollama](https://ollama.com/)** - Local LLM inference
 - **[PostgreSQL](https://www.postgresql.org/)** - The world's most advanced open source database
 - **[TMDB](https://www.themoviedb.org/)** - Movie and TV show metadata
 
