@@ -148,8 +148,8 @@ class ClassificationService {
 
   mightBeAnime(metadata) {
     // Check if metadata suggests anime
-    const keywords = metadata.keywords.map(k => k.toLowerCase());
-    const genres = metadata.genres.map(g => g.toLowerCase());
+    const keywords = (metadata.keywords || []).map(k => k.toLowerCase());
+    const genres = (metadata.genres || []).map(g => g.toLowerCase());
     
     return (
       keywords.includes('anime') ||

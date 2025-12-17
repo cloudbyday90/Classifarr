@@ -39,18 +39,23 @@ class TavilyService {
       throw new Error('Tavily API key is required');
     }
 
-    const response = await axios.post(`${this.baseUrl}/search`, {
-      api_key: apiKey,
-      query,
-      search_depth: searchDepth,
-      max_results: maxResults,
-      include_domains: includeDomains,
-      exclude_domains: excludeDomains,
-      include_answer: true,
-      include_raw_content: false
-    });
+    try {
+      const response = await axios.post(`${this.baseUrl}/search`, {
+        api_key: apiKey,
+        query,
+        search_depth: searchDepth,
+        max_results: maxResults,
+        include_domains: includeDomains,
+        exclude_domains: excludeDomains,
+        include_answer: true,
+        include_raw_content: false
+      });
 
-    return response.data;
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+      throw new Error(`Tavily search failed: ${errorMessage}`);
+    }
   }
 
   /**

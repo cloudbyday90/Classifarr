@@ -543,7 +543,7 @@ router.get('/tavily', async (req, res) => {
     const result = await db.query('SELECT * FROM tavily_config LIMIT 1');
     if (result.rows[0] && result.rows[0].api_key) {
       // Mask API key for security
-      result.rows[0].api_key = result.rows[0].api_key ? '••••••••' : '';
+      result.rows[0].api_key = '••••••••';
     }
     res.json(result.rows[0] || null);
   } catch (error) {
@@ -586,7 +586,7 @@ router.put('/tavily', async (req, res) => {
         max_results || 5,
         include_domains || ['imdb.com', 'rottentomatoes.com', 'myanimelist.net', 'letterboxd.com'],
         exclude_domains || [],
-        is_active !== false
+        is_active ?? true
       ]
     );
 
