@@ -384,3 +384,86 @@ INSERT INTO ollama_config (host, port, model, temperature, is_active) VALUES
 -- Default Tavily Configuration
 INSERT INTO tavily_config (search_depth, max_results, is_active) VALUES
 ('basic', 5, false);
+
+-- ============================================
+-- MEDIA SERVER INTEGRATION TABLES
+-- ============================================
+
+-- ============================================
+-- Table: media_server_items
+-- Cache of all items in media server libraries
+-- ============================================
+CREATE TABLE media_server_items (
+    id SERIAL PRIMARY KEY,
+    media_server_id INT REFERENCES media_server(id) ON DELETE CASCADE,
+    library_id INT REFERENCES libraries(id) ON DELETE CASCADE,
+    external_id VARCHAR(100) NOT NULL, -- Plex/Emby/Jellyfin item ID
+    tmdb_id INT,
+    imdb_id VARCHAR(20),
+    tvdb_id INT,
+    title VARCHAR(500) NOT NULL,
+    original_title VARCHAR(500),
+    year INT,
+    media_type VARCHAR(10) NOT NULL, -- 'movie' or 'tv'
+    genres TEXT[],
+    tags TEXT[],
+    collections TEXT[], -- Collection names this item belongs to
+    studio VARCHAR(255),
+    content_rating VARCHAR(20), -- PG-13, TV-MA, etc.
+    added_at TIMESTAMP,
+    metadata JSONB, -- Full metadata from server
+    last_synced TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(media_server_id, external_id)
+);
+
+CREATE INDEX idx_media_items_tmdb ON media_server_items(tmdb_id);
+CREATE INDEX idx_media_items_imdb ON media_server_items(imdb_id);
+CREATE INDEX idx_media_items_tvdb ON media_server_items(tvdb_id);
+CREATE INDEX idx_media_items_library ON media_server_items(library_id);
+CREATE INDEX idx_media_items_title ON media_server_items(title);
+CREATE INDEX idx_media_items_collections ON media_server_items USING GIN(collections);
+CREATE INDEX idx_media_items_genres ON media_server_items USING GIN(genres);
+
+-- ============================================
+-- Table: media_server_collections
+-- Collections from Plex/Emby/Jellyfin
+-- ============================================
+CREATE TABLE media_server_collections (
+    id SERIAL PRIMARY KEY,
+    media_server_id INT REFERENCES media_server(id) ON DELETE CASCADE,
+    library_id INT REFERENCES libraries(id) ON DELETE CASCADE,
+    external_id VARCHAR(100) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    item_count INT DEFAULT 0,
+    poster_url VARCHAR(500),
+    metadata JSONB,
+    last_synced TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(media_server_id, external_id)
+);
+
+CREATE INDEX idx_collections_library ON media_server_collections(library_id);
+CREATE INDEX idx_collections_name ON media_server_collections(name);
+
+-- ============================================
+-- Table: media_server_sync_status
+-- Track sync progress and history
+-- ============================================
+CREATE TABLE media_server_sync_status (
+    id SERIAL PRIMARY KEY,
+    media_server_id INT REFERENCES media_server(id) ON DELETE CASCADE,
+    library_id INT REFERENCES libraries(id),
+    sync_type VARCHAR(50) NOT NULL, -- 'full', 'incremental', 'collections'
+    status VARCHAR(20) NOT NULL, -- 'pending', 'running', 'completed', 'failed'
+    items_total INT DEFAULT 0,
+    items_processed INT DEFAULT 0,
+    items_added INT DEFAULT 0,
+    items_updated INT DEFAULT 0,
+    items_removed INT DEFAULT 0,
+    error_message TEXT,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
