@@ -320,9 +320,10 @@ class MediaSyncService {
     
     // Find collections that might match (by keyword in name)
     if (metadata.keywords && metadata.keywords.length > 0) {
-      // Escape SQL LIKE wildcards in keywords
+      // Escape SQL LIKE wildcards and backslashes in keywords
       const escapeLikePattern = (str) => {
-        return str.replace(/[%_]/g, '\\$&');
+        // First escape backslashes, then escape SQL LIKE wildcards
+        return str.replace(/\\/g, '\\\\').replace(/[%_]/g, '\\$&');
       };
       
       const keywordPatterns = metadata.keywords
