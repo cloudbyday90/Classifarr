@@ -12,9 +12,20 @@ class OllamaService {
       const response = await axios.get(`${this.baseUrl}/api/tags`, {
         timeout: 5000,
       });
-      return { success: true, models: response.data.models };
+      return { success: true, models: response.data.models, version: response.data.version };
     } catch (error) {
-      return { success: false, error: error.message };
+      let code = 'CONNECTION_ERROR';
+      let message = error.message;
+      
+      if (error.code === 'ECONNREFUSED') {
+        code = 'ECONNREFUSED';
+        message = 'Connection refused - Ollama may not be running';
+      } else if (error.code === 'ETIMEDOUT') {
+        code = 'ETIMEDOUT';
+        message = 'Connection timed out';
+      }
+      
+      return { success: false, error: message, code };
     }
   }
 

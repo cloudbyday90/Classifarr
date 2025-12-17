@@ -17,9 +17,25 @@
         <Input v-model="mediaServer.name" label="Name" placeholder="My Media Server" />
         <Input v-model="mediaServer.url" label="URL" placeholder="http://localhost:32400" />
         <Input v-model="mediaServer.api_key" label="API Key" type="password" />
+        
+        <!-- Connection Status -->
+        <ConnectionStatus
+          :status="mediaServerStatus.status"
+          :service-name="mediaServer.type ? mediaServer.type.charAt(0).toUpperCase() + mediaServer.type.slice(1) : 'Media Server'"
+          :details="mediaServerStatus.details"
+          :error="mediaServerStatus.error"
+          :last-checked="mediaServerStatus.lastChecked"
+        />
+        
         <div class="flex gap-2">
-          <Button @click="testMediaServer" :loading="testing">Test Connection</Button>
-          <Button @click="saveMediaServer" :loading="saving" variant="success">Save</Button>
+          <Button 
+            @click="testMediaServer" 
+            :loading="mediaServerStatus.status === 'testing'"
+            :variant="mediaServerStatus.status === 'success' ? 'success' : 'secondary'"
+          >
+            {{ mediaServerStatus.status === 'success' ? '✓ Connected' : 'Test Connection' }}
+          </Button>
+          <Button @click="saveMediaServer" :loading="saving" variant="primary">Save</Button>
         </div>
       </div>
     </Card>
@@ -28,7 +44,7 @@
       <div class="space-y-4">
         <Input v-model="tmdb.api_key" label="API Key" type="password" placeholder="Your TMDB API key" />
         <Input v-model="tmdb.language" label="Language" placeholder="en-US" />
-        <Button @click="saveTMDB" :loading="savingTmdb" variant="success">Save</Button>
+        <Button @click="saveTMDB" :loading="savingTmdb" variant="primary">Save</Button>
       </div>
     </Card>
 
@@ -38,9 +54,25 @@
         <Input v-model.number="ollama.port" label="Port" type="number" placeholder="11434" />
         <Input v-model="ollama.model" label="Model" placeholder="qwen3:14b" />
         <Input v-model.number="ollama.temperature" label="Temperature" type="number" step="0.01" />
+        
+        <!-- Connection Status -->
+        <ConnectionStatus
+          :status="ollamaStatus.status"
+          service-name="Ollama"
+          :details="ollamaStatus.details"
+          :error="ollamaStatus.error"
+          :last-checked="ollamaStatus.lastChecked"
+        />
+        
         <div class="flex gap-2">
-          <Button @click="testOllama" :loading="testingOllama">Test Connection</Button>
-          <Button @click="saveOllama" :loading="savingOllama" variant="success">Save</Button>
+          <Button 
+            @click="testOllama" 
+            :loading="ollamaStatus.status === 'testing'"
+            :variant="ollamaStatus.status === 'success' ? 'success' : 'secondary'"
+          >
+            {{ ollamaStatus.status === 'success' ? '✓ Connected' : 'Test Connection' }}
+          </Button>
+          <Button @click="saveOllama" :loading="savingOllama" variant="primary">Save</Button>
         </div>
       </div>
     </Card>
@@ -58,7 +90,7 @@
           />
           <label for="discord-enabled">Enable Discord Notifications</label>
         </div>
-        <Button @click="saveDiscord" :loading="savingDiscord" variant="success">Save</Button>
+        <Button @click="saveDiscord" :loading="savingDiscord" variant="primary">Save</Button>
       </div>
     </Card>
 
@@ -84,9 +116,25 @@
           />
           <label for="tavily-enabled">Enable Tavily Web Search</label>
         </div>
+        
+        <!-- Connection Status -->
+        <ConnectionStatus
+          :status="tavilyStatus.status"
+          service-name="Tavily"
+          :details="tavilyStatus.details"
+          :error="tavilyStatus.error"
+          :last-checked="tavilyStatus.lastChecked"
+        />
+        
         <div class="flex gap-2">
-          <Button @click="testTavily" :loading="testingTavily">Test Connection</Button>
-          <Button @click="saveTavily" :loading="savingTavily" variant="success">Save</Button>
+          <Button 
+            @click="testTavily" 
+            :loading="tavilyStatus.status === 'testing'"
+            :variant="tavilyStatus.status === 'success' ? 'success' : 'secondary'"
+          >
+            {{ tavilyStatus.status === 'success' ? '✓ Connected' : 'Test Connection' }}
+          </Button>
+          <Button @click="saveTavily" :loading="savingTavily" variant="primary">Save</Button>
         </div>
       </div>
     </Card>
@@ -94,12 +142,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 import Select from '@/components/common/Select.vue'
+import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 
 const mediaServer = ref({ type: '', name: '', url: '', api_key: '' })
 const tmdb = ref({ api_key: '', language: 'en-US' })
@@ -107,14 +156,33 @@ const ollama = ref({ host: 'host.docker.internal', port: 11434, model: 'qwen3:14
 const discord = ref({ bot_token: '', channel_id: '', enabled: false })
 const tavily = ref({ api_key: '', search_depth: 'basic', max_results: 5, is_active: false })
 
-const testing = ref(false)
 const saving = ref(false)
 const savingTmdb = ref(false)
 const savingOllama = ref(false)
-const testingOllama = ref(false)
 const savingDiscord = ref(false)
-const testingTavily = ref(false)
 const savingTavily = ref(false)
+
+// Connection status for each service
+const mediaServerStatus = reactive({
+  status: 'idle',
+  details: null,
+  error: null,
+  lastChecked: null
+})
+
+const ollamaStatus = reactive({
+  status: 'idle',
+  details: null,
+  error: null,
+  lastChecked: null
+})
+
+const tavilyStatus = reactive({
+  status: 'idle',
+  details: null,
+  error: null,
+  lastChecked: null
+})
 
 onMounted(async () => {
   try {
@@ -137,18 +205,31 @@ onMounted(async () => {
 })
 
 const testMediaServer = async () => {
-  testing.value = true
+  mediaServerStatus.status = 'testing'
+  mediaServerStatus.error = null
+  
   try {
     const response = await api.testMediaServer(mediaServer.value)
+    mediaServerStatus.lastChecked = new Date()
+    
     if (response.data.success) {
-      alert('Connection successful!')
+      mediaServerStatus.status = 'success'
+      mediaServerStatus.details = response.data.details
     } else {
-      alert('Connection failed: ' + response.data.error)
+      mediaServerStatus.status = 'error'
+      mediaServerStatus.error = response.data.error
     }
   } catch (error) {
-    alert('Connection failed: ' + error.message)
-  } finally {
-    testing.value = false
+    mediaServerStatus.status = 'error'
+    mediaServerStatus.lastChecked = new Date()
+    mediaServerStatus.error = {
+      message: error.response?.data?.error?.message || error.message,
+      code: error.response?.data?.error?.code || 'NETWORK_ERROR',
+      troubleshooting: error.response?.data?.error?.troubleshooting || [
+        'Check your network connection',
+        'The server may be temporarily unavailable'
+      ]
+    }
   }
 }
 
@@ -177,18 +258,31 @@ const saveTMDB = async () => {
 }
 
 const testOllama = async () => {
-  testingOllama.value = true
+  ollamaStatus.status = 'testing'
+  ollamaStatus.error = null
+  
   try {
     const response = await api.testOllama()
+    ollamaStatus.lastChecked = new Date()
+    
     if (response.data.success) {
-      alert('Ollama connection successful!')
+      ollamaStatus.status = 'success'
+      ollamaStatus.details = response.data.details
     } else {
-      alert('Connection failed: ' + response.data.error)
+      ollamaStatus.status = 'error'
+      ollamaStatus.error = response.data.error
     }
   } catch (error) {
-    alert('Connection failed: ' + error.message)
-  } finally {
-    testingOllama.value = false
+    ollamaStatus.status = 'error'
+    ollamaStatus.lastChecked = new Date()
+    ollamaStatus.error = {
+      message: error.response?.data?.error?.message || error.message,
+      code: error.response?.data?.error?.code || 'NETWORK_ERROR',
+      troubleshooting: error.response?.data?.error?.troubleshooting || [
+        'Check your network connection',
+        'The server may be temporarily unavailable'
+      ]
+    }
   }
 }
 
@@ -217,18 +311,31 @@ const saveDiscord = async () => {
 }
 
 const testTavily = async () => {
-  testingTavily.value = true
+  tavilyStatus.status = 'testing'
+  tavilyStatus.error = null
+  
   try {
     const response = await api.testTavily({ api_key: tavily.value.api_key })
+    tavilyStatus.lastChecked = new Date()
+    
     if (response.data.success) {
-      alert('Tavily connection successful!')
+      tavilyStatus.status = 'success'
+      tavilyStatus.details = response.data.details
     } else {
-      alert('Connection failed: ' + response.data.error)
+      tavilyStatus.status = 'error'
+      tavilyStatus.error = response.data.error
     }
   } catch (error) {
-    alert('Connection failed: ' + error.message)
-  } finally {
-    testingTavily.value = false
+    tavilyStatus.status = 'error'
+    tavilyStatus.lastChecked = new Date()
+    tavilyStatus.error = {
+      message: error.response?.data?.error?.message || error.message,
+      code: error.response?.data?.error?.code || 'NETWORK_ERROR',
+      troubleshooting: error.response?.data?.error?.troubleshooting || [
+        'Check your network connection',
+        'The server may be temporarily unavailable'
+      ]
+    }
   }
 }
 

@@ -97,9 +97,89 @@ router.post('/test', async (req, res) => {
         return res.status(400).json({ error: 'Invalid media server type' });
     }
 
-    res.json(result);
+    if (result.success) {
+      // Try to fetch library count for additional details
+      let libraryCount = 0;
+      try {
+        let libraries;
+        switch (type) {
+          case 'plex':
+            libraries = await plexService.getLibraries(url, api_key);
+            break;
+          case 'emby':
+            libraries = await embyService.getLibraries(url, api_key);
+            break;
+          case 'jellyfin':
+            libraries = await jellyfinService.getLibraries(url, api_key);
+            break;
+        }
+        libraryCount = libraries?.length || 0;
+      } catch (libError) {
+        // Ignore library fetch errors
+      }
+
+      const serverTypeNames = {
+        plex: 'Plex',
+        emby: 'Emby',
+        jellyfin: 'Jellyfin'
+      };
+
+      res.json({
+        success: true,
+        details: {
+          serverName: serverTypeNames[type],
+          version: result.data?.version || result.data?.MediaContainer?.version || 'Unknown',
+          status: 'Running',
+          additionalInfo: {
+            'Libraries': libraryCount,
+            'Platform': result.data?.platform || result.data?.MediaContainer?.platform || 'Unknown'
+          }
+        }
+      });
+    } else {
+      const troubleshootingMap = {
+        plex: [
+          'Ensure Plex Media Server is running',
+          `Verify the URL is correct (${url})`,
+          'Verify the Plex token is correct',
+          'Check remote access settings if connecting remotely',
+          'Try accessing the URL directly in a browser'
+        ],
+        emby: [
+          'Ensure Emby Server is running',
+          `Verify the URL is correct (${url})`,
+          'Ensure the API key is valid',
+          'Check if firewall is blocking the connection'
+        ],
+        jellyfin: [
+          'Ensure Jellyfin Server is running',
+          `Verify the URL is correct (${url})`,
+          'Ensure the API key is valid',
+          'Check if firewall is blocking the connection'
+        ]
+      };
+
+      res.json({
+        success: false,
+        error: {
+          message: result.error,
+          code: result.code || 'CONNECTION_ERROR',
+          troubleshooting: troubleshootingMap[type] || ['Check that the media server is running and accessible']
+        }
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error.message,
+        code: error.code || 'UNKNOWN_ERROR',
+        troubleshooting: [
+          'Check your network connection',
+          'Verify the media server is accessible from this server'
+        ]
+      }
+    });
   }
 });
 

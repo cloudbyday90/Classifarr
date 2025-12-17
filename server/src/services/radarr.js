@@ -11,7 +11,24 @@ class RadarrService {
       });
       return { success: true, data: response.data };
     } catch (error) {
-      return { success: false, error: error.message };
+      let code = 'CONNECTION_ERROR';
+      let message = error.message;
+      
+      if (error.code === 'ECONNREFUSED') {
+        code = 'ECONNREFUSED';
+        message = 'Connection refused';
+      } else if (error.code === 'ETIMEDOUT') {
+        code = 'ETIMEDOUT';
+        message = 'Connection timed out';
+      } else if (error.response?.status === 401) {
+        code = 'UNAUTHORIZED';
+        message = 'Invalid API key';
+      } else if (error.response?.status === 404) {
+        code = 'NOT_FOUND';
+        message = 'Radarr API endpoint not found';
+      }
+      
+      return { success: false, error: message, code };
     }
   }
 

@@ -14,10 +14,29 @@ class TavilyService {
         api_key: apiKey,
         query: 'test',
         max_results: 1
+      }, {
+        timeout: 5000
       });
       return { success: true, message: 'Connection successful' };
     } catch (error) {
-      return { success: false, error: error.response?.data?.error || error.message };
+      let code = 'CONNECTION_ERROR';
+      let message = error.response?.data?.error || error.message;
+      
+      if (error.code === 'ECONNREFUSED') {
+        code = 'ECONNREFUSED';
+        message = 'Connection refused';
+      } else if (error.code === 'ETIMEDOUT') {
+        code = 'ETIMEDOUT';
+        message = 'Connection timed out';
+      } else if (error.response?.status === 401) {
+        code = 'UNAUTHORIZED';
+        message = 'Invalid API key';
+      } else if (error.response?.status === 403) {
+        code = 'FORBIDDEN';
+        message = 'API key does not have access';
+      }
+      
+      return { success: false, error: message, code };
     }
   }
 

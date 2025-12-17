@@ -157,9 +157,65 @@ router.post('/radarr/test', async (req, res) => {
   try {
     const { url, api_key } = req.body;
     const result = await radarrService.testConnection(url, api_key);
-    res.json(result);
+    
+    if (result.success) {
+      // Fetch additional details for status card
+      try {
+        const rootFolders = await radarrService.getRootFolders(url, api_key);
+        const qualityProfiles = await radarrService.getQualityProfiles(url, api_key);
+        
+        res.json({
+          success: true,
+          details: {
+            serverName: 'Radarr',
+            version: result.data.version,
+            status: 'Running',
+            additionalInfo: {
+              'Root Folders': rootFolders.length,
+              'Quality Profiles': qualityProfiles.length,
+              'Start Time': new Date(result.data.startTime).toLocaleString()
+            }
+          }
+        });
+      } catch (detailError) {
+        // If fetching details fails, still return basic success
+        res.json({
+          success: true,
+          details: {
+            serverName: 'Radarr',
+            version: result.data.version,
+            status: 'Running'
+          }
+        });
+      }
+    } else {
+      res.json({
+        success: false,
+        error: {
+          message: result.error,
+          code: result.code || 'CONNECTION_ERROR',
+          troubleshooting: [
+            'Check that Radarr is running',
+            `Verify the URL is correct (${url})`,
+            'Ensure the API key is valid',
+            'Check if firewall is blocking the connection',
+            'Try accessing the URL directly in a browser'
+          ]
+        }
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error.message,
+        code: error.code || 'UNKNOWN_ERROR',
+        troubleshooting: [
+          'Check your network connection',
+          'Verify Radarr is accessible from this server'
+        ]
+      }
+    });
   }
 });
 
@@ -310,9 +366,65 @@ router.post('/sonarr/test', async (req, res) => {
   try {
     const { url, api_key } = req.body;
     const result = await sonarrService.testConnection(url, api_key);
-    res.json(result);
+    
+    if (result.success) {
+      // Fetch additional details for status card
+      try {
+        const rootFolders = await sonarrService.getRootFolders(url, api_key);
+        const qualityProfiles = await sonarrService.getQualityProfiles(url, api_key);
+        
+        res.json({
+          success: true,
+          details: {
+            serverName: 'Sonarr',
+            version: result.data.version,
+            status: 'Running',
+            additionalInfo: {
+              'Root Folders': rootFolders.length,
+              'Quality Profiles': qualityProfiles.length,
+              'Start Time': new Date(result.data.startTime).toLocaleString()
+            }
+          }
+        });
+      } catch (detailError) {
+        // If fetching details fails, still return basic success
+        res.json({
+          success: true,
+          details: {
+            serverName: 'Sonarr',
+            version: result.data.version,
+            status: 'Running'
+          }
+        });
+      }
+    } else {
+      res.json({
+        success: false,
+        error: {
+          message: result.error,
+          code: result.code || 'CONNECTION_ERROR',
+          troubleshooting: [
+            'Check that Sonarr is running',
+            `Verify the URL is correct (${url})`,
+            'Ensure the API key is valid',
+            'Check if firewall is blocking the connection',
+            'Try accessing the URL directly in a browser'
+          ]
+        }
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error.message,
+        code: error.code || 'UNKNOWN_ERROR',
+        troubleshooting: [
+          'Check your network connection',
+          'Verify Sonarr is accessible from this server'
+        ]
+      }
+    });
   }
 });
 
@@ -417,9 +529,48 @@ router.put('/ollama', async (req, res) => {
 router.post('/ollama/test', async (req, res) => {
   try {
     const result = await ollamaService.testConnection();
-    res.json(result);
+    
+    if (result.success) {
+      const models = result.models || [];
+      res.json({
+        success: true,
+        details: {
+          serverName: 'Ollama',
+          version: result.version || 'Unknown',
+          status: 'Running',
+          additionalInfo: {
+            'Available Models': models.length,
+            'Models': models.slice(0, 3).map(m => m.name).join(', ') + (models.length > 3 ? '...' : '')
+          }
+        }
+      });
+    } else {
+      res.json({
+        success: false,
+        error: {
+          message: result.error,
+          code: result.code || 'CONNECTION_ERROR',
+          troubleshooting: [
+            'Check that Ollama is running (ollama serve)',
+            'Verify the host and port are correct',
+            'Ensure Ollama is accessible from this server',
+            'Try running "ollama list" to verify it\'s working'
+          ]
+        }
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error.message,
+        code: error.code || 'UNKNOWN_ERROR',
+        troubleshooting: [
+          'Check your network connection',
+          'Verify Ollama is accessible from this server'
+        ]
+      }
+    });
   }
 });
 
@@ -616,9 +767,44 @@ router.post('/tavily/test', async (req, res) => {
     }
 
     const result = await tavilyService.testConnection(api_key);
-    res.json(result);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        details: {
+          serverName: 'Tavily',
+          status: 'Connected',
+          additionalInfo: {
+            'API Status': 'Valid'
+          }
+        }
+      });
+    } else {
+      res.json({
+        success: false,
+        error: {
+          message: result.error,
+          code: result.code || 'CONNECTION_ERROR',
+          troubleshooting: [
+            'Verify your API key at tavily.com',
+            'Check your account has remaining credits',
+            'Ensure your API key has not expired'
+          ]
+        }
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error.message,
+        code: error.code || 'UNKNOWN_ERROR',
+        troubleshooting: [
+          'Check your network connection',
+          'Verify Tavily API is accessible'
+        ]
+      }
+    });
   }
 });
 
