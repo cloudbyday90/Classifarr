@@ -6,6 +6,12 @@ const ollamaService = require('../services/ollama');
 const discordBot = require('../services/discordBot');
 const crypto = require('crypto');
 
+// Utility function for consistent token masking
+function maskToken(token) {
+  if (!token || token.length < 8) return token;
+  return '••••••••' + token.slice(-4);
+}
+
 // ============================================
 // TMDB Settings
 // ============================================
@@ -14,7 +20,7 @@ router.get('/tmdb', async (req, res) => {
     const result = await dbQuery('SELECT * FROM tmdb_config WHERE is_active = true LIMIT 1');
     if (result.rows[0]) {
       // Mask API key
-      result.rows[0].api_key = result.rows[0].api_key ? '••••••••' + result.rows[0].api_key.slice(-4) : null;
+      result.rows[0].api_key = result.rows[0].api_key ? maskToken(result.rows[0].api_key) : null;
     }
     res.json(result.rows[0] || {});
   } catch (error) {
@@ -61,7 +67,7 @@ router.get('/ollama', async (req, res) => {
 
 router.post('/ollama', async (req, res) => {
   try {
-    const { host, port, model, temperature, max_tokens, timeout } = req.body;
+    const { host, port, model, temperature } = req.body;
     await dbQuery(`
       INSERT INTO ollama_config (host, port, model, temperature, is_active)
       VALUES ($1, $2, $3, $4, true)
@@ -78,7 +84,11 @@ router.post('/ollama/test', async (req, res) => {
   try {
     const { host, port } = req.body;
     const result = await ollamaService.testConnection(host, port);
-    res.json({ success: true, version: result.version });
+    if (result.success) {
+      res.json({ success: true, version: result.version });
+    } else {
+      res.json({ success: false, error: result.error });
+    }
   } catch (error) {
     res.json({ success: false, error: error.message });
   }
@@ -105,7 +115,7 @@ router.get('/discord', async (req, res) => {
       SELECT * FROM notification_config WHERE type = 'discord' LIMIT 1
     `);
     if (result.rows[0]?.bot_token) {
-      result.rows[0].bot_token = '••••••••' + result.rows[0].bot_token.slice(-4);
+      result.rows[0].bot_token = maskToken(result.rows[0].bot_token);
     }
     res.json(result.rows[0] || {});
   } catch (error) {
@@ -191,7 +201,7 @@ router.get('/webhook', async (req, res) => {
     const result = await dbQuery('SELECT * FROM webhook_config LIMIT 1');
     const config = result.rows[0] || {};
     if (config.api_key) {
-      config.api_key_masked = '••••••••' + config.api_key.slice(-4);
+      config.api_key_masked = maskToken(config.api_key);
     }
     // Include webhook URL
     config.webhook_url = `http://${req.headers.host}/api/webhook/overseerr`;

@@ -8,11 +8,11 @@ class OllamaService {
   }
 
   async testConnection(host, port) {
+    const testHost = host || this.host;
+    const testPort = port || this.port;
+    const testUrl = `http://${testHost}:${testPort}`;
+    
     try {
-      const testHost = host || this.host;
-      const testPort = port || this.port;
-      const testUrl = `http://${testHost}:${testPort}`;
-      
       const response = await axios.get(`${testUrl}/api/version`, {
         timeout: 5000,
       });
@@ -20,10 +20,6 @@ class OllamaService {
     } catch (error) {
       // If version endpoint doesn't exist, try tags endpoint
       try {
-        const testHost = host || this.host;
-        const testPort = port || this.port;
-        const testUrl = `http://${testHost}:${testPort}`;
-        
         await axios.get(`${testUrl}/api/tags`, {
           timeout: 5000,
         });

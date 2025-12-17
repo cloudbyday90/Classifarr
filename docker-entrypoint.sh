@@ -8,7 +8,7 @@ mkdir -p /app/data
 if [ ! -f /app/data/.db_password ]; then
     echo "Generating secure database password..."
     POSTGRES_PASSWORD=$(node -e "
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
         let password = '';
         for (let i = 0; i < 32; i++) {
             password += chars.charAt(Math.floor(Math.random() * chars.length));
