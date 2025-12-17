@@ -1,6 +1,8 @@
 const express = require('express');
 const db = require('../config/database');
+const { createLogger } = require('../utils/logger');
 
+const logger = createLogger('LibrariesRoutes');
 const router = express.Router();
 
 /**
@@ -435,7 +437,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           synced.radarr++;
         }
       } catch (error) {
-        console.error(`Failed to sync Radarr config ${config.id}:`, error);
+        logger.error(`Failed to sync Radarr config ${config.id}:`, error);
       }
     }
     
@@ -483,7 +485,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           synced.sonarr++;
         }
       } catch (error) {
-        console.error(`Failed to sync Sonarr config ${config.id}:`, error);
+        logger.error(`Failed to sync Sonarr config ${config.id}:`, error);
       }
     }
     

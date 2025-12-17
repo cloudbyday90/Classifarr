@@ -5,6 +5,9 @@ const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const discordBot = require('./discordBot');
 const tavilyService = require('./tavily');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('ClassificationService');
 
 class ClassificationService {
   async classify(overseerrPayload) {
@@ -12,7 +15,7 @@ class ClassificationService {
       // Parse Overseerr payload
       const { media_type, tmdbId, subject } = this.parseOverseerrPayload(overseerrPayload);
       
-      console.log(`Starting classification for ${media_type}: ${subject} (TMDB: ${tmdbId})`);
+      logger.info(`Starting classification for ${media_type}: ${subject} (TMDB: ${tmdbId})`);
 
       // Enrich with TMDB metadata
       const metadata = await this.enrichWithTMDB(tmdbId, media_type);
@@ -45,7 +48,7 @@ class ClassificationService {
         reason: result.reason,
       };
     } catch (error) {
-      console.error('Classification error:', error);
+      logger.error('Classification error:', error);
       throw error;
     }
   }
@@ -141,7 +144,7 @@ class ClassificationService {
         advisory: advisoryResults
       };
     } catch (error) {
-      console.error('Tavily search failed:', error);
+      logger.warn('Tavily search failed:', error);
       return null;
     }
   }
@@ -248,7 +251,7 @@ class ClassificationService {
         libraries: libraries,
       };
     } catch (error) {
-      console.error('AI classification failed:', error);
+      logger.warn('AI classification failed:', error);
       // Fallback to rule match even if confidence is low
       if (ruleMatch) {
         return {
@@ -429,7 +432,7 @@ class ClassificationService {
           return false;
       }
     } catch (error) {
-      console.error('Error evaluating custom rule:', error);
+      logger.error('Error evaluating custom rule:', error);
       return false;
     }
   }
@@ -560,7 +563,7 @@ Example: 2|Action movie with high rating`;
           };
 
           await radarrService.addMovie(config.url, config.api_key, movieData);
-          console.log(`Added movie to Radarr: ${metadata.title}`);
+          logger.info(`Added movie to Radarr: ${metadata.title}`);
         }
       } else if (library.arr_type === 'sonarr') {
         const sonarrConfig = await db.query(
@@ -606,11 +609,11 @@ Example: 2|Action movie with high rating`;
           };
 
           await sonarrService.addSeries(config.url, config.api_key, seriesData);
-          console.log(`Added series to Sonarr: ${metadata.title} (type: ${seriesType})`);
+          logger.info(`Added series to Sonarr: ${metadata.title} (type: ${seriesType})`);
         }
       }
     } catch (error) {
-      console.error('Failed to route to arr:', error);
+      logger.error('Failed to route to arr:', error);
       // Don't throw - classification was successful even if routing failed
     }
   }

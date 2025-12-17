@@ -310,9 +310,11 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 import Select from '@/components/common/Select.vue'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 
 const library = ref(null)
 const loading = ref(true)
@@ -381,7 +383,7 @@ onMounted(async () => {
     await loadArrOptions()
   } catch (error) {
     console.error('Failed to load library:', error)
-    alert('Failed to load library')
+    toast.error('Failed to load library', 'Error')
     router.push('/libraries')
   } finally {
     loading.value = false
@@ -409,10 +411,10 @@ const saveLibrary = async () => {
       priority: library.value.priority,
       arr_type: library.value.arr_type,
     })
-    alert('Library updated successfully')
+    toast.success('Library updated successfully')
   } catch (error) {
     console.error('Failed to save library:', error)
-    alert('Failed to save library: ' + error.message)
+    toast.error(`Failed to save library: ${error.message}`, 'Error')
   } finally {
     saving.value = false
   }
@@ -423,10 +425,10 @@ const saveArrSettings = async () => {
   try {
     const settings = library.value.media_type === 'movie' ? radarrSettings.value : sonarrSettings.value
     await api.updateLibraryArrSettings(library.value.id, settings)
-    alert('*arr settings saved successfully')
+    toast.success('*arr settings saved successfully')
   } catch (error) {
     console.error('Failed to save arr settings:', error)
-    alert('Failed to save *arr settings: ' + error.message)
+    toast.error(`Failed to save *arr settings: ${error.message}`, 'Error')
   } finally {
     savingArr.value = false
   }
