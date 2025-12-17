@@ -29,11 +29,11 @@ services:
     environment:
       - POSTGRES_DB=classifarr
       - POSTGRES_USER=classifarr
-      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_PASSWORD_FILE=/var/lib/classifarr/.db_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - classifarr_data:/run/secrets:ro  # Read password from shared volume
+      - classifarr_data:/var/lib/classifarr:ro  # Read password from shared volume
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U classifarr -d classifarr"]
       interval: 5s

@@ -143,7 +143,7 @@ CREATE TABLE tmdb_config (
 -- Notification Configuration (Discord)
 CREATE TABLE notification_config (
     id SERIAL PRIMARY KEY,
-    type VARCHAR(20) NOT NULL DEFAULT 'discord',
+    type VARCHAR(20) NOT NULL DEFAULT 'discord' UNIQUE,
     name VARCHAR(100),
     webhook_url VARCHAR(500),
     bot_token VARCHAR(500),

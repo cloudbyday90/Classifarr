@@ -129,7 +129,7 @@ router.post('/discord', async (req, res) => {
         show_poster, show_confidence, show_reason, show_correction_buttons,
         quick_correct_count, show_library_dropdown
       ) VALUES ('discord', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      ON CONFLICT (type) WHERE type = 'discord' DO UPDATE SET
+      ON CONFLICT (type) DO UPDATE SET
         enabled = $1, bot_token = $2, channel_id = $3,
         on_classification = $4, on_correction = $5, notify_on_error = $6, notify_daily_summary = $7,
         show_poster = $8, show_confidence = $9, show_reason = $10, show_correction_buttons = $11,
