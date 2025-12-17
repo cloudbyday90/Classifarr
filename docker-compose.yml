@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  classifarr:
+    build: .
+    container_name: classifarr
+    ports:
+      - "21324:21324"
+    environment:
+      - NODE_ENV=production
+      - PORT=21324
+      # Internal Database
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=classifarr
+      - POSTGRES_USER=classifarr
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-classifarr_secret}
+      # External services (user configures)
+      - TMDB_API_KEY=${TMDB_API_KEY}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - DISCORD_CHANNEL_ID=${DISCORD_CHANNEL_ID}
+      - OLLAMA_HOST=${OLLAMA_HOST:-host.docker.internal}
+      - OLLAMA_PORT=${OLLAMA_PORT:-11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - classifarr-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: classifarr-db
+    environment:
+      - POSTGRES_DB=classifarr
+      - POSTGRES_USER=classifarr
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-classifarr_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U classifarr -d classifarr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - classifarr-network
+
+volumes:
+  postgres_data:
+
+networks:
+  classifarr-network:
+    driver: bridge
