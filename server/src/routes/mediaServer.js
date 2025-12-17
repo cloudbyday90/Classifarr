@@ -290,8 +290,8 @@ router.post('/sync/:libraryId', async (req, res) => {
     const { fullSync = true } = req.body;
     
     // Start sync in background (don't wait for completion)
-    mediaSyncService.syncLibrary(parseInt(libraryId), { fullSync })
-      .catch(err => console.error('Library sync failed:', err));
+    mediaSyncService.syncLibrary(parseInt(libraryId, 10), { fullSync })
+      .catch(err => console.error(`Library sync failed for ${libraryId}:`, err));
     
     res.json({
       success: true,
@@ -316,7 +316,7 @@ router.post('/sync/all', async (req, res) => {
     // Start syncs in background
     for (const libraryId of libraryIds) {
       mediaSyncService.syncLibrary(libraryId, { fullSync: false })
-        .catch(err => console.error(`Library ${libraryId} sync failed:`, err));
+        .catch(err => console.error(`Library sync failed for ${libraryId}:`, err));
     }
     
     res.json({

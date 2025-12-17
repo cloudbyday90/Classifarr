@@ -201,11 +201,13 @@ class PlexService {
     for (const guid of guids) {
       const id = guid.id || guid;
       if (id.startsWith('tmdb://')) {
-        result.tmdb = parseInt(id.replace('tmdb://', ''));
+        const parsed = parseInt(id.replace('tmdb://', ''));
+        result.tmdb = isNaN(parsed) ? null : parsed;
       } else if (id.startsWith('imdb://')) {
         result.imdb = id.replace('imdb://', '');
       } else if (id.startsWith('tvdb://')) {
-        result.tvdb = parseInt(id.replace('tvdb://', ''));
+        const parsed = parseInt(id.replace('tvdb://', ''));
+        result.tvdb = isNaN(parsed) ? null : parsed;
       }
     }
     

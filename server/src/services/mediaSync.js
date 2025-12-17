@@ -73,14 +73,27 @@ class MediaSyncService {
    * Update sync status
    */
   async updateSyncStatus(syncId, updates) {
+    // Allowlist of valid update fields
+    const validFields = [
+      'status', 'items_total', 'items_processed', 'items_added', 
+      'items_updated', 'items_removed', 'error_message', 'completed_at'
+    ];
+    
     const fields = [];
     const values = [];
     let paramCount = 1;
     
     for (const [key, value] of Object.entries(updates)) {
-      fields.push(`${key} = $${paramCount}`);
-      values.push(value);
-      paramCount++;
+      // Only allow valid fields to prevent SQL injection
+      if (validFields.includes(key)) {
+        fields.push(`${key} = $${paramCount}`);
+        values.push(value);
+        paramCount++;
+      }
+    }
+    
+    if (fields.length === 0) {
+      return; // Nothing to update
     }
     
     values.push(syncId);
@@ -307,17 +320,27 @@ class MediaSyncService {
     
     // Find collections that might match (by keyword in name)
     if (metadata.keywords && metadata.keywords.length > 0) {
-      const keywordPatterns = metadata.keywords.map(k => `%${k.toLowerCase()}%`);
-      const potentialCollections = await db.query(
-        `SELECT DISTINCT msc.name, l.name as library_name, l.id as library_id, msc.item_count
-         FROM media_server_collections msc
-         JOIN libraries l ON msc.library_id = l.id
-         WHERE LOWER(msc.name) LIKE ANY($1::text[])
-         LIMIT 10`,
-        [keywordPatterns]
-      );
+      // Escape SQL LIKE wildcards in keywords
+      const escapeLikePattern = (str) => {
+        return str.replace(/[%_]/g, '\\$&');
+      };
       
-      context.matchingCollections = potentialCollections.rows;
+      const keywordPatterns = metadata.keywords
+        .slice(0, 10) // Limit to 10 keywords for performance
+        .map(k => `%${escapeLikePattern(k.toLowerCase())}%`);
+      
+      if (keywordPatterns.length > 0) {
+        const potentialCollections = await db.query(
+          `SELECT DISTINCT msc.name, l.name as library_name, l.id as library_id, msc.item_count
+           FROM media_server_collections msc
+           JOIN libraries l ON msc.library_id = l.id
+           WHERE LOWER(msc.name) LIKE ANY($1::text[])
+           LIMIT 10`,
+          [keywordPatterns]
+        );
+        
+        context.matchingCollections = potentialCollections.rows;
+      }
     }
     
     // Get genre distribution per library
