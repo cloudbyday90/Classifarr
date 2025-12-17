@@ -61,6 +61,35 @@
         <Button @click="saveDiscord" :loading="savingDiscord" variant="success">Save</Button>
       </div>
     </Card>
+
+    <Card title="Tavily Web Search" description="Configure Tavily for enhanced AI classification with web search">
+      <div class="space-y-4">
+        <Input v-model="tavily.api_key" label="API Key" type="password" placeholder="Your Tavily API key" />
+        <Select
+          v-model="tavily.search_depth"
+          label="Search Depth"
+          :options="[
+            { label: 'Basic', value: 'basic' },
+            { label: 'Advanced', value: 'advanced' },
+          ]"
+          placeholder="Select search depth"
+        />
+        <Input v-model.number="tavily.max_results" label="Max Results" type="number" min="1" max="10" placeholder="5" />
+        <div class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            v-model="tavily.is_active"
+            id="tavily-enabled"
+            class="w-4 h-4"
+          />
+          <label for="tavily-enabled">Enable Tavily Web Search</label>
+        </div>
+        <div class="flex gap-2">
+          <Button @click="testTavily" :loading="testingTavily">Test Connection</Button>
+          <Button @click="saveTavily" :loading="savingTavily" variant="success">Save</Button>
+        </div>
+      </div>
+    </Card>
   </div>
 </template>
 
@@ -76,6 +105,7 @@ const mediaServer = ref({ type: '', name: '', url: '', api_key: '' })
 const tmdb = ref({ api_key: '', language: 'en-US' })
 const ollama = ref({ host: 'host.docker.internal', port: 11434, model: 'qwen3:14b', temperature: 0.30 })
 const discord = ref({ bot_token: '', channel_id: '', enabled: false })
+const tavily = ref({ api_key: '', search_depth: 'basic', max_results: 5, is_active: false })
 
 const testing = ref(false)
 const saving = ref(false)
@@ -83,20 +113,24 @@ const savingTmdb = ref(false)
 const savingOllama = ref(false)
 const testingOllama = ref(false)
 const savingDiscord = ref(false)
+const testingTavily = ref(false)
+const savingTavily = ref(false)
 
 onMounted(async () => {
   try {
-    const [msRes, tmdbRes, ollamaRes, discordRes] = await Promise.all([
+    const [msRes, tmdbRes, ollamaRes, discordRes, tavilyRes] = await Promise.all([
       api.getMediaServer(),
       api.getTMDBConfig(),
       api.getOllamaConfig(),
       api.getNotificationConfig(),
+      api.getTavilyConfig(),
     ])
 
     if (msRes.data) mediaServer.value = msRes.data
     if (tmdbRes.data) tmdb.value = tmdbRes.data
     if (ollamaRes.data) ollama.value = ollamaRes.data
     if (discordRes.data) discord.value = discordRes.data
+    if (tavilyRes.data) tavily.value = tavilyRes.data
   } catch (error) {
     console.error('Failed to load settings:', error)
   }
@@ -179,6 +213,34 @@ const saveDiscord = async () => {
     alert('Failed to save: ' + error.message)
   } finally {
     savingDiscord.value = false
+  }
+}
+
+const testTavily = async () => {
+  testingTavily.value = true
+  try {
+    const response = await api.testTavily({ api_key: tavily.value.api_key })
+    if (response.data.success) {
+      alert('Tavily connection successful!')
+    } else {
+      alert('Connection failed: ' + response.data.error)
+    }
+  } catch (error) {
+    alert('Connection failed: ' + error.message)
+  } finally {
+    testingTavily.value = false
+  }
+}
+
+const saveTavily = async () => {
+  savingTavily.value = true
+  try {
+    await api.updateTavilyConfig(tavily.value)
+    alert('Tavily configuration saved!')
+  } catch (error) {
+    alert('Failed to save: ' + error.message)
+  } finally {
+    savingTavily.value = false
   }
 }
 </script>

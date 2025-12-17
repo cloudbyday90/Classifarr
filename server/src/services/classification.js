@@ -4,6 +4,7 @@ const ollamaService = require('./ollama');
 const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const discordBot = require('./discordBot');
+const tavilyService = require('./tavily');
 
 class ClassificationService {
   async classify(overseerrPayload) {
@@ -88,6 +89,74 @@ class ClassificationService {
     } catch (error) {
       throw new Error(`Failed to enrich metadata: ${error.message}`);
     }
+  }
+
+  async getTavilyConfig() {
+    const result = await db.query('SELECT * FROM tavily_config LIMIT 1');
+    return result.rows[0] || null;
+  }
+
+  async enrichWithWebSearch(metadata) {
+    const tavilyConfig = await this.getTavilyConfig();
+    if (!tavilyConfig || !tavilyConfig.is_active || !tavilyConfig.api_key) {
+      return null;
+    }
+
+    try {
+      const searchOptions = {
+        apiKey: tavilyConfig.api_key,
+        searchDepth: tavilyConfig.search_depth || 'basic',
+        maxResults: tavilyConfig.max_results || 5,
+        includeDomains: tavilyConfig.include_domains || ['imdb.com', 'rottentomatoes.com'],
+        excludeDomains: tavilyConfig.exclude_domains || []
+      };
+
+      // Search IMDB for additional info
+      const imdbResults = await tavilyService.searchIMDB(
+        metadata.title,
+        metadata.year,
+        metadata.media_type,
+        searchOptions
+      );
+
+      // Get content advisory if needed for classification
+      const advisoryResults = await tavilyService.getContentAdvisory(
+        metadata.title,
+        metadata.year,
+        searchOptions
+      );
+
+      // If anime is suspected, get anime-specific info
+      if (this.mightBeAnime(metadata)) {
+        const animeResults = await tavilyService.searchAnimeInfo(metadata.title, searchOptions);
+        return {
+          imdb: imdbResults,
+          advisory: advisoryResults,
+          anime: animeResults
+        };
+      }
+
+      return {
+        imdb: imdbResults,
+        advisory: advisoryResults
+      };
+    } catch (error) {
+      console.error('Tavily search failed:', error);
+      return null;
+    }
+  }
+
+  mightBeAnime(metadata) {
+    // Check if metadata suggests anime
+    const keywords = (metadata.keywords || []).map(k => k.toLowerCase());
+    const genres = (metadata.genres || []).map(g => g.toLowerCase());
+    
+    return (
+      keywords.includes('anime') ||
+      metadata.original_language === 'ja' ||
+      genres.includes('anime') ||
+      keywords.some(k => ['shounen', 'shoujo', 'seinen', 'isekai', 'mecha'].includes(k))
+    );
   }
 
   async runDecisionTree(metadata, mediaType) {
@@ -333,8 +402,11 @@ class ClassificationService {
   }
 
   async aiClassify(metadata, libraries) {
+    // Try to get web search results if Tavily is enabled
+    const webSearchResults = await this.enrichWithWebSearch(metadata);
+
     // Build prompt for AI
-    const prompt = `You are a media classification assistant. Analyze the following ${metadata.media_type} and determine which library it should be added to.
+    let prompt = `You are a media classification assistant. Analyze the following ${metadata.media_type} and determine which library it should be added to.
 
 Media Information:
 - Title: ${metadata.title}
@@ -343,8 +415,28 @@ Media Information:
 - Certification: ${metadata.certification}
 - Keywords: ${metadata.keywords.slice(0, 10).join(', ')}
 - Overview: ${metadata.overview}
+`;
 
-Available Libraries:
+    // Add web search results if available
+    if (webSearchResults) {
+      prompt += `\n--- Additional Web Search Information ---\n`;
+      
+      if (webSearchResults.imdb) {
+        prompt += tavilyService.formatForAI(webSearchResults.imdb);
+      }
+      
+      if (webSearchResults.advisory) {
+        prompt += `\n--- Content Advisory ---\n`;
+        prompt += tavilyService.formatForAI(webSearchResults.advisory);
+      }
+      
+      if (webSearchResults.anime) {
+        prompt += `\n--- Anime Database Info ---\n`;
+        prompt += tavilyService.formatForAI(webSearchResults.anime);
+      }
+    }
+
+    prompt += `\nAvailable Libraries:
 ${libraries.map((lib, i) => `${i + 1}. ${lib.name} (${lib.media_type})`).join('\n')}
 
 Please respond with ONLY the library number (1-${libraries.length}) and a brief reason (max 100 chars).

@@ -3,6 +3,7 @@ const db = require('../config/database');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
 const ollamaService = require('../services/ollama');
+const tavilyService = require('../services/tavily');
 
 const router = express.Router();
 
@@ -522,6 +523,131 @@ router.put('/notifications', async (req, res) => {
     );
 
     res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// TAVILY CONFIGURATION
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/tavily:
+ *   get:
+ *     summary: Get Tavily configuration (with masked API key)
+ */
+router.get('/tavily', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM tavily_config LIMIT 1');
+    if (result.rows[0] && result.rows[0].api_key) {
+      // Mask API key for security
+      result.rows[0].api_key = '••••••••';
+    }
+    res.json(result.rows[0] || null);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/tavily:
+ *   put:
+ *     summary: Update Tavily configuration
+ */
+router.put('/tavily', async (req, res) => {
+  try {
+    const { api_key, search_depth, max_results, include_domains, exclude_domains, is_active } = req.body;
+
+    // Get existing config to preserve API key if masked value is sent
+    const existingResult = await db.query('SELECT api_key FROM tavily_config LIMIT 1');
+    const existingApiKey = existingResult.rows[0]?.api_key;
+    
+    // Use existing key if the provided one is masked
+    const finalApiKey = (api_key && api_key !== '••••••••') ? api_key : existingApiKey;
+
+    const result = await db.query(
+      `INSERT INTO tavily_config (id, api_key, search_depth, max_results, include_domains, exclude_domains, is_active)
+       VALUES (1, $1, $2, $3, $4, $5, $6)
+       ON CONFLICT (id) DO UPDATE 
+       SET api_key = $1, 
+           search_depth = $2, 
+           max_results = $3, 
+           include_domains = $4, 
+           exclude_domains = $5, 
+           is_active = $6, 
+           updated_at = NOW()
+       RETURNING *`,
+      [
+        finalApiKey,
+        search_depth || 'basic',
+        max_results || 5,
+        include_domains || ['imdb.com', 'rottentomatoes.com', 'myanimelist.net', 'letterboxd.com'],
+        exclude_domains || [],
+        is_active ?? true
+      ]
+    );
+
+    // Mask API key in response
+    if (result.rows[0].api_key) {
+      result.rows[0].api_key = '••••••••';
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/tavily/test:
+ *   post:
+ *     summary: Test Tavily connection
+ */
+router.post('/tavily/test', async (req, res) => {
+  try {
+    const { api_key } = req.body;
+    
+    if (!api_key) {
+      return res.status(400).json({ error: 'API key is required' });
+    }
+
+    const result = await tavilyService.testConnection(api_key);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/tavily/search:
+ *   post:
+ *     summary: Test Tavily search (for debugging)
+ */
+router.post('/tavily/search', async (req, res) => {
+  try {
+    const { query, api_key } = req.body;
+    
+    if (!api_key || !query) {
+      return res.status(400).json({ error: 'API key and query are required' });
+    }
+
+    const configResult = await db.query('SELECT * FROM tavily_config LIMIT 1');
+    const config = configResult.rows[0] || {};
+
+    const result = await tavilyService.search(query, {
+      apiKey: api_key,
+      searchDepth: config.search_depth || 'basic',
+      maxResults: config.max_results || 5,
+      includeDomains: config.include_domains || ['imdb.com', 'rottentomatoes.com'],
+      excludeDomains: config.exclude_domains || []
+    });
+
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

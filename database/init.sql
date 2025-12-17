@@ -163,6 +163,19 @@ CREATE TABLE settings (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Tavily Configuration
+CREATE TABLE tavily_config (
+    id SERIAL PRIMARY KEY,
+    api_key VARCHAR(255),
+    search_depth VARCHAR(20) DEFAULT 'basic', -- 'basic' or 'advanced'
+    max_results INT DEFAULT 5,
+    include_domains TEXT[] DEFAULT ARRAY['imdb.com', 'rottentomatoes.com', 'myanimelist.net', 'letterboxd.com'],
+    exclude_domains TEXT[] DEFAULT ARRAY[]::TEXT[],
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- ===========================================
 -- CLASSIFICATION & LEARNING TABLES
 -- ===========================================
@@ -367,3 +380,7 @@ INSERT INTO settings (key, value) VALUES
 -- Default Ollama Configuration
 INSERT INTO ollama_config (host, port, model, temperature, is_active) VALUES
 ('host.docker.internal', 11434, 'qwen3:14b', 0.30, true);
+
+-- Default Tavily Configuration
+INSERT INTO tavily_config (search_depth, max_results, is_active) VALUES
+('basic', 5, false);
