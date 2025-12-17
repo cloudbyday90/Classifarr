@@ -272,12 +272,18 @@ class ClassificationService {
 
       case 'genres':
         // Check if any metadata genre matches any of the label values
+        if (!metadata.genres || !Array.isArray(metadata.genres)) {
+          return false;
+        }
         return tmdb_match_values.some(value => 
           metadata.genres.some(g => g.toLowerCase() === value.toLowerCase())
         );
 
       case 'keywords':
         // Check if any metadata keyword matches any of the label values
+        if (!metadata.keywords || !Array.isArray(metadata.keywords)) {
+          return false;
+        }
         const keywords = metadata.keywords.map(k => k.toLowerCase());
         return tmdb_match_values.some(value => 
           keywords.includes(value.toLowerCase())
