@@ -393,7 +393,7 @@ INSERT INTO tavily_config (search_depth, max_results, is_active) VALUES
 -- Webhook settings and authentication
 CREATE TABLE webhook_config (
     id SERIAL PRIMARY KEY,
-    webhook_type VARCHAR(50) DEFAULT 'overseerr',
+    webhook_type VARCHAR(50) DEFAULT 'overseerr' UNIQUE,
     secret_key VARCHAR(255),
     -- Event handling toggles
     process_pending BOOLEAN DEFAULT true,

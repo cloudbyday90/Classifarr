@@ -365,11 +365,11 @@ const getTypeVariant = (type) => {
     'MEDIA_PENDING': 'warning',
     'MEDIA_APPROVED': 'success',
     'MEDIA_AUTO_APPROVED': 'success',
-    'MEDIA_DECLINED': 'danger',
+    'MEDIA_DECLINED': 'error',
     'MEDIA_AVAILABLE': 'success',
-    'MEDIA_FAILED': 'danger'
+    'MEDIA_FAILED': 'error'
   }
-  return variants[type] || 'secondary'
+  return variants[type] || 'default'
 }
 
 const getStatusVariant = (status) => {
@@ -377,9 +377,9 @@ const getStatusVariant = (status) => {
     'received': 'info',
     'processing': 'warning',
     'completed': 'success',
-    'failed': 'danger',
-    'skipped': 'secondary'
+    'failed': 'error',
+    'skipped': 'default'
   }
-  return variants[status] || 'secondary'
+  return variants[status] || 'default'
 }
 </script>
