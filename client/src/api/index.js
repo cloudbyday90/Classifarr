@@ -180,4 +180,18 @@ export default {
   updateNotificationConfig(data) {
     return apiClient.put('/settings/notifications', data)
   },
+
+  // Tavily
+  getTavilyConfig() {
+    return apiClient.get('/settings/tavily')
+  },
+  updateTavilyConfig(data) {
+    return apiClient.put('/settings/tavily', data)
+  },
+  testTavily(data) {
+    return apiClient.post('/settings/tavily/test', data)
+  },
+  testTavilySearch(data) {
+    return apiClient.post('/settings/tavily/search', data)
+  },
 }
