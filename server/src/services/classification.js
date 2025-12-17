@@ -5,6 +5,7 @@ const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const discordBot = require('./discordBot');
 const tavilyService = require('./tavily');
+const mediaSyncService = require('./mediaSync');
 
 class ClassificationService {
   async classify(overseerrPayload) {
@@ -172,6 +173,29 @@ class ClassificationService {
       throw new Error(`No active libraries found for media type: ${mediaType}`);
     }
 
+    // Step 0: Check if item already exists in media server
+    try {
+      const existingItems = await mediaSyncService.findExistingMedia(metadata.tmdb_id, mediaType);
+      if (existingItems.length > 0) {
+        const existingItem = existingItems[0];
+        const library = libraries.find(l => l.id === existingItem.library_id);
+        
+        if (library) {
+          return {
+            library,
+            confidence: 100,
+            method: 'existing_item',
+            reason: `Already exists in "${existingItem.library_name}" library`,
+            existingItem: existingItem,
+            libraries: libraries,
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error checking existing media:', error);
+      // Continue with normal classification if check fails
+    }
+
     // Step 1: Check exact match (previously corrected TMDB ID)
     const exactMatch = await this.checkExactMatch(metadata.tmdb_id);
     if (exactMatch) {
@@ -206,9 +230,9 @@ class ClassificationService {
       };
     }
 
-    // Step 4: AI fallback (Ollama)
+    // Step 4: AI fallback with media server context (Ollama)
     try {
-      const aiMatch = await this.aiClassify(metadata, libraries);
+      const aiMatch = await this.aiClassifyWithContext(metadata, libraries);
       return {
         ...aiMatch,
         method: 'ai_fallback',
@@ -474,6 +498,124 @@ Example: 2|Action movie with high rating`;
       confidence: 60,
       reason: 'AI classification (default)',
     };
+  }
+
+  /**
+   * AI classification with media server context
+   */
+  async aiClassifyWithContext(metadata, libraries) {
+    // Try to get web search results if Tavily is enabled
+    const webSearchResults = await this.enrichWithWebSearch(metadata);
+    
+    // Get media server context
+    let serverContext = null;
+    try {
+      serverContext = await mediaSyncService.getLibraryContext(metadata.tmdb_id, metadata);
+    } catch (error) {
+      console.error('Failed to get media server context:', error);
+      // Continue without context if it fails
+    }
+
+    // Build prompt for AI with context
+    const prompt = this.buildPromptWithContext(metadata, libraries, serverContext, webSearchResults);
+
+    // Get Ollama config
+    const configResult = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
+    const config = configResult.rows[0] || { model: 'qwen3:14b', temperature: 0.30 };
+
+    const response = await ollamaService.generate(
+      prompt,
+      config.model,
+      parseFloat(config.temperature)
+    );
+
+    // Parse AI response
+    const match = response.match(/^(\d+)\|(.+)$/m);
+    if (match) {
+      const libraryIndex = parseInt(match[1]) - 1;
+      const reason = match[2].trim();
+
+      if (libraryIndex >= 0 && libraryIndex < libraries.length) {
+        return {
+          library: libraries[libraryIndex],
+          confidence: 75,
+          reason: `AI: ${reason}`,
+        };
+      }
+    }
+
+    // Fallback if AI response is malformed
+    return {
+      library: libraries[0],
+      confidence: 60,
+      reason: 'AI classification (default)',
+    };
+  }
+
+  /**
+   * Build AI prompt with media server context
+   */
+  buildPromptWithContext(metadata, libraries, serverContext, webSearchResults) {
+    let prompt = `You are a media classification assistant. Analyze the following ${metadata.media_type} and determine which library it should be added to.
+
+Media Information:
+- Title: ${metadata.title} (${metadata.year})
+- Type: ${metadata.media_type}
+- Genres: ${metadata.genres.join(', ')}
+- Certification: ${metadata.certification}
+- Keywords: ${metadata.keywords.slice(0, 10).join(', ')}
+- Overview: ${metadata.overview}
+`;
+
+    // Add web search results if available
+    if (webSearchResults) {
+      prompt += `\n--- Additional Web Search Information ---\n`;
+      
+      if (webSearchResults.imdb) {
+        prompt += tavilyService.formatForAI(webSearchResults.imdb);
+      }
+      
+      if (webSearchResults.advisory) {
+        prompt += `\n--- Content Advisory ---\n`;
+        prompt += tavilyService.formatForAI(webSearchResults.advisory);
+      }
+      
+      if (webSearchResults.anime) {
+        prompt += `\n--- Anime Database Info ---\n`;
+        prompt += tavilyService.formatForAI(webSearchResults.anime);
+      }
+    }
+
+    // Add media server context if available
+    if (serverContext) {
+      prompt += `\n--- User's Media Server Context ---\n`;
+      
+      if (serverContext.matchingCollections && serverContext.matchingCollections.length > 0) {
+        prompt += `Potentially matching collections:\n`;
+        for (const col of serverContext.matchingCollections) {
+          prompt += `- "${col.name}" collection (${col.item_count} items) in "${col.library_name}" library\n`;
+        }
+      }
+      
+      if (serverContext.libraryStats && serverContext.libraryStats.length > 0) {
+        prompt += `\nLibrary genre distribution:\n`;
+        for (const stat of serverContext.libraryStats) {
+          if (stat.matching_genres > 0) {
+            prompt += `- "${stat.name}": ${stat.matching_genres} similar genre items out of ${stat.total_items} total\n`;
+          }
+        }
+      }
+    }
+
+    prompt += `\nAvailable Libraries:
+${libraries.map((lib, i) => `${i + 1}. ${lib.name} (${lib.media_type})`).join('\n')}
+
+Based on the metadata and the user's existing library organization, which library should this go to?
+Please respond with ONLY the library number (1-${libraries.length}) and a brief reason (max 100 chars).
+Format: NUMBER|REASON
+Example: 2|Action movie with high rating`;
+
+    return prompt;
   }
 
   async logClassification(metadata, result) {
