@@ -264,4 +264,233 @@ router.get('/label-presets/all', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/libraries/{id}/arr-options:
+ *   get:
+ *     summary: Get available Radarr/Sonarr options for a library
+ */
+router.get('/:id/arr-options', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get library to determine media type
+    const libraryResult = await db.query('SELECT * FROM libraries WHERE id = $1', [id]);
+    
+    if (libraryResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Library not found' });
+    }
+    
+    const library = libraryResult.rows[0];
+    const radarrService = require('../services/radarr');
+    const sonarrService = require('../services/sonarr');
+    
+    if (library.media_type === 'movie') {
+      // Get first active Radarr config
+      const radarrConfigResult = await db.query(
+        'SELECT * FROM radarr_config WHERE is_active = true LIMIT 1'
+      );
+      
+      if (radarrConfigResult.rows.length === 0) {
+        return res.status(400).json({ error: 'No active Radarr configuration found' });
+      }
+      
+      const config = radarrConfigResult.rows[0];
+      
+      const rootFolders = await radarrService.getRootFolders(config.url, config.api_key);
+      const qualityProfiles = await radarrService.getQualityProfiles(config.url, config.api_key);
+      const tags = await radarrService.getTags(config.url, config.api_key);
+      const availabilityOptions = radarrService.getMinimumAvailabilityOptions();
+      
+      res.json({
+        type: 'radarr',
+        rootFolders,
+        qualityProfiles,
+        tags,
+        availabilityOptions
+      });
+    } else {
+      // Get first active Sonarr config
+      const sonarrConfigResult = await db.query(
+        'SELECT * FROM sonarr_config WHERE is_active = true LIMIT 1'
+      );
+      
+      if (sonarrConfigResult.rows.length === 0) {
+        return res.status(400).json({ error: 'No active Sonarr configuration found' });
+      }
+      
+      const config = sonarrConfigResult.rows[0];
+      
+      const rootFolders = await sonarrService.getRootFolders(config.url, config.api_key);
+      const qualityProfiles = await sonarrService.getQualityProfiles(config.url, config.api_key);
+      const tags = await sonarrService.getTags(config.url, config.api_key);
+      const seriesTypeOptions = sonarrService.getSeriesTypeOptions();
+      const seasonMonitoringOptions = sonarrService.getSeasonMonitoringOptions();
+      
+      res.json({
+        type: 'sonarr',
+        rootFolders,
+        qualityProfiles,
+        tags,
+        seriesTypeOptions,
+        seasonMonitoringOptions
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/arr-settings:
+ *   put:
+ *     summary: Save Radarr/Sonarr settings for a library
+ */
+router.put('/:id/arr-settings', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const settings = req.body;
+    
+    // Get library to determine media type
+    const libraryResult = await db.query('SELECT * FROM libraries WHERE id = $1', [id]);
+    
+    if (libraryResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Library not found' });
+    }
+    
+    const library = libraryResult.rows[0];
+    
+    if (library.media_type === 'movie') {
+      await db.query(
+        'UPDATE libraries SET radarr_settings = $1, updated_at = NOW() WHERE id = $2',
+        [JSON.stringify(settings), id]
+      );
+    } else {
+      await db.query(
+        'UPDATE libraries SET sonarr_settings = $1, updated_at = NOW() WHERE id = $2',
+        [JSON.stringify(settings), id]
+      );
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/sync-arr-profiles:
+ *   post:
+ *     summary: Sync and cache all Radarr/Sonarr profiles
+ */
+router.post('/sync-arr-profiles', async (req, res) => {
+  try {
+    const radarrService = require('../services/radarr');
+    const sonarrService = require('../services/sonarr');
+    let synced = { radarr: 0, sonarr: 0 };
+    
+    // Sync Radarr profiles
+    const radarrConfigResult = await db.query('SELECT * FROM radarr_config WHERE is_active = true');
+    for (const config of radarrConfigResult.rows) {
+      try {
+        const rootFolders = await radarrService.getRootFolders(config.url, config.api_key);
+        const qualityProfiles = await radarrService.getQualityProfiles(config.url, config.api_key);
+        const tags = await radarrService.getTags(config.url, config.api_key);
+        
+        // Cache root folders
+        for (const rf of rootFolders) {
+          await db.query(
+            `INSERT INTO arr_profiles_cache (arr_type, profile_type, profile_id, profile_name, profile_path, profile_data, last_synced)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())
+             ON CONFLICT (arr_type, profile_type, profile_id)
+             DO UPDATE SET profile_name = $4, profile_path = $5, profile_data = $6, last_synced = NOW()`,
+            ['radarr', 'root_folder', rf.id, null, rf.path, JSON.stringify(rf)]
+          );
+          synced.radarr++;
+        }
+        
+        // Cache quality profiles
+        for (const qp of qualityProfiles) {
+          await db.query(
+            `INSERT INTO arr_profiles_cache (arr_type, profile_type, profile_id, profile_name, profile_data, last_synced)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (arr_type, profile_type, profile_id)
+             DO UPDATE SET profile_name = $4, profile_data = $5, last_synced = NOW()`,
+            ['radarr', 'quality_profile', qp.id, qp.name, JSON.stringify(qp)]
+          );
+          synced.radarr++;
+        }
+        
+        // Cache tags
+        for (const tag of tags) {
+          await db.query(
+            `INSERT INTO arr_profiles_cache (arr_type, profile_type, profile_id, profile_name, profile_data, last_synced)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (arr_type, profile_type, profile_id)
+             DO UPDATE SET profile_name = $4, profile_data = $5, last_synced = NOW()`,
+            ['radarr', 'tag', tag.id, tag.label, JSON.stringify(tag)]
+          );
+          synced.radarr++;
+        }
+      } catch (error) {
+        console.error(`Failed to sync Radarr config ${config.id}:`, error);
+      }
+    }
+    
+    // Sync Sonarr profiles
+    const sonarrConfigResult = await db.query('SELECT * FROM sonarr_config WHERE is_active = true');
+    for (const config of sonarrConfigResult.rows) {
+      try {
+        const rootFolders = await sonarrService.getRootFolders(config.url, config.api_key);
+        const qualityProfiles = await sonarrService.getQualityProfiles(config.url, config.api_key);
+        const tags = await sonarrService.getTags(config.url, config.api_key);
+        
+        // Cache root folders
+        for (const rf of rootFolders) {
+          await db.query(
+            `INSERT INTO arr_profiles_cache (arr_type, profile_type, profile_id, profile_name, profile_path, profile_data, last_synced)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())
+             ON CONFLICT (arr_type, profile_type, profile_id)
+             DO UPDATE SET profile_name = $4, profile_path = $5, profile_data = $6, last_synced = NOW()`,
+            ['sonarr', 'root_folder', rf.id, null, rf.path, JSON.stringify(rf)]
+          );
+          synced.sonarr++;
+        }
+        
+        // Cache quality profiles
+        for (const qp of qualityProfiles) {
+          await db.query(
+            `INSERT INTO arr_profiles_cache (arr_type, profile_type, profile_id, profile_name, profile_data, last_synced)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (arr_type, profile_type, profile_id)
+             DO UPDATE SET profile_name = $4, profile_data = $5, last_synced = NOW()`,
+            ['sonarr', 'quality_profile', qp.id, qp.name, JSON.stringify(qp)]
+          );
+          synced.sonarr++;
+        }
+        
+        // Cache tags
+        for (const tag of tags) {
+          await db.query(
+            `INSERT INTO arr_profiles_cache (arr_type, profile_type, profile_id, profile_name, profile_data, last_synced)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (arr_type, profile_type, profile_id)
+             DO UPDATE SET profile_name = $4, profile_data = $5, last_synced = NOW()`,
+            ['sonarr', 'tag', tag.id, tag.label, JSON.stringify(tag)]
+          );
+          synced.sonarr++;
+        }
+      } catch (error) {
+        console.error(`Failed to sync Sonarr config ${config.id}:`, error);
+      }
+    }
+    
+    res.json({ success: true, synced });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

@@ -44,11 +44,15 @@ CREATE TABLE libraries (
     media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('movie', 'tv')),
     priority INTEGER DEFAULT 0,
     
-    -- Radarr/Sonarr Mapping
+    -- Radarr/Sonarr Mapping (legacy fields, kept for backward compatibility)
     arr_type VARCHAR(20) CHECK (arr_type IN ('radarr', 'sonarr')),
     arr_id INTEGER,
     root_folder VARCHAR(500),
     quality_profile_id INTEGER,
+    
+    -- Full Radarr/Sonarr Settings
+    radarr_settings JSONB DEFAULT '{}',
+    sonarr_settings JSONB DEFAULT '{}',
     
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -176,6 +180,19 @@ CREATE TABLE tavily_config (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- ARR Profiles Cache (for UI dropdowns)
+CREATE TABLE arr_profiles_cache (
+    id SERIAL PRIMARY KEY,
+    arr_type VARCHAR(10) NOT NULL CHECK (arr_type IN ('radarr', 'sonarr')),
+    profile_type VARCHAR(50) NOT NULL CHECK (profile_type IN ('root_folder', 'quality_profile', 'tag')),
+    profile_id INT NOT NULL,
+    profile_name VARCHAR(255),
+    profile_path VARCHAR(500),
+    profile_data JSONB,
+    last_synced TIMESTAMP DEFAULT NOW(),
+    UNIQUE(arr_type, profile_type, profile_id)
+);
+
 -- ===========================================
 -- CLASSIFICATION & LEARNING TABLES
 -- ===========================================
@@ -241,6 +258,7 @@ CREATE INDEX idx_classification_history_library ON classification_history(librar
 CREATE INDEX idx_classification_corrections_classification ON classification_corrections(classification_id);
 CREATE INDEX idx_learning_patterns_tmdb ON learning_patterns(tmdb_id);
 CREATE INDEX idx_learning_patterns_library ON learning_patterns(library_id);
+CREATE INDEX idx_arr_profiles_cache_type ON arr_profiles_cache(arr_type, profile_type);
 
 -- ============================================
 -- SEED DATA - LABEL PRESETS

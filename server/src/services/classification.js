@@ -159,6 +159,39 @@ class ClassificationService {
     );
   }
 
+  /**
+   * Suggest the appropriate Sonarr series type based on content
+   */
+  suggestSeriesType(metadata, appliedLabels = []) {
+    // Check for anime
+    if (appliedLabels.includes('anime') || 
+        (metadata.original_language === 'ja' && appliedLabels.includes('animation'))) {
+      return 'anime';
+    }
+
+    // Check for daily shows
+    const dailyLabels = ['late_night', 'talk', 'news', 'game_show', 'soap_opera', 'variety'];
+    if (dailyLabels.some(label => appliedLabels.includes(label))) {
+      return 'daily';
+    }
+
+    // Check genres for daily shows
+    const dailyGenres = ['talk', 'news', 'soap'];
+    if (metadata.genres && metadata.genres.some(g => 
+      dailyGenres.some(dg => g.toLowerCase().includes(dg)))) {
+      return 'daily';
+    }
+
+    // Check keywords for daily shows
+    const dailyKeywords = ['talk show', 'late night', 'news', 'daily', 'daytime'];
+    if (metadata.keywords && metadata.keywords.some(kw => 
+      dailyKeywords.some(dk => kw.toLowerCase().includes(dk)))) {
+      return 'daily';
+    }
+
+    return 'standard';
+  }
+
   async runDecisionTree(metadata, mediaType) {
     // Get all active libraries for this media type
     const librariesResult = await db.query(
@@ -509,15 +542,20 @@ Example: 2|Action movie with high rating`;
 
         if (radarrConfig.rows.length > 0) {
           const config = radarrConfig.rows[0];
+          
+          // Use radarr_settings if available, fallback to legacy fields
+          const settings = library.radarr_settings || {};
           const movieData = {
             title: metadata.title,
             tmdbId: metadata.tmdb_id,
             year: parseInt(metadata.year),
-            qualityProfileId: library.quality_profile_id,
-            rootFolderPath: library.root_folder,
-            monitored: true,
+            qualityProfileId: settings.quality_profile_id || library.quality_profile_id,
+            rootFolderPath: settings.root_folder_path || library.root_folder,
+            minimumAvailability: settings.minimum_availability || 'released',
+            tags: settings.tags || [],
+            monitored: settings.monitor !== false,
             addOptions: {
-              searchForMovie: true,
+              searchForMovie: settings.search_on_add !== false,
             },
           };
 
@@ -532,21 +570,43 @@ Example: 2|Action movie with high rating`;
 
         if (sonarrConfig.rows.length > 0) {
           const config = sonarrConfig.rows[0];
+          
+          // Use sonarr_settings if available, fallback to legacy fields
+          const settings = library.sonarr_settings || {};
+          
+          // Get library labels for series type suggestion
+          const labelsResult = await db.query(
+            `SELECT lp.name FROM library_labels ll
+             JOIN label_presets lp ON ll.label_preset_id = lp.id
+             WHERE ll.library_id = $1 AND ll.rule_type = 'include'`,
+            [library.id]
+          );
+          const appliedLabels = labelsResult.rows.map(r => r.name);
+          
+          // Suggest series type if not explicitly set
+          const seriesType = settings.series_type || this.suggestSeriesType(metadata, appliedLabels);
+          
           // Note: We'd need to get TVDB ID from TMDB external IDs
           // This is a simplified version
           const seriesData = {
             title: metadata.title,
             tvdbId: metadata.tmdb_id, // This would need proper mapping
-            qualityProfileId: library.quality_profile_id,
-            rootFolderPath: library.root_folder,
+            qualityProfileId: settings.quality_profile_id || library.quality_profile_id,
+            rootFolderPath: settings.root_folder_path || library.root_folder,
+            seriesType: seriesType,
+            seasonFolder: settings.season_folder !== false,
+            tags: settings.tags || [],
+            monitorNewItems: settings.monitor_new_items || 'all',
             monitored: true,
             addOptions: {
-              searchForMissingEpisodes: true,
+              searchForMissingEpisodes: settings.search_on_add !== false,
+              searchForCutoffUnmetEpisodes: false,
+              monitor: settings.season_monitoring || 'all'
             },
           };
 
           await sonarrService.addSeries(config.url, config.api_key, seriesData);
-          console.log(`Added series to Sonarr: ${metadata.title}`);
+          console.log(`Added series to Sonarr: ${metadata.title} (type: ${seriesType})`);
         }
       }
     } catch (error) {
