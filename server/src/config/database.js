@@ -1,5 +1,8 @@
 const { Pool } = require('pg');
 
+// Configuration constants
+const CLIENT_CHECKOUT_WARNING_TIMEOUT_MS = 5000; // Warn if a client is checked out for more than 5 seconds
+
 /**
  * PostgreSQL connection pool configuration
  * Uses environment variables for database connection
@@ -60,10 +63,10 @@ async function getClient() {
   const query = client.query.bind(client);
   const release = client.release.bind(client);
 
-  // Set a timeout of 5 seconds, after which we will log this client's last query
+  // Set a timeout to warn if client is checked out too long
   const timeout = setTimeout(() => {
-    console.error('A client has been checked out for more than 5 seconds!');
-  }, 5000);
+    console.error(`A client has been checked out for more than ${CLIENT_CHECKOUT_WARNING_TIMEOUT_MS}ms!`);
+  }, CLIENT_CHECKOUT_WARNING_TIMEOUT_MS);
 
   // Monkey patch the release method to clear our timeout
   client.release = () => {

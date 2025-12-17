@@ -39,6 +39,7 @@ async function getMovieDetails(tmdbId, apiKey) {
       popularity: data.popularity,
       posterPath: data.poster_path,
       backdropPath: data.backdrop_path,
+      // TMDB movie keywords are nested under keywords.keywords
       keywords: data.keywords?.keywords?.map(k => k.name) || [],
     };
   } catch (error) {
@@ -80,6 +81,7 @@ async function getTVDetails(tmdbId, apiKey) {
       popularity: data.popularity,
       posterPath: data.poster_path,
       backdropPath: data.backdrop_path,
+      // TMDB TV keywords are nested under keywords.results
       keywords: data.keywords?.results?.map(k => k.name) || [],
     };
   } catch (error) {

@@ -5,6 +5,9 @@ const axios = require('axios');
  * Provides methods to interact with Ollama for AI classification
  */
 
+// Configuration constants
+const CLASSIFICATION_TEMPERATURE = 0.3; // Lower temperature for more consistent results
+
 /**
  * Test connection to Ollama
  * @param {string} host - Ollama hostname/IP
@@ -68,7 +71,7 @@ async function classify(host, port, model, mediaData, libraryDefinitions, pastCo
         prompt,
         stream: false,
         options: {
-          temperature: 0.3, // Lower temperature for more consistent results
+          temperature: CLASSIFICATION_TEMPERATURE,
         },
       },
       {
