@@ -180,4 +180,24 @@ export default {
   updateNotificationConfig(data) {
     return apiClient.put('/settings/notifications', data)
   },
+
+  // Confidence & Clarification
+  getConfidenceThresholds() {
+    return apiClient.get('/settings/confidence')
+  },
+  updateConfidenceThresholds(data) {
+    return apiClient.put('/settings/confidence', data)
+  },
+  getClarificationQuestions() {
+    return apiClient.get('/settings/clarification-questions')
+  },
+  updateClarificationQuestion(id, data) {
+    return apiClient.put(`/settings/clarification-questions/${id}`, data)
+  },
+  getClarifications(classificationId) {
+    return apiClient.get(`/settings/clarifications/${classificationId}`)
+  },
+  getClarificationStats() {
+    return apiClient.get('/settings/clarifications/stats')
+  },
 }

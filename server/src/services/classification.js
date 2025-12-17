@@ -32,6 +32,7 @@ class ClassificationService {
         await discordBot.sendClassificationNotification(metadata, {
           ...result,
           classification_id: classificationId,
+          library_name: result.library?.name,
         });
       }
 

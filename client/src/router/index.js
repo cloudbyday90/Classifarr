@@ -37,6 +37,18 @@ const router = createRouter({
           path: '/settings',
           name: 'Settings',
           component: () => import('@/views/Settings.vue'),
+          children: [
+            {
+              path: '',
+              name: 'SettingsGeneral',
+              component: () => import('@/views/settings/General.vue'),
+            },
+            {
+              path: 'confidence',
+              name: 'SettingsConfidence',
+              component: () => import('@/views/settings/Confidence.vue'),
+            },
+          ],
         },
       ],
     },
