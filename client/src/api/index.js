@@ -65,6 +65,15 @@ export default {
   getLabelPresets() {
     return apiClient.get('/libraries/label-presets/all')
   },
+  getLibraryArrOptions(id) {
+    return apiClient.get(`/libraries/${id}/arr-options`)
+  },
+  updateLibraryArrSettings(id, settings) {
+    return apiClient.put(`/libraries/${id}/arr-settings`, settings)
+  },
+  syncArrProfiles() {
+    return apiClient.post('/libraries/sync-arr-profiles')
+  },
 
   // Classification
   classify(data) {
