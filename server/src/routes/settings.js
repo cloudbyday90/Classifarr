@@ -3,6 +3,7 @@ const db = require('../config/database');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
 const ollamaService = require('../services/ollama');
+const clarificationService = require('../services/clarification');
 
 const router = express.Router();
 
@@ -522,6 +523,144 @@ router.put('/notifications', async (req, res) => {
     );
 
     res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// CONFIDENCE THRESHOLDS CONFIGURATION
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/confidence:
+ *   get:
+ *     summary: Get confidence thresholds
+ */
+router.get('/confidence', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM confidence_thresholds ORDER BY min_confidence DESC');
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/confidence:
+ *   put:
+ *     summary: Update confidence thresholds
+ */
+router.put('/confidence', async (req, res) => {
+  try {
+    const thresholds = req.body; // Array of threshold objects
+
+    for (const threshold of thresholds) {
+      await db.query(
+        `UPDATE confidence_thresholds 
+         SET min_confidence = $1, 
+             max_confidence = $2, 
+             notify_discord = $3, 
+             enabled = $4,
+             updated_at = NOW()
+         WHERE action_type = $5`,
+        [
+          threshold.min_confidence,
+          threshold.max_confidence,
+          threshold.notify_discord !== false,
+          threshold.enabled !== false,
+          threshold.action_type
+        ]
+      );
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// CLARIFICATION QUESTIONS CONFIGURATION
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/clarification-questions:
+ *   get:
+ *     summary: Get all clarification questions
+ */
+router.get('/clarification-questions', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM clarification_questions ORDER BY question_type, priority DESC');
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/clarification-questions/{id}:
+ *   put:
+ *     summary: Update a clarification question (enable/disable)
+ */
+router.put('/clarification-questions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled, priority } = req.body;
+
+    const result = await db.query(
+      `UPDATE clarification_questions
+       SET enabled = COALESCE($1, enabled),
+           priority = COALESCE($2, priority)
+       WHERE id = $3
+       RETURNING *`,
+      [enabled, priority, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// CLARIFICATION DATA & STATS
+// ============================================
+
+/**
+ * @swagger
+ * /api/clarifications/{classificationId}:
+ *   get:
+ *     summary: Get clarifications for a classification
+ */
+router.get('/clarifications/:classificationId', async (req, res) => {
+  try {
+    const { classificationId } = req.params;
+    const responses = await clarificationService.getResponsesForClassification(classificationId);
+    res.json(responses);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/clarifications/stats:
+ *   get:
+ *     summary: Get clarification statistics
+ */
+router.get('/clarifications/stats', async (req, res) => {
+  try {
+    const stats = await clarificationService.getStats();
+    res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
