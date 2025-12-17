@@ -228,6 +228,21 @@ CREATE TABLE learning_patterns (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Content Analysis Log (content-aware classification results)
+CREATE TABLE content_analysis_log (
+    id SERIAL PRIMARY KEY,
+    classification_id INTEGER REFERENCES classification_history(id) ON DELETE CASCADE,
+    tmdb_id INTEGER,
+    title VARCHAR(500),
+    original_genres TEXT[],
+    detected_type VARCHAR(50),
+    confidence INTEGER,
+    overrides_genre BOOLEAN DEFAULT false,
+    reasoning TEXT[],
+    suggested_labels TEXT[],
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- ===========================================
 -- INDEXES FOR PERFORMANCE
 -- ===========================================
@@ -241,6 +256,9 @@ CREATE INDEX idx_classification_history_library ON classification_history(librar
 CREATE INDEX idx_classification_corrections_classification ON classification_corrections(classification_id);
 CREATE INDEX idx_learning_patterns_tmdb ON learning_patterns(tmdb_id);
 CREATE INDEX idx_learning_patterns_library ON learning_patterns(library_id);
+CREATE INDEX idx_content_analysis_tmdb ON content_analysis_log(tmdb_id);
+CREATE INDEX idx_content_analysis_type ON content_analysis_log(detected_type);
+CREATE INDEX idx_content_analysis_override ON content_analysis_log(overrides_genre) WHERE overrides_genre = true;
 
 -- ============================================
 -- SEED DATA - LABEL PRESETS
@@ -375,7 +393,10 @@ INSERT INTO settings (key, value) VALUES
 ('port', '21324'),
 ('theme', 'dark'),
 ('app_name', 'Classifarr'),
-('version', '1.0.0');
+('version', '1.0.0'),
+('content_analysis_enabled', 'true'),
+('content_analysis_min_confidence', '75'),
+('content_analysis_override_genres', 'true');
 
 -- Default Ollama Configuration
 INSERT INTO ollama_config (host, port, model, temperature, is_active) VALUES

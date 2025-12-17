@@ -5,6 +5,7 @@ const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const discordBot = require('./discordBot');
 const tavilyService = require('./tavily');
+const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 
 class ClassificationService {
   async classify(overseerrPayload) {
@@ -17,11 +18,40 @@ class ClassificationService {
       // Enrich with TMDB metadata
       const metadata = await this.enrichWithTMDB(tmdbId, media_type);
       
-      // Run decision tree
+      // Check if content analysis is enabled
+      const contentAnalysisEnabled = await this.isContentAnalysisEnabled();
+      
+      // Analyze content type to prevent false positives
+      if (contentAnalysisEnabled) {
+        const contentAnalysis = contentTypeAnalyzer.analyze(metadata);
+        
+        // Add analysis to metadata for use in classification
+        metadata.content_analysis = contentAnalysis;
+        
+        // If content analysis detected a specific type with high confidence,
+        // add suggested labels to metadata for rule matching
+        const minConfidence = await this.getContentAnalysisMinConfidence();
+        if (contentAnalysis.detected_type && contentAnalysis.confidence >= minConfidence) {
+          metadata.detected_content_type = contentAnalysis.detected_type;
+          metadata.content_type_labels = contentAnalysis.suggested_labels;
+          
+          // Log the override if applicable
+          if (contentAnalysis.overrides_genre) {
+            console.log(`Content analysis overriding genre for "${metadata.title}": ${contentAnalysis.reasoning.join('; ')}`);
+          }
+        }
+      }
+      
+      // Run decision tree with enhanced metadata
       const result = await this.runDecisionTree(metadata, media_type);
 
       // Log to database
       const classificationId = await this.logClassification(metadata, result);
+      
+      // Log content analysis if enabled
+      if (contentAnalysisEnabled && metadata.content_analysis && metadata.content_analysis.detected_type) {
+        await this.logContentAnalysis(classificationId, metadata, metadata.content_analysis);
+      }
 
       // Route to Radarr/Sonarr
       if (result.library && result.library.arr_type) {
@@ -286,6 +316,17 @@ class ClassificationService {
 
       if (score < 0) continue; // Skip this library
 
+      // Check if content analysis suggests this library
+      if (metadata.content_type_labels && metadata.content_type_labels.length > 0) {
+        for (const label of labels.filter(l => l.rule_type === 'include')) {
+          // Check if any content type label matches library labels
+          if (metadata.content_type_labels.includes(label.name)) {
+            score += 35; // Higher weight for content-analyzed matches
+            reasons.push(`Content analysis: ${metadata.detected_content_type} matches ${label.display_name}`);
+          }
+        }
+      }
+
       // Check INCLUDE labels (scoring)
       const includeLabels = labels.filter(l => l.rule_type === 'include');
       for (const label of includeLabels) {
@@ -417,6 +458,17 @@ Media Information:
 - Overview: ${metadata.overview}
 `;
 
+    // Add content analysis to AI prompt if available
+    if (metadata.content_analysis && metadata.content_analysis.detected_type) {
+      prompt += `
+--- Content Analysis ---
+Detected Type: ${metadata.content_analysis.detected_type}
+Confidence: ${metadata.content_analysis.confidence}%
+Reasoning: ${metadata.content_analysis.reasoning.join('; ')}
+${metadata.content_analysis.overrides_genre ? 'Note: This overrides the surface-level genre tags.' : ''}
+`;
+    }
+
     // Add web search results if available
     if (webSearchResults) {
       prompt += `\n--- Additional Web Search Information ---\n`;
@@ -497,6 +549,55 @@ Example: 2|Action movie with high rating`;
     );
 
     return insertResult.rows[0].id;
+  }
+
+  async isContentAnalysisEnabled() {
+    try {
+      const result = await db.query(
+        "SELECT value FROM settings WHERE key = 'content_analysis_enabled' LIMIT 1"
+      );
+      return result.rows.length > 0 && result.rows[0].value === 'true';
+    } catch (error) {
+      console.error('Error checking content analysis setting:', error);
+      return true; // Default to enabled
+    }
+  }
+
+  async getContentAnalysisMinConfidence() {
+    try {
+      const result = await db.query(
+        "SELECT value FROM settings WHERE key = 'content_analysis_min_confidence' LIMIT 1"
+      );
+      return result.rows.length > 0 ? parseInt(result.rows[0].value) : 75;
+    } catch (error) {
+      console.error('Error getting content analysis min confidence:', error);
+      return 75; // Default value
+    }
+  }
+
+  async logContentAnalysis(classificationId, metadata, analysis) {
+    try {
+      await db.query(
+        `INSERT INTO content_analysis_log 
+         (classification_id, tmdb_id, title, original_genres, detected_type, confidence, 
+          overrides_genre, reasoning, suggested_labels)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          classificationId,
+          metadata.tmdb_id,
+          metadata.title,
+          analysis.original_genres,
+          analysis.detected_type,
+          analysis.confidence,
+          analysis.overrides_genre,
+          analysis.reasoning,
+          analysis.suggested_labels
+        ]
+      );
+    } catch (error) {
+      console.error('Error logging content analysis:', error);
+      // Don't throw - this is not critical
+    }
   }
 
   async routeToArr(metadata, library) {

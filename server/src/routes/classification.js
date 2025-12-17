@@ -1,6 +1,8 @@
 const express = require('express');
 const db = require('../config/database');
 const classificationService = require('../services/classification');
+const contentTypeAnalyzer = require('../services/contentTypeAnalyzer');
+const tmdbService = require('../services/tmdb');
 
 const router = express.Router();
 
@@ -261,6 +263,81 @@ router.get('/stats', async (req, res) => {
       avgConfidence: confidenceResult.rows,
       recentActivity: activityResult.rows,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/analyze-content:
+ *   post:
+ *     summary: Test content analysis on a specific title
+ */
+router.post('/analyze-content', async (req, res) => {
+  try {
+    const { tmdb_id, media_type } = req.body;
+    
+    if (!tmdb_id || !media_type) {
+      return res.status(400).json({ error: 'tmdb_id and media_type are required' });
+    }
+    
+    // Get metadata from TMDB
+    let details;
+    if (media_type === 'movie') {
+      details = await tmdbService.getMovieDetails(tmdb_id);
+    } else {
+      details = await tmdbService.getTVDetails(tmdb_id);
+    }
+    
+    const certification = await tmdbService.getCertification(tmdb_id, media_type);
+    
+    const metadata = {
+      tmdb_id: tmdb_id,
+      media_type: media_type,
+      title: details.title || details.name,
+      original_title: details.original_title || details.original_name,
+      year: details.release_date?.substring(0, 4) || details.first_air_date?.substring(0, 4),
+      overview: details.overview,
+      genres: details.genres?.map(g => g.name) || [],
+      keywords: details.keywords?.keywords?.map(k => k.name) || details.keywords?.results?.map(k => k.name) || [],
+      certification: certification,
+      original_language: details.original_language,
+    };
+    
+    // Run content analysis
+    const analysis = contentTypeAnalyzer.analyze(metadata);
+    
+    res.json({
+      title: metadata.title,
+      original_genres: metadata.genres,
+      analysis
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/content-analysis/stats:
+ *   get:
+ *     summary: Get content analysis statistics
+ */
+router.get('/content-analysis/stats', async (req, res) => {
+  try {
+    const stats = await db.query(`
+      SELECT 
+        detected_type,
+        COUNT(*) as count,
+        COUNT(*) FILTER (WHERE overrides_genre) as overrides,
+        AVG(confidence) as avg_confidence
+      FROM content_analysis_log
+      GROUP BY detected_type
+      ORDER BY count DESC
+    `);
+    
+    res.json(stats.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
