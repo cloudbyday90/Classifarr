@@ -5,6 +5,9 @@ const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const discordBot = require('./discordBot');
 const tavilyService = require('./tavily');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('classification');
 
 class ClassificationService {
   async classify(overseerrPayload) {
@@ -12,7 +15,7 @@ class ClassificationService {
       // Parse Overseerr payload
       const { media_type, tmdbId, subject } = this.parseOverseerrPayload(overseerrPayload);
       
-      console.log(`Starting classification for ${media_type}: ${subject} (TMDB: ${tmdbId})`);
+      logger.info(`Starting classification for ${media_type}: ${subject} (TMDB: ${tmdbId})`);
 
       // Enrich with TMDB metadata
       const metadata = await this.enrichWithTMDB(tmdbId, media_type);
@@ -45,7 +48,7 @@ class ClassificationService {
         reason: result.reason,
       };
     } catch (error) {
-      console.error('Classification error:', error);
+      logger.error('Classification error', { error: error.message });
       throw error;
     }
   }
@@ -141,7 +144,7 @@ class ClassificationService {
         advisory: advisoryResults
       };
     } catch (error) {
-      console.error('Tavily search failed:', error);
+      logger.error('Tavily search failed', { error: error.message });
       return null;
     }
   }
@@ -215,7 +218,7 @@ class ClassificationService {
         libraries: libraries,
       };
     } catch (error) {
-      console.error('AI classification failed:', error);
+      logger.error('AI classification failed', { error: error.message });
       // Fallback to rule match even if confidence is low
       if (ruleMatch) {
         return {
@@ -396,7 +399,7 @@ class ClassificationService {
           return false;
       }
     } catch (error) {
-      console.error('Error evaluating custom rule:', error);
+      logger.error('Error evaluating custom rule', { error: error.message });
       return false;
     }
   }
@@ -509,20 +512,33 @@ Example: 2|Action movie with high rating`;
 
         if (radarrConfig.rows.length > 0) {
           const config = radarrConfig.rows[0];
+          
+          // Use JSONB settings with fallback to legacy fields
+          const settings = library.radarr_settings && Object.keys(library.radarr_settings).length > 0
+            ? library.radarr_settings
+            : {
+                root_folder_path: library.root_folder,
+                quality_profile_id: library.quality_profile_id,
+                monitor: true,
+                search_on_add: true
+              };
+          
           const movieData = {
             title: metadata.title,
             tmdbId: metadata.tmdb_id,
             year: parseInt(metadata.year),
-            qualityProfileId: library.quality_profile_id,
-            rootFolderPath: library.root_folder,
-            monitored: true,
+            qualityProfileId: settings.quality_profile_id,
+            rootFolderPath: settings.root_folder_path,
+            monitored: settings.monitor !== false,
+            minimumAvailability: settings.minimum_availability || 'released',
+            tags: settings.tags || [],
             addOptions: {
-              searchForMovie: true,
+              searchForMovie: settings.search_on_add !== false,
             },
           };
 
           await radarrService.addMovie(config.url, config.api_key, movieData);
-          console.log(`Added movie to Radarr: ${metadata.title}`);
+          logger.info(`Added movie to Radarr: ${metadata.title}`);
         }
       } else if (library.arr_type === 'sonarr') {
         const sonarrConfig = await db.query(
@@ -532,27 +548,61 @@ Example: 2|Action movie with high rating`;
 
         if (sonarrConfig.rows.length > 0) {
           const config = sonarrConfig.rows[0];
+          
+          // Use JSONB settings with fallback to legacy fields
+          const settings = library.sonarr_settings && Object.keys(library.sonarr_settings).length > 0
+            ? library.sonarr_settings
+            : {
+                root_folder_path: library.root_folder,
+                quality_profile_id: library.quality_profile_id,
+                series_type: 'standard',
+                season_monitoring: 'all',
+                monitor_new_items: 'all',
+                season_folder: true,
+                search_on_add: true
+              };
+          
           // Note: We'd need to get TVDB ID from TMDB external IDs
           // This is a simplified version
           const seriesData = {
             title: metadata.title,
             tvdbId: metadata.tmdb_id, // This would need proper mapping
-            qualityProfileId: library.quality_profile_id,
-            rootFolderPath: library.root_folder,
-            monitored: true,
+            qualityProfileId: settings.quality_profile_id,
+            rootFolderPath: settings.root_folder_path,
+            monitored: settings.monitor !== false,
+            seriesType: settings.series_type || 'standard',
+            seasonFolder: settings.season_folder !== false,
+            tags: settings.tags || [],
             addOptions: {
-              searchForMissingEpisodes: true,
+              searchForMissingEpisodes: settings.search_on_add !== false,
+              monitor: settings.season_monitoring || 'all',
             },
           };
 
           await sonarrService.addSeries(config.url, config.api_key, seriesData);
-          console.log(`Added series to Sonarr: ${metadata.title}`);
+          logger.info(`Added series to Sonarr: ${metadata.title}`);
         }
       }
     } catch (error) {
-      console.error('Failed to route to arr:', error);
+      logger.error('Failed to route to arr', { error: error.message });
       // Don't throw - classification was successful even if routing failed
     }
+  }
+
+  suggestSeriesType(metadata, appliedLabels = []) {
+    // Anime detection
+    if (appliedLabels.includes('anime') || 
+        (metadata.original_language === 'ja' && appliedLabels.includes('animation'))) {
+      return 'anime';
+    }
+    
+    // Daily show detection
+    const dailyLabels = ['late_night', 'talk', 'news', 'game_show', 'soap_opera'];
+    if (dailyLabels.some(label => appliedLabels.includes(label))) {
+      return 'daily';
+    }
+    
+    return 'standard';
   }
 }
 

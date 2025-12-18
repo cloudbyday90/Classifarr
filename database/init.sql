@@ -92,12 +92,31 @@ CREATE TABLE libraries (
     root_folder VARCHAR(500),
     quality_profile_id INTEGER,
     
+    -- Full Radarr/Sonarr Settings (preferred method)
+    radarr_settings JSONB DEFAULT '{}',
+    sonarr_settings JSONB DEFAULT '{}',
+    
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     
     UNIQUE(media_server_id, external_id)
 );
+
+-- ARR Profiles Cache (for UI dropdowns)
+CREATE TABLE arr_profiles_cache (
+    id SERIAL PRIMARY KEY,
+    arr_type VARCHAR(10) NOT NULL CHECK (arr_type IN ('radarr', 'sonarr')),
+    profile_type VARCHAR(50) NOT NULL CHECK (profile_type IN ('root_folder', 'quality_profile', 'tag')),
+    profile_id INT NOT NULL,
+    profile_name VARCHAR(255),
+    profile_path VARCHAR(500),
+    profile_data JSONB,
+    last_synced TIMESTAMP DEFAULT NOW(),
+    UNIQUE(arr_type, profile_type, profile_id)
+);
+
+CREATE INDEX idx_arr_profiles_cache_type ON arr_profiles_cache(arr_type, profile_type);
 
 -- Label Presets (system-defined classification labels)
 CREATE TABLE label_presets (
