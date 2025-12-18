@@ -118,7 +118,15 @@ async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
       [userId, action, ipAddress, userAgent, JSON.stringify(metadata)]
     );
   } catch (error) {
-    console.error('Failed to write audit log:', error);
+    // Critical: Log to console as fallback when database logging fails
+    console.error('AUDIT LOG FAILURE:', {
+      userId,
+      action,
+      ipAddress,
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+    // In production, this should also write to a file or external logging service
   }
 }
 
@@ -127,7 +135,8 @@ async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
  */
 async function authenticate(identifier, password) {
   // Check if identifier is email or username
-  const isEmail = identifier.includes('@');
+  // Basic email pattern check - looks for @ with chars on both sides
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
   const query = isEmail
     ? 'SELECT * FROM users WHERE email = $1 AND is_active = true'
     : 'SELECT * FROM users WHERE username = $1 AND is_active = true';

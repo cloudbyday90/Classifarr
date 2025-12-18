@@ -1,5 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs').promises;
+const tls = require('tls');
 const db = require('../config/database');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
@@ -1007,7 +1009,11 @@ router.put('/ssl', async (req, res) => {
       ]
     );
 
-    res.json(result.rows[0]);
+    res.json({ 
+      ...result.rows[0],
+      requiresRestart: true,
+      message: 'SSL configuration saved. Please restart Classifarr for changes to take effect.'
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1067,18 +1073,46 @@ router.post('/ssl/test', async (req, res) => {
 
     // Try to load the certificate files
     try {
-      const tls = require('tls');
       const certData = await fs.readFile(cert_path, 'utf8');
       const keyData = await fs.readFile(key_path, 'utf8');
       
-      // Basic validation - try to create a secure context
+      // Create secure context to validate cert and key match
       const context = tls.createSecureContext({
         cert: certData,
         key: keyData
       });
 
+      // Parse certificate to check expiration
+      const crypto = require('crypto');
+      const cert = new crypto.X509Certificate(certData);
+      const now = new Date();
+      const validFrom = new Date(cert.validFrom);
+      const validTo = new Date(cert.validTo);
+
+      if (now < validFrom) {
+        return res.json({ ...results, error: 'Certificate is not yet valid' });
+      }
+
+      if (now > validTo) {
+        return res.json({ ...results, error: 'Certificate has expired' });
+      }
+
+      // Calculate days until expiration
+      const daysUntilExpiry = Math.floor((validTo - now) / (1000 * 60 * 60 * 24));
+
       results.valid = true;
-      res.json({ ...results, message: 'SSL certificates are valid' });
+      results.subject = cert.subject;
+      results.issuer = cert.issuer;
+      results.validFrom = cert.validFrom;
+      results.validTo = cert.validTo;
+      results.daysUntilExpiry = daysUntilExpiry;
+
+      let message = 'SSL certificates are valid';
+      if (daysUntilExpiry < 30) {
+        message += ` (expires in ${daysUntilExpiry} days - renewal recommended)`;
+      }
+
+      res.json({ ...results, message });
     } catch (error) {
       res.json({ ...results, error: 'Invalid certificate or key: ' + error.message });
     }

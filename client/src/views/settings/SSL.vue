@@ -256,9 +256,9 @@ const saveConfig = async () => {
   saveMessage.value = ''
 
   try {
-    await axios.put('/api/settings/ssl', config.value)
+    const response = await axios.put('/api/settings/ssl', config.value)
     saveSuccess.value = true
-    saveMessage.value = 'SSL configuration saved successfully. Restart required for changes to take effect.'
+    saveMessage.value = response.data.message || 'SSL configuration saved successfully. Restart required for changes to take effect.'
   } catch (error) {
     saveSuccess.value = false
     saveMessage.value = error.response?.data?.error || 'Failed to save SSL configuration'
