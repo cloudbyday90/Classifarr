@@ -48,7 +48,7 @@ class ClassificationService {
         reason: result.reason,
       };
     } catch (error) {
-      console.error('Classification error:', error);
+      logger.error('Classification error', { error: error.message });
       throw error;
     }
   }
@@ -144,7 +144,7 @@ class ClassificationService {
         advisory: advisoryResults
       };
     } catch (error) {
-      console.error('Tavily search failed:', error);
+      logger.error('Tavily search failed', { error: error.message });
       return null;
     }
   }
@@ -218,7 +218,7 @@ class ClassificationService {
         libraries: libraries,
       };
     } catch (error) {
-      console.error('AI classification failed:', error);
+      logger.error('AI classification failed', { error: error.message });
       // Fallback to rule match even if confidence is low
       if (ruleMatch) {
         return {
@@ -399,7 +399,7 @@ class ClassificationService {
           return false;
       }
     } catch (error) {
-      console.error('Error evaluating custom rule:', error);
+      logger.error('Error evaluating custom rule', { error: error.message });
       return false;
     }
   }

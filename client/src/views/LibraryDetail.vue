@@ -89,7 +89,7 @@
           
           <div class="flex justify-end pt-4">
             <Button @click="saveArrSettings" :loading="savingArrSettings">
-              Save Radarr Settings
+              Save Settings
             </Button>
           </div>
         </div>
@@ -172,7 +172,7 @@
           
           <div class="flex justify-end pt-4">
             <Button @click="saveArrSettings" :loading="savingArrSettings">
-              Save Sonarr Settings
+              Save Settings
             </Button>
           </div>
         </div>
