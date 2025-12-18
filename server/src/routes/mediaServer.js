@@ -183,4 +183,167 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/media-server/items/:libraryId:
+ *   get:
+ *     summary: Get media items from a synced library
+ */
+router.get('/items/:libraryId', async (req, res) => {
+  try {
+    const { libraryId } = req.params;
+    const { page = 1, limit = 50, search } = req.query;
+    const offset = (page - 1) * limit;
+
+    let query = `
+      SELECT * FROM media_server_items
+      WHERE library_id = $1
+    `;
+    const params = [libraryId];
+
+    if (search) {
+      query += ` AND (title ILIKE $${params.length + 1} OR original_title ILIKE $${params.length + 1})`;
+      params.push(`%${search}%`);
+    }
+
+    query += ` ORDER BY added_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    const result = await db.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/media-server/collections/:libraryId:
+ *   get:
+ *     summary: Get collections from a synced library
+ */
+router.get('/collections/:libraryId', async (req, res) => {
+  try {
+    const { libraryId } = req.params;
+    
+    const result = await db.query(
+      `SELECT * FROM media_server_collections
+       WHERE library_id = $1
+       ORDER BY name`,
+      [libraryId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/media-server/sync/:libraryId:
+ *   post:
+ *     summary: Sync a specific library's content
+ */
+router.post('/sync/:libraryId', async (req, res) => {
+  try {
+    const { libraryId } = req.params;
+    const { incremental = true, limit = 100 } = req.body;
+
+    const mediaSyncService = require('../services/mediaSync');
+    const result = await mediaSyncService.syncLibrary(parseInt(libraryId), { 
+      incremental, 
+      limit 
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/media-server/sync/all:
+ *   post:
+ *     summary: Sync all active libraries
+ */
+router.post('/sync/all', async (req, res) => {
+  try {
+    const mediaSyncService = require('../services/mediaSync');
+    const results = await mediaSyncService.syncAllLibraries();
+
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/media-server/sync/status:
+ *   get:
+ *     summary: Get sync status for libraries
+ */
+router.get('/sync/status', async (req, res) => {
+  try {
+    const { libraryId } = req.query;
+    
+    const mediaSyncService = require('../services/mediaSync');
+    const status = await mediaSyncService.getSyncStatus(
+      libraryId ? parseInt(libraryId) : null
+    );
+
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/media-server/lookup/:tmdbId:
+ *   get:
+ *     summary: Lookup media by TMDB ID in media server
+ */
+router.get('/lookup/:tmdbId', async (req, res) => {
+  try {
+    const { tmdbId } = req.params;
+    const { mediaType = 'movie' } = req.query;
+
+    const mediaSyncService = require('../services/mediaSync');
+    const existingMedia = await mediaSyncService.findExistingMedia(
+      parseInt(tmdbId),
+      mediaType
+    );
+
+    res.json(existingMedia || { found: false });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/media-server/context/:tmdbId:
+ *   get:
+ *     summary: Get library context for a media item
+ */
+router.get('/context/:tmdbId', async (req, res) => {
+  try {
+    const { tmdbId } = req.params;
+    const metadata = req.query;
+
+    const mediaSyncService = require('../services/mediaSync');
+    const context = await mediaSyncService.getLibraryContext(
+      parseInt(tmdbId),
+      metadata
+    );
+
+    res.json(context);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
