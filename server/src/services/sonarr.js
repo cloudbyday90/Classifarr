@@ -7,17 +7,28 @@ class SonarrService {
     return `${protocol}://${host}:${port}${basePath}`;
   }
 
-  async testConnection(config) {
+  async testConnection(config, apiKey) {
     try {
-      const url = typeof config === 'string' ? config : this.buildUrl(config);
-      const apiKey = typeof config === 'string' ? arguments[1] : config.api_key;
+      // Support both object config and separate url/apiKey parameters for backwards compatibility
+      let url, key, timeout;
+      
+      if (typeof config === 'object') {
+        url = this.buildUrl(config);
+        key = config.api_key;
+        timeout = config.timeout ? config.timeout * 1000 : 5000;
+      } else {
+        // Legacy: config is actually a URL string, apiKey is second parameter
+        url = config;
+        key = apiKey;
+        timeout = 5000;
+      }
       
       // Get system status
       const statusResponse = await axios.get(`${url}/api/v3/system/status`, {
         headers: {
-          'X-Api-Key': apiKey,
+          'X-Api-Key': key,
         },
-        timeout: config.timeout ? config.timeout * 1000 : 5000,
+        timeout,
       });
 
       // Get series count
@@ -25,7 +36,7 @@ class SonarrService {
       try {
         const seriesResponse = await axios.get(`${url}/api/v3/series`, {
           headers: {
-            'X-Api-Key': apiKey,
+            'X-Api-Key': key,
           },
           timeout: 5000,
         });
@@ -39,7 +50,7 @@ class SonarrService {
       try {
         const rootResponse = await axios.get(`${url}/api/v3/rootfolder`, {
           headers: {
-            'X-Api-Key': apiKey,
+            'X-Api-Key': key,
           },
           timeout: 5000,
         });
@@ -53,7 +64,7 @@ class SonarrService {
       try {
         const profilesResponse = await axios.get(`${url}/api/v3/qualityprofile`, {
           headers: {
-            'X-Api-Key': apiKey,
+            'X-Api-Key': key,
           },
           timeout: 5000,
         });
@@ -67,7 +78,7 @@ class SonarrService {
       try {
         const langResponse = await axios.get(`${url}/api/v3/languageprofile`, {
           headers: {
-            'X-Api-Key': apiKey,
+            'X-Api-Key': key,
           },
           timeout: 5000,
         });

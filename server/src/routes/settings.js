@@ -100,8 +100,15 @@ router.put('/radarr', async (req, res) => {
     const existingResult = await db.query('SELECT api_key FROM radarr_config WHERE is_active = true LIMIT 1');
     const existingApiKey = existingResult.rows[0]?.api_key;
     
-    // Use existing key if the provided one is masked
-    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
+    // Use existing key if the provided one is masked, otherwise require a valid API key
+    let finalApiKey;
+    if (api_key && !isMaskedToken(api_key)) {
+      finalApiKey = api_key;
+    } else if (existingApiKey) {
+      finalApiKey = existingApiKey;
+    } else {
+      return res.status(400).json({ error: 'API key is required for new configuration' });
+    }
 
     // Deactivate existing configs
     await db.query('UPDATE radarr_config SET is_active = false');
@@ -300,8 +307,15 @@ router.put('/sonarr', async (req, res) => {
     const existingResult = await db.query('SELECT api_key FROM sonarr_config WHERE is_active = true LIMIT 1');
     const existingApiKey = existingResult.rows[0]?.api_key;
     
-    // Use existing key if the provided one is masked
-    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
+    // Use existing key if the provided one is masked, otherwise require a valid API key
+    let finalApiKey;
+    if (api_key && !isMaskedToken(api_key)) {
+      finalApiKey = api_key;
+    } else if (existingApiKey) {
+      finalApiKey = existingApiKey;
+    } else {
+      return res.status(400).json({ error: 'API key is required for new configuration' });
+    }
 
     // Deactivate existing configs
     await db.query('UPDATE sonarr_config SET is_active = false');
