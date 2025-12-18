@@ -1,13 +1,41 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const db = require('../config/database');
 const authService = require('../services/auth');
 const { authenticateToken } = require('../middleware/auth');
 
+// Rate limiter for login attempts - 5 attempts per 15 minutes
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs
+  message: { error: 'Too many login attempts, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter for password change - 3 attempts per hour
+const passwordChangeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: { error: 'Too many password change attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// General rate limiter for authenticated endpoints - 100 requests per 15 minutes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 /**
  * Login endpoint
  */
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
@@ -39,7 +67,7 @@ router.post('/login', async (req, res) => {
 /**
  * Get current user info
  */
-router.get('/me', authenticateToken, async (req, res) => {
+router.get('/me', authenticateToken, authLimiter, async (req, res) => {
   try {
     const result = await db.query(
       'SELECT id, username, email, role, is_active, last_login, created_at FROM users WHERE id = $1',
@@ -59,7 +87,7 @@ router.get('/me', authenticateToken, async (req, res) => {
 /**
  * Change password
  */
-router.post('/change-password', authenticateToken, async (req, res) => {
+router.post('/change-password', authenticateToken, passwordChangeLimiter, async (req, res) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
@@ -108,7 +136,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
 /**
  * Logout (for audit log purposes)
  */
-router.post('/logout', authenticateToken, async (req, res) => {
+router.post('/logout', authenticateToken, authLimiter, async (req, res) => {
   try {
     await authService.auditLog(req.user.id, 'logout', req.ip, req.get('User-Agent'));
     res.json({ success: true });

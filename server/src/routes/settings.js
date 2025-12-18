@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const tls = require('tls');
@@ -12,6 +13,15 @@ const tavilyService = require('../services/tavily');
 const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
 
 const router = express.Router();
+
+// Rate limiter for SSL certificate testing - 10 attempts per hour
+const sslTestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: { error: 'Too many SSL test attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================
 // GENERAL SETTINGS
@@ -1025,7 +1035,7 @@ router.put('/ssl', async (req, res) => {
  *   post:
  *     summary: Test SSL certificate files
  */
-router.post('/ssl/test', async (req, res) => {
+router.post('/ssl/test', sslTestLimiter, async (req, res) => {
   try {
     const { cert_path, key_path, ca_path } = req.body;
     const fs = require('fs').promises;

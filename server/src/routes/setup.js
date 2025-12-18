@@ -1,7 +1,17 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const db = require('../config/database');
 const authService = require('../services/auth');
+
+// Rate limiter for setup - 10 attempts per hour to prevent abuse
+const setupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: { error: 'Too many setup attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * Check if setup is required (no users exist)
@@ -23,7 +33,7 @@ router.get('/status', async (req, res) => {
 /**
  * Create initial admin account (only works if no users exist)
  */
-router.post('/create-admin', async (req, res) => {
+router.post('/create-admin', setupLimiter, async (req, res) => {
   try {
     // Check if any users exist
     const countResult = await db.query('SELECT COUNT(*) FROM users');
