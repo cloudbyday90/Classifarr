@@ -290,10 +290,17 @@ const stats = ref(null)
 const logsData = ref({ logs: [], page: 1, limit: 20, totalPages: 1 })
 const logs = computed(() => logsData.value.logs || [])
 
+// Masked token pattern - matches backend maskToken format
+const MASKED_TOKEN_PREFIX = '••••••••'
+
+const isMaskedToken = (token) => {
+  return token && token.startsWith(MASKED_TOKEN_PREFIX)
+}
+
 const webhookUrl = computed(() => {
   const baseUrl = window.location.origin
   let url = `${baseUrl}/api/webhook/overseerr`
-  if (config.value.secret_key && config.value.secret_key !== '••••••••') {
+  if (config.value.secret_key && !isMaskedToken(config.value.secret_key)) {
     url += `?key=${config.value.secret_key}`
   }
   return url

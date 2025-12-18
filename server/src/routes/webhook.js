@@ -59,8 +59,6 @@ router.post('/overseerr', async (req, res) => {
     logId = await webhookService.logReceived(req, parsed);
 
     // 3. Handle by event type
-    const notificationType = parsed.notification_type?.toLowerCase() || '';
-
     switch (parsed.notification_type) {
       case 'TEST_NOTIFICATION':
       case 'test':

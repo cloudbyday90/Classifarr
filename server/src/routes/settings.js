@@ -3,6 +3,7 @@ const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const tls = require('tls');
+const axios = require('axios');
 const db = require('../config/database');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
@@ -1043,7 +1044,6 @@ router.post('/webhook/test', async (req, res) => {
     };
     
     // Make internal request to webhook endpoint
-    const axios = require('axios');
     let url = `${baseUrl}/api/webhook/overseerr`;
     if (config.secret_key) {
       url += `?key=${config.secret_key}`;
