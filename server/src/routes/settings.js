@@ -1,5 +1,8 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
+const fs = require('fs').promises;
+const tls = require('tls');
 const db = require('../config/database');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
@@ -10,6 +13,15 @@ const tavilyService = require('../services/tavily');
 const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
 
 const router = express.Router();
+
+// Rate limiter for SSL certificate testing - 10 attempts per hour
+const sslTestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: { error: 'Too many SSL test attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================
 // GENERAL SETTINGS
@@ -894,6 +906,16 @@ router.get('/webhook/logs', async (req, res) => {
  */
 router.get('/setup-status', async (req, res) => {
   try {
+    // Check if users exist (authentication setup)
+    let usersExist = false;
+    try {
+      const usersResult = await db.query('SELECT COUNT(*) FROM users');
+      usersExist = parseInt(usersResult.rows[0].count) > 0;
+    } catch (error) {
+      // Table might not exist yet
+      usersExist = false;
+    }
+
     // Check if TMDB is configured (required)
     const tmdbResult = await db.query('SELECT id FROM tmdb_config WHERE is_active = true LIMIT 1');
     const tmdbConfigured = tmdbResult.rows.length > 0;
@@ -906,14 +928,204 @@ router.get('/setup-status', async (req, res) => {
     const discordResult = await db.query('SELECT id FROM notification_config WHERE type = $1 AND enabled = true LIMIT 1', ['discord']);
     const discordConfigured = discordResult.rows.length > 0;
 
-    const setupComplete = tmdbConfigured;
+    // Setup is complete when both users exist and TMDB is configured
+    const setupComplete = usersExist && tmdbConfigured;
 
     res.json({
       setupComplete,
+      usersExist,
       tmdbConfigured,
       ollamaConfigured,
       discordConfigured,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// SSL/HTTPS CONFIGURATION
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/ssl:
+ *   get:
+ *     summary: Get SSL/HTTPS configuration
+ */
+router.get('/ssl', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM ssl_config LIMIT 1');
+    res.json(result.rows[0] || {
+      enabled: false,
+      cert_path: '',
+      key_path: '',
+      ca_path: '',
+      force_https: false,
+      hsts_enabled: false,
+      hsts_max_age: 31536000,
+      client_cert_required: false
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/ssl:
+ *   put:
+ *     summary: Update SSL/HTTPS configuration
+ */
+router.put('/ssl', async (req, res) => {
+  try {
+    const {
+      enabled,
+      cert_path,
+      key_path,
+      ca_path,
+      force_https,
+      hsts_enabled,
+      hsts_max_age,
+      client_cert_required
+    } = req.body;
+
+    const result = await db.query(
+      `INSERT INTO ssl_config (
+        id, enabled, cert_path, key_path, ca_path,
+        force_https, hsts_enabled, hsts_max_age, client_cert_required
+      )
+       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (id) DO UPDATE 
+       SET enabled = $1,
+           cert_path = $2,
+           key_path = $3,
+           ca_path = $4,
+           force_https = $5,
+           hsts_enabled = $6,
+           hsts_max_age = $7,
+           client_cert_required = $8,
+           updated_at = NOW()
+       RETURNING *`,
+      [
+        enabled || false,
+        cert_path || null,
+        key_path || null,
+        ca_path || null,
+        force_https || false,
+        hsts_enabled || false,
+        hsts_max_age || 31536000,
+        client_cert_required || false
+      ]
+    );
+
+    res.json({ 
+      ...result.rows[0],
+      requiresRestart: true,
+      message: 'SSL configuration saved. Please restart Classifarr for changes to take effect.'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/ssl/test:
+ *   post:
+ *     summary: Test SSL certificate files
+ */
+router.post('/ssl/test', sslTestLimiter, async (req, res) => {
+  try {
+    const { cert_path, key_path, ca_path } = req.body;
+    const fs = require('fs').promises;
+    const results = {
+      cert_exists: false,
+      key_exists: false,
+      ca_exists: true, // CA is optional
+      valid: false
+    };
+
+    // Check if cert file exists
+    if (cert_path) {
+      try {
+        await fs.access(cert_path);
+        results.cert_exists = true;
+      } catch (e) {
+        return res.json({ ...results, error: 'Certificate file not found' });
+      }
+    } else {
+      return res.json({ ...results, error: 'Certificate path is required' });
+    }
+
+    // Check if key file exists
+    if (key_path) {
+      try {
+        await fs.access(key_path);
+        results.key_exists = true;
+      } catch (e) {
+        return res.json({ ...results, error: 'Private key file not found' });
+      }
+    } else {
+      return res.json({ ...results, error: 'Private key path is required' });
+    }
+
+    // Check CA if provided
+    if (ca_path) {
+      try {
+        await fs.access(ca_path);
+        results.ca_exists = true;
+      } catch (e) {
+        results.ca_exists = false;
+        return res.json({ ...results, error: 'CA certificate file not found' });
+      }
+    }
+
+    // Try to load the certificate files
+    try {
+      const certData = await fs.readFile(cert_path, 'utf8');
+      const keyData = await fs.readFile(key_path, 'utf8');
+      
+      // Create secure context to validate cert and key match
+      const context = tls.createSecureContext({
+        cert: certData,
+        key: keyData
+      });
+
+      // Parse certificate to check expiration
+      const crypto = require('crypto');
+      const cert = new crypto.X509Certificate(certData);
+      const now = new Date();
+      const validFrom = new Date(cert.validFrom);
+      const validTo = new Date(cert.validTo);
+
+      if (now < validFrom) {
+        return res.json({ ...results, error: 'Certificate is not yet valid' });
+      }
+
+      if (now > validTo) {
+        return res.json({ ...results, error: 'Certificate has expired' });
+      }
+
+      // Calculate days until expiration
+      const daysUntilExpiry = Math.floor((validTo - now) / (1000 * 60 * 60 * 24));
+
+      results.valid = true;
+      results.subject = cert.subject;
+      results.issuer = cert.issuer;
+      results.validFrom = cert.validFrom;
+      results.validTo = cert.validTo;
+      results.daysUntilExpiry = daysUntilExpiry;
+
+      let message = 'SSL certificates are valid';
+      if (daysUntilExpiry < 30) {
+        message += ` (expires in ${daysUntilExpiry} days - renewal recommended)`;
+      }
+
+      res.json({ ...results, message });
+    } catch (error) {
+      res.json({ ...results, error: 'Invalid certificate or key: ' + error.message });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

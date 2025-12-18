@@ -9,6 +9,8 @@ Classifarr is an intelligent media classification platform that automatically ro
 
 ## ✨ Features
 
+- **🔐 Secure Authentication System** - JWT-based login with first-run setup wizard
+- **🔒 Optional HTTPS Support** - Built-in TLS or reverse proxy compatible
 - **🤖 Built-in AI Classification Engine** - No external n8n or workflows required
 - **🗄️ Internal PostgreSQL Database** - Auto-initialized with seed data
 - **💬 Discord Bot Integration** - Real-time notifications and corrections
@@ -111,6 +113,57 @@ docker compose up -d
 4. **Access the web interface:**
 
 Open your browser to `http://localhost:21324`
+
+### First-Time Setup
+
+When you first access Classifarr, you'll be guided through a setup wizard:
+
+1. **Create Admin Account**
+   - Set your admin username, email, and password
+   - Password must meet security requirements (8+ chars, uppercase, lowercase, number, special char)
+
+2. **Configure TMDB** (Required)
+   - Enter your TMDB API key
+   - Test the connection
+
+3. **Configure Ollama** (Optional)
+   - Set Ollama host and port if using AI classification
+   - Select your preferred model
+
+4. **Configure Discord** (Optional)
+   - Add your bot token and channel ID for notifications
+
+## 🔐 Authentication & Security
+
+Classifarr includes a secure authentication system:
+
+- **First-run setup wizard** creates your admin account
+- **JWT-based authentication** with 7-day sessions
+- **Password requirements**: 8+ chars with uppercase, lowercase, number, and special character
+- **Audit logging** of all security events
+- **Session management** with automatic token refresh
+
+See [AUTHENTICATION.md](AUTHENTICATION.md) for detailed security information.
+
+## 🔒 HTTPS Configuration
+
+Classifarr supports two HTTPS deployment options:
+
+### Option 1: Reverse Proxy (Recommended)
+
+Use Nginx Proxy Manager, Traefik, or Caddy to handle SSL:
+- Automatic certificate management with Let's Encrypt
+- Centralized SSL for all your services
+- No certificate configuration in Classifarr needed
+
+### Option 2: Direct HTTPS
+
+Enable built-in HTTPS in Classifarr:
+- Serve directly on port 21325
+- Configure certificate paths in Settings → SSL/HTTPS
+- Good for standalone deployments
+
+See [AUTHENTICATION.md](AUTHENTICATION.md) for detailed HTTPS setup instructions and reverse proxy examples.
 
 ## 📖 Configuration Guide
 

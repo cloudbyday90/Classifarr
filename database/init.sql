@@ -3,6 +3,9 @@
 -- ===========================================
 
 -- Drop existing tables (if any)
+DROP TABLE IF EXISTS audit_log CASCADE;
+DROP TABLE IF EXISTS jwt_secrets CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS learning_patterns CASCADE;
 DROP TABLE IF EXISTS classification_corrections CASCADE;
 DROP TABLE IF EXISTS classification_history CASCADE;
@@ -16,7 +19,46 @@ DROP TABLE IF EXISTS sonarr_config CASCADE;
 DROP TABLE IF EXISTS ollama_config CASCADE;
 DROP TABLE IF EXISTS tmdb_config CASCADE;
 DROP TABLE IF EXISTS notification_config CASCADE;
+DROP TABLE IF EXISTS ssl_config CASCADE;
 DROP TABLE IF EXISTS settings CASCADE;
+
+-- ===========================================
+-- AUTHENTICATION & SECURITY TABLES
+-- ===========================================
+
+-- Users Table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+    is_active BOOLEAN DEFAULT true,
+    must_change_password BOOLEAN DEFAULT false,
+    last_login TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- JWT Secrets (for token rotation)
+CREATE TABLE jwt_secrets (
+    id SERIAL PRIMARY KEY,
+    secret VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP
+);
+
+-- Audit Log (security events)
+CREATE TABLE audit_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    action VARCHAR(100) NOT NULL,
+    ip_address VARCHAR(50),
+    user_agent TEXT,
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
 
 -- ===========================================
 -- CORE TABLES
@@ -194,6 +236,21 @@ CREATE TABLE webhook_log (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- SSL/HTTPS Configuration
+CREATE TABLE ssl_config (
+    id SERIAL PRIMARY KEY,
+    enabled BOOLEAN DEFAULT false,
+    cert_path VARCHAR(500),
+    key_path VARCHAR(500),
+    ca_path VARCHAR(500),
+    force_https BOOLEAN DEFAULT false,
+    hsts_enabled BOOLEAN DEFAULT false,
+    hsts_max_age INTEGER DEFAULT 31536000,
+    client_cert_required BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- General Settings
 CREATE TABLE settings (
     id SERIAL PRIMARY KEY,
@@ -272,6 +329,10 @@ CREATE TABLE learning_patterns (
 -- INDEXES FOR PERFORMANCE
 -- ===========================================
 
+CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_audit_log_user ON audit_log(user_id);
+CREATE INDEX idx_audit_log_created_at ON audit_log(created_at);
 CREATE INDEX idx_libraries_media_server ON libraries(media_server_id);
 CREATE INDEX idx_libraries_media_type ON libraries(media_type);
 CREATE INDEX idx_library_labels_library ON library_labels(library_id);

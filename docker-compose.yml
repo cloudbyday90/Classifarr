@@ -5,7 +5,8 @@ services:
     build: .
     container_name: classifarr
     ports:
-      - "21324:21324"
+      - "21324:21324"   # HTTP (always available)
+      - "21325:21325"   # HTTPS (optional, for direct TLS)
     environment:
       - NODE_ENV=production
       - PORT=21324
@@ -15,6 +16,8 @@ services:
       - POSTGRES_USER=classifarr
     volumes:
       - app_data:/app/data
+      # Optional: Uncomment to mount certificates for direct HTTPS
+      # - ./certs:/app/certs:ro
     depends_on:
       postgres:
         condition: service_healthy

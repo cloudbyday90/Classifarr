@@ -9,6 +9,8 @@ const swaggerUi = require('swagger-ui-express');
 
 const db = require('./config/database');
 const apiRouter = require('./routes/api');
+const setupRouter = require('./routes/setup');
+const authRouter = require('./routes/auth');
 const discordBot = require('./services/discordBot');
 
 const app = express();
@@ -44,6 +46,8 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // API Routes
+app.use('/api/setup', setupRouter);  // Setup routes (no auth required)
+app.use('/api/auth', authRouter);    // Auth routes
 app.use('/api', apiRouter);
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
