@@ -95,7 +95,9 @@ class MediaSyncService {
             if (updated) totalUpdated++;
             totalProcessed++;
           } catch (error) {
-            logger.error(`Error syncing item: ${error.message}`, { item: item.title });
+            logger.error(`Error syncing item: ${error.message}`, { 
+              item: item?.title || 'unknown' 
+            });
           }
         }
 

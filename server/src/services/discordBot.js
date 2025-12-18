@@ -611,7 +611,7 @@ class DiscordBotService {
         classificationId,
         questionKey,
         value,
-        `${interaction.user.username}#${interaction.user.discriminator}`
+        interaction.user.tag || interaction.user.username
       );
 
       // Update message to show response was recorded

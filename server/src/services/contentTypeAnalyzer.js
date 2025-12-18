@@ -2,6 +2,10 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('content-analyzer');
 
+// Configuration constants
+const DETECTION_CONFIDENCE_THRESHOLD = 70; // Minimum confidence to return a detection
+const REALITY_TV_CONFIDENCE_THRESHOLD = 75; // Slightly higher for reality TV due to more indicators
+
 class ContentTypeAnalyzer {
   /**
    * Analyze media metadata to detect content type
@@ -80,7 +84,7 @@ class ContentTypeAnalyzer {
       reasoning.push('Documentary-style language detected, not a stand-up special');
     }
 
-    if (confidence >= 70) {
+    if (confidence >= DETECTION_CONFIDENCE_THRESHOLD) {
       return {
         detected_type: 'standup',
         confidence: Math.min(confidence, 95),
@@ -136,7 +140,7 @@ class ContentTypeAnalyzer {
       reasoning.push('Documentary genre without concert context');
     }
 
-    if (confidence >= 70) {
+    if (confidence >= DETECTION_CONFIDENCE_THRESHOLD) {
       return {
         detected_type: 'concert',
         confidence: Math.min(confidence, 95),
@@ -190,7 +194,7 @@ class ContentTypeAnalyzer {
       reasoning.push('Adult animated comedy');
     }
 
-    if (confidence >= 70) {
+    if (confidence >= DETECTION_CONFIDENCE_THRESHOLD) {
       return {
         detected_type: 'adult_animation',
         confidence: Math.min(confidence, 95),
@@ -262,7 +266,7 @@ class ContentTypeAnalyzer {
       suggested_labels.push('reality');
     }
 
-    if (confidence >= 75) {
+    if (confidence >= REALITY_TV_CONFIDENCE_THRESHOLD) {
       return {
         detected_type: 'reality_tv',
         confidence: Math.min(confidence, 95),
