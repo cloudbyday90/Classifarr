@@ -6,14 +6,148 @@ class DiscordBotService {
     this.client = null;
     this.channelId = null;
     this.isInitialized = false;
+    this.config = null;
+  }
+
+  async loadConfig() {
+    const result = await db.query('SELECT * FROM notification_config WHERE type = $1 LIMIT 1', ['discord']);
+    if (result.rows.length > 0) {
+      this.config = result.rows[0];
+      return this.config;
+    }
+    
+    // Fall back to environment variables
+    this.config = {
+      bot_token: process.env.DISCORD_BOT_TOKEN,
+      channel_id: process.env.DISCORD_CHANNEL_ID,
+      enabled: false,
+    };
+    return this.config;
+  }
+
+  async testConnection(botToken = null) {
+    let testClient = null;
+    try {
+      const token = botToken || (await this.loadConfig()).bot_token;
+      if (!token) {
+        return { success: false, error: 'No bot token provided' };
+      }
+
+      // Create temporary client to test
+      testClient = new Client({
+        intents: [GatewayIntentBits.Guilds],
+      });
+
+      await testClient.login(token);
+      
+      const user = testClient.user;
+      const guilds = testClient.guilds.cache.size;
+
+      return { 
+        success: true, 
+        message: 'Bot connected successfully',
+        botUser: {
+          id: user.id,
+          username: user.username,
+          discriminator: user.discriminator,
+        },
+        guildsCount: guilds,
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.message.includes('token') 
+          ? 'Invalid bot token' 
+          : error.message 
+      };
+    } finally {
+      if (testClient) {
+        await testClient.destroy();
+      }
+    }
+  }
+
+  async getServers(botToken = null) {
+    try {
+      const token = botToken || (await this.loadConfig()).bot_token;
+      if (!token) {
+        throw new Error('No bot token provided');
+      }
+
+      // Create temporary client
+      const testClient = new Client({
+        intents: [GatewayIntentBits.Guilds],
+      });
+
+      await testClient.login(token);
+
+      const guilds = testClient.guilds.cache.map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        icon: guild.iconURL(),
+        memberCount: guild.memberCount,
+      }));
+
+      await testClient.destroy();
+
+      return guilds;
+    } catch (error) {
+      throw new Error(`Failed to fetch servers: ${error.message}`);
+    }
+  }
+
+  async getChannels(serverId, botToken = null) {
+    try {
+      const token = botToken || (await this.loadConfig()).bot_token;
+      if (!token) {
+        throw new Error('No bot token provided');
+      }
+
+      // Create temporary client
+      const testClient = new Client({
+        intents: [GatewayIntentBits.Guilds],
+      });
+
+      await testClient.login(token);
+
+      const guild = testClient.guilds.cache.get(serverId);
+      if (!guild) {
+        await testClient.destroy();
+        throw new Error('Server not found');
+      }
+
+      const channels = guild.channels.cache
+        .filter(channel => channel.isTextBased())
+        .map(channel => ({
+          id: channel.id,
+          name: channel.name,
+          type: channel.type,
+        }));
+
+      await testClient.destroy();
+
+      return channels;
+    } catch (error) {
+      throw new Error(`Failed to fetch channels: ${error.message}`);
+    }
+  }
+
+  async reinitialize() {
+    if (this.client) {
+      await this.client.destroy();
+      this.client = null;
+      this.isInitialized = false;
+    }
+    await this.initialize();
   }
 
   async initialize() {
-    const token = process.env.DISCORD_BOT_TOKEN;
-    this.channelId = process.env.DISCORD_CHANNEL_ID;
+    const config = await this.loadConfig();
+    const token = config.bot_token;
+    this.channelId = config.channel_id;
 
-    if (!token || !this.channelId) {
-      throw new Error('Discord bot token or channel ID not configured');
+    if (!token || !this.channelId || !config.enabled) {
+      throw new Error('Discord bot not configured or not enabled');
     }
 
     this.client = new Client({
@@ -39,6 +173,13 @@ class DiscordBotService {
     }
 
     try {
+      const config = await this.loadConfig();
+      
+      // Check if notifications are enabled for classifications
+      if (!config.notify_on_classification) {
+        return;
+      }
+
       const channel = await this.client.channels.fetch(this.channelId);
       if (!channel) {
         console.error('Discord channel not found');
@@ -48,21 +189,52 @@ class DiscordBotService {
       const embed = new EmbedBuilder()
         .setTitle(`${metadata.title} (${metadata.year || 'N/A'})`)
         .setDescription(`Classified as: **${result.library_name}**`)
-        .addFields(
-          { name: 'Media Type', value: metadata.media_type === 'movie' ? 'Movie' : 'TV Show', inline: true },
-          { name: 'Confidence', value: `${result.confidence}%`, inline: true },
-          { name: 'Method', value: this.formatMethod(result.method), inline: true },
-          { name: 'Reason', value: result.reason || 'No reason provided', inline: false }
-        )
         .setColor(this.getColorForConfidence(result.confidence))
         .setTimestamp();
 
-      if (metadata.poster_path) {
+      // Add fields based on config
+      const fields = [
+        { name: 'Media Type', value: metadata.media_type === 'movie' ? 'Movie' : 'TV Show', inline: true },
+      ];
+
+      if (config.show_confidence) {
+        fields.push({ name: 'Confidence', value: `${result.confidence}%`, inline: true });
+      }
+
+      if (config.show_method) {
+        fields.push({ name: 'Method', value: this.formatMethod(result.method), inline: true });
+      }
+
+      if (config.show_reason && result.reason) {
+        fields.push({ name: 'Reason', value: result.reason, inline: false });
+      }
+
+      if (config.show_metadata && metadata) {
+        const metadataStr = Object.entries(metadata)
+          .filter(([key]) => !['title', 'year', 'media_type', 'poster_path'].includes(key))
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('\n');
+        if (metadataStr) {
+          fields.push({ name: 'Metadata', value: metadataStr.substring(0, 1024), inline: false });
+        }
+      }
+
+      embed.addFields(fields);
+
+      if (config.show_poster && metadata.poster_path) {
         embed.setThumbnail(`https://image.tmdb.org/t/p/w200${metadata.poster_path}`);
       }
 
-      // Create correction buttons
-      const components = await this.createCorrectionComponents(result.classification_id, result.libraries);
+      // Create correction buttons if enabled
+      let components = [];
+      if (config.enable_corrections) {
+        components = await this.createCorrectionComponents(
+          result.classification_id, 
+          result.libraries,
+          config.correction_buttons_count || 3,
+          config.include_library_dropdown !== false
+        );
+      }
 
       const message = await channel.send({
         embeds: [embed],
@@ -79,11 +251,11 @@ class DiscordBotService {
     }
   }
 
-  async createCorrectionComponents(classificationId, libraries) {
+  async createCorrectionComponents(classificationId, libraries, buttonCount = 3, includeDropdown = true) {
     const components = [];
 
-    // Get top 3 alternative libraries
-    const alternativeLibraries = libraries.slice(1, 4);
+    // Get alternative libraries
+    const alternativeLibraries = libraries.slice(1, buttonCount + 1);
 
     if (alternativeLibraries.length > 0) {
       const buttons = [
@@ -93,7 +265,7 @@ class DiscordBotService {
           .setStyle(ButtonStyle.Success),
       ];
 
-      alternativeLibraries.forEach((lib, index) => {
+      alternativeLibraries.forEach((lib) => {
         buttons.push(
           new ButtonBuilder()
             .setCustomId(`reclassify_${classificationId}_${lib.id}`)
@@ -105,8 +277,8 @@ class DiscordBotService {
       components.push(new ActionRowBuilder().addComponents(buttons));
     }
 
-    // Add dropdown for all libraries
-    if (libraries.length > 1) {
+    // Add dropdown for all libraries if enabled
+    if (includeDropdown && libraries.length > 1) {
       const options = libraries.map(lib => ({
         label: lib.name,
         value: `${classificationId}_${lib.id}`,

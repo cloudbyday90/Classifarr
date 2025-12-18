@@ -13,12 +13,8 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=classifarr
       - POSTGRES_USER=classifarr
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-classifarr_secret}
-      - TMDB_API_KEY=${TMDB_API_KEY}
-      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
-      - DISCORD_CHANNEL_ID=${DISCORD_CHANNEL_ID}
-      - OLLAMA_HOST=${OLLAMA_HOST:-host.docker.internal}
-      - OLLAMA_PORT=${OLLAMA_PORT:-11434}
+    volumes:
+      - app_data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -32,9 +28,9 @@ services:
     environment:
       - POSTGRES_DB=classifarr
       - POSTGRES_USER=classifarr
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-classifarr_secret}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - app_data:/app/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U classifarr -d classifarr"]
@@ -44,9 +40,11 @@ services:
     restart: unless-stopped
     networks:
       - classifarr-network
+    entrypoint: ["/bin/sh", "-c", "PASSWORD=$$(cat /app/data/postgres_password 2>/dev/null || echo 'classifarr_secret'); export POSTGRES_PASSWORD=$$PASSWORD; exec docker-entrypoint.sh postgres"]
 
 volumes:
   postgres_data:
+  app_data:
 
 networks:
   classifarr-network:

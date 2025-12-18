@@ -1,9 +1,13 @@
 const express = require('express');
+const crypto = require('crypto');
 const db = require('../config/database');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
 const ollamaService = require('../services/ollama');
+const tmdbService = require('../services/tmdb');
+const discordBotService = require('../services/discordBot');
 const tavilyService = require('../services/tavily');
+const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
 
 const router = express.Router();
 
@@ -416,7 +420,8 @@ router.put('/ollama', async (req, res) => {
  */
 router.post('/ollama/test', async (req, res) => {
   try {
-    const result = await ollamaService.testConnection();
+    const { host, port } = req.body;
+    const result = await ollamaService.testConnection(host, port);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -431,7 +436,8 @@ router.post('/ollama/test', async (req, res) => {
  */
 router.get('/ollama/models', async (req, res) => {
   try {
-    const models = await ollamaService.getModels();
+    const { host, port } = req.query;
+    const models = await ollamaService.getModels(host, port);
     res.json(models);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -478,7 +484,28 @@ router.put('/tmdb', async (req, res) => {
       [api_key, language || 'en-US']
     );
 
-    res.json(result.rows[0]);
+    // Mask the API key in response
+    if (result.rows && result.rows.length > 0 && result.rows[0]) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
+    }
+
+    res.json(result.rows && result.rows.length > 0 ? result.rows[0] : null);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/tmdb/test:
+ *   post:
+ *     summary: Test TMDB connection
+ */
+router.post('/tmdb/test', async (req, res) => {
+  try {
+    const { api_key } = req.body;
+    const result = await tmdbService.testConnection(api_key);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -496,7 +523,11 @@ router.put('/tmdb', async (req, res) => {
  */
 router.get('/notifications', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM notification_config LIMIT 1');
+    const result = await db.query('SELECT * FROM notification_config WHERE type = $1 LIMIT 1', ['discord']);
+    if (result.rows[0] && result.rows[0].bot_token) {
+      // Mask bot token for security
+      result.rows[0].bot_token = maskToken(result.rows[0].bot_token);
+    }
     res.json(result.rows[0] || null);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -511,18 +542,137 @@ router.get('/notifications', async (req, res) => {
  */
 router.put('/notifications', async (req, res) => {
   try {
-    const { bot_token, channel_id, enabled } = req.body;
+    const {
+      bot_token,
+      channel_id,
+      enabled,
+      notify_on_classification,
+      notify_on_error,
+      notify_on_correction,
+      show_poster,
+      show_confidence,
+      show_method,
+      show_reason,
+      show_metadata,
+      enable_corrections,
+      correction_buttons_count,
+      include_library_dropdown,
+    } = req.body;
+
+    // Get existing config to preserve bot token if masked value is sent
+    const existingResult = await db.query('SELECT bot_token FROM notification_config WHERE type = $1 LIMIT 1', ['discord']);
+    const existingToken = existingResult.rows[0]?.bot_token;
+    
+    // Use existing token if the provided one is masked
+    const finalToken = (bot_token && !isMaskedToken(bot_token)) ? bot_token : existingToken;
 
     const result = await db.query(
-      `INSERT INTO notification_config (id, type, bot_token, channel_id, enabled)
-       VALUES (1, 'discord', $1, $2, $3)
+      `INSERT INTO notification_config (
+        id, type, bot_token, channel_id, enabled,
+        notify_on_classification, notify_on_error, notify_on_correction,
+        show_poster, show_confidence, show_method, show_reason, show_metadata,
+        enable_corrections, correction_buttons_count, include_library_dropdown
+      )
+       VALUES (1, 'discord', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        ON CONFLICT (id) DO UPDATE 
-       SET bot_token = $1, channel_id = $2, enabled = $3, updated_at = NOW()
+       SET bot_token = $1, 
+           channel_id = $2, 
+           enabled = $3,
+           notify_on_classification = $4,
+           notify_on_error = $5,
+           notify_on_correction = $6,
+           show_poster = $7,
+           show_confidence = $8,
+           show_method = $9,
+           show_reason = $10,
+           show_metadata = $11,
+           enable_corrections = $12,
+           correction_buttons_count = $13,
+           include_library_dropdown = $14,
+           updated_at = NOW()
        RETURNING *`,
-      [bot_token, channel_id, enabled !== false]
+      [
+        finalToken,
+        channel_id,
+        enabled !== false,
+        notify_on_classification !== false,
+        notify_on_error !== false,
+        notify_on_correction !== false,
+        show_poster !== false,
+        show_confidence !== false,
+        show_method !== false,
+        show_reason !== false,
+        show_metadata === true,
+        enable_corrections !== false,
+        correction_buttons_count || 3,
+        include_library_dropdown !== false,
+      ]
     );
 
+    // Reinitialize Discord bot if enabled
+    if (enabled && finalToken && channel_id) {
+      try {
+        await discordBotService.reinitialize();
+      } catch (error) {
+        console.warn('Failed to reinitialize Discord bot:', error.message);
+      }
+    }
+
+    // Mask token in response
+    if (result.rows[0].bot_token) {
+      result.rows[0].bot_token = maskToken(result.rows[0].bot_token);
+    }
+
     res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/discord/test:
+ *   post:
+ *     summary: Test Discord bot connection
+ */
+router.post('/discord/test', async (req, res) => {
+  try {
+    const { bot_token } = req.body;
+    const result = await discordBotService.testConnection(bot_token);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/discord/servers:
+ *   get:
+ *     summary: Get Discord servers (guilds)
+ */
+router.get('/discord/servers', async (req, res) => {
+  try {
+    const { bot_token } = req.query;
+    const servers = await discordBotService.getServers(bot_token);
+    res.json(servers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/discord/channels/:serverId:
+ *   get:
+ *     summary: Get Discord channels in a server
+ */
+router.get('/discord/channels/:serverId', async (req, res) => {
+  try {
+    const { serverId } = req.params;
+    const { bot_token } = req.query;
+    const channels = await discordBotService.getChannels(serverId, bot_token);
+    res.json(channels);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -648,6 +798,122 @@ router.post('/tavily/search', async (req, res) => {
     });
 
     res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// WEBHOOK CONFIGURATION
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/webhook:
+ *   get:
+ *     summary: Get webhook configuration
+ */
+router.get('/webhook', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM webhook_config WHERE is_active = true LIMIT 1');
+    if (result.rows[0] && result.rows[0].api_key) {
+      // Mask API key for security
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
+    }
+    res.json(result.rows[0] || null);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/webhook/generate-key:
+ *   post:
+ *     summary: Generate new webhook API key
+ */
+router.post('/webhook/generate-key', async (req, res) => {
+  try {
+    const { name } = req.body;
+    
+    // Generate a secure random API key
+    const apiKey = crypto.randomBytes(32).toString('hex');
+    
+    // Deactivate existing webhooks
+    await db.query('UPDATE webhook_config SET is_active = false');
+    
+    // Create new webhook config
+    const result = await db.query(
+      `INSERT INTO webhook_config (name, api_key, is_active)
+       VALUES ($1, $2, true)
+       RETURNING *`,
+      [name || 'Default Webhook', apiKey]
+    );
+
+    res.json({
+      ...result.rows[0],
+      api_key: apiKey, // Return full key on generation
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/webhook/logs:
+ *   get:
+ *     summary: Get recent webhook activity logs
+ */
+router.get('/webhook/logs', async (req, res) => {
+  try {
+    const { limit = 50 } = req.query;
+    const result = await db.query(
+      `SELECT wl.*, wc.name as webhook_name
+       FROM webhook_log wl
+       LEFT JOIN webhook_config wc ON wl.webhook_id = wc.id
+       ORDER BY wl.created_at DESC
+       LIMIT $1`,
+      [parseInt(limit)]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// SETUP STATUS
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/setup-status:
+ *   get:
+ *     summary: Check if initial setup is complete
+ */
+router.get('/setup-status', async (req, res) => {
+  try {
+    // Check if TMDB is configured (required)
+    const tmdbResult = await db.query('SELECT id FROM tmdb_config WHERE is_active = true LIMIT 1');
+    const tmdbConfigured = tmdbResult.rows.length > 0;
+
+    // Check if Ollama is configured (optional)
+    const ollamaResult = await db.query('SELECT id FROM ollama_config WHERE is_active = true LIMIT 1');
+    const ollamaConfigured = ollamaResult.rows.length > 0;
+
+    // Check if Discord is configured (optional)
+    const discordResult = await db.query('SELECT id FROM notification_config WHERE type = $1 AND enabled = true LIMIT 1', ['discord']);
+    const discordConfigured = discordResult.rows.length > 0;
+
+    const setupComplete = tmdbConfigured;
+
+    res.json({
+      setupComplete,
+      tmdbConfigured,
+      ollamaConfigured,
+      discordConfigured,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

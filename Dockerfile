@@ -15,6 +15,8 @@ WORKDIR /app
 COPY --from=backend-builder /app/server/node_modules ./node_modules
 COPY server/ ./
 COPY --from=frontend-builder /app/client/dist ./public
+COPY docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
 ENV NODE_ENV=production
 EXPOSE 21324
-CMD ["node", "src/index.js"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
