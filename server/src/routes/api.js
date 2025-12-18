@@ -5,6 +5,7 @@ const librariesRouter = require('./libraries');
 const classificationRouter = require('./classification');
 const ruleBuilderRouter = require('./ruleBuilder');
 const settingsRouter = require('./settings');
+const clarificationsRouter = require('./clarifications');
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ router.use('/libraries', librariesRouter);
 router.use('/classification', classificationRouter);
 router.use('/rule-builder', ruleBuilderRouter);
 router.use('/settings', settingsRouter);
+router.use('/clarifications', clarificationsRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
@@ -29,6 +31,7 @@ router.get('/', (req, res) => {
       classification: '/api/classification',
       ruleBuilder: '/api/rule-builder',
       settings: '/api/settings',
+      clarifications: '/api/clarifications',
       docs: '/api/docs',
     },
   });

@@ -180,6 +180,228 @@ class DiscordBotService {
         return;
       }
 
+      const clarificationService = require('./clarification');
+      const action = await clarificationService.getActionForConfidence(result.confidence);
+
+      // Route to appropriate notification method based on confidence
+      switch (action) {
+        case 'auto_route':
+          await this.sendAutoRouteNotification(metadata, result, config);
+          break;
+        case 'route_and_verify':
+          await this.sendVerificationRequest(metadata, result, config);
+          break;
+        case 'ask_questions':
+          await this.sendClarificationRequest(metadata, result, config, 2);
+          break;
+        case 'manual_review':
+          await this.sendClarificationRequest(metadata, result, config, 3);
+          break;
+        default:
+          await this.sendAutoRouteNotification(metadata, result, config);
+      }
+    } catch (error) {
+      console.error('Failed to send Discord notification:', error);
+    }
+  }
+
+  async sendAutoRouteNotification(metadata, result, config) {
+    const channel = await this.client.channels.fetch(this.channelId);
+    if (!channel) return;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`✅ ${metadata.title} (${metadata.year || 'N/A'})`)
+      .setDescription(`Auto-routed to: **${result.library_name}**`)
+      .setColor(0x00ff00) // Green
+      .setTimestamp();
+
+    const fields = [
+      { name: 'Media Type', value: metadata.media_type === 'movie' ? 'Movie' : 'TV Show', inline: true },
+    ];
+
+    if (config.show_confidence) {
+      fields.push({ name: 'Confidence', value: `${result.confidence}%`, inline: true });
+    }
+
+    if (config.show_method) {
+      fields.push({ name: 'Method', value: this.formatMethod(result.method), inline: true });
+    }
+
+    if (config.show_reason && result.reason) {
+      fields.push({ name: 'Reason', value: result.reason, inline: false });
+    }
+
+    embed.addFields(fields);
+
+    if (config.show_poster && metadata.poster_path) {
+      embed.setThumbnail(`https://image.tmdb.org/t/p/w200${metadata.poster_path}`);
+    }
+
+    await channel.send({ embeds: [embed] });
+  }
+
+  async sendVerificationRequest(metadata, result, config) {
+    const channel = await this.client.channels.fetch(this.channelId);
+    if (!channel) return;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`⚠️ ${metadata.title} (${metadata.year || 'N/A'})`)
+      .setDescription(`Routed to: **${result.library_name}**\n\nIs this correct?`)
+      .setColor(0xffaa00) // Yellow/Orange
+      .setTimestamp();
+
+    const fields = [
+      { name: 'Media Type', value: metadata.media_type === 'movie' ? 'Movie' : 'TV Show', inline: true },
+      { name: 'Confidence', value: `${result.confidence}%`, inline: true },
+    ];
+
+    if (config.show_method) {
+      fields.push({ name: 'Method', value: this.formatMethod(result.method), inline: true });
+    }
+
+    if (config.show_reason && result.reason) {
+      fields.push({ name: 'Reason', value: result.reason, inline: false });
+    }
+
+    embed.addFields(fields);
+
+    if (config.show_poster && metadata.poster_path) {
+      embed.setThumbnail(`https://image.tmdb.org/t/p/w200${metadata.poster_path}`);
+    }
+
+    // Yes/No buttons
+    const buttons = [
+      new ButtonBuilder()
+        .setCustomId(`verify_yes_${result.classification_id}`)
+        .setLabel('✓ Yes, Correct')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`verify_no_${result.classification_id}`)
+        .setLabel('✗ No, Wrong Library')
+        .setStyle(ButtonStyle.Danger),
+    ];
+
+    const row = new ActionRowBuilder().addComponents(buttons);
+
+    const message = await channel.send({
+      embeds: [embed],
+      components: [row],
+    });
+
+    // Store message ID
+    await db.query(
+      'UPDATE classification_history SET discord_message_id = $1 WHERE id = $2',
+      [message.id, result.classification_id]
+    );
+  }
+
+  async sendClarificationRequest(metadata, result, config, maxQuestions = 2) {
+    const channel = await this.client.channels.fetch(this.channelId);
+    if (!channel) return;
+
+    const clarificationService = require('./clarification');
+    const questions = await clarificationService.getQuestionsForMedia(metadata, maxQuestions);
+
+    const isLowConfidence = result.confidence < 50;
+    const emoji = isLowConfidence ? '🛑' : '❓';
+    const color = isLowConfidence ? 0xff0000 : 0x0099ff; // Red or Blue
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${emoji} ${metadata.title} (${metadata.year || 'N/A'})`)
+      .setDescription(
+        isLowConfidence 
+          ? `**Low Confidence (${result.confidence}%)** - Manual review needed\n\nPlease answer these questions to help classify:` 
+          : `**Medium Confidence (${result.confidence}%)** - Need clarification\n\nPlease answer to improve classification:`
+      )
+      .setColor(color)
+      .setTimestamp();
+
+    const fields = [
+      { name: 'Media Type', value: metadata.media_type === 'movie' ? 'Movie' : 'TV Show', inline: true },
+      { name: 'Confidence', value: `${result.confidence}%`, inline: true },
+    ];
+
+    if (result.library_name) {
+      fields.push({ name: 'Current Guess', value: result.library_name, inline: true });
+    }
+
+    embed.addFields(fields);
+
+    if (config.show_poster && metadata.poster_path) {
+      embed.setThumbnail(`https://image.tmdb.org/t/p/w200${metadata.poster_path}`);
+    }
+
+    // Create button rows for each question
+    const components = [];
+    
+    for (let i = 0; i < Math.min(questions.length, maxQuestions); i++) {
+      const question = questions[i];
+      const options = question.options;
+      
+      // Add question as field
+      embed.addFields([{
+        name: `Question ${i + 1}: ${question.question_text}`,
+        value: options.map(opt => opt.label).join(' | '),
+        inline: false
+      }]);
+
+      // Create buttons for this question (max 5 per row)
+      const buttons = options.slice(0, 5).map(opt => 
+        new ButtonBuilder()
+          .setCustomId(`clarify_${result.classification_id}_${question.question_key}_${opt.value}`)
+          .setLabel(opt.label.substring(0, 80)) // Discord button label limit
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      if (buttons.length > 0) {
+        components.push(new ActionRowBuilder().addComponents(buttons));
+      }
+    }
+
+    // If no questions matched, show library selection
+    if (questions.length === 0 && result.libraries) {
+      const libraryButtons = result.libraries.slice(0, 5).map(lib =>
+        new ButtonBuilder()
+          .setCustomId(`manual_select_${result.classification_id}_${lib.id}`)
+          .setLabel(lib.name.substring(0, 80))
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      if (libraryButtons.length > 0) {
+        components.push(new ActionRowBuilder().addComponents(libraryButtons));
+      }
+    }
+
+    const message = await channel.send({
+      embeds: [embed],
+      components: components,
+    });
+
+    // Store message ID and update status
+    await db.query(
+      `UPDATE classification_history 
+       SET discord_message_id = $1, 
+           clarification_status = 'pending',
+           clarification_questions_asked = $2
+       WHERE id = $3`,
+      [message.id, questions.length, result.classification_id]
+    );
+  }
+
+  async sendOldClassificationNotification(metadata, result) {
+    if (!this.isInitialized || !this.client) {
+      console.warn('Discord bot not initialized');
+      return;
+    }
+
+    try {
+      const config = await this.loadConfig();
+      
+      // Check if notifications are enabled for classifications
+      if (!config.notify_on_classification) {
+        return;
+      }
+
       const channel = await this.client.channels.fetch(this.channelId);
       if (!channel) {
         console.error('Discord channel not found');
@@ -299,9 +521,29 @@ class DiscordBotService {
   async handleInteraction(interaction) {
     try {
       if (interaction.isButton()) {
-        const [action, classificationId, newLibraryId] = interaction.customId.split('_');
+        const parts = interaction.customId.split('_');
+        const action = parts[0];
 
-        if (action === 'correct') {
+        if (action === 'verify') {
+          // Handle verification (yes/no)
+          const response = parts[1]; // 'yes' or 'no'
+          const classificationId = parseInt(parts[2]);
+          await this.handleVerification(classificationId, response, interaction);
+        } else if (action === 'clarify') {
+          // Handle clarification response
+          // Format: clarify_{classificationId}_{questionKey}_{value}
+          const classificationId = parseInt(parts[1]);
+          const questionKey = parts[2];
+          const value = parts[3];
+          await this.handleClarificationResponse(classificationId, questionKey, value, interaction);
+        } else if (action === 'manual') {
+          // Handle manual library selection
+          const subAction = parts[1]; // 'select'
+          const classificationId = parseInt(parts[2]);
+          const libraryId = parseInt(parts[3]);
+          await this.processCorrection(classificationId, libraryId, interaction);
+        } else if (action === 'correct') {
+          const classificationId = parts[1];
           await interaction.update({
             components: [],
             embeds: [
@@ -310,7 +552,9 @@ class DiscordBotService {
             ],
           });
         } else if (action === 'reclassify') {
-          await this.processCorrection(parseInt(classificationId), parseInt(newLibraryId), interaction);
+          const classificationId = parseInt(parts[1]);
+          const newLibraryId = parseInt(parts[2]);
+          await this.processCorrection(classificationId, newLibraryId, interaction);
         }
       } else if (interaction.isStringSelectMenu()) {
         const [classificationId, newLibraryId] = interaction.values[0].split('_');
@@ -321,6 +565,85 @@ class DiscordBotService {
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({ content: 'An error occurred', ephemeral: true });
       }
+    }
+  }
+
+  async handleVerification(classificationId, response, interaction) {
+    try {
+      if (response === 'yes') {
+        // Mark as confirmed
+        await db.query(
+          `UPDATE classification_history 
+           SET clarification_status = 'confirmed'
+           WHERE id = $1`,
+          [classificationId]
+        );
+
+        await interaction.update({
+          components: [],
+          embeds: [
+            EmbedBuilder.from(interaction.message.embeds[0])
+              .setColor(0x00ff00)
+              .setFooter({ text: '✅ Verified correct by user' })
+          ],
+        });
+      } else {
+        // Show library selection or clarification questions
+        await interaction.update({
+          content: 'Please select the correct library or answer clarification questions.',
+          components: [],
+        });
+
+        // Could trigger showing clarification questions here
+      }
+    } catch (error) {
+      console.error('Error handling verification:', error);
+      await interaction.reply({ content: 'Failed to process verification', ephemeral: true });
+    }
+  }
+
+  async handleClarificationResponse(classificationId, questionKey, value, interaction) {
+    try {
+      const clarificationService = require('./clarification');
+      
+      // Process the response
+      const result = await clarificationService.processResponse(
+        classificationId,
+        questionKey,
+        value,
+        `${interaction.user.username}#${interaction.user.discriminator}`
+      );
+
+      // Update message to show response was recorded
+      await interaction.update({
+        components: [],
+        embeds: [
+          EmbedBuilder.from(interaction.message.embeds[0])
+            .setFooter({ text: `Response recorded: ${value}. Reclassifying...` })
+        ],
+      });
+
+      // Reclassify with the new information
+      const reclassResult = await clarificationService.reclassifyWithClarifications(classificationId);
+
+      if (reclassResult.success) {
+        // Save learning pattern
+        await clarificationService.savePatternFromClarification(classificationId);
+
+        // Send success message
+        await interaction.followUp({
+          content: `✅ Reclassified to **${reclassResult.library.name}** (Confidence: ${reclassResult.confidenceAfter}%)`,
+          ephemeral: false,
+        });
+      } else {
+        await interaction.followUp({
+          content: '⚠️ Reclassification failed. Please try manual selection.',
+          ephemeral: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error handling clarification response:', error);
+      await interaction.reply({ content: 'Failed to process response', ephemeral: true });
     }
   }
 

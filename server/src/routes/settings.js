@@ -1307,4 +1307,151 @@ router.post('/ssl/test', sslTestLimiter, async (req, res) => {
   }
 });
 
+// ============================================
+// CONFIDENCE & CLARIFICATION SETTINGS
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/confidence:
+ *   get:
+ *     summary: Get confidence threshold settings
+ */
+router.get('/confidence', async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM confidence_thresholds ORDER BY min_confidence'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/confidence:
+ *   put:
+ *     summary: Update confidence threshold settings
+ */
+router.put('/confidence', async (req, res) => {
+  try {
+    const thresholds = req.body;
+
+    if (!Array.isArray(thresholds)) {
+      return res.status(400).json({ error: 'Expected array of thresholds' });
+    }
+
+    for (const threshold of thresholds) {
+      await db.query(
+        `UPDATE confidence_thresholds 
+         SET min_confidence = $1, 
+             max_confidence = $2, 
+             action = $3, 
+             enabled = $4
+         WHERE tier = $5`,
+        [
+          threshold.min_confidence,
+          threshold.max_confidence,
+          threshold.action,
+          threshold.enabled,
+          threshold.tier,
+        ]
+      );
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/clarification-questions:
+ *   get:
+ *     summary: Get clarification questions
+ */
+router.get('/clarification-questions', async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM clarification_questions ORDER BY priority DESC, question_key'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/clarification-questions/:id:
+ *   get:
+ *     summary: Get a specific clarification question
+ */
+router.get('/clarification-questions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      'SELECT * FROM clarification_questions WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/clarification-questions/:id:
+ *   put:
+ *     summary: Update a clarification question
+ */
+router.put('/clarification-questions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      question_text, 
+      priority, 
+      enabled,
+      trigger_keywords,
+      trigger_genres,
+      trigger_languages,
+      options 
+    } = req.body;
+
+    await db.query(
+      `UPDATE clarification_questions 
+       SET question_text = $1, 
+           priority = $2, 
+           enabled = $3,
+           trigger_keywords = $4,
+           trigger_genres = $5,
+           trigger_languages = $6,
+           options = $7
+       WHERE id = $8`,
+      [
+        question_text,
+        priority,
+        enabled,
+        trigger_keywords,
+        trigger_genres,
+        trigger_languages,
+        JSON.stringify(options),
+        id,
+      ]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
