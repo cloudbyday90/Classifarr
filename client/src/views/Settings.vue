@@ -35,6 +35,7 @@ import TMDB from './settings/TMDB.vue'
 import Ollama from './settings/Ollama.vue'
 import Discord from './settings/Discord.vue'
 import Webhooks from './settings/Webhooks.vue'
+import SSL from './settings/SSL.vue'
 
 const activeTab = ref('general')
 
@@ -44,6 +45,7 @@ const tabs = [
   { id: 'ollama', label: 'Ollama', component: Ollama },
   { id: 'discord', label: 'Discord', component: Discord },
   { id: 'webhooks', label: 'Webhooks', component: Webhooks },
+  { id: 'ssl', label: 'SSL/TLS', component: SSL },
 ]
 
 const currentTabComponent = computed(() => {
