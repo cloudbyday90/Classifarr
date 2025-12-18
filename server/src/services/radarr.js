@@ -39,11 +39,15 @@ class RadarrService {
           'X-Api-Key': apiKey,
         },
         timeout,
+        // SECURITY: Allow disabling SSL verification for self-signed certificates
+        // This is controlled by user configuration and is only enabled when verify_ssl is explicitly set to false
         httpsAgent: config && typeof config === 'object' && config.verify_ssl === false ? 
           new (require('https').Agent)({ rejectUnauthorized: false }) : undefined,
       });
 
       // Get additional stats for detailed response
+      // SECURITY: Allow disabling SSL verification for self-signed certificates
+      // This is controlled by user configuration and is only enabled when verify_ssl is explicitly set to false
       const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ? 
         new (require('https').Agent)({ rejectUnauthorized: false }) : undefined;
 
