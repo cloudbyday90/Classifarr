@@ -1,0 +1,318 @@
+# Authentication, RBAC, and HTTPS/TLS Implementation
+
+This document describes the comprehensive authentication and security system implemented for Classifarr.
+
+## Overview
+
+Classifarr now includes a complete authentication system with:
+- User authentication with JWT tokens
+- Role-based access control (RBAC)
+- Session management
+- Account security features (lockout, password policies)
+- HTTPS/TLS support with certificate management
+- Comprehensive audit logging
+
+## Database Schema
+
+### Users Table
+Stores user accounts with authentication data:
+- Email and username (unique)
+- Password hash (bcrypt with cost factor 12)
+- Role (admin/editor/viewer)
+- Account status (active/inactive)
+- Failed login tracking and lockout
+- Last login and password change timestamps
+
+### User Sessions Table
+Manages refresh tokens for session persistence:
+- Refresh token hash (SHA-256)
+- Device info and IP address
+- Expiration timestamp
+- Revocation timestamp
+
+### Role Permissions Table
+Defines permissions for each role:
+- Admin: Full access
+- Editor: Can view, classify, and manage libraries
+- Viewer: Read-only access
+
+### Audit Log Table
+Tracks authentication events:
+- Login/logout attempts
+- Password changes
+- User management actions
+- IP address and user agent
+
+### SSL Configuration Table
+Manages HTTPS/TLS settings:
+- Certificate and key paths
+- Force HTTPS redirect
+- HSTS configuration
+- Mutual TLS (client certificate) settings
+
+## Security Features
+
+### Password Security
+- Minimum 8 characters
+- Must contain: uppercase, lowercase, number, special character
+- Bcrypt hashing with cost factor 12
+- Password change forced on first login for default admin
+
+### Account Lockout
+- 5 failed login attempts trigger 15-minute lockout
+- Automatic unlock after lockout period
+- Manual unlock by administrators
+
+### Token Management
+- JWT access tokens: 15-minute expiry
+- Refresh tokens: 7-day expiry, stored hashed
+- Automatic token refresh on expiry
+- Session revocation capability
+
+### Rate Limiting
+- Login endpoint: 10 attempts per 15 minutes
+- Password reset: 3 attempts per hour
+- User management: 100 requests per 15 minutes
+- SSL test: 10 requests per 15 minutes
+
+### HTTPS/TLS Support
+- Optional HTTPS with certificate upload
+- HTTP to HTTPS redirect
+- HSTS headers with configurable max-age
+- Mutual TLS (client certificate) support
+- Certificate validation before enabling
+
+## API Endpoints
+
+### Authentication (`/api/auth`)
+- `POST /login` - Login with email/password
+- `POST /logout` - Logout and revoke refresh token
+- `POST /refresh` - Refresh access token
+- `POST /change-password` - Change own password
+- `GET /me` - Get current user info
+- `GET /sessions` - List active sessions
+- `DELETE /sessions/:id` - Revoke specific session
+- `POST /validate-password` - Check password strength
+
+### User Management (`/api/users`) - Admin Only
+- `GET /` - List all users
+- `POST /` - Create new user
+- `GET /:id` - Get user details
+- `PUT /:id` - Update user
+- `DELETE /:id` - Deactivate user
+- `POST /:id/reset-password` - Reset user password
+- `PUT /:id/role` - Change user role
+- `GET /:id/audit` - Get user audit log
+- `POST /:id/unlock` - Unlock locked account
+
+### SSL Settings (`/api/settings/ssl`)
+- `GET /ssl` - Get SSL configuration
+- `PUT /ssl` - Update SSL configuration
+- `POST /ssl/test` - Test certificate validity
+
+## Frontend Components
+
+### Login Page
+- Email/password form with validation
+- Password visibility toggle
+- Error handling for locked accounts
+- Forced password change modal
+- Redirect to original destination after login
+
+### User Management Page
+- User list with role badges and status indicators
+- Create/edit user modals
+- Role assignment dropdown
+- Password reset functionality
+- Account activation/deactivation
+- Unlock locked accounts
+- Status indicators for locked and inactive accounts
+
+### SSL Settings Page
+- Enable/disable HTTPS toggle
+- Certificate path configuration
+- Certificate validation test
+- Force HTTPS redirect toggle
+- HSTS configuration
+- Mutual TLS toggle
+
+### Auth Store (Pinia)
+- Login/logout/refresh actions
+- Token storage and management
+- Permission checking helpers
+- Axios interceptors for automatic token refresh
+
+### Router Guards
+- Authentication check on protected routes
+- Permission-based access control
+- Redirect to login with return URL
+- Public route support
+
+## First-Run Setup
+
+On initial startup:
+1. JWT secret automatically generated (64 bytes, hex)
+2. Default admin user created with random password
+3. Password displayed in console (one-time only)
+4. Password saved to `/app/data/admin_password`
+5. Admin must change password on first login
+
+### Default Admin Credentials
+```
+Email: admin@classifarr.local
+Username: admin
+Password: <random 16-character password>
+```
+
+## Environment Variables
+
+```bash
+# JWT Configuration
+JWT_SECRET=<auto-generated>
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY_DAYS=7
+
+# Security
+BCRYPT_ROUNDS=12
+MAX_LOGIN_ATTEMPTS=5
+LOCKOUT_DURATION_MINUTES=15
+
+# SSL/TLS
+SSL_ENABLED=false
+SSL_CERT_PATH=/app/certs/cert.pem
+SSL_KEY_PATH=/app/certs/key.pem
+SSL_CA_PATH=/app/certs/ca.pem
+
+# Server
+PORT=21324
+HTTPS_PORT=21325
+DATA_DIR=/app/data
+```
+
+## Docker Configuration
+
+### Ports
+- `21324`: HTTP
+- `21325`: HTTPS
+
+### Volumes
+- `app_data:/app/data` - Persistent data (JWT secret, admin password)
+- `./certs:/app/certs:ro` - SSL certificates (optional)
+
+### Certificate Setup
+1. Place certificate files in `./certs` directory
+2. Update paths in SSL settings page
+3. Enable SSL in settings
+4. Restart container for changes to take effect
+
+## Security Best Practices
+
+### Implemented
+✅ No plaintext passwords
+✅ Secure password hashing (bcrypt)
+✅ JWT tokens with short expiry
+✅ Refresh token rotation
+✅ Rate limiting on sensitive endpoints
+✅ Account lockout mechanism
+✅ Audit logging
+✅ Session management with revocation
+✅ Password strength validation
+✅ HTTPS/TLS support
+✅ Security headers (helmet)
+✅ SQL injection prevention
+
+### Recommendations
+- Use HTTPS in production
+- Enable HSTS in production
+- Keep JWT_SECRET secure
+- Regularly review audit logs
+- Use strong SSL certificates from trusted CAs
+- Enable mutual TLS for high-security environments
+- Implement additional XSS protections for production CSP
+- Consider using HTTP-only cookies for tokens in production
+
+## Role Permissions
+
+### Admin
+- Full system access
+- User management
+- Settings configuration
+- SSL/TLS configuration
+- View audit logs
+
+### Editor
+- View dashboard and history
+- Classify media
+- Correct classifications
+- Manage libraries
+- View logs
+
+### Viewer
+- View dashboard
+- View history
+- Read-only access
+
+## Security Audit
+
+All code has been scanned with CodeQL and security issues have been resolved:
+- ✅ No SQL injection vulnerabilities
+- ✅ Secure random number generation
+- ✅ Rate limiting on all sensitive endpoints
+- ✅ Proper error handling for TLS operations
+- ✅ No exposed sensitive information in errors
+
+## Testing
+
+To test the implementation:
+
+1. **First Run**
+   - Start the application
+   - Check console for default admin credentials
+   - Login with provided credentials
+   - Change password when prompted
+
+2. **Authentication**
+   - Test login with valid credentials
+   - Test login with invalid credentials (triggers lockout after 5 attempts)
+   - Test token refresh
+   - Test logout
+
+3. **User Management**
+   - Create new users with different roles
+   - Test role-based access control
+   - Reset user passwords
+   - Lock/unlock accounts
+
+4. **SSL/TLS**
+   - Configure certificate paths
+   - Test certificate validation
+   - Enable HTTPS
+   - Restart and verify HTTPS works
+   - Test HTTP to HTTPS redirect
+
+## Troubleshooting
+
+### Cannot login
+- Check if account is locked (wait 15 minutes or ask admin to unlock)
+- Verify credentials are correct
+- Check console for error messages
+
+### JWT Secret issues
+- JWT secret is auto-generated on first run
+- Stored in `/app/data/jwt_secret`
+- Don't delete this file or all sessions will be invalidated
+
+### SSL not working
+- Verify certificate files exist and are readable
+- Test certificate validity in SSL settings
+- Check that HTTPS port (21325) is exposed
+- Restart server after enabling SSL
+
+### Lost admin password
+- Check `/app/data/admin_password` file
+- If lost, manually update database with new password hash
+- Or delete volume and reinitialize (loses all data)
+
+## Support
+
+For issues or questions, please refer to the main Classifarr documentation or create an issue on GitHub.
