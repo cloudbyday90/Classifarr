@@ -3,8 +3,10 @@ const db = require('../config/database');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
 const classificationService = require('../services/classification');
+const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
+const logger = createLogger('libraries');
 
 /**
  * @swagger
@@ -358,6 +360,12 @@ router.put('/:id/arr-settings', async (req, res) => {
     }
     
     const library = libraryResult.rows[0];
+    
+    // Validate media_type to prevent SQL injection
+    if (library.media_type !== 'movie' && library.media_type !== 'tv') {
+      return res.status(400).json({ error: 'Invalid media type' });
+    }
+    
     const settingsField = library.media_type === 'movie' ? 'radarr_settings' : 'sonarr_settings';
     
     const result = await db.query(
@@ -430,7 +438,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           syncedCount++;
         }
       } catch (error) {
-        console.error(`Failed to sync Radarr config ${config.id}:`, error);
+        logger.error(`Failed to sync Radarr config ${config.id}`, { error: error.message });
       }
     }
     
@@ -480,7 +488,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           syncedCount++;
         }
       } catch (error) {
-        console.error(`Failed to sync Sonarr config ${config.id}:`, error);
+        logger.error(`Failed to sync Sonarr config ${config.id}`, { error: error.message });
       }
     }
     

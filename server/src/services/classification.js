@@ -5,6 +5,9 @@ const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const discordBot = require('./discordBot');
 const tavilyService = require('./tavily');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('classification');
 
 class ClassificationService {
   async classify(overseerrPayload) {
@@ -12,7 +15,7 @@ class ClassificationService {
       // Parse Overseerr payload
       const { media_type, tmdbId, subject } = this.parseOverseerrPayload(overseerrPayload);
       
-      console.log(`Starting classification for ${media_type}: ${subject} (TMDB: ${tmdbId})`);
+      logger.info(`Starting classification for ${media_type}: ${subject} (TMDB: ${tmdbId})`);
 
       // Enrich with TMDB metadata
       const metadata = await this.enrichWithTMDB(tmdbId, media_type);
@@ -535,7 +538,7 @@ Example: 2|Action movie with high rating`;
           };
 
           await radarrService.addMovie(config.url, config.api_key, movieData);
-          console.log(`Added movie to Radarr: ${metadata.title}`);
+          logger.info(`Added movie to Radarr: ${metadata.title}`);
         }
       } else if (library.arr_type === 'sonarr') {
         const sonarrConfig = await db.query(
@@ -577,11 +580,11 @@ Example: 2|Action movie with high rating`;
           };
 
           await sonarrService.addSeries(config.url, config.api_key, seriesData);
-          console.log(`Added series to Sonarr: ${metadata.title}`);
+          logger.info(`Added series to Sonarr: ${metadata.title}`);
         }
       }
     } catch (error) {
-      console.error('Failed to route to arr:', error);
+      logger.error('Failed to route to arr', { error: error.message });
       // Don't throw - classification was successful even if routing failed
     }
   }
