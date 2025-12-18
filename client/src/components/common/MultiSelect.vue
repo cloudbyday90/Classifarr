@@ -4,6 +4,9 @@
     <div class="relative">
       <div
         @click="open = !open"
+        @keydown.escape="open = false"
+        @keydown.enter="open = !open"
+        tabindex="0"
         class="min-h-[42px] px-3 py-2 bg-background border border-gray-700 rounded-lg cursor-pointer flex flex-wrap gap-2 items-center"
         :class="{ 'border-primary': open }"
       >

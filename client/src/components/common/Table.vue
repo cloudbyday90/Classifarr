@@ -81,6 +81,8 @@ defineEmits(['page-change', 'sort-change'])
 const sortKey = ref(null)
 const sortOrder = ref('asc')
 
+const emit = defineEmits(['page-change', 'sort-change'])
+
 const toggleSort = (key) => {
   if (sortKey.value === key) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
@@ -88,6 +90,7 @@ const toggleSort = (key) => {
     sortKey.value = key
     sortOrder.value = 'asc'
   }
+  emit('sort-change', { key: sortKey.value, order: sortOrder.value })
 }
 
 const sortedData = computed(() => {

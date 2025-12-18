@@ -5,7 +5,7 @@ export const useToastStore = defineStore('toast', () => {
   const toasts = ref([])
   let idCounter = 0
 
-  const addToast = ({ type = 'info', title = '', message, duration = 5000 }) => {
+  const addToast = ({ type = 'info', title = '', message = '', duration = 5000 }) => {
     const id = ++idCounter
     toasts.value.push({ id, type, title, message })
     

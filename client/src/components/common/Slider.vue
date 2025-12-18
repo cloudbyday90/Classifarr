@@ -45,11 +45,22 @@ const displayValue = computed(() => `${props.modelValue}${props.unit}`)
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: rgb(59, 130, 246); /* primary color */
   cursor: pointer;
-  border: 2px solid #1a1d24;
+  border: 2px solid rgb(26, 29, 36); /* background color */
 }
 .slider::-webkit-slider-thumb:hover {
-  background: #2563eb;
+  background: rgb(37, 99, 235); /* primary-dark color */
+}
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgb(59, 130, 246); /* primary color */
+  cursor: pointer;
+  border: 2px solid rgb(26, 29, 36); /* background color */
+}
+.slider::-moz-range-thumb:hover {
+  background: rgb(37, 99, 235); /* primary-dark color */
 }
 </style>
