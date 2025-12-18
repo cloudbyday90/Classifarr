@@ -80,11 +80,17 @@ router.put('/', async (req, res) => {
  * @swagger
  * /api/settings/radarr:
  *   get:
- *     summary: Get all Radarr configurations
+ *     summary: Get all Radarr configurations (with masked API keys)
  */
 router.get('/radarr', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM radarr_config ORDER BY id');
+    // Mask API keys for security
+    result.rows.forEach(row => {
+      if (row.api_key) {
+        row.api_key = maskToken(row.api_key);
+      }
+    });
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -99,14 +105,19 @@ router.get('/radarr', async (req, res) => {
  */
 router.post('/radarr', async (req, res) => {
   try {
-    const { name, url, api_key } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout } = req.body;
 
     const result = await db.query(
-      `INSERT INTO radarr_config (name, url, api_key)
-       VALUES ($1, $2, $3)
+      `INSERT INTO radarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [name, url, api_key]
+      [name, url, api_key, protocol || 'http', host || 'localhost', port || 7878, base_path || '', verify_ssl !== false, timeout || 30]
     );
+
+    // Mask API key in response
+    if (result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
+    }
 
     res.json(result.rows[0]);
   } catch (error) {
@@ -123,22 +134,39 @@ router.post('/radarr', async (req, res) => {
 router.put('/radarr/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, url, api_key, is_active } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active } = req.body;
+
+    // Get existing config to preserve API key if masked value is sent
+    const existingResult = await db.query('SELECT api_key FROM radarr_config WHERE id = $1', [id]);
+    if (existingResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Radarr configuration not found' });
+    }
+    const existingApiKey = existingResult.rows[0].api_key;
+    
+    // Use existing API key if the provided one is masked
+    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
     const result = await db.query(
       `UPDATE radarr_config
        SET name = COALESCE($1, name),
            url = COALESCE($2, url),
            api_key = COALESCE($3, api_key),
-           is_active = COALESCE($4, is_active),
+           protocol = COALESCE($4, protocol),
+           host = COALESCE($5, host),
+           port = COALESCE($6, port),
+           base_path = COALESCE($7, base_path),
+           verify_ssl = COALESCE($8, verify_ssl),
+           timeout = COALESCE($9, timeout),
+           is_active = COALESCE($10, is_active),
            updated_at = NOW()
-       WHERE id = $5
+       WHERE id = $11
        RETURNING *`,
-      [name, url, api_key, is_active, id]
+      [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Radarr configuration not found' });
+    // Mask API key in response
+    if (result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
     }
 
     res.json(result.rows[0]);
@@ -167,12 +195,12 @@ router.delete('/radarr/:id', async (req, res) => {
  * @swagger
  * /api/settings/radarr/test:
  *   post:
- *     summary: Test Radarr connection
+ *     summary: Test Radarr connection with detailed stats
  */
 router.post('/radarr/test', async (req, res) => {
   try {
-    const { url, api_key } = req.body;
-    const result = await radarrService.testConnection(url, api_key);
+    const config = req.body;
+    const result = await radarrService.testConnection(config);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -233,11 +261,17 @@ router.get('/radarr/:id/quality-profiles', async (req, res) => {
  * @swagger
  * /api/settings/sonarr:
  *   get:
- *     summary: Get all Sonarr configurations
+ *     summary: Get all Sonarr configurations (with masked API keys)
  */
 router.get('/sonarr', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM sonarr_config ORDER BY id');
+    // Mask API keys for security
+    result.rows.forEach(row => {
+      if (row.api_key) {
+        row.api_key = maskToken(row.api_key);
+      }
+    });
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -252,14 +286,19 @@ router.get('/sonarr', async (req, res) => {
  */
 router.post('/sonarr', async (req, res) => {
   try {
-    const { name, url, api_key } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout } = req.body;
 
     const result = await db.query(
-      `INSERT INTO sonarr_config (name, url, api_key)
-       VALUES ($1, $2, $3)
+      `INSERT INTO sonarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [name, url, api_key]
+      [name, url, api_key, protocol || 'http', host || 'localhost', port || 8989, base_path || '', verify_ssl !== false, timeout || 30]
     );
+
+    // Mask API key in response
+    if (result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
+    }
 
     res.json(result.rows[0]);
   } catch (error) {
@@ -276,22 +315,39 @@ router.post('/sonarr', async (req, res) => {
 router.put('/sonarr/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, url, api_key, is_active } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active } = req.body;
+
+    // Get existing config to preserve API key if masked value is sent
+    const existingResult = await db.query('SELECT api_key FROM sonarr_config WHERE id = $1', [id]);
+    if (existingResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Sonarr configuration not found' });
+    }
+    const existingApiKey = existingResult.rows[0].api_key;
+    
+    // Use existing API key if the provided one is masked
+    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
     const result = await db.query(
       `UPDATE sonarr_config
        SET name = COALESCE($1, name),
            url = COALESCE($2, url),
            api_key = COALESCE($3, api_key),
-           is_active = COALESCE($4, is_active),
+           protocol = COALESCE($4, protocol),
+           host = COALESCE($5, host),
+           port = COALESCE($6, port),
+           base_path = COALESCE($7, base_path),
+           verify_ssl = COALESCE($8, verify_ssl),
+           timeout = COALESCE($9, timeout),
+           is_active = COALESCE($10, is_active),
            updated_at = NOW()
-       WHERE id = $5
+       WHERE id = $11
        RETURNING *`,
-      [name, url, api_key, is_active, id]
+      [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Sonarr configuration not found' });
+    // Mask API key in response
+    if (result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
     }
 
     res.json(result.rows[0]);
@@ -320,12 +376,12 @@ router.delete('/sonarr/:id', async (req, res) => {
  * @swagger
  * /api/settings/sonarr/test:
  *   post:
- *     summary: Test Sonarr connection
+ *     summary: Test Sonarr connection with detailed stats
  */
 router.post('/sonarr/test', async (req, res) => {
   try {
-    const { url, api_key } = req.body;
-    const result = await sonarrService.testConnection(url, api_key);
+    const config = req.body;
+    const result = await sonarrService.testConnection(config);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -33,6 +33,9 @@ import { ref, computed } from 'vue'
 import General from './settings/General.vue'
 import TMDB from './settings/TMDB.vue'
 import Ollama from './settings/Ollama.vue'
+import Radarr from './settings/Radarr.vue'
+import Sonarr from './settings/Sonarr.vue'
+import MediaServer from './settings/MediaServer.vue'
 import Discord from './settings/Discord.vue'
 import Webhooks from './settings/Webhooks.vue'
 import SSL from './settings/SSL.vue'
@@ -43,6 +46,9 @@ const tabs = [
   { id: 'general', label: 'General', component: General },
   { id: 'tmdb', label: 'TMDB', component: TMDB },
   { id: 'ollama', label: 'Ollama', component: Ollama },
+  { id: 'radarr', label: 'Radarr', component: Radarr },
+  { id: 'sonarr', label: 'Sonarr', component: Sonarr },
+  { id: 'mediaserver', label: 'Media Server', component: MediaServer },
   { id: 'discord', label: 'Discord', component: Discord },
   { id: 'webhooks', label: 'Webhooks', component: Webhooks },
   { id: 'ssl', label: 'SSL/HTTPS', component: SSL },

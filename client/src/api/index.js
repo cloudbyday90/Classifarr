@@ -21,11 +21,20 @@ export default {
   getMediaServer() {
     return apiClient.get('/media-server')
   },
+  getMediaServerConfig() {
+    return apiClient.get('/media-server')
+  },
   saveMediaServer(data) {
     return apiClient.post('/media-server', data)
   },
+  updateMediaServerConfig(config) {
+    return apiClient.post('/media-server', config)
+  },
   testMediaServer(data) {
     return apiClient.post('/media-server/test', data)
+  },
+  testMediaServerConnection(config) {
+    return apiClient.post('/media-server/test', config)
   },
   syncMediaServer() {
     return apiClient.post('/media-server/sync')
@@ -109,6 +118,9 @@ export default {
   getRadarrConfigs() {
     return apiClient.get('/settings/radarr')
   },
+  getRadarrConfig() {
+    return apiClient.get('/settings/radarr')
+  },
   addRadarrConfig(data) {
     return apiClient.post('/settings/radarr', data)
   },
@@ -121,6 +133,9 @@ export default {
   testRadarr(data) {
     return apiClient.post('/settings/radarr/test', data)
   },
+  testRadarrConnection(config) {
+    return apiClient.post('/settings/radarr/test', config)
+  },
   getRadarrRootFolders(id) {
     return apiClient.get(`/settings/radarr/${id}/root-folders`)
   },
@@ -130,6 +145,9 @@ export default {
 
   // Sonarr
   getSonarrConfigs() {
+    return apiClient.get('/settings/sonarr')
+  },
+  getSonarrConfig() {
     return apiClient.get('/settings/sonarr')
   },
   addSonarrConfig(data) {
@@ -143,6 +161,9 @@ export default {
   },
   testSonarr(data) {
     return apiClient.post('/settings/sonarr/test', data)
+  },
+  testSonarrConnection(config) {
+    return apiClient.post('/settings/sonarr/test', config)
   },
   getSonarrRootFolders(id) {
     return apiClient.get(`/settings/sonarr/${id}/root-folders`)
