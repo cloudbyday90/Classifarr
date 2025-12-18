@@ -1,10 +1,20 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const classificationService = require('../services/classification');
 const webhookService = require('../services/webhook');
 const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
 const logger = createLogger('WebhookRoutes');
+
+// Rate limiter for webhook endpoint - 100 requests per 15 minutes per IP
+const webhookLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { success: false, error: 'Too many webhook requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @swagger
@@ -23,10 +33,12 @@ const logger = createLogger('WebhookRoutes');
  *         description: Classification successful
  *       401:
  *         description: Invalid webhook key
+ *       429:
+ *         description: Too many requests
  *       500:
  *         description: Classification failed
  */
-router.post('/overseerr', async (req, res) => {
+router.post('/overseerr', webhookLimiter, async (req, res) => {
   const startTime = Date.now();
   let logId = null;
 
