@@ -37,7 +37,7 @@ router.post('/login', authRateLimiter, async (req, res) => {
  *   post:
  *     summary: Logout and revoke refresh token
  */
-router.post('/logout', authenticate, async (req, res) => {
+router.post('/logout', authRateLimiter, authenticate, async (req, res) => {
   try {
     const { refreshToken } = req.body;
     
@@ -61,7 +61,7 @@ router.post('/logout', authenticate, async (req, res) => {
  *   post:
  *     summary: Refresh access token using refresh token
  */
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', authRateLimiter, async (req, res) => {
   try {
     const { refreshToken } = req.body;
     
@@ -84,7 +84,7 @@ router.post('/refresh', async (req, res) => {
  *   post:
  *     summary: Change own password
  */
-router.post('/change-password', authenticate, passwordResetLimiter, async (req, res) => {
+router.post('/change-password', passwordResetLimiter, authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     
@@ -107,7 +107,7 @@ router.post('/change-password', authenticate, passwordResetLimiter, async (req, 
  *   get:
  *     summary: Get current user information
  */
-router.get('/me', authenticate, async (req, res) => {
+router.get('/me', authRateLimiter, authenticate, async (req, res) => {
   try {
     const result = await db.query(
       `SELECT u.id, u.email, u.username, u.role, u.is_active, u.must_change_password, 
@@ -160,7 +160,7 @@ router.get('/me', authenticate, async (req, res) => {
  *   get:
  *     summary: List active sessions for current user
  */
-router.get('/sessions', authenticate, async (req, res) => {
+router.get('/sessions', authRateLimiter, authenticate, async (req, res) => {
   try {
     const result = await db.query(
       `SELECT id, device_info, ip_address, created_at, expires_at
@@ -183,7 +183,7 @@ router.get('/sessions', authenticate, async (req, res) => {
  *   delete:
  *     summary: Revoke specific session
  */
-router.delete('/sessions/:id', authenticate, async (req, res) => {
+router.delete('/sessions/:id', authRateLimiter, authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     

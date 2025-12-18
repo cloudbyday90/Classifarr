@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const db = require('../config/database');
 const radarrService = require('../services/radarr');
@@ -10,6 +11,15 @@ const tavilyService = require('../services/tavily');
 const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
 
 const router = express.Router();
+
+// Rate limiter for SSL test endpoint (file system access)
+const sslTestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 tests per window
+  message: { error: 'Too many SSL test requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================
 // GENERAL SETTINGS
@@ -992,7 +1002,7 @@ router.put('/ssl', async (req, res) => {
  *   post:
  *     summary: Test SSL certificate validity
  */
-router.post('/ssl/test', async (req, res) => {
+router.post('/ssl/test', sslTestLimiter, async (req, res) => {
   try {
     const fs = require('fs');
     const { cert_path, key_path } = req.body;
@@ -1018,8 +1028,16 @@ router.post('/ssl/test', async (req, res) => {
       const cert = fs.readFileSync(cert_path, 'utf8');
       const key = fs.readFileSync(key_path, 'utf8');
 
-      // Create a test context to validate
-      const context = tls.createSecureContext({ cert, key });
+      // Create a test context to validate - wrap in try-catch to prevent info disclosure
+      try {
+        const context = tls.createSecureContext({ cert, key });
+      } catch (contextError) {
+        // Sanitize error to prevent certificate details disclosure
+        return res.status(400).json({
+          valid: false,
+          error: 'Certificate and key do not match or are invalid'
+        });
+      }
 
       res.json({
         valid: true,
@@ -1028,9 +1046,10 @@ router.post('/ssl/test', async (req, res) => {
         key_path
       });
     } catch (error) {
+      // Sanitize file read errors
       res.status(400).json({
         valid: false,
-        error: 'Invalid certificate or key: ' + error.message
+        error: 'Unable to read certificate or key files'
       });
     }
   } catch (error) {

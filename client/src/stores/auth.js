@@ -28,6 +28,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Save tokens to localStorage
+  // Note: Storing JWT in localStorage is vulnerable to XSS attacks.
+  // For enhanced security in production:
+  // 1. Implement Content Security Policy (CSP) to mitigate XSS
+  // 2. Consider using httpOnly secure cookies (requires backend changes)
+  // 3. Keep access token expiry short (15 minutes)
   function saveTokens(access, refresh) {
     accessToken.value = access
     refreshToken.value = refresh

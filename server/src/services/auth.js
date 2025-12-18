@@ -169,18 +169,19 @@ class AuthService {
    * Record failed login attempt
    */
   async recordFailedLogin(userId, ipAddress) {
+    const lockoutInterval = `${this.LOCKOUT_DURATION_MINUTES} minutes`;
     const result = await db.query(
       `UPDATE users 
        SET failed_login_attempts = failed_login_attempts + 1,
            locked_until = CASE 
              WHEN failed_login_attempts + 1 >= $1 
-             THEN NOW() + INTERVAL '${this.LOCKOUT_DURATION_MINUTES} minutes'
+             THEN NOW() + $3::interval
              ELSE locked_until
            END,
            updated_at = NOW()
        WHERE id = $2
        RETURNING failed_login_attempts, locked_until`,
-      [this.MAX_FAILED_ATTEMPTS, userId]
+      [this.MAX_FAILED_ATTEMPTS, userId, lockoutInterval]
     );
     
     await this.auditLog(userId, 'failed_login', ipAddress, null, {

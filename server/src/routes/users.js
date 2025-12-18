@@ -1,11 +1,22 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const authService = require('../services/auth');
 const { authenticate, authorize } = require('../middleware/auth');
 const db = require('../config/database');
 
 const router = express.Router();
 
+// Rate limiter for user management operations
+const userManagementLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window
+  message: { error: 'Too many user management requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // All user management routes require authentication and admin permission
+router.use(userManagementLimiter);
 router.use(authenticate);
 router.use(authorize('can_manage_users'));
 

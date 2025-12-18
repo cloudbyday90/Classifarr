@@ -56,22 +56,33 @@ class InitializationService {
    * Generate random password
    */
   generatePassword(length = 16) {
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const all = uppercase + lowercase + numbers + special;
+    
     let password = '';
     
-    // Ensure password meets requirements
-    password += 'A'; // Uppercase
-    password += 'a'; // Lowercase
-    password += '1'; // Number
-    password += '!'; // Special char
+    // Ensure password meets requirements (at least one of each)
+    password += uppercase[crypto.randomInt(0, uppercase.length)];
+    password += lowercase[crypto.randomInt(0, lowercase.length)];
+    password += numbers[crypto.randomInt(0, numbers.length)];
+    password += special[crypto.randomInt(0, special.length)];
     
     // Fill the rest randomly
     for (let i = password.length; i < length; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length));
+      password += all[crypto.randomInt(0, all.length)];
     }
     
-    // Shuffle
-    return password.split('').sort(() => Math.random() - 0.5).join('');
+    // Secure shuffle using Fisher-Yates
+    const chars = password.split('');
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = crypto.randomInt(0, i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    
+    return chars.join('');
   }
 
   /**
