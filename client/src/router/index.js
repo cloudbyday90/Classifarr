@@ -5,6 +5,11 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
+      path: '/setup',
+      name: 'SetupWizard',
+      component: () => import('@/views/SetupWizard.vue'),
+    },
+    {
       path: '/',
       component: MainLayout,
       children: [
@@ -41,6 +46,28 @@ const router = createRouter({
       ],
     },
   ],
+})
+
+// Navigation guard to check setup status
+router.beforeEach(async (to, from, next) => {
+  if (to.name === 'SetupWizard') {
+    next()
+    return
+  }
+
+  try {
+    const response = await fetch('/api/settings/setup-status')
+    const data = await response.json()
+    
+    if (!data.setupComplete && to.name !== 'SetupWizard') {
+      next('/setup')
+    } else {
+      next()
+    }
+  } catch (error) {
+    console.error('Failed to check setup status:', error)
+    next()
+  }
 })
 
 export default router
