@@ -9,8 +9,9 @@ function maskToken(token) {
     return '';
   }
   
+  // Always return consistent mask format to avoid revealing token length
   if (token.length <= 4) {
-    return '••••••••';
+    return '••••••••••••';
   }
   
   const lastFour = token.slice(-4);

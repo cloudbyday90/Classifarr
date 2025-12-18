@@ -485,11 +485,11 @@ router.put('/tmdb', async (req, res) => {
     );
 
     // Mask the API key in response
-    if (result.rows[0]) {
+    if (result.rows && result.rows.length > 0 && result.rows[0]) {
       result.rows[0].api_key = maskToken(result.rows[0].api_key);
     }
 
-    res.json(result.rows[0]);
+    res.json(result.rows && result.rows.length > 0 ? result.rows[0] : null);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

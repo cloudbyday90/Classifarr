@@ -26,6 +26,7 @@ class DiscordBotService {
   }
 
   async testConnection(botToken = null) {
+    let testClient = null;
     try {
       const token = botToken || (await this.loadConfig()).bot_token;
       if (!token) {
@@ -33,7 +34,7 @@ class DiscordBotService {
       }
 
       // Create temporary client to test
-      const testClient = new Client({
+      testClient = new Client({
         intents: [GatewayIntentBits.Guilds],
       });
 
@@ -41,8 +42,6 @@ class DiscordBotService {
       
       const user = testClient.user;
       const guilds = testClient.guilds.cache.size;
-
-      await testClient.destroy();
 
       return { 
         success: true, 
@@ -61,6 +60,10 @@ class DiscordBotService {
           ? 'Invalid bot token' 
           : error.message 
       };
+    } finally {
+      if (testClient) {
+        await testClient.destroy();
+      }
     }
   }
 

@@ -146,7 +146,7 @@ CREATE TABLE tmdb_config (
 -- Notification Configuration (Discord)
 CREATE TABLE notification_config (
     id SERIAL PRIMARY KEY,
-    type VARCHAR(20) NOT NULL DEFAULT 'discord' UNIQUE,
+    type VARCHAR(20) NOT NULL DEFAULT 'discord',
     bot_token VARCHAR(500),
     channel_id VARCHAR(100),
     enabled BOOLEAN DEFAULT false,
@@ -165,7 +165,9 @@ CREATE TABLE notification_config (
     include_library_dropdown BOOLEAN DEFAULT true,
     
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+    
+    UNIQUE(type)
 );
 
 -- Webhook Configuration

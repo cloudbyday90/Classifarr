@@ -173,6 +173,10 @@ const copyUrl = async () => {
 
 const copyApiKey = async () => {
   try {
+    if (!webhook.value || !webhook.value.api_key) {
+      status.value = { type: 'error', message: 'No API key available to copy' }
+      return
+    }
     await navigator.clipboard.writeText(webhook.value.api_key)
     status.value = { type: 'success', message: 'API key copied to clipboard!' }
   } catch (error) {
