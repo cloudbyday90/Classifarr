@@ -146,12 +146,50 @@ CREATE TABLE tmdb_config (
 -- Notification Configuration (Discord)
 CREATE TABLE notification_config (
     id SERIAL PRIMARY KEY,
-    type VARCHAR(20) NOT NULL DEFAULT 'discord',
+    type VARCHAR(20) NOT NULL DEFAULT 'discord' UNIQUE,
     bot_token VARCHAR(500),
     channel_id VARCHAR(100),
     enabled BOOLEAN DEFAULT false,
+    
+    -- Discord Bot Extended Configuration
+    notify_on_classification BOOLEAN DEFAULT true,
+    notify_on_error BOOLEAN DEFAULT true,
+    notify_on_correction BOOLEAN DEFAULT true,
+    show_poster BOOLEAN DEFAULT true,
+    show_confidence BOOLEAN DEFAULT true,
+    show_method BOOLEAN DEFAULT true,
+    show_reason BOOLEAN DEFAULT true,
+    show_metadata BOOLEAN DEFAULT false,
+    enable_corrections BOOLEAN DEFAULT true,
+    correction_buttons_count INTEGER DEFAULT 3,
+    include_library_dropdown BOOLEAN DEFAULT true,
+    
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Webhook Configuration
+CREATE TABLE webhook_config (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    api_key VARCHAR(500) NOT NULL UNIQUE,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Webhook Activity Log
+CREATE TABLE webhook_log (
+    id SERIAL PRIMARY KEY,
+    webhook_id INTEGER REFERENCES webhook_config(id) ON DELETE CASCADE,
+    endpoint VARCHAR(255),
+    method VARCHAR(10),
+    status_code INTEGER,
+    request_body JSONB,
+    response_body JSONB,
+    ip_address VARCHAR(50),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- General Settings
@@ -241,6 +279,8 @@ CREATE INDEX idx_classification_history_library ON classification_history(librar
 CREATE INDEX idx_classification_corrections_classification ON classification_corrections(classification_id);
 CREATE INDEX idx_learning_patterns_tmdb ON learning_patterns(tmdb_id);
 CREATE INDEX idx_learning_patterns_library ON learning_patterns(library_id);
+CREATE INDEX idx_webhook_log_webhook ON webhook_log(webhook_id);
+CREATE INDEX idx_webhook_log_created_at ON webhook_log(created_at);
 
 -- ============================================
 -- SEED DATA - LABEL PRESETS
