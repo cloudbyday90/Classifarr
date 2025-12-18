@@ -5,6 +5,11 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
+      path: '/setup-account',
+      name: 'SetupAccount',
+      component: () => import('@/views/SetupAccount.vue'),
+    },
+    {
       path: '/setup',
       name: 'SetupWizard',
       component: () => import('@/views/SetupWizard.vue'),
@@ -50,12 +55,23 @@ const router = createRouter({
 
 // Navigation guard to check setup status
 router.beforeEach(async (to, from, next) => {
-  if (to.name === 'SetupWizard') {
+  // Skip for setup pages
+  if (to.name === 'SetupAccount' || to.name === 'SetupWizard') {
     next()
     return
   }
 
   try {
+    // Check if user account setup is required
+    const setupResponse = await fetch('/api/setup/status')
+    const setupData = await setupResponse.json()
+    
+    if (setupData.setupRequired && to.name !== 'SetupAccount') {
+      next('/setup-account')
+      return
+    }
+
+    // Check if TMDB and other services are configured
     const response = await fetch('/api/settings/setup-status')
     const data = await response.json()
     
