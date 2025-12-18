@@ -133,7 +133,7 @@ router.put('/radarr', async (req, res) => {
         host,
         port,
         base_path || '',
-        verify_ssl !== false,
+        verify_ssl === true || verify_ssl == null ? true : false,
         timeout || 30
       ]
     );
@@ -340,7 +340,7 @@ router.put('/sonarr', async (req, res) => {
         host,
         port,
         base_path || '',
-        verify_ssl !== false,
+        verify_ssl === true || verify_ssl == null ? true : false,
         timeout || 30
       ]
     );

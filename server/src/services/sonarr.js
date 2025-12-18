@@ -85,7 +85,7 @@ class SonarrService {
         languageProfiles = langResponse.data.length;
       } catch (err) {
         // Language profiles might not exist in all versions
-        console.debug('Could not fetch language profiles:', err.message);
+        console.warn('Could not fetch language profiles:', err.message);
       }
 
       return { 
