@@ -5,6 +5,8 @@ const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const discordBot = require('./discordBot');
 const tavilyService = require('./tavily');
+const contentTypeAnalyzer = require('./contentTypeAnalyzer');
+const mediaSyncService = require('./mediaSync');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -20,11 +22,46 @@ class ClassificationService {
       // Enrich with TMDB metadata
       const metadata = await this.enrichWithTMDB(tmdbId, media_type);
       
+      // Check if media already exists in media server
+      const existingMedia = await mediaSyncService.findExistingMedia(tmdbId, media_type);
+      if (existingMedia) {
+        logger.info(`Media already exists in library: ${existingMedia.library_name}`);
+        
+        const classificationId = await this.logClassification(metadata, {
+          library: { id: existingMedia.library_id, name: existingMedia.library_name },
+          confidence: 100,
+          method: 'media_server_match',
+          reason: 'Media already exists in media server library',
+        });
+
+        return {
+          success: true,
+          classification_id: classificationId,
+          library: existingMedia.library_name,
+          confidence: 100,
+          method: 'media_server_match',
+          reason: 'Already in your library',
+        };
+      }
+
+      // Run content analysis
+      const contentAnalysis = await this.analyzeContent(metadata);
+      if (contentAnalysis && contentAnalysis.detected_type) {
+        metadata.detected_content_type = contentAnalysis.detected_type;
+        metadata.content_type_labels = contentAnalysis.suggested_labels;
+        metadata.content_analysis = contentAnalysis;
+      }
+      
       // Run decision tree
       const result = await this.runDecisionTree(metadata, media_type);
 
       // Log to database
       const classificationId = await this.logClassification(metadata, result);
+
+      // Log content analysis if performed
+      if (contentAnalysis && contentAnalysis.detected_type) {
+        await this.logContentAnalysis(classificationId, tmdbId, contentAnalysis, metadata.genres);
+      }
 
       // Route to Radarr/Sonarr
       if (result.library && result.library.arr_type) {
@@ -603,6 +640,73 @@ Example: 2|Action movie with high rating`;
     }
     
     return 'standard';
+  }
+
+  /**
+   * Analyze content using ContentTypeAnalyzer
+   */
+  async analyzeContent(metadata) {
+    try {
+      // Check if content analysis is enabled
+      const settingsResult = await db.query(
+        "SELECT value FROM settings WHERE key = 'content_analysis_enabled'"
+      );
+      
+      if (settingsResult.rows.length === 0 || settingsResult.rows[0].value !== 'true') {
+        return null;
+      }
+
+      // Get minimum confidence threshold
+      const minConfResult = await db.query(
+        "SELECT value FROM settings WHERE key = 'content_analysis_min_confidence'"
+      );
+      const minConfidence = minConfResult.rows.length > 0 
+        ? parseInt(minConfResult.rows[0].value) 
+        : 75;
+
+      const analysis = contentTypeAnalyzer.analyze(metadata);
+
+      // Only return if confidence meets threshold
+      if (analysis.confidence >= minConfidence) {
+        logger.info('Content analysis detected type', {
+          title: metadata.title,
+          detected: analysis.detected_type,
+          confidence: analysis.confidence
+        });
+        return analysis;
+      }
+
+      return null;
+    } catch (error) {
+      logger.error('Content analysis failed', { error: error.message });
+      return null;
+    }
+  }
+
+  /**
+   * Log content analysis to database
+   */
+  async logContentAnalysis(classificationId, tmdbId, analysis, originalGenres) {
+    try {
+      await db.query(
+        `INSERT INTO content_analysis_log 
+         (classification_id, tmdb_id, detected_type, confidence, reasoning, 
+          suggested_labels, overrides_genre, original_genres)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          classificationId,
+          tmdbId,
+          analysis.detected_type,
+          analysis.confidence,
+          analysis.reasoning,
+          analysis.suggested_labels,
+          analysis.overrides_genre,
+          originalGenres || []
+        ]
+      );
+    } catch (error) {
+      logger.error('Failed to log content analysis', { error: error.message });
+    }
   }
 }
 

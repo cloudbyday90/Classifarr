@@ -266,4 +266,62 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/classification/analyze-content:
+ *   post:
+ *     summary: Test content analysis on metadata
+ */
+router.post('/analyze-content', async (req, res) => {
+  try {
+    const metadata = req.body;
+    const contentTypeAnalyzer = require('../services/contentTypeAnalyzer');
+    
+    const analysis = contentTypeAnalyzer.analyze(metadata);
+    res.json(analysis);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/content-analysis/stats:
+ *   get:
+ *     summary: Get content analysis statistics
+ */
+router.get('/content-analysis/stats', async (req, res) => {
+  try {
+    const statsResult = await db.query(`
+      SELECT 
+        detected_type,
+        COUNT(*) as count,
+        AVG(confidence) as avg_confidence,
+        COUNT(CASE WHEN overrides_genre THEN 1 END) as override_count
+      FROM content_analysis_log
+      GROUP BY detected_type
+      ORDER BY count DESC
+    `);
+
+    const recentResult = await db.query(`
+      SELECT 
+        cal.*,
+        ch.title,
+        ch.year,
+        ch.media_type
+      FROM content_analysis_log cal
+      JOIN classification_history ch ON cal.classification_id = ch.id
+      ORDER BY cal.created_at DESC
+      LIMIT 20
+    `);
+
+    res.json({
+      byType: statsResult.rows,
+      recent: recentResult.rows,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
