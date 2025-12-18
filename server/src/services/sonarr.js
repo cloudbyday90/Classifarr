@@ -44,22 +44,29 @@ class SonarrService {
       });
 
       // Get additional stats for detailed response
+      const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ? 
+        new (require('https').Agent)({ rejectUnauthorized: false }) : undefined;
+
       const [seriesResponse, rootFoldersResponse, qualityProfilesResponse, languageProfilesResponse] = await Promise.allSettled([
         axios.get(`${url}/api/v3/series`, {
           headers: { 'X-Api-Key': apiKey },
           timeout,
+          httpsAgent,
         }),
         axios.get(`${url}/api/v3/rootfolder`, {
           headers: { 'X-Api-Key': apiKey },
           timeout,
+          httpsAgent,
         }),
         axios.get(`${url}/api/v3/qualityprofile`, {
           headers: { 'X-Api-Key': apiKey },
           timeout,
+          httpsAgent,
         }),
         axios.get(`${url}/api/v3/languageprofile`, {
           headers: { 'X-Api-Key': apiKey },
           timeout,
+          httpsAgent,
         }).catch(() => ({ status: 'rejected' })), // Language profiles may not exist in newer versions
       ]);
 

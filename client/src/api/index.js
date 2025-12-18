@@ -18,20 +18,11 @@ apiClient.interceptors.response.use(
 
 export default {
   // Media Server
-  getMediaServer() {
-    return apiClient.get('/media-server')
-  },
   getMediaServerConfig() {
     return apiClient.get('/media-server')
   },
-  saveMediaServer(data) {
-    return apiClient.post('/media-server', data)
-  },
   updateMediaServerConfig(config) {
     return apiClient.post('/media-server', config)
-  },
-  testMediaServer(data) {
-    return apiClient.post('/media-server/test', data)
   },
   testMediaServerConnection(config) {
     return apiClient.post('/media-server/test', config)
@@ -115,9 +106,6 @@ export default {
   },
 
   // Radarr
-  getRadarrConfigs() {
-    return apiClient.get('/settings/radarr')
-  },
   getRadarrConfig() {
     return apiClient.get('/settings/radarr')
   },
@@ -130,9 +118,6 @@ export default {
   deleteRadarrConfig(id) {
     return apiClient.delete(`/settings/radarr/${id}`)
   },
-  testRadarr(data) {
-    return apiClient.post('/settings/radarr/test', data)
-  },
   testRadarrConnection(config) {
     return apiClient.post('/settings/radarr/test', config)
   },
@@ -144,9 +129,6 @@ export default {
   },
 
   // Sonarr
-  getSonarrConfigs() {
-    return apiClient.get('/settings/sonarr')
-  },
   getSonarrConfig() {
     return apiClient.get('/settings/sonarr')
   },
@@ -158,9 +140,6 @@ export default {
   },
   deleteSonarrConfig(id) {
     return apiClient.delete(`/settings/sonarr/${id}`)
-  },
-  testSonarr(data) {
-    return apiClient.post('/settings/sonarr/test', data)
   },
   testSonarrConnection(config) {
     return apiClient.post('/settings/sonarr/test', config)

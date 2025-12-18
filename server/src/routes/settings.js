@@ -164,6 +164,10 @@ router.put('/radarr/:id', async (req, res) => {
       [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, id]
     );
 
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Radarr configuration not found' });
+    }
+
     // Mask API key in response
     if (result.rows[0].api_key) {
       result.rows[0].api_key = maskToken(result.rows[0].api_key);
@@ -344,6 +348,10 @@ router.put('/sonarr/:id', async (req, res) => {
        RETURNING *`,
       [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, id]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Sonarr configuration not found' });
+    }
 
     // Mask API key in response
     if (result.rows[0].api_key) {

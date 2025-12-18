@@ -44,18 +44,24 @@ class RadarrService {
       });
 
       // Get additional stats for detailed response
+      const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ? 
+        new (require('https').Agent)({ rejectUnauthorized: false }) : undefined;
+
       const [moviesResponse, rootFoldersResponse, qualityProfilesResponse] = await Promise.allSettled([
         axios.get(`${url}/api/v3/movie`, {
           headers: { 'X-Api-Key': apiKey },
           timeout,
+          httpsAgent,
         }),
         axios.get(`${url}/api/v3/rootfolder`, {
           headers: { 'X-Api-Key': apiKey },
           timeout,
+          httpsAgent,
         }),
         axios.get(`${url}/api/v3/qualityprofile`, {
           headers: { 'X-Api-Key': apiKey },
           timeout,
+          httpsAgent,
         }),
       ]);
 
