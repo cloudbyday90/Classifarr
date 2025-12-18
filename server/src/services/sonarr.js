@@ -70,6 +70,41 @@ class SonarrService {
       throw new Error(`Failed to search series: ${error.message}`);
     }
   }
+
+  async getTags(url, apiKey) {
+    try {
+      const response = await axios.get(`${url}/api/v3/tag`, {
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+      });
+      return response.data.map(tag => ({ id: tag.id, label: tag.label }));
+    } catch (error) {
+      throw new Error(`Failed to fetch tags: ${error.message}`);
+    }
+  }
+
+  getSeriesTypeOptions() {
+    return [
+      { value: 'standard', label: 'Standard', description: 'S##E## numbering' },
+      { value: 'anime', label: 'Anime', description: 'Absolute episode numbering' },
+      { value: 'daily', label: 'Daily', description: 'Date-based episodes' }
+    ];
+  }
+
+  getSeasonMonitoringOptions() {
+    return [
+      { value: 'all', label: 'All Seasons', description: 'Monitor all seasons' },
+      { value: 'future', label: 'Future Seasons', description: 'Only future seasons' },
+      { value: 'missing', label: 'Missing Episodes', description: 'Missing in all seasons' },
+      { value: 'existing', label: 'Existing Episodes', description: 'Only existing' },
+      { value: 'recent', label: 'Recent Episodes', description: 'Recent only' },
+      { value: 'pilot', label: 'Pilot Only', description: 'Only pilot episode' },
+      { value: 'firstSeason', label: 'First Season', description: 'First season only' },
+      { value: 'lastSeason', label: 'Last Season', description: 'Last season only' },
+      { value: 'none', label: 'None', description: 'Don\'t monitor' }
+    ];
+  }
 }
 
 module.exports = new SonarrService();

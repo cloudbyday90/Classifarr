@@ -70,6 +70,28 @@ class RadarrService {
       throw new Error(`Failed to search movie: ${error.message}`);
     }
   }
+
+  async getTags(url, apiKey) {
+    try {
+      const response = await axios.get(`${url}/api/v3/tag`, {
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+      });
+      return response.data.map(tag => ({ id: tag.id, label: tag.label }));
+    } catch (error) {
+      throw new Error(`Failed to fetch tags: ${error.message}`);
+    }
+  }
+
+  getMinimumAvailabilityOptions() {
+    return [
+      { value: 'announced', label: 'Announced', description: 'Search as soon as announced' },
+      { value: 'inCinemas', label: 'In Cinemas', description: 'Search when in theaters' },
+      { value: 'released', label: 'Released', description: 'Search when released' },
+      { value: 'preDB', label: 'PreDB', description: 'Search when in PreDB' }
+    ];
+  }
 }
 
 module.exports = new RadarrService();
