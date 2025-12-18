@@ -883,20 +883,55 @@ router.post('/tavily/search', async (req, res) => {
 // WEBHOOK CONFIGURATION
 // ============================================
 
+const webhookService = require('../services/webhook');
+
 /**
  * @swagger
  * /api/settings/webhook:
  *   get:
- *     summary: Get webhook configuration
+ *     summary: Get webhook configuration (with masked secret key)
  */
 router.get('/webhook', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM webhook_config WHERE is_active = true LIMIT 1');
-    if (result.rows[0] && result.rows[0].api_key) {
-      // Mask API key for security
-      result.rows[0].api_key = maskToken(result.rows[0].api_key);
+    const config = await webhookService.getConfig();
+    
+    // Mask secret key for security
+    if (config.secret_key) {
+      config.secret_key = maskToken(config.secret_key);
     }
-    res.json(result.rows[0] || null);
+    
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/webhook:
+ *   put:
+ *     summary: Update webhook configuration
+ */
+router.put('/webhook', async (req, res) => {
+  try {
+    const config = req.body;
+    
+    // Get existing config to preserve secret key if masked value is sent
+    const existingConfig = await webhookService.getConfig();
+    
+    // Use existing secret key if the provided one is masked
+    if (config.secret_key && isMaskedToken(config.secret_key)) {
+      config.secret_key = existingConfig.secret_key;
+    }
+    
+    const result = await webhookService.updateConfig(config);
+    
+    // Mask secret key in response
+    if (result.secret_key) {
+      result.secret_key = maskToken(result.secret_key);
+    }
+    
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -906,30 +941,40 @@ router.get('/webhook', async (req, res) => {
  * @swagger
  * /api/settings/webhook/generate-key:
  *   post:
- *     summary: Generate new webhook API key
+ *     summary: Generate new webhook secret key
  */
 router.post('/webhook/generate-key', async (req, res) => {
   try {
-    const { name } = req.body;
+    const secretKey = webhookService.generateSecretKey();
     
-    // Generate a secure random API key
-    const apiKey = crypto.randomBytes(32).toString('hex');
+    const config = await webhookService.updateConfig({ secret_key: secretKey });
     
-    // Deactivate existing webhooks
-    await db.query('UPDATE webhook_config SET is_active = false');
-    
-    // Create new webhook config
-    const result = await db.query(
-      `INSERT INTO webhook_config (name, api_key, is_active)
-       VALUES ($1, $2, true)
-       RETURNING *`,
-      [name || 'Default Webhook', apiKey]
-    );
-
     res.json({
-      ...result.rows[0],
-      api_key: apiKey, // Return full key on generation
+      ...config,
+      secret_key: secretKey, // Return full key on generation
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/webhook/url:
+ *   get:
+ *     summary: Get full webhook URL with key
+ */
+router.get('/webhook/url', async (req, res) => {
+  try {
+    const config = await webhookService.getConfig();
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    let url = `${baseUrl}/api/webhook/overseerr`;
+    if (config.secret_key) {
+      url += `?key=${config.secret_key}`;
+    }
+    
+    res.json({ url });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -939,22 +984,89 @@ router.post('/webhook/generate-key', async (req, res) => {
  * @swagger
  * /api/settings/webhook/logs:
  *   get:
- *     summary: Get recent webhook activity logs
+ *     summary: Get paginated webhook logs
  */
 router.get('/webhook/logs', async (req, res) => {
   try {
-    const { limit = 50 } = req.query;
-    const result = await db.query(
-      `SELECT wl.*, wc.name as webhook_name
-       FROM webhook_log wl
-       LEFT JOIN webhook_config wc ON wl.webhook_id = wc.id
-       ORDER BY wl.created_at DESC
-       LIMIT $1`,
-      [parseInt(limit)]
-    );
-    res.json(result.rows);
+    const { page = 1, limit = 50, status, media_type } = req.query;
+    
+    const result = await webhookService.getLogs({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      status,
+      media_type
+    });
+    
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/webhook/stats:
+ *   get:
+ *     summary: Get webhook statistics
+ */
+router.get('/webhook/stats', async (req, res) => {
+  try {
+    const stats = await webhookService.getStats();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/webhook/test:
+ *   post:
+ *     summary: Send test webhook to self
+ */
+router.post('/webhook/test', async (req, res) => {
+  try {
+    const config = await webhookService.getConfig();
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    const testPayload = {
+      notification_type: 'TEST_NOTIFICATION',
+      event: 'test',
+      subject: 'Test Notification from Classifarr',
+      message: 'This is a test webhook to verify your configuration',
+      media: {
+        media_type: 'movie',
+        tmdbId: 550,
+        title: 'Test Movie',
+        releaseDate: '1999-10-15'
+      }
+    };
+    
+    // Make internal request to webhook endpoint
+    const axios = require('axios');
+    let url = `${baseUrl}/api/webhook/overseerr`;
+    if (config.secret_key) {
+      url += `?key=${config.secret_key}`;
+    }
+    
+    const response = await axios.post(url, testPayload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Classifarr-Test'
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Test webhook sent successfully',
+      response: response.data 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      details: error.response?.data 
+    });
   }
 });
 

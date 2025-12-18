@@ -1,162 +1,353 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-semibold mb-2">Webhook Configuration</h2>
-      <p class="text-gray-400 text-sm">Configure webhooks for external integrations</p>
+      <h2 class="text-xl font-semibold mb-2">Overseerr/Jellyseerr Webhook</h2>
+      <p class="text-gray-400 text-sm">Configure webhook integration for automatic media classification</p>
     </div>
 
-    <div class="space-y-4">
-      <div v-if="webhook">
-        <label class="block text-sm font-medium mb-2">Webhook URL</label>
-        <div class="flex gap-2">
-          <input
-            :value="webhookUrl"
-            readonly
-            class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-400"
-          />
-          <button
-            @click="copyUrl"
-            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-          >
-            📋 Copy
-          </button>
+    <div v-if="loading" class="text-center py-8">
+      <Spinner />
+    </div>
+
+    <div v-else class="space-y-6">
+      <!-- Enable/Disable -->
+      <Card>
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-medium">Enable Webhook</h3>
+            <p class="text-sm text-gray-400">Enable or disable webhook processing</p>
+          </div>
+          <Toggle v-model="config.enabled" @update:modelValue="saveConfig" />
         </div>
-      </div>
+      </Card>
 
-      <div v-if="webhook">
-        <label class="block text-sm font-medium mb-2">API Key</label>
-        <div class="flex gap-2">
-          <input
-            :value="webhook.api_key"
-            readonly
-            class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-400"
-          />
-          <button
-            @click="copyApiKey"
-            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-          >
-            📋 Copy
-          </button>
+      <!-- Webhook URL -->
+      <Card>
+        <h3 class="text-lg font-medium mb-4">Webhook URL</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Endpoint URL</label>
+            <div class="flex gap-2">
+              <input
+                :value="webhookUrl"
+                readonly
+                class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 font-mono text-sm"
+              />
+              <Button @click="copyUrl" variant="secondary">
+                📋 Copy
+              </Button>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">
+              Configure this URL in Overseerr/Jellyseerr Settings → Notifications → Webhook
+            </p>
+          </div>
         </div>
-        <p class="text-xs text-gray-500 mt-1">
-          Include this API key in the Authorization header: <code class="bg-gray-800 px-1 py-0.5 rounded">Bearer YOUR_API_KEY</code>
-        </p>
-      </div>
+      </Card>
 
-      <div>
-        <button
-          @click="generateKey"
-          :disabled="generating"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
-        >
-          {{ generating ? 'Generating...' : webhook ? 'Regenerate API Key' : 'Generate API Key' }}
-        </button>
-        <p class="text-xs text-gray-500 mt-1">
-          {{ webhook ? 'Warning: Regenerating will invalidate the old key' : 'Generate a new webhook API key' }}
-        </p>
-      </div>
-
-      <div v-if="status" :class="['p-3 rounded-lg', status.type === 'success' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400']">
-        {{ status.message }}
-      </div>
-
-      <div class="border-t border-gray-700 pt-4">
-        <h3 class="text-lg font-medium mb-3">Recent Activity</h3>
-        <div v-if="loadingLogs" class="text-center py-4 text-gray-500">
-          Loading logs...
+      <!-- Secret Key -->
+      <Card>
+        <h3 class="text-lg font-medium mb-4">Authentication</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Secret Key (Optional)</label>
+            <div class="flex gap-2">
+              <PasswordInput
+                v-model="displaySecretKey"
+                :readonly="true"
+                placeholder="No secret key configured"
+                class="flex-1"
+              />
+              <Button @click="copySecretKey" variant="secondary">
+                📋 Copy
+              </Button>
+              <Button @click="generateKey" variant="primary" :disabled="generating">
+                {{ config.secret_key ? '🔄 Regenerate' : '✨ Generate' }}
+              </Button>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">
+              If set, include as query parameter: <code class="bg-gray-800 px-1 py-0.5 rounded">?key=YOUR_SECRET_KEY</code>
+            </p>
+            <p v-if="config.secret_key" class="text-xs text-yellow-500 mt-1">
+              ⚠️ Regenerating will invalidate the existing key
+            </p>
+          </div>
         </div>
-        <div v-else-if="logs.length === 0" class="text-center py-4 text-gray-500">
+      </Card>
+
+      <!-- Event Processing -->
+      <Card>
+        <h3 class="text-lg font-medium mb-4">Event Processing</h3>
+        <p class="text-sm text-gray-400 mb-4">Choose which Overseerr events to process and classify</p>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+            <div>
+              <div class="font-medium">Pending Requests</div>
+              <div class="text-sm text-gray-400">Process newly submitted requests</div>
+            </div>
+            <Toggle v-model="config.process_pending" @update:modelValue="saveConfig" />
+          </div>
+          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+            <div>
+              <div class="font-medium">Approved Requests</div>
+              <div class="text-sm text-gray-400">Process manually approved requests</div>
+            </div>
+            <Toggle v-model="config.process_approved" @update:modelValue="saveConfig" />
+          </div>
+          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+            <div>
+              <div class="font-medium">Auto-Approved Requests</div>
+              <div class="text-sm text-gray-400">Process automatically approved requests</div>
+            </div>
+            <Toggle v-model="config.process_auto_approved" @update:modelValue="saveConfig" />
+          </div>
+          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+            <div>
+              <div class="font-medium">Declined Requests</div>
+              <div class="text-sm text-gray-400">Track declined requests (no classification)</div>
+            </div>
+            <Toggle v-model="config.process_declined" @update:modelValue="saveConfig" />
+          </div>
+        </div>
+      </Card>
+
+      <!-- Notifications -->
+      <Card>
+        <h3 class="text-lg font-medium mb-4">Notifications</h3>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+            <div>
+              <div class="font-medium">Notify on Receive</div>
+              <div class="text-sm text-gray-400">Send notification when webhook is received</div>
+            </div>
+            <Toggle v-model="config.notify_on_receive" @update:modelValue="saveConfig" />
+          </div>
+          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+            <div>
+              <div class="font-medium">Notify on Error</div>
+              <div class="text-sm text-gray-400">Send notification on processing errors</div>
+            </div>
+            <Toggle v-model="config.notify_on_error" @update:modelValue="saveConfig" />
+          </div>
+        </div>
+      </Card>
+
+      <!-- Statistics -->
+      <Card v-if="stats">
+        <h3 class="text-lg font-medium mb-4">Statistics</h3>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div class="bg-gray-800 p-4 rounded-lg text-center">
+            <div class="text-2xl font-bold text-blue-400">{{ stats.total }}</div>
+            <div class="text-sm text-gray-400">Total</div>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg text-center">
+            <div class="text-2xl font-bold text-green-400">{{ stats.completed }}</div>
+            <div class="text-sm text-gray-400">Completed</div>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg text-center">
+            <div class="text-2xl font-bold text-red-400">{{ stats.failed }}</div>
+            <div class="text-sm text-gray-400">Failed</div>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg text-center">
+            <div class="text-2xl font-bold text-purple-400">{{ stats.last24h }}</div>
+            <div class="text-sm text-gray-400">Last 24h</div>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg text-center">
+            <div class="text-2xl font-bold text-yellow-400">{{ stats.avgProcessingTime }}ms</div>
+            <div class="text-sm text-gray-400">Avg Time</div>
+          </div>
+        </div>
+      </Card>
+
+      <!-- Test Webhook -->
+      <Card>
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-medium">Test Webhook</h3>
+            <p class="text-sm text-gray-400">Send a test webhook to verify configuration</p>
+          </div>
+          <Button @click="testWebhook" :disabled="testing">
+            {{ testing ? '⏳ Testing...' : '🧪 Send Test' }}
+          </Button>
+        </div>
+      </Card>
+
+      <!-- Recent Webhooks -->
+      <Card>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-medium">Recent Webhooks</h3>
+          <Button @click="loadLogs" variant="secondary" size="sm">
+            🔄 Refresh
+          </Button>
+        </div>
+
+        <div v-if="loadingLogs" class="text-center py-8 text-gray-500">
+          <Spinner />
+        </div>
+
+        <div v-else-if="logs.length === 0" class="text-center py-8 text-gray-500">
           No webhook activity yet
         </div>
-        <div v-else class="space-y-2 max-h-96 overflow-y-auto">
+
+        <div v-else class="space-y-2">
           <div
             v-for="log in logs"
             :key="log.id"
-            class="p-3 bg-gray-800 rounded-lg border border-gray-700"
+            class="p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
           >
-            <div class="flex justify-between items-start mb-1">
-              <span class="font-mono text-sm">{{ log.method }} {{ log.endpoint }}</span>
+            <div class="flex items-start justify-between mb-2">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-medium">{{ log.media_title || 'Unknown' }}</span>
+                  <span
+                    v-if="log.media_type"
+                    class="px-2 py-0.5 bg-blue-900/30 text-blue-400 text-xs rounded"
+                  >
+                    {{ log.media_type }}
+                  </span>
+                </div>
+                <div class="text-sm text-gray-400">
+                  {{ log.notification_type || log.event_name }}
+                </div>
+              </div>
               <span
                 :class="[
-                  'px-2 py-0.5 rounded text-xs font-medium',
-                  log.status_code >= 200 && log.status_code < 300 ? 'bg-green-900/30 text-green-400' :
-                  log.status_code >= 400 && log.status_code < 500 ? 'bg-yellow-900/30 text-yellow-400' :
-                  'bg-red-900/30 text-red-400'
+                  'px-2 py-1 rounded text-xs font-medium',
+                  log.processing_status === 'completed' ? 'bg-green-900/30 text-green-400' :
+                  log.processing_status === 'failed' ? 'bg-red-900/30 text-red-400' :
+                  log.processing_status === 'skipped' ? 'bg-yellow-900/30 text-yellow-400' :
+                  'bg-gray-900/30 text-gray-400'
                 ]"
               >
-                {{ log.status_code }}
+                {{ log.processing_status }}
               </span>
             </div>
-            <div class="text-xs text-gray-500">
-              {{ new Date(log.created_at).toLocaleString() }}
+
+            <div class="flex items-center gap-4 text-xs text-gray-500">
+              <span>{{ formatDate(log.received_at) }}</span>
+              <span v-if="log.routed_to_library">→ {{ log.routed_to_library }}</span>
+              <span v-if="log.processing_time_ms">{{ log.processing_time_ms }}ms</span>
+              <span v-if="log.ip_address">{{ log.ip_address }}</span>
             </div>
-            <div v-if="log.ip_address" class="text-xs text-gray-500 mt-1">
-              IP: {{ log.ip_address }}
+
+            <div v-if="log.error_message" class="mt-2 text-xs text-red-400 bg-red-900/20 p-2 rounded">
+              {{ log.error_message }}
             </div>
           </div>
+
+          <!-- Pagination -->
+          <div v-if="logsData.totalPages > 1" class="flex justify-center gap-2 mt-4">
+            <Button
+              @click="changePage(logsData.page - 1)"
+              :disabled="logsData.page <= 1"
+              variant="secondary"
+              size="sm"
+            >
+              ← Previous
+            </Button>
+            <span class="px-4 py-2 text-sm text-gray-400">
+              Page {{ logsData.page }} of {{ logsData.totalPages }}
+            </span>
+            <Button
+              @click="changePage(logsData.page + 1)"
+              :disabled="logsData.page >= logsData.totalPages"
+              variant="secondary"
+              size="sm"
+            >
+              Next →
+            </Button>
+          </div>
         </div>
-      </div>
+      </Card>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import axios from 'axios'
+import { ref, computed, onMounted } from 'vue'
+import api from '@/api'
+import { useToast } from '@/stores/toast'
+import { Card, Button, Toggle, PasswordInput, Spinner } from '@/components/common'
 
-const webhook = ref(null)
-const logs = ref([])
-const generating = ref(false)
+const toast = useToast()
+
+const loading = ref(true)
 const loadingLogs = ref(false)
-const status = ref(null)
+const generating = ref(false)
+const testing = ref(false)
+
+const config = ref({
+  enabled: true,
+  secret_key: '',
+  process_pending: true,
+  process_approved: true,
+  process_auto_approved: true,
+  process_declined: false,
+  notify_on_receive: true,
+  notify_on_error: true
+})
+
+const stats = ref(null)
+const logsData = ref({ logs: [], page: 1, limit: 20, totalPages: 1 })
+const logs = computed(() => logsData.value.logs || [])
 
 const webhookUrl = computed(() => {
-  if (!webhook.value) return ''
-  return `${window.location.origin}/api/webhook/classify`
+  const baseUrl = window.location.origin
+  let url = `${baseUrl}/api/webhook/overseerr`
+  if (config.value.secret_key && config.value.secret_key !== '••••••••') {
+    url += `?key=${config.value.secret_key}`
+  }
+  return url
 })
+
+const displaySecretKey = computed(() => config.value.secret_key || '')
 
 onMounted(async () => {
-  await loadWebhook()
-  await loadLogs()
+  await Promise.all([
+    loadConfig(),
+    loadStats(),
+    loadLogs()
+  ])
+  loading.value = false
 })
 
-const loadWebhook = async () => {
+const loadConfig = async () => {
   try {
-    const response = await axios.get('/api/settings/webhook')
-    webhook.value = response.data
+    const response = await api.getWebhookConfig()
+    if (response.data) {
+      config.value = response.data
+    }
   } catch (error) {
-    console.error('Failed to load webhook:', error)
+    console.error('Failed to load webhook config:', error)
+    toast.error('Failed to load webhook configuration')
   }
 }
 
-const loadLogs = async () => {
-  loadingLogs.value = true
+const saveConfig = async () => {
   try {
-    const response = await axios.get('/api/settings/webhook/logs')
-    logs.value = response.data || []
+    const response = await api.updateWebhookConfig(config.value)
+    config.value = response.data
+    toast.success('Webhook configuration saved')
   } catch (error) {
-    console.error('Failed to load logs:', error)
-  } finally {
-    loadingLogs.value = false
+    console.error('Failed to save config:', error)
+    toast.error('Failed to save configuration')
   }
 }
 
 const generateKey = async () => {
-  if (webhook.value) {
-    const confirmed = confirm('Are you sure? This will invalidate the old API key.')
-    if (!confirmed) return
+  if (config.value.secret_key) {
+    if (!confirm('Are you sure? This will invalidate the existing secret key.')) {
+      return
+    }
   }
 
   generating.value = true
-  status.value = null
   try {
-    const response = await axios.post('/api/settings/webhook/generate-key', {
-      name: 'Webhook API Key',
-    })
-    webhook.value = response.data
-    status.value = { type: 'success', message: 'API key generated successfully! Make sure to copy it now.' }
+    const response = await api.generateWebhookKey()
+    config.value = response.data
+    toast.success('Secret key generated successfully! Make sure to copy it.')
   } catch (error) {
-    status.value = { type: 'error', message: `Failed to generate key: ${error.message}` }
+    console.error('Failed to generate key:', error)
+    toast.error('Failed to generate secret key')
   } finally {
     generating.value = false
   }
@@ -165,22 +356,72 @@ const generateKey = async () => {
 const copyUrl = async () => {
   try {
     await navigator.clipboard.writeText(webhookUrl.value)
-    status.value = { type: 'success', message: 'Webhook URL copied to clipboard!' }
+    toast.success('Webhook URL copied to clipboard')
   } catch (error) {
-    status.value = { type: 'error', message: 'Failed to copy URL' }
+    toast.error('Failed to copy URL')
   }
 }
 
-const copyApiKey = async () => {
-  try {
-    if (!webhook.value || !webhook.value.api_key) {
-      status.value = { type: 'error', message: 'No API key available to copy' }
-      return
-    }
-    await navigator.clipboard.writeText(webhook.value.api_key)
-    status.value = { type: 'success', message: 'API key copied to clipboard!' }
-  } catch (error) {
-    status.value = { type: 'error', message: 'Failed to copy API key' }
+const copySecretKey = async () => {
+  if (!config.value.secret_key) {
+    toast.error('No secret key to copy')
+    return
   }
+  try {
+    await navigator.clipboard.writeText(config.value.secret_key)
+    toast.success('Secret key copied to clipboard')
+  } catch (error) {
+    toast.error('Failed to copy secret key')
+  }
+}
+
+const loadStats = async () => {
+  try {
+    const response = await api.getWebhookStats()
+    stats.value = response.data
+  } catch (error) {
+    console.error('Failed to load stats:', error)
+  }
+}
+
+const loadLogs = async (page = 1) => {
+  loadingLogs.value = true
+  try {
+    const response = await api.getWebhookLogs({ 
+      page, 
+      limit: logsData.value.limit 
+    })
+    logsData.value = response.data
+  } catch (error) {
+    console.error('Failed to load logs:', error)
+    toast.error('Failed to load webhook logs')
+  } finally {
+    loadingLogs.value = false
+  }
+}
+
+const changePage = (page) => {
+  loadLogs(page)
+}
+
+const testWebhook = async () => {
+  testing.value = true
+  try {
+    const response = await api.testWebhook()
+    toast.success('Test webhook sent successfully')
+    // Reload logs and stats to show the test
+    await Promise.all([loadLogs(), loadStats()])
+  } catch (error) {
+    console.error('Failed to send test webhook:', error)
+    toast.error('Failed to send test webhook: ' + (error.response?.data?.error || error.message))
+  } finally {
+    testing.value = false
+  }
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return date.toLocaleString()
 }
 </script>
