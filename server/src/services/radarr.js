@@ -1,17 +1,82 @@
 const axios = require('axios');
 
 class RadarrService {
-  async testConnection(url, apiKey) {
+  buildUrl(config) {
+    const { protocol, host, port, base_path } = config;
+    const basePath = base_path && base_path.trim() ? base_path.trim() : '';
+    return `${protocol}://${host}:${port}${basePath}`;
+  }
+
+  async testConnection(config) {
     try {
-      const response = await axios.get(`${url}/api/v3/system/status`, {
+      const url = typeof config === 'string' ? config : this.buildUrl(config);
+      const apiKey = typeof config === 'string' ? arguments[1] : config.api_key;
+      
+      // Get system status
+      const statusResponse = await axios.get(`${url}/api/v3/system/status`, {
         headers: {
           'X-Api-Key': apiKey,
         },
-        timeout: 5000,
+        timeout: config.timeout ? config.timeout * 1000 : 5000,
       });
-      return { success: true, data: response.data };
+
+      // Get movie count
+      let movieCount = 0;
+      try {
+        const moviesResponse = await axios.get(`${url}/api/v3/movie`, {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+          timeout: 5000,
+        });
+        movieCount = moviesResponse.data.length;
+      } catch (err) {
+        console.warn('Could not fetch movie count:', err.message);
+      }
+
+      // Get root folders
+      let rootFolders = 0;
+      try {
+        const rootResponse = await axios.get(`${url}/api/v3/rootfolder`, {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+          timeout: 5000,
+        });
+        rootFolders = rootResponse.data.length;
+      } catch (err) {
+        console.warn('Could not fetch root folders:', err.message);
+      }
+
+      // Get quality profiles
+      let qualityProfiles = 0;
+      try {
+        const profilesResponse = await axios.get(`${url}/api/v3/qualityprofile`, {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+          timeout: 5000,
+        });
+        qualityProfiles = profilesResponse.data.length;
+      } catch (err) {
+        console.warn('Could not fetch quality profiles:', err.message);
+      }
+
+      return { 
+        success: true, 
+        version: statusResponse.data.version,
+        movieCount,
+        rootFolders,
+        qualityProfiles
+      };
     } catch (error) {
-      return { success: false, error: error.message };
+      const message = error.response?.data?.message || error.message || 'Unknown error';
+      const code = error.code || error.response?.status;
+      return { 
+        success: false, 
+        error: message,
+        code
+      };
     }
   }
 

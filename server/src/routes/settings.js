@@ -68,12 +68,19 @@ router.put('/', async (req, res) => {
  * @swagger
  * /api/settings/radarr:
  *   get:
- *     summary: Get all Radarr configurations
+ *     summary: Get active Radarr configuration
  */
 router.get('/radarr', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM radarr_config ORDER BY id');
-    res.json(result.rows);
+    const result = await db.query('SELECT * FROM radarr_config WHERE is_active = true LIMIT 1');
+    const config = result.rows[0] || null;
+    
+    // Mask API key for security
+    if (config && config.api_key) {
+      config.api_key = maskToken(config.api_key);
+    }
+    
+    res.json(config);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -82,51 +89,51 @@ router.get('/radarr', async (req, res) => {
 /**
  * @swagger
  * /api/settings/radarr:
- *   post:
- *     summary: Add Radarr configuration
- */
-router.post('/radarr', async (req, res) => {
-  try {
-    const { name, url, api_key } = req.body;
-
-    const result = await db.query(
-      `INSERT INTO radarr_config (name, url, api_key)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
-      [name, url, api_key]
-    );
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * @swagger
- * /api/settings/radarr/{id}:
  *   put:
  *     summary: Update Radarr configuration
  */
-router.put('/radarr/:id', async (req, res) => {
+router.put('/radarr', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, url, api_key, is_active } = req.body;
+    const { protocol, host, port, base_path, api_key, verify_ssl, timeout, name } = req.body;
 
+    // Get existing config to preserve API key if masked value is sent
+    const existingResult = await db.query('SELECT api_key FROM radarr_config WHERE is_active = true LIMIT 1');
+    const existingApiKey = existingResult.rows[0]?.api_key;
+    
+    // Use existing key if the provided one is masked
+    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
+
+    // Deactivate existing configs
+    await db.query('UPDATE radarr_config SET is_active = false');
+
+    // Build URL from parts
+    const basePath = base_path && base_path.trim() ? base_path.trim() : '';
+    const url = `${protocol}://${host}:${port}${basePath}`;
+
+    // Insert new config
     const result = await db.query(
-      `UPDATE radarr_config
-       SET name = COALESCE($1, name),
-           url = COALESCE($2, url),
-           api_key = COALESCE($3, api_key),
-           is_active = COALESCE($4, is_active),
-           updated_at = NOW()
-       WHERE id = $5
+      `INSERT INTO radarr_config (
+        name, url, api_key, protocol, host, port, base_path, 
+        verify_ssl, timeout, is_active
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
        RETURNING *`,
-      [name, url, api_key, is_active, id]
+      [
+        name || 'Radarr',
+        url,
+        finalApiKey,
+        protocol,
+        host,
+        port,
+        base_path || '',
+        verify_ssl !== false,
+        timeout || 30
+      ]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Radarr configuration not found' });
+    // Mask API key in response
+    if (result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
     }
 
     res.json(result.rows[0]);
@@ -159,11 +166,51 @@ router.delete('/radarr/:id', async (req, res) => {
  */
 router.post('/radarr/test', async (req, res) => {
   try {
-    const { url, api_key } = req.body;
-    const result = await radarrService.testConnection(url, api_key);
-    res.json(result);
+    const config = req.body;
+    const result = await radarrService.testConnection(config);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        details: {
+          serverName: 'Radarr',
+          version: result.version,
+          status: 'Connected',
+          additionalInfo: {
+            'Movies': result.movieCount,
+            'Root Folders': result.rootFolders,
+            'Quality Profiles': result.qualityProfiles
+          }
+        }
+      });
+    } else {
+      res.json({
+        success: false,
+        error: {
+          message: result.error,
+          code: result.code,
+          troubleshooting: [
+            'Check that Radarr is running',
+            'Verify the URL and port are correct',
+            'Ensure the API key is valid (Settings → General in Radarr)',
+            'Check if a firewall is blocking the connection'
+          ]
+        }
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({
+      success: false,
+      error: {
+        message: error.message,
+        troubleshooting: [
+          'Check that Radarr is running',
+          'Verify the URL and port are correct',
+          'Ensure the API key is valid',
+          'Check if a firewall is blocking the connection'
+        ]
+      }
+    });
   }
 });
 
@@ -221,12 +268,19 @@ router.get('/radarr/:id/quality-profiles', async (req, res) => {
  * @swagger
  * /api/settings/sonarr:
  *   get:
- *     summary: Get all Sonarr configurations
+ *     summary: Get active Sonarr configuration
  */
 router.get('/sonarr', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM sonarr_config ORDER BY id');
-    res.json(result.rows);
+    const result = await db.query('SELECT * FROM sonarr_config WHERE is_active = true LIMIT 1');
+    const config = result.rows[0] || null;
+    
+    // Mask API key for security
+    if (config && config.api_key) {
+      config.api_key = maskToken(config.api_key);
+    }
+    
+    res.json(config);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -235,51 +289,51 @@ router.get('/sonarr', async (req, res) => {
 /**
  * @swagger
  * /api/settings/sonarr:
- *   post:
- *     summary: Add Sonarr configuration
- */
-router.post('/sonarr', async (req, res) => {
-  try {
-    const { name, url, api_key } = req.body;
-
-    const result = await db.query(
-      `INSERT INTO sonarr_config (name, url, api_key)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
-      [name, url, api_key]
-    );
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * @swagger
- * /api/settings/sonarr/{id}:
  *   put:
  *     summary: Update Sonarr configuration
  */
-router.put('/sonarr/:id', async (req, res) => {
+router.put('/sonarr', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, url, api_key, is_active } = req.body;
+    const { protocol, host, port, base_path, api_key, verify_ssl, timeout, name } = req.body;
 
+    // Get existing config to preserve API key if masked value is sent
+    const existingResult = await db.query('SELECT api_key FROM sonarr_config WHERE is_active = true LIMIT 1');
+    const existingApiKey = existingResult.rows[0]?.api_key;
+    
+    // Use existing key if the provided one is masked
+    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
+
+    // Deactivate existing configs
+    await db.query('UPDATE sonarr_config SET is_active = false');
+
+    // Build URL from parts
+    const basePath = base_path && base_path.trim() ? base_path.trim() : '';
+    const url = `${protocol}://${host}:${port}${basePath}`;
+
+    // Insert new config
     const result = await db.query(
-      `UPDATE sonarr_config
-       SET name = COALESCE($1, name),
-           url = COALESCE($2, url),
-           api_key = COALESCE($3, api_key),
-           is_active = COALESCE($4, is_active),
-           updated_at = NOW()
-       WHERE id = $5
+      `INSERT INTO sonarr_config (
+        name, url, api_key, protocol, host, port, base_path, 
+        verify_ssl, timeout, is_active
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
        RETURNING *`,
-      [name, url, api_key, is_active, id]
+      [
+        name || 'Sonarr',
+        url,
+        finalApiKey,
+        protocol,
+        host,
+        port,
+        base_path || '',
+        verify_ssl !== false,
+        timeout || 30
+      ]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Sonarr configuration not found' });
+    // Mask API key in response
+    if (result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
     }
 
     res.json(result.rows[0]);
@@ -312,11 +366,58 @@ router.delete('/sonarr/:id', async (req, res) => {
  */
 router.post('/sonarr/test', async (req, res) => {
   try {
-    const { url, api_key } = req.body;
-    const result = await sonarrService.testConnection(url, api_key);
-    res.json(result);
+    const config = req.body;
+    const result = await sonarrService.testConnection(config);
+    
+    if (result.success) {
+      const additionalInfo = {
+        'Series': result.seriesCount,
+        'Root Folders': result.rootFolders,
+        'Quality Profiles': result.qualityProfiles
+      };
+      
+      // Add language profiles if available
+      if (result.languageProfiles > 0) {
+        additionalInfo['Language Profiles'] = result.languageProfiles;
+      }
+      
+      res.json({
+        success: true,
+        details: {
+          serverName: 'Sonarr',
+          version: result.version,
+          status: 'Connected',
+          additionalInfo
+        }
+      });
+    } else {
+      res.json({
+        success: false,
+        error: {
+          message: result.error,
+          code: result.code,
+          troubleshooting: [
+            'Check that Sonarr is running',
+            'Verify the URL and port are correct',
+            'Ensure the API key is valid (Settings → General in Sonarr)',
+            'Check if a firewall is blocking the connection'
+          ]
+        }
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({
+      success: false,
+      error: {
+        message: error.message,
+        troubleshooting: [
+          'Check that Sonarr is running',
+          'Verify the URL and port are correct',
+          'Ensure the API key is valid',
+          'Check if a firewall is blocking the connection'
+        ]
+      }
+    });
   }
 });
 

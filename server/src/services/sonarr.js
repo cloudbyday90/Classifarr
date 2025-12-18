@@ -1,17 +1,98 @@
 const axios = require('axios');
 
 class SonarrService {
-  async testConnection(url, apiKey) {
+  buildUrl(config) {
+    const { protocol, host, port, base_path } = config;
+    const basePath = base_path && base_path.trim() ? base_path.trim() : '';
+    return `${protocol}://${host}:${port}${basePath}`;
+  }
+
+  async testConnection(config) {
     try {
-      const response = await axios.get(`${url}/api/v3/system/status`, {
+      const url = typeof config === 'string' ? config : this.buildUrl(config);
+      const apiKey = typeof config === 'string' ? arguments[1] : config.api_key;
+      
+      // Get system status
+      const statusResponse = await axios.get(`${url}/api/v3/system/status`, {
         headers: {
           'X-Api-Key': apiKey,
         },
-        timeout: 5000,
+        timeout: config.timeout ? config.timeout * 1000 : 5000,
       });
-      return { success: true, data: response.data };
+
+      // Get series count
+      let seriesCount = 0;
+      try {
+        const seriesResponse = await axios.get(`${url}/api/v3/series`, {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+          timeout: 5000,
+        });
+        seriesCount = seriesResponse.data.length;
+      } catch (err) {
+        console.warn('Could not fetch series count:', err.message);
+      }
+
+      // Get root folders
+      let rootFolders = 0;
+      try {
+        const rootResponse = await axios.get(`${url}/api/v3/rootfolder`, {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+          timeout: 5000,
+        });
+        rootFolders = rootResponse.data.length;
+      } catch (err) {
+        console.warn('Could not fetch root folders:', err.message);
+      }
+
+      // Get quality profiles
+      let qualityProfiles = 0;
+      try {
+        const profilesResponse = await axios.get(`${url}/api/v3/qualityprofile`, {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+          timeout: 5000,
+        });
+        qualityProfiles = profilesResponse.data.length;
+      } catch (err) {
+        console.warn('Could not fetch quality profiles:', err.message);
+      }
+
+      // Get language profiles (Sonarr v3+)
+      let languageProfiles = 0;
+      try {
+        const langResponse = await axios.get(`${url}/api/v3/languageprofile`, {
+          headers: {
+            'X-Api-Key': apiKey,
+          },
+          timeout: 5000,
+        });
+        languageProfiles = langResponse.data.length;
+      } catch (err) {
+        // Language profiles might not exist in all versions
+        console.debug('Could not fetch language profiles:', err.message);
+      }
+
+      return { 
+        success: true, 
+        version: statusResponse.data.version,
+        seriesCount,
+        rootFolders,
+        qualityProfiles,
+        languageProfiles
+      };
     } catch (error) {
-      return { success: false, error: error.message };
+      const message = error.response?.data?.message || error.message || 'Unknown error';
+      const code = error.code || error.response?.status;
+      return { 
+        success: false, 
+        error: message,
+        code
+      };
     }
   }
 
