@@ -3,6 +3,11 @@
 -- ===========================================
 
 -- Drop existing tables (if any)
+DROP TABLE IF EXISTS auth_audit_log CASCADE;
+DROP TABLE IF EXISTS user_sessions CASCADE;
+DROP TABLE IF EXISTS role_permissions CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS ssl_config CASCADE;
 DROP TABLE IF EXISTS learning_patterns CASCADE;
 DROP TABLE IF EXISTS classification_corrections CASCADE;
 DROP TABLE IF EXISTS classification_history CASCADE;
@@ -17,6 +22,96 @@ DROP TABLE IF EXISTS ollama_config CASCADE;
 DROP TABLE IF EXISTS tmdb_config CASCADE;
 DROP TABLE IF EXISTS notification_config CASCADE;
 DROP TABLE IF EXISTS settings CASCADE;
+
+-- ===========================================
+-- AUTHENTICATION & AUTHORIZATION TABLES
+-- ===========================================
+
+-- Users Table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'viewer' CHECK (role IN ('admin', 'editor', 'viewer')),
+    is_active BOOLEAN DEFAULT true,
+    must_change_password BOOLEAN DEFAULT false,
+    failed_login_attempts INTEGER DEFAULT 0,
+    locked_until TIMESTAMP,
+    last_login TIMESTAMP,
+    last_password_change TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Sessions Table (for refresh tokens)
+CREATE TABLE user_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    refresh_token_hash VARCHAR(255) NOT NULL,
+    device_info VARCHAR(500),
+    ip_address VARCHAR(45),
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    revoked_at TIMESTAMP
+);
+
+CREATE INDEX idx_sessions_user ON user_sessions(user_id);
+CREATE INDEX idx_sessions_token ON user_sessions(refresh_token_hash);
+
+-- Role Permissions Table
+CREATE TABLE role_permissions (
+    role VARCHAR(20) PRIMARY KEY,
+    can_view_dashboard BOOLEAN DEFAULT true,
+    can_view_history BOOLEAN DEFAULT true,
+    can_classify BOOLEAN DEFAULT false,
+    can_correct_classification BOOLEAN DEFAULT false,
+    can_manage_libraries BOOLEAN DEFAULT false,
+    can_manage_settings BOOLEAN DEFAULT false,
+    can_manage_users BOOLEAN DEFAULT false,
+    can_view_logs BOOLEAN DEFAULT false,
+    can_manage_webhooks BOOLEAN DEFAULT false
+);
+
+-- Default role permissions
+INSERT INTO role_permissions (role, can_view_dashboard, can_view_history, can_classify, can_correct_classification, can_manage_libraries, can_manage_settings, can_manage_users, can_view_logs, can_manage_webhooks) VALUES
+('admin', true, true, true, true, true, true, true, true, true),
+('editor', true, true, true, true, true, false, false, true, false),
+('viewer', true, true, false, false, false, false, false, false, false);
+
+-- Audit Log Table
+CREATE TABLE auth_audit_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    action VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent VARCHAR(500),
+    details JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_audit_user ON auth_audit_log(user_id);
+CREATE INDEX idx_audit_action ON auth_audit_log(action);
+CREATE INDEX idx_audit_created ON auth_audit_log(created_at DESC);
+
+-- SSL Configuration Table
+CREATE TABLE ssl_config (
+    id SERIAL PRIMARY KEY,
+    enabled BOOLEAN DEFAULT false,
+    cert_path VARCHAR(500),
+    key_path VARCHAR(500),
+    ca_path VARCHAR(500),
+    force_https BOOLEAN DEFAULT true,
+    hsts_enabled BOOLEAN DEFAULT true,
+    hsts_max_age INTEGER DEFAULT 31536000,
+    client_cert_required BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Default SSL configuration
+INSERT INTO ssl_config (enabled, cert_path, key_path, force_https, hsts_enabled, hsts_max_age, client_cert_required) VALUES
+(false, '/app/certs/cert.pem', '/app/certs/key.pem', true, true, 31536000, false);
 
 -- ===========================================
 -- CORE TABLES

@@ -919,4 +919,123 @@ router.get('/setup-status', async (req, res) => {
   }
 });
 
+// ============================================
+// SSL/TLS CONFIGURATION
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/ssl:
+ *   get:
+ *     summary: Get SSL configuration
+ */
+router.get('/ssl', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM ssl_config LIMIT 1');
+    res.json(result.rows[0] || null);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/ssl:
+ *   put:
+ *     summary: Update SSL configuration
+ */
+router.put('/ssl', async (req, res) => {
+  try {
+    const { 
+      enabled, 
+      cert_path, 
+      key_path, 
+      ca_path, 
+      force_https, 
+      hsts_enabled, 
+      hsts_max_age, 
+      client_cert_required 
+    } = req.body;
+
+    const result = await db.query(
+      `UPDATE ssl_config
+       SET enabled = COALESCE($1, enabled),
+           cert_path = COALESCE($2, cert_path),
+           key_path = COALESCE($3, key_path),
+           ca_path = COALESCE($4, ca_path),
+           force_https = COALESCE($5, force_https),
+           hsts_enabled = COALESCE($6, hsts_enabled),
+           hsts_max_age = COALESCE($7, hsts_max_age),
+           client_cert_required = COALESCE($8, client_cert_required),
+           updated_at = NOW()
+       WHERE id = 1
+       RETURNING *`,
+      [enabled, cert_path, key_path, ca_path, force_https, hsts_enabled, hsts_max_age, client_cert_required]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'SSL configuration not found' });
+    }
+
+    res.json({
+      ...result.rows[0],
+      message: 'SSL configuration updated. Server restart required for changes to take effect.'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/ssl/test:
+ *   post:
+ *     summary: Test SSL certificate validity
+ */
+router.post('/ssl/test', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const { cert_path, key_path } = req.body;
+
+    if (!cert_path || !key_path) {
+      return res.status(400).json({ error: 'Certificate and key paths are required' });
+    }
+
+    // Check if files exist
+    if (!fs.existsSync(cert_path)) {
+      return res.status(400).json({ error: 'Certificate file not found', path: cert_path });
+    }
+
+    if (!fs.existsSync(key_path)) {
+      return res.status(400).json({ error: 'Key file not found', path: key_path });
+    }
+
+    // Try to read certificate info
+    try {
+      const https = require('https');
+      const tls = require('tls');
+      
+      const cert = fs.readFileSync(cert_path, 'utf8');
+      const key = fs.readFileSync(key_path, 'utf8');
+
+      // Create a test context to validate
+      const context = tls.createSecureContext({ cert, key });
+
+      res.json({
+        valid: true,
+        message: 'SSL certificate and key are valid',
+        cert_path,
+        key_path
+      });
+    } catch (error) {
+      res.status(400).json({
+        valid: false,
+        error: 'Invalid certificate or key: ' + error.message
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
