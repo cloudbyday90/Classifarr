@@ -3,6 +3,7 @@ const db = require('../config/database');
 const plexService = require('../services/plex');
 const embyService = require('../services/emby');
 const jellyfinService = require('../services/jellyfin');
+const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
 
 const router = express.Router();
 
@@ -10,7 +11,7 @@ const router = express.Router();
  * @swagger
  * /api/media-server:
  *   get:
- *     summary: Get configured media server
+ *     summary: Get configured media server (with masked API key)
  *     responses:
  *       200:
  *         description: Media server configuration
@@ -18,6 +19,9 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
+    if (result.rows[0] && result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
+    }
     res.json(result.rows[0] || null);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -55,6 +59,17 @@ router.post('/', async (req, res) => {
   try {
     const { type, name, url, api_key } = req.body;
 
+    // Get existing config to preserve API key if masked value is sent
+    const existingResult = await db.query('SELECT api_key FROM media_server WHERE is_active = true LIMIT 1');
+    const existingApiKey = existingResult.rows[0]?.api_key;
+    
+    // Use existing API key if the provided one is masked
+    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
+
+    if (!finalApiKey) {
+      return res.status(400).json({ error: 'API key is required' });
+    }
+
     // Deactivate existing servers
     await db.query('UPDATE media_server SET is_active = false');
 
@@ -63,8 +78,13 @@ router.post('/', async (req, res) => {
       `INSERT INTO media_server (type, name, url, api_key, is_active)
        VALUES ($1, $2, $3, $4, true)
        RETURNING *`,
-      [type, name, url, api_key]
+      [type, name, url, finalApiKey]
     );
+
+    // Mask API key in response
+    if (result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
+    }
 
     res.json(result.rows[0]);
   } catch (error) {
