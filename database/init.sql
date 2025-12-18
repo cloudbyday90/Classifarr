@@ -246,26 +246,80 @@ CREATE TABLE notification_config (
 -- Webhook Configuration
 CREATE TABLE webhook_config (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    api_key VARCHAR(500) NOT NULL UNIQUE,
-    is_active BOOLEAN DEFAULT true,
+    webhook_type VARCHAR(50) DEFAULT 'overseerr',
+    secret_key VARCHAR(255),
+    process_pending BOOLEAN DEFAULT true,
+    process_approved BOOLEAN DEFAULT true,
+    process_auto_approved BOOLEAN DEFAULT true,
+    process_declined BOOLEAN DEFAULT false,
+    notify_on_receive BOOLEAN DEFAULT true,
+    notify_on_error BOOLEAN DEFAULT true,
+    enabled BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Webhook Activity Log
+INSERT INTO webhook_config (webhook_type, enabled) VALUES ('overseerr', true);
+
+-- Webhook Audit Log
 CREATE TABLE webhook_log (
     id SERIAL PRIMARY KEY,
-    webhook_id INTEGER REFERENCES webhook_config(id) ON DELETE CASCADE,
-    endpoint VARCHAR(255),
-    method VARCHAR(10),
-    status_code INTEGER,
-    request_body JSONB,
-    response_body JSONB,
+    webhook_type VARCHAR(50) DEFAULT 'overseerr',
+    notification_type VARCHAR(50),
+    event_name VARCHAR(100),
+    payload JSONB,
+    media_title VARCHAR(500),
+    media_type VARCHAR(20),
+    tmdb_id INT,
+    tvdb_id INT,
+    request_id INT,
+    requested_by_username VARCHAR(255),
+    requested_by_email VARCHAR(255),
+    is_4k BOOLEAN DEFAULT false,
+    processing_status VARCHAR(20) DEFAULT 'received',
+    classification_id INT REFERENCES classification_history(id),
+    routed_to_library VARCHAR(255),
+    error_message TEXT,
+    processing_time_ms INT,
     ip_address VARCHAR(50),
-    user_agent TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    user_agent VARCHAR(500),
+    received_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX idx_webhook_log_received ON webhook_log(received_at DESC);
+CREATE INDEX idx_webhook_log_status ON webhook_log(processing_status);
+CREATE INDEX idx_webhook_log_tmdb ON webhook_log(tmdb_id);
+
+-- Media Request Tracking
+CREATE TABLE media_requests (
+    id SERIAL PRIMARY KEY,
+    overseerr_request_id INT UNIQUE,
+    tmdb_id INT,
+    tvdb_id INT,
+    media_type VARCHAR(20),
+    title VARCHAR(500),
+    year INT,
+    poster_path VARCHAR(500),
+    requested_by_username VARCHAR(255),
+    requested_by_email VARCHAR(255),
+    requested_by_avatar VARCHAR(500),
+    is_4k BOOLEAN DEFAULT false,
+    requested_seasons TEXT,
+    request_status VARCHAR(50) DEFAULT 'pending',
+    classification_id INT REFERENCES classification_history(id),
+    routed_to_library_id INT REFERENCES libraries(id),
+    routed_to_library_name VARCHAR(255),
+    arr_type VARCHAR(20),
+    arr_id INT,
+    requested_at TIMESTAMP,
+    approved_at TIMESTAMP,
+    available_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_media_requests_status ON media_requests(request_status);
+CREATE INDEX idx_media_requests_tmdb ON media_requests(tmdb_id);
 
 -- SSL/HTTPS Configuration
 CREATE TABLE ssl_config (
