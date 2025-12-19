@@ -52,6 +52,102 @@ class EmbyService {
       throw new Error(`Failed to fetch Emby libraries: ${error.message}`);
     }
   }
+
+  async getLibraryItems(url, apiKey, libraryId, options = {}) {
+    const { offset = 0, limit = 100 } = options;
+    
+    try {
+      const response = await axios.get(`${url}/Items`, {
+        headers: {
+          'X-Emby-Token': apiKey,
+        },
+        params: {
+          ParentId: libraryId,
+          Recursive: true,
+          IncludeItemTypes: 'Movie,Series',
+          StartIndex: offset,
+          Limit: limit,
+          Fields: 'ProviderIds,Genres,Tags,Studios,Overview',
+        },
+      });
+
+      const items = response.data.Items || [];
+      
+      return items.map(item => ({
+        external_id: item.Id,
+        title: item.Name,
+        original_title: item.OriginalTitle,
+        year: item.ProductionYear,
+        media_type: item.Type === 'Series' ? 'tv' : 'movie',
+        genres: item.Genres || [],
+        tags: item.Tags || [],
+        collections: [],
+        studio: item.Studios?.[0]?.Name,
+        content_rating: item.OfficialRating,
+        added_at: item.DateCreated ? new Date(item.DateCreated) : null,
+        ...this.parseGuids(item),
+        metadata: {
+          rating: item.CommunityRating,
+          summary: item.Overview,
+        },
+        total: response.data.TotalRecordCount,
+      }));
+    } catch (error) {
+      throw new Error(`Failed to fetch Emby library items: ${error.message}`);
+    }
+  }
+
+  async getCollections(url, apiKey, libraryId) {
+    try {
+      const response = await axios.get(`${url}/Items`, {
+        headers: {
+          'X-Emby-Token': apiKey,
+        },
+        params: {
+          ParentId: libraryId,
+          IncludeItemTypes: 'BoxSet',
+          Recursive: true,
+        },
+      });
+
+      const items = response.data.Items || [];
+      return items.map(item => ({
+        external_id: item.Id,
+        name: item.Name,
+        item_count: item.ChildCount || 0,
+      }));
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async searchByProviderIds(url, apiKey, tmdbId, mediaType) {
+    try {
+      const response = await axios.get(`${url}/Items`, {
+        headers: {
+          'X-Emby-Token': apiKey,
+        },
+        params: {
+          Recursive: true,
+          AnyProviderIdEquals: `Tmdb.${tmdbId}`,
+        },
+      });
+
+      const items = response.data.Items || [];
+      return items.length > 0 ? items[0] : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  parseGuids(item) {
+    const providerIds = item.ProviderIds || {};
+    return {
+      tmdb_id: providerIds.Tmdb ? parseInt(providerIds.Tmdb) : null,
+      imdb_id: providerIds.Imdb || null,
+      tvdb_id: providerIds.Tvdb ? parseInt(providerIds.Tvdb) : null,
+    };
+  }
 }
 
 module.exports = new EmbyService();

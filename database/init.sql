@@ -619,3 +619,11 @@ INSERT INTO ollama_config (host, port, model, temperature, is_active) VALUES
 -- Default Tavily Configuration
 INSERT INTO tavily_config (search_depth, max_results, is_active) VALUES
 ('basic', 5, false);
+
+-- ===========================================
+-- RUN MIGRATIONS
+-- ===========================================
+\i /docker-entrypoint-initdb.d/migrations/001_add_arr_settings.sql
+\i /docker-entrypoint-initdb.d/migrations/002_add_arr_connection_fields.sql
+\i /docker-entrypoint-initdb.d/migrations/003_media_server_content_confidence.sql
+\i /docker-entrypoint-initdb.d/migrations/004_enhanced_logging.sql
