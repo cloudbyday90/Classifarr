@@ -178,7 +178,7 @@ const healthChecks = ref([
 const systemStatus = ref({
   version: '1.0.0',
   uptime: '0h 0m',
-  nodeVersion: process.version || 'Unknown'
+  nodeVersion: 'Loading...'
 })
 
 const tasks = ref([

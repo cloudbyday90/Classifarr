@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const db = require('../config/database');
 const discordBot = require('../services/discordBot');
 
@@ -55,7 +56,6 @@ router.get('/health', async (req, res) => {
         const ollamaPort = settingsResult.rows[0].ollama_port || 11434;
         
         try {
-          const axios = require('axios');
           await axios.get(`http://${ollamaHost}:${ollamaPort}/api/tags`, { timeout: 2000 });
           health.ollama_ai = 'healthy';
         } catch (error) {
@@ -80,7 +80,6 @@ router.get('/health', async (req, res) => {
       for (const lib of libsResult.rows) {
         if (lib.arr_url && lib.arr_api_key) {
           try {
-            const axios = require('axios');
             await axios.get(`${lib.arr_url}/api/v3/system/status`, {
               headers: { 'X-Api-Key': lib.arr_api_key },
               timeout: 2000
@@ -110,7 +109,6 @@ router.get('/health', async (req, res) => {
       if (settingsResult.rows.length > 0 && settingsResult.rows[0].media_server_url) {
         const settings = settingsResult.rows[0];
         try {
-          const axios = require('axios');
           let endpoint = '';
           
           if (settings.media_server_type === 'plex') {
@@ -197,8 +195,8 @@ router.get('/logs', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 50;
     
-    // For now, return mock logs
-    // In a production system, you would read from a log file or logging service
+    // Return mock logs for now
+    // In production, this would read from actual log files or a logging service
     const logs = [
       {
         timestamp: new Date().toISOString(),
