@@ -1,3 +1,11 @@
+<!--
+  Classifarr - AI-powered media classification for the *arr ecosystem
+  Copyright (C) 2025 cloudbyday90
+  
+  This program is free software: licensed under GPL-3.0
+  See LICENSE file for details.
+-->
+
 <template>
   <div class="overflow-x-auto">
     <table class="w-full">
@@ -76,12 +84,10 @@ const props = defineProps({
   totalItems: { type: Number, default: 0 }
 })
 
-defineEmits(['page-change', 'sort-change'])
+const emit = defineEmits(['page-change', 'sort-change'])
 
 const sortKey = ref(null)
 const sortOrder = ref('asc')
-
-const emit = defineEmits(['page-change', 'sort-change'])
 
 const toggleSort = (key) => {
   if (sortKey.value === key) {

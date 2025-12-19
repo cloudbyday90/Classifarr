@@ -383,8 +383,11 @@ mkdir -p ./data
 openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > ./data/postgres_password
 chmod 600 ./data/postgres_password
 
-# Pull and run
+# Pull from GitHub Container Registry
 docker pull ghcr.io/cloudbyday90/classifarr:latest
+
+# Or pull from Docker Hub
+docker pull cloudbyday90/classifarr:latest
 ```
 
 ### Windows (Docker Desktop)
@@ -431,8 +434,14 @@ docker pull ghcr.io/cloudbyday90/classifarr:latest
 3. Search for "Classifarr"
 4. Click **Install**
 5. Configure paths and ports as needed
+6. Click **Apply**
 
-**Note:** The Community App will automatically generate a secure password on first run.
+The Community Applications template will automatically:
+- Generate a secure database password on first run
+- Configure proper volume mounts to `/mnt/user/appdata/classifarr`
+- Set up networking with default port 21324
+
+For detailed UnRaid installation instructions, see [unraid/README.md](unraid/README.md).
 
 **Option 2: Manual Docker Setup**
 1. First, generate the password file:
@@ -445,7 +454,7 @@ docker pull ghcr.io/cloudbyday90/classifarr:latest
 2. In UnRaid, go to **Docker** tab
 3. Click **Add Container**
 4. Use the following settings:
-   - **Repository:** `ghcr.io/cloudbyday90/classifarr:latest`
+   - **Repository:** `ghcr.io/cloudbyday90/classifarr:latest` or `cloudbyday90/classifarr:latest`
    - **Network Type:** Bridge
    - **Port Mappings:**
      - Container Port: 21324 → Host Port: 21324 (HTTP)
@@ -511,7 +520,7 @@ docker compose -f docker-compose.unraid.yml up -d
 
 1. In Container Manager, go to **Container** tab
 2. Click **Create** → **Create Container via Docker Hub**
-3. Search for: `ghcr.io/cloudbyday90/classifarr`
+3. Search for: `ghcr.io/cloudbyday90/classifarr` or `cloudbyday90/classifarr`
 4. Configure:
    - **Port Settings:**
      - Local Port: 21324 → Container Port: 21324
@@ -525,14 +534,18 @@ docker compose -f docker-compose.unraid.yml up -d
 
 ### Pre-built Images
 
-All platforms can use pre-built images from GitHub Container Registry:
+All platforms can use pre-built images from GitHub Container Registry or Docker Hub:
 
 ```bash
-# Pull latest version
+# From GitHub Container Registry
 docker pull ghcr.io/cloudbyday90/classifarr:latest
+
+# From Docker Hub
+docker pull cloudbyday90/classifarr:latest
 
 # Pull specific version
 docker pull ghcr.io/cloudbyday90/classifarr:v1.0.0
+docker pull cloudbyday90/classifarr:v1.0.0
 
 # Pull specific architecture
 docker pull ghcr.io/cloudbyday90/classifarr:latest --platform linux/arm64
@@ -563,7 +576,10 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/cloudbyday90/Classifarr)
+- [GitHub Container Registry](https://github.com/cloudbyday90/Classifarr/pkgs/container/classifarr)
+- [Docker Hub](https://hub.docker.com/r/cloudbyday90/classifarr)
 - [Issue Tracker](https://github.com/cloudbyday90/Classifarr/issues)
+- [UnRaid Community Apps](https://unraid.net/community/apps)
 - [TMDB API](https://www.themoviedb.org/settings/api)
 - [Ollama](https://ollama.ai/)
 

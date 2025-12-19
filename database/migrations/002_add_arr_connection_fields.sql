@@ -1,3 +1,9 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2025 cloudbyday90
+ * Licensed under GPL-3.0 - See LICENSE file for details.
+ */
+
 -- Migration: Add granular connection fields to radarr_config and sonarr_config
 -- Date: 2025-12-18
 -- Description: Adds protocol, host, port, base_path, verify_ssl, and timeout fields
