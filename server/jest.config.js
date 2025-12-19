@@ -9,8 +9,5 @@ module.exports = {
   testMatch: [
     '**/src/**/__tests__/**/*.test.js'
   ],
-  transformIgnorePatterns: [
-    'node_modules/(?!(uuid)/)'
-  ],
   verbose: true
 };

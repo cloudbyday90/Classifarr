@@ -41,7 +41,11 @@ class Logger {
   async warn(message, data = {}) {
     if (this.level >= LOG_LEVELS.WARN) {
       console.warn(this.formatMessage('WARN', message, data));
-      await this.persistLog('WARN', message, data);
+      try {
+        await this.persistLog('WARN', message, data);
+      } catch (err) {
+        // Silently fail for non-error logs to avoid cascading failures
+      }
     }
   }
 
