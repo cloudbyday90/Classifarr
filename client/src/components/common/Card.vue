@@ -1,3 +1,11 @@
+<!--
+  Classifarr - AI-powered media classification for the *arr ecosystem
+  Copyright (C) 2025 cloudbyday90
+  
+  This program is free software: licensed under GPL-3.0
+  See LICENSE file for details.
+-->
+
 <template>
   <div class="bg-background-light rounded-lg border border-gray-800 p-6">
     <div v-if="title" class="mb-4">

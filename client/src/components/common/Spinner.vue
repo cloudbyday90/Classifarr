@@ -1,3 +1,11 @@
+<!--
+  Classifarr - AI-powered media classification for the *arr ecosystem
+  Copyright (C) 2025 cloudbyday90
+  
+  This program is free software: licensed under GPL-3.0
+  See LICENSE file for details.
+-->
+
 <template>
   <div class="inline-flex items-center justify-center" :class="sizeClass">
     <svg class="animate-spin" :class="[sizeClass, colorClass]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

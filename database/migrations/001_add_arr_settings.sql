@@ -1,3 +1,9 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2025 cloudbyday90
+ * Licensed under GPL-3.0 - See LICENSE file for details.
+ */
+
 -- Migration: Add *arr settings to libraries
 ALTER TABLE libraries ADD COLUMN IF NOT EXISTS radarr_settings JSONB DEFAULT '{}';
 ALTER TABLE libraries ADD COLUMN IF NOT EXISTS sonarr_settings JSONB DEFAULT '{}';

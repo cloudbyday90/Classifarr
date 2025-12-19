@@ -1,3 +1,9 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2025 cloudbyday90
+ * Licensed under GPL-3.0 - See LICENSE file for details.
+ */
+
 -- ===========================================
 -- CLASSIFARR DATABASE SCHEMA
 -- ===========================================
