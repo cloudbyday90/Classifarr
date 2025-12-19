@@ -48,6 +48,7 @@ import Discord from './settings/Discord.vue'
 import Webhooks from './settings/Webhooks.vue'
 import SSL from './settings/SSL.vue'
 import Logs from './settings/Logs.vue'
+import Confidence from './settings/Confidence.vue'
 
 const activeTab = ref('general')
 
@@ -60,6 +61,7 @@ const tabs = [
   { id: 'mediaserver', label: 'Media Server', component: MediaServer },
   { id: 'discord', label: 'Discord', component: Discord },
   { id: 'webhooks', label: 'Webhooks', component: Webhooks },
+  { id: 'confidence', label: 'Confidence', component: Confidence },
   { id: 'ssl', label: 'SSL/HTTPS', component: SSL },
   { id: 'logs', label: 'Logs', component: Logs },
 ]
