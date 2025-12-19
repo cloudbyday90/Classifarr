@@ -76,12 +76,10 @@ const props = defineProps({
   totalItems: { type: Number, default: 0 }
 })
 
-defineEmits(['page-change', 'sort-change'])
+const emit = defineEmits(['page-change', 'sort-change'])
 
 const sortKey = ref(null)
 const sortOrder = ref('asc')
-
-const emit = defineEmits(['page-change', 'sort-change'])
 
 const toggleSort = (key) => {
   if (sortKey.value === key) {

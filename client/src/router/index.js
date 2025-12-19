@@ -39,6 +39,11 @@ const router = createRouter({
           component: () => import('@/views/RuleBuilder.vue'),
         },
         {
+          path: '/activity',
+          name: 'Activity',
+          component: () => import('@/views/Activity.vue'),
+        },
+        {
           path: '/history',
           name: 'History',
           component: () => import('@/views/History.vue'),
@@ -47,6 +52,11 @@ const router = createRouter({
           path: '/settings',
           name: 'Settings',
           component: () => import('@/views/Settings.vue'),
+        },
+        {
+          path: '/system',
+          name: 'System',
+          component: () => import('@/views/System.vue'),
         },
       ],
     },
