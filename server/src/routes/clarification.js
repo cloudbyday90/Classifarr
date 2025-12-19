@@ -18,6 +18,7 @@
 
 const express = require('express');
 const clarificationService = require('../services/clarificationService');
+const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
@@ -33,7 +34,6 @@ router.get('/:classificationId', async (req, res) => {
     const { maxQuestions = 3 } = req.query;
 
     // Get classification metadata
-    const db = require('../config/database');
     const result = await db.query(
       'SELECT metadata FROM classification_history WHERE id = $1',
       [classificationId]

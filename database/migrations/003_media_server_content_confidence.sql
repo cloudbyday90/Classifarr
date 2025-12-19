@@ -209,4 +209,4 @@ INSERT INTO clarification_questions (question_text, question_type, trigger_keywo
     5,
     true
 )
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO NOTHING;

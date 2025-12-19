@@ -122,9 +122,7 @@ class PlexService {
 
   async searchByProviderIds(url, apiKey, tmdbId, mediaType) {
     try {
-      const guid = mediaType === 'movie' 
-        ? `tmdb://${tmdbId}` 
-        : `tmdb://${tmdbId}`;
+      const guid = `tmdb://${tmdbId}`;
 
       const response = await axios.get(`${url}/library/all`, {
         headers: {

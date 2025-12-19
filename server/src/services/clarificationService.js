@@ -21,6 +21,17 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('clarificationService');
 
+/**
+ * Clamp confidence value between min and max
+ * @param {number} value - Confidence value
+ * @param {number} min - Minimum value
+ * @param {number} max - Maximum value
+ * @returns {number} Clamped value
+ */
+function clampConfidence(value, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, value));
+}
+
 class ClarificationService {
   /**
    * Get confidence thresholds
@@ -159,7 +170,7 @@ class ClarificationService {
 
       // Calculate new confidence
       const confidenceBoost = selectedOption.confidence_boost || 0;
-      const confidenceAfter = Math.max(0, Math.min(100, confidenceBefore + confidenceBoost));
+      const confidenceAfter = clampConfidence(confidenceBefore + confidenceBoost);
 
       // Record response
       const result = await db.query(

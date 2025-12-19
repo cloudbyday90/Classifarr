@@ -206,8 +206,8 @@ class ContentTypeAnalyzer {
     // Consider pattern's base confidence
     if (confidence > 0) {
       detected = true;
-      // Blend with pattern's base confidence
-      confidence = Math.min((confidence + pattern.confidence) / 2, 100);
+      // Use weighted average favoring accumulated evidence (70%) over base confidence (30%)
+      confidence = Math.min((confidence * 0.7) + (pattern.confidence * 0.3), 100);
     }
 
     return {

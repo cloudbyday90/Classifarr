@@ -88,7 +88,14 @@ class MediaSyncService {
             processedItems++;
           }
 
-          totalItems = items.total || processedItems;
+          // Update total from API response or keep existing total
+          if (items.total && items.total > 0) {
+            totalItems = items.total;
+          } else if (totalItems === 0) {
+            // First batch - estimate total
+            totalItems = processedItems;
+          }
+          
           offset += batchSize;
 
           // Update progress
