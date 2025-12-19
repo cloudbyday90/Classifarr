@@ -4,7 +4,7 @@
 # ===========================================
 
 # Stage 1: Frontend Builder
-FROM node:24-alpine AS frontend-builder
+FROM node:25-alpine AS frontend-builder
 
 WORKDIR /build/client
 
@@ -20,7 +20,7 @@ COPY client/ ./
 RUN npm run build
 
 # Stage 2: Backend Builder  
-FROM node:24-alpine AS backend-builder
+FROM node:25-alpine AS backend-builder
 
 WORKDIR /build/server
 
@@ -35,7 +35,7 @@ RUN npm ci --only=production
 RUN npm rebuild bcrypt --build-from-source
 
 # Stage 3: Production Runtime
-FROM node:24-alpine AS production
+FROM node:25-alpine AS production
 
 # Labels for OCI compliance
 LABEL org.opencontainers.image.title="Classifarr"
