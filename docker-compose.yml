@@ -43,6 +43,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - app_data:/app/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U classifarr -d classifarr"]
       interval: 5s
