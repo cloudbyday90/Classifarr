@@ -24,6 +24,8 @@ const classificationRouter = require('./classification');
 const ruleBuilderRouter = require('./ruleBuilder');
 const settingsRouter = require('./settings');
 const logsRouter = require('./logs');
+const mediaSyncRouter = require('./mediaSync');
+const clarificationRouter = require('./clarification');
 
 const router = express.Router();
 
@@ -35,6 +37,8 @@ router.use('/classification', classificationRouter);
 router.use('/rule-builder', ruleBuilderRouter);
 router.use('/settings', settingsRouter);
 router.use('/logs', logsRouter);
+router.use('/media-sync', mediaSyncRouter);
+router.use('/clarifications', clarificationRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
@@ -50,6 +54,8 @@ router.get('/', (req, res) => {
       ruleBuilder: '/api/rule-builder',
       settings: '/api/settings',
       logs: '/api/logs',
+      mediaSync: '/api/media-sync',
+      clarifications: '/api/clarifications',
       docs: '/api/docs',
     },
   });

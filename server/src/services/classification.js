@@ -23,6 +23,9 @@ const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const discordBot = require('./discordBot');
 const tavilyService = require('./tavily');
+const mediaSyncService = require('./mediaSync');
+const contentTypeAnalyzer = require('./contentTypeAnalyzer');
+const clarificationService = require('./clarificationService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -44,16 +47,17 @@ class ClassificationService {
       // Log to database
       const classificationId = await this.logClassification(metadata, result);
 
-      // Route to Radarr/Sonarr
-      if (result.library && result.library.arr_type) {
+      // Route to Radarr/Sonarr only if confidence is high enough
+      if (result.library && result.library.arr_type && result.confidence >= 90) {
         await this.routeToArr(metadata, result.library);
       }
 
-      // Send Discord notification
+      // Send Discord notification with confidence-based routing
       if (discordBot.isInitialized) {
-        await discordBot.sendClassificationNotification(metadata, {
+        await discordBot.sendConfidenceBasedNotification(metadata, {
           ...result,
           classification_id: classificationId,
+          library_name: result.library?.name,
         });
       }
 
@@ -191,6 +195,33 @@ class ClassificationService {
 
     if (libraries.length === 0) {
       throw new Error(`No active libraries found for media type: ${mediaType}`);
+    }
+
+    // Step 0: Check if media already exists in media server (100% confidence)
+    const existingMedia = await mediaSyncService.findExistingMedia(metadata.tmdb_id, mediaType);
+    if (existingMedia) {
+      logger.info('Media already exists in library', { 
+        tmdbId: metadata.tmdb_id, 
+        library: existingMedia.library_name 
+      });
+      return {
+        library: libraries.find(l => l.id === existingMedia.library_id),
+        confidence: 100,
+        method: 'existing_media',
+        reason: `Already exists in ${existingMedia.library_name}`,
+        libraries: libraries,
+      };
+    }
+
+    // Step 0.5: Run content type analysis
+    const contentAnalysis = await contentTypeAnalyzer.analyze(metadata);
+    if (contentAnalysis.analyzed && contentAnalysis.bestMatch) {
+      logger.info('Content type detected', { 
+        type: contentAnalysis.bestMatch.type,
+        confidence: contentAnalysis.bestMatch.confidence
+      });
+      // Store analysis for later use
+      metadata.contentAnalysis = contentAnalysis;
     }
 
     // Step 1: Check exact match (previously corrected TMDB ID)
@@ -517,7 +548,15 @@ Example: 2|Action movie with high rating`;
       ]
     );
 
-    return insertResult.rows[0].id;
+    const classificationId = insertResult.rows[0].id;
+
+    // Log content analysis if available
+    if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {
+      const analysis = metadata.contentAnalysis.bestMatch;
+      await contentTypeAnalyzer.analyze(metadata, classificationId);
+    }
+
+    return classificationId;
   }
 
   async routeToArr(metadata, library) {

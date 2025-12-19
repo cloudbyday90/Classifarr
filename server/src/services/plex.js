@@ -55,6 +55,113 @@ class PlexService {
       throw new Error(`Failed to fetch Plex libraries: ${error.message}`);
     }
   }
+
+  async getLibraryItems(url, apiKey, libraryKey, options = {}) {
+    const { offset = 0, limit = 100 } = options;
+    
+    try {
+      const response = await axios.get(`${url}/library/sections/${libraryKey}/all`, {
+        headers: {
+          'X-Plex-Token': apiKey,
+          'Accept': 'application/json',
+        },
+        params: {
+          'X-Plex-Container-Start': offset,
+          'X-Plex-Container-Size': limit,
+        },
+      });
+
+      const container = response.data.MediaContainer;
+      const items = container.Metadata || [];
+      
+      return items.map(item => ({
+        external_id: item.ratingKey,
+        title: item.title,
+        original_title: item.originalTitle,
+        year: item.year,
+        media_type: item.type === 'show' ? 'tv' : 'movie',
+        genres: (item.Genre || []).map(g => g.tag),
+        tags: (item.Label || []).map(t => t.tag),
+        collections: (item.Collection || []).map(c => c.tag),
+        studio: item.studio,
+        content_rating: item.contentRating,
+        added_at: item.addedAt ? new Date(item.addedAt * 1000) : null,
+        ...this.parseGuids(item),
+        metadata: {
+          rating: item.rating,
+          summary: item.summary,
+          thumb: item.thumb,
+        },
+        total: container.totalSize,
+      }));
+    } catch (error) {
+      throw new Error(`Failed to fetch Plex library items: ${error.message}`);
+    }
+  }
+
+  async getCollections(url, apiKey, libraryKey) {
+    try {
+      const response = await axios.get(`${url}/library/sections/${libraryKey}/collections`, {
+        headers: {
+          'X-Plex-Token': apiKey,
+          'Accept': 'application/json',
+        },
+      });
+
+      const items = response.data.MediaContainer.Metadata || [];
+      return items.map(item => ({
+        external_id: item.ratingKey,
+        name: item.title,
+        item_count: item.childCount || 0,
+      }));
+    } catch (error) {
+      // Collections may not exist, return empty array
+      return [];
+    }
+  }
+
+  async searchByProviderIds(url, apiKey, tmdbId, mediaType) {
+    try {
+      const guid = `tmdb://${tmdbId}`;
+
+      const response = await axios.get(`${url}/library/all`, {
+        headers: {
+          'X-Plex-Token': apiKey,
+          'Accept': 'application/json',
+        },
+        params: {
+          guid: guid,
+        },
+      });
+
+      const items = response.data.MediaContainer.Metadata || [];
+      return items.length > 0 ? items[0] : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  parseGuids(item) {
+    const guids = item.Guid || [];
+    const result = {
+      tmdb_id: null,
+      imdb_id: null,
+      tvdb_id: null,
+    };
+
+    guids.forEach(guid => {
+      const id = guid.id;
+      if (id.startsWith('tmdb://')) {
+        result.tmdb_id = parseInt(id.replace('tmdb://', ''));
+      } else if (id.startsWith('imdb://')) {
+        result.imdb_id = id.replace('imdb://', '');
+      } else if (id.startsWith('tvdb://')) {
+        result.tvdb_id = parseInt(id.replace('tvdb://', ''));
+      }
+    });
+
+    return result;
+  }
 }
 
 module.exports = new PlexService();

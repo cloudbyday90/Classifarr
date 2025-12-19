@@ -18,6 +18,7 @@
 
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const db = require('../config/database');
+const clarificationService = require('./clarificationService');
 
 class DiscordBotService {
   constructor() {
@@ -267,6 +268,197 @@ class DiscordBotService {
     } catch (error) {
       console.error('Failed to send Discord notification:', error);
     }
+  }
+
+  async sendConfidenceBasedNotification(metadata, result) {
+    if (!this.isInitialized || !this.client) {
+      console.warn('Discord bot not initialized');
+      return;
+    }
+
+    try {
+      const config = await this.loadConfig();
+      
+      if (!config.notify_on_classification) {
+        return;
+      }
+
+      // Get confidence tier
+      const tier = await clarificationService.getTierForConfidence(result.confidence);
+      if (!tier) {
+        // Fallback to standard notification
+        return this.sendClassificationNotification(metadata, result);
+      }
+
+      const channel = await this.client.channels.fetch(this.channelId);
+      if (!channel) {
+        console.error('Discord channel not found');
+        return;
+      }
+
+      // Create embed based on tier
+      const embed = this.createTieredEmbed(metadata, result, tier);
+
+      // Create components based on tier
+      const components = await this.createTieredComponents(
+        result.classification_id,
+        result.libraries,
+        tier,
+        metadata,
+        result.confidence
+      );
+
+      const message = await channel.send({
+        embeds: [embed],
+        components: components,
+      });
+
+      // Store message ID
+      await db.query(
+        'UPDATE classification_history SET discord_message_id = $1, clarification_status = $2 WHERE id = $3',
+        [message.id, tier.action, result.classification_id]
+      );
+    } catch (error) {
+      console.error('Failed to send confidence-based notification:', error);
+    }
+  }
+
+  createTieredEmbed(metadata, result, tier) {
+    const colors = {
+      auto: 0x00ff00,      // Green
+      verify: 0xffff00,    // Yellow
+      clarify: 0x0099ff,   // Blue
+      manual: 0xff0000,    // Red
+    };
+
+    const icons = {
+      auto: '✅',
+      verify: '⚠️',
+      clarify: '❓',
+      manual: '🛑',
+    };
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${icons[tier.tier]} ${metadata.title} (${metadata.year || 'N/A'})`)
+      .setColor(colors[tier.tier])
+      .setTimestamp();
+
+    if (tier.tier === 'auto') {
+      embed.setDescription(`✅ **Automatically routed to: ${result.library_name}**\n${tier.description}`);
+    } else if (tier.tier === 'verify') {
+      embed.setDescription(`⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease confirm or select another option.`);
+    } else if (tier.tier === 'clarify') {
+      embed.setDescription(`❓ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease answer the questions below to improve accuracy.`);
+    } else {
+      embed.setDescription(`🛑 **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease answer the questions or select a library manually.`);
+    }
+
+    const fields = [
+      { name: 'Media Type', value: metadata.media_type === 'movie' ? 'Movie' : 'TV Show', inline: true },
+      { name: 'Confidence', value: `${result.confidence}%`, inline: true },
+      { name: 'Method', value: this.formatMethod(result.method), inline: true },
+    ];
+
+    if (result.reason) {
+      fields.push({ name: 'Reason', value: result.reason, inline: false });
+    }
+
+    // Add content analysis if available
+    if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {
+      const analysis = metadata.contentAnalysis.bestMatch;
+      fields.push({
+        name: 'Content Type Detected',
+        value: `${analysis.type} (${analysis.confidence}% confidence)`,
+        inline: false,
+      });
+    }
+
+    embed.addFields(fields);
+
+    if (metadata.poster_path) {
+      embed.setThumbnail(`https://image.tmdb.org/t/p/w200${metadata.poster_path}`);
+    }
+
+    return embed;
+  }
+
+  async createTieredComponents(classificationId, libraries, tier, metadata, confidence) {
+    const components = [];
+
+    if (tier.tier === 'auto') {
+      // No interaction needed, just show a confirmation button
+      components.push(
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`acknowledge_${classificationId}`)
+            .setLabel('✓ Acknowledged')
+            .setStyle(ButtonStyle.Success)
+        )
+      );
+    } else if (tier.tier === 'verify') {
+      // Yes/No buttons
+      components.push(
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`verify_yes_${classificationId}`)
+            .setLabel('✓ Yes, Correct')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`verify_no_${classificationId}`)
+            .setLabel('✗ No, Choose Different')
+            .setStyle(ButtonStyle.Danger)
+        )
+      );
+    } else if (tier.tier === 'clarify' || tier.tier === 'manual') {
+      // Get clarification questions
+      const questions = await clarificationService.matchQuestions(
+        metadata,
+        tier.tier === 'clarify' ? 2 : 3
+      );
+
+      // Add question buttons (up to 2-3 questions)
+      if (questions.length > 0) {
+        const questionButtons = [];
+        questions.slice(0, 2).forEach((q, idx) => {
+          const options = JSON.parse(JSON.stringify(q.response_options));
+          Object.keys(options).forEach(key => {
+            questionButtons.push(
+              new ButtonBuilder()
+                .setCustomId(`clarify_${classificationId}_${q.id}_${key}`)
+                .setLabel(`${options[key].label}`)
+                .setStyle(ButtonStyle.Primary)
+            );
+          });
+        });
+
+        // Split into rows of 5 buttons max
+        for (let i = 0; i < questionButtons.length; i += 5) {
+          components.push(
+            new ActionRowBuilder().addComponents(questionButtons.slice(i, i + 5))
+          );
+        }
+      }
+
+      // Add library selector dropdown
+      if (libraries.length > 1) {
+        const options = libraries.map(lib => ({
+          label: lib.name,
+          value: `${classificationId}_${lib.id}`,
+          description: `${lib.media_type} library`,
+        }));
+
+        components.push(
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(`library_select`)
+              .setPlaceholder('Or manually select a library...')
+              .addOptions(options)
+          )
+        );
+      }
+    }
+
+    return components;
   }
 
   async createCorrectionComponents(classificationId, libraries, buttonCount = 3, includeDropdown = true) {
