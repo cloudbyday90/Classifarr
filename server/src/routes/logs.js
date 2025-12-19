@@ -62,8 +62,8 @@ router.use(authenticateToken);
  */
 router.get('/', async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 50), 100);
     const offset = (page - 1) * limit;
     
     let whereConditions = [];
@@ -203,6 +203,9 @@ router.get('/error/:errorId/report', async (req, res, next) => {
  */
 router.get('/export', async (req, res, next) => {
   try {
+    // Configurable maximum export limit to prevent memory issues
+    const MAX_EXPORT_LIMIT = parseInt(process.env.MAX_LOG_EXPORT_LIMIT) || 5000;
+    
     let whereConditions = [];
     let queryParams = [];
     let paramCount = 1;
@@ -232,8 +235,8 @@ router.get('/export', async (req, res, next) => {
       : '';
     
     const result = await db.query(
-      `SELECT * FROM error_log ${whereClause} ORDER BY created_at DESC LIMIT 1000`,
-      queryParams
+      `SELECT * FROM error_log ${whereClause} ORDER BY created_at DESC LIMIT $${paramCount++}`,
+      [...queryParams, MAX_EXPORT_LIMIT]
     );
     
     res.setHeader('Content-Type', 'application/json');

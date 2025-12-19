@@ -76,7 +76,7 @@ function getRequestContext(req) {
       'content-type': req.get('content-type'),
       'origin': req.get('origin')
     },
-    ip: req.ip || req.connection?.remoteAddress,
+    ip: req.ip || req.socket?.remoteAddress,
     userId: req.user?.id
   });
 }
