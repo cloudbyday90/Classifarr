@@ -58,8 +58,8 @@ jobs:
       - name: Build Docker image (verification)
         run: docker build -t classifarr:test .
 
-  integration-tests:
-    name: Integration Tests
+  database-tests:
+    name: Tests with Database
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-and-test
@@ -101,7 +101,7 @@ jobs:
           cd server
           npm ci
 
-      - name: Run integration tests
+      - name: Run tests with database available
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
@@ -111,7 +111,8 @@ jobs:
           NODE_ENV: test
         run: |
           cd server
-          # Integration tests would go here when available
+          # Run tests with database available for future integration tests
+          # Current tests are unit tests with mocks
           npm test
 
   docker-release:
