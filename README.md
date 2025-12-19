@@ -380,7 +380,7 @@ Or use pre-built images:
 ```bash
 # Create data directory and generate password
 mkdir -p ./data
-openssl rand -base64 32 | tr -dc 'A-Za-z0-9!@#$%^&*' | head -c 32 > ./data/postgres_password
+openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > ./data/postgres_password
 chmod 600 ./data/postgres_password
 
 # Pull and run
@@ -438,7 +438,7 @@ docker pull ghcr.io/cloudbyday90/classifarr:latest
 1. First, generate the password file:
    ```bash
    mkdir -p /mnt/user/appdata/classifarr/data
-   openssl rand -base64 32 | tr -dc 'A-Za-z0-9!@#$%^&*' | head -c 32 > /mnt/user/appdata/classifarr/data/postgres_password
+   openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > /mnt/user/appdata/classifarr/data/postgres_password
    chmod 600 /mnt/user/appdata/classifarr/data/postgres_password
    ```
 
@@ -463,7 +463,7 @@ mkdir -p /mnt/user/appdata/classifarr/data
 cd /mnt/user/appdata/classifarr
 
 # Generate secure password
-openssl rand -base64 32 | tr -dc 'A-Za-z0-9!@#$%^&*' | head -c 32 > ./data/postgres_password
+openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > ./data/postgres_password
 chmod 600 ./data/postgres_password
 
 # Download and start
@@ -483,7 +483,7 @@ docker compose -f docker-compose.unraid.yml up -d
    mkdir -p /volume1/docker/classifarr/data
    
    # Generate secure password
-   openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32 > /volume1/docker/classifarr/data/postgres_password
+   openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > /volume1/docker/classifarr/data/postgres_password
    chmod 600 /volume1/docker/classifarr/data/postgres_password
    ```
 

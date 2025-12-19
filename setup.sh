@@ -33,11 +33,11 @@ if [ ! -f "$PASSWORD_FILE" ]; then
     
     # Generate 32-character random password with mixed characters
     if command -v openssl >/dev/null 2>&1; then
-        # Prefer openssl if available
-        PASSWORD=$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9!@#$%^&*' | head -c 32)
+        # Prefer openssl if available - use full character set
+        PASSWORD=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32)
     else
-        # Fallback to /dev/urandom
-        PASSWORD=$(tr -dc 'A-Za-z0-9!@#$%^&*' < /dev/urandom | head -c 32)
+        # Fallback to /dev/urandom - use full character set
+        PASSWORD=$(tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' < /dev/urandom | head -c 32)
     fi
     
     echo "$PASSWORD" > "$PASSWORD_FILE"

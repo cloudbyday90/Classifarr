@@ -17,6 +17,9 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -68,6 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-and-test
+
+    permissions:
+      contents: read
 
     services:
       postgres:
