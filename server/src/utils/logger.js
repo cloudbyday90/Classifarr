@@ -1,5 +1,12 @@
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const db = require('../config/database');
+
+// Generate UUID v4 using crypto module (compatible with tests)
+const uuidv4 = () => {
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.randomBytes(1)[0] & 15 >> c / 4).toString(16)
+  );
+};
 
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
 
