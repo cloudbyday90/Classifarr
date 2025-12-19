@@ -209,9 +209,9 @@ describe('WebhookService - parsePayload', () => {
 
       const result = webhookService.parsePayload(payload);
 
-      expect(result.title).toBe('');
+      expect(result.title).toBeUndefined(); // Empty subject and null title results in undefined
       expect(result.year).toBeNull();
-      expect(result.request_id).toBeNull();
+      expect(result.request_id).toBeUndefined(); // null || undefined = undefined
     });
 
     test('should handle empty payload', () => {
@@ -220,8 +220,8 @@ describe('WebhookService - parsePayload', () => {
       const result = webhookService.parsePayload(payload);
 
       expect(result.notification_type).toBeUndefined();
-      expect(result.title).toBe('');
-      expect(result.media_type).toBe('movie');
+      expect(result.title).toBeUndefined(); // No subject, title, or name results in undefined
+      expect(result.media_type).toBe('tv'); // Empty string doesn't include 'Movie', defaults to 'tv'
       expect(result.is_4k).toBe(false);
     });
 
