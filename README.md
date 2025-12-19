@@ -73,6 +73,22 @@ Classifarr is an intelligent media classification platform that automatically ro
 - Discord Bot Token (Optional, [Create bot](https://discord.com/developers/applications))
 - Ollama instance (Optional, for AI classification)
 
+## 🐳 Docker Images
+
+Classifarr is available from multiple container registries:
+
+**Pull from GitHub Container Registry:**
+```bash
+docker pull ghcr.io/cloudbyday90/classifarr:latest
+```
+
+**Pull from Docker Hub:**
+```bash
+docker pull cloudbyday90/classifarr:latest
+```
+
+Both images are identical and automatically built from the same source code.
+
 ### Installation
 
 1. **Clone the repository:**
@@ -132,6 +148,33 @@ When you first access Classifarr, you'll be guided through a setup wizard:
 
 4. **Configure Discord** (Optional)
    - Add your bot token and channel ID for notifications
+
+## 📦 UnRaid Installation
+
+Classifarr can be easily installed on UnRaid through the Community Applications store or manually using the provided template.
+
+### Quick Install
+
+1. Go to the **Apps** tab in UnRaid
+2. Search for **"Classifarr"**
+3. Click **Install**
+4. Configure the port and data paths
+5. Click **Apply**
+
+Or manually add using the template from the [unraid directory](unraid/).
+
+For detailed instructions, see the [UnRaid Installation Guide](unraid/README.md).
+
+## 🔐 Database Security
+
+Classifarr automatically generates a secure PostgreSQL password on first run:
+- **No default password** is used in production
+- Password is **auto-generated** (32 characters) and stored in the Docker volume (`app_data`)
+- Password **persists** across container restarts and upgrades
+- **No manual password configuration** required
+- Stored securely in `/app/data/app_data` directory
+
+This ensures each installation has a unique, secure database password without any user intervention.
 
 ## 🔐 Authentication & Security
 

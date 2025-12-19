@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Classifarr</Name>
+  <Repository>ghcr.io/cloudbyday90/classifarr:latest</Repository>
+  <Registry>https://github.com/cloudbyday90/Classifarr/pkgs/container/classifarr</Registry>
+  <Branch>
+    <Tag>latest</Tag>
+    <TagDescription>Latest stable release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <WebUI>http://[IP]:[PORT:21324]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/unraid/classifarr.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/unraid/classifarr-icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <Description>
+    AI-powered media classification for the *arr ecosystem. Automatically routes Overseerr/Jellyseerr requests to the correct Radarr/Sonarr library using AI and machine learning.
+  </Description>
+  <Networking>
+    <Mode>bridge</Mode>
+    <Publish>
+      <Port>
+        <HostPort>21324</HostPort>
+        <ContainerPort>21324</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+    </Publish>
+  </Networking>
+  <Data>
+    <Volume>
+      <HostDir>/mnt/user/appdata/classifarr</HostDir>
+      <ContainerDir>/app/data</ContainerDir>
+      <Mode>rw</Mode>
+    </Volume>
+  </Data>
+  <Environment/>
+  <Config Name="Web UI Port" Target="21324" Default="21324" Mode="tcp" Description="Web interface port" Type="Port" Display="always" Required="true"/>
+  <Config Name="App Data" Target="/app/data" Default="/mnt/user/appdata/classifarr" Mode="rw" Description="Application data and auto-generated database password" Type="Path" Display="always" Required="true"/>
+  <Category>MediaApp:Other Tools:</Category>
+  <Support>https://github.com/cloudbyday90/Classifarr/issues</Support>
+  <Project>https://github.com/cloudbyday90/Classifarr</Project>
+  <Overview>
+    Classifarr is an AI-powered media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr to the correct Radarr/Sonarr library using AI and machine learning.
+  </Overview>
+</Container>
