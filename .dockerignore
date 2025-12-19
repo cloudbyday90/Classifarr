@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+*/node_modules
+
+# Build outputs
+client/dist
+server/dist
+
+# Development files
+.git
+.gitignore
+.env
+.env.*
+*.md
+!README.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+**/__tests__
+**/*.test.js
+**/*.spec.js
+coverage
+.nyc_output
+
+# Docker
+Dockerfile*
+docker-compose*
+.docker
+
+# Misc
+*.log
+*.pid
+.npm
+.eslintcache

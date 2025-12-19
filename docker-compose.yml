@@ -2,11 +2,13 @@ version: '3.8'
 
 services:
   classifarr:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/cloudbyday90/classifarr:latest
     container_name: classifarr
     ports:
-      - "21324:21324"   # HTTP (always available)
-      - "21325:21325"   # HTTPS (optional, for direct TLS)
+      - "21324:21324"
     environment:
       - NODE_ENV=production
       - PORT=21324
@@ -14,27 +16,33 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=classifarr
       - POSTGRES_USER=classifarr
+      - TZ=${TZ:-UTC}
     volumes:
       - app_data:/app/data
-      # Optional: Uncomment to mount certificates for direct HTTPS
-      # - ./certs:/app/certs:ro
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - classifarr-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:21324/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: classifarr-db
     environment:
       - POSTGRES_DB=classifarr
       - POSTGRES_USER=classifarr
+      - TZ=${TZ:-UTC}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - app_data:/app/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U classifarr -d classifarr"]
       interval: 5s
@@ -43,7 +51,15 @@ services:
     restart: unless-stopped
     networks:
       - classifarr-network
-    entrypoint: ["/bin/sh", "-c", "if [ ! -f /app/data/postgres_password ]; then echo 'ERROR: Password file not found. Please run ./setup.sh first.'; exit 1; fi; PASSWORD=$$(cat /app/data/postgres_password); export POSTGRES_PASSWORD=$$PASSWORD; exec docker-entrypoint.sh postgres"]
+    entrypoint: >
+      /bin/sh -c "
+        if [ ! -f /app/data/postgres_password ]; then
+          echo 'ERROR: Password file not found. Please run ./setup.sh first.'
+          exit 1
+        fi
+        export POSTGRES_PASSWORD=$$(cat /app/data/postgres_password)
+        exec docker-entrypoint.sh postgres
+      "
 
 volumes:
   postgres_data:
