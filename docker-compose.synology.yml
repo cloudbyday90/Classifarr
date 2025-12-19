@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  classifarr:
+    image: ghcr.io/cloudbyday90/classifarr:latest
+    container_name: classifarr
+    ports:
+      - "21324:21324"   # HTTP (always available)
+      - "21325:21325"   # HTTPS (optional, for direct TLS)
+    environment:
+      - NODE_ENV=production
+      - PORT=21324
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=classifarr
+      - POSTGRES_USER=classifarr
+    volumes:
+      - /volume1/docker/classifarr/data:/app/data
+      # Optional: Uncomment to mount certificates for direct HTTPS
+      # - /volume1/docker/classifarr/certs:/app/certs:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - classifarr-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: classifarr-db
+    environment:
+      - POSTGRES_DB=classifarr
+      - POSTGRES_USER=classifarr
+    volumes:
+      - /volume1/docker/classifarr/postgres:/var/lib/postgresql/data
+      - /volume1/docker/classifarr/data:/app/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U classifarr -d classifarr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - classifarr-network
+    entrypoint: ["/bin/sh", "-c", "PASSWORD=$$(cat /app/data/postgres_password 2>/dev/null || echo 'classifarr_secret'); export POSTGRES_PASSWORD=$$PASSWORD; exec docker-entrypoint.sh postgres"]
+
+networks:
+  classifarr-network:
+    driver: bridge
