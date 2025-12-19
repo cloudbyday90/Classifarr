@@ -417,6 +417,37 @@ CREATE TABLE learning_patterns (
 );
 
 -- ===========================================
+-- ERROR LOGGING TABLES
+-- ===========================================
+
+-- Error Log (for detailed error tracking and bug reports)
+CREATE TABLE error_log (
+    id SERIAL PRIMARY KEY,
+    error_id UUID DEFAULT gen_random_uuid() UNIQUE,
+    level VARCHAR(10) NOT NULL CHECK (level IN ('ERROR', 'WARN', 'INFO', 'DEBUG')),
+    module VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    stack_trace TEXT,
+    request_context JSONB,
+    system_context JSONB,
+    metadata JSONB,
+    resolved BOOLEAN DEFAULT false,
+    resolved_at TIMESTAMP,
+    resolution_notes TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Application Log (for general application logging)
+CREATE TABLE app_log (
+    id SERIAL PRIMARY KEY,
+    level VARCHAR(10) NOT NULL,
+    module VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ===========================================
 -- INDEXES FOR PERFORMANCE
 -- ===========================================
 
@@ -435,6 +466,13 @@ CREATE INDEX idx_learning_patterns_tmdb ON learning_patterns(tmdb_id);
 CREATE INDEX idx_learning_patterns_library ON learning_patterns(library_id);
 CREATE INDEX idx_webhook_log_webhook ON webhook_log(webhook_id);
 CREATE INDEX idx_webhook_log_created_at ON webhook_log(created_at);
+CREATE INDEX idx_error_log_error_id ON error_log(error_id);
+CREATE INDEX idx_error_log_level ON error_log(level);
+CREATE INDEX idx_error_log_module ON error_log(module);
+CREATE INDEX idx_error_log_created_at ON error_log(created_at DESC);
+CREATE INDEX idx_error_log_resolved ON error_log(resolved);
+CREATE INDEX idx_app_log_level ON app_log(level);
+CREATE INDEX idx_app_log_created_at ON app_log(created_at DESC);
 
 -- ============================================
 -- SEED DATA - LABEL PRESETS
@@ -569,7 +607,10 @@ INSERT INTO settings (key, value) VALUES
 ('port', '21324'),
 ('theme', 'dark'),
 ('app_name', 'Classifarr'),
-('version', '1.0.0');
+('version', '1.0.0'),
+('log_retention_days', '30'),
+('error_log_retention_days', '90'),
+('log_level', 'INFO');
 
 -- Default Ollama Configuration
 INSERT INTO ollama_config (host, port, model, temperature, is_active) VALUES
