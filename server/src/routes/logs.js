@@ -17,6 +17,7 @@
  */
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { createLogger } = require('../utils/logger');
@@ -24,8 +25,18 @@ const { createLogger } = require('../utils/logger');
 const router = express.Router();
 const logger = createLogger('LogsAPI');
 
-// All routes require authentication
+// Rate limiter for logs API - 100 requests per 15 minutes
+const logsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: 'Too many log requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// All routes require authentication and rate limiting
 router.use(authenticateToken);
+router.use(logsLimiter);
 
 /**
  * @swagger
