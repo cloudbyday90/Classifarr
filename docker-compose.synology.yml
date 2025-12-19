@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   classifarr:
-    build: .
+    image: ghcr.io/cloudbyday90/classifarr:latest
     container_name: classifarr
     ports:
       - "21324:21324"   # HTTP (always available)
@@ -15,9 +15,9 @@ services:
       - POSTGRES_DB=classifarr
       - POSTGRES_USER=classifarr
     volumes:
-      - app_data:/app/data
+      - /volume1/docker/classifarr/data:/app/data
       # Optional: Uncomment to mount certificates for direct HTTPS
-      # - ./certs:/app/certs:ro
+      # - /volume1/docker/classifarr/certs:/app/certs:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -32,8 +32,8 @@ services:
       - POSTGRES_DB=classifarr
       - POSTGRES_USER=classifarr
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - app_data:/app/data
+      - /volume1/docker/classifarr/postgres:/var/lib/postgresql/data
+      - /volume1/docker/classifarr/data:/app/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U classifarr -d classifarr"]
@@ -44,10 +44,6 @@ services:
     networks:
       - classifarr-network
     entrypoint: ["/bin/sh", "-c", "if [ ! -f /app/data/postgres_password ]; then echo 'ERROR: Password file not found. Please run ./setup.sh first.'; exit 1; fi; PASSWORD=$$(cat /app/data/postgres_password); export POSTGRES_PASSWORD=$$PASSWORD; exec docker-entrypoint.sh postgres"]
-
-volumes:
-  postgres_data:
-  app_data:
 
 networks:
   classifarr-network:

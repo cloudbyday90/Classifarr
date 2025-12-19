@@ -82,7 +82,17 @@ git clone https://github.com/cloudbyday90/Classifarr.git
 cd Classifarr
 ```
 
-2. **Configure environment variables:**
+2. **Run the setup script (Required for first-time setup):**
+
+```bash
+./setup.sh
+```
+
+This script generates a secure, random PostgreSQL password. The password is stored in `./data/postgres_password` and is used automatically by the Docker containers.
+
+**Important:** Keep the `data/` directory secure, as it contains your database credentials.
+
+3. **Configure environment variables:**
 
 ```bash
 cp .env.example .env
@@ -104,7 +114,7 @@ OLLAMA_PORT=11434
 OLLAMA_MODEL=qwen3:14b
 ```
 
-3. **Start Classifarr:**
+4. **Start Classifarr:**
 
 ```bash
 docker compose up -d
@@ -338,6 +348,197 @@ Configure in Settings → Ollama AI
 
 1. Remove volumes and restart: `docker compose down -v && docker compose up -d`
 2. Check database logs: `docker logs classifarr-db`
+
+## 🐳 Deployment Options
+
+Classifarr supports multiple platforms with pre-built Docker images for various architectures.
+
+### Supported Platforms
+
+Pre-built images are available for:
+- **linux/amd64** - UnRaid, Synology x86, Windows (Docker Desktop), Linux servers
+- **linux/arm64** - Synology ARM, Raspberry Pi 4+, Apple Silicon Macs
+- **linux/arm/v7** - Older Raspberry Pi, some Synology ARM models
+
+### Linux (Standard Docker)
+
+The simplest deployment method:
+
+```bash
+git clone https://github.com/cloudbyday90/Classifarr.git
+cd Classifarr
+
+# Run setup script to generate secure password
+./setup.sh
+
+# Start services
+docker compose up -d
+```
+
+Or use pre-built images:
+
+```bash
+# Create data directory and generate password
+mkdir -p ./data
+openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > ./data/postgres_password
+chmod 600 ./data/postgres_password
+
+# Pull and run
+docker pull ghcr.io/cloudbyday90/classifarr:latest
+```
+
+### Windows (Docker Desktop)
+
+1. **Install Docker Desktop**
+   - Download from [docker.com](https://www.docker.com/products/docker-desktop/)
+   - Install and start Docker Desktop
+   - No WSL setup required - Docker Desktop handles everything
+
+2. **Deploy Classifarr**
+   
+   In PowerShell or Command Prompt:
+   ```powershell
+   git clone https://github.com/cloudbyday90/Classifarr.git
+   cd Classifarr
+   
+   # Run setup script to generate secure password
+   .\setup.sh
+   
+   # Start services
+   docker compose up -d
+   ```
+
+   **Note:** If you don't have bash/sh in Windows, create the password file manually:
+   ```powershell
+   # Create data directory
+   New-Item -ItemType Directory -Force -Path .\data
+   
+   # Generate random password (PowerShell 7+ or install openssl)
+   $password = -join ((65..90) + (97..122) + (48..57) + (33,35,36,37,38,42) | Get-Random -Count 32 | ForEach-Object {[char]$_})
+   $password | Out-File -FilePath .\data\postgres_password -NoNewline -Encoding ASCII
+   ```
+
+3. **Access the interface**
+   - Open browser to `http://localhost:21324`
+
+**Note:** Windows paths in docker-compose.yml will be automatically handled by Docker Desktop.
+
+### UnRaid
+
+**Option 1: Community Applications (Recommended)**
+1. Open UnRaid web interface
+2. Go to **Apps** tab
+3. Search for "Classifarr"
+4. Click **Install**
+5. Configure paths and ports as needed
+
+**Note:** The Community App will automatically generate a secure password on first run.
+
+**Option 2: Manual Docker Setup**
+1. First, generate the password file:
+   ```bash
+   mkdir -p /mnt/user/appdata/classifarr/data
+   openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > /mnt/user/appdata/classifarr/data/postgres_password
+   chmod 600 /mnt/user/appdata/classifarr/data/postgres_password
+   ```
+
+2. In UnRaid, go to **Docker** tab
+3. Click **Add Container**
+4. Use the following settings:
+   - **Repository:** `ghcr.io/cloudbyday90/classifarr:latest`
+   - **Network Type:** Bridge
+   - **Port Mappings:**
+     - Container Port: 21324 → Host Port: 21324 (HTTP)
+     - Container Port: 21325 → Host Port: 21325 (HTTPS - optional)
+   - **Path Mappings:**
+     - Container Path: `/app/data` → Host Path: `/mnt/user/appdata/classifarr/data`
+   - **Environment Variables:**
+     - `NODE_ENV=production`
+     - `POSTGRES_HOST=postgres`
+
+**Option 3: Using Docker Compose**
+```bash
+# Create directory and generate password
+mkdir -p /mnt/user/appdata/classifarr/data
+cd /mnt/user/appdata/classifarr
+
+# Generate secure password
+openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > ./data/postgres_password
+chmod 600 ./data/postgres_password
+
+# Download and start
+wget https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/docker-compose.unraid.yml
+docker compose -f docker-compose.unraid.yml up -d
+```
+
+### Synology NAS
+
+**Using Container Manager (DSM 7.2+)**
+
+1. **Prepare Password File**
+   
+   Via SSH (enable SSH in DSM first):
+   ```bash
+   # Create directory
+   mkdir -p /volume1/docker/classifarr/data
+   
+   # Generate secure password
+   openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > /volume1/docker/classifarr/data/postgres_password
+   chmod 600 /volume1/docker/classifarr/data/postgres_password
+   ```
+
+2. **Download Docker Compose File**
+   - Download `docker-compose.synology.yml` from the repository
+   - Rename it to `docker-compose.yml`
+
+3. **Set Up via Container Manager**
+   - Open **Container Manager** in DSM
+   - Go to **Project** tab
+   - Click **Create**
+   - Name the project: `classifarr`
+   - Upload the `docker-compose.yml` file
+   - Click **Next** and review settings
+   - Click **Done** to start the containers
+
+3. **Configure Paths**
+   - Ensure `/volume1/docker/classifarr/` directory exists
+   - Set proper permissions: `chmod -R 755 /volume1/docker/classifarr/`
+
+4. **Access Classifarr**
+   - Open browser to `http://your-synology-ip:21324`
+
+**Manual Container Setup (Alternative)**
+
+1. In Container Manager, go to **Container** tab
+2. Click **Create** → **Create Container via Docker Hub**
+3. Search for: `ghcr.io/cloudbyday90/classifarr`
+4. Configure:
+   - **Port Settings:**
+     - Local Port: 21324 → Container Port: 21324
+   - **Volume Settings:**
+     - File/Folder: `/docker/classifarr/data` → Mount Path: `/app/data`
+   - **Environment Variables:**
+     - `NODE_ENV=production`
+     - `POSTGRES_HOST=postgres`
+
+**Note:** For Synology ARM models, the appropriate image (arm64 or arm/v7) will be automatically selected.
+
+### Pre-built Images
+
+All platforms can use pre-built images from GitHub Container Registry:
+
+```bash
+# Pull latest version
+docker pull ghcr.io/cloudbyday90/classifarr:latest
+
+# Pull specific version
+docker pull ghcr.io/cloudbyday90/classifarr:v1.0.0
+
+# Pull specific architecture
+docker pull ghcr.io/cloudbyday90/classifarr:latest --platform linux/arm64
+```
+
+The correct architecture will be automatically selected based on your system.
 
 ## 🤝 Contributing
 
