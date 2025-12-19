@@ -12,6 +12,7 @@ const apiRouter = require('./routes/api');
 const setupRouter = require('./routes/setup');
 const authRouter = require('./routes/auth');
 const discordBot = require('./services/discordBot');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 21324;
@@ -78,14 +79,8 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: err.message,
-  });
-});
+// Error handling middleware (must be last)
+app.use(errorHandler);
 
 // Initialize Discord bot
 async function initializeServices() {
