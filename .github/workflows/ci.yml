@@ -55,6 +55,11 @@ jobs:
           cd client
           npm run build
 
+      - name: Generate test password for Docker build
+        run: |
+          mkdir -p data
+          echo "test_password_for_ci" > data/postgres_password
+
       - name: Build Docker image (verification)
         run: docker build -t classifarr:test .
 

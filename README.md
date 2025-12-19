@@ -82,7 +82,17 @@ git clone https://github.com/cloudbyday90/Classifarr.git
 cd Classifarr
 ```
 
-2. **Configure environment variables:**
+2. **Run the setup script (Required for first-time setup):**
+
+```bash
+./setup.sh
+```
+
+This script generates a secure, random PostgreSQL password. The password is stored in `./data/postgres_password` and is used automatically by the Docker containers.
+
+**Important:** Keep the `data/` directory secure, as it contains your database credentials.
+
+3. **Configure environment variables:**
 
 ```bash
 cp .env.example .env
@@ -104,7 +114,7 @@ OLLAMA_PORT=11434
 OLLAMA_MODEL=qwen3:14b
 ```
 
-3. **Start Classifarr:**
+4. **Start Classifarr:**
 
 ```bash
 docker compose up -d
@@ -357,12 +367,23 @@ The simplest deployment method:
 ```bash
 git clone https://github.com/cloudbyday90/Classifarr.git
 cd Classifarr
+
+# Run setup script to generate secure password
+./setup.sh
+
+# Start services
 docker compose up -d
 ```
 
 Or use pre-built images:
 
 ```bash
+# Create data directory and generate password
+mkdir -p ./data
+openssl rand -base64 32 | tr -dc 'A-Za-z0-9!@#$%^&*' | head -c 32 > ./data/postgres_password
+chmod 600 ./data/postgres_password
+
+# Pull and run
 docker pull ghcr.io/cloudbyday90/classifarr:latest
 ```
 
@@ -379,7 +400,22 @@ docker pull ghcr.io/cloudbyday90/classifarr:latest
    ```powershell
    git clone https://github.com/cloudbyday90/Classifarr.git
    cd Classifarr
+   
+   # Run setup script to generate secure password
+   .\setup.sh
+   
+   # Start services
    docker compose up -d
+   ```
+
+   **Note:** If you don't have bash/sh in Windows, create the password file manually:
+   ```powershell
+   # Create data directory
+   New-Item -ItemType Directory -Force -Path .\data
+   
+   # Generate random password (PowerShell 7+ or install openssl)
+   $password = -join ((65..90) + (97..122) + (48..57) + (33,35,36,37,38,42) | Get-Random -Count 32 | ForEach-Object {[char]$_})
+   $password | Out-File -FilePath .\data\postgres_password -NoNewline -Encoding ASCII
    ```
 
 3. **Access the interface**
@@ -396,8 +432,16 @@ docker pull ghcr.io/cloudbyday90/classifarr:latest
 4. Click **Install**
 5. Configure paths and ports as needed
 
+**Note:** The Community App will automatically generate a secure password on first run.
+
 **Option 2: Manual Docker Setup**
-1. Download `docker-compose.unraid.yml` from the repository
+1. First, generate the password file:
+   ```bash
+   mkdir -p /mnt/user/appdata/classifarr/data
+   openssl rand -base64 32 | tr -dc 'A-Za-z0-9!@#$%^&*' | head -c 32 > /mnt/user/appdata/classifarr/data/postgres_password
+   chmod 600 /mnt/user/appdata/classifarr/data/postgres_password
+   ```
+
 2. In UnRaid, go to **Docker** tab
 3. Click **Add Container**
 4. Use the following settings:
@@ -414,7 +458,15 @@ docker pull ghcr.io/cloudbyday90/classifarr:latest
 
 **Option 3: Using Docker Compose**
 ```bash
+# Create directory and generate password
+mkdir -p /mnt/user/appdata/classifarr/data
 cd /mnt/user/appdata/classifarr
+
+# Generate secure password
+openssl rand -base64 32 | tr -dc 'A-Za-z0-9!@#$%^&*' | head -c 32 > ./data/postgres_password
+chmod 600 ./data/postgres_password
+
+# Download and start
 wget https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/docker-compose.unraid.yml
 docker compose -f docker-compose.unraid.yml up -d
 ```
@@ -423,11 +475,23 @@ docker compose -f docker-compose.unraid.yml up -d
 
 **Using Container Manager (DSM 7.2+)**
 
-1. **Download Docker Compose File**
+1. **Prepare Password File**
+   
+   Via SSH (enable SSH in DSM first):
+   ```bash
+   # Create directory
+   mkdir -p /volume1/docker/classifarr/data
+   
+   # Generate secure password
+   openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 32 > /volume1/docker/classifarr/data/postgres_password
+   chmod 600 /volume1/docker/classifarr/data/postgres_password
+   ```
+
+2. **Download Docker Compose File**
    - Download `docker-compose.synology.yml` from the repository
    - Rename it to `docker-compose.yml`
 
-2. **Set Up via Container Manager**
+3. **Set Up via Container Manager**
    - Open **Container Manager** in DSM
    - Go to **Project** tab
    - Click **Create**

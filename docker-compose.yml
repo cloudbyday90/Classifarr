@@ -43,7 +43,7 @@ services:
     restart: unless-stopped
     networks:
       - classifarr-network
-    entrypoint: ["/bin/sh", "-c", "PASSWORD=$$(cat /app/data/postgres_password 2>/dev/null || echo 'classifarr_secret'); export POSTGRES_PASSWORD=$$PASSWORD; exec docker-entrypoint.sh postgres"]
+    entrypoint: ["/bin/sh", "-c", "if [ ! -f /app/data/postgres_password ]; then echo 'ERROR: Password file not found. Please run ./setup.sh first.'; exit 1; fi; PASSWORD=$$(cat /app/data/postgres_password); export POSTGRES_PASSWORD=$$PASSWORD; exec docker-entrypoint.sh postgres"]
 
 volumes:
   postgres_data:
