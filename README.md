@@ -2,7 +2,7 @@
 
 **AI-Powered Media Classification for the *arr Ecosystem**
 
-Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr to the correct Radarr/Sonarr library using AI and machine learning. No external services required - everything runs in a single Docker container.
+Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr to the correct Radarr/Sonarr library using AI and machine learning. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
@@ -12,13 +12,13 @@ Classifarr is an intelligent media classification platform that automatically ro
 - **🔐 Secure Authentication System** - JWT-based login with first-run setup wizard
 - **🔒 Optional HTTPS Support** - Built-in TLS or reverse proxy compatible
 - **🤖 Built-in AI Classification Engine** - No external n8n or workflows required
-- **🗄️ Internal PostgreSQL Database** - Auto-initialized with seed data
+- **🗄️ Embedded PostgreSQL Database** - Auto-initialized on first run, all data in single volume
 - **💬 Discord Bot Integration** - Real-time notifications and corrections
 - **🎨 Modern Vue 3 Frontend** - Dark *arr-style theme
 - **🔄 Smart Learning System** - Learns from corrections over time
 - **📊 Comprehensive Dashboard** - Track classifications and performance
 - **⚙️ Easy Configuration** - Simple setup through web UI
-- **🐳 Single Command Deployment** - Just `docker compose up -d`
+- **🐳 Single Container Deployment** - Just `docker compose up -d`
 
 ## 🏗️ Architecture
 
@@ -30,7 +30,7 @@ Classifarr is an intelligent media classification platform that automatically ro
        │ Webhook
        ▼
 ┌─────────────────────────────────────────┐
-│            CLASSIFARR                   │
+│     CLASSIFARR (Single Container)       │
 │                                         │
 │  ┌───────────────────────────────────┐ │
 │  │   Classification Engine           │ │
@@ -43,7 +43,7 @@ Classifarr is an intelligent media classification platform that automatically ro
 │  └───────────────────────────────────┘ │
 │                                         │
 │  ┌───────────────────────────────────┐ │
-│  │   PostgreSQL Database             │ │
+│  │   Embedded PostgreSQL             │ │
 │  │   • Libraries & Labels            │ │
 │  │   • Custom Rules                  │ │
 │  │   • Classification History        │ │
@@ -82,47 +82,22 @@ git clone https://github.com/cloudbyday90/Classifarr.git
 cd Classifarr
 ```
 
-2. **Run the setup script (Required for first-time setup):**
-
-```bash
-./setup.sh
-```
-
-This script generates a secure, random PostgreSQL password. The password is stored in `./data/postgres_password` and is used automatically by the Docker containers.
-
-**Important:** Keep the `data/` directory secure, as it contains your database credentials.
-
-3. **Configure environment variables:**
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set your configuration:
-
-```env
-# TMDB API (Required)
-TMDB_API_KEY=your_tmdb_api_key_here
-
-# Discord Bot (Optional but recommended)
-DISCORD_BOT_TOKEN=your_discord_bot_token_here
-DISCORD_CHANNEL_ID=your_channel_id_here
-
-# Ollama (Optional, defaults to host.docker.internal)
-OLLAMA_HOST=host.docker.internal
-OLLAMA_PORT=11434
-OLLAMA_MODEL=qwen3:14b
-```
-
-4. **Start Classifarr:**
+2. **Start Classifarr:**
 
 ```bash
 docker compose up -d
 ```
 
-4. **Access the web interface:**
+The container will automatically:
+- Initialize PostgreSQL database on first run
+- Create all necessary tables and seed data
+- Start both PostgreSQL and the application
+
+3. **Access the web interface:**
 
 Open your browser to `http://localhost:21324`
+
+**Note:** The first startup may take 30-60 seconds as PostgreSQL initializes the database.
 
 ### First-Time Setup
 
@@ -368,26 +343,30 @@ The simplest deployment method:
 git clone https://github.com/cloudbyday90/Classifarr.git
 cd Classifarr
 
-# Run setup script to generate secure password
-./setup.sh
-
-# Start services
+# Start the service (database auto-initializes on first run)
 docker compose up -d
 ```
 
 Or use pre-built images:
 
 ```bash
-# Create data directory and generate password
+# Create data directory
 mkdir -p ./data
-openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > ./data/postgres_password
-chmod 600 ./data/postgres_password
 
 # Pull from GitHub Container Registry
 docker pull ghcr.io/cloudbyday90/classifarr:latest
 
 # Or pull from Docker Hub
 docker pull cloudbyday90/classifarr:latest
+
+# Run the container
+docker run -d \
+  --name classifarr \
+  -p 21324:21324 \
+  -v ./data:/app/data \
+  -e NODE_ENV=production \
+  --restart unless-stopped \
+  ghcr.io/cloudbyday90/classifarr:latest
 ```
 
 ### Windows (Docker Desktop)
@@ -404,27 +383,14 @@ docker pull cloudbyday90/classifarr:latest
    git clone https://github.com/cloudbyday90/Classifarr.git
    cd Classifarr
    
-   # Run setup script to generate secure password
-   .\setup.sh
-   
-   # Start services
+   # Start the service (database auto-initializes on first run)
    docker compose up -d
-   ```
-
-   **Note:** If you don't have bash/sh in Windows, create the password file manually:
-   ```powershell
-   # Create data directory
-   New-Item -ItemType Directory -Force -Path .\data
-   
-   # Generate random password (PowerShell 7+ or install openssl)
-   $password = -join ((65..90) + (97..122) + (48..57) + (33,35,36,37,38,42) | Get-Random -Count 32 | ForEach-Object {[char]$_})
-   $password | Out-File -FilePath .\data\postgres_password -NoNewline -Encoding ASCII
    ```
 
 3. **Access the interface**
    - Open browser to `http://localhost:21324`
 
-**Note:** Windows paths in docker-compose.yml will be automatically handled by Docker Desktop.
+**Note:** Windows paths in docker-compose.yml will be automatically handled by Docker Desktop. The first startup may take 30-60 seconds as the database initializes.
 
 ### UnRaid
 
@@ -437,23 +403,16 @@ docker pull cloudbyday90/classifarr:latest
 6. Click **Apply**
 
 The Community Applications template will automatically:
-- Generate a secure database password on first run
-- Configure proper volume mounts to `/mnt/user/appdata/classifarr`
+- Initialize the embedded PostgreSQL database on first run
+- Configure proper volume mounts to `/mnt/user/appdata/classifarr/data`
 - Set up networking with default port 21324
 
 For detailed UnRaid installation instructions, see [unraid/README.md](unraid/README.md).
 
 **Option 2: Manual Docker Setup**
-1. First, generate the password file:
-   ```bash
-   mkdir -p /mnt/user/appdata/classifarr/data
-   openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > /mnt/user/appdata/classifarr/data/postgres_password
-   chmod 600 /mnt/user/appdata/classifarr/data/postgres_password
-   ```
-
-2. In UnRaid, go to **Docker** tab
-3. Click **Add Container**
-4. Use the following settings:
+1. In UnRaid, go to **Docker** tab
+2. Click **Add Container**
+3. Use the following settings:
    - **Repository:** `ghcr.io/cloudbyday90/classifarr:latest` or `cloudbyday90/classifarr:latest`
    - **Network Type:** Bridge
    - **Port Mappings:**
@@ -463,17 +422,13 @@ For detailed UnRaid installation instructions, see [unraid/README.md](unraid/REA
      - Container Path: `/app/data` → Host Path: `/mnt/user/appdata/classifarr/data`
    - **Environment Variables:**
      - `NODE_ENV=production`
-     - `POSTGRES_HOST=postgres`
+     - `TZ=America/New_York` (or your timezone)
 
 **Option 3: Using Docker Compose**
 ```bash
-# Create directory and generate password
+# Create directory
 mkdir -p /mnt/user/appdata/classifarr/data
 cd /mnt/user/appdata/classifarr
-
-# Generate secure password
-openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > ./data/postgres_password
-chmod 600 ./data/postgres_password
 
 # Download and start
 wget https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/docker-compose.unraid.yml
@@ -484,33 +439,21 @@ docker compose -f docker-compose.unraid.yml up -d
 
 **Using Container Manager (DSM 7.2+)**
 
-1. **Prepare Password File**
-   
-   Via SSH (enable SSH in DSM first):
-   ```bash
-   # Create directory
-   mkdir -p /volume1/docker/classifarr/data
-   
-   # Generate secure password
-   openssl rand -base64 48 | tr -dc 'A-Za-z0-9!@#$%^&*(),.?:{}|<>' | head -c 32 > /volume1/docker/classifarr/data/postgres_password
-   chmod 600 /volume1/docker/classifarr/data/postgres_password
-   ```
-
-2. **Download Docker Compose File**
+1. **Download Docker Compose File**
    - Download `docker-compose.synology.yml` from the repository
    - Rename it to `docker-compose.yml`
 
-3. **Set Up via Container Manager**
+2. **Set Up via Container Manager**
    - Open **Container Manager** in DSM
    - Go to **Project** tab
    - Click **Create**
    - Name the project: `classifarr`
    - Upload the `docker-compose.yml` file
    - Click **Next** and review settings
-   - Click **Done** to start the containers
+   - Click **Done** to start the container
 
 3. **Configure Paths**
-   - Ensure `/volume1/docker/classifarr/` directory exists
+   - Ensure `/volume1/docker/classifarr/data` directory exists
    - Set proper permissions: `chmod -R 755 /volume1/docker/classifarr/`
 
 4. **Access Classifarr**
