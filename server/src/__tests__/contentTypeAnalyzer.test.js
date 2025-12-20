@@ -50,8 +50,16 @@ describe('ContentTypeAnalyzer', () => {
       );
 
       expect(result.detected).toBe(true);
-      expect(result.confidence).toBeGreaterThan(70);
+      // Expect high confidence: genres (30) + 2 keywords in text (30) + 2 keywords in array (30, capped at 50 total for keywords) = 80 * 0.7 + 85 * 0.3 = 81.5
+      expect(result.confidence).toBeGreaterThanOrEqual(75);
+      expect(result.confidence).toBeLessThanOrEqual(85);
       expect(result.suggestedLabels).toContain('standup');
+      expect(result.reasoning).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('required genres'),
+          expect.stringContaining('keywords')
+        ])
+      );
     });
 
     test('should not detect stand-up for regular comedy movie', () => {
@@ -78,6 +86,12 @@ describe('ContentTypeAnalyzer', () => {
       );
 
       expect(result.detected).toBe(false);
+      expect(result.confidence).toBe(0);
+      expect(result.reasoning).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('Required genres not matched')
+        ])
+      );
     });
 
     test('should NOT detect with only Documentary genre (missing Comedy)', () => {
@@ -182,7 +196,12 @@ describe('ContentTypeAnalyzer', () => {
       );
 
       expect(result.detected).toBe(true);
-      expect(result.confidence).toBeGreaterThan(70);
+      expect(result.confidence).toBeGreaterThanOrEqual(75);
+      expect(result.reasoning).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('keywords')
+        ])
+      );
     });
   });
 
@@ -1467,6 +1486,361 @@ describe('ContentTypeAnalyzer', () => {
           expect.arrayContaining([100, 12345])
         );
       }
+    });
+  });
+
+  describe('Real-World Classification Scenarios', () => {
+    describe('Disambiguation Tests - Similar Content Types', () => {
+      test('should distinguish anime from western animation', async () => {
+        db.query.mockResolvedValue({
+          rows: [
+            { key: 'content_analysis_enabled', value: 'true' },
+            { key: 'content_analysis_min_confidence', value: '75' }
+          ]
+        });
+
+        // Japanese anime
+        const animeMetadata = {
+          title: 'My Hero Academia',
+          overview: 'A shounen anime about young heroes',
+          genres: ['Animation', 'Action'],
+          keywords: ['anime', 'shounen'],
+          certification: 'TV-14',
+          original_language: 'ja',
+        };
+
+        // Western animation
+        const westernMetadata = {
+          title: 'Avatar: The Last Airbender',
+          overview: 'An animated adventure series',
+          genres: ['Animation', 'Action'],
+          keywords: ['adventure', 'fantasy'],
+          certification: 'TV-Y7',
+          original_language: 'en',
+        };
+
+        const animeResult = await contentTypeAnalyzer.analyze(animeMetadata);
+        const westernResult = await contentTypeAnalyzer.analyze(westernMetadata);
+
+        // Anime should be detected with high confidence
+        expect(animeResult.bestMatch?.type).toBe('anime');
+        expect(animeResult.bestMatch?.confidence).toBeGreaterThanOrEqual(75);
+
+        // Western animation should not be classified as anime
+        expect(westernResult.bestMatch?.type).not.toBe('anime');
+      });
+
+      test('should distinguish stand-up from sketch comedy', async () => {
+        db.query.mockResolvedValue({
+          rows: [
+            { key: 'content_analysis_enabled', value: 'true' },
+            { key: 'content_analysis_min_confidence', value: '60' }
+          ]
+        });
+
+        // Stand-up comedy
+        const standupMetadata = {
+          title: 'Bo Burnham: Inside',
+          overview: 'A stand-up comedy special filmed during quarantine',
+          genres: ['Documentary', 'Comedy'],
+          keywords: ['stand-up comedy', 'comedy special'],
+          certification: 'TV-MA',
+          original_language: 'en',
+        };
+
+        // Sketch comedy
+        const sketchMetadata = {
+          title: 'Saturday Night Live',
+          overview: 'A comedy variety show featuring sketches and parodies',
+          genres: ['Comedy'],
+          keywords: ['sketch', 'variety', 'parody'],
+          certification: 'TV-14',
+          original_language: 'en',
+        };
+
+        const standupResult = await contentTypeAnalyzer.analyze(standupMetadata);
+        const sketchResult = await contentTypeAnalyzer.analyze(sketchMetadata);
+
+        // Stand-up should be detected
+        expect(standupResult.bestMatch?.type).toBe('standup');
+        expect(standupResult.bestMatch?.confidence).toBeGreaterThanOrEqual(60);
+
+        // Sketch comedy should not be classified as stand-up
+        expect(sketchResult.bestMatch?.type).not.toBe('standup');
+      });
+
+      test('should distinguish concert films from music documentaries', async () => {
+        db.query.mockResolvedValue({
+          rows: [
+            { key: 'content_analysis_enabled', value: 'true' },
+            { key: 'content_analysis_min_confidence', value: '75' }
+          ]
+        });
+
+        // Concert film
+        const concertMetadata = {
+          title: 'Stop Making Sense',
+          overview: 'A concert film of Talking Heads live performance',
+          genres: ['Documentary', 'Music'],
+          keywords: ['concert', 'live performance'],
+          certification: 'PG',
+          original_language: 'en',
+        };
+
+        // Music documentary (not concert)
+        const docMetadata = {
+          title: 'The Beatles: Get Back',
+          overview: 'A documentary about the making of an album',
+          genres: ['Documentary', 'Music'],
+          keywords: ['documentary', 'behind the scenes'],
+          certification: 'PG-13',
+          original_language: 'en',
+        };
+
+        const concertResult = await contentTypeAnalyzer.analyze(concertMetadata);
+        const docResult = await contentTypeAnalyzer.analyze(docMetadata);
+
+        // Concert should be detected
+        expect(concertResult.bestMatch?.type).toBe('concert');
+        expect(concertResult.bestMatch?.confidence).toBeGreaterThanOrEqual(75);
+
+        // Music doc without concert keywords should have lower confidence or not be detected as concert
+        if (docResult.bestMatch?.type === 'concert') {
+          expect(docResult.bestMatch?.confidence).toBeLessThan(concertResult.bestMatch?.confidence);
+        }
+      });
+    });
+
+    describe('Confidence Score Accuracy Tests', () => {
+      test('should produce consistent confidence scores for similar content', () => {
+        // Two similar stand-up specials should have similar confidence
+        const special1 = {
+          title: 'Comedy Special A',
+          overview: 'A stand-up comedy special',
+          genres: ['Documentary', 'Comedy'],
+          keywords: ['stand-up comedy'],
+          certification: 'TV-MA',
+          original_language: 'en',
+        };
+
+        const special2 = {
+          title: 'Comedy Special B',
+          overview: 'A live comedy performance',
+          genres: ['Documentary', 'Comedy'],
+          keywords: ['live comedy'],
+          certification: 'TV-MA',
+          original_language: 'en',
+        };
+
+        const result1 = contentTypeAnalyzer.checkPattern(
+          'standup',
+          contentTypeAnalyzer.patterns.standup,
+          {
+            overview: special1.overview.toLowerCase(),
+            title: special1.title.toLowerCase(),
+            genres: special1.genres.map(g => g.toLowerCase()),
+            keywords: special1.keywords,
+            certification: special1.certification,
+            originalLanguage: special1.original_language,
+          }
+        );
+
+        const result2 = contentTypeAnalyzer.checkPattern(
+          'standup',
+          contentTypeAnalyzer.patterns.standup,
+          {
+            overview: special2.overview.toLowerCase(),
+            title: special2.title.toLowerCase(),
+            genres: special2.genres.map(g => g.toLowerCase()),
+            keywords: special2.keywords,
+            certification: special2.certification,
+            originalLanguage: special2.original_language,
+          }
+        );
+
+        // Confidence should be within 10 points of each other
+        expect(Math.abs(result1.confidence - result2.confidence)).toBeLessThanOrEqual(10);
+        expect(result1.detected).toBe(true);
+        expect(result2.detected).toBe(true);
+      });
+
+      test('should provide lower confidence for ambiguous content', () => {
+        // Content with minimal signals should have lower confidence
+        const minimalMetadata = {
+          title: 'Show',
+          overview: 'A show',
+          genres: ['Documentary', 'Comedy'],
+          keywords: [],
+          certification: '',
+          original_language: 'en',
+        };
+
+        const richMetadata = {
+          title: 'Stand-up Special',
+          overview: 'A stand-up comedy special recorded live at venue',
+          genres: ['Documentary', 'Comedy'],
+          keywords: ['stand-up comedy', 'comedy special', 'live comedy'],
+          certification: 'TV-MA',
+          original_language: 'en',
+        };
+
+        const minimalResult = contentTypeAnalyzer.checkPattern(
+          'standup',
+          contentTypeAnalyzer.patterns.standup,
+          {
+            overview: minimalMetadata.overview.toLowerCase(),
+            title: minimalMetadata.title.toLowerCase(),
+            genres: minimalMetadata.genres.map(g => g.toLowerCase()),
+            keywords: minimalMetadata.keywords,
+            certification: minimalMetadata.certification,
+            originalLanguage: minimalMetadata.original_language,
+          }
+        );
+
+        const richResult = contentTypeAnalyzer.checkPattern(
+          'standup',
+          contentTypeAnalyzer.patterns.standup,
+          {
+            overview: richMetadata.overview.toLowerCase(),
+            title: richMetadata.title.toLowerCase(),
+            genres: richMetadata.genres.map(g => g.toLowerCase()),
+            keywords: richMetadata.keywords,
+            certification: richMetadata.certification,
+            originalLanguage: richMetadata.original_language,
+          }
+        );
+
+        expect(minimalResult.detected).toBe(true);
+        expect(richResult.detected).toBe(true);
+        expect(minimalResult.confidence).toBeLessThan(richResult.confidence);
+        // Minimal should be < 60, rich should be > 75
+        expect(minimalResult.confidence).toBeLessThan(60);
+        expect(richResult.confidence).toBeGreaterThan(75);
+      });
+    });
+
+    describe('Edge Case Detection Quality', () => {
+      test('should handle mixed-language content correctly', async () => {
+        db.query.mockResolvedValue({
+          rows: [
+            { key: 'content_analysis_enabled', value: 'true' },
+            { key: 'content_analysis_min_confidence', value: '60' }
+          ]
+        });
+
+        // Korean content with English title
+        const kdramaMetadata = {
+          title: 'Squid Game',
+          overview: 'A korean drama survival series',
+          genres: ['Drama', 'Thriller'],
+          keywords: ['korean drama', 'k-drama'],
+          certification: 'TV-MA',
+          original_language: 'ko',
+        };
+
+        const result = await contentTypeAnalyzer.analyze(kdramaMetadata);
+
+        expect(result.bestMatch?.type).toBe('kdrama');
+        expect(result.bestMatch?.confidence).toBeGreaterThanOrEqual(60);
+        expect(result.bestMatch?.reasoning).toEqual(
+          expect.arrayContaining([
+            expect.stringContaining('language')
+          ])
+        );
+      });
+
+      test('should detect content with special characters in metadata', () => {
+        const metadata = {
+          title: 'John Mulaney: Kid Gorgeous at Radio City',
+          overview: 'A stand-up comedy special featuring John Mulaney\'s humor',
+          genres: ['Documentary', 'Comedy'],
+          keywords: ['stand-up comedy'],
+          certification: 'TV-14',
+          original_language: 'en',
+        };
+
+        const result = contentTypeAnalyzer.checkPattern(
+          'standup',
+          contentTypeAnalyzer.patterns.standup,
+          {
+            overview: metadata.overview.toLowerCase(),
+            title: metadata.title.toLowerCase(),
+            genres: metadata.genres.map(g => g.toLowerCase()),
+            keywords: metadata.keywords,
+            certification: metadata.certification,
+            originalLanguage: metadata.original_language,
+          }
+        );
+
+        expect(result.detected).toBe(true);
+        expect(result.confidence).toBeGreaterThanOrEqual(60);
+      });
+    });
+
+    describe('Multi-Pattern Detection Priority', () => {
+      test('should prioritize more specific pattern when multiple match', async () => {
+        db.query.mockResolvedValue({
+          rows: [
+            { key: 'content_analysis_enabled', value: 'true' },
+            { key: 'content_analysis_min_confidence', value: '40' }
+          ]
+        });
+
+        // Content that could match both anime and adultAnimation
+        const metadata = {
+          title: 'Rick and Morty',
+          overview: 'An adult animated sitcom with science fiction themes',
+          genres: ['Animation', 'Comedy'],
+          keywords: ['adult animation', 'animated sitcom', 'satire'],
+          certification: 'TV-MA',
+          original_language: 'en',
+        };
+
+        const result = await contentTypeAnalyzer.analyze(metadata);
+
+        expect(result.analyzed).toBe(true);
+        expect(result.detections.length).toBeGreaterThan(0);
+        // Adult animation should be detected, not anime
+        expect(result.bestMatch?.type).toBe('adultAnimation');
+        expect(result.bestMatch?.confidence).toBeGreaterThanOrEqual(60);
+      });
+
+      test('should correctly identify holiday-themed anime', async () => {
+        db.query.mockResolvedValue({
+          rows: [
+            { key: 'content_analysis_enabled', value: 'true' },
+            { key: 'content_analysis_min_confidence', value: '50' }
+          ]
+        });
+
+        const metadata = {
+          title: 'Tokyo Godfathers',
+          overview: 'A christmas anime film about three homeless people finding hope',
+          genres: ['Animation', 'Drama'],
+          keywords: ['anime', 'christmas', 'holiday'],
+          certification: 'PG-13',
+          original_language: 'ja',
+        };
+
+        const result = await contentTypeAnalyzer.analyze(metadata);
+
+        expect(result.analyzed).toBe(true);
+        expect(result.detections.length).toBeGreaterThanOrEqual(1);
+        
+        // Should detect both anime and holiday
+        const detectionTypes = result.detections.map(d => d.type);
+        expect(detectionTypes).toContain('anime');
+        
+        // Anime should be highest confidence due to language
+        expect(result.bestMatch?.type).toBe('anime');
+        expect(result.bestMatch?.confidence).toBeGreaterThanOrEqual(65);
+        
+        // If holiday is also detected, it should be in the detections list
+        if (detectionTypes.includes('holiday')) {
+          const holidayDetection = result.detections.find(d => d.type === 'holiday');
+          expect(holidayDetection).toBeDefined();
+        }
+      });
     });
   });
 });
