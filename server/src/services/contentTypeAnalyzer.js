@@ -28,7 +28,7 @@ class ContentTypeAnalyzer {
       standup: {
         keywords: [
           'stand-up comedy', 'comedy special', 'standup', 'live comedy',
-          'recorded live at', 'comedy tour', 'one man show', 'comedian'
+          'recorded live at', 'comedy tour', 'one man show'
         ],
         requiredGenres: ['Documentary', 'Comedy'],
         confidence: 85,
@@ -50,6 +50,7 @@ class ContentTypeAnalyzer {
         ],
         requiredGenres: ['Animation'],
         ratingCheck: ['TV-MA', 'R', 'NC-17'],
+        excludeRatings: ['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G'],
         confidence: 80,
         suggestedLabels: ['adult_animation', 'animation']
       },
@@ -67,6 +68,7 @@ class ContentTypeAnalyzer {
           'anime', 'manga', 'based on manga', 'shounen', 'shoujo',
           'seinen', 'isekai', 'mecha', 'japanese animation'
         ],
+        languageCheck: ['ja'],
         confidence: 90,
         suggestedLabels: ['anime', 'animation']
       },
@@ -165,6 +167,38 @@ class ContentTypeAnalyzer {
     const reasoning = [];
     let detected = false;
 
+    // Check for excluded ratings (e.g., don't detect family-friendly content as adult)
+    if (pattern.excludeRatings && pattern.excludeRatings.includes(data.certification)) {
+      return {
+        type,
+        detected: false,
+        confidence: 0,
+        reasoning: [`Excluded due to rating: ${data.certification}`],
+        suggestedLabels: pattern.suggestedLabels
+      };
+    }
+
+    // Check required genres - must match ALL if specified
+    if (pattern.requiredGenres) {
+      const genreMatches = pattern.requiredGenres.filter(genre => 
+        data.genres.includes(genre.toLowerCase())
+      );
+      
+      if (genreMatches.length === pattern.requiredGenres.length) {
+        confidence += 30;
+        reasoning.push(`Matched required genres: ${genreMatches.join(', ')}`);
+      } else {
+        // Required genres not fully matched - return no detection
+        return {
+          type,
+          detected: false,
+          confidence: 0,
+          reasoning: [`Required genres not matched (need: ${pattern.requiredGenres.join(', ')}, have: ${data.genres.join(', ')})`],
+          suggestedLabels: pattern.suggestedLabels
+        };
+      }
+    }
+
     // Check keywords in overview and title
     const keywordMatches = pattern.keywords.filter(keyword => 
       data.overview.includes(keyword) || data.title.includes(keyword) || 
@@ -176,21 +210,6 @@ class ContentTypeAnalyzer {
       reasoning.push(`Matched keywords: ${keywordMatches.slice(0, 3).join(', ')}`);
     }
 
-    // Check required genres
-    if (pattern.requiredGenres) {
-      const genreMatches = pattern.requiredGenres.filter(genre => 
-        data.genres.includes(genre.toLowerCase())
-      );
-      
-      if (genreMatches.length === pattern.requiredGenres.length) {
-        confidence += 30;
-        reasoning.push(`Matched required genres: ${genreMatches.join(', ')}`);
-      } else if (genreMatches.length > 0) {
-        confidence += 15;
-        reasoning.push(`Partial genre match: ${genreMatches.join(', ')}`);
-      }
-    }
-
     // Check rating
     if (pattern.ratingCheck && pattern.ratingCheck.includes(data.certification)) {
       confidence += 20;
@@ -199,7 +218,7 @@ class ContentTypeAnalyzer {
 
     // Check language
     if (pattern.languageCheck && pattern.languageCheck.includes(data.originalLanguage)) {
-      confidence += 40;
+      confidence += 50;
       reasoning.push(`Matched language: ${data.originalLanguage}`);
     }
 
