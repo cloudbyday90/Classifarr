@@ -168,7 +168,7 @@ class ContentTypeAnalyzer {
     let detected = false;
 
     // Early exit for excluded ratings (e.g., family-friendly ratings for adult content)
-    if (pattern.excludeRatings && pattern.excludeRatings.includes(data.certification)) {
+    if (pattern.excludeRatings && data.certification && pattern.excludeRatings.includes(data.certification)) {
       return {
         type,
         detected: false,
