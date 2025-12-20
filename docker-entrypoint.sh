@@ -49,10 +49,11 @@ else
         echo "Modifying classifarr user UID from $CURRENT_UID to $PUID..."
         usermod -u "$PUID" classifarr
     fi
-    # Ensure user is in the classifarr group
-    CURRENT_GROUPS=$(id -Gn classifarr)
-    if ! echo "$CURRENT_GROUPS" | grep -q "classifarr"; then
-        echo "Adding classifarr user to classifarr group..."
+    # Ensure user's primary group is classifarr
+    CURRENT_PRIMARY_GID=$(id -g classifarr)
+    CLASSIFARR_GID=$(getent group classifarr | cut -d: -f3)
+    if [ "$CURRENT_PRIMARY_GID" != "$CLASSIFARR_GID" ]; then
+        echo "Setting classifarr as primary group for classifarr user..."
         usermod -g classifarr classifarr
     fi
 fi
