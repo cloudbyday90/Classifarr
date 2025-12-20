@@ -53,6 +53,8 @@ RUN apk add --no-cache \
     netcat-openbsd \
     postgresql17 \
     postgresql17-contrib \
+    su-exec \
+    shadow \
     && rm -rf /var/cache/apk/*
 
 # Create non-root user for security
@@ -82,9 +84,12 @@ RUN mkdir -p /app/data/postgres /run/postgresql && \
 ENV NODE_ENV=production
 ENV PORT=21324
 ENV TZ=UTC
+ENV PUID=1000
+ENV PGID=1000
+ENV UMASK=022
 
-# Switch to non-root user
-USER classifarr
+# Note: Container runs as root initially to allow dynamic user/group creation
+# The entrypoint script will drop privileges to the configured PUID/PGID
 
 # Expose port
 EXPOSE 21324
