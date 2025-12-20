@@ -47,8 +47,11 @@ class ClassificationService {
       // Log to database
       const classificationId = await this.logClassification(metadata, result);
 
-      // Route to Radarr/Sonarr only if confidence is high enough
-      if (result.library && result.library.arr_type && result.confidence >= 90) {
+      // Check if user requires all confirmations
+      const requireAllConfirmations = await clarificationService.isRequireAllConfirmationsEnabled();
+
+      // Route to Radarr/Sonarr only if confidence is high enough AND user doesn't require all confirmations
+      if (result.library && result.library.arr_type && result.confidence >= 90 && !requireAllConfirmations) {
         await this.routeToArr(metadata, result.library);
       }
 

@@ -283,6 +283,9 @@ class DiscordBotService {
         return;
       }
 
+      // Check if user requires all confirmations
+      const requireAllConfirmations = await clarificationService.isRequireAllConfirmationsEnabled();
+
       // Get confidence tier
       const tier = await clarificationService.getTierForConfidence(result.confidence);
       if (!tier) {
@@ -296,16 +299,17 @@ class DiscordBotService {
         return;
       }
 
-      // Create embed based on tier
-      const embed = this.createTieredEmbed(metadata, result, tier);
+      // Create embed based on tier (and requireAllConfirmations setting)
+      const embed = this.createTieredEmbed(metadata, result, tier, requireAllConfirmations);
 
-      // Create components based on tier
+      // Create components based on tier (and requireAllConfirmations setting)
       const components = await this.createTieredComponents(
         result.classification_id,
         result.libraries,
         tier,
         metadata,
-        result.confidence
+        result.confidence,
+        requireAllConfirmations
       );
 
       const message = await channel.send({
@@ -323,7 +327,7 @@ class DiscordBotService {
     }
   }
 
-  createTieredEmbed(metadata, result, tier) {
+  createTieredEmbed(metadata, result, tier, requireAllConfirmations = false) {
     const colors = {
       auto: 0x00ff00,      // Green
       verify: 0xffff00,    // Yellow
@@ -343,8 +347,12 @@ class DiscordBotService {
       .setColor(colors[tier.tier])
       .setTimestamp();
 
-    if (tier.tier === 'auto') {
+    if (tier.tier === 'auto' && !requireAllConfirmations) {
       embed.setDescription(`✅ **Automatically routed to: ${result.library_name}**\n${tier.description}`);
+    } else if (tier.tier === 'auto' && requireAllConfirmations) {
+      // Override auto behavior when user requires all confirmations
+      embed.setDescription(`⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\n🔒 **Manual confirmation required** (setting enabled)\nPlease confirm or select another option.`);
+      embed.setColor(colors.verify); // Use verify color since it requires confirmation
     } else if (tier.tier === 'verify') {
       embed.setDescription(`⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease confirm or select another option.`);
     } else if (tier.tier === 'clarify') {
@@ -382,10 +390,13 @@ class DiscordBotService {
     return embed;
   }
 
-  async createTieredComponents(classificationId, libraries, tier, metadata, confidence) {
+  async createTieredComponents(classificationId, libraries, tier, metadata, confidence, requireAllConfirmations = false) {
     const components = [];
 
-    if (tier.tier === 'auto') {
+    // If requireAllConfirmations is enabled and tier is 'auto', treat it as 'verify'
+    const effectiveTier = (tier.tier === 'auto' && requireAllConfirmations) ? 'verify' : tier.tier;
+
+    if (effectiveTier === 'auto') {
       // No interaction needed, just show a confirmation button
       components.push(
         new ActionRowBuilder().addComponents(
@@ -395,7 +406,7 @@ class DiscordBotService {
             .setStyle(ButtonStyle.Success)
         )
       );
-    } else if (tier.tier === 'verify') {
+    } else if (effectiveTier === 'verify') {
       // Yes/No buttons
       components.push(
         new ActionRowBuilder().addComponents(
@@ -409,11 +420,11 @@ class DiscordBotService {
             .setStyle(ButtonStyle.Danger)
         )
       );
-    } else if (tier.tier === 'clarify' || tier.tier === 'manual') {
+    } else if (effectiveTier === 'clarify' || effectiveTier === 'manual') {
       // Get clarification questions
       const questions = await clarificationService.matchQuestions(
         metadata,
-        tier.tier === 'clarify' ? 2 : 3
+        effectiveTier === 'clarify' ? 2 : 3
       );
 
       // Add question buttons (up to 2-3 questions)
