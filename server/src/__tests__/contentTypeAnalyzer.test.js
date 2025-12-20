@@ -50,7 +50,8 @@ describe('ContentTypeAnalyzer', () => {
       );
 
       expect(result.detected).toBe(true);
-      // Expect high confidence: genres (30) + 2 keywords in text (30) + 2 keywords in array (30, capped at 50 total for keywords) = 80 * 0.7 + 85 * 0.3 = 81.5
+      // Expect high confidence: genres (30) + keywords matched (keywords are counted once via OR logic)
+      // 2 unique keywords * 15 = 30, total: 60 * 0.7 + 85 * 0.3 = 67.5
       expect(result.confidence).toBeGreaterThanOrEqual(75);
       expect(result.confidence).toBeLessThanOrEqual(85);
       expect(result.suggestedLabels).toContain('standup');
@@ -954,7 +955,8 @@ describe('ContentTypeAnalyzer', () => {
       );
 
       expect(result.detected).toBe(true);
-      // Confidence calculation: 30 (genres) + 50 (capped keywords) = 80 * 0.7 + 85 * 0.3 = 81.5
+      // Unique keywords are counted once regardless of where they appear (title, overview, or keywords array)
+      // 6 unique keywords * 15 = 90, but capped at 50, plus genres (30) = 80 * 0.7 + 85 * 0.3 = 81.5
       expect(result.confidence).toBeLessThanOrEqual(100);
     });
 
@@ -982,7 +984,8 @@ describe('ContentTypeAnalyzer', () => {
       );
 
       expect(result.detected).toBe(true);
-      // Confidence: 30 (genres) + 15 (1 keyword) = 45 * 0.7 + 85 * 0.3 = 57
+      // 'concert' appears in title and keywords (counted once), 'live performance' in overview
+      // 2 unique keywords * 15 = 30, plus genres (30) = 60 * 0.7 + 85 * 0.3 = 67.5
       expect(result.confidence).toBeGreaterThan(0);
       expect(result.confidence).toBeLessThanOrEqual(100);
     });
