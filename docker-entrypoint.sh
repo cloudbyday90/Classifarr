@@ -34,8 +34,7 @@ else
     CURRENT_GID=$(getent group classifarr | cut -d: -f3)
     if [ "$CURRENT_GID" != "$PGID" ]; then
         echo "Modifying classifarr group GID from $CURRENT_GID to $PGID..."
-        delgroup classifarr
-        addgroup -g "$PGID" classifarr
+        groupmod -g "$PGID" classifarr
     fi
 fi
 
@@ -48,8 +47,13 @@ else
     CURRENT_UID=$(id -u classifarr)
     if [ "$CURRENT_UID" != "$PUID" ]; then
         echo "Modifying classifarr user UID from $CURRENT_UID to $PUID..."
-        deluser classifarr
-        adduser -u "$PUID" -G classifarr -s /bin/sh -D classifarr
+        usermod -u "$PUID" classifarr
+    fi
+    # Ensure user is in the classifarr group
+    CURRENT_GROUPS=$(id -Gn classifarr)
+    if ! echo "$CURRENT_GROUPS" | grep -q "classifarr"; then
+        echo "Adding classifarr user to classifarr group..."
+        usermod -g classifarr classifarr
     fi
 fi
 

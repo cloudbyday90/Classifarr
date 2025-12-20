@@ -54,6 +54,7 @@ RUN apk add --no-cache \
     postgresql17 \
     postgresql17-contrib \
     su-exec \
+    shadow \
     && rm -rf /var/cache/apk/*
 
 # Create non-root user for security
