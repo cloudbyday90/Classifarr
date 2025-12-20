@@ -45,12 +45,14 @@ LABEL org.opencontainers.image.vendor="cloudbyday90"
 LABEL org.opencontainers.image.source="https://github.com/cloudbyday90/Classifarr"
 LABEL org.opencontainers.image.licenses="GPL-3.0"
 
-# Install runtime dependencies only
+# Install runtime dependencies including PostgreSQL
 RUN apk add --no-cache \
     tini \
     curl \
     tzdata \
     netcat-openbsd \
+    postgresql17 \
+    postgresql17-contrib \
     && rm -rf /var/cache/apk/*
 
 # Create non-root user for security
@@ -65,12 +67,16 @@ COPY --chown=classifarr:classifarr server/src ./src
 COPY --chown=classifarr:classifarr server/package.json ./
 COPY --from=frontend-builder --chown=classifarr:classifarr /build/client/dist ./public
 
+# Copy database initialization files
+COPY --chown=classifarr:classifarr database/ ./database/
+
 # Copy entrypoint script
 COPY --chown=classifarr:classifarr docker-entrypoint.sh /app/
 RUN chmod +x /app/docker-entrypoint.sh
 
-# Create data directory with correct permissions
-RUN mkdir -p /app/data && chown -R classifarr:classifarr /app/data
+# Create directories for PostgreSQL data and runtime
+RUN mkdir -p /app/data/postgres /run/postgresql && \
+    chown -R classifarr:classifarr /app/data /run/postgresql
 
 # Environment variables
 ENV NODE_ENV=production
@@ -84,7 +90,7 @@ USER classifarr
 EXPOSE 21324
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:21324/health || exit 1
 
 # Use tini as init system for proper signal handling
