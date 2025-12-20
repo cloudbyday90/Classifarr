@@ -26,6 +26,32 @@ UnRaid Community Applications template for easy installation of Classifarr.
    - **Path**: `/mnt/user/appdata/classifarr` (host) → `/app/data` (container)
 4. Click **Apply**
 
+## Two-Container Setup
+
+Classifarr requires two containers:
+
+1. **Classifarr-DB** - PostgreSQL database (install first)
+2. **Classifarr** - Main application
+
+### Installation Order
+
+1. Install Classifarr-DB first
+2. Set a secure database password
+3. Start Classifarr-DB and wait for it to be healthy
+4. Install Classifarr
+5. Ensure POSTGRES_HOST is set to `classifarr-db`
+6. Start Classifarr
+
+## Community Apps Submission
+
+To add Classifarr to your own Unraid CA repository:
+
+1. Go to Apps → Settings (gear icon)
+2. Scroll to "Template Repositories"
+3. Add: `https://github.com/cloudbyday90/Classifarr`
+4. Click Save
+5. Search for "Classifarr" in Apps
+
 ## Configuration
 
 ### First-Time Setup
