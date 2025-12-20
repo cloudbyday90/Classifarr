@@ -22,10 +22,6 @@ if [ ! -f "$PG_DATA/PG_VERSION" ]; then
     echo "Initializing PostgreSQL database..."
     initdb -D "$PG_DATA" --auth=trust --encoding=UTF8
     
-    # Configure PostgreSQL for local-only access
-    echo "host all all 127.0.0.1/32 trust" >> "$PG_DATA/pg_hba.conf"
-    echo "local all all trust" >> "$PG_DATA/pg_hba.conf"
-    
     # Configure PostgreSQL to listen on localhost only
     echo "listen_addresses = 'localhost'" >> "$PG_DATA/postgresql.conf"
     echo "unix_socket_directories = '/run/postgresql'" >> "$PG_DATA/postgresql.conf"
@@ -62,7 +58,7 @@ fi
 export POSTGRES_HOST=localhost
 export POSTGRES_PORT=5432
 export POSTGRES_DB=classifarr
-export POSTGRES_USER=$(whoami)
+export POSTGRES_USER=classifarr
 export POSTGRES_PASSWORD=""
 
 echo "PostgreSQL is ready!"
