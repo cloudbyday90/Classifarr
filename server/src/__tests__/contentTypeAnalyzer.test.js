@@ -354,8 +354,64 @@ describe('ContentTypeAnalyzer', () => {
         }
       );
 
-      // Should have very low or no detection since no adult animation keywords
-      expect(result.confidence).toBeLessThan(50);
+      // Should be excluded due to G rating
+      expect(result.detected).toBe(false);
+      expect(result.confidence).toBe(0);
+      expect(result.reasoning[0]).toContain('Excluded due to rating');
+    });
+
+    test('should exclude adult animation with PG rating', () => {
+      const metadata = {
+        title: 'Animated Film',
+        overview: 'An animated film',
+        genres: ['Animation'],
+        keywords: ['animation'],
+        certification: 'PG',
+        original_language: 'en',
+      };
+
+      const result = contentTypeAnalyzer.checkPattern(
+        'adultAnimation',
+        contentTypeAnalyzer.patterns.adultAnimation,
+        {
+          overview: metadata.overview.toLowerCase(),
+          title: metadata.title.toLowerCase(),
+          genres: metadata.genres.map(g => g.toLowerCase()),
+          keywords: metadata.keywords,
+          certification: metadata.certification,
+          originalLanguage: metadata.original_language,
+        }
+      );
+
+      expect(result.detected).toBe(false);
+      expect(result.reasoning[0]).toContain('Excluded due to rating');
+    });
+
+    test('should exclude adult animation with TV-Y rating', () => {
+      const metadata = {
+        title: 'Kids Animation',
+        overview: 'An animated show for kids',
+        genres: ['Animation'],
+        keywords: ['animation'],
+        certification: 'TV-Y',
+        original_language: 'en',
+      };
+
+      const result = contentTypeAnalyzer.checkPattern(
+        'adultAnimation',
+        contentTypeAnalyzer.patterns.adultAnimation,
+        {
+          overview: metadata.overview.toLowerCase(),
+          title: metadata.title.toLowerCase(),
+          genres: metadata.genres.map(g => g.toLowerCase()),
+          keywords: metadata.keywords,
+          certification: metadata.certification,
+          originalLanguage: metadata.original_language,
+        }
+      );
+
+      expect(result.detected).toBe(false);
+      expect(result.reasoning[0]).toContain('Excluded due to rating');
     });
 
     test('should detect adult animation with R rating', () => {
@@ -551,6 +607,37 @@ describe('ContentTypeAnalyzer', () => {
       );
 
       expect(result.detected).toBe(false);
+    });
+
+    test('should have higher confidence with Japanese language', () => {
+      const withJapanese = contentTypeAnalyzer.checkPattern(
+        'anime',
+        contentTypeAnalyzer.patterns.anime,
+        {
+          overview: 'anime series',
+          title: '',
+          genres: ['animation'],
+          keywords: ['anime'],
+          certification: '',
+          originalLanguage: 'ja',
+        }
+      );
+
+      const withoutJapanese = contentTypeAnalyzer.checkPattern(
+        'anime',
+        contentTypeAnalyzer.patterns.anime,
+        {
+          overview: 'anime series',
+          title: '',
+          genres: ['animation'],
+          keywords: ['anime'],
+          certification: '',
+          originalLanguage: 'en',
+        }
+      );
+
+      expect(withJapanese.confidence).toBeGreaterThan(withoutJapanese.confidence);
+      expect(withJapanese.reasoning).toContain('Matched language: ja');
     });
   });
 
@@ -1002,6 +1089,34 @@ describe('ContentTypeAnalyzer', () => {
       );
 
       expect(result.confidence).toBeLessThanOrEqual(100);
+    });
+
+    test('should NOT detect with very low confidence (below 40% threshold)', () => {
+      const metadata = {
+        title: 'Some Movie',
+        overview: 'A movie',
+        genres: ['Comedy'], // Only partial match
+        keywords: ['movie'],
+        certification: 'PG-13',
+        original_language: 'en',
+      };
+
+      const result = contentTypeAnalyzer.checkPattern(
+        'standup',
+        contentTypeAnalyzer.patterns.standup,
+        {
+          overview: metadata.overview.toLowerCase(),
+          title: metadata.title.toLowerCase(),
+          genres: metadata.genres.map(g => g.toLowerCase()),
+          keywords: metadata.keywords,
+          certification: metadata.certification,
+          originalLanguage: metadata.original_language,
+        }
+      );
+
+      // Even if there's some confidence from partial genre match, 
+      // it should NOT be detected if below 40% threshold
+      expect(result.detected).toBe(false);
     });
   });
 

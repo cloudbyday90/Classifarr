@@ -50,6 +50,7 @@ class ContentTypeAnalyzer {
         ],
         requiredGenres: ['Animation'],
         ratingCheck: ['TV-MA', 'R', 'NC-17'],
+        excludeRatings: ['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G'],
         confidence: 80,
         suggestedLabels: ['adult_animation', 'animation']
       },
@@ -67,6 +68,7 @@ class ContentTypeAnalyzer {
           'anime', 'manga', 'based on manga', 'shounen', 'shoujo',
           'seinen', 'isekai', 'mecha', 'japanese animation'
         ],
+        languageCheck: ['ja'],
         confidence: 90,
         suggestedLabels: ['anime', 'animation']
       },
@@ -165,6 +167,17 @@ class ContentTypeAnalyzer {
     const reasoning = [];
     let detected = false;
 
+    // Early exit for excluded ratings (e.g., family-friendly ratings for adult content)
+    if (pattern.excludeRatings && pattern.excludeRatings.includes(data.certification)) {
+      return {
+        type,
+        detected: false,
+        confidence: 0,
+        reasoning: ['Excluded due to rating: ' + data.certification],
+        suggestedLabels: pattern.suggestedLabels
+      };
+    }
+
     // Check keywords in overview and title
     const keywordMatches = pattern.keywords.filter(keyword => 
       data.overview.includes(keyword) || data.title.includes(keyword) || 
@@ -186,7 +199,8 @@ class ContentTypeAnalyzer {
         confidence += 30;
         reasoning.push(`Matched required genres: ${genreMatches.join(', ')}`);
       } else if (genreMatches.length > 0) {
-        confidence += 15;
+        // Reduced bonus for partial match to avoid false positives
+        confidence += 10;
         reasoning.push(`Partial genre match: ${genreMatches.join(', ')}`);
       }
     }
@@ -205,9 +219,12 @@ class ContentTypeAnalyzer {
 
     // Consider pattern's base confidence
     if (confidence > 0) {
-      detected = true;
       // Use weighted average favoring accumulated evidence (70%) over base confidence (30%)
       confidence = Math.min((confidence * 0.7) + (pattern.confidence * 0.3), 100);
+      
+      // Only mark as detected if confidence meets minimum threshold
+      // This prevents very low confidence false positives
+      detected = confidence >= 40;
     }
 
     return {
