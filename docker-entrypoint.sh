@@ -3,50 +3,68 @@ set -e
 
 # ===========================================
 # Classifarr Docker Entrypoint
+# All-in-One with Embedded PostgreSQL
 # ===========================================
 
-echo "Starting Classifarr..."
+DATA_DIR="/app/data"
+PG_DATA="$DATA_DIR/postgres"
+PG_RUN="/run/postgresql"
+
+echo "Starting Classifarr with embedded PostgreSQL..."
 echo "Node.js version: $(node --version)"
 echo "Environment: ${NODE_ENV:-development}"
 
-# Check for database password
-PASSWORD_FILE="/app/data/postgres_password"
+# Ensure directories exist
+mkdir -p "$PG_DATA" "$PG_RUN"
 
-if [ ! -f "$PASSWORD_FILE" ]; then
-    echo "ERROR: Database password file not found at $PASSWORD_FILE"
-    echo "Please run the setup script first: ./setup.sh"
-    echo "Or ensure the password file exists in the mounted volume."
-    exit 1
-fi
-
-echo "Loading database credentials..."
-PASSWORD=$(cat "$PASSWORD_FILE")
-
-# Export password for application use
-export POSTGRES_PASSWORD="$PASSWORD"
-
-# Wait for postgres to be ready (if POSTGRES_HOST is set)
-if [ -n "$POSTGRES_HOST" ]; then
-    echo "Waiting for PostgreSQL at $POSTGRES_HOST:${POSTGRES_PORT:-5432}..."
+# Initialize PostgreSQL if needed
+if [ ! -f "$PG_DATA/PG_VERSION" ]; then
+    echo "Initializing PostgreSQL database..."
+    initdb -D "$PG_DATA" --auth=trust --encoding=UTF8
     
-    max_attempts=30
-    attempt=0
+    # Configure PostgreSQL for local-only access
+    echo "host all all 127.0.0.1/32 trust" >> "$PG_DATA/pg_hba.conf"
+    echo "local all all trust" >> "$PG_DATA/pg_hba.conf"
     
-    while [ $attempt -lt $max_attempts ]; do
-        if nc -z "$POSTGRES_HOST" "${POSTGRES_PORT:-5432}" 2>/dev/null; then
-            echo "PostgreSQL is ready!"
-            break
-        fi
-        
-        attempt=$((attempt + 1))
-        echo "Waiting for PostgreSQL... (attempt $attempt/$max_attempts)"
-        sleep 2
-    done
+    # Configure PostgreSQL to listen on localhost only
+    echo "listen_addresses = 'localhost'" >> "$PG_DATA/postgresql.conf"
+    echo "unix_socket_directories = '/run/postgresql'" >> "$PG_DATA/postgresql.conf"
     
-    if [ $attempt -eq $max_attempts ]; then
-        echo "WARNING: Could not confirm PostgreSQL connection, proceeding anyway..."
+    # Start PostgreSQL temporarily to create database
+    pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
+    
+    # Wait for PostgreSQL to be ready
+    echo "Waiting for PostgreSQL to start..."
+    until pg_isready -q; do sleep 1; done
+    
+    # Create database
+    echo "Creating classifarr database..."
+    createdb classifarr
+    
+    # Run init script
+    if [ -f /app/database/init.sql ]; then
+        echo "Running database initialization..."
+        psql -d classifarr -f /app/database/init.sql
     fi
+    
+    echo "PostgreSQL initialized successfully!"
+else
+    # Start existing PostgreSQL
+    echo "Starting existing PostgreSQL database..."
+    pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
+    
+    # Wait for PostgreSQL to be ready
+    echo "Waiting for PostgreSQL to start..."
+    until pg_isready -q; do sleep 1; done
 fi
 
+# Set environment for local PostgreSQL connection
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+export POSTGRES_DB=classifarr
+export POSTGRES_USER=$(whoami)
+export POSTGRES_PASSWORD=""
+
+echo "PostgreSQL is ready!"
 echo "Starting Classifarr server..."
 exec node src/index.js

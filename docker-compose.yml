@@ -11,61 +11,13 @@ services:
       - "21324:21324"
     environment:
       - NODE_ENV=production
-      - PORT=21324
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=classifarr
-      - POSTGRES_USER=classifarr
       - TZ=${TZ:-UTC}
     volumes:
-      - app_data:/app/data
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - ./data:/app/data
     restart: unless-stopped
-    networks:
-      - classifarr-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:21324/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-
-  postgres:
-    image: postgres:17-alpine
-    container_name: classifarr-db
-    environment:
-      - POSTGRES_DB=classifarr
-      - POSTGRES_USER=classifarr
-      - TZ=${TZ:-UTC}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - app_data:/app/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U classifarr -d classifarr"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - classifarr-network
-    entrypoint: >
-      /bin/sh -c "
-        if [ ! -f /app/data/postgres_password ]; then
-          echo 'ERROR: Password file not found. Please run ./setup.sh first.'
-          exit 1
-        fi
-        export POSTGRES_PASSWORD=$$(cat /app/data/postgres_password)
-        exec docker-entrypoint.sh postgres
-      "
-
-volumes:
-  postgres_data:
-  app_data:
-
-networks:
-  classifarr-network:
-    driver: bridge
+      start_period: 60s
