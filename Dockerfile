@@ -58,7 +58,10 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # Create non-root user for security
-RUN addgroup -g 1000 classifarr && \
+# Remove existing node user (UID/GID 1000) from base image to avoid conflicts
+RUN deluser --remove-home node 2>/dev/null || true && \
+    delgroup node 2>/dev/null || true && \
+    addgroup -g 1000 classifarr && \
     adduser -u 1000 -G classifarr -s /bin/sh -D classifarr
 
 WORKDIR /app
