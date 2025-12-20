@@ -13,6 +13,30 @@
       <p class="text-gray-400 text-sm">Configure confidence thresholds and clarification questions</p>
     </div>
 
+    <!-- Manual Confirmation Mode -->
+    <div class="bg-gray-800 rounded-lg p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-lg font-semibold flex items-center gap-2">
+            🔒 Manual Confirmation Mode
+          </h3>
+          <p class="text-gray-400 text-sm mt-2">
+            When enabled, all classifications will require your confirmation before being sent to Radarr/Sonarr,
+            even when confidence is 90% or higher.
+          </p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            v-model="requireAllConfirmations"
+            @change="saveRequireAllConfirmations"
+            class="sr-only peer"
+          />
+          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+        </label>
+      </div>
+    </div>
+
     <!-- Confidence Thresholds -->
     <div class="bg-gray-800 rounded-lg p-6">
       <h3 class="text-lg font-semibold mb-4">Confidence Thresholds</h3>
@@ -257,6 +281,7 @@ const showAddQuestion = ref(false)
 const editingQuestion = ref(null)
 const status = ref(null)
 const stats = ref({})
+const requireAllConfirmations = ref(false)
 
 const questionForm = ref({
   question_text: '',
@@ -273,10 +298,31 @@ const triggerGenresInput = ref('')
 const responseOptionsInput = ref('{"yes": {"label": "Yes", "confidence_boost": 30}, "no": {"label": "No", "confidence_boost": -10}}')
 
 onMounted(async () => {
+  await loadRequireAllConfirmations()
   await loadThresholds()
   await loadQuestions()
   await loadStats()
 })
+
+const loadRequireAllConfirmations = async () => {
+  try {
+    const response = await axios.get('/api/settings')
+    requireAllConfirmations.value = response.data.require_all_confirmations === 'true'
+  } catch (error) {
+    console.error('Failed to load require_all_confirmations setting:', error)
+  }
+}
+
+const saveRequireAllConfirmations = async () => {
+  try {
+    await axios.put('/api/settings', {
+      require_all_confirmations: requireAllConfirmations.value ? 'true' : 'false'
+    })
+    showStatus('Setting saved successfully', 'success')
+  } catch (error) {
+    showStatus('Failed to save setting', 'error')
+  }
+}
 
 const loadThresholds = async () => {
   try {

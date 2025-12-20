@@ -405,6 +405,22 @@ class ClarificationService {
       throw error;
     }
   }
+
+  /**
+   * Check if require all confirmations setting is enabled
+   * @returns {Promise<boolean>} True if setting is enabled
+   */
+  async isRequireAllConfirmationsEnabled() {
+    try {
+      const result = await db.query(
+        "SELECT value FROM settings WHERE key = 'require_all_confirmations'"
+      );
+      return result.rows[0]?.value === 'true';
+    } catch (error) {
+      logger.error('Error checking require_all_confirmations setting', { error: error.message });
+      return false;
+    }
+  }
 }
 
 module.exports = new ClarificationService();

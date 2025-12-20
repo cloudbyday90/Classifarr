@@ -293,4 +293,47 @@ describe('ClarificationService', () => {
       expect(result.confidenceAfter).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('isRequireAllConfirmationsEnabled', () => {
+    test('should return true when setting is enabled', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ value: 'true' }],
+      });
+
+      const result = await clarificationService.isRequireAllConfirmationsEnabled();
+
+      expect(result).toBe(true);
+      expect(db.query).toHaveBeenCalledWith(
+        "SELECT value FROM settings WHERE key = 'require_all_confirmations'"
+      );
+    });
+
+    test('should return false when setting is disabled', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ value: 'false' }],
+      });
+
+      const result = await clarificationService.isRequireAllConfirmationsEnabled();
+
+      expect(result).toBe(false);
+    });
+
+    test('should return false when setting does not exist', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [],
+      });
+
+      const result = await clarificationService.isRequireAllConfirmationsEnabled();
+
+      expect(result).toBe(false);
+    });
+
+    test('should return false on database error', async () => {
+      db.query.mockRejectedValueOnce(new Error('Database error'));
+
+      const result = await clarificationService.isRequireAllConfirmationsEnabled();
+
+      expect(result).toBe(false);
+    });
+  });
 });
