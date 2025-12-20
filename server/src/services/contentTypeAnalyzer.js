@@ -24,6 +24,14 @@ const logger = createLogger('contentTypeAnalyzer');
 class ContentTypeAnalyzer {
   constructor() {
     // Detection patterns with keywords and confidence weights
+    // Pattern configuration options:
+    // - keywords: Array of strings to match in title/overview/keywords
+    // - requiredGenres: Array of genre names that must match (all required unless partial match)
+    // - ratingCheck: Array of ratings that boost confidence (e.g., mature ratings for adult content)
+    // - excludeRatings: Array of ratings that disqualify detection (e.g., kid ratings for adult content)
+    // - languageCheck: Array of language codes that boost confidence (adds 40 points)
+    // - confidence: Base confidence score (0-100) for the pattern
+    // - suggestedLabels: Labels to apply when pattern is detected
     this.patterns = {
       standup: {
         keywords: [
