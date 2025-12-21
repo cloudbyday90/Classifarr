@@ -101,6 +101,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: server/package.json
 
+      - name: Setup database paths for CI
+        run: |
+          sudo mkdir -p /app/database
+          sudo cp -r database/migrations /app/database/
+
       - name: Initialize database
         env:
           PGPASSWORD: test_password
