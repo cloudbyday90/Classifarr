@@ -13,6 +13,70 @@
       <p class="text-gray-400 text-sm">Configure Discord notifications for classifications</p>
     </div>
 
+    <!-- Setup Guide (Collapsible) -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+      <button 
+        @click="showSetupGuide = !showSetupGuide"
+        class="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-750 transition-colors"
+      >
+        <span class="font-medium flex items-center gap-2">
+          <span>📚</span>
+          <span>How to Set Up Discord Bot</span>
+          <span v-if="!config.bot_token" class="text-xs bg-yellow-900/30 text-yellow-400 px-2 py-0.5 rounded">New? Start here</span>
+        </span>
+        <span :class="['transition-transform', showSetupGuide ? 'rotate-180' : '']">▼</span>
+      </button>
+      
+      <div v-if="showSetupGuide" class="px-4 pb-4 border-t border-gray-700 mt-0 pt-4">
+        <div class="space-y-4 text-sm">
+          <div class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">1</span>
+            <div>
+              <p class="font-medium">Create a Discord Application</p>
+              <p class="text-gray-400">Go to <a href="https://discord.com/developers/applications" target="_blank" class="text-blue-400 hover:underline">Discord Developer Portal</a> and click "New Application"</p>
+            </div>
+          </div>
+          
+          <div class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">2</span>
+            <div>
+              <p class="font-medium">Create the Bot</p>
+              <p class="text-gray-400">Go to "Bot" tab → Click "Add Bot" → Enable "Message Content Intent"</p>
+            </div>
+          </div>
+          
+          <div class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">3</span>
+            <div>
+              <p class="font-medium">Get Your Bot Token</p>
+              <p class="text-gray-400">In Bot tab → Click "Reset Token" → Copy and paste below</p>
+              <p class="text-red-400 text-xs mt-1">⚠️ Never share your token publicly</p>
+            </div>
+          </div>
+          
+          <div class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">4</span>
+            <div>
+              <p class="font-medium">Invite Bot to Server</p>
+              <p class="text-gray-400">Go to OAuth2 → URL Generator → Select "bot" scope → Select permissions: Send Messages, Embed Links, Attach Files, Read Message History</p>
+            </div>
+          </div>
+          
+          <div class="flex gap-3">
+            <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">5</span>
+            <div>
+              <p class="font-medium">Configure Below</p>
+              <p class="text-gray-400">Enter your bot token, click "Test Connection" to load servers, then select your server and channel</p>
+            </div>
+          </div>
+          
+          <div class="mt-4 p-3 bg-gray-900 rounded-lg">
+            <p class="text-gray-400 text-xs">Need more help? See the <a href="https://github.com/cloudbyday90/Classifarr/blob/main/DISCORD_SETUP.md" target="_blank" class="text-blue-400 hover:underline">full setup guide</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="space-y-4">
       <div>
         <label class="block text-sm font-medium mb-2">Bot Token</label>
@@ -32,7 +96,7 @@
           </button>
         </div>
         <p class="text-xs text-gray-500 mt-1">
-          Create a bot at <a href="https://discord.com/developers/applications" target="_blank" class="text-blue-400 hover:underline">Discord Developer Portal</a>
+          Paste your bot token from the Discord Developer Portal
         </p>
       </div>
 
@@ -194,6 +258,7 @@ const config = ref({
 })
 
 const showToken = ref(false)
+const showSetupGuide = ref(false)
 const servers = ref([])
 const channels = ref([])
 const selectedServer = ref('')
