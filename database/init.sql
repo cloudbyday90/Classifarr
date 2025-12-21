@@ -736,3 +736,4 @@ VALUES ('basic', 5, false);
 \i /app/database/migrations/005_add_require_all_confirmations_setting.sql
 \i /app/database/migrations/006_add_clarification_settings.sql
 \i /app/database/migrations/007_add_clarification_response.sql
+\i /app/database/migrations/008_add_task_queue.sql

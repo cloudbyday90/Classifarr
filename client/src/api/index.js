@@ -304,4 +304,18 @@ export default {
   testWebhook() {
     return apiClient.post('/settings/webhook/test')
   },
+
+  // Queue
+  getQueueStats() {
+    return apiClient.get('/queue/stats')
+  },
+  getPendingTasks(limit = 20) {
+    return apiClient.get('/queue/pending', { params: { limit } })
+  },
+  retryTask(taskId) {
+    return apiClient.post(`/queue/task/${taskId}/retry`)
+  },
+  cancelTask(taskId) {
+    return apiClient.post(`/queue/task/${taskId}/cancel`)
+  },
 }

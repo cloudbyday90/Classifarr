@@ -31,6 +31,7 @@ const setupRouter = require('./routes/setup');
 const authRouter = require('./routes/auth');
 const systemRouter = require('./routes/system');
 const discordBot = require('./services/discordBot');
+const queueService = require('./services/queueService');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -76,13 +77,13 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/health', async (req, res) => {
   try {
     await db.query('SELECT 1');
-    res.json({ 
+    res.json({
       status: 'healthy',
       database: 'connected',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       status: 'unhealthy',
       database: 'disconnected',
       error: error.message,
@@ -111,6 +112,14 @@ async function initializeServices() {
   } catch (error) {
     console.warn('Discord bot initialization failed:', error.message);
     console.warn('Continuing without Discord notifications...');
+  }
+
+  // Start queue worker
+  try {
+    queueService.startWorker();
+    console.log('Queue worker started successfully');
+  } catch (error) {
+    console.warn('Queue worker start failed:', error.message);
   }
 }
 

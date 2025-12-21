@@ -20,6 +20,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const classificationService = require('../services/classification');
 const webhookService = require('../services/webhook');
+const queueService = require('../services/queueService');
 const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
@@ -165,32 +166,37 @@ const handleWebhook = async (req, res) => {
         });
     }
 
-    // 4. For processable events (pending, approved, auto-approved), classify
-    logger.info('Starting classification', {
+    // 4. For processable events (pending, approved, auto-approved), enqueue for classification
+    logger.info('Enqueuing classification task', {
       notification_type: parsed.notification_type,
       media_type: parsed.media_type,
       title: parsed.title
     });
 
-    const result = await classificationService.classify(req.body);
+    // Enqueue task for background processing
+    const taskId = await queueService.enqueue('classification', req.body, {
+      webhookLogId: logId,
+      source: 'webhook',
+      priority: parsed.notification_type.includes('AUTO') ? 1 : 0  // Auto-approved slightly higher priority
+    });
 
-    // Track the request
-    await webhookService.trackRequest(parsed, result);
+    // Update webhook log to show it's queued
+    await webhookService.updateLogStatus(logId, 'queued', { taskId });
 
-    // Update log with success
-    await webhookService.updateLogStatus(logId, 'completed', result);
-
-    logger.info('Webhook processed successfully', {
+    logger.info('Webhook queued for processing', {
       logId,
-      library: result.library,
-      confidence: result.confidence,
+      taskId,
+      title: parsed.title,
       processingTime: `${Date.now() - startTime}ms`
     });
 
-    res.json({
+    // Return 202 Accepted - task will be processed in background
+    res.status(202).json({
       success: true,
+      queued: true,
       logId,
-      ...result,
+      taskId,
+      message: 'Request queued for classification'
     });
   } catch (error) {
     logger.error('Webhook processing error', {

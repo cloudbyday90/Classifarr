@@ -29,6 +29,7 @@ const clarificationRouter = require('./clarification');
 const plexOAuthRouter = require('./plexOAuth');
 const jellyfinAuthRouter = require('./jellyfinAuth');
 const embyAuthRouter = require('./embyAuth');
+const queueRouter = require('./queue');
 
 const router = express.Router();
 
@@ -45,6 +46,7 @@ router.use('/clarifications', clarificationRouter);
 router.use('/plex', plexOAuthRouter);
 router.use('/jellyfin', jellyfinAuthRouter);
 router.use('/emby', embyAuthRouter);
+router.use('/queue', queueRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
