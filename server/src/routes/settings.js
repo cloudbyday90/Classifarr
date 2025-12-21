@@ -1329,8 +1329,6 @@ router.post('/ssl/test', sslTestLimiter, async (req, res) => {
 // MULTI-REQUEST MANAGER ENDPOINTS
 // ============================================
 
-const webhookService = require('../services/webhook');
-
 // List all webhook configurations
 router.get('/webhook/configs', async (req, res) => {
   try {
