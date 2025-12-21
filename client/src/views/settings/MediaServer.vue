@@ -198,9 +198,25 @@
             </div>
           </div>
 
+          <!-- Connection info & warning -->
+          <div v-if="selectedServer" class="p-3 bg-gray-800 rounded-lg border border-gray-700">
+            <div v-if="selectedConnection" class="text-sm">
+              <span class="text-green-400">✓ Selected:</span>
+              <span class="font-mono text-gray-300 ml-1">{{ selectedConnection.address }}:{{ selectedConnection.port }}</span>
+            </div>
+            <div v-else-if="serverTestResults[selectedServer.clientIdentifier]?.connection" class="text-sm">
+              <span class="text-yellow-400">⚠ Auto-detected:</span>
+              <span class="font-mono text-gray-300 ml-1">{{ serverTestResults[selectedServer.clientIdentifier].connection.address }}</span>
+              <p class="text-xs text-gray-500 mt-1">If running in Docker, select a remote/external connection above</p>
+            </div>
+            <div v-else class="text-sm text-red-400">
+              ⚠ No working connection found. Select one above and test it.
+            </div>
+          </div>
+
           <button 
             @click="confirmPlexServer"
-            :disabled="!selectedServer || confirmingServer"
+            :disabled="!selectedServer || confirmingServer || (!selectedConnection && !serverTestResults[selectedServer?.clientIdentifier]?.success)"
             class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg"
           >
             {{ confirmingServer ? 'Saving...' : 'Use Selected Server' }}
