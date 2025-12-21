@@ -88,9 +88,11 @@ class DiscordBotService {
 
   async getServers(botToken = null) {
     try {
-      const token = botToken || (await this.loadConfig()).bot_token;
+      // Always prefer stored token (the passed botToken might be masked from frontend)
+      const storedConfig = await this.loadConfig();
+      const token = storedConfig?.bot_token || botToken;
       if (!token) {
-        throw new Error('No bot token provided');
+        throw new Error('No bot token configured');
       }
 
       // Create temporary client
@@ -98,7 +100,12 @@ class DiscordBotService {
         intents: [GatewayIntentBits.Guilds],
       });
 
-      await testClient.login(token);
+      // Wait for client to be fully ready before accessing guilds
+      await new Promise((resolve, reject) => {
+        testClient.once('ready', resolve);
+        testClient.once('error', reject);
+        testClient.login(token).catch(reject);
+      });
 
       const guilds = testClient.guilds.cache.map(guild => ({
         id: guild.id,
@@ -117,9 +124,11 @@ class DiscordBotService {
 
   async getChannels(serverId, botToken = null) {
     try {
-      const token = botToken || (await this.loadConfig()).bot_token;
+      // Always prefer stored token (the passed botToken might be masked from frontend)
+      const storedConfig = await this.loadConfig();
+      const token = storedConfig?.bot_token || botToken;
       if (!token) {
-        throw new Error('No bot token provided');
+        throw new Error('No bot token configured');
       }
 
       // Create temporary client
@@ -127,21 +136,30 @@ class DiscordBotService {
         intents: [GatewayIntentBits.Guilds],
       });
 
-      await testClient.login(token);
+      // Wait for client to be fully ready before accessing guilds
+      await new Promise((resolve, reject) => {
+        testClient.once('ready', resolve);
+        testClient.once('error', reject);
+        testClient.login(token).catch(reject);
+      });
 
       const guild = testClient.guilds.cache.get(serverId);
       if (!guild) {
         await testClient.destroy();
-        throw new Error('Server not found');
+        throw new Error('Server not found or bot not added to this server');
       }
 
+      // Fetch all channels to ensure cache is populated
+      await guild.channels.fetch();
+
       const channels = guild.channels.cache
-        .filter(channel => channel.isTextBased())
+        .filter(channel => channel.isTextBased() && !channel.isThread())
         .map(channel => ({
           id: channel.id,
           name: channel.name,
           type: channel.type,
-        }));
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
       await testClient.destroy();
 

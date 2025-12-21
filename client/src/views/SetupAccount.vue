@@ -166,8 +166,8 @@ const createAccount = async () => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`
       }
 
-      // Redirect to the main setup wizard for TMDB, etc.
-      router.push('/setup')
+      // Redirect directly to dashboard - configure services in Settings
+      router.push('/')
     }
   } catch (err) {
     error.value = err.response?.data?.error || 'Failed to create admin account'
