@@ -7,6 +7,23 @@ Current stage: **Alpha** (v0.x-alpha)
 
 ---
 
+## [0.11-alpha] - 2025-12-21
+
+### New Features
+- **Queue Status UI** - New Settings → Queue tab showing:
+  - Ollama availability indicator (green/red)
+  - Task counts: pending, processing, completed, failed
+  - Pending task list with retry/cancel actions
+  - Auto-refresh every 5 seconds
+
+- **Multi-Source Manager UI** - Settings → Webhooks now shows:
+  - List of all configured webhook sources
+  - Add new source with name and type
+  - Set Primary / Delete actions
+  - Type icons: Overseerr (🎬), Jellyseerr (🍇), Seer (⭐)
+
+---
+
 ## [0.10-alpha] - 2025-12-21
 
 ### 🎉 Initial Public Alpha
