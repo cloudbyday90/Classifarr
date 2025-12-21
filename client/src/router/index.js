@@ -72,6 +72,11 @@ const router = createRouter({
           component: () => import('@/views/History.vue'),
         },
         {
+          path: '/request',
+          name: 'ManualRequest',
+          component: () => import('@/views/ManualRequest.vue'),
+        },
+        {
           path: '/settings',
           name: 'Settings',
           component: () => import('@/views/Settings.vue'),

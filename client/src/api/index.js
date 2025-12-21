@@ -338,4 +338,15 @@ export default {
   setPrimaryWebhookConfig(id) {
     return apiClient.post(`/settings/webhook/configs/${id}/primary`)
   },
+
+  // Manual Requests
+  searchTMDB(query, type = 'multi') {
+    return apiClient.get('/requests/search', { params: { q: query, type } })
+  },
+  submitManualRequest(data) {
+    return apiClient.post('/requests/submit', data)
+  },
+  getRecentManualRequests(limit = 10) {
+    return apiClient.get('/requests/recent', { params: { limit } })
+  },
 }

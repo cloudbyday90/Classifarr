@@ -46,7 +46,7 @@
     </nav>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>Version 1.0.0</div>
+      <div>v0.11-alpha</div>
     </div>
   </aside>
 </template>
@@ -59,7 +59,8 @@ import {
   ClockIcon,
   DocumentTextIcon,
   CogIcon,
-  ServerIcon
+  ServerIcon,
+  PlusCircleIcon
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -69,6 +70,7 @@ const mainMenuItems = [
   { path: '/libraries', label: 'Libraries', icon: FolderIcon },
   { path: '/activity', label: 'Activity', icon: ClockIcon },
   { path: '/history', label: 'History', icon: DocumentTextIcon },
+  { path: '/request', label: 'Request', icon: PlusCircleIcon },
   { path: '/settings', label: 'Settings', icon: CogIcon },
 ]
 

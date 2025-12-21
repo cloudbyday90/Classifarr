@@ -29,14 +29,14 @@ class TMDBService {
     if (this.apiKey) {
       return this.apiKey;
     }
-    
+
     // Try to load from database
     const result = await db.query('SELECT api_key FROM tmdb_config WHERE is_active = true LIMIT 1');
     if (result.rows.length > 0) {
       this.apiKey = result.rows[0].api_key;
       return this.apiKey;
     }
-    
+
     // Fall back to environment variable
     this.apiKey = process.env.TMDB_API_KEY;
     return this.apiKey;
@@ -54,15 +54,15 @@ class TMDBService {
         timeout: 5000,
       });
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: 'Connection successful',
-        data: response.data 
+        data: response.data
       };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.status_message || error.message 
+      return {
+        success: false,
+        error: error.response?.data?.status_message || error.message
       };
     }
   }
@@ -135,6 +135,46 @@ class TMDBService {
     } catch (error) {
       console.error('Failed to fetch certification:', error.message);
       return 'NR';
+    }
+  }
+
+  async search(query, mediaType = 'multi') {
+    try {
+      const apiKey = await this.getApiKey();
+      if (!apiKey) {
+        throw new Error('TMDB API key not configured');
+      }
+
+      const endpoint = mediaType === 'multi' ? 'search/multi'
+        : mediaType === 'movie' ? 'search/movie'
+          : 'search/tv';
+
+      const response = await axios.get(`${this.baseUrl}/${endpoint}`, {
+        params: {
+          api_key: apiKey,
+          query: query,
+          page: 1,
+          include_adult: false
+        },
+        timeout: 10000
+      });
+
+      // Filter and format results
+      return response.data.results
+        .filter(r => r.media_type === 'movie' || r.media_type === 'tv' || mediaType !== 'multi')
+        .map(item => ({
+          id: item.id,
+          title: item.title || item.name,
+          original_title: item.original_title || item.original_name,
+          media_type: item.media_type || mediaType,
+          year: (item.release_date || item.first_air_date || '').substring(0, 4),
+          overview: item.overview,
+          poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w185${item.poster_path}` : null,
+          vote_average: item.vote_average
+        }))
+        .slice(0, 10); // Limit to 10 results
+    } catch (error) {
+      throw new Error(`TMDB search failed: ${error.message}`);
     }
   }
 }
