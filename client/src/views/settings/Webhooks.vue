@@ -29,6 +29,119 @@
         </div>
       </Card>
 
+      <!-- Multi-Source Manager -->
+      <Card>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-medium">Configured Sources</h3>
+          <button
+            @click="showAddSource = true"
+            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors"
+          >
+            + Add Source
+          </button>
+        </div>
+
+        <div v-if="sources.length === 0" class="text-gray-500 text-center py-4">
+          No sources configured
+        </div>
+
+        <div v-else class="space-y-2">
+          <div
+            v-for="source in sources"
+            :key="source.id"
+            :class="[
+              'flex items-center justify-between p-3 rounded-lg border transition-colors',
+              source.is_primary ? 'bg-blue-900/20 border-blue-700' : 'bg-gray-800 border-gray-700'
+            ]"
+          >
+            <div class="flex items-center gap-3">
+              <span class="text-lg">
+                {{ source.webhook_type === 'seer' ? '⭐' : source.webhook_type === 'jellyseerr' ? '🍇' : '🎬' }}
+              </span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{{ source.name || 'Unnamed' }}</span>
+                  <span v-if="source.is_primary" class="text-xs bg-blue-600 px-1.5 py-0.5 rounded">Primary</span>
+                  <span 
+                    :class="['text-xs px-1.5 py-0.5 rounded', source.enabled ? 'bg-green-900/30 text-green-400' : 'bg-gray-900 text-gray-500']"
+                  >
+                    {{ source.enabled ? 'Active' : 'Disabled' }}
+                  </span>
+                </div>
+                <div class="text-xs text-gray-400">{{ source.webhook_type }}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="!source.is_primary"
+                @click="setPrimary(source.id)"
+                class="px-2 py-1 text-xs bg-gray-700 hover:bg-blue-600 rounded transition-colors"
+                title="Set as primary"
+              >
+                ★
+              </button>
+              <button
+                v-if="sources.length > 1"
+                @click="deleteSource(source.id)"
+                class="px-2 py-1 text-xs bg-gray-700 hover:bg-red-600 rounded transition-colors"
+                title="Delete"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-3">
+          Multiple sources allow webhooks from different Overseerr/Jellyseerr/Seer instances.
+          The primary source's settings are shown below.
+        </p>
+      </Card>
+
+      <!-- Add Source Modal -->
+      <div v-if="showAddSource" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+          <h3 class="text-lg font-medium mb-4">Add Webhook Source</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Name</label>
+              <input
+                v-model="newSource.name"
+                type="text"
+                placeholder="e.g. Plex Overseerr"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Type</label>
+              <select
+                v-model="newSource.webhook_type"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="overseerr">Overseerr</option>
+                <option value="jellyseerr">Jellyseerr</option>
+                <option value="seer">Seer</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-3 mt-6">
+            <button
+              @click="showAddSource = false"
+              class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="addSource"
+              :disabled="!newSource.name"
+              class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Add Source
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Request Manager Type -->
       <Card>
         <h3 class="text-lg font-medium mb-4">Request Manager</h3>
@@ -322,6 +435,56 @@ const config = ref({
   notify_on_error: true
 })
 
+// Multi-source management
+const sources = ref([])
+const showAddSource = ref(false)
+const newSource = ref({ name: '', webhook_type: 'overseerr' })
+
+const loadSources = async () => {
+  try {
+    const response = await api.getWebhookConfigs()
+    sources.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load sources:', error)
+  }
+}
+
+const addSource = async () => {
+  try {
+    await api.createWebhookConfig(newSource.value)
+    await loadSources()
+    showAddSource.value = false
+    newSource.value = { name: '', webhook_type: 'overseerr' }
+    toast.success('Source added')
+  } catch (error) {
+    console.error('Failed to add source:', error)
+    toast.error('Failed to add source')
+  }
+}
+
+const deleteSource = async (id) => {
+  if (!confirm('Delete this webhook source?')) return
+  try {
+    await api.deleteWebhookConfig(id)
+    await loadSources()
+    toast.success('Source deleted')
+  } catch (error) {
+    console.error('Failed to delete source:', error)
+    toast.error(error.response?.data?.error || 'Failed to delete source')
+  }
+}
+
+const setPrimary = async (id) => {
+  try {
+    await api.setPrimaryWebhookConfig(id)
+    await loadSources()
+    toast.success('Primary source updated')
+  } catch (error) {
+    console.error('Failed to set primary:', error)
+    toast.error('Failed to set primary')
+  }
+}
+
 const requestManagerName = computed(() => {
   const names = { overseerr: 'Overseerr', jellyseerr: 'Jellyseerr', seer: 'Seer' }
   return names[config.value.webhook_type] || 'Overseerr'
@@ -354,7 +517,8 @@ onMounted(async () => {
   await Promise.all([
     loadConfig(),
     loadStats(),
-    loadLogs()
+    loadLogs(),
+    loadSources()
   ])
   loading.value = false
 })
