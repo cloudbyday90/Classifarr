@@ -53,7 +53,7 @@ DROP TABLE IF EXISTS settings CASCADE;
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL UNIQUE,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) UNIQUE, -- Optional, can be NULL
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
     is_active BOOLEAN DEFAULT true,
@@ -739,3 +739,4 @@ VALUES ('basic', 5, false);
 \i /app/database/migrations/008_add_task_queue.sql
 \i /app/database/migrations/009_add_multi_manager.sql
 \i /app/database/migrations/010_add_scheduled_tasks.sql
+\i /app/database/migrations/011_make_email_optional.sql

@@ -38,7 +38,7 @@ router.get('/status', async (req, res) => {
   try {
     const result = await db.query('SELECT COUNT(*) FROM users');
     const userCount = parseInt(result.rows[0].count);
-    res.json({ 
+    res.json({
       setupRequired: userCount === 0,
       setupComplete: userCount > 0
     });
@@ -62,8 +62,8 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
     const { username, email, password, confirmPassword } = req.body;
 
     // Validation
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email, and password are required' });
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
     }
 
     if (password !== confirmPassword) {
@@ -76,13 +76,13 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
       return res.status(400).json({ error: passwordValidation.message });
     }
 
-    // Create admin user
+    // Create admin user (email is optional)
     const passwordHash = await authService.hashPassword(password);
     const result = await db.query(
       `INSERT INTO users (username, email, password_hash, role, is_active, must_change_password)
        VALUES ($1, $2, $3, 'admin', true, false)
        RETURNING id, username, email, role`,
-      [username, email, passwordHash]
+      [username, email || null, passwordHash]
     );
 
     // Log the setup completion
@@ -93,8 +93,8 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
     // Generate token for immediate login
     const token = await authService.generateToken(result.rows[0]);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Admin account created successfully',
       user: result.rows[0],
       token
@@ -102,7 +102,7 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
   } catch (error) {
     console.error('Setup error:', error);
     if (error.code === '23505') { // Unique violation
-      return res.status(400).json({ error: 'Username or email already exists' });
+      return res.status(400).json({ error: 'Username already exists' });
     }
     res.status(500).json({ error: 'Failed to create admin account' });
   }
