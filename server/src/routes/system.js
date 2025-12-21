@@ -66,32 +66,21 @@ router.get('/health', async (req, res) => {
 
     // Get service configurations from database
     try {
-      const settings = await db.query('SELECT * FROM settings WHERE key IN ($1, $2, $3, $4, $5)', [
-        'ollama_url',
-        'radarr_url',
-        'sonarr_url',
-        'media_server_type',
-        'media_server_url'
-      ]);
+      // Check Ollama
+      const ollama = await db.query('SELECT id FROM ollama_config WHERE is_active = true LIMIT 1');
+      if (ollama.rows.length > 0) health.ollama = 'configured';
 
-      const settingsMap = {};
-      settings.rows.forEach(row => {
-        settingsMap[row.key] = row.value;
-      });
+      // Check Radarr
+      const radarr = await db.query('SELECT id FROM radarr_config WHERE is_active = true LIMIT 1');
+      if (radarr.rows.length > 0) health.radarr = 'configured';
 
-      // Check if services are configured (not whether they're reachable)
-      if (settingsMap['ollama_url']) {
-        health.ollama = 'configured';
-      }
-      if (settingsMap['radarr_url']) {
-        health.radarr = 'configured';
-      }
-      if (settingsMap['sonarr_url']) {
-        health.sonarr = 'configured';
-      }
-      if (settingsMap['media_server_url']) {
-        health.mediaServer = 'configured';
-      }
+      // Check Sonarr
+      const sonarr = await db.query('SELECT id FROM sonarr_config WHERE is_active = true LIMIT 1');
+      if (sonarr.rows.length > 0) health.sonarr = 'configured';
+
+      // Check Media Server
+      const mediaServer = await db.query('SELECT id FROM media_server WHERE is_active = true LIMIT 1');
+      if (mediaServer.rows.length > 0) health.mediaServer = 'configured';
     } catch (error) {
       console.error('Failed to check service configurations:', error);
     }
@@ -159,11 +148,12 @@ router.get('/logs', async (req, res) => {
         ch.id,
         ch.title,
         ch.media_type,
-        ch.selected_library,
-        ch.confidence_score,
+        l.name as selected_library,
+        ch.confidence as confidence_score,
         ch.created_at,
-        ch.webhook_response
+        ch.metadata as details
       FROM classification_history ch
+      LEFT JOIN libraries l ON ch.library_id = l.id
       ORDER BY ch.created_at DESC
       LIMIT $1`,
       [limit]
@@ -173,8 +163,8 @@ router.get('/logs', async (req, res) => {
       id: row.id,
       timestamp: row.created_at,
       type: 'classification',
-      message: `${row.media_type}: ${row.title} → ${row.selected_library} (confidence: ${row.confidence_score})`,
-      details: row
+      message: `${row.media_type}: ${row.title} → ${row.selected_library || 'Unassigned'} (confidence: ${row.confidence_score}%)`,
+      details: row.details
     }));
 
     res.json({
