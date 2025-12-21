@@ -72,6 +72,43 @@ export default {
     return apiClient.post('/plex/save-server', { name, url, token })
   },
 
+  // Jellyfin Auth
+  testJellyfinConnection(serverUrl) {
+    return apiClient.post('/jellyfin/test', { serverUrl })
+  },
+  isJellyfinQuickConnectEnabled(serverUrl) {
+    return apiClient.post('/jellyfin/quick-connect/enabled', { serverUrl })
+  },
+  initiateJellyfinQuickConnect(serverUrl) {
+    return apiClient.post('/jellyfin/quick-connect/initiate', { serverUrl })
+  },
+  checkJellyfinQuickConnect(serverUrl, secret) {
+    return apiClient.post('/jellyfin/quick-connect/check', { serverUrl, secret })
+  },
+  authenticateJellyfinQuickConnect(serverUrl, secret) {
+    return apiClient.post('/jellyfin/quick-connect/authenticate', { serverUrl, secret })
+  },
+  authenticateJellyfin(serverUrl, username, password) {
+    return apiClient.post('/jellyfin/authenticate', { serverUrl, username, password })
+  },
+  saveJellyfinServer(serverUrl, token, serverName) {
+    return apiClient.post('/jellyfin/save', { serverUrl, token, serverName })
+  },
+
+  // Emby Auth
+  testEmbyConnection(serverUrl) {
+    return apiClient.post('/emby/test', { serverUrl })
+  },
+  authenticateEmby(serverUrl, username, password) {
+    return apiClient.post('/emby/authenticate', { serverUrl, username, password })
+  },
+  verifyEmbyToken(serverUrl, token) {
+    return apiClient.post('/emby/verify', { serverUrl, token })
+  },
+  saveEmbyServer(serverUrl, token, serverName) {
+    return apiClient.post('/emby/save', { serverUrl, token, serverName })
+  },
+
   // Libraries
   getLibraries() {
     return apiClient.get('/libraries')

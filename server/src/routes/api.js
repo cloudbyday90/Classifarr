@@ -27,6 +27,8 @@ const logsRouter = require('./logs');
 const mediaSyncRouter = require('./mediaSync');
 const clarificationRouter = require('./clarification');
 const plexOAuthRouter = require('./plexOAuth');
+const jellyfinAuthRouter = require('./jellyfinAuth');
+const embyAuthRouter = require('./embyAuth');
 
 const router = express.Router();
 
@@ -41,6 +43,8 @@ router.use('/logs', logsRouter);
 router.use('/media-sync', mediaSyncRouter);
 router.use('/clarifications', clarificationRouter);
 router.use('/plex', plexOAuthRouter);
+router.use('/jellyfin', jellyfinAuthRouter);
+router.use('/emby', embyAuthRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {

@@ -230,28 +230,232 @@
       </div>
     </div>
 
-    <!-- Emby/Jellyfin Manual Entry -->
-    <div v-if="config.type !== 'plex'" class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
-      <div>
-        <label class="block text-sm font-medium mb-2">Server Name</label>
-        <input v-model="config.name" type="text" :placeholder="`My ${capitalizeFirst(config.type)} Server`" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" />
+    <!-- Jellyfin Auth Flow -->
+    <div v-if="config.type === 'jellyfin'" class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+      <!-- Step 1: Enter Server URL -->
+      <div v-if="!jellyfinServerInfo && !jellyfinAuthToken">
+        <h3 class="font-medium mb-3 flex items-center gap-2">
+          <span>🔐</span>
+          <span>Connect to Jellyfin</span>
+        </h3>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Server URL</label>
+            <div class="flex gap-2">
+              <input 
+                v-model="jellyfinUrl" 
+                type="text" 
+                placeholder="http://localhost:8096" 
+                class="flex-1 px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" 
+              />
+              <button 
+                @click="testJellyfinServer"
+                :disabled="jellyfinTesting"
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg"
+              >
+                {{ jellyfinTesting ? 'Testing...' : 'Connect' }}
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Full URL including protocol (http:// or https://)</p>
+          </div>
+          
+          <p v-if="jellyfinError" class="text-red-400 text-sm">{{ jellyfinError }}</p>
+        </div>
       </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-2">Server URL</label>
-        <input 
-          v-model="config.url" 
-          type="text" 
-          :placeholder="getUrlPlaceholder()" 
-          class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" 
-        />
-        <p class="text-xs text-gray-500 mt-1">Full URL including protocol (http:// or https://)</p>
+      
+      <!-- Step 2: Choose Auth Method -->
+      <div v-else-if="jellyfinServerInfo && !jellyfinAuthToken">
+        <div class="mb-4 p-3 bg-gray-900 rounded-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-medium text-purple-400">{{ jellyfinServerInfo.serverName }}</div>
+              <div class="text-sm text-gray-400">Version {{ jellyfinServerInfo.version }}</div>
+            </div>
+            <button @click="resetJellyfinAuth" class="text-sm text-gray-400 hover:text-gray-300">
+              Change Server
+            </button>
+          </div>
+        </div>
+        
+        <!-- Quick Connect Option -->
+        <div v-if="jellyfinQuickConnectEnabled && !jellyfinShowLogin" class="space-y-4">
+          <div v-if="!jellyfinQuickConnectCode">
+            <button 
+              @click="startJellyfinQuickConnect"
+              :disabled="jellyfinAuthLoading"
+              class="w-full flex items-center justify-center gap-3 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg font-medium transition-all"
+            >
+              <span v-if="jellyfinAuthLoading" class="animate-spin">⏳</span>
+              <span v-else>🔗</span>
+              <span>{{ jellyfinAuthLoading ? 'Starting...' : 'Use Quick Connect' }}</span>
+            </button>
+          </div>
+          
+          <div v-else class="text-center space-y-4">
+            <p class="text-gray-400">Enter this code in your Jellyfin client:</p>
+            <div class="text-4xl font-mono font-bold text-purple-400 tracking-widest">
+              {{ jellyfinQuickConnectCode }}
+            </div>
+            <p class="text-sm text-gray-500">Go to Jellyfin → Settings → Quick Connect and enter the code above</p>
+            <p v-if="jellyfinAuthLoading" class="text-sm text-gray-400 animate-pulse">Waiting for authorization...</p>
+          </div>
+          
+          <div class="text-center">
+            <button 
+              @click="jellyfinShowLogin = true" 
+              class="text-sm text-gray-400 hover:text-gray-300 underline"
+            >
+              Or sign in with username/password
+            </button>
+          </div>
+        </div>
+        
+        <!-- Username/Password Login -->
+        <div v-if="!jellyfinQuickConnectEnabled || jellyfinShowLogin" class="space-y-4">
+          <div v-if="jellyfinQuickConnectEnabled" class="flex items-center justify-between mb-3">
+            <h4 class="font-medium">Sign In</h4>
+            <button @click="jellyfinShowLogin = false" class="text-sm text-gray-400 hover:text-gray-300">
+              ← Use Quick Connect
+            </button>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2">Username</label>
+            <input v-model="jellyfinUsername" type="text" placeholder="Username" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2">Password</label>
+            <PasswordInput v-model="jellyfinPassword" placeholder="Password (leave empty if none)" />
+          </div>
+          
+          <button 
+            @click="authenticateJellyfin"
+            :disabled="jellyfinAuthLoading || !jellyfinUsername"
+            class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg"
+          >
+            {{ jellyfinAuthLoading ? 'Signing in...' : 'Sign In' }}
+          </button>
+          
+          <p v-if="jellyfinError" class="text-red-400 text-sm">{{ jellyfinError }}</p>
+        </div>
       </div>
+      
+      <!-- Step 3: Connected -->
+      <div v-else-if="jellyfinAuthToken">
+        <h3 class="font-medium mb-3 flex items-center gap-2">
+          <span>✅</span>
+          <span>Connected to Jellyfin</span>
+        </h3>
+        
+        <div class="p-4 bg-gray-900 rounded-lg space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-medium">{{ config.name || 'Jellyfin Server' }}</div>
+              <div class="text-sm text-gray-400">{{ config.url }}</div>
+            </div>
+            <span class="px-2 py-1 bg-purple-600/20 text-purple-400 text-sm rounded">Connected</span>
+          </div>
+          
+          <button @click="resetJellyfinAuth" class="text-sm text-gray-400 hover:text-gray-300">
+            Change Server
+          </button>
+        </div>
+      </div>
+    </div>
 
-      <div>
-        <label class="block text-sm font-medium mb-2">API Key</label>
-        <PasswordInput v-model="config.api_key" :placeholder="getTokenPlaceholder()" />
-        <p class="text-xs text-gray-500 mt-1" v-html="getTokenHelp()"></p>
+    <!-- Emby Auth Flow -->
+    <div v-if="config.type === 'emby'" class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
+      <!-- Step 1: Enter Server URL -->
+      <div v-if="!embyServerInfo && !embyAuthToken">
+        <h3 class="font-medium mb-3 flex items-center gap-2">
+          <span>🔐</span>
+          <span>Connect to Emby</span>
+        </h3>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Server URL</label>
+            <div class="flex gap-2">
+              <input 
+                v-model="embyUrl" 
+                type="text" 
+                placeholder="http://localhost:8096" 
+                class="flex-1 px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" 
+              />
+              <button 
+                @click="testEmbyServer"
+                :disabled="embyTesting"
+                class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg"
+              >
+                {{ embyTesting ? 'Testing...' : 'Connect' }}
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Full URL including protocol (http:// or https://)</p>
+          </div>
+          
+          <p v-if="embyError" class="text-red-400 text-sm">{{ embyError }}</p>
+        </div>
+      </div>
+      
+      <!-- Step 2: Login -->
+      <div v-else-if="embyServerInfo && !embyAuthToken">
+        <div class="mb-4 p-3 bg-gray-900 rounded-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-medium text-green-400">{{ embyServerInfo.serverName }}</div>
+              <div class="text-sm text-gray-400">Version {{ embyServerInfo.version }}</div>
+            </div>
+            <button @click="resetEmbyAuth" class="text-sm text-gray-400 hover:text-gray-300">
+              Change Server
+            </button>
+          </div>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Username</label>
+            <input v-model="embyUsername" type="text" placeholder="Username" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg" />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2">Password</label>
+            <PasswordInput v-model="embyPassword" placeholder="Password (leave empty if none)" />
+          </div>
+          
+          <button 
+            @click="authenticateEmby"
+            :disabled="embyAuthLoading || !embyUsername"
+            class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg"
+          >
+            {{ embyAuthLoading ? 'Signing in...' : 'Sign In' }}
+          </button>
+          
+          <p v-if="embyError" class="text-red-400 text-sm">{{ embyError }}</p>
+        </div>
+      </div>
+      
+      <!-- Step 3: Connected -->
+      <div v-else-if="embyAuthToken">
+        <h3 class="font-medium mb-3 flex items-center gap-2">
+          <span>✅</span>
+          <span>Connected to Emby</span>
+        </h3>
+        
+        <div class="p-4 bg-gray-900 rounded-lg space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-medium">{{ config.name || 'Emby Server' }}</div>
+              <div class="text-sm text-gray-400">{{ config.url }}</div>
+            </div>
+            <span class="px-2 py-1 bg-green-600/20 text-green-400 text-sm rounded">Connected</span>
+          </div>
+          
+          <button @click="resetEmbyAuth" class="text-sm text-gray-400 hover:text-gray-300">
+            Change Server
+          </button>
+        </div>
       </div>
     </div>
 
@@ -317,6 +521,31 @@ const plexPinId = ref(null)
 const plexAuthWindow = ref(null)
 const pollInterval = ref(null)
 
+// Jellyfin Auth state
+const jellyfinUrl = ref('')
+const jellyfinTesting = ref(false)
+const jellyfinServerInfo = ref(null)
+const jellyfinQuickConnectEnabled = ref(false)
+const jellyfinQuickConnectCode = ref(null)
+const jellyfinQuickConnectSecret = ref(null)
+const jellyfinShowLogin = ref(false)
+const jellyfinUsername = ref('')
+const jellyfinPassword = ref('')
+const jellyfinAuthLoading = ref(false)
+const jellyfinAuthToken = ref(null)
+const jellyfinError = ref(null)
+const jellyfinPollInterval = ref(null)
+
+// Emby Auth state
+const embyUrl = ref('')
+const embyTesting = ref(false)
+const embyServerInfo = ref(null)
+const embyUsername = ref('')
+const embyPassword = ref('')
+const embyAuthLoading = ref(false)
+const embyAuthToken = ref(null)
+const embyError = ref(null)
+
 onMounted(async () => {
   await loadConfig()
 })
@@ -324,6 +553,9 @@ onMounted(async () => {
 onUnmounted(() => {
   if (pollInterval.value) {
     clearInterval(pollInterval.value)
+  }
+  if (jellyfinPollInterval.value) {
+    clearInterval(jellyfinPollInterval.value)
   }
 })
 
@@ -346,9 +578,15 @@ const loadConfig = async () => {
 
 const selectServerType = (type) => {
   config.value.type = type
-  // Reset Plex OAuth state when switching types
+  // Reset all auth states when switching types
   if (type !== 'plex') {
     resetPlexAuth()
+  }
+  if (type !== 'jellyfin') {
+    resetJellyfinAuth()
+  }
+  if (type !== 'emby') {
+    resetEmbyAuth()
   }
 }
 
@@ -528,6 +766,237 @@ const resetPlexAuth = () => {
   }
   
   plexAuthLoading.value = false
+}
+
+// ==================== JELLYFIN AUTH ====================
+
+const testJellyfinServer = async () => {
+  jellyfinTesting.value = true
+  jellyfinError.value = null
+  
+  try {
+    const response = await api.testJellyfinConnection(jellyfinUrl.value)
+    
+    if (response.data.success) {
+      jellyfinServerInfo.value = response.data
+      
+      // Check if Quick Connect is enabled
+      const qcResponse = await api.isJellyfinQuickConnectEnabled(jellyfinUrl.value)
+      jellyfinQuickConnectEnabled.value = qcResponse.data.enabled
+      
+      toast.success(`Connected to ${response.data.serverName}`)
+    } else {
+      jellyfinError.value = response.data.error || 'Failed to connect to server'
+    }
+  } catch (error) {
+    jellyfinError.value = error.response?.data?.error || error.message
+  } finally {
+    jellyfinTesting.value = false
+  }
+}
+
+const startJellyfinQuickConnect = async () => {
+  jellyfinAuthLoading.value = true
+  jellyfinError.value = null
+  
+  try {
+    const response = await api.initiateJellyfinQuickConnect(jellyfinUrl.value)
+    
+    if (response.data.success) {
+      jellyfinQuickConnectCode.value = response.data.code
+      jellyfinQuickConnectSecret.value = response.data.secret
+      
+      // Start polling for authentication
+      jellyfinPollInterval.value = setInterval(async () => {
+        try {
+          const checkResponse = await api.checkJellyfinQuickConnect(
+            jellyfinUrl.value,
+            jellyfinQuickConnectSecret.value
+          )
+          
+          if (checkResponse.data.authenticated) {
+            clearInterval(jellyfinPollInterval.value)
+            jellyfinPollInterval.value = null
+            
+            // Exchange for access token
+            const authResponse = await api.authenticateJellyfinQuickConnect(
+              jellyfinUrl.value,
+              jellyfinQuickConnectSecret.value
+            )
+            
+            if (authResponse.data.success) {
+              await saveJellyfinConnection(authResponse.data.accessToken)
+            } else {
+              jellyfinError.value = authResponse.data.error
+              jellyfinAuthLoading.value = false
+            }
+          }
+        } catch (error) {
+          console.error('Error checking Quick Connect:', error)
+        }
+      }, 2000)
+      
+      // Stop polling after 5 minutes
+      setTimeout(() => {
+        if (jellyfinPollInterval.value) {
+          clearInterval(jellyfinPollInterval.value)
+          jellyfinPollInterval.value = null
+          jellyfinAuthLoading.value = false
+          jellyfinQuickConnectCode.value = null
+          toast.error('Quick Connect timed out. Please try again.')
+        }
+      }, 300000)
+      
+    } else {
+      jellyfinError.value = response.data.error
+      jellyfinAuthLoading.value = false
+    }
+  } catch (error) {
+    jellyfinError.value = error.response?.data?.error || error.message
+    jellyfinAuthLoading.value = false
+  }
+}
+
+const authenticateJellyfin = async () => {
+  jellyfinAuthLoading.value = true
+  jellyfinError.value = null
+  
+  try {
+    const response = await api.authenticateJellyfin(
+      jellyfinUrl.value,
+      jellyfinUsername.value,
+      jellyfinPassword.value
+    )
+    
+    if (response.data.success) {
+      await saveJellyfinConnection(response.data.accessToken, response.data.username)
+    } else {
+      jellyfinError.value = response.data.error || 'Authentication failed'
+    }
+  } catch (error) {
+    jellyfinError.value = error.response?.data?.error || error.message
+  } finally {
+    jellyfinAuthLoading.value = false
+  }
+}
+
+const saveJellyfinConnection = async (token, username = null) => {
+  try {
+    const serverName = jellyfinServerInfo.value?.serverName || 'Jellyfin Server'
+    
+    await api.saveJellyfinServer(jellyfinUrl.value, token, serverName)
+    
+    // Update local config
+    config.value.type = 'jellyfin'
+    config.value.name = serverName
+    config.value.url = jellyfinUrl.value
+    config.value.api_key = token
+    
+    jellyfinAuthToken.value = token
+    jellyfinAuthLoading.value = false
+    
+    toast.success(`Connected to ${serverName}!`)
+  } catch (error) {
+    jellyfinError.value = 'Failed to save server configuration'
+    jellyfinAuthLoading.value = false
+  }
+}
+
+const resetJellyfinAuth = () => {
+  jellyfinUrl.value = ''
+  jellyfinServerInfo.value = null
+  jellyfinQuickConnectEnabled.value = false
+  jellyfinQuickConnectCode.value = null
+  jellyfinQuickConnectSecret.value = null
+  jellyfinShowLogin.value = false
+  jellyfinUsername.value = ''
+  jellyfinPassword.value = ''
+  jellyfinAuthToken.value = null
+  jellyfinError.value = null
+  
+  if (jellyfinPollInterval.value) {
+    clearInterval(jellyfinPollInterval.value)
+    jellyfinPollInterval.value = null
+  }
+  
+  jellyfinAuthLoading.value = false
+}
+
+// ==================== EMBY AUTH ====================
+
+const testEmbyServer = async () => {
+  embyTesting.value = true
+  embyError.value = null
+  
+  try {
+    const response = await api.testEmbyConnection(embyUrl.value)
+    
+    if (response.data.success) {
+      embyServerInfo.value = response.data
+      toast.success(`Connected to ${response.data.serverName}`)
+    } else {
+      embyError.value = response.data.error || 'Failed to connect to server'
+    }
+  } catch (error) {
+    embyError.value = error.response?.data?.error || error.message
+  } finally {
+    embyTesting.value = false
+  }
+}
+
+const authenticateEmby = async () => {
+  embyAuthLoading.value = true
+  embyError.value = null
+  
+  try {
+    const response = await api.authenticateEmby(
+      embyUrl.value,
+      embyUsername.value,
+      embyPassword.value
+    )
+    
+    if (response.data.success) {
+      await saveEmbyConnection(response.data.accessToken, response.data.username)
+    } else {
+      embyError.value = response.data.error || 'Authentication failed'
+    }
+  } catch (error) {
+    embyError.value = error.response?.data?.error || error.message
+  } finally {
+    embyAuthLoading.value = false
+  }
+}
+
+const saveEmbyConnection = async (token, username = null) => {
+  try {
+    const serverName = embyServerInfo.value?.serverName || 'Emby Server'
+    
+    await api.saveEmbyServer(embyUrl.value, token, serverName)
+    
+    // Update local config
+    config.value.type = 'emby'
+    config.value.name = serverName
+    config.value.url = embyUrl.value
+    config.value.api_key = token
+    
+    embyAuthToken.value = token
+    embyAuthLoading.value = false
+    
+    toast.success(`Connected to ${serverName}!`)
+  } catch (error) {
+    embyError.value = 'Failed to save server configuration'
+    embyAuthLoading.value = false
+  }
+}
+
+const resetEmbyAuth = () => {
+  embyUrl.value = ''
+  embyServerInfo.value = null
+  embyUsername.value = ''
+  embyPassword.value = ''
+  embyAuthToken.value = null
+  embyError.value = null
+  embyAuthLoading.value = false
 }
 
 const capitalizeFirst = (str) => {
