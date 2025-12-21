@@ -117,6 +117,7 @@ When you first access Classifarr, you'll be guided through a setup wizard:
 
 4. **Configure Discord** (Optional)
    - Add your bot token and channel ID for notifications
+   - See [DISCORD_SETUP.md](DISCORD_SETUP.md) for complete bot setup instructions
 
 ## 🔐 Authentication & Security
 
@@ -311,6 +312,8 @@ Configure in Settings → Ollama AI
 2. Ensure bot has permissions in the channel
 3. Check bot is invited to your Discord server
 4. View logs for connection errors
+
+See [DISCORD_SETUP.md](DISCORD_SETUP.md) for complete setup and troubleshooting guide.
 
 ### AI Classification Failing
 
@@ -522,6 +525,9 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - [GitHub Container Registry](https://github.com/cloudbyday90/Classifarr/pkgs/container/classifarr)
 - [Docker Hub](https://hub.docker.com/r/cloudbyday90/classifarr)
 - [Issue Tracker](https://github.com/cloudbyday90/Classifarr/issues)
+- [Discord Bot Setup Guide](DISCORD_SETUP.md)
+- [Authentication Guide](AUTHENTICATION.md)
+- [UnRaid Installation Guide](unraid/README.md)
 - [UnRaid Community Apps](https://unraid.net/community/apps)
 - [TMDB API](https://www.themoviedb.org/settings/api)
 - [Ollama](https://ollama.ai/)
