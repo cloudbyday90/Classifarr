@@ -46,6 +46,7 @@ import Sonarr from './settings/Sonarr.vue'
 import MediaServer from './settings/MediaServer.vue'
 import Discord from './settings/Discord.vue'
 import Webhooks from './settings/Webhooks.vue'
+import Queue from './settings/Queue.vue'
 import SSL from './settings/SSL.vue'
 import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
@@ -61,6 +62,7 @@ const tabs = [
   { id: 'mediaserver', label: 'Media Server', component: MediaServer },
   { id: 'discord', label: 'Discord', component: Discord },
   { id: 'webhooks', label: 'Webhooks', component: Webhooks },
+  { id: 'queue', label: 'Queue', component: Queue },
   { id: 'confidence', label: 'Confidence', component: Confidence },
   { id: 'ssl', label: 'SSL/HTTPS', component: SSL },
   { id: 'logs', label: 'Logs', component: Logs },
