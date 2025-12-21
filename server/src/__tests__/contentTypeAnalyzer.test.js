@@ -346,7 +346,7 @@ describe('ContentTypeAnalyzer', () => {
 
     test('should NOT detect with family ratings (G, PG, TV-Y, TV-Y7, TV-G)', () => {
       const familyRatings = ['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G'];
-      
+
       familyRatings.forEach(rating => {
         const metadata = {
           title: 'Family Animation',
@@ -1417,6 +1417,9 @@ describe('ContentTypeAnalyzer', () => {
     });
 
     test('should handle errors gracefully', async () => {
+      // Suppress expected error logs for this test
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+
       db.query.mockRejectedValue(new Error('Database error'));
 
       const metadata = {
@@ -1433,6 +1436,8 @@ describe('ContentTypeAnalyzer', () => {
       // getSettings catches error and returns defaults, so analysis continues
       expect(result.analyzed).toBe(true);
       expect(result.detections).toBeDefined();
+
+      consoleSpy.mockRestore();
     });
 
     test('should determine if detection should override genre', async () => {
@@ -1829,15 +1834,15 @@ describe('ContentTypeAnalyzer', () => {
 
         expect(result.analyzed).toBe(true);
         expect(result.detections.length).toBeGreaterThanOrEqual(1);
-        
+
         // Should detect both anime and holiday
         const detectionTypes = result.detections.map(d => d.type);
         expect(detectionTypes).toContain('anime');
-        
+
         // Anime should be highest confidence due to language
         expect(result.bestMatch?.type).toBe('anime');
         expect(result.bestMatch?.confidence).toBeGreaterThanOrEqual(65);
-        
+
         // If holiday is also detected, it should be in the detections list
         if (detectionTypes.includes('holiday')) {
           const holidayDetection = result.detections.find(d => d.type === 'holiday');
