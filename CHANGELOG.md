@@ -7,6 +7,16 @@ Current stage: **Alpha** (v0.x-alpha)
 
 ---
 
+## [0.12-alpha] - 2025-12-21
+
+### Phase 3: Manual Request Submission
+- **Manual Request Page** - New sidebar item to submit requests directly
+- **TMDB Search** - Search movies and TV shows with poster previews
+- **One-Click Classify** - Queue any TMDB result for classification
+- **Recent Requests** - View status of your manual submissions
+
+---
+
 ## [0.11-alpha] - 2025-12-21
 
 ### New Features
