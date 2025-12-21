@@ -120,6 +120,7 @@ root_folder VARCHAR(500),
 quality_profile_id INTEGER,
 
 -- Full Radarr/Sonarr Settings (preferred method)
+
 radarr_settings JSONB DEFAULT '{}',
     sonarr_settings JSONB DEFAULT '{}',
     
@@ -158,6 +159,7 @@ CREATE TABLE arr_profiles_cache (
 CREATE INDEX idx_arr_profiles_cache_type ON arr_profiles_cache (arr_type, profile_type);
 
 -- Label Presets (system-defined classification labels)
+
 
 CREATE TABLE label_presets (
     id SERIAL PRIMARY KEY,
@@ -266,6 +268,7 @@ CREATE TABLE notification_config (
     enabled BOOLEAN DEFAULT false,
 
 -- Discord Bot Extended Configuration
+
 notify_on_classification BOOLEAN DEFAULT true,
     notify_on_error BOOLEAN DEFAULT true,
     notify_on_correction BOOLEAN DEFAULT true,
@@ -433,6 +436,7 @@ reason TEXT,
 metadata JSONB,
 
 -- Status
+
 status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'failed', 'corrected')),
     error_message TEXT,
     
@@ -726,3 +730,4 @@ VALUES ('basic', 5, false);
 \i /docker-entrypoint-initdb.d/migrations/004_enhanced_logging.sql
 \i /docker-entrypoint-initdb.d/migrations/005_add_require_all_confirmations_setting.sql
 \i /docker-entrypoint-initdb.d/migrations/006_add_clarification_settings.sql
+\i /docker-entrypoint-initdb.d/migrations/007_add_clarification_response.sql

@@ -574,9 +574,12 @@ class DiscordBotService {
   async handleInteraction(interaction) {
     try {
       if (interaction.isButton()) {
-        const [action, classificationId, newLibraryId] = interaction.customId.split('_');
+        const customId = interaction.customId;
+        const parts = customId.split('_');
+        const action = parts[0];
 
         if (action === 'correct') {
+          const classificationId = parts[1];
           await interaction.update({
             components: [],
             embeds: [
@@ -585,7 +588,41 @@ class DiscordBotService {
             ],
           });
         } else if (action === 'reclassify') {
+          const classificationId = parts[1];
+          const newLibraryId = parts[2];
           await this.processCorrection(parseInt(classificationId), parseInt(newLibraryId), interaction);
+        } else if (action === 'ai') {
+          // AI clarification response: ai_clarify_{classificationId}_{optionIndex}
+          if (parts[1] === 'clarify') {
+            const classificationId = parseInt(parts[2]);
+            const optionIndex = parseInt(parts[3]);
+            await this.processClarificationResponse(classificationId, optionIndex, interaction);
+          }
+        } else if (action === 'verify') {
+          const subAction = parts[1]; // 'yes' or 'no'
+          const classificationId = parseInt(parts[2]);
+          if (subAction === 'yes') {
+            // Confirmed - mark as verified and save learning pattern
+            await this.processVerification(classificationId, true, interaction);
+          } else if (subAction === 'no') {
+            // Not correct - show library selection
+            await this.showLibrarySelection(classificationId, interaction);
+          }
+        } else if (action === 'acknowledge') {
+          const classificationId = parts[1];
+          await interaction.update({
+            components: [],
+            embeds: [
+              EmbedBuilder.from(interaction.message.embeds[0])
+                .setFooter({ text: '✅ Acknowledged' })
+            ],
+          });
+        } else if (action === 'clarify') {
+          // Pre-configured question response: clarify_{classificationId}_{questionId}_{responseKey}
+          const classificationId = parseInt(parts[1]);
+          const questionId = parseInt(parts[2]);
+          const responseKey = parts[3];
+          await this.processQuestionResponse(classificationId, questionId, responseKey, interaction);
         }
       } else if (interaction.isStringSelectMenu()) {
         const [classificationId, newLibraryId] = interaction.values[0].split('_');
@@ -677,6 +714,281 @@ class DiscordBotService {
       }
     } catch (error) {
       console.error('Error extracting learning patterns:', error);
+    }
+  }
+
+  /**
+   * Process AI clarification response - when user clicks an AI-generated option button
+   */
+  async processClarificationResponse(classificationId, optionIndex, interaction) {
+    try {
+      // Get classification details
+      const classResult = await db.query(
+        'SELECT * FROM classification_history WHERE id = $1',
+        [classificationId]
+      );
+
+      if (classResult.rows.length === 0) {
+        await interaction.reply({ content: 'Classification not found', ephemeral: true });
+        return;
+      }
+
+      const classification = classResult.rows[0];
+      const metadata = classification.metadata;
+
+      // Get the selected option label from button
+      const selectedButton = interaction.message.components[0]?.components[optionIndex];
+      const selectedLabel = selectedButton?.label || `Option ${optionIndex + 1}`;
+
+      // For now, route to the current library (user confirmed by selecting an option)
+      // In the future, we could map options to specific libraries
+      const libraryId = classification.library_id;
+
+      // Update classification status
+      await db.query(
+        `UPDATE classification_history 
+         SET status = 'clarified', 
+             clarification_status = 'resolved',
+             clarification_response = $1
+         WHERE id = $2`,
+        [JSON.stringify({ option_index: optionIndex, label: selectedLabel, answered_by: interaction.user.username }), classificationId]
+      );
+
+      // Store exact match pattern for learning
+      await this.extractClarificationPatterns(classificationId, libraryId, selectedLabel);
+
+      // Route to arr if not already done
+      await this.routeAfterClarification(classificationId);
+
+      // Update Discord message
+      await interaction.update({
+        components: [],
+        embeds: [
+          EmbedBuilder.from(interaction.message.embeds[0])
+            .setColor(0x22c55e) // Green
+            .addFields({ name: 'Your Answer', value: selectedLabel, inline: true })
+            .setFooter({ text: `✅ Resolved by ${interaction.user.username} • Learning saved` })
+        ],
+      });
+    } catch (error) {
+      console.error('Error processing clarification response:', error);
+      await interaction.reply({ content: 'Failed to process response', ephemeral: true });
+    }
+  }
+
+  /**
+   * Process verification response (Yes/No buttons)
+   */
+  async processVerification(classificationId, isCorrect, interaction) {
+    try {
+      const classResult = await db.query(
+        'SELECT * FROM classification_history WHERE id = $1',
+        [classificationId]
+      );
+
+      if (classResult.rows.length === 0) {
+        await interaction.reply({ content: 'Classification not found', ephemeral: true });
+        return;
+      }
+
+      const classification = classResult.rows[0];
+
+      // Update status
+      await db.query(
+        `UPDATE classification_history 
+         SET status = 'verified',
+             clarification_status = 'confirmed'
+         WHERE id = $1`,
+        [classificationId]
+      );
+
+      // Store learning pattern - this TMDB ID now has confirmed routing
+      await this.extractLearningPatterns(classificationId, classification.library_id);
+
+      // Route to arr if not already done
+      await this.routeAfterClarification(classificationId);
+
+      // Update message
+      await interaction.update({
+        components: [],
+        embeds: [
+          EmbedBuilder.from(interaction.message.embeds[0])
+            .setColor(0x22c55e)
+            .setFooter({ text: `✅ Verified by ${interaction.user.username} • Will auto-route same title next time` })
+        ],
+      });
+    } catch (error) {
+      console.error('Error processing verification:', error);
+      await interaction.reply({ content: 'Failed to process verification', ephemeral: true });
+    }
+  }
+
+  /**
+   * Show library selection dropdown when user says classification is wrong
+   */
+  async showLibrarySelection(classificationId, interaction) {
+    try {
+      const classResult = await db.query(
+        'SELECT media_type FROM classification_history WHERE id = $1',
+        [classificationId]
+      );
+
+      if (classResult.rows.length === 0) {
+        await interaction.reply({ content: 'Classification not found', ephemeral: true });
+        return;
+      }
+
+      const mediaType = classResult.rows[0].media_type;
+
+      // Get all libraries for this media type
+      const libResult = await db.query(
+        'SELECT id, name, media_type FROM libraries WHERE media_type = $1 AND is_active = true',
+        [mediaType]
+      );
+
+      if (libResult.rows.length === 0) {
+        await interaction.reply({ content: 'No libraries available', ephemeral: true });
+        return;
+      }
+
+      const options = libResult.rows.map(lib => ({
+        label: lib.name,
+        value: `${classificationId}_${lib.id}`,
+        description: `${lib.media_type} library`,
+      }));
+
+      // Replace buttons with dropdown
+      await interaction.update({
+        components: [
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId('library_select')
+              .setPlaceholder('Select the correct library...')
+              .addOptions(options)
+          )
+        ],
+      });
+    } catch (error) {
+      console.error('Error showing library selection:', error);
+      await interaction.reply({ content: 'Failed to show options', ephemeral: true });
+    }
+  }
+
+  /**
+   * Process pre-configured question response
+   */
+  async processQuestionResponse(classificationId, questionId, responseKey, interaction) {
+    try {
+      // Get classification
+      const classResult = await db.query(
+        'SELECT * FROM classification_history WHERE id = $1',
+        [classificationId]
+      );
+
+      if (classResult.rows.length === 0) {
+        await interaction.reply({ content: 'Classification not found', ephemeral: true });
+        return;
+      }
+
+      const classification = classResult.rows[0];
+
+      // Record response via clarification service
+      await clarificationService.recordResponse(
+        classificationId,
+        questionId,
+        responseKey,
+        interaction.user.id,
+        classification.confidence
+      );
+
+      // Update message
+      await interaction.update({
+        components: [],
+        embeds: [
+          EmbedBuilder.from(interaction.message.embeds[0])
+            .addFields({ name: 'Response', value: responseKey, inline: true })
+            .setFooter({ text: `✅ Answered by ${interaction.user.username}` })
+        ],
+      });
+    } catch (error) {
+      console.error('Error processing question response:', error);
+      await interaction.reply({ content: 'Failed to process response', ephemeral: true });
+    }
+  }
+
+  /**
+   * Extract learning patterns from clarification responses
+   */
+  async extractClarificationPatterns(classificationId, libraryId, selectedOption) {
+    try {
+      const result = await db.query(
+        'SELECT tmdb_id, metadata, title FROM classification_history WHERE id = $1',
+        [classificationId]
+      );
+
+      if (result.rows.length > 0) {
+        const { tmdb_id, metadata, title } = result.rows[0];
+
+        // Store exact match pattern with high confidence
+        await db.query(
+          `INSERT INTO learning_patterns (tmdb_id, library_id, pattern_type, pattern_data, confidence)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (tmdb_id, pattern_type) 
+           DO UPDATE SET library_id = $2, confidence = $5, updated_at = NOW()`,
+          [tmdb_id, libraryId, 'exact_match', { ...metadata, clarification_response: selectedOption }, 100.00]
+        );
+
+        console.log(`Learned: ${title} (TMDB: ${tmdb_id}) -> Library ${libraryId} via clarification`);
+      }
+    } catch (error) {
+      console.error('Error extracting clarification patterns:', error);
+    }
+  }
+
+  /**
+   * Route to Radarr/Sonarr after clarification is resolved
+   */
+  async routeAfterClarification(classificationId) {
+    try {
+      // Get classification with library info
+      const result = await db.query(
+        `SELECT ch.*, l.arr_type, l.arr_id, l.name as library_name,
+                l.radarr_settings, l.sonarr_settings
+         FROM classification_history ch
+         JOIN libraries l ON ch.library_id = l.id
+         WHERE ch.id = $1`,
+        [classificationId]
+      );
+
+      if (result.rows.length === 0) return;
+
+      const classification = result.rows[0];
+      const metadata = classification.metadata;
+
+      // Check if already routed
+      if (classification.status === 'routed') return;
+
+      // Import classification service dynamically to avoid circular dependency
+      const classificationService = require('./classification');
+
+      // Route to appropriate *arr
+      await classificationService.routeToArr(metadata, {
+        arr_type: classification.arr_type,
+        arr_id: classification.arr_id,
+        radarr_settings: classification.radarr_settings,
+        sonarr_settings: classification.sonarr_settings,
+        name: classification.library_name,
+      });
+
+      // Update status
+      await db.query(
+        'UPDATE classification_history SET status = $1 WHERE id = $2',
+        ['routed', classificationId]
+      );
+
+      console.log(`Routed after clarification: ${metadata.title} -> ${classification.library_name}`);
+    } catch (error) {
+      console.error('Error routing after clarification:', error);
     }
   }
 
