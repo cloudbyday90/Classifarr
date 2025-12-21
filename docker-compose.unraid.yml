@@ -1,5 +1,8 @@
 version: '3.8'
 
+# Docker Compose for Classifarr on UnRaid
+# This file is optimized for UnRaid's folder structure and conventions
+
 services:
   classifarr:
     image: ghcr.io/cloudbyday90/classifarr:latest
@@ -7,10 +10,16 @@ services:
     ports:
       - "21324:21324"
     environment:
+      # User/Group IDs - Default to UnRaid's nobody:users (99:100)
+      - PUID=${PUID:-99}
+      - PGID=${PGID:-100}
+      - UMASK=${UMASK:-022}
+      # Application settings
       - NODE_ENV=production
-      - TZ=${TZ:-UTC}
+      - TZ=${TZ:-America/New_York}
     volumes:
-      - /mnt/user/appdata/classifarr/data:/app/data
+      # Main application data including embedded PostgreSQL
+      - /mnt/user/appdata/classifarr:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:21324/health"]
@@ -18,3 +27,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    # Optional: Assign to a specific UnRaid network
+    # network_mode: br0
+    # Optional: CPU/Memory limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 2G
+    #     reservations:
+    #       memory: 512M
