@@ -35,12 +35,12 @@ class ClassificationService {
     try {
       // Parse Overseerr payload
       const { media_type, tmdbId, subject } = this.parseOverseerrPayload(overseerrPayload);
-      
+
       logger.info(`Starting classification for ${media_type}: ${subject} (TMDB: ${tmdbId})`);
 
       // Enrich with TMDB metadata
       const metadata = await this.enrichWithTMDB(tmdbId, media_type);
-      
+
       // Run decision tree
       const result = await this.runDecisionTree(metadata, media_type);
 
@@ -178,7 +178,7 @@ class ClassificationService {
     // Check if metadata suggests anime
     const keywords = (metadata.keywords || []).map(k => k.toLowerCase());
     const genres = (metadata.genres || []).map(g => g.toLowerCase());
-    
+
     return (
       keywords.includes('anime') ||
       metadata.original_language === 'ja' ||
@@ -203,9 +203,9 @@ class ClassificationService {
     // Step 0: Check if media already exists in media server (100% confidence)
     const existingMedia = await mediaSyncService.findExistingMedia(metadata.tmdb_id, mediaType);
     if (existingMedia) {
-      logger.info('Media already exists in library', { 
-        tmdbId: metadata.tmdb_id, 
-        library: existingMedia.library_name 
+      logger.info('Media already exists in library', {
+        tmdbId: metadata.tmdb_id,
+        library: existingMedia.library_name
       });
       return {
         library: libraries.find(l => l.id === existingMedia.library_id),
@@ -219,7 +219,7 @@ class ClassificationService {
     // Step 0.5: Run content type analysis
     const contentAnalysis = await contentTypeAnalyzer.analyze(metadata);
     if (contentAnalysis.analyzed && contentAnalysis.bestMatch) {
-      logger.info('Content type detected', { 
+      logger.info('Content type detected', {
         type: contentAnalysis.bestMatch.type,
         confidence: contentAnalysis.bestMatch.confidence
       });
@@ -390,7 +390,7 @@ class ClassificationService {
     switch (tmdb_match_field) {
       case 'certification':
         // Check if metadata certification matches any of the values
-        return tmdb_match_values.some(value => 
+        return tmdb_match_values.some(value =>
           metadata.certification && metadata.certification.toLowerCase() === value.toLowerCase()
         );
 
@@ -399,7 +399,7 @@ class ClassificationService {
         if (!metadata.genres || !Array.isArray(metadata.genres)) {
           return false;
         }
-        return tmdb_match_values.some(value => 
+        return tmdb_match_values.some(value =>
           metadata.genres.some(g => g.toLowerCase() === value.toLowerCase())
         );
 
@@ -409,13 +409,13 @@ class ClassificationService {
           return false;
         }
         const keywords = metadata.keywords.map(k => k.toLowerCase());
-        return tmdb_match_values.some(value => 
+        return tmdb_match_values.some(value =>
           keywords.includes(value.toLowerCase())
         );
 
       case 'original_language':
         // Check if metadata original_language matches any of the values
-        return tmdb_match_values.some(value => 
+        return tmdb_match_values.some(value =>
           metadata.original_language && metadata.original_language.toLowerCase() === value.toLowerCase()
         );
 
@@ -436,7 +436,7 @@ class ClassificationService {
       switch (operator) {
         case 'contains':
           if (Array.isArray(fieldValue)) {
-            return fieldValue.some(v => 
+            return fieldValue.some(v =>
               v.toLowerCase().includes(value.toLowerCase())
             );
           }
@@ -460,43 +460,69 @@ class ClassificationService {
     // Try to get web search results if Tavily is enabled
     const webSearchResults = await this.enrichWithWebSearch(metadata);
 
-    // Build prompt for AI
-    let prompt = `You are a media classification assistant. Analyze the following ${metadata.media_type} and determine which library it should be added to.
+    // Build prompt for AI with contextual clarification support
+    let prompt = `You are a media classification assistant for a home media server. Your job is to determine which library a ${metadata.media_type} belongs to.
 
-Media Information:
-- Title: ${metadata.title}
-- Year: ${metadata.year}
-- Genres: ${metadata.genres.join(', ')}
-- Certification: ${metadata.certification}
-- Keywords: ${metadata.keywords.slice(0, 10).join(', ')}
-- Overview: ${metadata.overview}
+CRITICAL RULES:
+1. NEVER GUESS. If you are uncertain, you MUST ask for clarification.
+2. Base your decision ONLY on verifiable data, not assumptions.
+3. When there are conflicting signals (e.g., multiple genres that could route differently), ask for help.
+
+--- MEDIA INFORMATION ---
+Title: ${metadata.title}
+Year: ${metadata.year || 'Unknown'}
+Genres: ${metadata.genres.join(', ') || 'None'}
+Certification: ${metadata.certification || 'Unknown'}
+Keywords: ${metadata.keywords.slice(0, 15).join(', ') || 'None'}
+Original Language: ${metadata.original_language || 'Unknown'}
+Overview: ${metadata.overview || 'No overview available'}
 `;
+
+    // Add content analysis if available
+    if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {
+      prompt += `\nContent Analysis Detection: ${metadata.contentAnalysis.bestMatch.type} (${metadata.contentAnalysis.bestMatch.confidence}% confident)`;
+    }
 
     // Add web search results if available
     if (webSearchResults) {
-      prompt += `\n--- Additional Web Search Information ---\n`;
-      
+      prompt += `\n\n--- ADDITIONAL WEB RESEARCH ---`;
+
       if (webSearchResults.imdb) {
-        prompt += tavilyService.formatForAI(webSearchResults.imdb);
+        prompt += `\n${tavilyService.formatForAI(webSearchResults.imdb)}`;
       }
-      
+
       if (webSearchResults.advisory) {
-        prompt += `\n--- Content Advisory ---\n`;
-        prompt += tavilyService.formatForAI(webSearchResults.advisory);
+        prompt += `\n\nContent Advisory: ${tavilyService.formatForAI(webSearchResults.advisory)}`;
       }
-      
+
       if (webSearchResults.anime) {
-        prompt += `\n--- Anime Database Info ---\n`;
-        prompt += tavilyService.formatForAI(webSearchResults.anime);
+        prompt += `\n\nAnime Database: ${tavilyService.formatForAI(webSearchResults.anime)}`;
       }
     }
 
-    prompt += `\nAvailable Libraries:
-${libraries.map((lib, i) => `${i + 1}. ${lib.name} (${lib.media_type})`).join('\n')}
+    prompt += `\n\n--- AVAILABLE LIBRARIES ---
+${libraries.map((lib, i) => `${i + 1}. "${lib.name}" (${lib.media_type})`).join('\n')}
 
-Please respond with ONLY the library number (1-${libraries.length}) and a brief reason (max 100 chars).
-Format: NUMBER|REASON
-Example: 2|Action movie with high rating`;
+--- YOUR RESPONSE ---
+Analyze the media and respond in ONE of these two formats:
+
+FORMAT 1 - If you are confident (can determine the correct library from the data):
+CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>
+
+Example: CONFIDENT|3|92|Japanese animation with anime keywords, clearly belongs in Anime library
+
+FORMAT 2 - If you need clarification (conflicting signals, ambiguous data, or uncertain):
+CLARIFY|<problem_summary>|<why_uncertain>|<question_to_ask>|<option1>|<option2>|<option3_optional>
+
+Example: CLARIFY|Biographical music film with drama elements|TMDB lists Drama, Music, and Biography genres - I cannot determine the PRIMARY classification from this data|Is "${metadata.title}" primarily a biographical drama about a musician's life, or a music-focused documentary with performance footage?|Biographical Drama|Music Documentary|Neither - route manually
+
+IMPORTANT FOR CLARIFICATION:
+- The problem_summary should be SHORT (max 50 chars)
+- The why_uncertain should explain WHAT DATA conflicts and WHY you can't decide
+- The question should be SPECIFIC and help the user understand what choosing each option means
+- Always provide 2-3 clear options (not just yes/no when possible)
+
+Think step by step, then respond with ONLY one of the formats above.`;
 
     // Get Ollama config
     const configResult = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
@@ -508,26 +534,73 @@ Example: 2|Action movie with high rating`;
       parseFloat(config.temperature)
     );
 
-    // Parse AI response
-    const match = response.match(/^(\d+)\|(.+)$/m);
-    if (match) {
-      const libraryIndex = parseInt(match[1]) - 1;
-      const reason = match[2].trim();
+    // Parse AI response - check for CONFIDENT format
+    const confidentMatch = response.match(/CONFIDENT\|(\d+)\|(\d+)\|(.+)/);
+    if (confidentMatch) {
+      const libraryIndex = parseInt(confidentMatch[1]) - 1;
+      const confidence = Math.min(95, Math.max(50, parseInt(confidentMatch[2]))); // Clamp 50-95
+      const reason = confidentMatch[3].trim();
 
       if (libraryIndex >= 0 && libraryIndex < libraries.length) {
         return {
           library: libraries[libraryIndex],
-          confidence: 75,
+          confidence: confidence,
           reason: `AI: ${reason}`,
+          needs_clarification: false,
         };
       }
     }
 
-    // Fallback if AI response is malformed
+    // Parse AI response - check for CLARIFY format
+    const clarifyMatch = response.match(/CLARIFY\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)(?:\|([^|]+))?/);
+    if (clarifyMatch) {
+      const problemSummary = clarifyMatch[1].trim();
+      const whyUncertain = clarifyMatch[2].trim();
+      const question = clarifyMatch[3].trim();
+      const options = [clarifyMatch[4].trim(), clarifyMatch[5].trim()];
+      if (clarifyMatch[6]) {
+        options.push(clarifyMatch[6].trim());
+      }
+
+      logger.info('AI requests clarification', {
+        title: metadata.title,
+        problem: problemSummary
+      });
+
+      return {
+        library: libraries[0], // Tentative - will be updated after clarification
+        confidence: 55, // Low confidence triggers clarification flow
+        reason: `Needs clarification: ${problemSummary}`,
+        needs_clarification: true,
+        clarification: {
+          problem_summary: problemSummary,
+          why_uncertain: whyUncertain,
+          question: question,
+          options: options.map((opt, idx) => ({
+            label: opt,
+            value: opt.toLowerCase().replace(/\s+/g, '_').substring(0, 30),
+          })),
+        },
+      };
+    }
+
+    // Fallback if AI response is malformed - treat as needing clarification
+    logger.warn('AI response malformed, treating as uncertain', { response: response.substring(0, 200) });
     return {
       library: libraries[0],
-      confidence: 60,
-      reason: 'AI classification (default)',
+      confidence: 50,
+      reason: 'AI could not determine classification - manual review needed',
+      needs_clarification: true,
+      clarification: {
+        problem_summary: 'Unable to auto-classify',
+        why_uncertain: 'The AI classification returned an unexpected format. Manual review is recommended.',
+        question: `Which library should "${metadata.title}" be added to?`,
+        options: libraries.slice(0, 4).map(lib => ({
+          label: lib.name,
+          value: `library_${lib.id}`,
+          library_id: lib.id,
+        })),
+      },
     };
   }
 
@@ -572,17 +645,17 @@ Example: 2|Action movie with high rating`;
 
         if (radarrConfig.rows.length > 0) {
           const config = radarrConfig.rows[0];
-          
+
           // Use JSONB settings with fallback to legacy fields
           const settings = library.radarr_settings && Object.keys(library.radarr_settings).length > 0
             ? library.radarr_settings
             : {
-                root_folder_path: library.root_folder,
-                quality_profile_id: library.quality_profile_id,
-                monitor: true,
-                search_on_add: true
-              };
-          
+              root_folder_path: library.root_folder,
+              quality_profile_id: library.quality_profile_id,
+              monitor: true,
+              search_on_add: true
+            };
+
           const movieData = {
             title: metadata.title,
             tmdbId: metadata.tmdb_id,
@@ -608,20 +681,20 @@ Example: 2|Action movie with high rating`;
 
         if (sonarrConfig.rows.length > 0) {
           const config = sonarrConfig.rows[0];
-          
+
           // Use JSONB settings with fallback to legacy fields
           const settings = library.sonarr_settings && Object.keys(library.sonarr_settings).length > 0
             ? library.sonarr_settings
             : {
-                root_folder_path: library.root_folder,
-                quality_profile_id: library.quality_profile_id,
-                series_type: 'standard',
-                season_monitoring: 'all',
-                monitor_new_items: 'all',
-                season_folder: true,
-                search_on_add: true
-              };
-          
+              root_folder_path: library.root_folder,
+              quality_profile_id: library.quality_profile_id,
+              series_type: 'standard',
+              season_monitoring: 'all',
+              monitor_new_items: 'all',
+              season_folder: true,
+              search_on_add: true
+            };
+
           // Note: We'd need to get TVDB ID from TMDB external IDs
           // This is a simplified version
           const seriesData = {
@@ -651,17 +724,17 @@ Example: 2|Action movie with high rating`;
 
   suggestSeriesType(metadata, appliedLabels = []) {
     // Anime detection
-    if (appliedLabels.includes('anime') || 
-        (metadata.original_language === 'ja' && appliedLabels.includes('animation'))) {
+    if (appliedLabels.includes('anime') ||
+      (metadata.original_language === 'ja' && appliedLabels.includes('animation'))) {
       return 'anime';
     }
-    
+
     // Daily show detection
     const dailyLabels = ['late_night', 'talk', 'news', 'game_show', 'soap_opera'];
     if (dailyLabels.some(label => appliedLabels.includes(label))) {
       return 'daily';
     }
-    
+
     return 'standard';
   }
 }

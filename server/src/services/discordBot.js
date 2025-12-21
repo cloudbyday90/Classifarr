@@ -34,7 +34,7 @@ class DiscordBotService {
       this.config = result.rows[0];
       return this.config;
     }
-    
+
     // Fall back to environment variables
     this.config = {
       bot_token: process.env.DISCORD_BOT_TOKEN,
@@ -58,12 +58,12 @@ class DiscordBotService {
       });
 
       await testClient.login(token);
-      
+
       const user = testClient.user;
       const guilds = testClient.guilds.cache.size;
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: 'Bot connected successfully',
         botUser: {
           id: user.id,
@@ -73,11 +73,11 @@ class DiscordBotService {
         guildsCount: guilds,
       };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.message.includes('token') 
-          ? 'Invalid bot token' 
-          : error.message 
+      return {
+        success: false,
+        error: error.message.includes('token')
+          ? 'Invalid bot token'
+          : error.message
       };
     } finally {
       if (testClient) {
@@ -193,7 +193,7 @@ class DiscordBotService {
 
     try {
       const config = await this.loadConfig();
-      
+
       // Check if notifications are enabled for classifications
       if (!config.notify_on_classification) {
         return;
@@ -248,7 +248,7 @@ class DiscordBotService {
       let components = [];
       if (config.enable_corrections) {
         components = await this.createCorrectionComponents(
-          result.classification_id, 
+          result.classification_id,
           result.libraries,
           config.correction_buttons_count || 3,
           config.include_library_dropdown !== false
@@ -278,7 +278,7 @@ class DiscordBotService {
 
     try {
       const config = await this.loadConfig();
-      
+
       if (!config.notify_on_classification) {
         return;
       }
@@ -299,17 +299,21 @@ class DiscordBotService {
         return;
       }
 
-      // Create embed based on tier (and requireAllConfirmations setting)
-      const embed = this.createTieredEmbed(metadata, result, tier, requireAllConfirmations);
+      // Check if AI needs clarification - use AI-generated question instead of pre-configured ones
+      const hasClarification = result.needs_clarification && result.clarification;
 
-      // Create components based on tier (and requireAllConfirmations setting)
+      // Create embed based on tier (and clarification/requireAllConfirmations setting)
+      const embed = this.createTieredEmbed(metadata, result, tier, requireAllConfirmations, hasClarification);
+
+      // Create components based on tier and clarification
       const components = await this.createTieredComponents(
         result.classification_id,
         result.libraries,
         tier,
         metadata,
         result.confidence,
-        requireAllConfirmations
+        requireAllConfirmations,
+        hasClarification ? result.clarification : null
       );
 
       const message = await channel.send({
@@ -317,22 +321,24 @@ class DiscordBotService {
         components: components,
       });
 
-      // Store message ID
+      // Store message ID and clarification status
+      const status = hasClarification ? 'awaiting_clarification' : tier.action;
       await db.query(
         'UPDATE classification_history SET discord_message_id = $1, clarification_status = $2 WHERE id = $3',
-        [message.id, tier.action, result.classification_id]
+        [message.id, status, result.classification_id]
       );
     } catch (error) {
       console.error('Failed to send confidence-based notification:', error);
     }
   }
 
-  createTieredEmbed(metadata, result, tier, requireAllConfirmations = false) {
+  createTieredEmbed(metadata, result, tier, requireAllConfirmations = false, hasClarification = false) {
     const colors = {
       auto: 0x00ff00,      // Green
       verify: 0xffff00,    // Yellow
       clarify: 0x0099ff,   // Blue
       manual: 0xff0000,    // Red
+      clarification: 0x9333ea, // Purple - for AI clarification questions
     };
 
     const icons = {
@@ -340,19 +346,31 @@ class DiscordBotService {
       verify: '⚠️',
       clarify: '❓',
       manual: '🛑',
+      clarification: '🤔',
     };
 
+    // Use clarification styling if AI needs help
+    const effectiveTier = hasClarification ? 'clarification' : tier.tier;
+
     const embed = new EmbedBuilder()
-      .setTitle(`${icons[tier.tier]} ${metadata.title} (${metadata.year || 'N/A'})`)
-      .setColor(colors[tier.tier])
+      .setTitle(`${icons[effectiveTier]} ${metadata.title} (${metadata.year || 'N/A'})`)
+      .setColor(colors[effectiveTier])
       .setTimestamp();
 
-    if (tier.tier === 'auto' && !requireAllConfirmations) {
+    // AI Clarification - special format with context
+    if (hasClarification && result.clarification) {
+      const clarification = result.clarification;
+      embed.setDescription(
+        `🤔 **I need your help classifying this ${metadata.media_type}**\n\n` +
+        `**Problem:** ${clarification.problem_summary}\n\n` +
+        `**Why I'm asking:** ${clarification.why_uncertain}\n\n` +
+        `**Question:** ${clarification.question}`
+      );
+    } else if (tier.tier === 'auto' && !requireAllConfirmations) {
       embed.setDescription(`✅ **Automatically routed to: ${result.library_name}**\n${tier.description}`);
     } else if (tier.tier === 'auto' && requireAllConfirmations) {
-      // Override auto behavior when user requires all confirmations
       embed.setDescription(`⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\n🔒 **Manual confirmation required** (setting enabled)\nPlease confirm or select another option.`);
-      embed.setColor(colors.verify); // Use verify color since it requires confirmation
+      embed.setColor(colors.verify);
     } else if (tier.tier === 'verify') {
       embed.setDescription(`⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease confirm or select another option.`);
     } else if (tier.tier === 'clarify') {
@@ -367,7 +385,8 @@ class DiscordBotService {
       { name: 'Method', value: this.formatMethod(result.method), inline: true },
     ];
 
-    if (result.reason) {
+    // Don't show reason if we're showing clarification context (redundant)
+    if (result.reason && !hasClarification) {
       fields.push({ name: 'Reason', value: result.reason, inline: false });
     }
 
@@ -390,8 +409,43 @@ class DiscordBotService {
     return embed;
   }
 
-  async createTieredComponents(classificationId, libraries, tier, metadata, confidence, requireAllConfirmations = false) {
+  async createTieredComponents(classificationId, libraries, tier, metadata, confidence, requireAllConfirmations = false, clarification = null) {
     const components = [];
+
+    // If AI provided clarification options, use those instead of pre-configured questions
+    if (clarification && clarification.options && clarification.options.length > 0) {
+      const clarificationButtons = clarification.options.map((opt, idx) =>
+        new ButtonBuilder()
+          .setCustomId(`ai_clarify_${classificationId}_${idx}`)
+          .setLabel(opt.label.substring(0, 80)) // Discord button label max 80 chars
+          .setStyle(idx === 0 ? ButtonStyle.Primary : (idx === clarification.options.length - 1 ? ButtonStyle.Secondary : ButtonStyle.Primary))
+      );
+
+      // Add buttons in row
+      components.push(
+        new ActionRowBuilder().addComponents(clarificationButtons.slice(0, 5))
+      );
+
+      // Add library dropdown as fallback
+      if (libraries && libraries.length > 1) {
+        const options = libraries.map(lib => ({
+          label: lib.name,
+          value: `${classificationId}_${lib.id}`,
+          description: `${lib.media_type} library`,
+        }));
+
+        components.push(
+          new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+              .setCustomId(`library_select`)
+              .setPlaceholder('Or manually select a library...')
+              .addOptions(options)
+          )
+        );
+      }
+
+      return components;
+    }
 
     // If requireAllConfirmations is enabled and tier is 'auto', treat it as 'verify'
     const effectiveTier = (tier.tier === 'auto' && requireAllConfirmations) ? 'verify' : tier.tier;
@@ -421,7 +475,7 @@ class DiscordBotService {
         )
       );
     } else if (effectiveTier === 'clarify' || effectiveTier === 'manual') {
-      // Get clarification questions
+      // Get clarification questions from pre-configured list (fallback)
       const questions = await clarificationService.matchQuestions(
         metadata,
         effectiveTier === 'clarify' ? 2 : 3
@@ -612,7 +666,7 @@ class DiscordBotService {
 
       if (result.rows.length > 0) {
         const { tmdb_id, metadata } = result.rows[0];
-        
+
         // Store exact match pattern
         await db.query(
           `INSERT INTO learning_patterns (tmdb_id, library_id, pattern_type, pattern_data, confidence)
