@@ -318,4 +318,24 @@ export default {
   cancelTask(taskId) {
     return apiClient.post(`/queue/task/${taskId}/cancel`)
   },
+
+  // Multi-Request Manager
+  getWebhookConfigs() {
+    return apiClient.get('/settings/webhook/configs')
+  },
+  getWebhookConfigById(id) {
+    return apiClient.get(`/settings/webhook/configs/${id}`)
+  },
+  createWebhookConfig(config) {
+    return apiClient.post('/settings/webhook/configs', config)
+  },
+  updateWebhookConfig(id, config) {
+    return apiClient.put(`/settings/webhook/configs/${id}`, config)
+  },
+  deleteWebhookConfig(id) {
+    return apiClient.delete(`/settings/webhook/configs/${id}`)
+  },
+  setPrimaryWebhookConfig(id) {
+    return apiClient.post(`/settings/webhook/configs/${id}/primary`)
+  },
 }

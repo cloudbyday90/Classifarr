@@ -24,9 +24,9 @@ const logger = createLogger('WebhookService');
 class WebhookService {
   async getConfig() {
     const result = await db.query('SELECT * FROM webhook_config WHERE webhook_type = $1 LIMIT 1', ['overseerr']);
-    return result.rows[0] || { 
-      enabled: true, 
-      process_pending: true, 
+    return result.rows[0] || {
+      enabled: true,
+      process_pending: true,
       process_approved: true,
       process_auto_approved: true,
       process_declined: false,
@@ -111,22 +111,22 @@ class WebhookService {
 
   parsePayload(body) {
     logger.debug('Parsing webhook payload', { body });
-    
+
     const notification_type = body.notification_type || body.event;
     const subject = body.subject || '';
-    
+
     // Extract media information
     const media = body.media || {};
     const request = body.request || {};
     const requestedBy = request.requestedBy || body.requestedBy || {};
-    
+
     // Determine media type
     let media_type = media.media_type || media.mediaType;
     if (!media_type) {
       // Fallback: try to infer from subject
       media_type = subject.includes('Movie') ? 'movie' : 'tv';
     }
-    
+
     const parsed = {
       notification_type,
       event_name: body.event || notification_type,
@@ -189,14 +189,14 @@ class WebhookService {
 
   async updateLogStatus(logId, status, result = {}) {
     const endTime = Date.now();
-    
+
     // Get the start time from the log
     const logResult = await db.query(
       'SELECT received_at FROM webhook_log WHERE id = $1',
       [logId]
     );
-    
-    const processingTime = logResult.rows[0] 
+
+    const processingTime = logResult.rows[0]
       ? endTime - new Date(logResult.rows[0].received_at).getTime()
       : 0;
 
@@ -277,8 +277,8 @@ class WebhookService {
       return;
     }
 
-    const statusField = status === 'approved' ? 'approved_at' : 
-                       status === 'available' ? 'available_at' : null;
+    const statusField = status === 'approved' ? 'approved_at' :
+      status === 'available' ? 'available_at' : null;
 
     const query = statusField
       ? `UPDATE media_requests 
@@ -316,8 +316,8 @@ class WebhookService {
       completed: parseInt(completedResult.rows[0].count),
       failed: parseInt(failedResult.rows[0].count),
       last24h: parseInt(last24hResult.rows[0].count),
-      avgProcessingTime: avgTimeResult.rows[0].avg 
-        ? Math.round(parseFloat(avgTimeResult.rows[0].avg)) 
+      avgProcessingTime: avgTimeResult.rows[0].avg
+        ? Math.round(parseFloat(avgTimeResult.rows[0].avg))
         : 0
     };
   }
@@ -346,7 +346,7 @@ class WebhookService {
     params.push(limit, offset);
 
     const result = await db.query(query, params);
-    
+
     // Get total count
     let countQuery = 'SELECT COUNT(*) FROM webhook_log WHERE 1=1';
     const countParams = [];
@@ -372,6 +372,137 @@ class WebhookService {
       limit,
       totalPages: Math.ceil(parseInt(countResult.rows[0].count) / limit)
     };
+  }
+
+  // ==================== MULTI-MANAGER SUPPORT ====================
+
+  async getAllConfigs() {
+    const result = await db.query(
+      'SELECT id, name, webhook_type, manager_url, is_primary, enabled, created_at FROM webhook_config ORDER BY is_primary DESC, created_at ASC'
+    );
+    return result.rows;
+  }
+
+  async getConfigById(id) {
+    const result = await db.query('SELECT * FROM webhook_config WHERE id = $1', [id]);
+    return result.rows[0] || null;
+  }
+
+  async createConfig(config) {
+    const {
+      name,
+      webhook_type = 'overseerr',
+      manager_url = null,
+      is_primary = false,
+      secret_key = null,
+      process_pending = true,
+      process_approved = true,
+      process_auto_approved = true,
+      process_declined = false,
+      notify_on_receive = true,
+      notify_on_error = true,
+      enabled = true
+    } = config;
+
+    // If setting as primary, unset other primaries
+    if (is_primary) {
+      await db.query('UPDATE webhook_config SET is_primary = false WHERE is_primary = true');
+    }
+
+    const result = await db.query(
+      `INSERT INTO webhook_config (
+        name, webhook_type, manager_url, is_primary, secret_key,
+        process_pending, process_approved, process_auto_approved, process_declined,
+        notify_on_receive, notify_on_error, enabled
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING *`,
+      [
+        name, webhook_type, manager_url, is_primary, secret_key,
+        process_pending, process_approved, process_auto_approved, process_declined,
+        notify_on_receive, notify_on_error, enabled
+      ]
+    );
+
+    return result.rows[0];
+  }
+
+  async updateConfigById(id, config) {
+    const {
+      name,
+      webhook_type,
+      manager_url,
+      is_primary,
+      secret_key,
+      process_pending,
+      process_approved,
+      process_auto_approved,
+      process_declined,
+      notify_on_receive,
+      notify_on_error,
+      enabled
+    } = config;
+
+    // If setting as primary, unset other primaries
+    if (is_primary) {
+      await db.query('UPDATE webhook_config SET is_primary = false WHERE is_primary = true AND id != $1', [id]);
+    }
+
+    const result = await db.query(
+      `UPDATE webhook_config SET
+        name = COALESCE($1, name),
+        webhook_type = COALESCE($2, webhook_type),
+        manager_url = COALESCE($3, manager_url),
+        is_primary = COALESCE($4, is_primary),
+        secret_key = COALESCE($5, secret_key),
+        process_pending = COALESCE($6, process_pending),
+        process_approved = COALESCE($7, process_approved),
+        process_auto_approved = COALESCE($8, process_auto_approved),
+        process_declined = COALESCE($9, process_declined),
+        notify_on_receive = COALESCE($10, notify_on_receive),
+        notify_on_error = COALESCE($11, notify_on_error),
+        enabled = COALESCE($12, enabled),
+        updated_at = NOW()
+      WHERE id = $13
+      RETURNING *`,
+      [
+        name, webhook_type, manager_url, is_primary, secret_key,
+        process_pending, process_approved, process_auto_approved, process_declined,
+        notify_on_receive, notify_on_error, enabled, id
+      ]
+    );
+
+    return result.rows[0];
+  }
+
+  async deleteConfig(id) {
+    // Don't delete if it's the only config
+    const countResult = await db.query('SELECT COUNT(*) FROM webhook_config');
+    if (parseInt(countResult.rows[0].count) <= 1) {
+      throw new Error('Cannot delete the only webhook configuration');
+    }
+
+    // If deleting primary, set another as primary
+    const configResult = await db.query('SELECT is_primary FROM webhook_config WHERE id = $1', [id]);
+    const wasPrimary = configResult.rows[0]?.is_primary;
+
+    await db.query('DELETE FROM webhook_config WHERE id = $1', [id]);
+
+    if (wasPrimary) {
+      await db.query(
+        'UPDATE webhook_config SET is_primary = true WHERE id = (SELECT MIN(id) FROM webhook_config)'
+      );
+    }
+
+    return true;
+  }
+
+  async setPrimaryConfig(id) {
+    await db.query('UPDATE webhook_config SET is_primary = false WHERE is_primary = true');
+    const result = await db.query(
+      'UPDATE webhook_config SET is_primary = true WHERE id = $1 RETURNING *',
+      [id]
+    );
+    return result.rows[0];
   }
 }
 

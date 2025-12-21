@@ -55,7 +55,7 @@ const sslTestLimiter = rateLimit({
 router.get('/', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM settings ORDER BY key');
-    
+
     const settings = {};
     result.rows.forEach(row => {
       settings[row.key] = row.value;
@@ -161,7 +161,7 @@ router.put('/radarr/:id', async (req, res) => {
       return res.status(404).json({ error: 'Radarr configuration not found' });
     }
     const existingApiKey = existingResult.rows[0].api_key;
-    
+
     // Use existing API key if the provided one is masked
     const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
@@ -239,7 +239,7 @@ router.post('/radarr/test', async (req, res) => {
 router.get('/radarr/:id/root-folders', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const configResult = await db.query('SELECT * FROM radarr_config WHERE id = $1', [id]);
     if (configResult.rows.length === 0) {
       return res.status(404).json({ error: 'Radarr configuration not found' });
@@ -262,7 +262,7 @@ router.get('/radarr/:id/root-folders', async (req, res) => {
 router.get('/radarr/:id/quality-profiles', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const configResult = await db.query('SELECT * FROM radarr_config WHERE id = $1', [id]);
     if (configResult.rows.length === 0) {
       return res.status(404).json({ error: 'Radarr configuration not found' });
@@ -346,7 +346,7 @@ router.put('/sonarr/:id', async (req, res) => {
       return res.status(404).json({ error: 'Sonarr configuration not found' });
     }
     const existingApiKey = existingResult.rows[0].api_key;
-    
+
     // Use existing API key if the provided one is masked
     const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
@@ -424,7 +424,7 @@ router.post('/sonarr/test', async (req, res) => {
 router.get('/sonarr/:id/root-folders', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const configResult = await db.query('SELECT * FROM sonarr_config WHERE id = $1', [id]);
     if (configResult.rows.length === 0) {
       return res.status(404).json({ error: 'Sonarr configuration not found' });
@@ -447,7 +447,7 @@ router.get('/sonarr/:id/root-folders', async (req, res) => {
 router.get('/sonarr/:id/quality-profiles', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const configResult = await db.query('SELECT * FROM sonarr_config WHERE id = $1', [id]);
     if (configResult.rows.length === 0) {
       return res.status(404).json({ error: 'Sonarr configuration not found' });
@@ -657,7 +657,7 @@ router.put('/notifications', async (req, res) => {
     // Get existing config to preserve bot token if masked value is sent
     const existingResult = await db.query('SELECT bot_token FROM notification_config WHERE type = $1 LIMIT 1', ['discord']);
     const existingToken = existingResult.rows[0]?.bot_token;
-    
+
     // Use existing token if the provided one is masked
     const finalToken = (bot_token && !isMaskedToken(bot_token)) ? bot_token : existingToken;
 
@@ -809,7 +809,7 @@ router.put('/tavily', async (req, res) => {
     // Get existing config to preserve API key if masked value is sent
     const existingResult = await db.query('SELECT api_key FROM tavily_config LIMIT 1');
     const existingApiKey = existingResult.rows[0]?.api_key;
-    
+
     // Use existing key if the provided one is masked
     const finalApiKey = (api_key && api_key !== '••••••••') ? api_key : existingApiKey;
 
@@ -855,7 +855,7 @@ router.put('/tavily', async (req, res) => {
 router.post('/tavily/test', async (req, res) => {
   try {
     const { api_key } = req.body;
-    
+
     if (!api_key) {
       return res.status(400).json({ error: 'API key is required' });
     }
@@ -876,7 +876,7 @@ router.post('/tavily/test', async (req, res) => {
 router.post('/tavily/search', async (req, res) => {
   try {
     const { query, api_key } = req.body;
-    
+
     if (!api_key || !query) {
       return res.status(400).json({ error: 'API key and query are required' });
     }
@@ -913,12 +913,12 @@ const webhookService = require('../services/webhook');
 router.get('/webhook', async (req, res) => {
   try {
     const config = await webhookService.getConfig();
-    
+
     // Mask secret key for security
     if (config.secret_key) {
       config.secret_key = maskToken(config.secret_key);
     }
-    
+
     res.json(config);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -934,22 +934,22 @@ router.get('/webhook', async (req, res) => {
 router.put('/webhook', async (req, res) => {
   try {
     const config = req.body;
-    
+
     // Get existing config to preserve secret key if masked value is sent
     const existingConfig = await webhookService.getConfig();
-    
+
     // Use existing secret key if the provided one is masked
     if (config.secret_key && isMaskedToken(config.secret_key)) {
       config.secret_key = existingConfig.secret_key;
     }
-    
+
     const result = await webhookService.updateConfig(config);
-    
+
     // Mask secret key in response
     if (result.secret_key) {
       result.secret_key = maskToken(result.secret_key);
     }
-    
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -965,9 +965,9 @@ router.put('/webhook', async (req, res) => {
 router.post('/webhook/generate-key', async (req, res) => {
   try {
     const secretKey = webhookService.generateSecretKey();
-    
+
     const config = await webhookService.updateConfig({ secret_key: secretKey });
-    
+
     res.json({
       ...config,
       secret_key: secretKey, // Return full key on generation
@@ -987,12 +987,12 @@ router.get('/webhook/url', async (req, res) => {
   try {
     const config = await webhookService.getConfig();
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    
+
     let url = `${baseUrl}/api/webhook/overseerr`;
     if (config.secret_key) {
       url += `?key=${config.secret_key}`;
     }
-    
+
     res.json({ url });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1008,14 +1008,14 @@ router.get('/webhook/url', async (req, res) => {
 router.get('/webhook/logs', async (req, res) => {
   try {
     const { page = 1, limit = 50, status, media_type } = req.query;
-    
+
     const result = await webhookService.getLogs({
       page: parseInt(page),
       limit: parseInt(limit),
       status,
       media_type
     });
-    
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1047,7 +1047,7 @@ router.post('/webhook/test', async (req, res) => {
   try {
     const config = await webhookService.getConfig();
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    
+
     const testPayload = {
       notification_type: 'TEST_NOTIFICATION',
       event: 'test',
@@ -1060,30 +1060,30 @@ router.post('/webhook/test', async (req, res) => {
         releaseDate: '1999-10-15'
       }
     };
-    
+
     // Make internal request to webhook endpoint
     let url = `${baseUrl}/api/webhook/overseerr`;
     if (config.secret_key) {
       url += `?key=${config.secret_key}`;
     }
-    
+
     const response = await axios.post(url, testPayload, {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Classifarr-Test'
       }
     });
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Test webhook sent successfully',
-      response: response.data 
+      response: response.data
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: error.message,
-      details: error.response?.data 
+      details: error.response?.data
     });
   }
 });
@@ -1213,7 +1213,7 @@ router.put('/ssl', async (req, res) => {
       ]
     );
 
-    res.json({ 
+    res.json({
       ...result.rows[0],
       requiresRestart: true,
       message: 'SSL configuration saved. Please restart Classifarr for changes to take effect.'
@@ -1279,7 +1279,7 @@ router.post('/ssl/test', sslTestLimiter, async (req, res) => {
     try {
       const certData = await fs.readFile(cert_path, 'utf8');
       const keyData = await fs.readFile(key_path, 'utf8');
-      
+
       // Create secure context to validate cert and key match
       const context = tls.createSecureContext({
         cert: certData,
@@ -1320,6 +1320,88 @@ router.post('/ssl/test', sslTestLimiter, async (req, res) => {
     } catch (error) {
       res.json({ ...results, error: 'Invalid certificate or key: ' + error.message });
     }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// MULTI-REQUEST MANAGER ENDPOINTS
+// ============================================
+
+const webhookService = require('../services/webhook');
+
+// List all webhook configurations
+router.get('/webhook/configs', async (req, res) => {
+  try {
+    const configs = await webhookService.getAllConfigs();
+    res.json(configs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get specific webhook configuration
+router.get('/webhook/configs/:id', async (req, res) => {
+  try {
+    const config = await webhookService.getConfigById(parseInt(req.params.id));
+    if (!config) {
+      return res.status(404).json({ error: 'Configuration not found' });
+    }
+    // Mask sensitive data
+    if (config.secret_key) {
+      config.secret_key = maskToken(config.secret_key);
+    }
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new webhook configuration
+router.post('/webhook/configs', async (req, res) => {
+  try {
+    if (!req.body.name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    const config = await webhookService.createConfig(req.body);
+    res.status(201).json(config);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update webhook configuration
+router.put('/webhook/configs/:id', async (req, res) => {
+  try {
+    const config = await webhookService.updateConfigById(parseInt(req.params.id), req.body);
+    if (!config) {
+      return res.status(404).json({ error: 'Configuration not found' });
+    }
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete webhook configuration
+router.delete('/webhook/configs/:id', async (req, res) => {
+  try {
+    await webhookService.deleteConfig(parseInt(req.params.id));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Set webhook configuration as primary
+router.post('/webhook/configs/:id/primary', async (req, res) => {
+  try {
+    const config = await webhookService.setPrimaryConfig(parseInt(req.params.id));
+    if (!config) {
+      return res.status(404).json({ error: 'Configuration not found' });
+    }
+    res.json(config);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -737,3 +737,4 @@ VALUES ('basic', 5, false);
 \i /app/database/migrations/006_add_clarification_settings.sql
 \i /app/database/migrations/007_add_clarification_response.sql
 \i /app/database/migrations/008_add_task_queue.sql
+\i /app/database/migrations/009_add_multi_manager.sql
