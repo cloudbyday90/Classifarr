@@ -97,6 +97,7 @@ describe('Logger', () => {
 
   describe('error logging', () => {
     test('should persist error to database', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
       const errorId = '123e4567-e89b-12d3-a456-426614174000';
       db.query.mockResolvedValue({
         rows: [{ error_id: errorId }]
@@ -106,14 +107,17 @@ describe('Logger', () => {
 
       expect(db.query).toHaveBeenCalled();
       expect(result).toBe(errorId);
+      consoleSpy.mockRestore();
     });
 
     test('should handle database failures gracefully', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
       db.query.mockRejectedValue(new Error('Database error'));
 
       const result = await logger.error('Test error');
 
       expect(result).toBeNull();
+      consoleSpy.mockRestore();
     });
 
     test('should capture request context when provided', async () => {
@@ -142,6 +146,7 @@ describe('Logger', () => {
 
   describe('warn logging', () => {
     test('should persist warning to database', async () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
       const errorId = '123e4567-e89b-12d3-a456-426614174000';
       db.query.mockResolvedValue({
         rows: [{ error_id: errorId }]
@@ -151,6 +156,7 @@ describe('Logger', () => {
 
       expect(db.query).toHaveBeenCalled();
       expect(result).toBe(errorId);
+      consoleSpy.mockRestore();
     });
   });
 
