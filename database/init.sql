@@ -10,22 +10,39 @@
 
 -- Drop existing tables (if any)
 DROP TABLE IF EXISTS audit_log CASCADE;
+
 DROP TABLE IF EXISTS jwt_secrets CASCADE;
+
 DROP TABLE IF EXISTS users CASCADE;
+
 DROP TABLE IF EXISTS learning_patterns CASCADE;
+
 DROP TABLE IF EXISTS classification_corrections CASCADE;
+
 DROP TABLE IF EXISTS classification_history CASCADE;
+
 DROP TABLE IF EXISTS library_custom_rules CASCADE;
+
 DROP TABLE IF EXISTS library_labels CASCADE;
+
 DROP TABLE IF EXISTS label_presets CASCADE;
+
 DROP TABLE IF EXISTS libraries CASCADE;
+
 DROP TABLE IF EXISTS media_server CASCADE;
+
 DROP TABLE IF EXISTS radarr_config CASCADE;
+
 DROP TABLE IF EXISTS sonarr_config CASCADE;
+
 DROP TABLE IF EXISTS ollama_config CASCADE;
+
 DROP TABLE IF EXISTS tmdb_config CASCADE;
+
 DROP TABLE IF EXISTS notification_config CASCADE;
+
 DROP TABLE IF EXISTS ssl_config CASCADE;
+
 DROP TABLE IF EXISTS settings CASCADE;
 
 -- ===========================================
@@ -58,7 +75,7 @@ CREATE TABLE jwt_secrets (
 -- Audit Log (security events)
 CREATE TABLE audit_log (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    user_id INTEGER REFERENCES users (id) ON DELETE SET NULL,
     action VARCHAR(100) NOT NULL,
     ip_address VARCHAR(50),
     user_agent TEXT,
@@ -73,7 +90,9 @@ CREATE TABLE audit_log (
 -- Media Server Configuration (Plex/Emby/Jellyfin)
 CREATE TABLE media_server (
     id SERIAL PRIMARY KEY,
-    type VARCHAR(20) NOT NULL CHECK (type IN ('plex', 'emby', 'jellyfin')),
+    type VARCHAR(20) NOT NULL CHECK (
+        type IN ('plex', 'emby', 'jellyfin')
+    ),
     name VARCHAR(255) NOT NULL,
     url VARCHAR(500) NOT NULL,
     api_key VARCHAR(500) NOT NULL,
@@ -91,15 +110,17 @@ CREATE TABLE libraries (
     name VARCHAR(255) NOT NULL,
     media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('movie', 'tv')),
     priority INTEGER DEFAULT 0,
-    
-    -- Radarr/Sonarr Mapping
-    arr_type VARCHAR(20) CHECK (arr_type IN ('radarr', 'sonarr')),
-    arr_id INTEGER,
-    root_folder VARCHAR(500),
-    quality_profile_id INTEGER,
-    
-    -- Full Radarr/Sonarr Settings (preferred method)
-    radarr_settings JSONB DEFAULT '{}',
+
+-- Radarr/Sonarr Mapping
+arr_type VARCHAR(20) CHECK (
+    arr_type IN ('radarr', 'sonarr')
+),
+arr_id INTEGER,
+root_folder VARCHAR(500),
+quality_profile_id INTEGER,
+
+-- Full Radarr/Sonarr Settings (preferred method)
+radarr_settings JSONB DEFAULT '{}',
     sonarr_settings JSONB DEFAULT '{}',
     
     is_active BOOLEAN DEFAULT true,
@@ -112,19 +133,32 @@ CREATE TABLE libraries (
 -- ARR Profiles Cache (for UI dropdowns)
 CREATE TABLE arr_profiles_cache (
     id SERIAL PRIMARY KEY,
-    arr_type VARCHAR(10) NOT NULL CHECK (arr_type IN ('radarr', 'sonarr')),
-    profile_type VARCHAR(50) NOT NULL CHECK (profile_type IN ('root_folder', 'quality_profile', 'tag')),
+    arr_type VARCHAR(10) NOT NULL CHECK (
+        arr_type IN ('radarr', 'sonarr')
+    ),
+    profile_type VARCHAR(50) NOT NULL CHECK (
+        profile_type IN (
+            'root_folder',
+            'quality_profile',
+            'tag'
+        )
+    ),
     profile_id INT NOT NULL,
     profile_name VARCHAR(255),
     profile_path VARCHAR(500),
     profile_data JSONB,
     last_synced TIMESTAMP DEFAULT NOW(),
-    UNIQUE(arr_type, profile_type, profile_id)
+    UNIQUE (
+        arr_type,
+        profile_type,
+        profile_id
+    )
 );
 
-CREATE INDEX idx_arr_profiles_cache_type ON arr_profiles_cache(arr_type, profile_type);
+CREATE INDEX idx_arr_profiles_cache_type ON arr_profiles_cache (arr_type, profile_type);
 
 -- Label Presets (system-defined classification labels)
+
 CREATE TABLE label_presets (
     id SERIAL PRIMARY KEY,
     category VARCHAR(50) NOT NULL CHECK (category IN ('rating', 'content_type', 'genre', 'language')),
@@ -142,18 +176,19 @@ CREATE TABLE label_presets (
 -- Library Labels (assigned to libraries for include/exclude rules)
 CREATE TABLE library_labels (
     id SERIAL PRIMARY KEY,
-    library_id INTEGER REFERENCES libraries(id) ON DELETE CASCADE,
-    label_preset_id INTEGER REFERENCES label_presets(id) ON DELETE CASCADE,
-    rule_type VARCHAR(20) NOT NULL CHECK (rule_type IN ('include', 'exclude')),
+    library_id INTEGER REFERENCES libraries (id) ON DELETE CASCADE,
+    label_preset_id INTEGER REFERENCES label_presets (id) ON DELETE CASCADE,
+    rule_type VARCHAR(20) NOT NULL CHECK (
+        rule_type IN ('include', 'exclude')
+    ),
     created_at TIMESTAMP DEFAULT NOW(),
-    
-    UNIQUE(library_id, label_preset_id)
+    UNIQUE (library_id, label_preset_id)
 );
 
 -- Library Custom Rules (AI-generated JSON rules from chatbot)
 CREATE TABLE library_custom_rules (
     id SERIAL PRIMARY KEY,
-    library_id INTEGER REFERENCES libraries(id) ON DELETE CASCADE,
+    library_id INTEGER REFERENCES libraries (id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     rule_json JSONB NOT NULL,
@@ -206,7 +241,7 @@ CREATE TABLE ollama_config (
     host VARCHAR(500) NOT NULL DEFAULT 'host.docker.internal',
     port INTEGER NOT NULL DEFAULT 11434,
     model VARCHAR(100) NOT NULL DEFAULT 'qwen3:14b',
-    temperature DECIMAL(3,2) DEFAULT 0.30,
+    temperature DECIMAL(3, 2) DEFAULT 0.30,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -229,9 +264,9 @@ CREATE TABLE notification_config (
     bot_token VARCHAR(500),
     channel_id VARCHAR(100),
     enabled BOOLEAN DEFAULT false,
-    
-    -- Discord Bot Extended Configuration
-    notify_on_classification BOOLEAN DEFAULT true,
+
+-- Discord Bot Extended Configuration
+notify_on_classification BOOLEAN DEFAULT true,
     notify_on_error BOOLEAN DEFAULT true,
     notify_on_correction BOOLEAN DEFAULT true,
     show_poster BOOLEAN DEFAULT true,
@@ -265,7 +300,9 @@ CREATE TABLE webhook_config (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
-INSERT INTO webhook_config (webhook_type, enabled) VALUES ('overseerr', true);
+INSERT INTO
+    webhook_config (webhook_type, enabled)
+VALUES ('overseerr', true);
 
 -- Webhook Audit Log
 CREATE TABLE webhook_log (
@@ -283,7 +320,7 @@ CREATE TABLE webhook_log (
     requested_by_email VARCHAR(255),
     is_4k BOOLEAN DEFAULT false,
     processing_status VARCHAR(20) DEFAULT 'received',
-    classification_id INT REFERENCES classification_history(id),
+    classification_id INT REFERENCES classification_history (id),
     routed_to_library VARCHAR(255),
     error_message TEXT,
     processing_time_ms INT,
@@ -292,9 +329,11 @@ CREATE TABLE webhook_log (
     received_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_webhook_log_received ON webhook_log(received_at DESC);
-CREATE INDEX idx_webhook_log_status ON webhook_log(processing_status);
-CREATE INDEX idx_webhook_log_tmdb ON webhook_log(tmdb_id);
+CREATE INDEX idx_webhook_log_received ON webhook_log (received_at DESC);
+
+CREATE INDEX idx_webhook_log_status ON webhook_log (processing_status);
+
+CREATE INDEX idx_webhook_log_tmdb ON webhook_log (tmdb_id);
 
 -- Media Request Tracking
 CREATE TABLE media_requests (
@@ -312,8 +351,8 @@ CREATE TABLE media_requests (
     is_4k BOOLEAN DEFAULT false,
     requested_seasons TEXT,
     request_status VARCHAR(50) DEFAULT 'pending',
-    classification_id INT REFERENCES classification_history(id),
-    routed_to_library_id INT REFERENCES libraries(id),
+    classification_id INT REFERENCES classification_history (id),
+    routed_to_library_id INT REFERENCES libraries (id),
     routed_to_library_name VARCHAR(255),
     arr_type VARCHAR(20),
     arr_id INT,
@@ -324,8 +363,9 @@ CREATE TABLE media_requests (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_media_requests_status ON media_requests(request_status);
-CREATE INDEX idx_media_requests_tmdb ON media_requests(tmdb_id);
+CREATE INDEX idx_media_requests_status ON media_requests (request_status);
+
+CREATE INDEX idx_media_requests_tmdb ON media_requests (tmdb_id);
 
 -- SSL/HTTPS Configuration
 CREATE TABLE ssl_config (
@@ -375,18 +415,25 @@ CREATE TABLE classification_history (
     media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('movie', 'tv')),
     title VARCHAR(500) NOT NULL,
     year INTEGER,
-    
-    -- Classification Result
-    library_id INTEGER REFERENCES libraries(id) ON DELETE SET NULL,
-    confidence DECIMAL(5,2),
-    method VARCHAR(50) CHECK (method IN ('exact_match', 'learned_pattern', 'rule_match', 'ai_fallback')),
-    reason TEXT,
-    
-    -- Metadata
-    metadata JSONB,
-    
-    -- Status
-    status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'failed', 'corrected')),
+
+-- Classification Result
+library_id INTEGER REFERENCES libraries (id) ON DELETE SET NULL,
+confidence DECIMAL(5, 2),
+method VARCHAR(50) CHECK (
+    method IN (
+        'exact_match',
+        'learned_pattern',
+        'rule_match',
+        'ai_fallback'
+    )
+),
+reason TEXT,
+
+-- Metadata
+metadata JSONB,
+
+-- Status
+status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'failed', 'corrected')),
     error_message TEXT,
     
     created_at TIMESTAMP DEFAULT NOW()
@@ -395,9 +442,9 @@ CREATE TABLE classification_history (
 -- Classification Corrections (user feedback for learning)
 CREATE TABLE classification_corrections (
     id SERIAL PRIMARY KEY,
-    classification_id INTEGER REFERENCES classification_history(id) ON DELETE CASCADE,
+    classification_id INTEGER REFERENCES classification_history (id) ON DELETE CASCADE,
     original_library_id INTEGER,
-    corrected_library_id INTEGER REFERENCES libraries(id) ON DELETE CASCADE,
+    corrected_library_id INTEGER REFERENCES libraries (id) ON DELETE CASCADE,
     corrected_by VARCHAR(100),
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -406,12 +453,12 @@ CREATE TABLE classification_corrections (
 CREATE TABLE learning_patterns (
     id SERIAL PRIMARY KEY,
     tmdb_id INTEGER,
-    library_id INTEGER REFERENCES libraries(id) ON DELETE CASCADE,
+    library_id INTEGER REFERENCES libraries (id) ON DELETE CASCADE,
     pattern_type VARCHAR(50),
     pattern_data JSONB,
-    confidence DECIMAL(5,2),
+    confidence DECIMAL(5, 2),
     usage_count INTEGER DEFAULT 0,
-    success_rate DECIMAL(5,2) DEFAULT 100.00,
+    success_rate DECIMAL(5, 2) DEFAULT 100.00,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -423,8 +470,15 @@ CREATE TABLE learning_patterns (
 -- Error Log (for detailed error tracking and bug reports)
 CREATE TABLE error_log (
     id SERIAL PRIMARY KEY,
-    error_id UUID DEFAULT gen_random_uuid() UNIQUE,
-    level VARCHAR(10) NOT NULL CHECK (level IN ('ERROR', 'WARN', 'INFO', 'DEBUG')),
+    error_id UUID DEFAULT gen_random_uuid () UNIQUE,
+    level VARCHAR(10) NOT NULL CHECK (
+        level IN (
+            'ERROR',
+            'WARN',
+            'INFO',
+            'DEBUG'
+        )
+    ),
     module VARCHAR(100) NOT NULL,
     message TEXT NOT NULL,
     stack_trace TEXT,
@@ -451,28 +505,49 @@ CREATE TABLE app_log (
 -- INDEXES FOR PERFORMANCE
 -- ===========================================
 
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_audit_log_user ON audit_log(user_id);
-CREATE INDEX idx_audit_log_created_at ON audit_log(created_at);
-CREATE INDEX idx_libraries_media_server ON libraries(media_server_id);
-CREATE INDEX idx_libraries_media_type ON libraries(media_type);
-CREATE INDEX idx_library_labels_library ON library_labels(library_id);
-CREATE INDEX idx_library_custom_rules_library ON library_custom_rules(library_id);
-CREATE INDEX idx_classification_history_tmdb ON classification_history(tmdb_id);
-CREATE INDEX idx_classification_history_library ON classification_history(library_id);
-CREATE INDEX idx_classification_corrections_classification ON classification_corrections(classification_id);
-CREATE INDEX idx_learning_patterns_tmdb ON learning_patterns(tmdb_id);
-CREATE INDEX idx_learning_patterns_library ON learning_patterns(library_id);
-CREATE INDEX idx_webhook_log_webhook ON webhook_log(webhook_id);
-CREATE INDEX idx_webhook_log_created_at ON webhook_log(created_at);
-CREATE INDEX idx_error_log_error_id ON error_log(error_id);
-CREATE INDEX idx_error_log_level ON error_log(level);
-CREATE INDEX idx_error_log_module ON error_log(module);
-CREATE INDEX idx_error_log_created_at ON error_log(created_at DESC);
-CREATE INDEX idx_error_log_resolved ON error_log(resolved);
-CREATE INDEX idx_app_log_level ON app_log(level);
-CREATE INDEX idx_app_log_created_at ON app_log(created_at DESC);
+CREATE INDEX idx_users_username ON users (username);
+
+CREATE INDEX idx_users_email ON users (email);
+
+CREATE INDEX idx_audit_log_user ON audit_log (user_id);
+
+CREATE INDEX idx_audit_log_created_at ON audit_log (created_at);
+
+CREATE INDEX idx_libraries_media_server ON libraries (media_server_id);
+
+CREATE INDEX idx_libraries_media_type ON libraries (media_type);
+
+CREATE INDEX idx_library_labels_library ON library_labels (library_id);
+
+CREATE INDEX idx_library_custom_rules_library ON library_custom_rules (library_id);
+
+CREATE INDEX idx_classification_history_tmdb ON classification_history (tmdb_id);
+
+CREATE INDEX idx_classification_history_library ON classification_history (library_id);
+
+CREATE INDEX idx_classification_corrections_classification ON classification_corrections (classification_id);
+
+CREATE INDEX idx_learning_patterns_tmdb ON learning_patterns (tmdb_id);
+
+CREATE INDEX idx_learning_patterns_library ON learning_patterns (library_id);
+
+CREATE INDEX idx_webhook_log_webhook ON webhook_log (webhook_id);
+
+CREATE INDEX idx_webhook_log_created_at ON webhook_log (created_at);
+
+CREATE INDEX idx_error_log_error_id ON error_log (error_id);
+
+CREATE INDEX idx_error_log_level ON error_log (level);
+
+CREATE INDEX idx_error_log_module ON error_log (module);
+
+CREATE INDEX idx_error_log_created_at ON error_log (created_at DESC);
+
+CREATE INDEX idx_error_log_resolved ON error_log (resolved);
+
+CREATE INDEX idx_app_log_level ON app_log (level);
+
+CREATE INDEX idx_app_log_created_at ON app_log (created_at DESC);
 
 -- ============================================
 -- SEED DATA - LABEL PRESETS
@@ -603,22 +678,44 @@ INSERT INTO label_presets (category, name, display_name, media_type, description
 ('language', 'portuguese', 'Portuguese', 'both', 'Portuguese language content', 'original_language', ARRAY['pt']);
 
 -- Default Settings
-INSERT INTO settings (key, value) VALUES
-('port', '21324'),
-('theme', 'dark'),
-('app_name', 'Classifarr'),
-('version', '1.0.0'),
-('log_retention_days', '30'),
-('error_log_retention_days', '90'),
-('log_level', 'INFO');
+INSERT INTO
+    settings (key, value)
+VALUES ('port', '21324'),
+    ('theme', 'dark'),
+    ('app_name', 'Classifarr'),
+    ('version', '1.0.0'),
+    ('log_retention_days', '30'),
+    (
+        'error_log_retention_days',
+        '90'
+    ),
+    ('log_level', 'INFO');
 
 -- Default Ollama Configuration
-INSERT INTO ollama_config (host, port, model, temperature, is_active) VALUES
-('host.docker.internal', 11434, 'qwen3:14b', 0.30, true);
+INSERT INTO
+    ollama_config (
+        host,
+        port,
+        model,
+        temperature,
+        is_active
+    )
+VALUES (
+        'host.docker.internal',
+        11434,
+        'qwen3:14b',
+        0.30,
+        true
+    );
 
 -- Default Tavily Configuration
-INSERT INTO tavily_config (search_depth, max_results, is_active) VALUES
-('basic', 5, false);
+INSERT INTO
+    tavily_config (
+        search_depth,
+        max_results,
+        is_active
+    )
+VALUES ('basic', 5, false);
 
 -- ===========================================
 -- RUN MIGRATIONS
@@ -627,3 +724,5 @@ INSERT INTO tavily_config (search_depth, max_results, is_active) VALUES
 \i /docker-entrypoint-initdb.d/migrations/002_add_arr_connection_fields.sql
 \i /docker-entrypoint-initdb.d/migrations/003_media_server_content_confidence.sql
 \i /docker-entrypoint-initdb.d/migrations/004_enhanced_logging.sql
+\i /docker-entrypoint-initdb.d/migrations/005_add_require_all_confirmations_setting.sql
+\i /docker-entrypoint-initdb.d/migrations/006_add_clarification_settings.sql
