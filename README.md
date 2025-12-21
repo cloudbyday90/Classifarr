@@ -2,7 +2,7 @@
 
 **AI-Powered Media Classification for the *arr Ecosystem**
 
-Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr to the correct Radarr/Sonarr library using AI and machine learning. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
+Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr/Seer to the correct Radarr/Sonarr library using AI and machine learning. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
@@ -25,7 +25,7 @@ Classifarr is an intelligent media classification platform that automatically ro
 ```
 ┌─────────────┐
 │  Overseerr  │
-│ /Jellyseerr │
+│   /Seer     │
 └──────┬──────┘
        │ Webhook
        ▼

@@ -36,10 +36,10 @@ const webhookLimiter = rateLimit({
 
 /**
  * @swagger
- * /api/webhook/overseerr:
+ * /api/webhook/request:
  *   post:
- *     summary: Overseerr webhook endpoint
- *     description: Receives media requests from Overseerr/Jellyseerr and classifies them
+ *     summary: Universal request manager webhook endpoint
+ *     description: Receives media requests from Overseerr/Jellyseerr/Seer and classifies them
  *     requestBody:
  *       required: true
  *       content:
@@ -56,31 +56,33 @@ const webhookLimiter = rateLimit({
  *       500:
  *         description: Classification failed
  */
-router.post('/overseerr', webhookLimiter, async (req, res) => {
+
+// Universal webhook handler - used by /request (new) and /overseerr (legacy)
+const handleWebhook = async (req, res) => {
   const startTime = Date.now();
   let logId = null;
 
   try {
     // 1. Get config and validate auth
     const config = await webhookService.getConfig();
-    
+
     if (!config.enabled) {
       logger.warn('Webhook disabled, rejecting request');
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Webhook processing is disabled' 
+      return res.status(403).json({
+        success: false,
+        error: 'Webhook processing is disabled'
       });
     }
 
     const authKey = req.query.key || req.headers['x-webhook-key'];
-    
+
     if (config.secret_key && !webhookService.validateAuth(authKey, config)) {
-      logger.warn('Invalid webhook authentication', { 
-        providedKey: authKey ? 'present' : 'missing' 
+      logger.warn('Invalid webhook authentication', {
+        providedKey: authKey ? 'present' : 'missing'
       });
-      return res.status(401).json({ 
-        success: false, 
-        error: 'Invalid webhook key' 
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid webhook key'
       });
     }
 
@@ -94,10 +96,10 @@ router.post('/overseerr', webhookLimiter, async (req, res) => {
       case 'test':
         await webhookService.updateLogStatus(logId, 'completed', { test: true });
         logger.info('Test webhook received');
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           message: 'Test webhook received successfully',
-          logId 
+          logId
         });
 
       case 'MEDIA_PENDING':
@@ -156,25 +158,25 @@ router.post('/overseerr', webhookLimiter, async (req, res) => {
         // Unknown event type
         await webhookService.updateLogStatus(logId, 'skipped');
         logger.info('Unhandled webhook type', { notification_type: parsed.notification_type });
-        return res.json({ 
-          success: true, 
-          unhandled: true, 
-          notification_type: parsed.notification_type 
+        return res.json({
+          success: true,
+          unhandled: true,
+          notification_type: parsed.notification_type
         });
     }
 
     // 4. For processable events (pending, approved, auto-approved), classify
-    logger.info('Starting classification', { 
+    logger.info('Starting classification', {
       notification_type: parsed.notification_type,
       media_type: parsed.media_type,
-      title: parsed.title 
+      title: parsed.title
     });
 
     const result = await classificationService.classify(req.body);
-    
+
     // Track the request
     await webhookService.trackRequest(parsed, result);
-    
+
     // Update log with success
     await webhookService.updateLogStatus(logId, 'completed', result);
 
@@ -191,15 +193,15 @@ router.post('/overseerr', webhookLimiter, async (req, res) => {
       ...result,
     });
   } catch (error) {
-    logger.error('Webhook processing error', { 
+    logger.error('Webhook processing error', {
       error: error.message,
-      stack: error.stack 
+      stack: error.stack
     });
 
     // Update log with error if we have a logId
     if (logId) {
-      await webhookService.updateLogStatus(logId, 'failed', { 
-        error: error.message 
+      await webhookService.updateLogStatus(logId, 'failed', {
+        error: error.message
       }).catch(err => {
         logger.error('Failed to update log status', { error: err.message });
       });
@@ -211,6 +213,10 @@ router.post('/overseerr', webhookLimiter, async (req, res) => {
       logId
     });
   }
-});
+};
+
+// Register routes - both use the same handler since all request managers share the same format
+router.post('/request', webhookLimiter, handleWebhook);  // New universal endpoint
+router.post('/overseerr', webhookLimiter, handleWebhook); // Legacy endpoint (backward compatibility)
 
 module.exports = router;

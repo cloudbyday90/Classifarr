@@ -9,7 +9,7 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-semibold mb-2">Overseerr/Jellyseerr Webhook</h2>
+      <h2 class="text-xl font-semibold mb-2">Request Manager Webhook</h2>
       <p class="text-gray-400 text-sm">Configure webhook integration for automatic media classification</p>
     </div>
 
@@ -26,6 +26,33 @@
             <p class="text-sm text-gray-400">Enable or disable webhook processing</p>
           </div>
           <Toggle v-model="config.enabled" @update:modelValue="saveConfig" />
+        </div>
+      </Card>
+
+      <!-- Request Manager Type -->
+      <Card>
+        <h3 class="text-lg font-medium mb-4">Request Manager</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Type</label>
+            <select
+              v-model="config.webhook_type"
+              @change="saveConfig"
+              class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="overseerr">Overseerr</option>
+              <option value="jellyseerr">Jellyseerr</option>
+              <option value="seer">Seer</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-2">
+              <span v-if="config.webhook_type === 'seer'" class="text-green-400">
+                ✓ Seer is the unified successor to Overseerr and Jellyseerr
+              </span>
+              <span v-else>
+                All three use the same webhook format, so the integration works identically
+              </span>
+            </p>
+          </div>
         </div>
       </Card>
 
@@ -85,7 +112,7 @@
       <!-- Event Processing -->
       <Card>
         <h3 class="text-lg font-medium mb-4">Event Processing</h3>
-        <p class="text-sm text-gray-400 mb-4">Choose which Overseerr events to process and classify</p>
+        <p class="text-sm text-gray-400 mb-4">Choose which {{ requestManagerName }} events to process and classify</p>
         <div class="space-y-3">
           <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
             <div>
@@ -285,6 +312,7 @@ const testing = ref(false)
 
 const config = ref({
   enabled: true,
+  webhook_type: 'overseerr',
   secret_key: '',
   process_pending: true,
   process_approved: true,
@@ -292,6 +320,11 @@ const config = ref({
   process_declined: false,
   notify_on_receive: true,
   notify_on_error: true
+})
+
+const requestManagerName = computed(() => {
+  const names = { overseerr: 'Overseerr', jellyseerr: 'Jellyseerr', seer: 'Seer' }
+  return names[config.value.webhook_type] || 'Overseerr'
 })
 
 const stats = ref(null)
@@ -307,7 +340,8 @@ const isMaskedToken = (token) => {
 
 const webhookUrl = computed(() => {
   const baseUrl = window.location.origin
-  let url = `${baseUrl}/api/webhook/overseerr`
+  // Universal webhook endpoint - works for all request managers
+  let url = `${baseUrl}/api/webhook/request`
   if (config.value.secret_key && !isMaskedToken(config.value.secret_key)) {
     url += `?key=${config.value.secret_key}`
   }
