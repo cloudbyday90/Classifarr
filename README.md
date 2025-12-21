@@ -161,6 +161,8 @@ See [AUTHENTICATION.md](AUTHENTICATION.md) for detailed HTTPS setup instructions
 4. Click **Test Connection**
 5. Click **Save**
 
+See [PLEX_SETUP.md](PLEX_SETUP.md) for detailed Plex configuration including how to find your token.
+
 ### 2. Sync Libraries
 
 1. Go to **Libraries**
@@ -526,6 +528,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - [Docker Hub](https://hub.docker.com/r/cloudbyday90/classifarr)
 - [Issue Tracker](https://github.com/cloudbyday90/Classifarr/issues)
 - [Discord Bot Setup Guide](DISCORD_SETUP.md)
+- [Plex Setup Guide](PLEX_SETUP.md)
 - [Authentication Guide](AUTHENTICATION.md)
 - [UnRaid Installation Guide](unraid/README.md)
 - [UnRaid Community Apps](https://unraid.net/community/apps)
