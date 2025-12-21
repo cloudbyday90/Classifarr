@@ -289,6 +289,43 @@ notify_on_classification BOOLEAN DEFAULT true,
     UNIQUE(type)
 );
 
+-- ===========================================
+-- CLASSIFICATION HISTORY (must be before webhook_log due to FK)
+-- ===========================================
+
+-- Classification History
+CREATE TABLE classification_history (
+    id SERIAL PRIMARY KEY,
+    tmdb_id INTEGER NOT NULL,
+    media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('movie', 'tv')),
+    title VARCHAR(500) NOT NULL,
+    year INTEGER,
+
+-- Classification Result
+library_id INTEGER REFERENCES libraries (id) ON DELETE SET NULL,
+confidence DECIMAL(5, 2),
+method VARCHAR(50) CHECK (
+    method IN (
+        'exact_match',
+        'learned_pattern',
+        'rule_match',
+        'ai_fallback'
+    )
+),
+reason TEXT,
+
+-- Metadata
+metadata JSONB,
+
+-- Status
+
+
+status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'failed', 'corrected')),
+    error_message TEXT,
+    
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Webhook Configuration
 CREATE TABLE webhook_config (
     id SERIAL PRIMARY KEY,
@@ -409,42 +446,7 @@ CREATE TABLE tavily_config (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- ===========================================
--- CLASSIFICATION & LEARNING TABLES
--- ===========================================
-
--- Classification History
-CREATE TABLE classification_history (
-    id SERIAL PRIMARY KEY,
-    tmdb_id INTEGER NOT NULL,
-    media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('movie', 'tv')),
-    title VARCHAR(500) NOT NULL,
-    year INTEGER,
-
--- Classification Result
-library_id INTEGER REFERENCES libraries (id) ON DELETE SET NULL,
-confidence DECIMAL(5, 2),
-method VARCHAR(50) CHECK (
-    method IN (
-        'exact_match',
-        'learned_pattern',
-        'rule_match',
-        'ai_fallback'
-    )
-),
-reason TEXT,
-
--- Metadata
-metadata JSONB,
-
--- Status
-
-
-status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'failed', 'corrected')),
-    error_message TEXT,
-    
-    created_at TIMESTAMP DEFAULT NOW()
-);
+-- (classification_history table moved to before webhook section)
 
 -- Classification Corrections (user feedback for learning)
 CREATE TABLE classification_corrections (
