@@ -151,19 +151,27 @@
 
           <!-- Connection Selection (shown when server is selected) -->
           <div v-if="selectedServer" class="mt-4 p-4 bg-gray-900 rounded-lg space-y-3">
-            <h4 class="font-medium text-sm text-gray-300">Select Connection</h4>
-            <p class="text-xs text-gray-500">Choose how Classifarr should connect to this server. If auto-detection failed, try a different connection.</p>
+            <div class="flex items-center justify-between">
+              <h4 class="font-medium text-sm text-gray-300">Available Connections</h4>
+              <span v-if="testingAllConnections" class="text-xs text-blue-400 animate-pulse">Testing all connections...</span>
+              <span v-else-if="selectedConnection" class="text-xs text-green-400">✓ Auto-selected best connection</span>
+            </div>
+            <p class="text-xs text-gray-500">Connections are tested and sorted by Docker compatibility. Remote HTTPS connections are preferred. Click any connection to override.</p>
             
             <div class="space-y-2">
               <div
-                v-for="(conn, index) in selectedServer.connections"
+                v-for="(conn, index) in sortedConnections"
                 :key="index"
                 @click="selectConnection(conn)"
                 :class="[
                   'p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between',
                   selectedConnection?.uri === conn.uri
                     ? 'border-orange-500 bg-orange-500/10'
-                    : 'border-gray-700 hover:border-gray-600'
+                    : connectionTestResults[conn.uri]?.success 
+                      ? 'border-green-700/50 hover:border-green-600'
+                      : connectionTestResults[conn.uri]?.success === false
+                        ? 'border-red-700/30 hover:border-red-600/50 opacity-60'
+                        : 'border-gray-700 hover:border-gray-600'
                 ]"
               >
                 <div class="flex-1">
@@ -177,6 +185,12 @@
                     ]">
                       {{ conn.protocol.toUpperCase() }}
                     </span>
+                    <span v-if="!conn.local && !conn.relay && conn.protocol === 'https'" class="text-xs px-1.5 py-0.5 rounded bg-blue-900/30 text-blue-400">
+                      Recommended
+                    </span>
+                    <span v-if="conn.local" class="text-xs text-gray-500">
+                      (may not work in Docker)
+                    </span>
                   </div>
                   <div class="text-xs text-gray-400 mt-1 font-mono">{{ conn.address }}:{{ conn.port }}</div>
                 </div>
@@ -184,8 +198,8 @@
                 <div class="flex items-center gap-2">
                   <button
                     @click.stop="testSingleConnection(conn)"
-                    :disabled="testingConnection === conn.uri"
-                    class="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+                    :disabled="testingConnection === conn.uri || testingAllConnections"
+                    class="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
                   >
                     {{ testingConnection === conn.uri ? 'Testing...' : 'Test' }}
                   </button>
@@ -193,6 +207,7 @@
                     <span v-if="connectionTestResults[conn.uri].success" class="text-green-400">✓</span>
                     <span v-else class="text-red-400">✗</span>
                   </span>
+                  <span v-else-if="testingAllConnections" class="text-xs text-gray-500">...</span>
                 </div>
               </div>
             </div>
@@ -546,7 +561,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
@@ -588,6 +603,29 @@ const pollInterval = ref(null)
 const selectedConnection = ref(null)
 const testingConnection = ref(null)
 const connectionTestResults = ref({})
+const testingAllConnections = ref(false)
+
+// Computed: Sort connections for display (Docker-optimized order)
+const sortedConnections = computed(() => {
+  if (!selectedServer.value?.connections) return []
+  
+  return [...selectedServer.value.connections].sort((a, b) => {
+    // Score connections (higher = better for Docker, show first)
+    const scoreConnection = (conn) => {
+      let score = 0
+      // Prefer non-local
+      if (!conn.local) score += 100
+      // Prefer non-relay
+      if (!conn.relay) score += 50
+      // Prefer HTTPS
+      if (conn.protocol === 'https') score += 10
+      // Working connections ranked higher
+      if (connectionTestResults.value[conn.uri]?.success) score += 1000
+      return score
+    }
+    return scoreConnection(b) - scoreConnection(a)
+  })
+})
 
 // Jellyfin Auth state
 const jellyfinUrl = ref('')
@@ -775,15 +813,82 @@ const testServerConnection = async (server) => {
   }
 }
 
-const selectPlexServer = (server) => {
+const selectPlexServer = async (server) => {
   selectedServer.value = server
   // Reset connection selection when switching servers
   selectedConnection.value = null
   connectionTestResults.value = {}
+  
+  // Auto-test all connections and smart-select the best one
+  await testAllConnectionsAndSelect(server)
 }
 
 const selectConnection = (conn) => {
   selectedConnection.value = conn
+}
+
+// Test all connections for a server and auto-select the best working one
+const testAllConnectionsAndSelect = async (server) => {
+  if (!server.connections || server.connections.length === 0) return
+  
+  testingAllConnections.value = true
+  
+  // Test all connections in parallel
+  const testPromises = server.connections.map(async (conn) => {
+    try {
+      const response = await api.testPlexConnection(conn.uri, server.accessToken)
+      connectionTestResults.value[conn.uri] = {
+        success: response.data.success,
+        serverName: response.data.serverName
+      }
+      return { conn, success: response.data.success }
+    } catch (error) {
+      connectionTestResults.value[conn.uri] = { success: false }
+      return { conn, success: false }
+    }
+  })
+  
+  const results = await Promise.all(testPromises)
+  testingAllConnections.value = false
+  
+  // Find working connections
+  const workingConnections = results.filter(r => r.success).map(r => r.conn)
+  
+  if (workingConnections.length === 0) {
+    // No working connections found
+    return
+  }
+  
+  // Smart selection priority (for Docker compatibility):
+  // 1. HTTPS remote (non-local, non-relay) - most reliable for Docker
+  // 2. HTTP remote (non-local, non-relay)
+  // 3. Relay (works through internet but may be slower)
+  // 4. HTTPS local (may work if host networking)
+  // 5. HTTP local (least likely to work in Docker)
+  
+  const sortedConnections = workingConnections.sort((a, b) => {
+    // Score connections (higher = better for Docker)
+    const scoreConnection = (conn) => {
+      let score = 0
+      // Prefer non-local
+      if (!conn.local) score += 100
+      // Prefer non-relay (relay can be slow)
+      if (!conn.relay) score += 50
+      // Prefer HTTPS
+      if (conn.protocol === 'https') score += 10
+      return score
+    }
+    return scoreConnection(b) - scoreConnection(a)
+  })
+  
+  // Auto-select the best connection
+  selectedConnection.value = sortedConnections[0]
+  
+  // Update server test results for backward compatibility
+  serverTestResults.value[server.clientIdentifier] = {
+    success: true,
+    connection: selectedConnection.value
+  }
 }
 
 const testSingleConnection = async (conn) => {
