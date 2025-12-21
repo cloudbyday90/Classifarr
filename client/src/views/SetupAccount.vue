@@ -29,11 +29,10 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-2">Email</label>
+            <label class="block text-sm font-medium mb-2">Email <span class="text-gray-500">(optional)</span></label>
             <input
               v-model="form.email"
               type="email"
-              required
               autocomplete="email"
               placeholder="admin@example.com"
               class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -153,7 +152,6 @@ const passwordValid = computed(() =>
 
 const canSubmit = computed(() => 
   form.value.username &&
-  form.value.email &&
   form.value.password &&
   form.value.confirmPassword &&
   passwordValid.value &&
