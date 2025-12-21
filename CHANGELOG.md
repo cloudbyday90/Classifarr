@@ -7,6 +7,77 @@ Current stage: **Alpha** (v0.x-alpha)
 
 ---
 
+## [0.17-alpha] - 2025-12-21
+
+### Platform Enhancement Summary
+All 8 planned phases complete! This release consolidates:
+- Manual Request Submission (Phase 3)
+- Enhanced Dashboard (Phase 4)
+- Statistics & Analytics (Phase 5)
+- Scheduled Classifications (Phase 6)
+- Import/Export Rules (Phase 7)
+- Various bug fixes and optimizations
+
+---
+
+## [0.16.1-alpha] - 2025-12-21
+
+### Bug Fix
+- Fixed duplicate `webhookService` import causing startup crash
+
+---
+
+## [0.16-alpha] - 2025-12-21
+
+### Phase 7: Import/Export Rules
+- **Backup & Restore** - Settings → Backup tab
+- **Export** - Download rules, patterns, schedules as JSON
+- **Import** - Restore with preview and skip/overwrite modes
+- Fixed webhook_log index referencing non-existent column
+
+---
+
+## [0.15-alpha] - 2025-12-21
+
+### Phase 6: Scheduled Classifications
+- **Scheduler** - Settings → Scheduler tab
+- **Auto Scans** - Schedule library scans with intervals
+- **Task Types** - Library Scan, Full Rescan
+- **Intervals** - 30min, 1h, 2h, 6h, 12h, daily presets
+- Run now, pause/enable, delete actions
+
+---
+
+## [0.14-alpha] - 2025-12-21
+
+### Phase 5: Statistics & Analytics
+- **Statistics Page** - New sidebar item
+- **Summary Cards** - Total, avg confidence, high/low, 24h/7d
+- **Daily Chart** - 30-day classification bar chart
+- **Breakdowns** - By library, method, media type
+- **Top Titles** - Most classified items
+
+---
+
+## [0.13-alpha] - 2025-12-21
+
+### Phase 4: Enhanced Dashboard
+- **System Status Row** - Ollama 🟢/🔴, queue pending, stats
+- **Two-Column Layout** - Classifications + sidebar widgets
+- **Queue Summary** - Pending/processing/completed/failed
+- **Classification Methods** - Exact/learned/rule/AI breakdown
+- **Quick Actions** - New Request, Libraries, Queue buttons
+
+---
+
+## [0.12.1-alpha] - 2025-12-21
+
+### CI/CD Fix
+- Updated docker-metadata-action for alpha tag support
+- Changed from strict semver to ref-based tagging
+
+---
+
 ## [0.12-alpha] - 2025-12-21
 
 ### Phase 3: Manual Request Submission
