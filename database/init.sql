@@ -540,7 +540,7 @@ CREATE INDEX idx_learning_patterns_tmdb ON learning_patterns (tmdb_id);
 
 CREATE INDEX idx_learning_patterns_library ON learning_patterns (library_id);
 
-CREATE INDEX idx_webhook_log_webhook ON webhook_log (webhook_id);
+CREATE INDEX idx_webhook_log_type ON webhook_log (webhook_type);
 
 CREATE INDEX idx_webhook_log_created_at ON webhook_log (created_at);
 
