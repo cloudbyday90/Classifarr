@@ -10,13 +10,18 @@ services:
     ports:
       - "21324:21324"
     environment:
+      # User/Group IDs - Set to match your host user for proper file permissions
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - UMASK=${UMASK:-022}
+      # Application settings
       - NODE_ENV=production
       - TZ=${TZ:-UTC}
     volumes:
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:21324/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:21324/health" ]
       interval: 30s
       timeout: 10s
       retries: 3

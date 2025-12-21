@@ -2,6 +2,15 @@
 
 UnRaid Community Applications template for easy installation of Classifarr.
 
+## Features
+
+- 🤖 AI-powered media classification for the *arr ecosystem
+- 📦 Single self-contained container with embedded PostgreSQL
+- 🔄 Multi-Radarr and Multi-Sonarr support
+- 💬 Discord notifications with interactive correction buttons
+- 🎯 Confidence-based routing with decision trees
+- 📺 Media server scanning (Plex/Emby/Jellyfin)
+
 ## Installation
 
 ### Via Community Applications (Recommended)
@@ -26,63 +35,54 @@ UnRaid Community Applications template for easy installation of Classifarr.
    - **Path**: `/mnt/user/appdata/classifarr` (host) → `/app/data` (container)
 4. Click **Apply**
 
-## Two-Container Setup
-
-Classifarr requires two containers:
-
-1. **Classifarr-DB** - PostgreSQL database (install first)
-2. **Classifarr** - Main application
-
-### Installation Order
-
-1. Install Classifarr-DB first
-2. Set a secure database password
-3. Start Classifarr-DB and wait for it to be healthy
-4. Install Classifarr
-5. Ensure POSTGRES_HOST is set to `classifarr-db`
-6. Start Classifarr
-
-## Community Apps Submission
-
-To add Classifarr to your own Unraid CA repository:
-
-1. Go to Apps → Settings (gear icon)
-2. Scroll to "Template Repositories"
-3. Add: `https://github.com/cloudbyday90/Classifarr`
-4. Click Save
-5. Search for "Classifarr" in Apps
-
 ## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PUID` | `99` | User ID for file permissions (UnRaid's `nobody` user) |
+| `PGID` | `100` | Group ID for file permissions (UnRaid's `users` group) |
+| `UMASK` | `022` | File creation mask |
+| `TZ` | `America/New_York` | Container timezone |
+| `NODE_ENV` | `production` | Application environment |
+
+### PUID/PGID Explained
+
+These settings ensure files created by the container have the correct permissions on your UnRaid system:
+
+- **PUID=99**: Runs as the `nobody` user (default for UnRaid containers)
+- **PGID=100**: Uses the `users` group
+
+If you need different permissions, you can find your user/group IDs:
+```bash
+# SSH into UnRaid and run:
+id username
+# Output: uid=1000(username) gid=100(users) ...
+```
+
+### Volume Mappings
+
+| Container Path | Host Path | Purpose |
+|---------------|-----------|---------|
+| `/app/data` | `/mnt/user/appdata/classifarr` | All application data including database |
+
+**Important**: The data directory contains:
+- PostgreSQL database files
+- Configuration settings
+- Classification history
+- Learning patterns
 
 ### First-Time Setup
 
 1. Access the WebUI at `http://[UNRAID-IP]:21324`
-2. Complete the initial account setup
-3. Follow the setup wizard to configure:
-   - TMDB API key
-   - Ollama AI service
+2. Create your admin account in the setup wizard
+3. Configure your services:
+   - TMDB API key (required, free from themoviedb.org)
+   - Ollama instance (optional, for AI classification)
    - Radarr/Sonarr connections
    - Discord bot (optional)
    - Media server (Plex/Jellyfin/Emby)
-
-### Data Persistence
-
-All application data is stored in `/mnt/user/appdata/classifarr/` including:
-- PostgreSQL database files
-- Auto-generated secure database password (`postgres_password`)
-- Configuration settings
-- Classification history
-
-**Important**: Never delete the `postgres_password` file. It contains the auto-generated secure password for the database.
-
-## Database Security
-
-Classifarr automatically generates a secure random password for the PostgreSQL database on first run. This password is stored in `/app/data/postgres_password` (mapped to your appdata directory).
-
-- Password is automatically generated if it doesn't exist
-- Uses cryptographically secure random generation
-- Never share or expose this password
-- Backup this file along with your database
 
 ## Updating
 
@@ -91,35 +91,114 @@ Classifarr automatically generates a secure random password for the PostgreSQL d
 1. Go to **Apps** tab
 2. Click **Check for Updates**
 3. Click **Update** next to Classifarr if available
-4. Wait for the update to complete
 
 ### Manual Update
 
 1. Go to **Docker** tab
 2. Click on the Classifarr container
 3. Click **Force Update**
-4. Wait for the new image to download and restart
+4. Wait for the new image to download
+
+### Via Command Line
+
+```bash
+docker pull ghcr.io/cloudbyday90/classifarr:latest
+docker stop classifarr
+docker rm classifarr
+# Then recreate using docker-compose or the template
+```
 
 ## Troubleshooting
 
 ### Container Won't Start
 
-- Check logs: Click on the container icon → **Logs**
-- Verify port 21324 is not in use by another container
-- Ensure appdata directory has correct permissions
+1. Check logs: Click container icon → **Logs**
+2. Verify port 21324 is not in use:
+   ```bash
+   docker ps | grep 21324
+   ```
+3. Ensure appdata directory exists:
+   ```bash
+   ls -la /mnt/user/appdata/classifarr
+   ```
+
+### Permission Issues
+
+If you see permission errors in logs:
+
+1. Verify PUID/PGID settings match your needs
+2. Fix ownership manually:
+   ```bash
+   chown -R 99:100 /mnt/user/appdata/classifarr
+   ```
 
 ### Cannot Access WebUI
 
-- Verify the container is running
-- Check port mapping is correct (21324)
-- Try accessing via: `http://[UNRAID-IP]:21324`
+- Verify container is running: **Docker** tab → check status
+- Try accessing directly: `http://[UNRAID-IP]:21324`
 - Check UnRaid firewall settings
+- Verify no reverse proxy issues
 
 ### Database Connection Issues
 
-- Verify the `postgres_password` file exists in your appdata directory
-- Check container logs for database errors
-- Ensure sufficient disk space is available
+- Check container logs for PostgreSQL errors
+- Verify the data directory has sufficient disk space
+- Ensure the volume is mounted correctly
+
+### API Connection Issues (Radarr/Sonarr)
+
+- Verify URLs include the protocol (http:// or https://)
+- Check API keys are correct
+- Ensure containers can communicate (same Docker network)
+- For custom networks, use container names instead of IPs
+
+## Network Configuration
+
+### Bridge Mode (Default)
+
+The default bridge mode works for most users. Containers communicate via Docker's internal networking.
+
+### Host Mode
+
+For advanced users who need the container to share the host's network:
+
+1. Edit container settings
+2. Change Network Type to `host`
+3. Remove explicit port mappings
+
+### Custom Docker Networks
+
+If your *arr containers are on a custom network:
+
+1. Create the network if needed:
+   ```bash
+   docker network create arr-network
+   ```
+2. Edit Classifarr container
+3. Add `--network=arr-network` to Extra Parameters
+4. Use container names for API URLs (e.g., `http://radarr:7878`)
+
+## Backup & Restore
+
+### Backup
+
+1. Stop the Classifarr container
+2. Copy the appdata directory:
+   ```bash
+   cp -r /mnt/user/appdata/classifarr /mnt/user/backups/classifarr-$(date +%Y%m%d)
+   ```
+3. Restart the container
+
+### Restore
+
+1. Stop the Classifarr container
+2. Replace the appdata directory with backup:
+   ```bash
+   rm -rf /mnt/user/appdata/classifarr
+   cp -r /mnt/user/backups/classifarr-YYYYMMDD /mnt/user/appdata/classifarr
+   chown -R 99:100 /mnt/user/appdata/classifarr
+   ```
+3. Restart the container
 
 ## Support
 
@@ -129,14 +208,14 @@ Classifarr automatically generates a secure random password for the PostgreSQL d
 
 ## UnRaid Specific Notes
 
-- Compatible with UnRaid 6.9+
-- Runs on bridge network by default
-- Uses host path for data persistence
+- Compatible with UnRaid 6.9+ and 7.0+
+- Uses bridge network by default
 - PostgreSQL runs inside the container (no external database required)
-- Auto-generates secure database credentials on first run
+- All data stored in single appdata directory for easy backup
+- Supports User Scripts plugin for automation
 
 ## Links
 
 - **Docker Repository**: https://github.com/cloudbyday90/Classifarr/pkgs/container/classifarr
-- **Docker Hub**: https://hub.docker.com/r/cloudbyday90/classifarr
 - **Source Code**: https://github.com/cloudbyday90/Classifarr
+- **Wiki**: https://github.com/cloudbyday90/Classifarr/wiki

@@ -19,12 +19,12 @@
 const express = require('express');
 const db = require('../config/database');
 const discordBot = require('../services/discordBot');
-const { requireAuth } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Apply authentication to all routes
-router.use(requireAuth);
+router.use(authenticateToken);
 
 /**
  * @swagger
