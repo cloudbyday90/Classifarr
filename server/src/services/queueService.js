@@ -131,13 +131,15 @@ class QueueService {
     async checkOllamaAvailability() {
         try {
             // Get AI config
-            const configResult = await db.query('SELECT * FROM ai_config LIMIT 1');
+            const configResult = await db.query('SELECT * FROM ollama_config LIMIT 1');
             if (!configResult.rows[0]) {
                 return false;
             }
 
             const config = configResult.rows[0];
-            const ollamaUrl = config.api_url || 'http://localhost:11434';
+            const host = config.host || 'host.docker.internal';
+            const port = config.port || 11434;
+            const ollamaUrl = `http://${host}:${port}`;
 
             // Quick health check
             const controller = new AbortController();
