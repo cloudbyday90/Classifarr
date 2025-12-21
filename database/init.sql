@@ -121,6 +121,7 @@ quality_profile_id INTEGER,
 
 -- Full Radarr/Sonarr Settings (preferred method)
 
+
 radarr_settings JSONB DEFAULT '{}',
     sonarr_settings JSONB DEFAULT '{}',
     
@@ -268,6 +269,7 @@ CREATE TABLE notification_config (
     enabled BOOLEAN DEFAULT false,
 
 -- Discord Bot Extended Configuration
+
 
 notify_on_classification BOOLEAN DEFAULT true,
     notify_on_error BOOLEAN DEFAULT true,
@@ -436,6 +438,7 @@ reason TEXT,
 metadata JSONB,
 
 -- Status
+
 
 status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'failed', 'corrected')),
     error_message TEXT,
@@ -724,10 +727,10 @@ VALUES ('basic', 5, false);
 -- ===========================================
 -- RUN MIGRATIONS
 -- ===========================================
-\i /docker-entrypoint-initdb.d/migrations/001_add_arr_settings.sql
-\i /docker-entrypoint-initdb.d/migrations/002_add_arr_connection_fields.sql
-\i /docker-entrypoint-initdb.d/migrations/003_media_server_content_confidence.sql
-\i /docker-entrypoint-initdb.d/migrations/004_enhanced_logging.sql
-\i /docker-entrypoint-initdb.d/migrations/005_add_require_all_confirmations_setting.sql
-\i /docker-entrypoint-initdb.d/migrations/006_add_clarification_settings.sql
-\i /docker-entrypoint-initdb.d/migrations/007_add_clarification_response.sql
+\i /app/database/migrations/001_add_arr_settings.sql
+\i /app/database/migrations/002_add_arr_connection_fields.sql
+\i /app/database/migrations/003_media_server_content_confidence.sql
+\i /app/database/migrations/004_enhanced_logging.sql
+\i /app/database/migrations/005_add_require_all_confirmations_setting.sql
+\i /app/database/migrations/006_add_clarification_settings.sql
+\i /app/database/migrations/007_add_clarification_response.sql
