@@ -60,7 +60,8 @@ import {
   DocumentTextIcon,
   CogIcon,
   ServerIcon,
-  PlusCircleIcon
+  PlusCircleIcon,
+  ChartBarIcon
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -71,6 +72,7 @@ const mainMenuItems = [
   { path: '/activity', label: 'Activity', icon: ClockIcon },
   { path: '/history', label: 'History', icon: DocumentTextIcon },
   { path: '/request', label: 'Request', icon: PlusCircleIcon },
+  { path: '/statistics', label: 'Statistics', icon: ChartBarIcon },
   { path: '/settings', label: 'Settings', icon: CogIcon },
 ]
 

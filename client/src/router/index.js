@@ -77,6 +77,11 @@ const router = createRouter({
           component: () => import('@/views/ManualRequest.vue'),
         },
         {
+          path: '/statistics',
+          name: 'Statistics',
+          component: () => import('@/views/Statistics.vue'),
+        },
+        {
           path: '/settings',
           name: 'Settings',
           component: () => import('@/views/Settings.vue'),

@@ -31,6 +31,7 @@ const jellyfinAuthRouter = require('./jellyfinAuth');
 const embyAuthRouter = require('./embyAuth');
 const queueRouter = require('./queue');
 const requestsRouter = require('./requests');
+const statsRouter = require('./stats');
 
 const router = express.Router();
 
@@ -49,6 +50,7 @@ router.use('/jellyfin', jellyfinAuthRouter);
 router.use('/emby', embyAuthRouter);
 router.use('/queue', queueRouter);
 router.use('/requests', requestsRouter);
+router.use('/stats', statsRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {

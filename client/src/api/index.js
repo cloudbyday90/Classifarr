@@ -349,4 +349,12 @@ export default {
   getRecentManualRequests(limit = 10) {
     return apiClient.get('/requests/recent', { params: { limit } })
   },
+
+  // Statistics
+  getDetailedStats() {
+    return apiClient.get('/stats/detailed')
+  },
+  getDailyStats(days = 30) {
+    return apiClient.get('/stats/daily', { params: { days } })
+  },
 }
