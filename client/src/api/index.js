@@ -374,4 +374,15 @@ export default {
   runScheduledTask(id) {
     return apiClient.post(`/scheduler/${id}/run`)
   },
+
+  // Backup
+  exportBackup() {
+    return apiClient.get('/backup/export')
+  },
+  importBackup(data, options = {}) {
+    return apiClient.post('/backup/import', { data, options })
+  },
+  previewBackup(data) {
+    return apiClient.post('/backup/preview', { data })
+  },
 }

@@ -48,6 +48,7 @@ import Discord from './settings/Discord.vue'
 import Webhooks from './settings/Webhooks.vue'
 import Queue from './settings/Queue.vue'
 import Scheduler from './settings/Scheduler.vue'
+import Backup from './settings/Backup.vue'
 import SSL from './settings/SSL.vue'
 import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
@@ -65,6 +66,7 @@ const tabs = [
   { id: 'webhooks', label: 'Webhooks', component: Webhooks },
   { id: 'queue', label: 'Queue', component: Queue },
   { id: 'scheduler', label: 'Scheduler', component: Scheduler },
+  { id: 'backup', label: 'Backup', component: Backup },
   { id: 'confidence', label: 'Confidence', component: Confidence },
   { id: 'ssl', label: 'SSL/HTTPS', component: SSL },
   { id: 'logs', label: 'Logs', component: Logs },
