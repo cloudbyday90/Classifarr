@@ -23,6 +23,11 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/views/Login.vue'),
+    },
+    {
       path: '/setup-account',
       name: 'SetupAccount',
       component: () => import('@/views/SetupAccount.vue'),
@@ -81,10 +86,10 @@ const router = createRouter({
   ],
 })
 
-// Navigation guard to check setup status
+// Navigation guard to check setup status and authentication
 router.beforeEach(async (to, from, next) => {
-  // Skip for setup pages
-  if (to.name === 'SetupAccount' || to.name === 'SetupWizard') {
+  // Skip for auth-related pages
+  if (to.name === 'Login' || to.name === 'SetupAccount' || to.name === 'SetupWizard') {
     next()
     return
   }
@@ -93,16 +98,46 @@ router.beforeEach(async (to, from, next) => {
     // Check if user account setup is required
     const setupResponse = await fetch('/api/setup/status')
     const setupData = await setupResponse.json()
-    
+
     if (setupData.setupRequired && to.name !== 'SetupAccount') {
       next('/setup-account')
       return
     }
 
+    // If setup is complete, check for valid authentication token
+    if (!setupData.setupRequired) {
+      const token = localStorage.getItem('auth_token')
+
+      if (!token) {
+        // No token, redirect to login with original destination
+        next({ name: 'Login', query: { redirect: to.fullPath } })
+        return
+      }
+
+      // Verify token is still valid
+      try {
+        const authResponse = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+
+        if (!authResponse.ok) {
+          // Token invalid/expired, clear it and redirect to login
+          localStorage.removeItem('auth_token')
+          next({ name: 'Login', query: { redirect: to.fullPath } })
+          return
+        }
+      } catch (authError) {
+        // Auth check failed, redirect to login
+        localStorage.removeItem('auth_token')
+        next({ name: 'Login', query: { redirect: to.fullPath } })
+        return
+      }
+    }
+
     // Check if TMDB and other services are configured
     const response = await fetch('/api/settings/setup-status')
     const data = await response.json()
-    
+
     if (!data.setupComplete && to.name !== 'SetupWizard') {
       next('/setup')
     } else {
@@ -115,3 +150,4 @@ router.beforeEach(async (to, from, next) => {
 })
 
 export default router
+

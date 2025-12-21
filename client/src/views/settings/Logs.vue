@@ -303,7 +303,7 @@ onMounted(() => {
 
 async function loadStats() {
   try {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token')
     const response = await axios.get('/api/logs/stats', {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -318,7 +318,7 @@ async function loadLogs() {
   error.value = null
   
   try {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token')
     const params = new URLSearchParams({
       page: pagination.value.page,
       limit: pagination.value.limit
@@ -357,7 +357,7 @@ function changePage(page) {
 
 async function viewDetails(errorId) {
   try {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token')
     const response = await axios.get(`/api/logs/error/${errorId}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -377,7 +377,7 @@ function closeModal() {
 
 async function copyBugReport() {
   try {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token')
     const response = await axios.get(`/api/logs/error/${selectedLog.value.error_id}/report`, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -395,7 +395,7 @@ async function copyBugReport() {
 
 async function resolveError() {
   try {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token')
     await axios.post(
       `/api/logs/error/${selectedLog.value.error_id}/resolve`,
       {},
@@ -412,7 +412,7 @@ async function resolveError() {
 
 async function exportLogs() {
   try {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token')
     const params = new URLSearchParams()
     
     if (filters.value.level) params.append('level', filters.value.level)
@@ -440,7 +440,7 @@ async function cleanupLogs() {
   }
   
   try {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('auth_token')
     const response = await axios.post('/api/logs/cleanup', {}, {
       headers: { Authorization: `Bearer ${token}` }
     })
