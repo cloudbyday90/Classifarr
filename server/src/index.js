@@ -121,6 +121,15 @@ async function initializeServices() {
   } catch (error) {
     console.warn('Queue worker start failed:', error.message);
   }
+
+  // Start scheduler service
+  try {
+    const schedulerService = require('./services/schedulerService');
+    schedulerService.start();
+    console.log('Scheduler service started successfully');
+  } catch (error) {
+    console.warn('Scheduler service start failed:', error.message);
+  }
 }
 
 // Start server

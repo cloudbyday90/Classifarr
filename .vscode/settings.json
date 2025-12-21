@@ -1,0 +1,11 @@
+{
+    "css.validate": false,
+    "scss.validate": false,
+    "less.validate": false,
+    "tailwindCSS.includeLanguages": {
+        "vue": "html"
+    },
+    "editor.quickSuggestions": {
+        "strings": true
+    }
+}

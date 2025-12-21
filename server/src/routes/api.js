@@ -32,6 +32,7 @@ const embyAuthRouter = require('./embyAuth');
 const queueRouter = require('./queue');
 const requestsRouter = require('./requests');
 const statsRouter = require('./stats');
+const schedulerRouter = require('./scheduler');
 
 const router = express.Router();
 
@@ -51,6 +52,7 @@ router.use('/emby', embyAuthRouter);
 router.use('/queue', queueRouter);
 router.use('/requests', requestsRouter);
 router.use('/stats', statsRouter);
+router.use('/scheduler', schedulerRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {

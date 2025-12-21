@@ -357,4 +357,21 @@ export default {
   getDailyStats(days = 30) {
     return apiClient.get('/stats/daily', { params: { days } })
   },
+
+  // Scheduler
+  getScheduledTasks() {
+    return apiClient.get('/scheduler')
+  },
+  createScheduledTask(data) {
+    return apiClient.post('/scheduler', data)
+  },
+  updateScheduledTask(id, data) {
+    return apiClient.put(`/scheduler/${id}`, data)
+  },
+  deleteScheduledTask(id) {
+    return apiClient.delete(`/scheduler/${id}`)
+  },
+  runScheduledTask(id) {
+    return apiClient.post(`/scheduler/${id}/run`)
+  },
 }
