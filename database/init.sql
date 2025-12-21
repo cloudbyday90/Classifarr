@@ -49,11 +49,10 @@ DROP TABLE IF EXISTS settings CASCADE;
 -- AUTHENTICATION & SECURITY TABLES
 -- ===========================================
 
--- Users Table
+-- Users Table (email removed - username is the only identifier)
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    username VARCHAR(100) NOT NULL UNIQUE,
-    email VARCHAR(255) UNIQUE, -- Optional, can be NULL
+    username VARCHAR(255) NOT NULL UNIQUE, -- Can be email if user chooses
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
     is_active BOOLEAN DEFAULT true,
@@ -516,8 +515,6 @@ CREATE TABLE app_log (
 
 CREATE INDEX idx_users_username ON users (username);
 
-CREATE INDEX idx_users_email ON users (email);
-
 CREATE INDEX idx_audit_log_user ON audit_log (user_id);
 
 CREATE INDEX idx_audit_log_created_at ON audit_log (created_at);
@@ -739,4 +736,4 @@ VALUES ('basic', 5, false);
 \i /app/database/migrations/008_add_task_queue.sql
 \i /app/database/migrations/009_add_multi_manager.sql
 \i /app/database/migrations/010_add_scheduled_tasks.sql
-\i /app/database/migrations/011_make_email_optional.sql
+\i /app/database/migrations/011_remove_email_column.sql

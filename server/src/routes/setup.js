@@ -59,7 +59,7 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Setup already completed. Users already exist.' });
     }
 
-    const { username, email, password, confirmPassword } = req.body;
+    const { username, password, confirmPassword } = req.body;
 
     // Validation
     if (!username || !password) {
@@ -76,13 +76,13 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
       return res.status(400).json({ error: passwordValidation.message });
     }
 
-    // Create admin user (email is optional)
+    // Create admin user (username can be an email if user chooses)
     const passwordHash = await authService.hashPassword(password);
     const result = await db.query(
-      `INSERT INTO users (username, email, password_hash, role, is_active, must_change_password)
-       VALUES ($1, $2, $3, 'admin', true, false)
-       RETURNING id, username, email, role`,
-      [username, email || null, passwordHash]
+      `INSERT INTO users (username, password_hash, role, is_active, must_change_password)
+       VALUES ($1, $2, 'admin', true, false)
+       RETURNING id, username, role`,
+      [username, passwordHash]
     );
 
     // Log the setup completion

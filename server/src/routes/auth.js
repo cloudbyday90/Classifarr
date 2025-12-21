@@ -58,7 +58,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     const { identifier, password } = req.body;
 
     if (!identifier || !password) {
-      return res.status(400).json({ error: 'Username/email and password are required' });
+      return res.status(400).json({ error: 'Username and password are required' });
     }
 
     const user = await authService.authenticate(identifier, password);
@@ -88,7 +88,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 router.get('/me', authenticateToken, authLimiter, async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT id, username, email, role, is_active, last_login, created_at FROM users WHERE id = $1',
+      'SELECT id, username, role, is_active, last_login, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
 

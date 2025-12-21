@@ -98,15 +98,14 @@ async function getJWTSecret() {
  */
 async function generateToken(user) {
   const secret = await getJWTSecret();
-  
+
   const payload = {
     id: user.id,
     username: user.username,
-    email: user.email,
     role: user.role,
   };
 
-  return jwt.sign(payload, secret, { 
+  return jwt.sign(payload, secret, {
     expiresIn: '7d',
     issuer: 'classifarr'
   });
@@ -117,7 +116,7 @@ async function generateToken(user) {
  */
 async function verifyToken(token) {
   const secret = await getJWTSecret();
-  
+
   try {
     return jwt.verify(token, secret);
   } catch (error) {
@@ -149,15 +148,12 @@ async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
 }
 
 /**
- * Authenticate user with username/email and password
+ * Authenticate user with username and password
+ * Username can be an email if that's what the user registered with
  */
 async function authenticate(identifier, password) {
-  // Check if identifier is email or username
-  // Basic email pattern check - looks for @ with chars on both sides
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
-  const query = isEmail
-    ? 'SELECT * FROM users WHERE email = $1 AND is_active = true'
-    : 'SELECT * FROM users WHERE username = $1 AND is_active = true';
+  // Always search by username (which may be an email format)
+  const query = 'SELECT * FROM users WHERE username = $1 AND is_active = true';
 
   const result = await db.query(query, [identifier]);
 
