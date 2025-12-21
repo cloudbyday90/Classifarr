@@ -27,34 +27,55 @@ umask "$UMASK"
 
 # Create or modify the classifarr group
 if ! getent group classifarr >/dev/null; then
-    echo "Creating classifarr group with GID $PGID..."
-    addgroup -g "$PGID" classifarr
+    # Check if a group with target GID already exists
+    EXISTING_GROUP=$(getent group "$PGID" | cut -d: -f1)
+    if [ -n "$EXISTING_GROUP" ]; then
+        echo "GID $PGID already used by group '$EXISTING_GROUP', will use that group"
+        # Create classifarr user that will be added to the existing group later
+    else
+        echo "Creating classifarr group with GID $PGID..."
+        addgroup -g "$PGID" classifarr
+    fi
 else
-    # Modify existing group if GID differs
+    # Modify existing classifarr group if GID differs
     CURRENT_GID=$(getent group classifarr | cut -d: -f3)
     if [ "$CURRENT_GID" != "$PGID" ]; then
-        echo "Modifying classifarr group GID from $CURRENT_GID to $PGID..."
-        groupmod -g "$PGID" classifarr
+        # Check if target GID is already in use
+        EXISTING_GROUP=$(getent group "$PGID" | cut -d: -f1)
+        if [ -n "$EXISTING_GROUP" ] && [ "$EXISTING_GROUP" != "classifarr" ]; then
+            echo "GID $PGID already used by group '$EXISTING_GROUP', will use that group"
+            # Delete classifarr group since we'll use the existing one
+            delgroup classifarr 2>/dev/null || true
+        else
+            echo "Modifying classifarr group GID from $CURRENT_GID to $PGID..."
+            groupmod -g "$PGID" classifarr 2>/dev/null || echo "Could not modify GID, continuing..."
+        fi
     fi
 fi
 
+# Determine which group to use for classifarr user
+TARGET_GROUP=$(getent group "$PGID" | cut -d: -f1)
+if [ -z "$TARGET_GROUP" ]; then
+    TARGET_GROUP="classifarr"
+fi
+echo "Using group: $TARGET_GROUP (GID: $PGID)"
+
 # Create or modify the classifarr user
 if ! id classifarr >/dev/null 2>&1; then
-    echo "Creating classifarr user with UID $PUID..."
-    adduser -u "$PUID" -G classifarr -s /bin/sh -D classifarr
+    echo "Creating classifarr user with UID $PUID in group $TARGET_GROUP..."
+    adduser -u "$PUID" -G "$TARGET_GROUP" -s /bin/sh -D classifarr
 else
     # Modify existing user if UID differs
     CURRENT_UID=$(id -u classifarr)
     if [ "$CURRENT_UID" != "$PUID" ]; then
         echo "Modifying classifarr user UID from $CURRENT_UID to $PUID..."
-        usermod -u "$PUID" classifarr
+        usermod -u "$PUID" classifarr 2>/dev/null || echo "Could not modify UID, continuing..."
     fi
-    # Ensure user's primary group is classifarr
+    # Ensure user's primary group is correct
     CURRENT_PRIMARY_GID=$(id -g classifarr)
-    CLASSIFARR_GID=$(getent group classifarr | cut -d: -f3)
-    if [ "$CURRENT_PRIMARY_GID" != "$CLASSIFARR_GID" ]; then
-        echo "Setting classifarr as primary group for classifarr user..."
-        usermod -g classifarr classifarr
+    if [ "$CURRENT_PRIMARY_GID" != "$PGID" ]; then
+        echo "Setting $TARGET_GROUP as primary group for classifarr user..."
+        usermod -g "$TARGET_GROUP" classifarr 2>/dev/null || echo "Could not modify group, continuing..."
     fi
 fi
 
