@@ -8,59 +8,136 @@
 
 <template>
   <div class="space-y-6">
-    <Card title="Welcome to Classifarr" description="AI-powered media classification for the *arr ecosystem">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-        <div class="bg-background rounded-lg p-4 border border-gray-800">
-          <div class="text-3xl font-bold text-primary">{{ stats.total || 0 }}</div>
-          <div class="text-sm text-gray-400 mt-1">Total Classifications</div>
-        </div>
-        <div class="bg-background rounded-lg p-4 border border-gray-800">
-          <div class="text-3xl font-bold text-success">{{ libraries.length }}</div>
-          <div class="text-sm text-gray-400 mt-1">Active Libraries</div>
-        </div>
-        <div class="bg-background rounded-lg p-4 border border-gray-800">
-          <div class="text-3xl font-bold text-warning">{{ stats.avgConfidence || 0 }}%</div>
-          <div class="text-sm text-gray-400 mt-1">Avg Confidence</div>
-        </div>
-      </div>
-    </Card>
-
-    <Card title="Recent Classifications">
-      <div v-if="recentHistory.length === 0" class="text-center py-8 text-gray-400">
-        No classifications yet
-      </div>
-      <div v-else class="space-y-2">
-        <div
-          v-for="item in recentHistory"
-          :key="item.id"
-          class="flex items-center justify-between p-3 bg-background rounded-lg border border-gray-800"
-        >
-          <div class="flex-1">
-            <div class="font-medium">{{ item.title }}</div>
-            <div class="text-sm text-gray-400">{{ item.library_name }}</div>
+    <!-- System Status Row -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">{{ queueStats.ollamaAvailable ? '🟢' : '🔴' }}</span>
+          <div>
+            <div class="text-sm font-medium">Ollama</div>
+            <div class="text-xs text-gray-400">{{ queueStats.ollamaAvailable ? 'Online' : 'Offline' }}</div>
           </div>
-          <Badge :variant="getConfidenceVariant(item.confidence)">
-            {{ item.confidence }}% {{ item.method }}
-          </Badge>
         </div>
       </div>
-    </Card>
-
-    <Card title="Quick Actions">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Button @click="$router.push('/libraries')">
-          📚 Manage Libraries
-        </Button>
-        <Button @click="$router.push('/settings')" variant="secondary">
-          ⚙️ Configure Settings
-        </Button>
+      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <div class="text-2xl font-bold text-blue-400">{{ queueStats.pending }}</div>
+        <div class="text-xs text-gray-400">Queue Pending</div>
       </div>
-    </Card>
+      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <div class="text-2xl font-bold text-primary">{{ stats.total || 0 }}</div>
+        <div class="text-xs text-gray-400">Total Classifications</div>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <div class="text-2xl font-bold text-success">{{ libraries.length }}</div>
+        <div class="text-xs text-gray-400">Active Libraries</div>
+      </div>
+      <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <div class="text-2xl font-bold text-warning">{{ stats.avgConfidence || 0 }}%</div>
+        <div class="text-xs text-gray-400">Avg Confidence</div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Recent Classifications (2/3 width) -->
+      <div class="lg:col-span-2">
+        <Card title="Recent Classifications">
+          <div v-if="recentHistory.length === 0" class="text-center py-8 text-gray-400">
+            No classifications yet. Submit a request to get started!
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="item in recentHistory"
+              :key="item.id"
+              class="flex items-center justify-between p-3 bg-background rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
+            >
+              <div class="flex items-center gap-3">
+                <span class="text-xl">{{ item.media_type === 'movie' ? '🎬' : '📺' }}</span>
+                <div>
+                  <div class="font-medium">{{ item.title }}</div>
+                  <div class="text-sm text-gray-400">→ {{ item.library_name }}</div>
+                </div>
+              </div>
+              <Badge :variant="getConfidenceVariant(item.confidence)">
+                {{ item.confidence }}%
+              </Badge>
+            </div>
+          </div>
+          <div v-if="recentHistory.length > 0" class="mt-4 text-center">
+            <Button @click="$router.push('/history')" variant="ghost" size="sm">
+              View All History →
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      <!-- Sidebar (1/3 width) -->
+      <div class="space-y-6">
+        <!-- Quick Actions -->
+        <Card title="Quick Actions">
+          <div class="space-y-3">
+            <Button @click="$router.push('/request')" class="w-full">
+              ➕ New Request
+            </Button>
+            <Button @click="$router.push('/libraries')" variant="secondary" class="w-full">
+              📚 Libraries
+            </Button>
+            <Button @click="$router.push('/settings?tab=queue')" variant="ghost" class="w-full">
+              📋 Queue Status
+            </Button>
+          </div>
+        </Card>
+
+        <!-- Queue Summary -->
+        <Card title="Processing Queue">
+          <div class="space-y-3">
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-400">Pending</span>
+              <span>{{ queueStats.pending }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-400">Processing</span>
+              <span class="text-yellow-400">{{ queueStats.processing }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-400">Completed</span>
+              <span class="text-green-400">{{ queueStats.completed }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-400">Failed</span>
+              <span class="text-red-400">{{ queueStats.failed }}</span>
+            </div>
+          </div>
+        </Card>
+
+        <!-- Classification Methods -->
+        <Card title="Classification Methods">
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-gray-400">Exact Match</span>
+              <span class="text-green-400">{{ methodStats.exact || 0 }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Learned</span>
+              <span class="text-blue-400">{{ methodStats.learned || 0 }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Rule-Based</span>
+              <span class="text-purple-400">{{ methodStats.rule || 0 }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">AI</span>
+              <span class="text-yellow-400">{{ methodStats.ai || 0 }}</span>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useLibrariesStore } from '@/stores/libraries'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
@@ -72,20 +149,54 @@ const { libraries } = librariesStore
 
 const stats = ref({})
 const recentHistory = ref([])
+const queueStats = ref({ pending: 0, processing: 0, completed: 0, failed: 0, ollamaAvailable: true })
+const methodStats = ref({})
+let pollInterval = null
 
 onMounted(async () => {
+  await loadData()
+  // Poll queue stats every 5 seconds
+  pollInterval = setInterval(loadQueueStats, 5000)
+})
+
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
+
+const loadData = async () => {
   await librariesStore.fetchLibraries()
   
   try {
-    const statsRes = await api.getStats()
-    stats.value = statsRes.data
+    const [statsRes, historyRes, queueRes] = await Promise.all([
+      api.getStats(),
+      api.getHistory({ page: 1, limit: 8 }),
+      api.getQueueStats()
+    ])
     
-    const historyRes = await api.getHistory({ page: 1, limit: 5 })
+    stats.value = statsRes.data
     recentHistory.value = historyRes.data.data || []
+    queueStats.value = queueRes.data
+    
+    // Calculate method stats from recent history
+    const methods = {}
+    recentHistory.value.forEach(item => {
+      const method = item.method || 'unknown'
+      methods[method] = (methods[method] || 0) + 1
+    })
+    methodStats.value = methods
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
   }
-})
+}
+
+const loadQueueStats = async () => {
+  try {
+    const res = await api.getQueueStats()
+    queueStats.value = res.data
+  } catch (error) {
+    console.error('Failed to load queue stats:', error)
+  }
+}
 
 const getConfidenceVariant = (confidence) => {
   if (confidence >= 90) return 'success'
