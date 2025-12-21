@@ -49,6 +49,29 @@ export default {
     return apiClient.post('/media-server/sync')
   },
 
+  // Plex OAuth
+  createPlexPin() {
+    return apiClient.post('/plex/pin')
+  },
+  checkPlexPin(pinId) {
+    return apiClient.get(`/plex/pin/${pinId}`)
+  },
+  getPlexServers(authToken) {
+    return apiClient.post('/plex/servers', { authToken })
+  },
+  getPlexUser(authToken) {
+    return apiClient.post('/plex/user', { authToken })
+  },
+  testPlexConnection(url, token) {
+    return apiClient.post('/plex/test-connection', { url, token })
+  },
+  findPlexConnection(server) {
+    return apiClient.post('/plex/find-connection', { server })
+  },
+  savePlexServer(name, url, token) {
+    return apiClient.post('/plex/save-server', { name, url, token })
+  },
+
   // Libraries
   getLibraries() {
     return apiClient.get('/libraries')
