@@ -24,11 +24,19 @@ const logger = createLogger('contentTypeAnalyzer');
 class ContentTypeAnalyzer {
   constructor() {
     // Detection patterns with keywords and confidence weights
+    // Pattern configuration options:
+    // - keywords: Array of strings to match in title/overview/keywords
+    // - requiredGenres: Array of genre names that must match (all required unless partial match)
+    // - ratingCheck: Array of ratings that boost confidence (e.g., mature ratings for adult content)
+    // - excludeRatings: Array of ratings that disqualify detection (e.g., kid ratings for adult content)
+    // - languageCheck: Array of language codes that boost confidence (adds 40 points)
+    // - confidence: Base confidence score (0-100) for the pattern
+    // - suggestedLabels: Labels to apply when pattern is detected
     this.patterns = {
       standup: {
         keywords: [
           'stand-up comedy', 'comedy special', 'standup', 'live comedy',
-          'recorded live at', 'comedy tour', 'one man show'
+          'recorded live at', 'comedy tour', 'one man show', 'comedian'
         ],
         requiredGenres: ['Documentary', 'Comedy'],
         confidence: 85,
@@ -167,36 +175,15 @@ class ContentTypeAnalyzer {
     const reasoning = [];
     let detected = false;
 
-    // Check for excluded ratings (e.g., don't detect family-friendly content as adult)
-    if (pattern.excludeRatings && pattern.excludeRatings.includes(data.certification)) {
+    // Early exit for excluded ratings (e.g., family-friendly ratings for adult content)
+    if (pattern.excludeRatings && data.certification && pattern.excludeRatings.includes(data.certification)) {
       return {
         type,
         detected: false,
         confidence: 0,
-        reasoning: [`Excluded due to rating: ${data.certification}`],
+        reasoning: ['Excluded due to rating: ' + data.certification],
         suggestedLabels: pattern.suggestedLabels
       };
-    }
-
-    // Check required genres - must match ALL if specified
-    if (pattern.requiredGenres) {
-      const genreMatches = pattern.requiredGenres.filter(genre => 
-        data.genres.includes(genre.toLowerCase())
-      );
-      
-      if (genreMatches.length === pattern.requiredGenres.length) {
-        confidence += 30;
-        reasoning.push(`Matched required genres: ${genreMatches.join(', ')}`);
-      } else {
-        // Required genres not fully matched - return no detection
-        return {
-          type,
-          detected: false,
-          confidence: 0,
-          reasoning: [`Required genres not matched (need: ${pattern.requiredGenres.join(', ')}, have: ${data.genres.join(', ')})`],
-          suggestedLabels: pattern.suggestedLabels
-        };
-      }
     }
 
     // Check keywords in overview and title
@@ -210,6 +197,22 @@ class ContentTypeAnalyzer {
       reasoning.push(`Matched keywords: ${keywordMatches.slice(0, 3).join(', ')}`);
     }
 
+    // Check required genres
+    if (pattern.requiredGenres) {
+      const genreMatches = pattern.requiredGenres.filter(genre => 
+        data.genres.includes(genre.toLowerCase())
+      );
+      
+      if (genreMatches.length === pattern.requiredGenres.length) {
+        confidence += 30;
+        reasoning.push(`Matched required genres: ${genreMatches.join(', ')}`);
+      } else if (genreMatches.length > 0) {
+        // Reduced bonus for partial match to avoid false positives
+        confidence += 10;
+        reasoning.push(`Partial genre match: ${genreMatches.join(', ')}`);
+      }
+    }
+
     // Check rating
     if (pattern.ratingCheck && pattern.ratingCheck.includes(data.certification)) {
       confidence += 20;
@@ -218,15 +221,18 @@ class ContentTypeAnalyzer {
 
     // Check language
     if (pattern.languageCheck && pattern.languageCheck.includes(data.originalLanguage)) {
-      confidence += 50;
+      confidence += 40;
       reasoning.push(`Matched language: ${data.originalLanguage}`);
     }
 
     // Consider pattern's base confidence
     if (confidence > 0) {
-      detected = true;
       // Use weighted average favoring accumulated evidence (70%) over base confidence (30%)
       confidence = Math.min((confidence * 0.7) + (pattern.confidence * 0.3), 100);
+      
+      // Only mark as detected if confidence meets minimum threshold
+      // This prevents very low confidence false positives
+      detected = confidence >= 40;
     }
 
     return {
