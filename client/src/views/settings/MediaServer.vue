@@ -149,6 +149,55 @@
             </div>
           </div>
 
+          <!-- Connection Selection (shown when server is selected) -->
+          <div v-if="selectedServer" class="mt-4 p-4 bg-gray-900 rounded-lg space-y-3">
+            <h4 class="font-medium text-sm text-gray-300">Select Connection</h4>
+            <p class="text-xs text-gray-500">Choose how Classifarr should connect to this server. If auto-detection failed, try a different connection.</p>
+            
+            <div class="space-y-2">
+              <div
+                v-for="(conn, index) in selectedServer.connections"
+                :key="index"
+                @click="selectConnection(conn)"
+                :class="[
+                  'p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between',
+                  selectedConnection?.uri === conn.uri
+                    ? 'border-orange-500 bg-orange-500/10'
+                    : 'border-gray-700 hover:border-gray-600'
+                ]"
+              >
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium">
+                      {{ conn.relay ? '🌐 Relay' : (conn.local ? '🏠 Local' : '🌍 Remote') }}
+                    </span>
+                    <span :class="[
+                      'text-xs px-1.5 py-0.5 rounded',
+                      conn.protocol === 'https' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'
+                    ]">
+                      {{ conn.protocol.toUpperCase() }}
+                    </span>
+                  </div>
+                  <div class="text-xs text-gray-400 mt-1 font-mono">{{ conn.address }}:{{ conn.port }}</div>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                  <button
+                    @click.stop="testSingleConnection(conn)"
+                    :disabled="testingConnection === conn.uri"
+                    class="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+                  >
+                    {{ testingConnection === conn.uri ? 'Testing...' : 'Test' }}
+                  </button>
+                  <span v-if="connectionTestResults[conn.uri]" class="text-sm">
+                    <span v-if="connectionTestResults[conn.uri].success" class="text-green-400">✓</span>
+                    <span v-else class="text-red-400">✗</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button 
             @click="confirmPlexServer"
             :disabled="!selectedServer || confirmingServer"
@@ -520,6 +569,9 @@ const confirmingServer = ref(false)
 const plexPinId = ref(null)
 const plexAuthWindow = ref(null)
 const pollInterval = ref(null)
+const selectedConnection = ref(null)
+const testingConnection = ref(null)
+const connectionTestResults = ref({})
 
 // Jellyfin Auth state
 const jellyfinUrl = ref('')
@@ -709,6 +761,31 @@ const testServerConnection = async (server) => {
 
 const selectPlexServer = (server) => {
   selectedServer.value = server
+  // Reset connection selection when switching servers
+  selectedConnection.value = null
+  connectionTestResults.value = {}
+}
+
+const selectConnection = (conn) => {
+  selectedConnection.value = conn
+}
+
+const testSingleConnection = async (conn) => {
+  if (!selectedServer.value) return
+  
+  testingConnection.value = conn.uri
+  
+  try {
+    const response = await api.testPlexConnection(conn.uri, selectedServer.value.accessToken)
+    connectionTestResults.value[conn.uri] = {
+      success: response.data.success,
+      serverName: response.data.serverName
+    }
+  } catch (error) {
+    connectionTestResults.value[conn.uri] = { success: false }
+  } finally {
+    testingConnection.value = null
+  }
 }
 
 const confirmPlexServer = async () => {
@@ -718,13 +795,21 @@ const confirmPlexServer = async () => {
   
   try {
     const server = selectedServer.value
-    const testResult = serverTestResults.value[server.clientIdentifier]
     
-    // Get the best connection URL
-    const connectionUrl = testResult?.connection?.uri || 
-                          server.bestConnection?.uri || 
-                          server.preferredConnection?.uri ||
-                          server.connections?.[0]?.uri
+    // Priority: Manually selected connection > auto-tested connection > preferred > first
+    let connectionUrl = null
+    
+    if (selectedConnection.value) {
+      // User manually selected a connection
+      connectionUrl = selectedConnection.value.uri
+    } else {
+      // Fallback to auto-detected
+      const testResult = serverTestResults.value[server.clientIdentifier]
+      connectionUrl = testResult?.connection?.uri || 
+                      server.bestConnection?.uri || 
+                      server.preferredConnection?.uri ||
+                      server.connections?.[0]?.uri
+    }
     
     if (!connectionUrl) {
       toast.error('Could not determine server connection URL')
@@ -759,6 +844,11 @@ const resetPlexAuth = () => {
   selectedServer.value = null
   serverTestResults.value = {}
   showManualEntry.value = false
+  
+  // Reset connection selection state
+  selectedConnection.value = null
+  testingConnection.value = null
+  connectionTestResults.value = {}
   
   if (pollInterval.value) {
     clearInterval(pollInterval.value)
