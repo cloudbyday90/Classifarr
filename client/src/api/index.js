@@ -25,6 +25,18 @@ const apiClient = axios.create({
   },
 })
 
+// Add request interceptor to attach auth token
+apiClient.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  error => Promise.reject(error)
+)
+
 // Add response interceptor for error handling
 apiClient.interceptors.response.use(
   response => response,

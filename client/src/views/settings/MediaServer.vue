@@ -758,7 +758,8 @@ const startPlexAuth = async () => {
     
   } catch (error) {
     console.error('Failed to start Plex auth:', error)
-    toast.error('Failed to start Plex authentication')
+    const errorMsg = error.response?.data?.error || error.message || 'Failed to start Plex authentication'
+    toast.error(errorMsg)
     plexAuthLoading.value = false
   }
 }
