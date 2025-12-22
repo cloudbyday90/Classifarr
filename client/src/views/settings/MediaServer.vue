@@ -995,8 +995,10 @@ const confirmPlexServer = async () => {
     
     toast.success(`Connected to ${server.name}!`)
     
-    // Reset selection state
+    // Reset selection state but keep the connection visible
+    plexAuthToken.value = null
     selectedServer.value = null
+    plexServers.value = []
     
   } catch (error) {
     console.error('Failed to save Plex server:', error)

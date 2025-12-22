@@ -1,5 +1,15 @@
 # Classifarr Release Notes
 
+## v0.18.9-alpha (2025-12-22)
+
+### Fixed
+- **Emby Settings Persistence:** Added database transaction wrapper to Emby server configuration saves to prevent partial data writes and ensure settings persist correctly after page reload
+- **Jellyfin Settings Persistence:** Added database transaction wrapper to Jellyfin server configuration saves to prevent partial data writes and ensure settings persist correctly after page reload
+- **Discord Settings Persistence:** Added database transaction wrapper to Discord notification configuration updates to prevent partial data writes and ensure settings persist correctly after page reload
+- **Plex UI State:** Fixed Plex authentication state management to properly reset after saving server configuration, ensuring consistent behavior with other media server types
+
+---
+
 ## v0.18.8-alpha (2025-12-22)
 
 ### Added

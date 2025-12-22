@@ -100,6 +100,7 @@ router.post('/verify', async (req, res) => {
  *     tags: [Emby Auth]
  */
 router.post('/save', async (req, res) => {
+    const client = await db.pool.connect();
     try {
         const { serverUrl, token, serverName } = req.body;
 
@@ -114,23 +115,31 @@ router.post('/save', async (req, res) => {
             name = info.success ? info.serverName : 'Emby Server';
         }
 
+        await client.query('BEGIN');
+
         // Deactivate existing servers
-        await db.query('UPDATE media_server SET is_active = false');
+        await client.query('UPDATE media_server SET is_active = false');
 
         // Insert new server
-        const result = await db.query(
+        const result = await client.query(
             `INSERT INTO media_server (type, name, url, api_key, is_active)
        VALUES ($1, $2, $3, $4, true)
        RETURNING id, type, name, url, is_active, created_at`,
             ['emby', name, serverUrl, token]
         );
 
+        await client.query('COMMIT');
+
         res.json({
             success: true,
             server: result.rows[0],
         });
     } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Failed to save Emby server:', error.message);
         res.status(500).json({ error: error.message });
+    } finally {
+        client.release();
     }
 });
 
