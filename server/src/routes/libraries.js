@@ -20,6 +20,7 @@ const express = require('express');
 const db = require('../config/database');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
+const mediaSyncService = require('../services/mediaSync');
 const classificationService = require('../services/classification');
 const { createLogger } = require('../utils/logger');
 
@@ -55,8 +56,24 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query('SELECT * FROM libraries WHERE id = $1', [id]);
-    
+    const result = await db.query(`
+      SELECT l.*, 
+        (SELECT COUNT(*)::int FROM media_server_items WHERE library_id = l.id) as item_count,
+        (
+          SELECT json_build_object(
+            'status', status,
+            'items_processed', items_processed,
+            'items_total', items_total
+          )
+          FROM media_server_sync_status 
+          WHERE library_id = l.id 
+          ORDER BY created_at DESC 
+          LIMIT 1
+        ) as sync_status
+      FROM libraries l 
+      WHERE l.id = $1
+    `, [id]);
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Library not found' });
     }
@@ -112,7 +129,7 @@ router.put('/:id', async (req, res) => {
 router.get('/:id/labels', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await db.query(`
       SELECT ll.id, ll.rule_type, lp.id as preset_id, lp.category, lp.name, lp.display_name, lp.description
       FROM library_labels ll
@@ -162,7 +179,7 @@ router.post('/:id/labels', async (req, res) => {
 router.delete('/:id/labels/:labelId', async (req, res) => {
   try {
     const { id, labelId } = req.params;
-    
+
     await db.query(
       'DELETE FROM library_labels WHERE library_id = $1 AND id = $2',
       [id, labelId]
@@ -183,7 +200,7 @@ router.delete('/:id/labels/:labelId', async (req, res) => {
 router.get('/:id/rules', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await db.query(
       'SELECT * FROM library_custom_rules WHERE library_id = $1 ORDER BY created_at DESC',
       [id]
@@ -261,7 +278,7 @@ router.put('/:id/rules/:ruleId', async (req, res) => {
 router.delete('/:id/rules/:ruleId', async (req, res) => {
   try {
     const { ruleId } = req.params;
-    
+
     await db.query('DELETE FROM library_custom_rules WHERE id = $1', [ruleId]);
 
     res.json({ success: true });
@@ -279,23 +296,23 @@ router.delete('/:id/rules/:ruleId', async (req, res) => {
 router.get('/:id/arr-options', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Get library to determine media type and arr configuration
     const libraryResult = await db.query('SELECT * FROM libraries WHERE id = $1', [id]);
     if (libraryResult.rows.length === 0) {
       return res.status(404).json({ error: 'Library not found' });
     }
-    
+
     const library = libraryResult.rows[0];
     const options = {};
-    
+
     if (library.media_type === 'movie' && library.arr_id) {
       // Get Radarr options
       const radarrConfig = await db.query(
         'SELECT * FROM radarr_config WHERE id = $1 AND is_active = true',
         [library.arr_id]
       );
-      
+
       if (radarrConfig.rows.length > 0) {
         const config = radarrConfig.rows[0];
         try {
@@ -304,7 +321,7 @@ router.get('/:id/arr-options', async (req, res) => {
             radarrService.getQualityProfiles(config.url, config.api_key),
             radarrService.getTags(config.url, config.api_key)
           ]);
-          
+
           options.rootFolders = rootFolders.map(rf => ({
             id: rf.id,
             path: rf.path,
@@ -326,7 +343,7 @@ router.get('/:id/arr-options', async (req, res) => {
         'SELECT * FROM sonarr_config WHERE id = $1 AND is_active = true',
         [library.arr_id]
       );
-      
+
       if (sonarrConfig.rows.length > 0) {
         const config = sonarrConfig.rows[0];
         try {
@@ -335,7 +352,7 @@ router.get('/:id/arr-options', async (req, res) => {
             sonarrService.getQualityProfiles(config.url, config.api_key),
             sonarrService.getTags(config.url, config.api_key)
           ]);
-          
+
           options.rootFolders = rootFolders.map(rf => ({
             id: rf.id,
             path: rf.path,
@@ -353,7 +370,7 @@ router.get('/:id/arr-options', async (req, res) => {
         }
       }
     }
-    
+
     res.json(options);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -370,22 +387,22 @@ router.put('/:id/arr-settings', async (req, res) => {
   try {
     const { id } = req.params;
     const { settings } = req.body;
-    
+
     // Get library to determine media type
     const libraryResult = await db.query('SELECT media_type FROM libraries WHERE id = $1', [id]);
     if (libraryResult.rows.length === 0) {
       return res.status(404).json({ error: 'Library not found' });
     }
-    
+
     const library = libraryResult.rows[0];
-    
+
     // Validate media_type to prevent SQL injection
     if (library.media_type !== 'movie' && library.media_type !== 'tv') {
       return res.status(400).json({ error: 'Invalid media type' });
     }
-    
+
     const settingsField = library.media_type === 'movie' ? 'radarr_settings' : 'sonarr_settings';
-    
+
     const result = await db.query(
       `UPDATE libraries 
        SET ${settingsField} = $1, updated_at = NOW()
@@ -393,7 +410,7 @@ router.put('/:id/arr-settings', async (req, res) => {
        RETURNING *`,
       [JSON.stringify(settings), id]
     );
-    
+
     res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -409,7 +426,7 @@ router.put('/:id/arr-settings', async (req, res) => {
 router.post('/sync-arr-profiles', async (req, res) => {
   try {
     let syncedCount = 0;
-    
+
     // Sync Radarr profiles
     const radarrConfigs = await db.query('SELECT * FROM radarr_config WHERE is_active = true');
     for (const config of radarrConfigs.rows) {
@@ -419,7 +436,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           radarrService.getQualityProfiles(config.url, config.api_key),
           radarrService.getTags(config.url, config.api_key)
         ]);
-        
+
         // Insert root folders
         for (const rf of rootFolders) {
           await db.query(
@@ -431,7 +448,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           );
           syncedCount++;
         }
-        
+
         // Insert quality profiles
         for (const qp of qualityProfiles) {
           await db.query(
@@ -443,7 +460,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           );
           syncedCount++;
         }
-        
+
         // Insert tags
         for (const tag of tags) {
           await db.query(
@@ -459,7 +476,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
         logger.error(`Failed to sync Radarr config ${config.id}`, { error: error.message });
       }
     }
-    
+
     // Sync Sonarr profiles
     const sonarrConfigs = await db.query('SELECT * FROM sonarr_config WHERE is_active = true');
     for (const config of sonarrConfigs.rows) {
@@ -469,7 +486,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           sonarrService.getQualityProfiles(config.url, config.api_key),
           sonarrService.getTags(config.url, config.api_key)
         ]);
-        
+
         // Insert root folders
         for (const rf of rootFolders) {
           await db.query(
@@ -481,7 +498,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           );
           syncedCount++;
         }
-        
+
         // Insert quality profiles
         for (const qp of qualityProfiles) {
           await db.query(
@@ -493,7 +510,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
           );
           syncedCount++;
         }
-        
+
         // Insert tags
         for (const tag of tags) {
           await db.query(
@@ -509,7 +526,7 @@ router.post('/sync-arr-profiles', async (req, res) => {
         logger.error(`Failed to sync Sonarr config ${config.id}`, { error: error.message });
       }
     }
-    
+
     res.json({ success: true, synced: syncedCount });
   } catch (error) {
     res.status(500).json({ error: error.message });

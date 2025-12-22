@@ -10,6 +10,7 @@ const cron = require('node-cron');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const queueService = require('./queueService');
+const mediaSyncService = require('./mediaSync');
 
 const logger = createLogger('SchedulerService');
 
@@ -30,6 +31,12 @@ class SchedulerService {
 
         // Also run on startup after a delay
         setTimeout(() => this.runGapAnalysis(), 30000); // 30s delay
+
+        // Run library watchdog every 5 minutes to catch empty libraries
+        this.schedule('library-watchdog', '*/5 * * * *', () => this.runLibraryWatchdog());
+
+        // Run watchdog shortly after startup
+        setTimeout(() => this.runLibraryWatchdog(), 5000);
 
         // Cleanup old sessions every hour 
         // this.schedule('session-cleanup', '0 * * * *', ...);
@@ -99,6 +106,45 @@ class SchedulerService {
 
         } catch (error) {
             logger.error('Error running gap analysis', { error: error.message });
+        }
+    }
+
+    /**
+     * Check for empty libraries and trigger sync
+     */
+    async runLibraryWatchdog() {
+        try {
+            // Get all active libraries
+            const libraries = await db.query('SELECT id, name FROM libraries WHERE is_active = true');
+
+            for (const library of libraries.rows) {
+                // Check if library is empty
+                const countResult = await db.query(
+                    'SELECT COUNT(*) FROM media_server_items WHERE library_id = $1',
+                    [library.id]
+                );
+                const count = parseInt(countResult.rows[0].count);
+
+                if (count === 0) {
+                    // Check if sync is already running
+                    const statusResult = await db.query(
+                        `SELECT id FROM media_server_sync_status 
+                         WHERE library_id = $1 AND status = 'running'
+                         ORDER BY created_at DESC LIMIT 1`,
+                        [library.id]
+                    );
+
+                    if (statusResult.rows.length === 0) {
+                        logger.info(`Watchdog: Library ${library.name} (${library.id}) is empty. Triggering auto-sync...`);
+                        // Run in background, don't await completion here
+                        mediaSyncService.syncLibrary(library.id).catch(err => {
+                            logger.error(`Watchdog: Auto-sync failed for ${library.name}`, { error: err.message });
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error('Error running library watchdog', { error: error.message });
         }
     }
 }

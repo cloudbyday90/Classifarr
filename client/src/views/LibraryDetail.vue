@@ -37,6 +37,45 @@
         </div>
       </Card>
 
+      <!-- Sync Status / Empty State -->
+      <div v-if="library.item_count === 0 && !isSyncing" class="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="p-2 bg-yellow-900/40 rounded-full">
+            <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-medium text-yellow-400">Sync Required</h3>
+            <p class="text-sm text-yellow-200/70">
+              This library has 0 synced items. Classification rules will not work until content is synced.
+            </p>
+          </div>
+        </div>
+        <Button @click="handleSync" variant="primary">
+          Sync Now
+        </Button>
+      </div>
+
+      <!-- Active Sync Progress -->
+      <div v-if="isSyncing" class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+        <div class="flex justify-between items-center mb-2">
+          <div class="flex items-center gap-3">
+             <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+             <h3 class="font-medium text-blue-400">Syncing Library...</h3>
+          </div>
+          <span class="text-xs text-blue-300">
+            {{ activeSyncStatus?.items_processed || 0 }} / {{ activeSyncStatus?.items_total || '?' }} items
+          </span>
+        </div>
+        <div class="w-full bg-gray-700 rounded-full h-2">
+          <div 
+            class="bg-blue-500 h-2 rounded-full transition-all duration-500"
+            :style="{ width: `${syncPercentage}%` }"
+          ></div>
+        </div>
+      </div>
+
       <!-- Radarr Settings for Movie Libraries -->
       <Card v-if="library.media_type === 'movie' && library.arr_id" title="Radarr Settings">
         <div v-if="loadingArrOptions" class="text-center py-4 text-gray-400">
@@ -431,4 +470,66 @@ const saveArrSettings = async () => {
     savingArrSettings.value = false
   }
 }
+
+const syncing = ref(false)
+
+const activeSyncStatus = computed(() => {
+  return library.value?.sync_status
+})
+
+const isSyncing = computed(() => {
+  return syncing.value || activeSyncStatus.value?.status === 'running'
+})
+
+const syncPercentage = computed(() => {
+  if (!activeSyncStatus.value || !activeSyncStatus.value.items_total) return 0
+  return Math.round((activeSyncStatus.value.items_processed / activeSyncStatus.value.items_total) * 100)
+})
+
+const pollSyncStatus = async () => {
+  if (!library.value) return
+  
+  if (isSyncing.value) {
+    try {
+      const res = await api.getLibrary(library.value.id)
+      library.value = res.data
+      
+      // Continue polling if still running
+      if (res.data.sync_status?.status === 'running') {
+        setTimeout(pollSyncStatus, 2000)
+      } else {
+        syncing.value = false // Reset manual flag
+        if (res.data.item_count > 0) {
+           toast.success('Library sync complete')
+        }
+      }
+    } catch (e) {
+      console.error('Polling error', e)
+    }
+  }
+}
+
+const handleSync = async () => {
+  syncing.value = true
+  try {
+    toast.add({ title: 'Sync Started', message: 'Library synchronization started in background...' })
+    await api.syncLibrary(library.value.id)
+    
+    // Start polling immediately
+    setTimeout(pollSyncStatus, 1000)
+    
+  } catch (error) {
+    console.error('Sync failed:', error)
+    toast.error('Sync failed: ' + (error.response?.data?.error || error.message))
+    syncing.value = false
+  }
+}
+
+// Watch for initial sync state on load
+onMounted(() => {
+  if (library.value?.sync_status?.status === 'running') {
+    pollSyncStatus()
+  }
+})
+
 </script>
