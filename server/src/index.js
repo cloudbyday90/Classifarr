@@ -124,8 +124,8 @@ async function initializeServices() {
 
   // Start scheduler service
   try {
-    const schedulerService = require('./services/schedulerService');
-    schedulerService.start();
+    const schedulerService = require('./services/scheduler');
+    schedulerService.init(); // It was called init() in the class, but index.js called start(). Checked scheduler.js, it has init().
     console.log('Scheduler service started successfully');
   } catch (error) {
     console.warn('Scheduler service start failed:', error.message);

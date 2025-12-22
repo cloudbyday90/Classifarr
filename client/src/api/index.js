@@ -131,6 +131,9 @@ export default {
   updateLibrary(id, data) {
     return apiClient.put(`/libraries/${id}`, data)
   },
+  syncLibrary(id, options = {}) {
+    return apiClient.post(`/libraries/${id}/sync`, options)
+  },
   getLibraryLabels(id) {
     return apiClient.get(`/libraries/${id}/labels`)
   },

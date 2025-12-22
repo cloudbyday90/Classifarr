@@ -506,6 +506,9 @@ router.put('/ollama', async (req, res) => {
 
     await client.query('COMMIT');
 
+    // Reset service config cache so it reloads from DB
+    ollamaService.resetConfig();
+
     res.json(result.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');
@@ -616,6 +619,107 @@ router.post('/tmdb/test', async (req, res) => {
   try {
     const { api_key } = req.body;
     const result = await tmdbService.testConnection(api_key);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// TAVILY CONFIGURATION
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/tavily:
+ *   get:
+ *     summary: Get Tavily configuration
+ */
+router.get('/tavily', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM tavily_config LIMIT 1');
+    if (result.rows[0] && result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
+    }
+    res.json(result.rows[0] || null);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/tavily:
+ *   put:
+ *     summary: Update Tavily configuration
+ */
+router.put('/tavily', async (req, res) => {
+  const client = await db.pool.connect();
+  try {
+    const { api_key, search_depth, max_results, include_domains, exclude_domains, is_active } = req.body;
+
+    await client.query('BEGIN');
+
+    // Get existing config to preserve API key if masked value is sent
+    const existingResult = await client.query('SELECT api_key FROM tavily_config LIMIT 1');
+    const existingKey = existingResult.rows[0]?.api_key;
+
+    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingKey;
+
+    // Delete existing (single config enforcement)
+    await client.query('DELETE FROM tavily_config');
+
+    const result = await client.query(
+      `INSERT INTO tavily_config 
+       (api_key, search_depth, max_results, include_domains, exclude_domains, is_active, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       RETURNING *`,
+      [
+        finalApiKey,
+        search_depth || 'basic',
+        max_results || 5,
+        include_domains || ['imdb.com', 'rottentomatoes.com'],
+        exclude_domains || [],
+        is_active !== false
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    if (result.rows[0].api_key) {
+      result.rows[0].api_key = maskToken(result.rows[0].api_key);
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/tavily/test:
+ *   post:
+ *     summary: Test Tavily connection
+ */
+router.post('/tavily/test', async (req, res) => {
+  try {
+    const { api_key } = req.body;
+    let apiKey = api_key;
+
+    if (isMaskedToken(api_key)) {
+      const result = await db.query('SELECT api_key FROM tavily_config LIMIT 1');
+      apiKey = result.rows[0]?.api_key;
+    }
+
+    if (!apiKey) {
+      return res.status(400).json({ error: 'API key is required' });
+    }
+
+    const result = await tavilyService.testConnection(apiKey);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });

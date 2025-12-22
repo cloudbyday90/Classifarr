@@ -53,6 +53,7 @@ import Backup from './settings/Backup.vue'
 import SSL from './settings/SSL.vue'
 import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
+import Tavily from './settings/Tavily.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -60,11 +61,11 @@ const activeTab = ref('general')
 
 const tabs = [
   { id: 'general', label: 'General', component: General },
+  { id: 'mediaserver', label: 'Media Server', component: MediaServer },
   { id: 'tmdb', label: 'TMDB', component: TMDB },
+  { id: 'tavily', label: 'Tavily', component: Tavily },
   { id: 'ollama', label: 'Ollama', component: Ollama },
   { id: 'radarr', label: 'Radarr', component: Radarr },
-  { id: 'sonarr', label: 'Sonarr', component: Sonarr },
-  { id: 'mediaserver', label: 'Media Server', component: MediaServer },
   { id: 'discord', label: 'Discord', component: Discord },
   { id: 'webhooks', label: 'Webhooks', component: Webhooks },
   { id: 'queue', label: 'Queue', component: Queue },

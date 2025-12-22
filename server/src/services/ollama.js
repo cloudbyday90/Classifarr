@@ -26,6 +26,12 @@ class OllamaService {
     this.baseUrl = null;
   }
 
+  resetConfig() {
+    this.host = null;
+    this.port = null;
+    this.baseUrl = null;
+  }
+
   async getConfig() {
     if (this.baseUrl) {
       return { host: this.host, port: this.port, baseUrl: this.baseUrl };
@@ -57,17 +63,17 @@ class OllamaService {
         timeout: 5000,
       });
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         models: response.data.models,
         message: 'Connection successful'
       };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.code === 'ECONNREFUSED' 
-          ? 'Connection refused - is Ollama running?' 
-          : error.message 
+      return {
+        success: false,
+        error: error.code === 'ECONNREFUSED'
+          ? 'Connection refused - is Ollama running?'
+          : error.message
       };
     }
   }
