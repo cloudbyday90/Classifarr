@@ -145,6 +145,9 @@ router.beforeEach(async (to, from, next) => {
     }
 
     // Check if TMDB and other services are configured
+    // Check if TMDB and other services are configured
+    // Skipping wizard as per user request - only account creation is mandatory
+    /*
     const response = await fetch('/api/settings/setup-status')
     const data = await response.json()
 
@@ -153,6 +156,8 @@ router.beforeEach(async (to, from, next) => {
     } else {
       next()
     }
+    */
+    next()
   } catch (error) {
     console.error('Failed to check setup status:', error)
     next()

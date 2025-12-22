@@ -74,30 +74,36 @@ router.get('/', async (req, res) => {
  *                 type: string
  */
 router.post('/', async (req, res) => {
+  const client = await db.pool.connect();
   try {
     const { type, name, url, api_key } = req.body;
 
+    await client.query('BEGIN');
+
     // Get existing config to preserve API key if masked value is sent
-    const existingResult = await db.query('SELECT api_key FROM media_server WHERE is_active = true LIMIT 1');
+    const existingResult = await client.query('SELECT api_key FROM media_server WHERE is_active = true LIMIT 1');
     const existingApiKey = existingResult.rows[0]?.api_key;
-    
+
     // Use existing API key if the provided one is masked
     const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
     if (!finalApiKey) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'API key is required' });
     }
 
     // Deactivate existing servers
-    await db.query('UPDATE media_server SET is_active = false');
+    await client.query('UPDATE media_server SET is_active = false');
 
     // Insert new server
-    const result = await db.query(
+    const result = await client.query(
       `INSERT INTO media_server (type, name, url, api_key, is_active)
        VALUES ($1, $2, $3, $4, true)
        RETURNING *`,
       [type, name, url, finalApiKey]
     );
+
+    await client.query('COMMIT');
 
     // Mask API key in response
     if (result.rows[0].api_key) {
@@ -106,7 +112,12 @@ router.post('/', async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
+    await client.query('ROLLBACK');
+    // Don't log the error object directly if it contains sensitive data
+    console.error('Failed to save media server config:', error.message);
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -150,7 +161,7 @@ router.post('/test', async (req, res) => {
 router.post('/sync', async (req, res) => {
   try {
     const serverResult = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
-    
+
     if (serverResult.rows.length === 0) {
       return res.status(404).json({ error: 'No active media server configured' });
     }

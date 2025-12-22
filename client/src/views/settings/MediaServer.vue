@@ -154,9 +154,9 @@
             <div class="flex items-center justify-between">
               <h4 class="font-medium text-sm text-gray-300">Available Connections</h4>
               <span v-if="testingAllConnections" class="text-xs text-blue-400 animate-pulse">Testing all connections...</span>
-              <span v-else-if="selectedConnection" class="text-xs text-green-400">✓ Auto-selected best connection</span>
+              <span v-else-if="selectedConnection" class="text-xs text-green-400">✓ Connection selected</span>
             </div>
-            <p class="text-xs text-gray-500">Connections are tested and sorted by Docker compatibility. Remote HTTPS connections are preferred. Click any connection to override.</p>
+            <p class="text-xs text-gray-500">Connections are tested and sorted by Docker compatibility. Remote HTTPS connections are preferred. Please select a connection below.</p>
             
             <div class="space-y-2">
               <div
@@ -883,9 +883,11 @@ const testAllConnectionsAndSelect = async (server) => {
   })
   
   // Auto-select the best connection
-  selectedConnection.value = sortedConnections[0]
+  // User requested manual selection - we do not auto-select anymore
+  // selectedConnection.value = sortedConnections[0]
   
   // Update server test results for backward compatibility
+
   serverTestResults.value[server.clientIdentifier] = {
     success: true,
     connection: selectedConnection.value

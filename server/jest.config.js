@@ -9,5 +9,9 @@ module.exports = {
   testMatch: [
     '**/src/**/__tests__/**/*.test.js'
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/src/__tests__/integration/'
+  ],
   verbose: true
 };

@@ -487,23 +487,31 @@ router.get('/ollama', async (req, res) => {
  *     summary: Update Ollama configuration
  */
 router.put('/ollama', async (req, res) => {
+  const client = await db.pool.connect();
   try {
     const { host, port, model, temperature } = req.body;
 
+    await client.query('BEGIN');
+
     // Deactivate existing configs
-    await db.query('UPDATE ollama_config SET is_active = false');
+    await client.query('UPDATE ollama_config SET is_active = false');
 
     // Insert or update
-    const result = await db.query(
+    const result = await client.query(
       `INSERT INTO ollama_config (host, port, model, temperature, is_active)
        VALUES ($1, $2, $3, $4, true)
        RETURNING *`,
       [host, port, model, temperature]
     );
 
+    await client.query('COMMIT');
+
     res.json(result.rows[0]);
   } catch (error) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -565,19 +573,24 @@ router.get('/tmdb', async (req, res) => {
  *     summary: Update TMDB configuration
  */
 router.put('/tmdb', async (req, res) => {
+  const client = await db.pool.connect();
   try {
     const { api_key, language } = req.body;
 
+    await client.query('BEGIN');
+
     // Deactivate existing configs
-    await db.query('UPDATE tmdb_config SET is_active = false');
+    await client.query('UPDATE tmdb_config SET is_active = false');
 
     // Insert or update
-    const result = await db.query(
+    const result = await client.query(
       `INSERT INTO tmdb_config (api_key, language, is_active)
        VALUES ($1, $2, true)
        RETURNING *`,
       [api_key, language || 'en-US']
     );
+
+    await client.query('COMMIT');
 
     // Mask the API key in response
     if (result.rows && result.rows.length > 0 && result.rows[0]) {
@@ -586,7 +599,10 @@ router.put('/tmdb', async (req, res) => {
 
     res.json(result.rows && result.rows.length > 0 ? result.rows[0] : null);
   } catch (error) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 

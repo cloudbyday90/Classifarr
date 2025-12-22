@@ -37,7 +37,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import General from './settings/General.vue'
 import TMDB from './settings/TMDB.vue'
 import Ollama from './settings/Ollama.vue'
@@ -53,6 +54,8 @@ import SSL from './settings/SSL.vue'
 import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
 
+const router = useRouter()
+const route = useRoute()
 const activeTab = ref('general')
 
 const tabs = [
@@ -74,5 +77,24 @@ const tabs = [
 
 const currentTabComponent = computed(() => {
   return tabs.find(t => t.id === activeTab.value)?.component
+})
+
+// Initialize tab from URL query on mount
+onMounted(() => {
+  if (route.query.tab && tabs.some(t => t.id === route.query.tab)) {
+    activeTab.value = route.query.tab
+  }
+})
+
+// Update URL when tab changes
+watch(activeTab, (newTab) => {
+  router.replace({ query: { ...route.query, tab: newTab } })
+})
+
+// Update tab when URL changes (e.g. back button)
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && tabs.some(t => t.id === newTab)) {
+    activeTab.value = newTab
+  }
 })
 </script>
