@@ -652,6 +652,7 @@ router.get('/notifications', async (req, res) => {
  *     summary: Update notification configuration
  */
 router.put('/notifications', async (req, res) => {
+  const client = await db.pool.connect();
   try {
     const {
       bot_token,
@@ -670,14 +671,16 @@ router.put('/notifications', async (req, res) => {
       include_library_dropdown,
     } = req.body;
 
+    await client.query('BEGIN');
+
     // Get existing config to preserve bot token if masked value is sent
-    const existingResult = await db.query('SELECT bot_token FROM notification_config WHERE type = $1 LIMIT 1', ['discord']);
+    const existingResult = await client.query('SELECT bot_token FROM notification_config WHERE type = $1 LIMIT 1', ['discord']);
     const existingToken = existingResult.rows[0]?.bot_token;
 
     // Use existing token if the provided one is masked
     const finalToken = (bot_token && !isMaskedToken(bot_token)) ? bot_token : existingToken;
 
-    const result = await db.query(
+    const result = await client.query(
       `INSERT INTO notification_config (
         id, type, bot_token, channel_id, enabled,
         notify_on_classification, notify_on_error, notify_on_correction,
@@ -720,6 +723,8 @@ router.put('/notifications', async (req, res) => {
       ]
     );
 
+    await client.query('COMMIT');
+
     // Reinitialize Discord bot if enabled
     if (enabled && finalToken && channel_id) {
       try {
@@ -736,7 +741,11 @@ router.put('/notifications', async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Failed to save Discord notification config:', error.message);
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
