@@ -61,8 +61,8 @@
 
     <!-- Plex OAuth Flow -->
     <div v-if="config.type === 'plex'" class="bg-gray-800 border border-gray-700 rounded-lg p-4 space-y-4">
-      <!-- Sign in with Plex -->
-      <div v-if="!plexAuthToken && !showManualEntry">
+      <!-- Sign in with Plex (only show if no server configured yet) -->
+      <div v-if="!plexAuthToken && !showManualEntry && !config.url">
         <h3 class="font-medium mb-3 flex items-center gap-2">
           <span>🔐</span>
           <span>Connect to Plex</span>
@@ -675,6 +675,17 @@ const loadConfig = async () => {
         url: response.data.url || '',
         api_key: response.data.api_key || ''
       }
+      
+      // Set initial status based on whether config exists
+      if (response.data.url) {
+        connectionStatus.value = {
+          status: 'unknown',
+          serviceName: capitalizeFirst(response.data.type || 'plex'),
+          details: null,
+          error: null,
+          lastChecked: null
+        }
+      }
     }
   } catch (error) {
     console.error('Failed to load media server config:', error)
@@ -772,14 +783,9 @@ const loadPlexUserAndServers = async () => {
     const userResponse = await api.getPlexUser(plexAuthToken.value)
     plexUser.value = userResponse.data.user
     
-    // Get servers
+    // Get servers - no auto-testing, user will manually select connection
     const serversResponse = await api.getPlexServers(plexAuthToken.value)
     plexServers.value = serversResponse.data.servers
-    
-    // Auto-test connections for each server
-    for (const server of plexServers.value) {
-      testServerConnection(server)
-    }
   } catch (error) {
     console.error('Failed to load Plex data:', error)
     toast.error('Failed to load Plex servers')
@@ -814,18 +820,57 @@ const testServerConnection = async (server) => {
   }
 }
 
-const selectPlexServer = async (server) => {
+const selectPlexServer = (server) => {
+  console.log('selectPlexServer called with:', server)
+  console.log('Server connections:', server?.connections)
+  console.log('Server connections length:', server?.connections?.length)
   selectedServer.value = server
   // Reset connection selection when switching servers
   selectedConnection.value = null
   connectionTestResults.value = {}
-  
-  // Auto-test all connections and smart-select the best one
-  await testAllConnectionsAndSelect(server)
+  // No auto-detection - user will manually select a connection
 }
 
-const selectConnection = (conn) => {
+const selectConnection = async (conn) => {
   selectedConnection.value = conn
+  
+  // Auto-save when user selects a connection
+  if (selectedServer.value && conn) {
+    await saveSelectedConnection(conn)
+  }
+}
+
+// Save the selected connection immediately
+const saveSelectedConnection = async (conn) => {
+  if (!selectedServer.value) return
+  
+  confirmingServer.value = true
+  
+  try {
+    const server = selectedServer.value
+    const connectionUrl = conn.uri
+    
+    // Save the server
+    await api.savePlexServer(server.name, connectionUrl, server.accessToken)
+    
+    // Update local config
+    config.value.name = server.name
+    config.value.url = connectionUrl
+    config.value.api_key = server.accessToken
+    
+    toast.success(`Connected to ${server.name}!`)
+    
+    // Reset selection state but keep the connection visible
+    plexAuthToken.value = null
+    selectedServer.value = null
+    plexServers.value = []
+    
+  } catch (error) {
+    console.error('Failed to save Plex server:', error)
+    toast.error('Failed to save server configuration')
+  } finally {
+    confirmingServer.value = false
+  }
 }
 
 // Test all connections for a server and auto-select the best working one

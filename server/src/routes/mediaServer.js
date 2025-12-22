@@ -131,16 +131,26 @@ router.post('/test', async (req, res) => {
   try {
     const { type, url, api_key } = req.body;
 
+    // If the api_key is masked, get the real one from the database
+    let testApiKey = api_key;
+    if (isMaskedToken(api_key)) {
+      const existingResult = await db.query('SELECT api_key FROM media_server WHERE is_active = true LIMIT 1');
+      testApiKey = existingResult.rows[0]?.api_key;
+      if (!testApiKey) {
+        return res.status(400).json({ error: 'No saved API key found. Please enter the API key manually.' });
+      }
+    }
+
     let result;
     switch (type) {
       case 'plex':
-        result = await plexService.testConnection(url, api_key);
+        result = await plexService.testConnection(url, testApiKey);
         break;
       case 'emby':
-        result = await embyService.testConnection(url, api_key);
+        result = await embyService.testConnection(url, testApiKey);
         break;
       case 'jellyfin':
-        result = await jellyfinService.testConnection(url, api_key);
+        result = await jellyfinService.testConnection(url, testApiKey);
         break;
       default:
         return res.status(400).json({ error: 'Invalid media server type' });
