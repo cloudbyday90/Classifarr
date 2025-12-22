@@ -1,5 +1,21 @@
 # Classifarr Release Notes
 
+## v0.18.8-alpha (2025-12-22)
+
+### Added
+- **Integration Testing:** Added testcontainers-based integration testing with real PostgreSQL Docker containers for production-parity testing
+- **Schema Tests:** New comprehensive database schema integration tests verifying all table structures and queries
+
+### Changed
+- **Test Infrastructure:** Separated unit tests (`npm test`) from integration tests (`npm run test:integration`) in Jest configuration
+- **Jest Config:** Updated to exclude integration tests from default test run to prevent conflicts
+
+### Infrastructure
+- **Docker Testing:** Integration tests now spin up real PostgreSQL containers via testcontainers for accurate database testing
+- **CI/CD Ready:** Test suite now fully compatible with CI/CD pipelines that support Docker
+
+---
+
 ## v0.18.7-alpha (2025-12-21)
 
 ### Fixed
