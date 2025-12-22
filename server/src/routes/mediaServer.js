@@ -196,13 +196,23 @@ router.post('/sync', async (req, res) => {
     // Insert or update libraries
     const insertedLibraries = [];
     for (const lib of libraries) {
+      let arrType = null;
+      if (lib.media_type === 'movie') {
+        arrType = 'radarr';
+      } else if (lib.media_type === 'tv') {
+        arrType = 'sonarr';
+      }
+
       const result = await db.query(
-        `INSERT INTO libraries (media_server_id, external_id, name, media_type)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO libraries (media_server_id, external_id, name, media_type, arr_type)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (media_server_id, external_id) 
-         DO UPDATE SET name = $3, updated_at = NOW()
+         DO UPDATE SET 
+           name = $3, 
+           updated_at = NOW(),
+           arr_type = COALESCE(libraries.arr_type, $5)
          RETURNING *`,
-        [server.id, lib.external_id, lib.name, lib.media_type]
+        [server.id, lib.external_id, lib.name, lib.media_type, arrType]
       );
       insertedLibraries.push(result.rows[0]);
     }

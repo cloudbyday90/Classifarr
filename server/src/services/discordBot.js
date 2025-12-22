@@ -169,6 +169,54 @@ class DiscordBotService {
     }
   }
 
+  async getChannelDetails(channelId, botToken = null) {
+    try {
+      // Always prefer stored token
+      const storedConfig = await this.loadConfig();
+      const token = storedConfig?.bot_token || botToken;
+      if (!token) throw new Error('No bot token configured');
+
+      // Create temporary client
+      const testClient = new Client({
+        intents: [GatewayIntentBits.Guilds],
+      });
+
+      // Wait for client to be fully ready
+      await new Promise((resolve, reject) => {
+        testClient.once('ready', resolve);
+        testClient.once('error', reject);
+        testClient.login(token).catch(reject);
+      });
+
+      try {
+        const channel = await testClient.channels.fetch(channelId);
+        if (!channel) {
+          throw new Error('Channel not found');
+        }
+
+        // Ensure guild is available
+        let guildName = 'Unknown Server';
+        if (channel.guild) {
+          if (!channel.guild.name) await channel.guild.fetch();
+          guildName = channel.guild.name;
+        }
+
+        const result = {
+          id: channel.id,
+          name: channel.name,
+          guildId: channel.guildId,
+          guildName: guildName
+        };
+
+        return result;
+      } finally {
+        await testClient.destroy();
+      }
+    } catch (error) {
+      throw new Error(`Failed to fetch channel details: ${error.message}`);
+    }
+  }
+
   async reinitialize() {
     if (this.client) {
       await this.client.destroy();

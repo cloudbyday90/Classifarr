@@ -1,106 +1,425 @@
-<!--
-  Classifarr - AI-powered media classification for the *arr ecosystem
-  Copyright (C) 2025 cloudbyday90
-  
-  This program is free software: licensed under GPL-3.0
-  See LICENSE file for details.
--->
-
 <template>
   <div class="space-y-6">
-    <div>
-      <h2 class="text-xl font-semibold mb-2">Request Manager Webhook</h2>
-      <p class="text-gray-400 text-sm">Configure webhook integration for automatic media classification</p>
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-xl font-semibold mb-2">Request Manager Webhook</h2>
+        <p class="text-gray-400 text-sm">Configure webhook integration for automatic media classification from requests.</p>
+      </div>
+      <Button @click="showSetupHelp = true" variant="secondary" size="sm">
+        ❓ Setup Guide
+      </Button>
     </div>
 
     <div v-if="loading" class="text-center py-8">
       <Spinner />
     </div>
 
-    <div v-else class="space-y-6">
-      <!-- Enable/Disable -->
-      <Card>
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-lg font-medium">Enable Webhook</h3>
-            <p class="text-sm text-gray-400">Enable or disable webhook processing</p>
-          </div>
-          <Toggle v-model="config.enabled" @update:modelValue="saveConfig" />
+    <!-- Setup Guide Modal -->
+    <div v-if="showSetupHelp" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div class="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-xl">
+        <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+          <h3 class="text-lg font-medium">How to Configure Overseerr/Jellyseerr</h3>
+          <button @click="showSetupHelp = false" class="text-gray-400 hover:text-white">✕</button>
         </div>
-      </Card>
-
-      <!-- Multi-Source Manager -->
-      <Card>
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-medium">Configured Sources</h3>
-          <button
-            @click="showAddSource = true"
-            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors"
-          >
-            + Add Source
-          </button>
-        </div>
-
-        <div v-if="sources.length === 0" class="text-gray-500 text-center py-4">
-          No sources configured
-        </div>
-
-        <div v-else class="space-y-2">
-          <div
-            v-for="source in sources"
-            :key="source.id"
-            :class="[
-              'flex items-center justify-between p-3 rounded-lg border transition-colors',
-              source.is_primary ? 'bg-blue-900/20 border-blue-700' : 'bg-gray-800 border-gray-700'
-            ]"
-          >
-            <div class="flex items-center gap-3">
-              <span class="text-lg">
-                {{ source.webhook_type === 'seer' ? '⭐' : source.webhook_type === 'jellyseerr' ? '🍇' : '🎬' }}
-              </span>
+        <div class="p-6 space-y-6 text-gray-300">
+          <div class="space-y-4">
+            <div class="flex gap-4">
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">1</div>
               <div>
-                <div class="flex items-center gap-2">
-                  <span class="font-medium">{{ source.name || 'Unnamed' }}</span>
-                  <span v-if="source.is_primary" class="text-xs bg-blue-600 px-1.5 py-0.5 rounded">Primary</span>
-                  <span 
-                    :class="['text-xs px-1.5 py-0.5 rounded', source.enabled ? 'bg-green-900/30 text-green-400' : 'bg-gray-900 text-gray-500']"
-                  >
-                    {{ source.enabled ? 'Active' : 'Disabled' }}
-                  </span>
-                </div>
-                <div class="text-xs text-gray-400">{{ source.webhook_type }}</div>
+                <h4 class="font-medium text-white mb-1">Open Overseerr Settings</h4>
+                <p class="text-sm">Go to <strong>Settings → Notifications → Webhook</strong>.</p>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <button
-                v-if="!source.is_primary"
-                @click="setPrimary(source.id)"
-                class="px-2 py-1 text-xs bg-gray-700 hover:bg-blue-600 rounded transition-colors"
-                title="Set as primary"
+
+            <div class="flex gap-4">
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">2</div>
+              <div>
+                <h4 class="font-medium text-white mb-1">Add Webhook URL</h4>
+                <p class="text-sm mb-2">Copy the <strong>Webhook Endpoint</strong> from this page and paste it into the <strong>Webhook URL</strong> field in Overseerr.</p>
+              </div>
+            </div>
+
+            <div class="flex gap-4">
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">3</div>
+              <div>
+                <h4 class="font-medium text-white mb-1">Set JSON Payload</h4>
+                <p class="text-sm mb-2">Copy the <strong>JSON Payload</strong> template from this page and paste it into the <strong>JSON Payload</strong> field in Overseerr.</p>
+                <div class="text-xs bg-yellow-900/20 text-yellow-500 p-2 rounded border border-yellow-900/30">
+                  ⚠️ This is critical. Without the correct payload, Classifarr cannot read the request data.
+                </div>
+              </div>
+            </div>
+
+            <div class="flex gap-4">
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">4</div>
+              <div>
+                <h4 class="font-medium text-white mb-1">Select Notification Types</h4>
+                <p class="text-sm mb-2">Check the events you want to trigger classification:</p>
+                <ul class="list-disc list-inside text-sm text-gray-400 ml-2 space-y-1">
+                  <li><strong>Request Pending Approval</strong> (Recommended)</li>
+                  <li><strong>Request Approved</strong></li>
+                  <li><strong>Request Automatically Approved</strong></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="flex gap-4">
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">5</div>
+              <div>
+                <h4 class="font-medium text-white mb-1">Test and Save</h4>
+                <p class="text-sm">Click <strong>Test</strong> in Overseerr to verify connectivity. You should see a success message and a new entry in the Classifarr logs. Finally, click <strong>Save</strong>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="p-6 border-t border-gray-700 bg-gray-800/50 flex justify-end">
+          <Button @click="showSetupHelp = false" variant="primary">
+            Got it
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="space-y-6">
+      <!-- View Mode: Status & Summary -->
+      <div v-if="!isEditing" class="space-y-6">
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-4">
+              <div :class="['p-3 rounded-full', config.enabled ? 'bg-green-900/30 text-green-400' : 'bg-gray-700/50 text-gray-400']">
+                <span class="text-2xl">📡</span>
+              </div>
+              <div>
+                <h3 class="text-lg font-medium flex items-center gap-2">
+                  Webhook Listener
+                  <span v-if="config.enabled" class="text-xs bg-green-900/50 text-green-400 px-2 py-0.5 rounded-full border border-green-900">Active</span>
+                  <span v-else class="text-xs bg-gray-700/50 text-gray-400 px-2 py-0.5 rounded-full border border-gray-600">Inactive</span>
+                </h3>
+                <p class="text-sm text-gray-400">
+                  {{ sources.length > 0 ? `Receiving from ${sources.length} source${sources.length !== 1 ? 's' : ''}` : 'No sources configured' }}
+                </p>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <Button @click="testWebhook" :disabled="testing" variant="secondary">
+                {{ testing ? '⏳ Testing...' : '🧪 Test' }}
+              </Button>
+              <button 
+                @click="isEditing = true"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors"
               >
-                ★
+                Configure
               </button>
-              <button
-                v-if="sources.length > 1"
-                @click="deleteSource(source.id)"
-                class="px-2 py-1 text-xs bg-gray-700 hover:bg-red-600 rounded transition-colors"
-                title="Delete"
-              >
-                ✕
-              </button>
+            </div>
+          </div>
+
+          <!-- URL Display -->
+          <div class="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50 mb-6">
+            <label class="block text-xs text-gray-500 uppercase tracking-widest mb-2">Webhook Endpoint</label>
+            <div class="flex gap-2">
+              <code class="flex-1 bg-gray-950 px-3 py-2 rounded text-gray-300 font-mono text-sm overflow-x-auto whitespace-nowrap">
+                {{ webhookUrl }}
+              </code>
+              <Button @click="copyUrl" variant="secondary" size="sm">
+                📋 Copy
+              </Button>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-gray-800">
+               <label class="block text-xs text-gray-500 uppercase tracking-widest mb-2">JSON Payload</label>
+               <p class="text-xs text-gray-400 mb-2">
+                 Paste this into the "JSON Payload" field in your Overseerr/Jellyseerr Webhook settings:
+               </p>
+               <div class="relative group">
+                 <pre class="bg-gray-950 p-3 rounded text-gray-300 font-mono text-xs overflow-x-auto">{{ jsonPayload }}</pre>
+                 <button 
+                  @click="copyPayload" 
+                  class="absolute top-2 right-2 p-1.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Copy JSON"
+                 >
+                   📋
+                 </button>
+               </div>
+            </div>
+          </div>
+
+          <!-- Quick Stats -->
+          <div v-if="stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-700">
+            <div>
+              <div class="text-2xl font-bold text-blue-400">{{ stats.total }}</div>
+              <div class="text-xs text-gray-500 uppercase">Total Received</div>
+            </div>
+            <div>
+              <div class="text-2xl font-bold text-green-400">{{ stats.completed }}</div>
+              <div class="text-xs text-gray-500 uppercase">Processed</div>
+            </div>
+            <div>
+              <div class="text-2xl font-bold text-red-400">{{ stats.failed }}</div>
+              <div class="text-xs text-gray-500 uppercase">Failed</div>
+            </div>
+            <div>
+              <div class="text-2xl font-bold text-yellow-400">{{ stats.avgProcessingTime }}ms</div>
+              <div class="text-xs text-gray-500 uppercase">Avg Time</div>
             </div>
           </div>
         </div>
 
-        <p class="text-xs text-gray-500 mt-3">
-          Multiple sources allow webhooks from different Overseerr/Jellyseerr/Seer instances.
-          The primary source's settings are shown below.
-        </p>
-      </Card>
+        <!-- Recent Logs (Always Visible) -->
+        <Card>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-medium">Recent Activity</h3>
+            <Button @click="loadLogs" variant="secondary" size="sm">
+              🔄 Refresh
+            </Button>
+          </div>
+
+          <div v-if="loadingLogs" class="text-center py-8 text-gray-500">
+            <Spinner />
+          </div>
+
+          <div v-else-if="logs.length === 0" class="text-center py-8 text-gray-500">
+            No webhook activity yet
+          </div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="log in logs"
+              :key="log.id"
+              class="p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
+            >
+              <div class="flex items-start justify-between mb-2">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-medium">{{ log.media_title || 'Unknown' }}</span>
+                    <span
+                      v-if="log.media_type"
+                      class="px-2 py-0.5 bg-blue-900/30 text-blue-400 text-xs rounded"
+                    >
+                      {{ log.media_type }}
+                    </span>
+                  </div>
+                  <div class="text-sm text-gray-400">
+                    {{ log.notification_type || log.event_name }}
+                  </div>
+                </div>
+                <span
+                  :class="[
+                    'px-2 py-1 rounded text-xs font-medium',
+                    log.processing_status === 'completed' ? 'bg-green-900/30 text-green-400' :
+                    log.processing_status === 'failed' ? 'bg-red-900/30 text-red-400' :
+                    log.processing_status === 'skipped' ? 'bg-yellow-900/30 text-yellow-400' :
+                    'bg-gray-900/30 text-gray-400'
+                  ]"
+                >
+                  {{ log.processing_status }}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-4 text-xs text-gray-500">
+                <span>{{ formatDate(log.received_at) }}</span>
+                <span v-if="log.routed_to_library">→ {{ log.routed_to_library }}</span>
+                <span v-if="log.processing_time_ms">{{ log.processing_time_ms }}ms</span>
+              </div>
+
+              <div v-if="log.error_message" class="mt-2 text-xs text-red-400 bg-red-900/20 p-2 rounded">
+                {{ log.error_message }}
+              </div>
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="logsData.totalPages > 1" class="flex justify-center gap-2 mt-4">
+              <Button
+                @click="changePage(logsData.page - 1)"
+                :disabled="logsData.page <= 1"
+                variant="secondary"
+                size="sm"
+              >
+                ← Previous
+              </Button>
+              <span class="px-4 py-2 text-sm text-gray-400">
+                Page {{ logsData.page }} of {{ logsData.totalPages }}
+              </span>
+              <Button
+                @click="changePage(logsData.page + 1)"
+                :disabled="logsData.page >= logsData.totalPages"
+                variant="secondary"
+                size="sm"
+              >
+                Next →
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <!-- Edit Mode: Full Configuration -->
+      <div v-else class="space-y-6">
+        <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <h3 class="text-lg font-medium">Configuration</h3>
+          <div class="flex gap-2">
+             <button 
+              @click="isEditing = false"
+              class="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+
+        <!-- Enable/Disable -->
+        <Card>
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-medium">Enable Webhook Listener</h3>
+              <p class="text-sm text-gray-400">Toggle the entire webhook processing system</p>
+            </div>
+            <Toggle v-model="config.enabled" @update:modelValue="saveConfig" />
+          </div>
+        </Card>
+
+        <!-- Multi-Source Manager -->
+        <Card>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-medium">Authorized Sources</h3>
+            <button
+              @click="showAddSource = true"
+              class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors"
+            >
+              + Add Source
+            </button>
+          </div>
+
+          <div v-if="sources.length === 0" class="text-gray-500 text-center py-4 bg-gray-900/30 rounded-lg border border-dashed border-gray-700">
+            No sources configured. Webhooks may be rejected.
+          </div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="source in sources"
+              :key="source.id"
+              :class="[
+                'flex items-center justify-between p-3 rounded-lg border transition-colors',
+                source.is_primary ? 'bg-blue-900/20 border-blue-700' : 'bg-gray-800 border-gray-700'
+              ]"
+            >
+              <div class="flex items-center gap-3">
+                <span class="text-lg">
+                  {{ source.webhook_type === 'seer' ? '⭐' : source.webhook_type === 'jellyseerr' ? '🍇' : '🎬' }}
+                </span>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium">{{ source.name || 'Unnamed' }}</span>
+                    <span v-if="source.is_primary" class="text-xs bg-blue-600 px-1.5 py-0.5 rounded">Primary</span>
+                    <span 
+                      :class="['text-xs px-1.5 py-0.5 rounded', source.enabled ? 'bg-green-900/30 text-green-400' : 'bg-gray-900 text-gray-500']"
+                    >
+                      {{ source.enabled ? 'Active' : 'Disabled' }}
+                    </span>
+                  </div>
+                  <div class="text-xs text-gray-400">{{ source.webhook_type }}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  v-if="!source.is_primary"
+                  @click="setPrimary(source.id)"
+                  class="px-2 py-1 text-xs bg-gray-700 hover:bg-blue-600 rounded transition-colors"
+                  title="Set as primary"
+                >
+                  ★ Set Primary
+                </button>
+                <button
+                  v-if="sources.length > 1"
+                  @click="deleteSource(source.id)"
+                  class="px-2 py-1 text-xs bg-gray-700 hover:bg-red-600 rounded transition-colors"
+                  title="Delete"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <!-- Global Settings Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Event Processing -->
+          <Card>
+            <h3 class="text-lg font-medium mb-4">Event Rules</h3>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="text-sm">Pending Requests</div>
+                <Toggle v-model="config.process_pending" @update:modelValue="saveConfig" />
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-sm">Approved Requests</div>
+                <Toggle v-model="config.process_approved" @update:modelValue="saveConfig" />
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-sm">Auto-Approved</div>
+                <Toggle v-model="config.process_auto_approved" @update:modelValue="saveConfig" />
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-sm">Declined Requests</div>
+                <Toggle v-model="config.process_declined" @update:modelValue="saveConfig" />
+              </div>
+            </div>
+          </Card>
+
+          <!-- Notifications & Auth -->
+          <div class="space-y-6">
+            <Card>
+              <h3 class="text-lg font-medium mb-4">Notifications</h3>
+              <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="text-sm">Notify on Receive</div>
+                  <Toggle v-model="config.notify_on_receive" @update:modelValue="saveConfig" />
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="text-sm">Notify on Error</div>
+                  <Toggle v-model="config.notify_on_error" @update:modelValue="saveConfig" />
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <h3 class="text-lg font-medium mb-4">Security</h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Secret Key</label>
+                  <div class="flex gap-2">
+                    <PasswordInput
+                      v-model="displaySecretKey"
+                      :readonly="true"
+                      placeholder="Optional"
+                      class="flex-1"
+                    />
+                    <Button @click="generateKey" variant="primary" size="sm" :disabled="generating">
+                      {{ config.secret_key ? 'Regenerate' : 'Generate' }}
+                    </Button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-2">
+                    Adds <code class="bg-gray-800 px-1 rounded">?key=YOUR_KEY</code> to the URL
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-4">
+            <button 
+              @click="isEditing = false"
+              class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors"
+            >
+              Done Configuration
+            </button>
+        </div>
+      </div>
 
       <!-- Add Source Modal -->
       <div v-if="showAddSource" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+        <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 border border-gray-700 shadow-xl">
           <h3 class="text-lg font-medium mb-4">Add Webhook Source</h3>
           <div class="space-y-4">
             <div>
@@ -141,271 +460,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Request Manager Type -->
-      <Card>
-        <h3 class="text-lg font-medium mb-4">Request Manager</h3>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-2">Type</label>
-            <select
-              v-model="config.webhook_type"
-              @change="saveConfig"
-              class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="overseerr">Overseerr</option>
-              <option value="jellyseerr">Jellyseerr</option>
-              <option value="seer">Seer</option>
-            </select>
-            <p class="text-xs text-gray-500 mt-2">
-              <span v-if="config.webhook_type === 'seer'" class="text-green-400">
-                ✓ Seer is the unified successor to Overseerr and Jellyseerr
-              </span>
-              <span v-else>
-                All three use the same webhook format, so the integration works identically
-              </span>
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      <!-- Webhook URL -->
-      <Card>
-        <h3 class="text-lg font-medium mb-4">Webhook URL</h3>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-2">Endpoint URL</label>
-            <div class="flex gap-2">
-              <input
-                :value="webhookUrl"
-                readonly
-                class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 font-mono text-sm"
-              />
-              <Button @click="copyUrl" variant="secondary">
-                📋 Copy
-              </Button>
-            </div>
-            <p class="text-xs text-gray-500 mt-2">
-              Configure this URL in Overseerr/Jellyseerr Settings → Notifications → Webhook
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      <!-- Secret Key -->
-      <Card>
-        <h3 class="text-lg font-medium mb-4">Authentication</h3>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-2">Secret Key (Optional)</label>
-            <div class="flex gap-2">
-              <PasswordInput
-                v-model="displaySecretKey"
-                :readonly="true"
-                placeholder="No secret key configured"
-                class="flex-1"
-              />
-              <Button @click="copySecretKey" variant="secondary">
-                📋 Copy
-              </Button>
-              <Button @click="generateKey" variant="primary" :disabled="generating">
-                {{ config.secret_key ? '🔄 Regenerate' : '✨ Generate' }}
-              </Button>
-            </div>
-            <p class="text-xs text-gray-500 mt-2">
-              If set, include as query parameter: <code class="bg-gray-800 px-1 py-0.5 rounded">?key=YOUR_SECRET_KEY</code>
-            </p>
-            <p v-if="config.secret_key" class="text-xs text-yellow-500 mt-1">
-              ⚠️ Regenerating will invalidate the existing key
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      <!-- Event Processing -->
-      <Card>
-        <h3 class="text-lg font-medium mb-4">Event Processing</h3>
-        <p class="text-sm text-gray-400 mb-4">Choose which {{ requestManagerName }} events to process and classify</p>
-        <div class="space-y-3">
-          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-            <div>
-              <div class="font-medium">Pending Requests</div>
-              <div class="text-sm text-gray-400">Process newly submitted requests</div>
-            </div>
-            <Toggle v-model="config.process_pending" @update:modelValue="saveConfig" />
-          </div>
-          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-            <div>
-              <div class="font-medium">Approved Requests</div>
-              <div class="text-sm text-gray-400">Process manually approved requests</div>
-            </div>
-            <Toggle v-model="config.process_approved" @update:modelValue="saveConfig" />
-          </div>
-          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-            <div>
-              <div class="font-medium">Auto-Approved Requests</div>
-              <div class="text-sm text-gray-400">Process automatically approved requests</div>
-            </div>
-            <Toggle v-model="config.process_auto_approved" @update:modelValue="saveConfig" />
-          </div>
-          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-            <div>
-              <div class="font-medium">Declined Requests</div>
-              <div class="text-sm text-gray-400">Track declined requests (no classification)</div>
-            </div>
-            <Toggle v-model="config.process_declined" @update:modelValue="saveConfig" />
-          </div>
-        </div>
-      </Card>
-
-      <!-- Notifications -->
-      <Card>
-        <h3 class="text-lg font-medium mb-4">Notifications</h3>
-        <div class="space-y-3">
-          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-            <div>
-              <div class="font-medium">Notify on Receive</div>
-              <div class="text-sm text-gray-400">Send notification when webhook is received</div>
-            </div>
-            <Toggle v-model="config.notify_on_receive" @update:modelValue="saveConfig" />
-          </div>
-          <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-            <div>
-              <div class="font-medium">Notify on Error</div>
-              <div class="text-sm text-gray-400">Send notification on processing errors</div>
-            </div>
-            <Toggle v-model="config.notify_on_error" @update:modelValue="saveConfig" />
-          </div>
-        </div>
-      </Card>
-
-      <!-- Statistics -->
-      <Card v-if="stats">
-        <h3 class="text-lg font-medium mb-4">Statistics</h3>
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div class="bg-gray-800 p-4 rounded-lg text-center">
-            <div class="text-2xl font-bold text-blue-400">{{ stats.total }}</div>
-            <div class="text-sm text-gray-400">Total</div>
-          </div>
-          <div class="bg-gray-800 p-4 rounded-lg text-center">
-            <div class="text-2xl font-bold text-green-400">{{ stats.completed }}</div>
-            <div class="text-sm text-gray-400">Completed</div>
-          </div>
-          <div class="bg-gray-800 p-4 rounded-lg text-center">
-            <div class="text-2xl font-bold text-red-400">{{ stats.failed }}</div>
-            <div class="text-sm text-gray-400">Failed</div>
-          </div>
-          <div class="bg-gray-800 p-4 rounded-lg text-center">
-            <div class="text-2xl font-bold text-purple-400">{{ stats.last24h }}</div>
-            <div class="text-sm text-gray-400">Last 24h</div>
-          </div>
-          <div class="bg-gray-800 p-4 rounded-lg text-center">
-            <div class="text-2xl font-bold text-yellow-400">{{ stats.avgProcessingTime }}ms</div>
-            <div class="text-sm text-gray-400">Avg Time</div>
-          </div>
-        </div>
-      </Card>
-
-      <!-- Test Webhook -->
-      <Card>
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-lg font-medium">Test Webhook</h3>
-            <p class="text-sm text-gray-400">Send a test webhook to verify configuration</p>
-          </div>
-          <Button @click="testWebhook" :disabled="testing">
-            {{ testing ? '⏳ Testing...' : '🧪 Send Test' }}
-          </Button>
-        </div>
-      </Card>
-
-      <!-- Recent Webhooks -->
-      <Card>
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-medium">Recent Webhooks</h3>
-          <Button @click="loadLogs" variant="secondary" size="sm">
-            🔄 Refresh
-          </Button>
-        </div>
-
-        <div v-if="loadingLogs" class="text-center py-8 text-gray-500">
-          <Spinner />
-        </div>
-
-        <div v-else-if="logs.length === 0" class="text-center py-8 text-gray-500">
-          No webhook activity yet
-        </div>
-
-        <div v-else class="space-y-2">
-          <div
-            v-for="log in logs"
-            :key="log.id"
-            class="p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
-          >
-            <div class="flex items-start justify-between mb-2">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="font-medium">{{ log.media_title || 'Unknown' }}</span>
-                  <span
-                    v-if="log.media_type"
-                    class="px-2 py-0.5 bg-blue-900/30 text-blue-400 text-xs rounded"
-                  >
-                    {{ log.media_type }}
-                  </span>
-                </div>
-                <div class="text-sm text-gray-400">
-                  {{ log.notification_type || log.event_name }}
-                </div>
-              </div>
-              <span
-                :class="[
-                  'px-2 py-1 rounded text-xs font-medium',
-                  log.processing_status === 'completed' ? 'bg-green-900/30 text-green-400' :
-                  log.processing_status === 'failed' ? 'bg-red-900/30 text-red-400' :
-                  log.processing_status === 'skipped' ? 'bg-yellow-900/30 text-yellow-400' :
-                  'bg-gray-900/30 text-gray-400'
-                ]"
-              >
-                {{ log.processing_status }}
-              </span>
-            </div>
-
-            <div class="flex items-center gap-4 text-xs text-gray-500">
-              <span>{{ formatDate(log.received_at) }}</span>
-              <span v-if="log.routed_to_library">→ {{ log.routed_to_library }}</span>
-              <span v-if="log.processing_time_ms">{{ log.processing_time_ms }}ms</span>
-              <span v-if="log.ip_address">{{ log.ip_address }}</span>
-            </div>
-
-            <div v-if="log.error_message" class="mt-2 text-xs text-red-400 bg-red-900/20 p-2 rounded">
-              {{ log.error_message }}
-            </div>
-          </div>
-
-          <!-- Pagination -->
-          <div v-if="logsData.totalPages > 1" class="flex justify-center gap-2 mt-4">
-            <Button
-              @click="changePage(logsData.page - 1)"
-              :disabled="logsData.page <= 1"
-              variant="secondary"
-              size="sm"
-            >
-              ← Previous
-            </Button>
-            <span class="px-4 py-2 text-sm text-gray-400">
-              Page {{ logsData.page }} of {{ logsData.totalPages }}
-            </span>
-            <Button
-              @click="changePage(logsData.page + 1)"
-              :disabled="logsData.page >= logsData.totalPages"
-              variant="secondary"
-              size="sm"
-            >
-              Next →
-            </Button>
-          </div>
-        </div>
-      </Card>
     </div>
   </div>
 </template>
@@ -422,6 +476,7 @@ const loading = ref(true)
 const loadingLogs = ref(false)
 const generating = ref(false)
 const testing = ref(false)
+const isEditing = ref(false)
 
 const config = ref({
   enabled: true,
@@ -512,6 +567,36 @@ const webhookUrl = computed(() => {
 })
 
 const displaySecretKey = computed(() => config.value.secret_key || '')
+
+const showSetupHelp = ref(false)
+
+// ... (existing code)
+
+const jsonPayload = `{
+  "notification_type": "{{notification_type}}",
+  "event": "{{event}}",
+  "subject": "{{subject}}",
+  "message": "{{message}}",
+  "image": "{{image}}",
+  "email": "{{email}}",
+  "username": "{{username}}",
+  "avatar": "{{avatar}}",
+  "media": {{media}},
+  "request": {{request}},
+  "extra": []
+}`
+
+// ... (existing code)
+
+
+const copyPayload = async () => {
+  try {
+    await navigator.clipboard.writeText(jsonPayload)
+    toast.success('JSON payload copied to clipboard')
+  } catch (error) {
+    toast.error('Failed to copy payload')
+  }
+}
 
 onMounted(async () => {
   await Promise.all([

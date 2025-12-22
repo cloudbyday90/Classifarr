@@ -362,6 +362,14 @@ export default {
     return apiClient.get('/requests/recent', { params: { limit } })
   },
 
+  // System
+  getSystemHealth() {
+    return apiClient.get('/system/health')
+  },
+  getSystemStatus() {
+    return apiClient.get('/system/status')
+  },
+
   // Statistics
   getDetailedStats() {
     return apiClient.get('/stats/detailed')

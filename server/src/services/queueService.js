@@ -11,6 +11,7 @@
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const classificationService = require('./classification');
+const ollamaService = require('./ollama');
 
 const logger = createLogger('QueueService');
 
@@ -125,41 +126,28 @@ class QueueService {
         }
     }
 
+
+
     /**
      * Check if Ollama is available
      */
     async checkOllamaAvailability() {
         try {
-            // Get AI config
-            const configResult = await db.query('SELECT * FROM ollama_config LIMIT 1');
-            if (!configResult.rows[0]) {
-                return false;
-            }
+            const result = await ollamaService.testConnection();
 
-            const config = configResult.rows[0];
-            const host = config.host || 'host.docker.internal';
-            const port = config.port || 11434;
-            const ollamaUrl = `http://${host}:${port}`;
-
-            // Quick health check
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 3000);
-
-            const response = await fetch(`${ollamaUrl}/api/tags`, {
-                signal: controller.signal
-            });
-
-            clearTimeout(timeout);
-
-            if (response.ok) {
+            if (result.success) {
                 if (!this.ollamaAvailable) {
                     logger.info('Ollama is now available');
                 }
                 this.ollamaAvailable = true;
                 return true;
+            } else {
+                if (this.ollamaAvailable) {
+                    logger.warn('Ollama is offline', { error: result.error });
+                }
+                this.ollamaAvailable = false;
+                return false;
             }
-
-            return false;
         } catch (error) {
             if (this.ollamaAvailable) {
                 logger.warn('Ollama is offline', { error: error.message });

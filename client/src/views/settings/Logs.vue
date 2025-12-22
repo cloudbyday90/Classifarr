@@ -74,8 +74,15 @@
       <button
         @click="cleanupLogs"
         class="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors"
+        title="Delete logs older than retention period (default 90 days)"
       >
-        Cleanup Old Logs
+        Prune Old
+      </button>
+      <button
+        @click="clearAllLogs"
+        class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+      >
+        Clear All
       </button>
     </div>
 
@@ -431,6 +438,25 @@ async function exportLogs() {
     window.URL.revokeObjectURL(url)
   } catch (err) {
     error.value = 'Failed to export logs: ' + (err.response?.data?.error || err.message)
+  }
+}
+
+async function clearAllLogs() {
+  if (!confirm('Are you sure you want to delete ALL logs? This cannot be undone.')) {
+    return
+  }
+  
+  try {
+    const token = localStorage.getItem('auth_token')
+    const response = await axios.delete('/api/logs', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    alert(`Cleared all logs. Deleted ${response.data.deleted.errorLogs} error logs and ${response.data.deleted.appLogs} app logs.`)
+    loadLogs()
+    loadStats()
+  } catch (err) {
+    error.value = 'Failed to clear logs: ' + (err.response?.data?.error || err.message)
   }
 }
 

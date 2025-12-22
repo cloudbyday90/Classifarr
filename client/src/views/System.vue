@@ -10,7 +10,7 @@
   <div class="space-y-6">
     <div>
       <h1 class="text-3xl font-bold mb-2">System</h1>
-      <p class="text-gray-400">Monitor system health and view logs</p>
+      <p class="text-gray-400">Monitor system health and status.</p>
     </div>
 
     <!-- Health Checks -->
@@ -97,36 +97,6 @@
       </div>
     </Card>
 
-    <!-- Recent Logs -->
-    <Card>
-      <template #header>
-        <h2 class="text-xl font-semibold">Recent Logs</h2>
-      </template>
-
-      <div v-if="loadingLogs" class="text-center py-8">
-        <Spinner />
-        <p class="text-gray-400 mt-2">Loading logs...</p>
-      </div>
-
-      <div v-else-if="logs.length === 0" class="text-center py-8 text-gray-400">
-        <DocumentTextIcon class="w-12 h-12 mx-auto mb-2 opacity-50" />
-        <p>No logs available</p>
-      </div>
-
-      <div v-else class="space-y-1 max-h-96 overflow-y-auto">
-        <div 
-          v-for="log in logs"
-          :key="log.id"
-          class="p-3 bg-background-light rounded border border-gray-700 text-sm font-mono"
-        >
-          <div class="flex items-start space-x-3">
-            <span class="text-gray-500 flex-shrink-0">{{ formatLogTime(log.timestamp) }}</span>
-            <span class="flex-1 text-gray-300">{{ log.message }}</span>
-          </div>
-        </div>
-      </div>
-    </Card>
-
     <!-- About -->
     <Card>
       <template #header>
@@ -168,7 +138,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ArrowPathIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
@@ -177,7 +147,6 @@ import api from '@/api'
 
 const loadingHealth = ref(true)
 const loadingStatus = ref(true)
-const loadingLogs = ref(true)
 const refreshing = ref(false)
 
 const healthServices = ref([
@@ -198,11 +167,10 @@ const systemStatus = ref({
   memoryUsage: { heapUsed: 0 }
 })
 
-const logs = ref([])
-
 const loadHealth = async () => {
   try {
-    const response = await api.get('/system/health')
+    // Use the specific API method instead of generic get
+    const response = await api.getSystemHealth()
     
     if (response.data) {
       const statusMap = response.data
@@ -225,7 +193,8 @@ const loadHealth = async () => {
 
 const loadStatus = async () => {
   try {
-    const response = await api.get('/system/status')
+    // Use the specific API method instead of generic get
+    const response = await api.getSystemStatus()
     
     if (response.data) {
       systemStatus.value = response.data
@@ -234,22 +203,6 @@ const loadStatus = async () => {
     console.error('Failed to load system status:', error)
   } finally {
     loadingStatus.value = false
-  }
-}
-
-const loadLogs = async () => {
-  try {
-    const response = await api.get('/system/logs', {
-      params: { limit: 50 }
-    })
-    
-    if (response.data?.logs) {
-      logs.value = response.data.logs
-    }
-  } catch (error) {
-    console.error('Failed to load logs:', error)
-  } finally {
-    loadingLogs.value = false
   }
 }
 
@@ -284,14 +237,8 @@ const formatMemory = (bytes) => {
   return `${mb.toFixed(0)} MB`
 }
 
-const formatLogTime = (timestamp) => {
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString()
-}
-
 onMounted(() => {
   loadHealth()
   loadStatus()
-  loadLogs()
 })
 </script>

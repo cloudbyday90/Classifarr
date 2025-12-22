@@ -758,7 +758,18 @@ router.put('/notifications', async (req, res) => {
 router.post('/discord/test', async (req, res) => {
   try {
     const { bot_token } = req.body;
-    const result = await discordBotService.testConnection(bot_token);
+    let token = bot_token;
+
+    if (isMaskedToken(bot_token)) {
+      const result = await db.query('SELECT bot_token FROM notification_config WHERE type = $1', ['discord']);
+      token = result.rows[0]?.bot_token;
+    }
+
+    if (!token) {
+      return res.status(400).json({ error: 'No Discord token found' });
+    }
+
+    const result = await discordBotService.testConnection(token);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -774,7 +785,18 @@ router.post('/discord/test', async (req, res) => {
 router.get('/discord/servers', async (req, res) => {
   try {
     const { bot_token } = req.query;
-    const servers = await discordBotService.getServers(bot_token);
+    let token = bot_token;
+
+    if (isMaskedToken(bot_token)) {
+      const result = await db.query('SELECT bot_token FROM notification_config WHERE type = $1', ['discord']);
+      token = result.rows[0]?.bot_token;
+    }
+
+    if (!token) {
+      return res.status(400).json({ error: 'No Discord token found' });
+    }
+
+    const servers = await discordBotService.getServers(token);
     res.json(servers);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -791,8 +813,36 @@ router.get('/discord/channels/:serverId', async (req, res) => {
   try {
     const { serverId } = req.params;
     const { bot_token } = req.query;
-    const channels = await discordBotService.getChannels(serverId, bot_token);
+    let token = bot_token;
+
+    if (isMaskedToken(bot_token)) {
+      const result = await db.query('SELECT bot_token FROM notification_config WHERE type = $1', ['discord']);
+      token = result.rows[0]?.bot_token;
+    }
+
+    if (!token) {
+      return res.status(400).json({ error: 'No Discord token found' });
+    }
+
+    const channels = await discordBotService.getChannels(serverId, token);
     res.json(channels);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/discord/channel/:channelId:
+ *   get:
+ *     summary: Get Discord channel details (name, guild name)
+ */
+router.get('/discord/channel/:channelId', async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    // We don't need to pass token here as service will use stored config
+    const details = await discordBotService.getChannelDetails(channelId);
+    res.json(details);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

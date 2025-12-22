@@ -76,37 +76,37 @@ router.get('/', async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 50), 100);
     const offset = (page - 1) * limit;
-    
+
     let whereConditions = [];
     let queryParams = [];
     let paramCount = 1;
-    
+
     if (req.query.level) {
       whereConditions.push(`level = $${paramCount++}`);
       queryParams.push(req.query.level.toUpperCase());
     }
-    
+
     if (req.query.module) {
       whereConditions.push(`module = $${paramCount++}`);
       queryParams.push(req.query.module);
     }
-    
+
     if (req.query.resolved !== undefined) {
       whereConditions.push(`resolved = $${paramCount++}`);
       queryParams.push(req.query.resolved === 'true');
     }
-    
-    const whereClause = whereConditions.length > 0 
+
+    const whereClause = whereConditions.length > 0
       ? 'WHERE ' + whereConditions.join(' AND ')
       : '';
-    
+
     // Get total count
     const countResult = await db.query(
       `SELECT COUNT(*) as total FROM error_log ${whereClause}`,
       queryParams
     );
     const total = parseInt(countResult.rows[0].total);
-    
+
     // Get paginated results
     const logsResult = await db.query(
       `SELECT id, error_id, level, module, message, resolved, created_at
@@ -116,7 +116,7 @@ router.get('/', async (req, res, next) => {
        LIMIT $${paramCount++} OFFSET $${paramCount++}`,
       [...queryParams, limit, offset]
     );
-    
+
     res.json({
       logs: logsResult.rows,
       pagination: {
@@ -144,11 +144,11 @@ router.get('/error/:errorId', async (req, res, next) => {
       `SELECT * FROM error_log WHERE error_id = $1`,
       [req.params.errorId]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Error log not found' });
     }
-    
+
     res.json(result.rows[0]);
   } catch (error) {
     next(error);
@@ -168,13 +168,13 @@ router.get('/error/:errorId/report', async (req, res, next) => {
       `SELECT * FROM error_log WHERE error_id = $1`,
       [req.params.errorId]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Error log not found' });
     }
-    
+
     const log = result.rows[0];
-    
+
     // Generate markdown bug report
     let report = `## Bug Report\n\n`;
     report += `**Error ID:** \`${log.error_id}\`\n`;
@@ -182,23 +182,23 @@ router.get('/error/:errorId/report', async (req, res, next) => {
     report += `**Level:** ${log.level}\n`;
     report += `**Module:** ${log.module}\n\n`;
     report += `### Description\n\n${log.message}\n\n`;
-    
+
     if (log.stack_trace) {
       report += `### Stack Trace\n\n\`\`\`\n${log.stack_trace}\n\`\`\`\n\n`;
     }
-    
+
     if (log.request_context) {
       report += `### Request Context\n\n\`\`\`json\n${JSON.stringify(log.request_context, null, 2)}\n\`\`\`\n\n`;
     }
-    
+
     if (log.system_context) {
       report += `### System Context\n\n\`\`\`json\n${JSON.stringify(log.system_context, null, 2)}\n\`\`\`\n\n`;
     }
-    
+
     if (log.metadata) {
       report += `### Additional Data\n\n\`\`\`json\n${JSON.stringify(log.metadata, null, 2)}\n\`\`\`\n\n`;
     }
-    
+
     res.json({ report });
   } catch (error) {
     next(error);
@@ -216,40 +216,40 @@ router.get('/export', async (req, res, next) => {
   try {
     // Configurable maximum export limit to prevent memory issues
     const MAX_EXPORT_LIMIT = parseInt(process.env.MAX_LOG_EXPORT_LIMIT) || 5000;
-    
+
     let whereConditions = [];
     let queryParams = [];
     let paramCount = 1;
-    
+
     if (req.query.level) {
       whereConditions.push(`level = $${paramCount++}`);
       queryParams.push(req.query.level.toUpperCase());
     }
-    
+
     if (req.query.module) {
       whereConditions.push(`module = $${paramCount++}`);
       queryParams.push(req.query.module);
     }
-    
+
     if (req.query.startDate) {
       whereConditions.push(`created_at >= $${paramCount++}`);
       queryParams.push(req.query.startDate);
     }
-    
+
     if (req.query.endDate) {
       whereConditions.push(`created_at <= $${paramCount++}`);
       queryParams.push(req.query.endDate);
     }
-    
-    const whereClause = whereConditions.length > 0 
+
+    const whereClause = whereConditions.length > 0
       ? 'WHERE ' + whereConditions.join(' AND ')
       : '';
-    
+
     const result = await db.query(
       `SELECT * FROM error_log ${whereClause} ORDER BY created_at DESC LIMIT $${paramCount++}`,
       [...queryParams, MAX_EXPORT_LIMIT]
     );
-    
+
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="logs-export-${Date.now()}.json"`);
     res.json(result.rows);
@@ -276,7 +276,7 @@ router.get('/stats', async (req, res, next) => {
         COUNT(*) FILTER (WHERE resolved = false AND level = 'ERROR') as unresolved_errors
        FROM error_log`
     );
-    
+
     // Errors by module
     const moduleResult = await db.query(
       `SELECT module, COUNT(*) as count
@@ -286,7 +286,7 @@ router.get('/stats', async (req, res, next) => {
        ORDER BY count DESC
        LIMIT 10`
     );
-    
+
     // Recent 24h trend
     const last24hResult = await db.query(
       `SELECT 
@@ -295,7 +295,7 @@ router.get('/stats', async (req, res, next) => {
        FROM error_log
        WHERE created_at >= NOW() - INTERVAL '24 hours'`
     );
-    
+
     // Recent 7d trend
     const last7dResult = await db.query(
       `SELECT 
@@ -304,7 +304,7 @@ router.get('/stats', async (req, res, next) => {
        FROM error_log
        WHERE created_at >= NOW() - INTERVAL '7 days'`
     );
-    
+
     res.json({
       totals: totalsResult.rows[0],
       topModules: moduleResult.rows,
@@ -328,7 +328,7 @@ router.get('/stats', async (req, res, next) => {
 router.post('/error/:errorId/resolve', async (req, res, next) => {
   try {
     const { notes } = req.body;
-    
+
     const result = await db.query(
       `UPDATE error_log 
        SET resolved = true, resolved_at = NOW(), resolution_notes = $1
@@ -336,11 +336,11 @@ router.post('/error/:errorId/resolve', async (req, res, next) => {
        RETURNING *`,
       [notes || null, req.params.errorId]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Error log not found' });
     }
-    
+
     logger.info('Error marked as resolved', { errorId: req.params.errorId });
     res.json(result.rows[0]);
   } catch (error) {
@@ -361,15 +361,15 @@ router.post('/cleanup', async (req, res, next) => {
     const settingsResult = await db.query(
       `SELECT key, value FROM settings WHERE key IN ('log_retention_days', 'error_log_retention_days')`
     );
-    
+
     const settings = {};
     settingsResult.rows.forEach(row => {
       settings[row.key] = parseInt(row.value);
     });
-    
+
     const errorRetentionDays = settings.error_log_retention_days || 90;
     const appLogRetentionDays = settings.log_retention_days || 30;
-    
+
     // Clean up old error logs
     const errorLogResult = await db.query(
       `DELETE FROM error_log 
@@ -377,7 +377,7 @@ router.post('/cleanup', async (req, res, next) => {
        RETURNING id`,
       [errorRetentionDays]
     );
-    
+
     // Clean up old app logs
     const appLogResult = await db.query(
       `DELETE FROM app_log 
@@ -385,17 +385,46 @@ router.post('/cleanup', async (req, res, next) => {
        RETURNING id`,
       [appLogRetentionDays]
     );
-    
+
     logger.info('Log cleanup completed', {
       errorLogsDeleted: errorLogResult.rows.length,
       appLogsDeleted: appLogResult.rows.length
     });
-    
+
     res.json({
       success: true,
       deleted: {
         errorLogs: errorLogResult.rows.length,
         appLogs: appLogResult.rows.length
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /api/logs:
+ *   delete:
+ *     summary: Delete all logs
+ *     tags: [Logs]
+ */
+router.delete('/', async (req, res, next) => {
+  try {
+    const errorLogResult = await db.query('DELETE FROM error_log');
+    const appLogResult = await db.query('DELETE FROM app_log');
+
+    logger.info('All logs cleared', {
+      errorLogsDeleted: errorLogResult.rowCount,
+      appLogsDeleted: appLogResult.rowCount
+    });
+
+    res.json({
+      success: true,
+      deleted: {
+        errorLogs: errorLogResult.rowCount,
+        appLogs: appLogResult.rowCount
       }
     });
   } catch (error) {
