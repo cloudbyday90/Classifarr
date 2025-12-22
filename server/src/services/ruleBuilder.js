@@ -16,16 +16,48 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const ollamaService = require('./ollama');
-const db = require('../config/database');
-
-// In-memory session storage (in production, use Redis or database)
-const sessions = new Map();
+const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 
 class RuleBuilderService {
+  async analyzeLibrary(libraryId) {
+    try {
+      const itemsResult = await db.query(
+        `SELECT id, title, metadata, genres, tags, content_rating, tmdb_id 
+         FROM media_server_items 
+         WHERE library_id = $1 AND metadata->'content_analysis' IS NULL`,
+        [libraryId]
+      );
+
+      const queueService = require('./queueService');
+      let queuedCount = 0;
+
+      for (const item of itemsResult.rows) {
+        await queueService.enqueue('classification', {
+          title: item.title,
+          overview: item.metadata?.summary || '',
+          genres: typeof item.genres === 'string' ? JSON.parse(item.genres) : (item.genres || []),
+          keywords: typeof item.tags === 'string' ? JSON.parse(item.tags) : (item.tags || []),
+          content_rating: item.content_rating,
+          original_language: 'en',
+          tmdb_id: item.tmdb_id,
+          itemId: item.id
+        }, {
+          priority: 5,
+          source: 'manual_trigger'
+        });
+        queuedCount++;
+      }
+
+      return { success: true, queued: queuedCount, message: `Queued ${queuedCount} items for analysis` };
+    } catch (error) {
+      console.error('Error analyzing library:', error);
+      throw error;
+    }
+  }
+
   async startSession(libraryId, mediaType) {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Get library info
     const libResult = await db.query('SELECT * FROM libraries WHERE id = $1', [libraryId]);
     if (libResult.rows.length === 0) {
@@ -84,7 +116,7 @@ What kind of ${mediaType}s should go into "${library.name}"?`;
 
     // Build conversation context for AI
     const context = this.buildContext(session);
-    
+
     // Get Ollama config
     const configResult = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
     const config = configResult.rows[0] || { model: 'qwen3:14b', temperature: 0.30 };
@@ -137,7 +169,7 @@ Respond naturally and ask relevant follow-up questions. Keep responses concise (
 
   extractRuleData(session, userMessage, aiResponse) {
     const lowerMessage = userMessage.toLowerCase();
-    
+
     // Extract genres
     const genreKeywords = ['action', 'comedy', 'drama', 'horror', 'sci-fi', 'fantasy', 'thriller', 'romance', 'documentary', 'animation', 'anime'];
     for (const genre of genreKeywords) {
@@ -191,11 +223,11 @@ Respond naturally and ask relevant follow-up questions. Keep responses concise (
   hasEnoughInformation(session) {
     const data = session.ruleData;
     // Need at least one criterion
-    return data.genres?.length > 0 || 
-           data.ratings?.length > 0 || 
-           data.keywords?.length > 0 ||
-           data.yearRange ||
-           data.language;
+    return data.genres?.length > 0 ||
+      data.ratings?.length > 0 ||
+      data.keywords?.length > 0 ||
+      data.yearRange ||
+      data.language;
   }
 
   async generateRule(sessionId) {
@@ -306,6 +338,146 @@ Respond naturally and ask relevant follow-up questions. Keep responses concise (
     return codes[language.toLowerCase()] || 'en';
   }
 
+  async previewRule(libraryId, criteria) {
+    try {
+      let query = 'SELECT * FROM media_server_items WHERE library_id = $1';
+      const params = [libraryId];
+      let paramIndex = 2;
+
+      // Handle criteria array
+      if (!Array.isArray(criteria)) {
+        criteria = [criteria];
+      }
+
+      for (const condition of criteria) {
+        const { field, operator, value } = condition;
+
+        if (!value || (Array.isArray(value) && value.length === 0)) continue;
+
+        switch (field) {
+          case 'content_type':
+            if (operator === 'is_one_of') {
+              const types = Array.isArray(value) ? value : [value];
+              query += ` AND metadata->'content_analysis'->>'type' = ANY($${paramIndex})`;
+              params.push(types);
+            } else {
+              query += ` AND metadata->'content_analysis'->>'type' = $${paramIndex}`;
+              params.push(value);
+            }
+            paramIndex++;
+            break;
+
+          case 'genres':
+            if (operator === 'contains') {
+              query += ` AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(genres) AS g WHERE LOWER(g) = LOWER($${paramIndex}))`;
+              params.push(value);
+              paramIndex++;
+            } else if (operator === 'is_one_of') {
+              // Check if ANY of the genres in the value list match ANY of the item's genres
+              // This is complex in SQL with jsonb array vs array. 
+              // Simplest: EXISTS (SELECT 1 FROM jsonb_array_elements_text(genres) g WHERE g = ANY($1))
+              const genres = Array.isArray(value) ? value : [value];
+              query += ` AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(genres) AS g WHERE LOWER(g) = ANY(SELECT LOWER(unnest($${paramIndex}::text[]))))`;
+              params.push(genres);
+              paramIndex++;
+            } else if (operator === 'not_contains') {
+              query += ` AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(genres) AS g WHERE LOWER(g) = LOWER($${paramIndex}))`;
+              params.push(value);
+              paramIndex++;
+            }
+            break;
+
+          case 'keywords':
+          case 'tags':
+            if (operator === 'contains') {
+              query += ` AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(tags) AS t WHERE LOWER(t) LIKE LOWER($${paramIndex}))`;
+              params.push(`%${value}%`);
+              paramIndex++;
+            }
+            break;
+
+          case 'title':
+            if (operator === 'contains') {
+              query += ` AND LOWER(title) LIKE LOWER($${paramIndex})`;
+              params.push(`%${value}%`);
+              paramIndex++;
+            }
+            break;
+
+          case 'year':
+            if (operator === 'equals') {
+              query += ` AND year = $${paramIndex}`;
+              params.push(parseInt(value));
+            } else if (operator === 'greater_than') {
+              query += ` AND year > $${paramIndex}`;
+              params.push(parseInt(value));
+            } else if (operator === 'less_than') {
+              query += ` AND year < $${paramIndex}`;
+              params.push(parseInt(value));
+            }
+            paramIndex++;
+            break;
+
+          case 'certification':
+            if (operator === 'equals') {
+              query += ` AND (metadata->>'content_rating' = $${paramIndex} OR metadata->>'certification' = $${paramIndex})`;
+              params.push(value);
+            } else if (operator === 'is_one_of') {
+              const certs = Array.isArray(value) ? value : [value];
+              query += ` AND (metadata->>'content_rating' = ANY($${paramIndex}) OR metadata->>'certification' = ANY($${paramIndex}))`;
+              params.push(certs);
+            }
+            paramIndex++;
+            break;
+        }
+      }
+
+      query += ' ORDER BY added_at DESC LIMIT 20';
+
+      const result = await db.query(query, params);
+      return result.rows;
+    } catch (error) {
+      console.error('Error in previewRule:', error);
+      throw new Error(`Failed to preview rule: ${error.message}`);
+    }
+  }
+
+  async getAnalysisStats(libraryId) {
+    try {
+      // Count total items
+      const totalResult = await db.query(
+        'SELECT COUNT(*) FROM media_server_items WHERE library_id = $1',
+        [libraryId]
+      );
+
+      // Count items with analysis
+      const analyzedResult = await db.query(
+        `SELECT COUNT(*) FROM media_server_items 
+         WHERE library_id = $1 AND metadata->'content_analysis' IS NOT NULL`,
+        [libraryId]
+      );
+
+      // Group by detected type
+      const typesResult = await db.query(
+        `SELECT metadata->'content_analysis'->>'type' as type, COUNT(*) as count 
+         FROM media_server_items 
+         WHERE library_id = $1 AND metadata->'content_analysis' IS NOT NULL
+         GROUP BY type
+         ORDER BY count DESC`,
+        [libraryId]
+      );
+
+      return {
+        total: parseInt(totalResult.rows[0].count),
+        analyzed: parseInt(analyzedResult.rows[0].count),
+        types: typesResult.rows.map(r => ({ type: r.type, count: parseInt(r.count) }))
+      };
+    } catch (error) {
+      console.error('Error getting analysis stats:', error);
+      return { total: 0, analyzed: 0, types: [] };
+    }
+  }
+
   async testRule(rule, sampleData) {
     // Test the rule against sample metadata
     try {
@@ -317,7 +489,7 @@ Respond naturally and ask relevant follow-up questions. Keep responses concise (
       switch (operator) {
         case 'contains':
           if (Array.isArray(fieldValue)) {
-            return fieldValue.some(v => 
+            return fieldValue.some(v =>
               v.toLowerCase().includes(value.toLowerCase())
             );
           }

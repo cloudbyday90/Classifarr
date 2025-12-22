@@ -105,4 +105,51 @@ router.post('/test', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/rule-builder/preview:
+ *   post:
+ *     summary: Preview rule matches
+ */
+router.post('/preview', async (req, res) => {
+  try {
+    const { library_id, criteria } = req.body;
+
+    if (!library_id || !criteria) {
+      return res.status(400).json({ error: 'library_id and criteria are required' });
+    }
+
+    const result = await ruleBuilderService.previewRule(library_id, criteria);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/rule-builder/stats/{libraryId}:
+ *   get:
+ *     summary: Get content analysis statistics for a library
+ */
+router.get('/stats/:libraryId', async (req, res) => {
+  try {
+    const { libraryId } = req.params;
+    const result = await ruleBuilderService.getAnalysisStats(libraryId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Trigger analysis for a library
+router.post('/analyze/:libraryId', async (req, res) => {
+  try {
+    const result = await ruleBuilderService.analyzeLibrary(req.params.libraryId);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

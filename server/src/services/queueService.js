@@ -170,6 +170,26 @@ class QueueService {
                     const result = await classificationService.classify(payload);
                     await this.completeTask(task.id, result);
 
+                    // If this was a gap analysis task for a specific item, update the item directly
+                    if (payload.itemId && result.bestMatch) {
+                        const newMetadata = {
+                            content_analysis: {
+                                type: result.bestMatch.type,
+                                confidence: result.bestMatch.confidence,
+                                detected_at: new Date().toISOString()
+                            }
+                        };
+
+                        // We need to fetch the current metadata first to merge, or use jsonb_set
+                        // Using a simple merge query here
+                        await db.query(
+                            `UPDATE media_server_items 
+                             SET metadata = metadata || $1::jsonb
+                             WHERE id = $2`,
+                            [JSON.stringify(newMetadata), payload.itemId]
+                        );
+                    }
+
                     // Update webhook_log if linked
                     if (task.webhook_log_id) {
                         await db.query(

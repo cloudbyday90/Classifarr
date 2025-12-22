@@ -187,15 +187,56 @@
       </Card>
 
       <Card title="Classification Rules">
-        <div class="space-y-4">
-          <div>
-            <h4 class="font-medium mb-2">Label-based Rules</h4>
-            <p class="text-sm text-gray-400 mb-4">
-              Configure which content should be included or excluded from this library
-            </p>
+        <div class="space-y-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h4 class="font-medium mb-1">Label-based Rules</h4>
+              <p class="text-sm text-gray-400">
+                Configure which content should be included or excluded from this library.
+              </p>
+            </div>
             <Button @click="$router.push(`/rule-builder/${library.id}`)">
-              ✨ AI Rule Builder
+              + New Rule
             </Button>
+          </div>
+
+          <div v-if="rules.length > 0" class="border border-gray-700 rounded-lg overflow-hidden">
+            <table class="w-full text-left">
+              <thead class="bg-gray-800 text-gray-400 text-xs uppercase">
+                <tr>
+                  <th class="px-4 py-3">Rule Name</th>
+                  <th class="px-4 py-3">Conditions</th>
+                  <th class="px-4 py-3">Status</th>
+                  <th class="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-700">
+                <tr v-for="rule in rules" :key="rule.id" class="hover:bg-gray-800/50">
+                  <td class="px-4 py-3 font-medium">{{ rule.name }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-400">{{ formatConditions(rule.rule_json) }}</td>
+                  <td class="px-4 py-3">
+                    <span 
+                      class="px-2 py-1 text-xs rounded-full"
+                      :class="rule.is_active ? 'bg-green-900/50 text-green-400' : 'bg-gray-700/50 text-gray-400'"
+                    >
+                      {{ rule.is_active ? 'Active' : 'Inactive' }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      @click="$router.push(`/rule-builder/${library.id}?ruleId=${rule.id}`)"
+                    >
+                      Edit
+                    </Button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="text-center py-8 text-gray-500 border-2 border-dashed border-gray-700 rounded-lg">
+            No classification rules configured yet.
           </div>
         </div>
       </Card>
@@ -298,6 +339,8 @@ const formatBytes = (bytes) => {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
 }
 
+const rules = ref([])
+
 onMounted(async () => {
   try {
     const response = await api.getLibrary(route.params.id)
@@ -316,6 +359,10 @@ onMounted(async () => {
       }
     }
     
+    // Load rules
+    const rulesResponse = await api.getLibraryRules(route.params.id)
+    rules.value = rulesResponse.data
+
     // Load ARR options if arr_id is set
     if (library.value.arr_id) {
       await loadArrOptions()
@@ -328,6 +375,19 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+const formatConditions = (conditions) => {
+  if (!conditions) return 'No conditions'
+  // Handle both array and single object (legacy)
+  const list = Array.isArray(conditions) ? conditions : [conditions]
+  return list.map(c => {
+    // Format operator text
+    const op = c.operator === 'equals' ? 'is' : 
+               c.operator === 'not_equals' ? 'is not' : 
+               c.operator.replace('_', ' ')
+    return `${c.field} ${op} "${c.value}"`
+  }).join(', ')
+}
 
 const loadArrOptions = async () => {
   loadingArrOptions.value = true

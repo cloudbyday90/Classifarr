@@ -20,6 +20,7 @@ const db = require('../config/database');
 const plexService = require('./plex');
 const embyService = require('./emby');
 const jellyfinService = require('./jellyfin');
+const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('mediaSync');
@@ -64,7 +65,7 @@ class MediaSyncService {
       try {
         // Get service based on media server type
         const service = this.getMediaServerService(type);
-        
+
         // Sync items in batches
         let offset = 0;
         let totalItems = 0;
@@ -95,7 +96,7 @@ class MediaSyncService {
             // First batch - estimate total
             totalItems = processedItems;
           }
-          
+
           offset += batchSize;
 
           // Update progress
@@ -185,7 +186,7 @@ class MediaSyncService {
    */
   async getLibraryContext(tmdbId, metadata) {
     const existingItem = await this.findExistingMedia(tmdbId, metadata.media_type);
-    
+
     if (!existingItem) {
       return null;
     }
@@ -210,6 +211,29 @@ class MediaSyncService {
    */
   async upsertMediaItem(mediaServerId, libraryId, item) {
     try {
+      // Run content analysis if not already present or force re-analysis
+      const analysis = await contentTypeAnalyzer.analyze({
+        title: item.title,
+        overview: item.metadata?.summary || '',
+        genres: item.genres || [],
+        keywords: item.tags || [], // Use tags/collections as keywords proxy
+        content_rating: item.content_rating,
+        original_language: 'en', // Plex doesn't always provide this
+        tmdb_id: item.tmdb_id
+      }, null, true);
+
+      if (analysis.analyzed && analysis.bestMatch) {
+        // Merge into metadata (maintain existing metadata properties)
+        item.metadata = {
+          ...(item.metadata || {}),
+          content_analysis: {
+            type: analysis.bestMatch.type,
+            confidence: analysis.bestMatch.confidence,
+            detected_at: new Date().toISOString()
+          }
+        };
+      }
+
       await db.query(
         `INSERT INTO media_server_items 
          (media_server_id, library_id, external_id, tmdb_id, imdb_id, tvdb_id, 
@@ -293,15 +317,15 @@ class MediaSyncService {
         LEFT JOIN libraries l ON ss.library_id = l.id
         LEFT JOIN media_server ms ON ss.media_server_id = ms.id
       `;
-      
+
       const params = [];
       if (libraryId) {
         query += ` WHERE ss.library_id = $1`;
         params.push(libraryId);
       }
-      
+
       query += ` ORDER BY ss.created_at DESC LIMIT 50`;
-      
+
       const result = await db.query(query, params);
       return result.rows;
     } catch (error) {
@@ -318,7 +342,7 @@ class MediaSyncService {
    */
   async getLibraryItems(libraryId, options = {}) {
     const { limit = 50, offset = 0 } = options;
-    
+
     try {
       const result = await db.query(
         `SELECT * FROM media_server_items

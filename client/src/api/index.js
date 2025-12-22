@@ -143,6 +143,9 @@ export default {
   getLibraryRules(id) {
     return apiClient.get(`/libraries/${id}/rules`)
   },
+  getLibraryRule(libraryId, ruleId) {
+    return apiClient.get(`/libraries/${libraryId}/rules/${ruleId}`)
+  },
   addLibraryRule(id, data) {
     return apiClient.post(`/libraries/${id}/rules`, data)
   },
@@ -194,6 +197,16 @@ export default {
   },
   testRule(data) {
     return apiClient.post('/rule-builder/test', data)
+  },
+  previewRule(data) {
+    return apiClient.post('/rule-builder/preview', data)
+  },
+
+  getRuleStats(libraryId) {
+    return apiClient.get(`/rule-builder/stats/${libraryId}`)
+  },
+  analyzeLibrary(libraryId) {
+    return apiClient.post(`/rule-builder/analyze/${libraryId}`)
   },
 
   // Settings

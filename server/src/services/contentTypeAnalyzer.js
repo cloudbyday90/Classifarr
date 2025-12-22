@@ -103,30 +103,38 @@ class ContentTypeAnalyzer {
         ],
         confidence: 75,
         suggestedLabels: ['halloween']
+      },
+      documentary: {
+        keywords: ['documentary', 'docuseries'],
+        requiredGenres: ['Documentary'],
+        confidence: 90,
+        suggestedLabels: ['documentary']
       }
     };
   }
 
   /**
    * Analyze metadata to detect content type
-   * @param {object} metadata - Media metadata from TMDB
-   * @param {number} classificationId - Classification ID for logging
+   * @param {object} metadata - Media metadata from TMDB/Plex
+   * @param {number} classificationId - Classification ID for logging (optional)
+   * @param {boolean} force - Force analysis even if disabled in settings
    * @returns {Promise<object>} Analysis result
    */
-  async analyze(metadata, classificationId = null) {
+  async analyze(metadata, classificationId = null, force = false) {
     try {
       const settings = await this.getSettings();
-      
-      if (!settings.enabled) {
+
+      if (!settings.enabled && !force) {
         return { analyzed: false, reason: 'Content analysis disabled' };
       }
 
       const detections = [];
       const overview = (metadata.overview || '').toLowerCase();
       const title = (metadata.title || '').toLowerCase();
-      const genres = (metadata.genres || []).map(g => g.toLowerCase());
-      const keywords = (metadata.keywords || []).map(k => k.toLowerCase());
-      const certification = (metadata.certification || '').toUpperCase();
+      // Handle both array of strings and array of objects for genres
+      const genres = (metadata.genres || []).map(g => (typeof g === 'string' ? g : g.name).toLowerCase());
+      const keywords = (metadata.keywords || []).map(k => (typeof k === 'string' ? k : k.name).toLowerCase());
+      const certification = (metadata.certification || metadata.content_rating || '').toUpperCase();
       const originalLanguage = metadata.original_language || '';
 
       // Check each pattern
@@ -146,7 +154,7 @@ class ContentTypeAnalyzer {
       detections.sort((a, b) => b.confidence - a.confidence);
       const bestMatch = detections[0] || null;
 
-      // Log analysis
+      // Log analysis if classification ID provided
       if (classificationId && bestMatch) {
         await this.logAnalysis(classificationId, metadata.tmdb_id, bestMatch, metadata.genres);
       }
@@ -187,8 +195,8 @@ class ContentTypeAnalyzer {
     }
 
     // Check keywords in overview and title
-    const keywordMatches = pattern.keywords.filter(keyword => 
-      data.overview.includes(keyword) || data.title.includes(keyword) || 
+    const keywordMatches = pattern.keywords.filter(keyword =>
+      data.overview.includes(keyword) || data.title.includes(keyword) ||
       data.keywords.includes(keyword)
     );
 
@@ -199,10 +207,10 @@ class ContentTypeAnalyzer {
 
     // Check required genres
     if (pattern.requiredGenres) {
-      const genreMatches = pattern.requiredGenres.filter(genre => 
+      const genreMatches = pattern.requiredGenres.filter(genre =>
         data.genres.includes(genre.toLowerCase())
       );
-      
+
       if (genreMatches.length === pattern.requiredGenres.length) {
         confidence += 30;
         reasoning.push(`Matched required genres: ${genreMatches.join(', ')}`);
@@ -229,7 +237,7 @@ class ContentTypeAnalyzer {
     if (confidence > 0) {
       // Use weighted average favoring accumulated evidence (70%) over base confidence (30%)
       confidence = Math.min((confidence * 0.7) + (pattern.confidence * 0.3), 100);
-      
+
       // Only mark as detected if confidence meets minimum threshold
       // This prevents very low confidence false positives
       detected = confidence >= 40;

@@ -426,33 +426,56 @@ class ClassificationService {
 
   evaluateCustomRule(metadata, ruleJson) {
     try {
-      // Custom rules are stored as JSON with conditions
-      // Example: { "field": "genres", "operator": "contains", "value": "Action" }
-      const { field, operator, value } = ruleJson;
-      const fieldValue = metadata[field];
-
-      if (!fieldValue) return false;
-
-      switch (operator) {
-        case 'contains':
-          if (Array.isArray(fieldValue)) {
-            return fieldValue.some(v =>
-              v.toLowerCase().includes(value.toLowerCase())
-            );
-          }
-          return String(fieldValue).toLowerCase().includes(value.toLowerCase());
-        case 'equals':
-          return fieldValue === value;
-        case 'greater_than':
-          return parseFloat(fieldValue) > parseFloat(value);
-        case 'less_than':
-          return parseFloat(fieldValue) < parseFloat(value);
-        default:
-          return false;
+      // Handle array of conditions (AND logic)
+      if (Array.isArray(ruleJson)) {
+        return ruleJson.every(condition => this.evaluateSingleCondition(metadata, condition));
       }
+      // Handle legacy single object
+      return this.evaluateSingleCondition(metadata, ruleJson);
     } catch (error) {
       logger.error('Error evaluating custom rule', { error: error.message });
       return false;
+    }
+  }
+
+  evaluateSingleCondition(metadata, condition) {
+    const { field, operator, value } = condition;
+
+    // Handle nested fields (e.g., metadata.content_analysis.type)
+    let fieldValue;
+    if (field === 'content_type') {
+      fieldValue = metadata.contentAnalysis?.bestMatch?.type;
+    } else {
+      fieldValue = metadata[field];
+    }
+
+    if (!fieldValue) return false;
+
+    switch (operator) {
+      case 'contains':
+        if (Array.isArray(fieldValue)) {
+          return fieldValue.some(v =>
+            v.toLowerCase().includes(value.toLowerCase())
+          );
+        }
+        return String(fieldValue).toLowerCase().includes(value.toLowerCase());
+      case 'not_contains':
+        if (Array.isArray(fieldValue)) {
+          return !fieldValue.some(v =>
+            v.toLowerCase().includes(value.toLowerCase())
+          );
+        }
+        return !String(fieldValue).toLowerCase().includes(value.toLowerCase());
+      case 'equals':
+        return String(fieldValue).toLowerCase() === String(value).toLowerCase();
+      case 'not_equals':
+        return String(fieldValue).toLowerCase() !== String(value).toLowerCase();
+      case 'greater_than':
+        return parseFloat(fieldValue) > parseFloat(value);
+      case 'less_than':
+        return parseFloat(fieldValue) < parseFloat(value);
+      default:
+        return false;
     }
   }
 

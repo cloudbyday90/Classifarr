@@ -698,21 +698,8 @@ VALUES ('port', '21324'),
     ('log_level', 'INFO');
 
 -- Default Ollama Configuration
-INSERT INTO
-    ollama_config (
-        host,
-        port,
-        model,
-        temperature,
-        is_active
-    )
-VALUES (
-        'host.docker.internal',
-        11434,
-        'qwen3:14b',
-        0.30,
-        true
-    );
+-- Default Ollama Configuration (Removed to ensure empty state on fresh install)
+-- User must explicitly configure Ollama
 
 -- Default Tavily Configuration
 INSERT INTO
