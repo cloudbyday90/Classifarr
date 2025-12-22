@@ -75,9 +75,11 @@ class SchedulerService {
             // Find items that have NO content analysis
             // Limit to 100 at a time to prevent flooding the queue
             const result = await db.query(
-                `SELECT id, title, metadata, genres, tags, content_rating, tmdb_id 
-         FROM media_server_items 
-         WHERE metadata->'content_analysis' IS NULL
+                `SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, msi.tmdb_id,
+                        msi.library_id, l.name as library_name, l.media_type
+         FROM media_server_items msi
+         JOIN libraries l ON msi.library_id = l.id
+         WHERE msi.metadata->'content_analysis' IS NULL
          LIMIT 100`
             );
 
@@ -97,7 +99,10 @@ class SchedulerService {
                     content_rating: item.content_rating,
                     original_language: 'en',
                     tmdb_id: item.tmdb_id,
-                    itemId: item.id // Pass internal ID for efficient updating
+                    itemId: item.id, // Pass internal ID for efficient updating
+                    source_library_id: item.library_id, // Pass source library for direct matching
+                    source_library_name: item.library_name,
+                    media: { media_type: item.media_type || 'movie' } // Include media_type for correct TMDB lookup
                 }, {
                     priority: 5, // Lower priority than user actions
                     source: 'gap_analysis'

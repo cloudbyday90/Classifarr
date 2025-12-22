@@ -9,130 +9,243 @@
 <template>
   <div class="space-y-6">
     <div>
-      <h2 class="text-xl font-semibold mb-2">Task Queue</h2>
-      <p class="text-gray-400 text-sm">Monitor and manage background classification tasks</p>
+      <h2 class="text-xl font-semibold mb-2">Queue Settings</h2>
+      <p class="text-gray-400 text-sm">Configure task queue processing behavior</p>
     </div>
 
-    <!-- Queue Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-      <div class="bg-gray-800 p-4 rounded-lg text-center border border-gray-700">
-        <div class="text-2xl font-bold" :class="stats.ollamaAvailable ? 'text-green-400' : 'text-red-400'">
-          {{ stats.ollamaAvailable ? '🟢' : '🔴' }}
+    <!-- Quick Stats Banner -->
+    <div class="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-6">
+          <div class="flex items-center gap-2">
+            <span :class="stats.workerRunning ? 'text-green-400' : 'text-red-400'">●</span>
+            <span class="text-sm">Worker {{ stats.workerRunning ? 'Active' : 'Stopped' }}</span>
+          </div>
+          <div class="text-sm text-gray-400">
+            <span class="text-blue-400">{{ stats.pending }}</span> pending · 
+            <span class="text-yellow-400">{{ stats.processing }}</span> processing · 
+            <span class="text-red-400">{{ stats.failed }}</span> failed
+          </div>
         </div>
-        <div class="text-sm text-gray-400">Ollama</div>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-lg text-center border border-gray-700">
-        <div class="text-2xl font-bold text-blue-400">{{ stats.pending }}</div>
-        <div class="text-sm text-gray-400">Pending</div>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-lg text-center border border-gray-700">
-        <div class="text-2xl font-bold text-yellow-400">{{ stats.processing }}</div>
-        <div class="text-sm text-gray-400">Processing</div>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-lg text-center border border-gray-700">
-        <div class="text-2xl font-bold text-green-400">{{ stats.completed }}</div>
-        <div class="text-sm text-gray-400">Completed</div>
-      </div>
-      <div class="bg-gray-800 p-4 rounded-lg text-center border border-gray-700">
-        <div class="text-2xl font-bold text-red-400">{{ stats.failed }}</div>
-        <div class="text-sm text-gray-400">Failed</div>
+        <router-link to="/queue" class="text-blue-400 hover:text-blue-300 text-sm">
+          View Queue →
+        </router-link>
       </div>
     </div>
 
-    <!-- Ollama Status Alert -->
-    <div v-if="!stats.ollamaAvailable" class="bg-red-900/20 border border-red-700 rounded-lg p-4">
-      <div class="flex items-center gap-2 text-red-400">
-        <span>⚠️</span>
-        <span class="font-medium">Ollama is offline</span>
+    <!-- Worker Settings -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <h3 class="text-lg font-medium mb-4">Worker Configuration</h3>
+      
+      <div class="space-y-4">
+        <!-- Worker Enabled -->
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="font-medium">Worker Enabled</label>
+            <p class="text-sm text-gray-400">Enable or disable the background task worker</p>
+          </div>
+          <button
+            @click="toggleWorker"
+            :class="[
+              'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+              settings.workerEnabled ? 'bg-blue-600' : 'bg-gray-600'
+            ]"
+          >
+            <span
+              :class="[
+                'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                settings.workerEnabled ? 'translate-x-6' : 'translate-x-1'
+              ]"
+            />
+          </button>
+        </div>
+
+        <!-- Concurrent Workers -->
+        <div>
+          <label class="block font-medium mb-1">Concurrent Workers</label>
+          <p class="text-sm text-gray-400 mb-2">Number of tasks to process simultaneously</p>
+          <select
+            v-model="settings.concurrentWorkers"
+            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-32"
+          >
+            <option :value="1">1</option>
+            <option :value="2">2</option>
+            <option :value="3">3</option>
+            <option :value="5">5</option>
+          </select>
+        </div>
       </div>
-      <p class="text-sm text-gray-400 mt-1">
-        Tasks are queued and will process automatically when Ollama comes back online.
-        Worker polls every 5 seconds.
+    </div>
+
+    <!-- Retry Settings -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <h3 class="text-lg font-medium mb-4">Retry Configuration</h3>
+      
+      <div class="space-y-4">
+        <!-- Max Retry Attempts -->
+        <div>
+          <label class="block font-medium mb-1">Max Retry Attempts</label>
+          <p class="text-sm text-gray-400 mb-2">How many times to retry failed tasks before giving up</p>
+          <select
+            v-model="settings.maxRetryAttempts"
+            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-32"
+          >
+            <option :value="3">3</option>
+            <option :value="5">5 (default)</option>
+            <option :value="10">10</option>
+            <option :value="15">15</option>
+          </select>
+        </div>
+
+        <!-- Retry Strategy -->
+        <div>
+          <label class="block font-medium mb-1">Retry Strategy</label>
+          <p class="text-sm text-gray-400 mb-2">How to space out retry attempts</p>
+          <select
+            v-model="settings.retryStrategy"
+            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-48"
+          >
+            <option value="exponential">Exponential Backoff</option>
+            <option value="linear">Linear (fixed delay)</option>
+            <option value="aggressive">Aggressive (short delays)</option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">
+            <template v-if="settings.retryStrategy === 'exponential'">
+              Delays: 30s → 1m → 2m → 5m → 10m
+            </template>
+            <template v-else-if="settings.retryStrategy === 'linear'">
+              Fixed 60 second delay between retries
+            </template>
+            <template v-else>
+              Delays: 10s → 20s → 30s → 45s → 60s
+            </template>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cleanup Settings -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <h3 class="text-lg font-medium mb-4">Auto-Cleanup</h3>
+      
+      <div class="space-y-4">
+        <!-- Auto-delete completed -->
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="font-medium">Auto-delete Completed Tasks</label>
+            <p class="text-sm text-gray-400">Automatically remove tasks after completion</p>
+          </div>
+          <select
+            v-model="settings.autoDeleteCompleted"
+            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-40"
+          >
+            <option value="never">Never</option>
+            <option value="1d">After 1 day</option>
+            <option value="7d">After 7 days</option>
+            <option value="30d">After 30 days</option>
+            <option value="immediate">Immediately</option>
+          </select>
+        </div>
+
+        <!-- Auto-delete failed -->
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="font-medium">Auto-delete Failed Tasks</label>
+            <p class="text-sm text-gray-400">Automatically remove permanently failed tasks</p>
+          </div>
+          <select
+            v-model="settings.autoDeleteFailed"
+            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-40"
+          >
+            <option value="never">Never (default)</option>
+            <option value="7d">After 7 days</option>
+            <option value="30d">After 30 days</option>
+            <option value="90d">After 90 days</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Maintenance Actions -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <h3 class="text-lg font-medium mb-4">Queue Maintenance</h3>
+      
+      <div class="flex flex-wrap gap-3">
+        <button
+          @click="clearCompleted"
+          :disabled="actionLoading"
+          class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50"
+        >
+          🧹 Clear Completed Tasks
+        </button>
+        <button
+          @click="clearFailed"
+          :disabled="actionLoading"
+          class="px-4 py-2 bg-red-900/50 hover:bg-red-800/50 text-red-300 rounded transition-colors disabled:opacity-50"
+        >
+          ❌ Clear Failed Tasks
+        </button>
+        <button
+          @click="retryAllFailed"
+          :disabled="actionLoading || stats.failed === 0"
+          class="px-4 py-2 bg-blue-900/50 hover:bg-blue-800/50 text-blue-300 rounded transition-colors disabled:opacity-50"
+        >
+          🔄 Retry All Failed ({{ stats.failed }})
+        </button>
+        <button
+          @click="cancelAllPending"
+          :disabled="actionLoading || stats.pending === 0"
+          class="px-4 py-2 bg-yellow-900/50 hover:bg-yellow-800/50 text-yellow-300 rounded transition-colors disabled:opacity-50"
+        >
+          ⏹ Cancel All Pending ({{ stats.pending }})
+        </button>
+      </div>
+      
+      <p v-if="actionMessage" class="mt-3 text-sm" :class="actionSuccess ? 'text-green-400' : 'text-red-400'">
+        {{ actionMessage }}
       </p>
     </div>
 
-    <!-- Pending Tasks -->
-    <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-      <div class="flex items-center justify-between p-4 border-b border-gray-700">
-        <h3 class="text-lg font-medium">Pending Tasks</h3>
-        <button 
-          @click="loadTasks" 
-          class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+    <!-- Advanced Operations -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <h3 class="text-lg font-medium mb-2">Advanced Operations</h3>
+      <p class="text-sm text-gray-400 mb-4">These operations affect classification history and may take a while</p>
+      
+      <div class="flex flex-wrap gap-3">
+        <button
+          @click="reprocessCompleted"
+          :disabled="actionLoading"
+          class="px-4 py-2 bg-purple-900/50 hover:bg-purple-800/50 text-purple-300 rounded transition-colors disabled:opacity-50"
         >
-          🔄 Refresh
+          🔄 Reprocess All Completed
+        </button>
+        <button
+          @click="clearAndResync"
+          :disabled="actionLoading"
+          class="px-4 py-2 bg-orange-900/50 hover:bg-orange-800/50 text-orange-300 rounded transition-colors disabled:opacity-50"
+        >
+          🗑️ Clear & Re-sync All
         </button>
       </div>
-
-      <div v-if="loading" class="p-8 text-center text-gray-500">
-        Loading...
-      </div>
-
-      <div v-else-if="tasks.length === 0" class="p-8 text-center text-gray-500">
-        No pending tasks
-      </div>
-
-      <div v-else class="divide-y divide-gray-700">
-        <div 
-          v-for="task in tasks" 
-          :key="task.id"
-          class="p-4 hover:bg-gray-750 transition-colors"
-        >
-          <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
-                <span class="font-medium">{{ task.title || 'Unknown Title' }}</span>
-                <span 
-                  :class="[
-                    'px-2 py-0.5 text-xs rounded',
-                    task.status === 'processing' ? 'bg-yellow-900/30 text-yellow-400' :
-                    task.status === 'failed' ? 'bg-red-900/30 text-red-400' :
-                    'bg-blue-900/30 text-blue-400'
-                  ]"
-                >
-                  {{ task.status }}
-                </span>
-              </div>
-              <div class="text-sm text-gray-400 mt-1">
-                {{ task.task_type }} • Attempt {{ task.attempts }}/{{ task.max_attempts }}
-                <span v-if="task.error_message" class="text-red-400">
-                  • {{ task.error_message }}
-                </span>
-              </div>
-              <div class="text-xs text-gray-500 mt-1">
-                Created: {{ formatDate(task.created_at) }}
-                <span v-if="task.next_retry_at && task.status === 'pending'">
-                  • Next retry: {{ formatDate(task.next_retry_at) }}
-                </span>
-              </div>
-            </div>
-            <div class="flex gap-2">
-              <button
-                v-if="task.status === 'failed'"
-                @click="retryTask(task.id)"
-                class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm transition-colors"
-                :disabled="retrying === task.id"
-              >
-                {{ retrying === task.id ? '...' : '🔄 Retry' }}
-              </button>
-              <button
-                v-if="task.status === 'pending'"
-                @click="cancelTask(task.id)"
-                class="px-3 py-1 bg-gray-700 hover:bg-red-600 rounded text-sm transition-colors"
-                :disabled="cancelling === task.id"
-              >
-                {{ cancelling === task.id ? '...' : '✕ Cancel' }}
-              </button>
-            </div>
-          </div>
-        </div>
+      
+      <div class="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded text-sm">
+        <p class="text-yellow-300 font-medium">⚠️ About these actions:</p>
+        <ul class="text-yellow-200/80 mt-1 ml-4 list-disc space-y-1">
+          <li><strong>Reprocess Completed</strong>: Re-queues all completed classifications using updated rules</li>
+          <li><strong>Clear & Re-sync</strong>: Clears all queue data and triggers a fresh library sync</li>
+        </ul>
       </div>
     </div>
 
-    <!-- Queue Info -->
-    <div class="text-xs text-gray-500">
-      <p>• Worker polls every 5 seconds when Ollama is available</p>
-      <p>• Failed tasks retry with exponential backoff: 30s → 1m → 2m → 5m → 10m</p>
-      <p>• Tasks are persisted in the database and survive container restarts</p>
+    <!-- Save Button -->
+    <div class="flex justify-end">
+      <button
+        @click="saveSettings"
+        :disabled="saving"
+        class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded font-medium transition-colors disabled:opacity-50"
+      >
+        {{ saving ? 'Saving...' : 'Save Settings' }}
+      </button>
     </div>
   </div>
 </template>
@@ -142,24 +255,34 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
 
 const loading = ref(true)
+const saving = ref(false)
+const actionLoading = ref(false)
+const actionMessage = ref('')
+const actionSuccess = ref(false)
+
 const stats = ref({
   pending: 0,
   processing: 0,
   completed: 0,
   failed: 0,
-  ollamaAvailable: true,
   workerRunning: true
 })
-const tasks = ref([])
-const retrying = ref(null)
-const cancelling = ref(null)
+
+const settings = ref({
+  workerEnabled: true,
+  concurrentWorkers: 1,
+  maxRetryAttempts: 5,
+  retryStrategy: 'exponential',
+  autoDeleteCompleted: '7d',
+  autoDeleteFailed: 'never'
+})
+
 let pollInterval = null
 
 onMounted(async () => {
   await loadData()
   loading.value = false
-  // Poll every 5 seconds
-  pollInterval = setInterval(loadData, 5000)
+  pollInterval = setInterval(loadStats, 5000)
 })
 
 onUnmounted(() => {
@@ -167,53 +290,133 @@ onUnmounted(() => {
 })
 
 const loadData = async () => {
-  await Promise.all([loadStats(), loadTasks()])
+  await Promise.all([loadStats(), loadSettings()])
 }
 
 const loadStats = async () => {
   try {
-    const response = await api.getQueueStats()
-    stats.value = response.data
+    const data = await api.getQueueStats()
+    stats.value = data
   } catch (error) {
     console.error('Failed to load queue stats:', error)
   }
 }
 
-const loadTasks = async () => {
+const loadSettings = async () => {
   try {
-    const response = await api.getPendingTasks(20)
-    tasks.value = response.data
+    const response = await api.getSettings('queue')
+    if (response.data) {
+      settings.value = { ...settings.value, ...response.data }
+    }
   } catch (error) {
-    console.error('Failed to load tasks:', error)
+    console.error('Failed to load queue settings:', error)
   }
 }
 
-const retryTask = async (taskId) => {
-  retrying.value = taskId
+const saveSettings = async () => {
+  saving.value = true
   try {
-    await api.retryTask(taskId)
-    await loadTasks()
+    await api.updateSettings('queue', settings.value)
+    showAction('Settings saved successfully', true)
   } catch (error) {
-    console.error('Failed to retry task:', error)
+    showAction('Failed to save settings', false)
+    console.error('Failed to save settings:', error)
   } finally {
-    retrying.value = null
+    saving.value = false
   }
 }
 
-const cancelTask = async (taskId) => {
-  cancelling.value = taskId
+const toggleWorker = () => {
+  settings.value.workerEnabled = !settings.value.workerEnabled
+}
+
+const clearCompleted = async () => {
+  actionLoading.value = true
   try {
-    await api.cancelTask(taskId)
-    await loadTasks()
+    const response = await api.clearCompletedTasks()
+    showAction(`Cleared ${response.data?.count || 0} completed tasks`, true)
+    await loadStats()
   } catch (error) {
-    console.error('Failed to cancel task:', error)
+    showAction('Failed to clear completed tasks', false)
   } finally {
-    cancelling.value = null
+    actionLoading.value = false
   }
 }
 
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleString()
+const clearFailed = async () => {
+  actionLoading.value = true
+  try {
+    const response = await api.clearFailedTasks()
+    showAction(`Cleared ${response.data?.count || 0} failed tasks`, true)
+    await loadStats()
+  } catch (error) {
+    showAction('Failed to clear failed tasks', false)
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const retryAllFailed = async () => {
+  actionLoading.value = true
+  try {
+    const response = await api.retryAllFailedTasks()
+    showAction(`Queued ${response.data?.count || 0} tasks for retry`, true)
+    await loadStats()
+  } catch (error) {
+    showAction('Failed to retry tasks', false)
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const cancelAllPending = async () => {
+  actionLoading.value = true
+  try {
+    const response = await api.cancelAllPendingTasks()
+    showAction(`Cancelled ${response.data?.count || 0} pending tasks`, true)
+    await loadStats()
+  } catch (error) {
+    showAction('Failed to cancel tasks', false)
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const reprocessCompleted = async () => {
+  if (!confirm('This will re-queue all completed classifications for reprocessing with updated rules. Continue?')) {
+    return
+  }
+  actionLoading.value = true
+  try {
+    const response = await api.reprocessCompleted()
+    showAction(`Queued ${response.data?.count || 0} items for reprocessing`, true)
+    await loadStats()
+  } catch (error) {
+    showAction('Failed to reprocess: ' + (error.message || 'Unknown error'), false)
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const clearAndResync = async () => {
+  if (!confirm('This will CLEAR ALL queue data and classification history, then trigger a fresh library sync. This action cannot be undone! Continue?')) {
+    return
+  }
+  actionLoading.value = true
+  try {
+    const response = await api.clearAndResync()
+    showAction(`Queue cleared. ${response.data?.itemsReset || 0} items reset for resync.`, true)
+    await loadStats()
+  } catch (error) {
+    showAction('Failed to resync: ' + (error.message || 'Unknown error'), false)
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const showAction = (message, success) => {
+  actionMessage.value = message
+  actionSuccess.value = success
+  setTimeout(() => { actionMessage.value = '' }, 3000)
 }
 </script>

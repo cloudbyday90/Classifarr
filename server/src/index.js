@@ -139,6 +139,22 @@ async function startServer() {
     await db.query('SELECT 1');
     console.log('Database connected successfully');
 
+    // Run database migrations
+    try {
+      // Make tmdb_id nullable in classification_history to support items without TMDB IDs
+      await db.query(`
+        ALTER TABLE classification_history 
+        ALTER COLUMN tmdb_id DROP NOT NULL
+      `);
+      console.log('Database migration: tmdb_id is now nullable');
+    } catch (migrationError) {
+      // Ignore if column is already nullable or table doesn't exist yet
+      if (!migrationError.message.includes('does not exist') &&
+        !migrationError.message.includes('already')) {
+        console.log('Migration check for tmdb_id:', migrationError.message);
+      }
+    }
+
     // Initialize services
     await initializeServices();
 

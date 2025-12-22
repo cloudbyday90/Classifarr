@@ -28,11 +28,11 @@
         <div class="text-xs text-gray-400">Total Classifications</div>
       </div>
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-2xl font-bold text-success">{{ libraries.length }}</div>
+        <div class="text-2xl font-bold text-success">{{ librariesStore.libraries.length }}</div>
         <div class="text-xs text-gray-400">Active Libraries</div>
       </div>
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-2xl font-bold text-warning">{{ stats.avgConfidence || 0 }}%</div>
+        <div class="text-2xl font-bold text-warning">{{ computedAvgConfidence }}%</div>
         <div class="text-xs text-gray-400">Avg Confidence</div>
       </div>
     </div>
@@ -82,7 +82,7 @@
             <Button @click="$router.push('/libraries')" variant="secondary" class="w-full">
               📚 Libraries
             </Button>
-            <Button @click="$router.push('/settings?tab=queue')" variant="ghost" class="w-full">
+            <Button @click="$router.push('/queue')" variant="ghost" class="w-full">
               📋 Queue Status
             </Button>
           </div>
@@ -137,7 +137,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useLibrariesStore } from '@/stores/libraries'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
@@ -145,9 +145,19 @@ import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
 
 const librariesStore = useLibrariesStore()
-const { libraries } = librariesStore
 
 const stats = ref({})
+
+// Compute average confidence from the array of {method, avg_confidence}
+const computedAvgConfidence = computed(() => {
+  const avgData = stats.value.avgConfidence
+  if (!avgData || !Array.isArray(avgData) || avgData.length === 0) {
+    return 0
+  }
+  // Calculate overall average from all methods
+  const total = avgData.reduce((sum, item) => sum + parseFloat(item.avg_confidence || 0), 0)
+  return Math.round(total / avgData.length)
+})
 const recentHistory = ref([])
 const queueStats = ref({ pending: 0, processing: 0, completed: 0, failed: 0, ollamaAvailable: true })
 const methodStats = ref({})
@@ -175,7 +185,7 @@ const loadData = async () => {
     
     stats.value = statsRes.data
     recentHistory.value = historyRes.data.data || []
-    queueStats.value = queueRes.data
+    queueStats.value = queueRes // getQueueStats already extracts .data
     
     // Calculate method stats from recent history
     const methods = {}
@@ -192,7 +202,7 @@ const loadData = async () => {
 const loadQueueStats = async () => {
   try {
     const res = await api.getQueueStats()
-    queueStats.value = res.data
+    queueStats.value = res // getQueueStats already extracts .data
   } catch (error) {
     console.error('Failed to load queue stats:', error)
   }

@@ -223,9 +223,23 @@ router.post('/sync', async (req, res) => {
       [server.id]
     );
 
+    // Auto-sync content for each library in the background
+    const mediaSyncService = require('../services/mediaSync');
+    for (const library of insertedLibraries) {
+      // Run sync in background (don't await)
+      mediaSyncService.syncLibrary(library.id, { incremental: false, batchSize: 100 })
+        .then(result => {
+          console.log(`Auto-sync completed for library ${library.name}: ${result.itemsImported || 0} items`);
+        })
+        .catch(err => {
+          console.error(`Auto-sync failed for library ${library.name}:`, err.message);
+        });
+    }
+
     res.json({
       success: true,
       libraries: insertedLibraries,
+      message: `Found ${insertedLibraries.length} libraries. Content sync started in background.`,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

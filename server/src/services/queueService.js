@@ -309,7 +309,7 @@ class QueueService {
             const result = await db.query(
                 `SELECT id, task_type, status, priority, attempts, max_attempts, 
                 error_message, source, created_at, next_retry_at,
-                payload->>'title' as title
+                payload
          FROM task_queue
          WHERE status IN ('pending', 'processing')
          ORDER BY priority DESC, created_at ASC
@@ -319,6 +319,28 @@ class QueueService {
             return result.rows;
         } catch (error) {
             logger.error('Failed to get pending tasks', { error: error.message });
+            return [];
+        }
+    }
+
+    /**
+     * Get failed tasks
+     */
+    async getFailedTasks(limit = 20) {
+        try {
+            const result = await db.query(
+                `SELECT id, task_type, status, priority, attempts, max_attempts, 
+                error_message, source, created_at, completed_at,
+                payload
+         FROM task_queue
+         WHERE status = 'failed'
+         ORDER BY completed_at DESC
+         LIMIT $1`,
+                [limit]
+            );
+            return result.rows;
+        } catch (error) {
+            logger.error('Failed to get failed tasks', { error: error.message });
             return [];
         }
     }
@@ -358,6 +380,160 @@ class QueueService {
         } catch (error) {
             logger.error('Failed to cancel task', { error: error.message, taskId });
             return false;
+        }
+    }
+
+    /**
+     * Clear all completed tasks
+     */
+    async clearCompletedTasks() {
+        try {
+            const result = await db.query(
+                `DELETE FROM task_queue WHERE status = 'completed' RETURNING id`
+            );
+            logger.info('Cleared completed tasks', { count: result.rowCount });
+            return result.rowCount;
+        } catch (error) {
+            logger.error('Failed to clear completed tasks', { error: error.message });
+            return 0;
+        }
+    }
+
+    /**
+     * Clear all failed tasks
+     */
+    async clearFailedTasks() {
+        try {
+            const result = await db.query(
+                `DELETE FROM task_queue WHERE status = 'failed' RETURNING id`
+            );
+            logger.info('Cleared failed tasks', { count: result.rowCount });
+            return result.rowCount;
+        } catch (error) {
+            logger.error('Failed to clear failed tasks', { error: error.message });
+            return 0;
+        }
+    }
+
+    /**
+     * Retry all failed tasks
+     */
+    async retryAllFailedTasks() {
+        try {
+            const result = await db.query(
+                `UPDATE task_queue
+         SET status = 'pending', attempts = 0, error_message = NULL, next_retry_at = NOW()
+         WHERE status = 'failed'
+         RETURNING id`
+            );
+            logger.info('Retrying all failed tasks', { count: result.rowCount });
+            return result.rowCount;
+        } catch (error) {
+            logger.error('Failed to retry all tasks', { error: error.message });
+            return 0;
+        }
+    }
+
+    /**
+     * Cancel all pending tasks
+     */
+    async cancelAllPendingTasks() {
+        try {
+            const result = await db.query(
+                `UPDATE task_queue
+         SET status = 'cancelled', completed_at = NOW()
+         WHERE status = 'pending'
+         RETURNING id`
+            );
+            logger.info('Cancelled all pending tasks', { count: result.rowCount });
+            return result.rowCount;
+        } catch (error) {
+            logger.error('Failed to cancel all tasks', { error: error.message });
+            return 0;
+        }
+    }
+
+    /**
+     * Re-queue all completed classifications for reprocessing with updated rules
+     */
+    async reprocessCompleted() {
+        try {
+            // Get all completed items from classification history
+            const historyResult = await db.query(
+                `SELECT ch.id, ch.tmdb_id, ch.media_type, ch.title, ch.year, ch.metadata
+                 FROM classification_history ch
+                 WHERE ch.status = 'completed'`
+            );
+
+            let count = 0;
+            for (const item of historyResult.rows) {
+                // Parse metadata to get full info
+                const metadata = typeof item.metadata === 'string'
+                    ? JSON.parse(item.metadata)
+                    : item.metadata || {};
+
+                // Enqueue for re-classification
+                await this.enqueue('classification', {
+                    title: item.title,
+                    overview: metadata.overview || '',
+                    genres: metadata.genres || [],
+                    keywords: metadata.keywords || [],
+                    content_rating: metadata.certification,
+                    original_language: metadata.original_language || 'en',
+                    tmdb_id: item.tmdb_id,
+                    media: { media_type: item.media_type || 'movie' }
+                }, {
+                    priority: 5,
+                    source: 'reprocess'
+                });
+                count++;
+            }
+
+            logger.info('Queued completed items for reprocessing', { count });
+            return count;
+        } catch (error) {
+            logger.error('Failed to reprocess completed', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Clear all queue data and trigger fresh library sync
+     */
+    async clearAndResync() {
+        try {
+            // Clear task queue
+            const queueResult = await db.query('DELETE FROM task_queue RETURNING id');
+
+            // Clear classification history
+            const historyResult = await db.query('DELETE FROM classification_history RETURNING id');
+
+            // Reset content_analysis in media_server_items so gap analysis will re-queue them
+            const itemsResult = await db.query(`
+                UPDATE media_server_items 
+                SET metadata = metadata - 'content_analysis'
+                WHERE metadata->'content_analysis' IS NOT NULL
+                RETURNING id
+            `);
+
+            // Trigger fresh gap analysis
+            const schedulerService = require('./scheduler');
+            await schedulerService.runGapAnalysis();
+
+            logger.info('Cleared queue and triggered resync', {
+                queueCleared: queueResult.rowCount,
+                historyCleared: historyResult.rowCount,
+                itemsReset: itemsResult.rowCount
+            });
+
+            return {
+                queueCleared: queueResult.rowCount,
+                historyCleared: historyResult.rowCount,
+                itemsReset: itemsResult.rowCount
+            };
+        } catch (error) {
+            logger.error('Failed to clear and resync', { error: error.message });
+            throw error;
         }
     }
 }

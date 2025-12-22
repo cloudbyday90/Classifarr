@@ -91,6 +91,11 @@ const router = createRouter({
           name: 'System',
           component: () => import('@/views/System.vue'),
         },
+        {
+          path: '/queue',
+          name: 'Queue',
+          component: () => import('@/views/Queue.vue'),
+        },
       ],
     },
   ],

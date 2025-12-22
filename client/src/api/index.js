@@ -421,4 +421,39 @@ export default {
   previewBackup(data) {
     return apiClient.post('/backup/preview', { data })
   },
+
+  // Queue Management
+  getQueueStats() {
+    return apiClient.get('/queue/stats').then(r => r.data)
+  },
+  getQueuePending(limit = 20) {
+    return apiClient.get(`/queue/pending?limit=${limit}`).then(r => r.data)
+  },
+  getQueueFailed(limit = 20) {
+    return apiClient.get(`/queue/failed?limit=${limit}`).then(r => r.data)
+  },
+  retryQueueTask(taskId) {
+    return apiClient.post(`/queue/task/${taskId}/retry`)
+  },
+  cancelQueueTask(taskId) {
+    return apiClient.post(`/queue/task/${taskId}/cancel`)
+  },
+  clearCompletedTasks() {
+    return apiClient.post('/queue/clear-completed')
+  },
+  clearFailedTasks() {
+    return apiClient.post('/queue/clear-failed')
+  },
+  retryAllFailedTasks() {
+    return apiClient.post('/queue/retry-all-failed')
+  },
+  cancelAllPendingTasks() {
+    return apiClient.post('/queue/cancel-all-pending')
+  },
+  reprocessCompleted() {
+    return apiClient.post('/queue/reprocess-completed')
+  },
+  clearAndResync() {
+    return apiClient.post('/queue/clear-and-resync')
+  },
 }

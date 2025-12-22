@@ -22,9 +22,11 @@ class RuleBuilderService {
   async analyzeLibrary(libraryId) {
     try {
       const itemsResult = await db.query(
-        `SELECT id, title, metadata, genres, tags, content_rating, tmdb_id 
-         FROM media_server_items 
-         WHERE library_id = $1 AND metadata->'content_analysis' IS NULL`,
+        `SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, msi.tmdb_id,
+                l.media_type
+         FROM media_server_items msi
+         JOIN libraries l ON msi.library_id = l.id
+         WHERE msi.library_id = $1 AND msi.metadata->'content_analysis' IS NULL`,
         [libraryId]
       );
 
@@ -40,7 +42,8 @@ class RuleBuilderService {
           content_rating: item.content_rating,
           original_language: 'en',
           tmdb_id: item.tmdb_id,
-          itemId: item.id
+          itemId: item.id,
+          media: { media_type: item.media_type || 'movie' } // Include media_type for correct TMDB lookup
         }, {
           priority: 5,
           source: 'manual_trigger'

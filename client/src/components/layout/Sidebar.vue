@@ -61,7 +61,8 @@ import {
   CogIcon,
   ServerIcon,
   PlusCircleIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  QueueListIcon
 } from '@heroicons/vue/24/outline'
 
 const route = useRoute()
@@ -77,6 +78,7 @@ const mainMenuItems = [
 ]
 
 const systemMenuItems = [
+  { path: '/queue', label: 'Queue', icon: QueueListIcon },
   { path: '/system', label: 'System', icon: ServerIcon },
 ]
 

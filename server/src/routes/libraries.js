@@ -550,4 +550,32 @@ router.get('/label-presets/all', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/libraries/{id}/sync:
+ *   post:
+ *     summary: Trigger library sync
+ */
+router.post('/:id/sync', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { incremental = false, batchSize = 100 } = req.body;
+
+    logger.info('Starting library sync', { libraryId: id, incremental });
+
+    const result = await mediaSyncService.syncLibrary(parseInt(id), {
+      incremental,
+      batchSize,
+    });
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Sync failed', { error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

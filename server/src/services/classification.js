@@ -33,13 +33,80 @@ const logger = createLogger('classification');
 class ClassificationService {
   async classify(overseerrPayload) {
     try {
-      // Parse Overseerr payload
-      const { media_type, tmdbId, subject } = this.parseOverseerrPayload(overseerrPayload);
+      // Parse payload - supports multiple formats (Overseerr, Plex gap analysis, Rule Builder)
+      const { media_type, tmdbId, title, year, existingMetadata } = this.parseOverseerrPayload(overseerrPayload);
 
-      logger.info(`Starting classification for ${media_type}: ${subject} (TMDB: ${tmdbId})`);
+      logger.info(`Starting classification for ${media_type}: ${title} (TMDB: ${tmdbId || 'searching...'})`);
 
-      // Enrich with TMDB metadata
-      const metadata = await this.enrichWithTMDB(tmdbId, media_type);
+      let metadata;
+
+      // If we have existing metadata from payload (gap analysis with local data), use it
+      if (existingMetadata.overview && existingMetadata.genres && existingMetadata.genres.length > 0) {
+        logger.info(`Using existing metadata for ${title}`);
+        metadata = {
+          tmdb_id: tmdbId || null,
+          media_type: media_type,
+          title: title,
+          year: year,
+          overview: existingMetadata.overview,
+          genres: existingMetadata.genres,
+          keywords: existingMetadata.keywords || [],
+          certification: existingMetadata.content_rating,
+          original_language: existingMetadata.original_language || 'en',
+          itemId: existingMetadata.itemId,
+          source_library_id: existingMetadata.source_library_id,
+          source_library_name: existingMetadata.source_library_name,
+        };
+      } else if (tmdbId) {
+        // We have TMDB ID - lookup directly
+        metadata = await this.enrichWithTMDB(tmdbId, media_type);
+        metadata.itemId = existingMetadata.itemId;
+        metadata.source_library_id = existingMetadata.source_library_id;
+        metadata.source_library_name = existingMetadata.source_library_name;
+      } else if (title && title !== 'Unknown') {
+        // No TMDB ID - search by title/year
+        logger.info(`No TMDB ID found, searching TMDB for: ${title} (${year || 'any year'})`);
+
+        const searchResults = await tmdbService.search(title, media_type);
+
+        if (searchResults && searchResults.length > 0) {
+          // Find best match by year if we have one
+          let bestMatch = searchResults[0];
+          if (year) {
+            const yearMatch = searchResults.find(r => r.year === String(year));
+            if (yearMatch) {
+              bestMatch = yearMatch;
+            }
+          }
+
+          logger.info(`Found TMDB match: ${bestMatch.title} (${bestMatch.year}) - ID: ${bestMatch.id}`);
+
+          // Now get full details
+          metadata = await this.enrichWithTMDB(bestMatch.id, media_type);
+          metadata.itemId = existingMetadata.itemId;
+          metadata.source_library_id = existingMetadata.source_library_id;
+          metadata.source_library_name = existingMetadata.source_library_name;
+        } else {
+          // No TMDB match found - create basic metadata from what we have
+          logger.warn(`No TMDB match found for: ${title}. Using basic metadata.`);
+          metadata = {
+            tmdb_id: null,
+            media_type: media_type,
+            title: title,
+            year: year,
+            overview: existingMetadata.overview || '',
+            genres: existingMetadata.genres || [],
+            keywords: existingMetadata.keywords || [],
+            certification: existingMetadata.content_rating || 'NR',
+            original_language: existingMetadata.original_language || 'en',
+            itemId: existingMetadata.itemId,
+            source_library_id: existingMetadata.source_library_id,
+            source_library_name: existingMetadata.source_library_name,
+          };
+        }
+      } else {
+        throw new Error('No TMDB ID or title provided for classification');
+      }
 
       // Run decision tree
       const result = await this.runDecisionTree(metadata, media_type);
@@ -79,12 +146,39 @@ class ClassificationService {
   }
 
   parseOverseerrPayload(payload) {
-    // Overseerr sends different payloads based on media type
-    const media_type = payload.media?.media_type || (payload.subject.includes('Movie') ? 'movie' : 'tv');
-    const tmdbId = payload.media?.tmdbId || payload.extra?.[0]?.value;
-    const subject = payload.subject || 'Unknown';
+    // Handle multiple payload formats:
+    // 1. Overseerr webhook: has media.tmdbId and media.media_type
+    // 2. Plex gap analysis: has title, tmdb_id (maybe), media.media_type
+    // 3. Rule builder: has title, tmdb_id (maybe), media_type at root
 
-    return { media_type, tmdbId, subject };
+    // Extract media type - check multiple locations
+    let media_type = payload.media?.media_type || payload.media_type || 'movie';
+    if (!media_type && payload.subject) {
+      media_type = payload.subject.includes('Movie') ? 'movie' : 'tv';
+    }
+
+    // Extract TMDB ID - check multiple locations
+    const tmdbId = payload.media?.tmdbId || payload.tmdb_id || payload.extra?.[0]?.value;
+
+    // Extract title - check multiple locations  
+    const title = payload.title || payload.subject || payload.media?.title || 'Unknown';
+
+    // Extract year for better search matching
+    const year = payload.year || payload.media?.year;
+
+    // For gap analysis items, we might have full metadata already
+    const existingMetadata = {
+      overview: payload.overview,
+      genres: payload.genres,
+      keywords: payload.keywords,
+      content_rating: payload.content_rating,
+      original_language: payload.original_language,
+      itemId: payload.itemId, // Internal ID for updating media_server_items
+      source_library_id: payload.source_library_id, // Source Plex library ID
+      source_library_name: payload.source_library_name, // Source Plex library name
+    };
+
+    return { media_type, tmdbId, title, year, existingMetadata };
   }
 
   async enrichWithTMDB(tmdbId, mediaType) {
@@ -174,6 +268,65 @@ class ClassificationService {
     }
   }
 
+  /**
+   * Detect holiday/Christmas content from metadata
+   * Comprehensive keyword list for seasonal film detection
+   */
+  async detectHolidayContent(metadata, libraries) {
+    // Find holiday/Christmas library (look for library with Christmas/Holiday in name)
+    const holidayLibrary = libraries.find(l =>
+      l.name.toLowerCase().includes('christmas') ||
+      l.name.toLowerCase().includes('holiday') ||
+      l.name.toLowerCase().includes('xmas')
+    );
+
+    if (!holidayLibrary) {
+      return null; // No holiday library configured
+    }
+
+    // Comprehensive Christmas/Holiday keyword list
+    const christmasKeywords = [
+      // Core Christmas terms
+      'christmas', 'xmas', 'x-mas', 'santa', 'santa claus', 'father christmas',
+      'north pole', 'reindeer', 'rudolph', 'frosty', 'snowman',
+      'christmas eve', 'christmas day', 'december 25', 'yuletide', 'yule',
+      'noel', 'nativity', 'bethlehem', 'three wise men', 'manger',
+      // Christmas characters/figures
+      'scrooge', 'ebenezer', 'grinch', 'krampus', 'nutcracker', 'elf', 'elves',
+      'mrs claus', 'jack frost', 'the polar express',
+      // Christmas activities/items
+      'christmas tree', 'christmas carol', 'christmas spirit', 'christmas miracle',
+      'mistletoe', 'sleigh', 'stocking', 'chimney', 'gift wrap', 'candy cane',
+      'gingerbread', 'eggnog', 'figgy pudding', 'christmas dinner', 'christmas present',
+      // Other winter holidays
+      'hanukkah', 'chanukah', 'menorah', 'dreidel', 'kwanzaa',
+      // Holiday themes
+      'holiday season', 'holiday spirit', 'winter holiday', 'festive season',
+      'new year', 'new years eve', 'december holiday'
+    ];
+
+    // Check overview, title, and keywords for holiday content
+    const textToSearch = [
+      metadata.title || '',
+      metadata.overview || '',
+      ...(metadata.keywords || [])
+    ].join(' ').toLowerCase();
+
+    const matchedKeywords = christmasKeywords.filter(keyword =>
+      textToSearch.includes(keyword.toLowerCase())
+    );
+
+    if (matchedKeywords.length > 0) {
+      logger.info('Holiday keywords detected', {
+        title: metadata.title,
+        matchedKeywords: matchedKeywords.slice(0, 5) // Log first 5 matches
+      });
+      return holidayLibrary;
+    }
+
+    return null;
+  }
+
   mightBeAnime(metadata) {
     // Check if metadata suggests anime
     const keywords = (metadata.keywords || []).map(k => k.toLowerCase());
@@ -198,6 +351,40 @@ class ClassificationService {
 
     if (libraries.length === 0) {
       throw new Error(`No active libraries found for media type: ${mediaType}`);
+    }
+
+    // Step -1: If item came from a known Plex library, use that library directly (100% confidence)
+    if (metadata.source_library_id) {
+      const sourceLibrary = libraries.find(l => l.id === metadata.source_library_id);
+      if (sourceLibrary) {
+        logger.info('Using source Plex library for classification', {
+          title: metadata.title,
+          library: sourceLibrary.name
+        });
+        return {
+          library: sourceLibrary,
+          confidence: 100,
+          method: 'source_library',
+          reason: `Already in library: ${sourceLibrary.name} (from Plex)`,
+          libraries: libraries,
+        };
+      }
+    }
+
+    // Step -0.5: Detect seasonal/holiday content from overview keywords
+    const holidayLibrary = await this.detectHolidayContent(metadata, libraries);
+    if (holidayLibrary) {
+      logger.info('Holiday content detected from overview', {
+        title: metadata.title,
+        library: holidayLibrary.name
+      });
+      return {
+        library: holidayLibrary,
+        confidence: 95,
+        method: 'holiday_detection',
+        reason: `Detected holiday/Christmas content in overview`,
+        libraries: libraries,
+      };
     }
 
     // Step 0: Check if media already exists in media server (100% confidence)
@@ -279,12 +466,14 @@ class ClassificationService {
           libraries: libraries,
         };
       }
-      // Last resort: use first library
+      // Last resort: use the lowest priority library (usually a generic catch-all)
+      // Don't use libraries[0] because that's the highest priority specialized library
+      const fallbackLibrary = libraries[libraries.length - 1];
       return {
-        library: libraries[0],
+        library: fallbackLibrary,
         confidence: 50,
         method: 'rule_match',
-        reason: 'Default library (no rules matched)',
+        reason: `Default library - no rules matched (fell back to ${fallbackLibrary.name})`,
         libraries: libraries,
       };
     }

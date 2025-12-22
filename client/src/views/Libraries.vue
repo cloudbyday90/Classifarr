@@ -62,6 +62,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useLibrariesStore } from '@/stores/libraries'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
@@ -69,7 +70,7 @@ import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
 
 const librariesStore = useLibrariesStore()
-const { libraries, loading } = librariesStore
+const { libraries, loading } = storeToRefs(librariesStore)
 
 const syncing = ref(false)
 
