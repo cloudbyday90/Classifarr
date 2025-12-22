@@ -74,6 +74,15 @@
         </div>
       </div>
     </div>
+
+    <!-- Unknown (Saved but not tested) -->
+    <div v-else-if="status === 'unknown'" class="flex items-center gap-3 text-gray-400">
+      <span class="text-2xl">💾</span>
+      <div>
+        <div class="font-medium">Configuration Saved</div>
+        <div class="text-sm">Click "Test Connection" to check connectivity</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -93,7 +102,8 @@ const statusClasses = computed(() => ({
   'idle': 'border-gray-700 bg-gray-800/50',
   'testing': 'border-blue-700 bg-blue-900/20',
   'success': 'border-green-700 bg-green-900/20',
-  'error': 'border-red-700 bg-red-900/20'
+  'error': 'border-red-700 bg-red-900/20',
+  'unknown': 'border-gray-600 bg-gray-800/80'
 }[props.status]))
 
 const formatTime = (date) => {
