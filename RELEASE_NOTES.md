@@ -1,5 +1,20 @@
 # Classifarr Release Notes
 
+## v0.21.2-alpha
+**Critical Bug Fixes & UX Improvements**
+
+### New Features
+- **Sync Libraries Button:** Added manual "Sync Libraries from Plex" button in Media Server settings to re-import all libraries and content.
+
+### Fixes
+- **Library Sync Fix:** Fixed `upsertMediaItem` to update `library_id` on conflict, ensuring items are properly reassociated with libraries after sync.
+- **Clear & Re-sync Improvements:**
+  - Now triggers automatic library sync before gap analysis to repopulate `library_id` on items.
+  - Fixed to properly clear `library_rules` (classification rules) from database.
+  - Items now get 100% confidence via `source_library` method after sync.
+- **Duplicate Rules Prevention:** Added unique constraint on `library_rules` table `(library_id, rule_type, operator, value)` to prevent duplicate rules.
+- **Auto-Learn Disabled:** Removed automatic rule generation feature - it created duplicates and made assumptions incompatible with diverse library naming conventions. Users should create rules manually via Smart Rule Builder.
+
 ## v0.21.1-alpha
 **Fixes & Database Updates**
 

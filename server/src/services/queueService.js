@@ -583,12 +583,30 @@ class QueueService {
                 this.startWorker();
             }
 
-            // 7. Trigger fresh gap analysis
+            // 7. Trigger library sync to repopulate library_id on items
+            // This runs in background so we don't block the response
+            const db = require('../config/database');
+            const mediaSyncService = require('./mediaSync');
             const schedulerService = require('./scheduler');
-            // Run in background so we don't block the response
-            schedulerService.runGapAnalysis().catch(err => {
-                logger.error('Failed to run gap analysis after clear', { error: err.message });
-            });
+
+            (async () => {
+                try {
+                    // First, sync libraries from media server to reassociate items with library_id
+                    const librariesResult = await db.query(
+                        'SELECT id FROM libraries WHERE is_active = true'
+                    );
+
+                    for (const lib of librariesResult.rows) {
+                        await mediaSyncService.syncLibrary(lib.id);
+                    }
+                    logger.info('Library sync completed after clear');
+
+                    // Then run gap analysis with fresh library_id associations
+                    await schedulerService.runGapAnalysis();
+                } catch (err) {
+                    logger.error('Failed to run library sync after clear', { error: err.message });
+                }
+            })();
 
             const result = {
                 queueCleared: queueResult.rowCount,

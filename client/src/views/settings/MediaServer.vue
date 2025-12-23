@@ -262,7 +262,7 @@
             <span class="px-2 py-1 bg-green-600/20 text-green-400 text-sm rounded">Connected</span>
           </div>
           
-          <div class="flex gap-2">
+          <div class="flex gap-2 items-center">
             <button @click="resetPlexAuth" class="text-sm text-gray-400 hover:text-gray-300">
               Change Server
             </button>
@@ -270,6 +270,22 @@
             <button @click="showManualEntry = true" class="text-sm text-gray-400 hover:text-gray-300">
               Edit Manually
             </button>
+          </div>
+
+          <!-- Sync Libraries Button -->
+          <div class="pt-2 border-t border-gray-700">
+            <button 
+              @click="syncLibraries" 
+              :disabled="syncing"
+              class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg flex items-center justify-center gap-2"
+            >
+              <span v-if="syncing" class="animate-spin">⏳</span>
+              <span v-else>🔄</span>
+              <span>{{ syncing ? 'Syncing Libraries...' : 'Sync Libraries from Plex' }}</span>
+            </button>
+            <p class="text-xs text-gray-500 mt-2 text-center">
+              Re-imports all libraries and content from your media server
+            </p>
           </div>
         </div>
       </div>
@@ -578,6 +594,7 @@ const config = ref({
 
 const loading = ref(false)
 const saving = ref(false)
+const syncing = ref(false)
 const connectionStatus = ref({
   status: 'idle',
   serviceName: 'Media Server',
@@ -1345,6 +1362,26 @@ const testConnection = async () => {
     toast.error('Connection test failed')
   } finally {
     loading.value = false
+  }
+}
+
+const syncLibraries = async () => {
+  syncing.value = true
+  
+  try {
+    const response = await api.syncMediaServer()
+    
+    if (response.data.success) {
+      toast.success(`Synced ${response.data.libraries?.length || 0} libraries. Content sync started in background.`)
+    } else {
+      toast.error('Failed to sync libraries')
+    }
+  } catch (error) {
+    console.error('Failed to sync libraries:', error)
+    const errorMsg = error.response?.data?.error || error.message || 'Failed to sync libraries'
+    toast.error(errorMsg)
+  } finally {
+    syncing.value = false
   }
 }
 
