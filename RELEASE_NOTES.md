@@ -1,5 +1,24 @@
 # Classifarr Release Notes
 
+## v0.22.0-alpha
+**Real-Time AI Monitoring & VRAM Optimization**
+
+### New Features
+- **Streaming Ollama Progress:** Implemented true streaming for Ollama generation.
+  - See real-time token generation counts and elapsed time.
+  - Prevents "silent" timeouts by maintaining active connection.
+  - Added "Heartbeat" logging to debug logs.
+- **Activity Page Status Card:** New "AI Generation in Progress" card appears automatically on the Activity dashboard when Ollama is thinking.
+  - Shows Title, Model, Token Count, and Duration.
+  - Visual pulse animation indicates active processing.
+- **Recommended Models API:** New endpoint `/api/settings/ollama/recommended-models` returns curated model list with VRAM requirements.
+- **VRAM Guidance:** Documentation now includes a detailed "Recommended Models by VRAM" table to help users choose the right model (4GB - 24GB+).
+
+### Improvements
+- **Timeout Handling:** Increased absolute timeout to 3 minutes for complex classifications (streaming keeps connection alive).
+- **Reduced Non-Streaming Timeout:** Reduced fallback timeout to 120s since streaming is preferred.
+- **Documentation:** Added comprehensive "How Classification Works" section to README.
+
 ## v0.21.3-alpha
 **Database Consolidation & Documentation Overhaul**
 
