@@ -465,4 +465,15 @@ export default {
   clearAndResync() {
     return apiClient.post('/queue/clear-and-resync')
   },
+
+  // Live Dashboard
+  getLiveStats() {
+    return apiClient.get('/queue/live-stats')
+  },
+  getLiveFeed(limit = 50) {
+    return apiClient.get(`/classification/live-feed?limit=${limit}`)
+  },
+  getPendingTasks(limit = 5) {
+    return apiClient.get(`/queue/pending?limit=${limit}`)
+  },
 }

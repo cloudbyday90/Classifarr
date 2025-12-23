@@ -1,5 +1,21 @@
 # Classifarr Release Notes
 
+## v0.19.2-alpha
+**Live Dashboard & Smart Learning Update**
+
+### features
+- **Live Activity Dashboard:** Real-time monitoring with 2-second refresh, live activity stream, and system health status.
+- **Automatic Library Learning:** New scheduler task that automatically generates classification rules for libraries with sufficient analyzed content (runs every 30 mins).
+- **Smart Rule Detection:**
+  - **Anime Detection:** Recognizes "Anime" in library names or genres + Japanese language dominance.
+  - **Keyword Patterns:** Automatically detects Christmas/Holiday and Hallmark content to suggest keyword-based rules.
+
+### fixes
+- **Learn from Library:** Fixed `jsonb_typeof` SQL error when analyzing text arrays.
+- **Data Schema:** Fixed `original_language` column missing error by determining language from metadata JSONB.
+- **Live Stats:** Fixed API 500 errors caused by `confidence_score` vs `confidence` column mismatch.
+- **Frontend API:** Added missing API client methods for live dashboard data fetching.
+
 ## v0.19.1-alpha (2025-12-22)
 
 ### Fixed

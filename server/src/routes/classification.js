@@ -86,7 +86,7 @@ router.get('/history', async (req, res) => {
       paramIndex++;
     }
 
-    const whereClause = whereConditions.length > 0 
+    const whereClause = whereConditions.length > 0
       ? 'WHERE ' + whereConditions.join(' AND ')
       : '';
 
@@ -136,7 +136,7 @@ router.get('/history', async (req, res) => {
 router.get('/history/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await db.query(`
       SELECT 
         ch.*,
@@ -236,7 +236,7 @@ router.get('/stats', async (req, res) => {
   try {
     // Total classifications
     const totalResult = await db.query('SELECT COUNT(*) as total FROM classification_history');
-    
+
     // By method
     const methodResult = await db.query(`
       SELECT method, COUNT(*) as count
@@ -278,6 +278,50 @@ router.get('/stats', async (req, res) => {
       byLibrary: libraryResult.rows,
       avgConfidence: confidenceResult.rows,
       recentActivity: activityResult.rows,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/live-feed:
+ *   get:
+ *     summary: Get recent classification activity for live dashboard
+ *     description: Returns last 50 classifications from the past 24 hours
+ */
+router.get('/live-feed', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+
+    const result = await db.query(`
+      SELECT 
+        ch.id,
+        ch.title,
+        ch.media_type,
+        ch.method,
+        ch.confidence,
+        ch.created_at,
+        l.name as library_name
+      FROM classification_history ch
+      LEFT JOIN libraries l ON ch.library_id = l.id
+      WHERE ch.created_at >= NOW() - INTERVAL '24 hours'
+      ORDER BY ch.created_at DESC
+      LIMIT $1
+    `, [limit]);
+
+    res.json({
+      items: result.rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        mediaType: row.media_type,
+        method: row.method,
+        confidence: row.confidence,
+        library: row.library_name,
+        timestamp: row.created_at
+      })),
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

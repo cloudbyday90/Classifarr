@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const queueService = require('../services/queueService');
+const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('QueueRoutes');
@@ -46,6 +47,52 @@ router.get('/gap-analysis-stats', async (req, res) => {
         res.json(stats);
     } catch (error) {
         logger.error('Failed to get gap analysis stats', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/queue/live-stats:
+ *   get:
+ *     summary: Get combined live stats for dashboard
+ *     responses:
+ *       200:
+ *         description: Combined queue, gap analysis, and system health stats
+ */
+router.get('/live-stats', async (req, res) => {
+    try {
+        const [queueStats, gapStats] = await Promise.all([
+            queueService.getStats(),
+            queueService.getGapAnalysisStats()
+        ]);
+
+        // Get today's classification count
+        const todayResult = await db.query(`
+            SELECT COUNT(*) as count, AVG(confidence) as avg_confidence
+            FROM classification_history 
+            WHERE created_at >= CURRENT_DATE
+        `);
+
+        const classifiedToday = parseInt(todayResult.rows[0]?.count) || 0;
+        const avgConfidence = parseFloat(todayResult.rows[0]?.avg_confidence) || 0;
+
+        res.json({
+            queue: queueStats,
+            gapAnalysis: gapStats,
+            today: {
+                classified: classifiedToday,
+                avgConfidence: Math.round(avgConfidence)
+            },
+            health: {
+                ollama: queueStats?.ollamaAvailable ?? false,
+                worker: queueStats?.workerRunning ?? false,
+                database: true
+            },
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        logger.error('Failed to get live stats', { error: error.message });
         res.status(500).json({ error: error.message });
     }
 });

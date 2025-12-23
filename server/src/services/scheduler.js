@@ -38,8 +38,11 @@ class SchedulerService {
         // Run watchdog shortly after startup
         setTimeout(() => this.runLibraryWatchdog(), 5000);
 
-        // Cleanup old sessions every hour 
-        // this.schedule('session-cleanup', '0 * * * *', ...);
+        // Auto-learn rules every 30 minutes for libraries with enough content
+        this.schedule('auto-learn-rules', '*/30 * * * *', () => this.runAutoLearnRules());
+
+        // Run auto-learn after startup (2 min delay to let gap analysis start first)
+        setTimeout(() => this.runAutoLearnRules(), 120000);
     }
 
     /**
@@ -150,6 +153,160 @@ class SchedulerService {
             }
         } catch (error) {
             logger.error('Error running library watchdog', { error: error.message });
+        }
+    }
+
+    /**
+     * Auto-learn rules for libraries with enough analyzed content
+     * Runs automatically when libraries have 50+ items but no rules
+     */
+    async runAutoLearnRules() {
+        try {
+            // Find libraries with 50+ items but no rules
+            const result = await db.query(`
+                SELECT l.id, l.name, l.media_type, COUNT(msi.id) as item_count
+                FROM libraries l
+                LEFT JOIN media_server_items msi ON l.id = msi.library_id
+                LEFT JOIN library_rules lr ON l.id = lr.library_id
+                WHERE l.is_active = true
+                GROUP BY l.id, l.name, l.media_type
+                HAVING COUNT(msi.id) >= 50 AND COUNT(lr.id) = 0
+            `);
+
+            if (result.rows.length === 0) {
+                logger.debug('Auto-learn: No libraries need rule learning');
+                return;
+            }
+
+            logger.info(`Auto-learn: Found ${result.rows.length} libraries ready for rule learning`);
+
+            for (const library of result.rows) {
+                try {
+                    logger.info(`Auto-learn: Learning rules for library "${library.name}" (${library.item_count} items)`);
+
+                    // Analyze library content patterns
+                    const analysis = await db.query(`
+                        SELECT 
+                            array_agg(DISTINCT content_rating) FILTER (WHERE content_rating IS NOT NULL) as ratings,
+                            array_agg(DISTINCT g) FILTER (WHERE g IS NOT NULL) as genres,
+                            array_agg(DISTINCT msi.metadata->>'original_language') FILTER (WHERE msi.metadata->>'original_language' IS NOT NULL) as languages
+                        FROM media_server_items msi
+                            LEFT JOIN LATERAL UNNEST(msi.genres) as g ON true
+                        WHERE msi.library_id = $1
+                    `, [library.id]);
+
+                    // Analyze keyword patterns
+                    const keywordAnalysis = await db.query(`
+                        SELECT 
+                            COUNT(*) FILTER (WHERE LOWER(title) LIKE '%christmas%' OR LOWER(title) LIKE '%xmas%') as christmas_count,
+                            COUNT(*) FILTER (WHERE LOWER(title) LIKE '%holiday%') as holiday_count,
+                            COUNT(*) FILTER (WHERE LOWER(title) LIKE '%hallmark%' OR LOWER(msi.studio) LIKE '%hallmark%') as hallmark_count,
+                            COUNT(*) as total
+                        FROM media_server_items msi
+                        WHERE msi.library_id = $1
+                    `, [library.id]);
+
+                    const data = analysis.rows[0];
+                    const kw = keywordAnalysis.rows[0];
+                    const total = parseInt(kw.total) || 1;
+                    let rulesCreated = 0;
+
+                    // Create rating rule if consistent
+                    if (data.ratings && data.ratings.length > 0 && data.ratings.length <= 5) {
+                        await db.query(`
+                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
+                            VALUES ($1, 'rating', 'includes', $2, $3, false, true, 10)
+                            ON CONFLICT DO NOTHING
+                        `, [library.id, data.ratings.join(','), `Auto: Ratings ${data.ratings.join(', ')}`]);
+                        rulesCreated++;
+                    }
+
+                    // Create genre rule if dominant genres exist
+                    if (data.genres && data.genres.length > 0 && data.genres.length <= 10) {
+                        const topGenres = data.genres.slice(0, 5);
+                        await db.query(`
+                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
+                            VALUES ($1, 'genre', 'includes', $2, $3, false, true, 10)
+                            ON CONFLICT DO NOTHING
+                        `, [library.id, topGenres.join(','), `Auto: Genres ${topGenres.join(', ')}`]);
+                        rulesCreated++;
+                    }
+
+                    // Create language rule if non-English dominant
+                    if (data.languages && data.languages.length === 1 && data.languages[0] !== 'en') {
+                        await db.query(`
+                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
+                            VALUES ($1, 'language', 'equals', $2, $3, false, true, 10)
+                            ON CONFLICT DO NOTHING
+                        `, [library.id, data.languages[0], `Auto: Language ${data.languages[0]}`]);
+                        rulesCreated++;
+                    }
+
+                    // Keyword Rules
+                    const christmasRatio = parseInt(kw.christmas_count) / total;
+                    const holidayRatio = parseInt(kw.holiday_count) / total;
+                    const hallmarkRatio = parseInt(kw.hallmark_count) / total;
+
+                    if (christmasRatio >= 0.3) {
+                        await db.query(`
+                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
+                            VALUES ($1, 'keyword', 'contains', 'christmas,xmas,holiday,santa,snowman,elf', $2, false, true, 10)
+                            ON CONFLICT DO NOTHING
+                        `, [library.id, `Auto: Christmas Content`]);
+                        rulesCreated++;
+                    } else if (holidayRatio >= 0.3) {
+                        await db.query(`
+                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
+                            VALUES ($1, 'keyword', 'contains', 'holiday,christmas,seasonal', $2, false, true, 10)
+                            ON CONFLICT DO NOTHING
+                        `, [library.id, `Auto: Holiday Content`]);
+                        rulesCreated++;
+                    }
+
+                    if (hallmarkRatio >= 0.3) {
+                        await db.query(`
+                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
+                            VALUES ($1, 'keyword', 'contains', 'hallmark', $2, false, true, 10)
+                            ON CONFLICT DO NOTHING
+                        `, [library.id, `Auto: Hallmark Productions`]);
+                        rulesCreated++;
+                    }
+
+                    // Anime Detection
+                    const libraryName = library.name.toLowerCase();
+                    const hasAnimeGenre = data.genres && (
+                        data.genres.includes('Animation') ||
+                        data.genres.includes('Anime') ||
+                        data.genres.some(g => g && g.toLowerCase().includes('anime'))
+                    );
+                    const isJapanese = data.languages && data.languages.includes('ja');
+                    const libraryIsAnime = libraryName.includes('anime');
+
+                    if ((hasAnimeGenre && isJapanese) || (hasAnimeGenre && libraryIsAnime)) {
+                        // Add Japanese language rule if not already present
+                        await db.query(`
+                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
+                            VALUES ($1, 'language', 'equals', 'ja', 'Auto: Japanese Anime Content', false, true, 10)
+                            ON CONFLICT DO NOTHING
+                        `, [library.id]);
+                        rulesCreated++;
+
+                        // Add Animation/Anime genre rule
+                        await db.query(`
+                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
+                            VALUES ($1, 'genre', 'includes', 'Animation,Anime', 'Auto: Anime/Animation', false, true, 10)
+                            ON CONFLICT DO NOTHING
+                        `, [library.id]);
+                        rulesCreated++;
+                    }
+
+                    logger.info(`Auto-learn: Created ${rulesCreated} rules for "${library.name}"`);
+                } catch (libError) {
+                    logger.error(`Auto-learn: Failed to learn rules for ${library.name}`, { error: libError.message });
+                }
+            }
+        } catch (error) {
+            logger.error('Error running auto-learn rules', { error: error.message });
         }
     }
 }

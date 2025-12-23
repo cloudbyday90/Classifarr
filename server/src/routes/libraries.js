@@ -712,12 +712,10 @@ router.get('/:id/rules/suggest', async (req, res) => {
       SELECT 
         array_agg(DISTINCT content_rating) FILTER (WHERE content_rating IS NOT NULL) as ratings,
         array_agg(DISTINCT g) FILTER (WHERE g IS NOT NULL) as genres,
-        array_agg(DISTINCT original_language) FILTER (WHERE original_language IS NOT NULL) as languages,
+        array_agg(DISTINCT msi.metadata->>'original_language') FILTER (WHERE msi.metadata->>'original_language' IS NOT NULL) as languages,
         COUNT(*) as total_items
-      FROM media_server_items msi,
-        LATERAL (SELECT jsonb_array_elements_text(
-          CASE WHEN jsonb_typeof(msi.genres) = 'array' THEN msi.genres ELSE '[]'::jsonb END
-        ) as g) genres_flat
+      FROM media_server_items msi
+        LEFT JOIN LATERAL UNNEST(msi.genres) as g ON true
       WHERE msi.library_id = $1
     `, [id]);
 
@@ -747,15 +745,97 @@ router.get('/:id/rules/suggest', async (req, res) => {
       });
     }
 
-    // Suggest language rule if non-English dominant
+    // Suggest language rule if non-English dominant (important for anime detection)
     if (data.languages && data.languages.length === 1 && data.languages[0] !== 'en') {
       suggestions.push({
         rule_type: 'language',
         operator: 'equals',
         value: data.languages[0],
-        description: `Only ${data.languages[0]} content`,
+        description: `Only ${data.languages[0]} content${data.languages[0] === 'ja' ? ' (Anime)' : ''}`,
         is_exception: false
       });
+    }
+
+    // Analyze titles for keyword patterns (Christmas, Holiday, etc.)
+    const keywordAnalysis = await db.query(`
+      SELECT 
+        COUNT(*) FILTER (WHERE LOWER(title) LIKE '%christmas%' OR LOWER(title) LIKE '%xmas%') as christmas_count,
+        COUNT(*) FILTER (WHERE LOWER(title) LIKE '%holiday%') as holiday_count,
+        COUNT(*) FILTER (WHERE LOWER(title) LIKE '%hallmark%' OR LOWER(msi.studio) LIKE '%hallmark%') as hallmark_count,
+        COUNT(*) as total
+      FROM media_server_items msi
+      WHERE msi.library_id = $1
+    `, [id]);
+
+    const kw = keywordAnalysis.rows[0];
+    const total = parseInt(kw.total) || 1;
+    const christmasRatio = parseInt(kw.christmas_count) / total;
+    const holidayRatio = parseInt(kw.holiday_count) / total;
+    const hallmarkRatio = parseInt(kw.hallmark_count) / total;
+
+    // If 30%+ of titles have Christmas keywords, suggest a rule
+    if (christmasRatio >= 0.3) {
+      suggestions.push({
+        rule_type: 'keyword',
+        operator: 'contains',
+        value: 'christmas,xmas,holiday,santa,snowman,elf',
+        description: `Christmas/Holiday content (${Math.round(christmasRatio * 100)}% match)`,
+        is_exception: false
+      });
+    } else if (holidayRatio >= 0.3) {
+      suggestions.push({
+        rule_type: 'keyword',
+        operator: 'contains',
+        value: 'holiday,christmas,seasonal',
+        description: `Holiday content (${Math.round(holidayRatio * 100)}% match)`,
+        is_exception: false
+      });
+    }
+
+    // If Hallmark studio is dominant
+    if (hallmarkRatio >= 0.3) {
+      suggestions.push({
+        rule_type: 'keyword',
+        operator: 'contains',
+        value: 'hallmark',
+        description: `Hallmark productions (${Math.round(hallmarkRatio * 100)}% match)`,
+        is_exception: false
+      });
+    }
+
+    // Check for Anime patterns - Animation genre + Japanese language OR library name contains anime
+    const libraryResult = await db.query('SELECT name FROM libraries WHERE id = $1', [id]);
+    const libraryName = libraryResult.rows[0]?.name?.toLowerCase() || '';
+
+    // Check if genres include Animation or Anime
+    const hasAnimeGenre = data.genres && (
+      data.genres.includes('Animation') ||
+      data.genres.includes('Anime') ||
+      data.genres.some(g => g && g.toLowerCase().includes('anime'))
+    );
+
+    // Detect anime if: (Animation genre AND Japanese language) OR library name contains 'anime'
+    const isJapanese = data.languages && data.languages.includes('ja');
+    const libraryIsAnime = libraryName.includes('anime');
+
+    if ((hasAnimeGenre && isJapanese) || (hasAnimeGenre && libraryIsAnime)) {
+      suggestions.push({
+        rule_type: 'language',
+        operator: 'equals',
+        value: 'ja',
+        description: 'Japanese Anime content',
+        is_exception: false
+      });
+      // Also add Animation genre if not already suggested
+      if (!suggestions.find(s => s.rule_type === 'genre' && s.value.includes('Animation'))) {
+        suggestions.push({
+          rule_type: 'genre',
+          operator: 'includes',
+          value: 'Animation,Anime',
+          description: 'Anime/Animation content',
+          is_exception: false
+        });
+      }
     }
 
     res.json({
