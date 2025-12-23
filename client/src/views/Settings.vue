@@ -66,6 +66,7 @@ const tabs = [
   { id: 'tavily', label: 'Tavily', component: Tavily },
   { id: 'ollama', label: 'Ollama', component: Ollama },
   { id: 'radarr', label: 'Radarr', component: Radarr },
+  { id: 'sonarr', label: 'Sonarr', component: Sonarr },
   { id: 'discord', label: 'Discord', component: Discord },
   { id: 'webhooks', label: 'Webhooks', component: Webhooks },
   { id: 'queue', label: 'Queue', component: Queue },
