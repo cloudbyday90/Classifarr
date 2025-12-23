@@ -632,6 +632,7 @@ router.get('/:id/rules', async (req, res) => {
 router.post('/:id/rules', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`[DEBUG] POST /${id}/rules Body:`, JSON.stringify(req.body, null, 2));
     const { rule_type, operator, value, is_exception = false, priority = 0, description, rule_json, name, is_active } = req.body;
 
     // Handle Custom Rule (from Rule Builder)
