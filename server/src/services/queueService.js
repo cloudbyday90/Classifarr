@@ -302,6 +302,51 @@ class QueueService {
     }
 
     /**
+     * Get gap analysis statistics for progress indicator
+     */
+    async getGapAnalysisStats() {
+        try {
+            // Count items that still need to be analyzed
+            const unprocessedResult = await db.query(`
+                SELECT COUNT(*) as count 
+                FROM media_server_items 
+                WHERE metadata->'content_analysis' IS NULL
+            `);
+
+            // Get total items count
+            const totalResult = await db.query(`
+                SELECT COUNT(*) as count FROM media_server_items
+            `);
+
+            const unprocessedCount = parseInt(unprocessedResult.rows[0].count) || 0;
+            const totalCount = parseInt(totalResult.rows[0].count) || 0;
+            const processedCount = totalCount - unprocessedCount;
+
+            const batchSize = 500; // Matches scheduler.js LIMIT
+            const batchesRemaining = Math.ceil(unprocessedCount / batchSize);
+            const intervalMinutes = 5; // Gap analysis runs every 5 minutes
+            const estimatedMinutesRemaining = batchesRemaining * intervalMinutes;
+
+            return {
+                unprocessedCount,
+                processedCount,
+                totalCount,
+                percentComplete: totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 100,
+                batchSize,
+                batchesRemaining,
+                intervalMinutes,
+                estimatedMinutesRemaining,
+                estimatedCompletion: estimatedMinutesRemaining > 0
+                    ? `~${estimatedMinutesRemaining} min (${batchesRemaining} batches)`
+                    : 'Complete'
+            };
+        } catch (error) {
+            logger.error('Failed to get gap analysis stats', { error: error.message });
+            return null;
+        }
+    }
+
+    /**
      * Get pending tasks
      */
     async getPendingTasks(limit = 20) {

@@ -33,6 +33,25 @@ router.get('/stats', async (req, res) => {
 
 /**
  * @swagger
+ * /api/queue/gap-analysis-stats:
+ *   get:
+ *     summary: Get gap analysis progress stats
+ *     responses:
+ *       200:
+ *         description: Gap analysis statistics including unprocessed items
+ */
+router.get('/gap-analysis-stats', async (req, res) => {
+    try {
+        const stats = await queueService.getGapAnalysisStats();
+        res.json(stats);
+    } catch (error) {
+        logger.error('Failed to get gap analysis stats', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
  * /api/queue/pending:
  *   get:
  *     summary: Get pending tasks

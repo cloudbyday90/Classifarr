@@ -33,6 +33,29 @@
       </div>
     </div>
 
+    <!-- Gap Analysis Progress -->
+    <div v-if="gapStats && gapStats.unprocessedCount > 0" class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <div class="animate-pulse text-blue-400">📊</div>
+          <span class="font-medium text-blue-300">Classification Progress</span>
+        </div>
+        <span class="text-sm text-blue-200">
+          {{ gapStats.processedCount }} / {{ gapStats.totalCount }} items ({{ gapStats.percentComplete }}%)
+        </span>
+      </div>
+      <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
+        <div 
+          class="bg-blue-500 h-2 rounded-full transition-all duration-500"
+          :style="{ width: `${gapStats.percentComplete}%` }"
+        />
+      </div>
+      <div class="flex justify-between text-xs text-blue-200/70">
+        <span>{{ gapStats.unprocessedCount }} items remaining</span>
+        <span>{{ gapStats.estimatedCompletion }} • Batch every {{ gapStats.intervalMinutes }} min ({{ gapStats.batchSize }}/batch)</span>
+      </div>
+    </div>
+
     <!-- Worker Settings -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <h3 class="text-lg font-medium mb-4">Worker Configuration</h3>
@@ -268,6 +291,8 @@ const stats = ref({
   workerRunning: true
 })
 
+const gapStats = ref(null)
+
 const settings = ref({
   workerEnabled: true,
   concurrentWorkers: 1,
@@ -295,8 +320,12 @@ const loadData = async () => {
 
 const loadStats = async () => {
   try {
-    const data = await api.getQueueStats()
-    stats.value = data
+    const [queueData, gapData] = await Promise.all([
+      api.getQueueStats(),
+      api.get('/queue/gap-analysis-stats').then(res => res.data).catch(() => null)
+    ])
+    stats.value = queueData
+    gapStats.value = gapData
   } catch (error) {
     console.error('Failed to load queue stats:', error)
   }
