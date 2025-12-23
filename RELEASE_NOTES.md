@@ -1,5 +1,22 @@
 # Classifarr Release Notes
 
+## v0.21.3-alpha
+**Database Consolidation & Documentation Overhaul**
+
+### Improvements
+- **Rule Table Consolidation:** Updated `checkLibraryRules` to use `library_rules_v2` with conditions JSON format, deprecating obsolete `library_rules` table.
+- **Cleaner Clear & Re-sync:** Now only clears `library_rules_v2` and `library_custom_rules` for simpler rule management.
+- **Documentation Overhaul:** Complete rewrite of README.md with:
+  - Updated architecture diagram showing actual classification flow
+  - Smart Rule Builder documentation
+  - Sync Libraries button usage
+  - Clear & Re-sync instructions
+  - Updated version badges and links
+
+### Technical Changes
+- `classification.js`: Rewrote `checkLibraryRules()` to parse conditions JSON from `library_rules_v2`
+- `queueService.js`: Removed obsolete `library_rules` table from clearAndResync
+
 ## v0.21.2-alpha
 **Critical Bug Fixes & UX Improvements**
 
