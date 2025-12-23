@@ -1,5 +1,13 @@
 # Classifarr Release Notes
 
+## v0.21.1-alpha
+**Fixes & Database Updates**
+
+### Improvements
+- **Database Schema:** Added migration `014` to explicitly allow `source_library`, `holiday_detection`, and `library_rule` classification methods, preventing constraint violation errors.
+- **Queue Service:** Enhanced `clearAndResync` to explicitly clear `library_id` from media items, ensuring items are fully disassociated from libraries during reset.
+- **Project Config:** Added `.gitattributes` to enforce LF line endings for shell scripts, improving Docker compatibility on Windows.
+
 ## v0.21.0-alpha
 **Smart Rule Builder & Proactive Intelligence**
 
