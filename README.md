@@ -170,6 +170,25 @@ This will:
 - Configure Ollama host and model
 - Test connection and select models
 
+#### Recommended Models by VRAM
+
+Choose a model based on your GPU memory:
+
+| VRAM | Model | Speed | Accuracy | Notes |
+|------|-------|-------|----------|-------|
+| **4GB** | `phi3:3.8b` | ⚡ Fastest | Good | Best for low-end GPUs |
+| **6GB** | `mistral:7b` | ⚡ Very Fast | Good | Popular, well-tested |
+| **8GB** | `gemma3:4b` | ⚡ Very Fast | High | **Recommended** - best balance |
+| **8GB** | `llama3.2:3b` | ⚡ Very Fast | Good | Meta's compact model |
+| **12GB** | `gemma3:12b` | Fast | Very High | Excellent for 12GB+ cards |
+| **12GB** | `qwen3:8b` | Fast | High | Strong multilingual |
+| **16GB** | `deepseek-r1:8b` | Fast | Very High | Strong reasoning |
+| **16GB** | `qwen3:14b` | Medium | Very High | Default model |
+| **24GB+** | `gemma3:27b` | Medium | Highest | Best accuracy |
+| **24GB+** | `llama3.3:70b` | Slow | Highest | Most capable |
+
+> **Tip:** Ollama uses quantized models (Q4) by default, so actual VRAM usage is ~50-60% of full precision. The Activity page shows real-time AI generation progress.
+
 ### TMDB
 - Enter API key for metadata enrichment
 - Powers genre, rating, and keyword information
@@ -177,6 +196,7 @@ This will:
 ### Discord
 - Bot token and channel configuration
 - Notification preferences
+
 
 ## 🎮 Discord Bot
 
