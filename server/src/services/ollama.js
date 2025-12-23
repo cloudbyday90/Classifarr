@@ -101,7 +101,7 @@ class OllamaService {
         temperature,
         stream: false,
       }, {
-        timeout: 60000, // 60 second timeout for AI generation
+        timeout: 180000, // 3 minute timeout for larger AI models
       });
       return response.data.response;
     } catch (error) {
