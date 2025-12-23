@@ -161,6 +161,9 @@ export default {
   getRuleSuggestions(id) {
     return apiClient.get(`/libraries/${id}/rules/suggest`)
   },
+  getSmartSuggestions(id) {
+    return apiClient.get(`/libraries/${id}/rules/smart-suggest`)
+  },
   autoGenerateRules(id) {
     return apiClient.post(`/libraries/${id}/rules/auto-generate`)
   },

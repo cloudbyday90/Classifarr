@@ -22,6 +22,7 @@ const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
 const mediaSyncService = require('../services/mediaSync');
 const classificationService = require('../services/classification');
+const ollamaService = require('../services/ollama');
 const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
@@ -811,6 +812,186 @@ router.get('/:id/rules/suggest', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to suggest rules', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/rules/smart-suggest:
+ *   get:
+ *     summary: Get LLM-powered smart suggestions based on comprehensive library analysis
+ */
+router.get('/:id/rules/smart-suggest', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get library info
+    const libraryResult = await db.query('SELECT * FROM libraries WHERE id = $1', [id]);
+    if (libraryResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Library not found' });
+    }
+    const library = libraryResult.rows[0];
+
+    // 1. Get AI content_analysis type distribution
+    const contentTypeResult = await db.query(`
+      SELECT 
+        metadata->'content_analysis'->>'type' as content_type,
+        COUNT(*) as count
+      FROM media_server_items 
+      WHERE library_id = $1 AND metadata->'content_analysis' IS NOT NULL
+      GROUP BY content_type
+      ORDER BY count DESC
+      LIMIT 10
+    `, [id]);
+
+    // 2. Get genre frequency distribution
+    const genreResult = await db.query(`
+      SELECT unnest(genres) as genre, COUNT(*) as count
+      FROM media_server_items
+      WHERE library_id = $1 AND genres IS NOT NULL
+      GROUP BY genre
+      ORDER BY count DESC
+      LIMIT 10
+    `, [id]);
+
+    // 3. Get rating distribution
+    const ratingResult = await db.query(`
+      SELECT content_rating, COUNT(*) as count
+      FROM media_server_items
+      WHERE library_id = $1 AND content_rating IS NOT NULL
+      GROUP BY content_rating
+      ORDER BY count DESC
+    `, [id]);
+
+    // 4. Get language distribution
+    const languageResult = await db.query(`
+      SELECT metadata->>'original_language' as language, COUNT(*) as count
+      FROM media_server_items
+      WHERE library_id = $1 AND metadata->>'original_language' IS NOT NULL
+      GROUP BY language
+      ORDER BY count DESC
+      LIMIT 5
+    `, [id]);
+
+    // 5. Get total items and analyzed count
+    const countResult = await db.query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE metadata->'content_analysis' IS NOT NULL) as analyzed
+      FROM media_server_items
+      WHERE library_id = $1
+    `, [id]);
+
+    const stats = {
+      libraryName: library.name,
+      mediaType: library.media_type,
+      totalItems: parseInt(countResult.rows[0]?.total) || 0,
+      analyzedItems: parseInt(countResult.rows[0]?.analyzed) || 0,
+      contentTypes: contentTypeResult.rows.map(r => ({ type: r.content_type, count: parseInt(r.count) })),
+      genres: genreResult.rows.map(r => ({ genre: r.genre, count: parseInt(r.count) })),
+      ratings: ratingResult.rows.map(r => ({ rating: r.content_rating, count: parseInt(r.count) })),
+      languages: languageResult.rows.map(r => ({ language: r.language, count: parseInt(r.count) }))
+    };
+
+    // 6. Build prompt for Ollama
+    const prompt = `You are an AI assistant helping to create classification rules for a media library.
+
+Library Name: "${stats.libraryName}"
+Media Type: ${stats.mediaType}
+Total Items: ${stats.totalItems}, Analyzed: ${stats.analyzedItems}
+
+Content Types (from AI analysis):
+${stats.contentTypes.map(t => `- ${t.type}: ${t.count} items`).join('\n') || 'No AI analysis available yet'}
+
+Genres:
+${stats.genres.map(g => `- ${g.genre}: ${g.count} items`).join('\n') || 'No genre data'}
+
+Content Ratings:
+${stats.ratings.map(r => `- ${r.rating}: ${r.count} items`).join('\n') || 'No rating data'}
+
+Languages:
+${stats.languages.map(l => `- ${l.language}: ${l.count} items`).join('\n') || 'No language data'}
+
+Based on the library name and this data, suggest 2-4 classification rules that would best define what content belongs in this library. For each rule, provide:
+1. A descriptive name
+2. The conditions (field, operator, value)
+3. A confidence score (0-100) based on how well the data supports this rule
+4. Brief reasoning
+
+Respond in this exact JSON format:
+{"suggestions": [{"name": "Rule Name", "conditions": [{"field": "genre", "operator": "contains", "value": "Horror"}], "confidence": 85, "reasoning": "Brief explanation"}]}
+
+Valid fields: genre, content_type, rating, language, keyword
+Valid operators: equals, contains, includes`;
+
+    // 7. Get Ollama config and generate suggestions
+    let llmSuggestions = [];
+    try {
+      const configResult = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
+      if (configResult.rows.length > 0) {
+        const config = configResult.rows[0];
+        const response = await ollamaService.generate(prompt, config.model, parseFloat(config.temperature) || 0.3);
+
+        // Parse JSON from response
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          llmSuggestions = parsed.suggestions || [];
+        }
+      }
+    } catch (llmError) {
+      logger.warn('LLM suggestion generation failed', { error: llmError.message });
+      // Continue with data-only suggestions
+    }
+
+    // 8. Build fallback suggestions from data if LLM failed or no config
+    const dataSuggestions = [];
+
+    // Top content type suggestion
+    if (stats.contentTypes.length > 0) {
+      const top = stats.contentTypes[0];
+      const confidence = Math.round((top.count / stats.totalItems) * 100);
+      dataSuggestions.push({
+        name: `${top.type} Content`,
+        conditions: [{ field: 'content_type', operator: 'equals', value: top.type }],
+        confidence,
+        reasoning: `${confidence}% of analyzed items are ${top.type}`
+      });
+    }
+
+    // Top genre suggestion
+    if (stats.genres.length > 0) {
+      const top = stats.genres[0];
+      const confidence = Math.round((top.count / stats.totalItems) * 100);
+      dataSuggestions.push({
+        name: `${top.genre} Genre`,
+        conditions: [{ field: 'genre', operator: 'contains', value: top.genre }],
+        confidence,
+        reasoning: `${confidence}% of items have ${top.genre} genre`
+      });
+    }
+
+    // Rating suggestion if consistent
+    if (stats.ratings.length > 0 && stats.ratings.length <= 3) {
+      const topRatings = stats.ratings.slice(0, 2).map(r => r.rating);
+      const totalCount = stats.ratings.slice(0, 2).reduce((sum, r) => sum + r.count, 0);
+      const confidence = Math.round((totalCount / stats.totalItems) * 100);
+      dataSuggestions.push({
+        name: `${topRatings.join('/')} Rated Content`,
+        conditions: [{ field: 'rating', operator: 'includes', value: topRatings.join(',') }],
+        confidence,
+        reasoning: `${confidence}% of items are ${topRatings.join(' or ')} rated`
+      });
+    }
+
+    res.json({
+      stats,
+      suggestions: llmSuggestions.length > 0 ? llmSuggestions : dataSuggestions,
+      source: llmSuggestions.length > 0 ? 'llm' : 'data-analysis'
+    });
+  } catch (error) {
+    logger.error('Failed to generate smart suggestions', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

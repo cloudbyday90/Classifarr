@@ -107,6 +107,68 @@
       </div>
     </Card>
 
+    <!-- AI-Powered Suggestions -->
+    <Card v-if="conditions.length === 0 && !editingRuleId">
+      <template #header>
+        <div class="flex justify-between items-center">
+          <h2 class="text-xl font-semibold">🧠 AI Suggestions</h2>
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            @click="loadSmartSuggestions" 
+            :loading="loadingSmartSuggestions"
+          >
+            Refresh
+          </Button>
+        </div>
+      </template>
+      
+      <div v-if="loadingSmartSuggestions" class="text-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p class="text-gray-400">Generating smart suggestions...</p>
+        <p class="text-xs text-gray-500 mt-2">Using AI to analyze library patterns</p>
+      </div>
+      
+      <div v-else-if="smartSuggestions.length > 0" class="space-y-4">
+        <p class="text-gray-400 text-sm">
+          {{ smartSuggestionsSource === 'llm' ? '🤖 AI-generated' : '📊 Data-driven' }} suggestions based on your library content
+        </p>
+        
+        <div v-for="(suggestion, idx) in smartSuggestions" :key="idx" class="bg-background-light p-4 rounded border border-gray-700 hover:border-primary transition-colors">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <h4 class="font-medium text-white">{{ suggestion.name }}</h4>
+              <p class="text-sm text-gray-400 mt-1">{{ suggestion.reasoning }}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span 
+                class="px-2 py-1 text-xs rounded-full"
+                :class="getConfidenceClass(suggestion.confidence)"
+              >
+                {{ suggestion.confidence }}% confidence
+              </span>
+            </div>
+          </div>
+          
+          <div class="text-xs text-gray-500 font-mono mt-2 mb-3">
+            <span v-for="(cond, i) in suggestion.conditions" :key="i">
+              {{ cond.field }} {{ cond.operator }} "{{ cond.value }}"
+              <span v-if="i < suggestion.conditions.length - 1" class="text-gray-600"> AND </span>
+            </span>
+          </div>
+          
+          <Button size="sm" variant="primary" @click="applySmartSuggestion(suggestion)">
+            Use This Rule
+          </Button>
+        </div>
+      </div>
+      
+      <div v-else class="text-center py-8 text-gray-500">
+        <p>No suggestions available yet.</p>
+        <p class="text-xs mt-2">Make sure Ollama is configured or wait for more content analysis.</p>
+      </div>
+    </Card>
+
     <!-- Conditions -->
     <Card v-if="conditions.length > 0">
       <template #header>
@@ -128,7 +190,7 @@
             <label class="block text-xs text-gray-400 mb-1">Field</label>
             <select 
               v-model="condition.field"
-              class="w-full bg-input-background border border-input-border rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary [&>option]:bg-gray-800 [&>option]:text-white"
             >
               <option value="content_type">Content Type</option>
               <option value="genres">Genre</option>
@@ -143,7 +205,7 @@
             <label class="block text-xs text-gray-400 mb-1">Operator</label>
             <select 
               v-model="condition.operator"
-              class="w-full bg-input-background border border-input-border rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary [&>option]:bg-gray-800 [&>option]:text-white"
             >
               <option value="equals">Equals</option>
               <option value="not_equals">Does not equal</option>
@@ -163,7 +225,7 @@
               v-if="condition.field === 'content_type'"
               v-model="condition.value"
               :multiple="condition.operator === 'is_one_of'"
-              class="w-full bg-input-background border border-input-border rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
               :class="{ 'h-32': condition.operator === 'is_one_of' }"
             >
               <option value="holiday">Holiday</option>
@@ -182,7 +244,7 @@
               v-else-if="condition.field === 'certification'"
               v-model="condition.value"
               :multiple="condition.operator === 'is_one_of'"
-              class="w-full bg-input-background border border-input-border rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
               :class="{ 'h-32': condition.operator === 'is_one_of' }"
             >
               <option value="G">G / TV-G</option>
@@ -198,7 +260,7 @@
               v-else
               v-model="condition.value"
               type="text"
-              class="w-full bg-input-background border border-input-border rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
               :placeholder="getValuePlaceholder(condition.field)"
             />
           </div>
@@ -302,6 +364,11 @@ const loadingStats = ref(true)
 const analyzing = ref(false)
 const editingRuleId = ref(null)
 
+// Smart suggestions state
+const smartSuggestions = ref([])
+const smartSuggestionsSource = ref('')
+const loadingSmartSuggestions = ref(false)
+
 const isValid = computed(() => {
   return ruleName.value.trim() && conditions.value.length > 0
 })
@@ -314,6 +381,7 @@ onMounted(async () => {
   }
   
   await loadStats()
+  await loadSmartSuggestions()
 })
 
 const loadRule = async (ruleId) => {
@@ -348,6 +416,53 @@ const loadStats = async () => {
   } finally {
     loadingStats.value = false
   }
+}
+
+const loadSmartSuggestions = async () => {
+  loadingSmartSuggestions.value = true
+  try {
+    const response = await api.getSmartSuggestions(props.libraryId)
+    smartSuggestions.value = response.data.suggestions || []
+    smartSuggestionsSource.value = response.data.source || 'data-analysis'
+  } catch (error) {
+    console.error('Error loading smart suggestions:', error)
+    smartSuggestions.value = []
+  } finally {
+    loadingSmartSuggestions.value = false
+  }
+}
+
+const applySmartSuggestion = (suggestion) => {
+  ruleName.value = suggestion.name
+  description.value = suggestion.reasoning || ''
+  
+  // Map backend field names to frontend form field names
+  const fieldMap = {
+    'genre': 'genres',
+    'rating': 'certification',
+    'content_type': 'content_type',
+    'language': 'language',
+    'keyword': 'keywords'
+  }
+  
+  // Map backend operators to frontend form operators
+  const operatorMap = {
+    'contains': 'contains',
+    'equals': 'equals',
+    'includes': 'is_one_of'
+  }
+  
+  conditions.value = suggestion.conditions.map(c => ({
+    field: fieldMap[c.field] || c.field,
+    operator: operatorMap[c.operator] || c.operator,
+    value: c.value
+  }))
+}
+
+const getConfidenceClass = (confidence) => {
+  if (confidence >= 80) return 'bg-green-900/50 text-green-400'
+  if (confidence >= 60) return 'bg-yellow-900/50 text-yellow-400'
+  return 'bg-gray-700/50 text-gray-400'
 }
 
 // Keep the manual trigger available as a fallback/repair utility
