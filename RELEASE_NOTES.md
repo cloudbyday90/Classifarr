@@ -1,5 +1,14 @@
 # Classifarr Release Notes
 
+## v0.19.3-alpha
+**Bug Fixes & Rule Builder Support**
+
+### fixes
+- **Rule Builder:** Fixed blank screen issue by adding header slot support to Card component.
+- **Rule Application:** Fixed "Failed to apply rule" error by preventing duplicate rule suggestions.
+- **Custom Rules:** Added database support (`library_custom_rules`) for complex rules created via Rule Builder.
+- **API:** Updated endpoints to support fetching and creating both simple and custom rules.
+
 ## v0.19.2-alpha
 **Live Dashboard & Smart Learning Update**
 

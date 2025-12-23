@@ -8,9 +8,13 @@
 
 <template>
   <div class="bg-background-light rounded-lg border border-gray-800 p-6">
-    <div v-if="title" class="mb-4">
-      <h3 class="text-lg font-semibold">{{ title }}</h3>
-      <p v-if="description" class="text-sm text-gray-400 mt-1">{{ description }}</p>
+    <div v-if="$slots.header || title" class="mb-4">
+      <slot name="header">
+        <div v-if="title">
+          <h3 class="text-lg font-semibold">{{ title }}</h3>
+          <p v-if="description" class="text-sm text-gray-400 mt-1">{{ description }}</p>
+        </div>
+      </slot>
     </div>
     <slot />
   </div>

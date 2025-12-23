@@ -591,13 +591,32 @@ router.post('/:id/sync', async (req, res) => {
 router.get('/:id/rules', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query(
-      `SELECT * FROM library_rules 
+
+    // Fetch simple rules
+    const simpleRules = await db.query(
+      `SELECT *, 'simple' as kind FROM library_rules 
        WHERE library_id = $1 
        ORDER BY is_exception DESC, priority ASC`,
       [id]
     );
-    res.json(result.rows);
+
+    // Fetch custom rules
+    // Check if table exists first to avoid error during migration race? No, we trust migration works.
+    // If table missing, query throws. I'll wrap in try-catch-softly logic or assume migration runs.
+    let customRules = { rows: [] };
+    try {
+      customRules = await db.query(
+        `SELECT *, 'custom' as kind FROM library_custom_rules 
+           WHERE library_id = $1 
+           ORDER BY created_at DESC`,
+        [id]
+      );
+    } catch (e) {
+      // Table might not exist yet if migration failed or didn't run. Ignore.
+      logger.warn('Could not fetch custom rules (table might be missing)', { error: e.message });
+    }
+
+    res.json([...simpleRules.rows, ...customRules.rows]);
   } catch (error) {
     logger.error('Failed to get library rules', { error: error.message });
     res.status(500).json({ error: error.message });
@@ -608,15 +627,30 @@ router.get('/:id/rules', async (req, res) => {
  * @swagger
  * /api/libraries/{id}/rules:
  *   post:
- *     summary: Add a new rule to a library
+ *     summary: Add a new rule to a library (simple or custom)
  */
 router.post('/:id/rules', async (req, res) => {
   try {
     const { id } = req.params;
-    const { rule_type, operator, value, is_exception = false, priority = 0, description } = req.body;
+    const { rule_type, operator, value, is_exception = false, priority = 0, description, rule_json, name, is_active } = req.body;
 
+    // Handle Custom Rule (from Rule Builder)
+    if (rule_json) {
+      if (!name) return res.status(400).json({ error: 'name is required for custom rules' });
+
+      const result = await db.query(
+        `INSERT INTO library_custom_rules (library_id, name, description, rule_json, is_active)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING *`,
+        [id, name, description, JSON.stringify(rule_json), is_active !== false]
+      );
+      logger.info('Custom library rule created', { libraryId: id, name });
+      return res.status(201).json(result.rows[0]);
+    }
+
+    // Handle Simple Rule (from Learn suggestions)
     if (!rule_type || !operator || !value) {
-      return res.status(400).json({ error: 'rule_type, operator, and value are required' });
+      return res.status(400).json({ error: 'rule_type, operator, and value are required (or provide rule_json)' });
     }
 
     const result = await db.query(
@@ -631,6 +665,22 @@ router.post('/:id/rules', async (req, res) => {
   } catch (error) {
     logger.error('Failed to create library rule', { error: error.message });
     res.status(500).json({ error: error.message });
+  }
+});
+
+// DEBUG ENDPOINT
+router.get('/:id/rules/debug-insert', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      `INSERT INTO library_rules (library_id, rule_type, operator, value, is_exception, priority, description)
+       VALUES ($1, 'keyword', 'contains', 'debug_test', false, 0, 'Debug Rule')
+       RETURNING *`,
+      [id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message, detail: error.detail });
   }
 });
 
@@ -719,41 +769,59 @@ router.get('/:id/rules/suggest', async (req, res) => {
       WHERE msi.library_id = $1
     `, [id]);
 
+    // Get existing rules to filter suggestions (prevent 'Failed to apply' for duplicates)
+    const existingRulesResult = await db.query('SELECT rule_type, value FROM library_rules WHERE library_id = $1', [id]);
+    const existingRules = existingRulesResult.rows;
+
     const data = analysis.rows[0];
     const suggestions = [];
 
+    // Helper to check if rule exists
+    const ruleExists = (type, val) => {
+      return existingRules.some(r => r.rule_type === type && (r.value === val || r.value.includes(val)));
+    };
+
     // Suggest rating rules if consistent
     if (data.ratings && data.ratings.length > 0 && data.ratings.length <= 5) {
-      suggestions.push({
-        rule_type: 'rating',
-        operator: 'includes',
-        value: data.ratings.join(','),
-        description: `Only ratings: ${data.ratings.join(', ')}`,
-        is_exception: false
-      });
+      const val = data.ratings.join(',');
+      if (!ruleExists('rating', val)) {
+        suggestions.push({
+          rule_type: 'rating',
+          operator: 'includes',
+          value: val,
+          description: `Only ratings: ${data.ratings.join(', ')}`,
+          is_exception: false
+        });
+      }
     }
 
     // Suggest genre rules if there's a dominant genre
     if (data.genres && data.genres.length > 0) {
       const topGenres = data.genres.slice(0, 5);
-      suggestions.push({
-        rule_type: 'genre',
-        operator: 'includes',
-        value: topGenres.join(','),
-        description: `Common genres: ${topGenres.join(', ')}`,
-        is_exception: false
-      });
+      const val = topGenres.join(',');
+      if (!ruleExists('genre', val)) {
+        suggestions.push({
+          rule_type: 'genre',
+          operator: 'includes',
+          value: val,
+          description: `Common genres: ${topGenres.join(', ')}`,
+          is_exception: false
+        });
+      }
     }
 
     // Suggest language rule if non-English dominant (important for anime detection)
     if (data.languages && data.languages.length === 1 && data.languages[0] !== 'en') {
-      suggestions.push({
-        rule_type: 'language',
-        operator: 'equals',
-        value: data.languages[0],
-        description: `Only ${data.languages[0]} content${data.languages[0] === 'ja' ? ' (Anime)' : ''}`,
-        is_exception: false
-      });
+      const val = data.languages[0];
+      if (!ruleExists('language', val)) {
+        suggestions.push({
+          rule_type: 'language',
+          operator: 'equals',
+          value: val,
+          description: `Only ${val} content${val === 'ja' ? ' (Anime)' : ''}`,
+          is_exception: false
+        });
+      }
     }
 
     // Analyze titles for keyword patterns (Christmas, Holiday, etc.)
@@ -775,32 +843,41 @@ router.get('/:id/rules/suggest', async (req, res) => {
 
     // If 30%+ of titles have Christmas keywords, suggest a rule
     if (christmasRatio >= 0.3) {
-      suggestions.push({
-        rule_type: 'keyword',
-        operator: 'contains',
-        value: 'christmas,xmas,holiday,santa,snowman,elf',
-        description: `Christmas/Holiday content (${Math.round(christmasRatio * 100)}% match)`,
-        is_exception: false
-      });
+      const val = 'christmas,xmas,holiday,santa,snowman,elf';
+      if (!ruleExists('keyword', val)) {
+        suggestions.push({
+          rule_type: 'keyword',
+          operator: 'contains',
+          value: val,
+          description: `Christmas/Holiday content (${Math.round(christmasRatio * 100)}% match)`,
+          is_exception: false
+        });
+      }
     } else if (holidayRatio >= 0.3) {
-      suggestions.push({
-        rule_type: 'keyword',
-        operator: 'contains',
-        value: 'holiday,christmas,seasonal',
-        description: `Holiday content (${Math.round(holidayRatio * 100)}% match)`,
-        is_exception: false
-      });
+      const val = 'holiday,christmas,seasonal';
+      if (!ruleExists('keyword', val)) {
+        suggestions.push({
+          rule_type: 'keyword',
+          operator: 'contains',
+          value: val,
+          description: `Holiday content (${Math.round(holidayRatio * 100)}% match)`,
+          is_exception: false
+        });
+      }
     }
 
     // If Hallmark studio is dominant
     if (hallmarkRatio >= 0.3) {
-      suggestions.push({
-        rule_type: 'keyword',
-        operator: 'contains',
-        value: 'hallmark',
-        description: `Hallmark productions (${Math.round(hallmarkRatio * 100)}% match)`,
-        is_exception: false
-      });
+      const val = 'hallmark';
+      if (!ruleExists('keyword', val)) {
+        suggestions.push({
+          rule_type: 'keyword',
+          operator: 'contains',
+          value: val,
+          description: `Hallmark productions (${Math.round(hallmarkRatio * 100)}% match)`,
+          is_exception: false
+        });
+      }
     }
 
     // Check for Anime patterns - Animation genre + Japanese language OR library name contains anime
@@ -819,19 +896,22 @@ router.get('/:id/rules/suggest', async (req, res) => {
     const libraryIsAnime = libraryName.includes('anime');
 
     if ((hasAnimeGenre && isJapanese) || (hasAnimeGenre && libraryIsAnime)) {
-      suggestions.push({
-        rule_type: 'language',
-        operator: 'equals',
-        value: 'ja',
-        description: 'Japanese Anime content',
-        is_exception: false
-      });
-      // Also add Animation genre if not already suggested
-      if (!suggestions.find(s => s.rule_type === 'genre' && s.value.includes('Animation'))) {
+      if (!ruleExists('language', 'ja')) {
+        suggestions.push({
+          rule_type: 'language',
+          operator: 'equals',
+          value: 'ja',
+          description: 'Japanese Anime content',
+          is_exception: false
+        });
+      }
+
+      const animeVal = 'Animation,Anime';
+      if (!ruleExists('genre', animeVal) && !suggestions.find(s => s.rule_type === 'genre' && s.value.includes('Animation'))) {
         suggestions.push({
           rule_type: 'genre',
           operator: 'includes',
-          value: 'Animation,Anime',
+          value: animeVal,
           description: 'Anime/Animation content',
           is_exception: false
         });
