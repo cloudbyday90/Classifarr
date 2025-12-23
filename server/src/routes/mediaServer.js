@@ -206,9 +206,10 @@ router.post('/sync', async (req, res) => {
       const result = await db.query(
         `INSERT INTO libraries (media_server_id, external_id, name, media_type, arr_type)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (media_server_id, external_id) 
+         ON CONFLICT (name, media_type) 
          DO UPDATE SET 
-           name = $3, 
+           external_id = $2,
+           media_server_id = $1,
            updated_at = NOW(),
            arr_type = COALESCE(libraries.arr_type, $5)
          RETURNING *`,
