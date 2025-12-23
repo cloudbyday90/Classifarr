@@ -40,11 +40,11 @@ class SchedulerService {
         // Run watchdog shortly after startup
         setTimeout(() => this.runLibraryWatchdog(), 5000);
 
-        // Auto-learn rules every 30 minutes for libraries with enough content
-        this.schedule('auto-learn-rules', '*/30 * * * *', () => this.runAutoLearnRules());
-
-        // Run auto-learn after startup (2 min delay to let gap analysis start first)
-        setTimeout(() => this.runAutoLearnRules(), 120000);
+        // DISABLED: Auto-learn rules - feature removed as it creates duplicates
+        // and makes assumptions that don't work for diverse library naming conventions.
+        // Users should create rules manually via the Smart Rule Builder.
+        // this.schedule('auto-learn-rules', '*/30 * * * *', () => this.runAutoLearnRules());
+        // setTimeout(() => this.runAutoLearnRules(), 120000);
 
         // Smart suggestion notifications every 2 hours
         this.schedule('smart-suggestion-check', '0 */2 * * *', () => this.runSmartSuggestionCheck());
