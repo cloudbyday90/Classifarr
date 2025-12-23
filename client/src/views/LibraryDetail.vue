@@ -234,9 +234,31 @@
                 Configure which content should be included or excluded from this library.
               </p>
             </div>
-            <Button @click="$router.push(`/rule-builder/${library.id}`)">
-              + New Rule
-            </Button>
+            <div class="flex gap-2">
+              <Button @click="getSuggestions" :loading="suggestionsLoading" variant="secondary">
+                🧠 Learn from Library
+              </Button>
+              <Button @click="$router.push(`/rule-builder/${library.id}`)">
+                + New Rule
+              </Button>
+            </div>
+          </div>
+
+          <!-- AI Suggestions Panel -->
+          <div v-if="suggestions.length > 0" class="bg-blue-900/20 border border-blue-500/50 rounded-lg p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-blue-400 font-medium">📊 Suggested Rules (based on {{ suggestionsItemCount }} items)</span>
+              <button @click="suggestions = []" class="text-gray-400 hover:text-white text-sm">✕ Dismiss</button>
+            </div>
+            <div v-for="(suggestion, idx) in suggestions" :key="idx" class="flex items-center gap-3 bg-dark-600 rounded p-3">
+              <div class="flex-1">
+                <div class="text-sm font-medium text-gray-200">{{ suggestion.description }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ suggestion.rule_type }}: {{ suggestion.value }}</div>
+              </div>
+              <Button size="sm" @click="applySuggestion(suggestion)" :loading="applyingIdx === idx">
+                Apply
+              </Button>
+            </div>
           </div>
 
           <div v-if="rules.length > 0" class="border border-gray-700 rounded-lg overflow-hidden">
@@ -251,8 +273,8 @@
               </thead>
               <tbody class="divide-y divide-gray-700">
                 <tr v-for="rule in rules" :key="rule.id" class="hover:bg-gray-800/50">
-                  <td class="px-4 py-3 font-medium">{{ rule.name }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-400">{{ formatConditions(rule.rule_json) }}</td>
+                  <td class="px-4 py-3 font-medium">{{ rule.name || rule.description || 'Rule' }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-400">{{ formatConditions(rule.rule_json) || formatSimpleRule(rule) }}</td>
                   <td class="px-4 py-3">
                     <span 
                       class="px-2 py-1 text-xs rounded-full"
@@ -265,9 +287,9 @@
                     <Button 
                       size="sm" 
                       variant="ghost" 
-                      @click="$router.push(`/rule-builder/${library.id}?ruleId=${rule.id}`)"
+                      @click="deleteRule(rule)"
                     >
-                      Edit
+                      🗑️
                     </Button>
                   </td>
                 </tr>
@@ -275,7 +297,7 @@
             </table>
           </div>
           <div v-else class="text-center py-8 text-gray-500 border-2 border-dashed border-gray-700 rounded-lg">
-            No classification rules configured yet.
+            No classification rules configured yet. Click "Learn from Library" to get AI-suggested rules.
           </div>
         </div>
       </Card>
@@ -416,7 +438,7 @@ onMounted(async () => {
 })
 
 const formatConditions = (conditions) => {
-  if (!conditions) return 'No conditions'
+  if (!conditions) return null
   // Handle both array and single object (legacy)
   const list = Array.isArray(conditions) ? conditions : [conditions]
   return list.map(c => {
@@ -426,6 +448,64 @@ const formatConditions = (conditions) => {
                c.operator.replace('_', ' ')
     return `${c.field} ${op} "${c.value}"`
   }).join(', ')
+}
+
+const formatSimpleRule = (rule) => {
+  if (!rule.rule_type) return 'No conditions'
+  return `${rule.rule_type} ${rule.operator} "${rule.value}"`
+}
+
+// Suggestions feature
+const suggestions = ref([])
+const suggestionsLoading = ref(false)
+const suggestionsItemCount = ref(0)
+const applyingIdx = ref(-1)
+
+const getSuggestions = async () => {
+  suggestionsLoading.value = true
+  try {
+    const res = await api.getRuleSuggestions(route.params.id)
+    suggestions.value = res.data.suggestions || []
+    suggestionsItemCount.value = res.data.totalItems || 0
+    if (suggestions.value.length === 0) {
+      toast.add({ title: 'No Suggestions', message: 'No patterns found in library content.' })
+    }
+  } catch (error) {
+    console.error('Failed to get suggestions:', error)
+    toast.error('Failed to analyze library')
+  } finally {
+    suggestionsLoading.value = false
+  }
+}
+
+const applySuggestion = async (suggestion) => {
+  const idx = suggestions.value.indexOf(suggestion)
+  applyingIdx.value = idx
+  try {
+    await api.addLibraryRule(route.params.id, suggestion)
+    // Reload rules and remove applied suggestion
+    const rulesResponse = await api.getLibraryRules(route.params.id)
+    rules.value = rulesResponse.data
+    suggestions.value = suggestions.value.filter(s => s !== suggestion)
+    toast.success('Rule applied')
+  } catch (error) {
+    console.error('Failed to apply suggestion:', error)
+    toast.error('Failed to apply rule')
+  } finally {
+    applyingIdx.value = -1
+  }
+}
+
+const deleteRule = async (rule) => {
+  if (!confirm(`Delete this rule?`)) return
+  try {
+    await api.deleteLibraryRule(route.params.id, rule.id)
+    rules.value = rules.value.filter(r => r.id !== rule.id)
+    toast.success('Rule deleted')
+  } catch (error) {
+    console.error('Failed to delete rule:', error)
+    toast.error('Failed to delete rule')
+  }
 }
 
 const loadArrOptions = async () => {

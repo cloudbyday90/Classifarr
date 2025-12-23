@@ -327,6 +327,106 @@ class ClassificationService {
     return null;
   }
 
+  /**
+   * Check library rules to find matching library
+   * Rules are checked in priority order, exceptions first
+   */
+  async checkLibraryRules(metadata, libraries) {
+    // Get all active rules for all libraries, ordered by exception status and priority
+    const rulesResult = await db.query(`
+      SELECT lr.*, l.name as library_name
+      FROM library_rules lr
+      JOIN libraries l ON lr.library_id = l.id
+      WHERE lr.is_active = true AND l.is_active = true
+      ORDER BY lr.is_exception DESC, l.priority DESC, lr.priority ASC
+    `);
+
+    if (rulesResult.rows.length === 0) {
+      return null;
+    }
+
+    // Prepare metadata for matching
+    const itemRating = (metadata.certification || '').toUpperCase();
+    const itemGenres = (metadata.genres || []).map(g => g.toLowerCase());
+    const itemKeywords = (metadata.keywords || []).map(k => k.toLowerCase());
+    const itemLanguage = (metadata.original_language || '').toLowerCase();
+    const itemYear = metadata.year ? parseInt(metadata.year) : null;
+    const itemTitle = (metadata.title || '').toLowerCase();
+    const itemOverview = (metadata.overview || '').toLowerCase();
+
+    // Check each rule
+    for (const rule of rulesResult.rows) {
+      const ruleValues = rule.value.split(',').map(v => v.trim().toLowerCase());
+      let matches = false;
+
+      switch (rule.rule_type) {
+        case 'rating':
+          if (rule.operator === 'includes') {
+            matches = ruleValues.some(v => v.toUpperCase() === itemRating);
+          } else if (rule.operator === 'excludes') {
+            matches = !ruleValues.some(v => v.toUpperCase() === itemRating);
+          }
+          break;
+
+        case 'genre':
+          if (rule.operator === 'includes') {
+            matches = ruleValues.some(v => itemGenres.includes(v));
+          } else if (rule.operator === 'excludes') {
+            matches = !ruleValues.some(v => itemGenres.includes(v));
+          } else if (rule.operator === 'contains') {
+            matches = ruleValues.some(v => itemGenres.some(g => g.includes(v)));
+          }
+          break;
+
+        case 'keyword':
+          if (rule.operator === 'includes') {
+            matches = ruleValues.some(v => itemKeywords.includes(v));
+          } else if (rule.operator === 'contains') {
+            // Check title, overview, and keywords
+            matches = ruleValues.some(v =>
+              itemTitle.includes(v) || itemOverview.includes(v) || itemKeywords.some(k => k.includes(v))
+            );
+          }
+          break;
+
+        case 'language':
+          if (rule.operator === 'equals') {
+            matches = ruleValues.includes(itemLanguage);
+          } else if (rule.operator === 'excludes') {
+            matches = !ruleValues.includes(itemLanguage);
+          }
+          break;
+
+        case 'year':
+          if (itemYear) {
+            const targetYear = parseInt(ruleValues[0]);
+            if (rule.operator === 'equals') {
+              matches = itemYear === targetYear;
+            } else if (rule.operator === 'greater_than') {
+              matches = itemYear > targetYear;
+            } else if (rule.operator === 'less_than') {
+              matches = itemYear < targetYear;
+            }
+          }
+          break;
+      }
+
+      if (matches) {
+        const library = libraries.find(l => l.id === rule.library_id);
+        if (library) {
+          return {
+            library,
+            isException: rule.is_exception,
+            matchedRule: `${rule.rule_type} ${rule.operator} "${rule.value}"`,
+            reason: rule.description || `Matched rule: ${rule.rule_type} ${rule.operator} "${rule.value}"`
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
   mightBeAnime(metadata) {
     // Check if metadata suggests anime
     const keywords = (metadata.keywords || []).map(k => k.toLowerCase());
@@ -387,6 +487,23 @@ class ClassificationService {
       };
     }
 
+    // Step -0.25: Check library rules (user-defined rating/genre/keyword rules)
+    const ruleMatch = await this.checkLibraryRules(metadata, libraries);
+    if (ruleMatch) {
+      logger.info('Library rule matched', {
+        title: metadata.title,
+        library: ruleMatch.library.name,
+        rule: ruleMatch.matchedRule
+      });
+      return {
+        library: ruleMatch.library,
+        confidence: ruleMatch.isException ? 98 : 90,
+        method: 'library_rule',
+        reason: ruleMatch.reason,
+        libraries: libraries,
+      };
+    }
+
     // Step 0: Check if media already exists in media server (100% confidence)
     const existingMedia = await mediaSyncService.findExistingMedia(metadata.tmdb_id, mediaType);
     if (existingMedia) {
@@ -439,10 +556,10 @@ class ClassificationService {
     }
 
     // Step 3: Rule-based matching (labels + custom rules)
-    const ruleMatch = await this.matchRules(metadata, libraries);
-    if (ruleMatch && ruleMatch.confidence >= 80) {
+    const legacyRuleMatch = await this.matchRules(metadata, libraries);
+    if (legacyRuleMatch && legacyRuleMatch.confidence >= 80) {
       return {
-        ...ruleMatch,
+        ...legacyRuleMatch,
         method: 'rule_match',
         libraries: libraries,
       };
@@ -459,9 +576,9 @@ class ClassificationService {
     } catch (error) {
       logger.error('AI classification failed', { error: error.message });
       // Fallback to rule match even if confidence is low
-      if (ruleMatch) {
+      if (legacyRuleMatch) {
         return {
-          ...ruleMatch,
+          ...legacyRuleMatch,
           method: 'rule_match',
           libraries: libraries,
         };

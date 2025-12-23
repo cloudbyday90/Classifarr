@@ -158,6 +158,15 @@ export default {
   deleteLibraryRule(id, ruleId) {
     return apiClient.delete(`/libraries/${id}/rules/${ruleId}`)
   },
+  getRuleSuggestions(id) {
+    return apiClient.get(`/libraries/${id}/rules/suggest`)
+  },
+  autoGenerateRules(id) {
+    return apiClient.post(`/libraries/${id}/rules/auto-generate`)
+  },
+  autoGenerateAllRules() {
+    return apiClient.post('/libraries/auto-generate-all')
+  },
   getLabelPresets() {
     return apiClient.get('/libraries/label-presets/all')
   },

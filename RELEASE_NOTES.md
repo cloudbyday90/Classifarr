@@ -1,5 +1,27 @@
 # Classifarr Release Notes
 
+## v0.19.0-alpha (2025-12-22)
+
+### Added
+- **Smart Library Rules:** Define per-library classification rules with rating, genre, keyword, language, and year filters
+- **Auto-Generate Rules:** Libraries automatically get rules generated based on their names (Kids→ratings, Christmas→keywords, Anime→genre/language)
+- **Library Rules API:** Full CRUD endpoints for managing library rules (`/api/libraries/:id/rules`)
+- **AI Suggestions:** "Learn from Library" button analyzes existing content and suggests rules based on patterns
+- **Source Library Priority:** Items synced from Plex now use source_library method at 100% confidence
+- **Holiday Detection:** Christmas/holiday content detection with comprehensive keyword matching
+- **Queue Maintenance:** Added "Reprocess Completed" and "Clear & Re-sync All" buttons to Queue settings
+
+### Fixed
+- **Classification Method Constraint:** Updated database to allow new classification methods (source_library, holiday_detection, library_rule)
+- **Libraries Page Reactivity:** Fixed storeToRefs usage to ensure libraries display consistently
+- **Clear & Re-sync API:** Fixed "N.post is not a function" error by adding proper API methods
+- **Duplicate Variable:** Fixed SyntaxError from duplicate `ruleMatch` declaration in classification.js
+
+### Changed
+- **Classification Priority Order:** Now checks Source Library → Holiday Detection → Library Rules → Existing Media → Rule Match → AI Fallback
+
+---
+
 ## v0.18.9-alpha (2025-12-22)
 
 ### Fixed

@@ -578,4 +578,422 @@ router.post('/:id/sync', async (req, res) => {
   }
 });
 
+// ==========================================
+// Library Rules CRUD
+// ==========================================
+
+/**
+ * @swagger
+ * /api/libraries/{id}/rules:
+ *   get:
+ *     summary: Get all rules for a library
+ */
+router.get('/:id/rules', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      `SELECT * FROM library_rules 
+       WHERE library_id = $1 
+       ORDER BY is_exception DESC, priority ASC`,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    logger.error('Failed to get library rules', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/rules:
+ *   post:
+ *     summary: Add a new rule to a library
+ */
+router.post('/:id/rules', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rule_type, operator, value, is_exception = false, priority = 0, description } = req.body;
+
+    if (!rule_type || !operator || !value) {
+      return res.status(400).json({ error: 'rule_type, operator, and value are required' });
+    }
+
+    const result = await db.query(
+      `INSERT INTO library_rules (library_id, rule_type, operator, value, is_exception, priority, description)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [id, rule_type, operator, value, is_exception, priority, description]
+    );
+
+    logger.info('Library rule created', { libraryId: id, ruleType: rule_type });
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    logger.error('Failed to create library rule', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/rules/{ruleId}:
+ *   put:
+ *     summary: Update a library rule
+ */
+router.put('/:id/rules/:ruleId', async (req, res) => {
+  try {
+    const { id, ruleId } = req.params;
+    const { rule_type, operator, value, is_exception, priority, description, is_active } = req.body;
+
+    const result = await db.query(
+      `UPDATE library_rules 
+       SET rule_type = COALESCE($1, rule_type),
+           operator = COALESCE($2, operator),
+           value = COALESCE($3, value),
+           is_exception = COALESCE($4, is_exception),
+           priority = COALESCE($5, priority),
+           description = COALESCE($6, description),
+           is_active = COALESCE($7, is_active),
+           updated_at = NOW()
+       WHERE id = $8 AND library_id = $9
+       RETURNING *`,
+      [rule_type, operator, value, is_exception, priority, description, is_active, ruleId, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Rule not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    logger.error('Failed to update library rule', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/rules/{ruleId}:
+ *   delete:
+ *     summary: Delete a library rule
+ */
+router.delete('/:id/rules/:ruleId', async (req, res) => {
+  try {
+    const { id, ruleId } = req.params;
+
+    const result = await db.query(
+      `DELETE FROM library_rules WHERE id = $1 AND library_id = $2 RETURNING id`,
+      [ruleId, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Rule not found' });
+    }
+
+    res.json({ success: true, deletedId: result.rows[0].id });
+  } catch (error) {
+    logger.error('Failed to delete library rule', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/rules/suggest:
+ *   get:
+ *     summary: Suggest rules based on existing library content
+ */
+router.get('/:id/rules/suggest', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Analyze existing items to suggest rules
+    const analysis = await db.query(`
+      SELECT 
+        array_agg(DISTINCT content_rating) FILTER (WHERE content_rating IS NOT NULL) as ratings,
+        array_agg(DISTINCT g) FILTER (WHERE g IS NOT NULL) as genres,
+        array_agg(DISTINCT original_language) FILTER (WHERE original_language IS NOT NULL) as languages,
+        COUNT(*) as total_items
+      FROM media_server_items msi,
+        LATERAL (SELECT jsonb_array_elements_text(
+          CASE WHEN jsonb_typeof(msi.genres) = 'array' THEN msi.genres ELSE '[]'::jsonb END
+        ) as g) genres_flat
+      WHERE msi.library_id = $1
+    `, [id]);
+
+    const data = analysis.rows[0];
+    const suggestions = [];
+
+    // Suggest rating rules if consistent
+    if (data.ratings && data.ratings.length > 0 && data.ratings.length <= 5) {
+      suggestions.push({
+        rule_type: 'rating',
+        operator: 'includes',
+        value: data.ratings.join(','),
+        description: `Only ratings: ${data.ratings.join(', ')}`,
+        is_exception: false
+      });
+    }
+
+    // Suggest genre rules if there's a dominant genre
+    if (data.genres && data.genres.length > 0) {
+      const topGenres = data.genres.slice(0, 5);
+      suggestions.push({
+        rule_type: 'genre',
+        operator: 'includes',
+        value: topGenres.join(','),
+        description: `Common genres: ${topGenres.join(', ')}`,
+        is_exception: false
+      });
+    }
+
+    // Suggest language rule if non-English dominant
+    if (data.languages && data.languages.length === 1 && data.languages[0] !== 'en') {
+      suggestions.push({
+        rule_type: 'language',
+        operator: 'equals',
+        value: data.languages[0],
+        description: `Only ${data.languages[0]} content`,
+        is_exception: false
+      });
+    }
+
+    res.json({
+      totalItems: parseInt(data.total_items) || 0,
+      suggestions
+    });
+  } catch (error) {
+    logger.error('Failed to suggest rules', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Auto-generate rules based on library name
+ * Called automatically when libraries are synced from Plex
+ */
+router.post('/:id/rules/auto-generate', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get library info
+    const libraryResult = await db.query('SELECT * FROM libraries WHERE id = $1', [id]);
+    if (libraryResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Library not found' });
+    }
+
+    const library = libraryResult.rows[0];
+    const libraryName = library.name.toLowerCase();
+    const rules = [];
+
+    // Check existing rules to avoid duplicates
+    const existingRules = await db.query(
+      'SELECT rule_type, value FROM library_rules WHERE library_id = $1',
+      [id]
+    );
+    const existingRuleKeys = new Set(
+      existingRules.rows.map(r => `${r.rule_type}:${r.value}`)
+    );
+
+    const addRule = (rule) => {
+      const key = `${rule.rule_type}:${rule.value}`;
+      if (!existingRuleKeys.has(key)) {
+        rules.push(rule);
+      }
+    };
+
+    // Kids/Family library patterns
+    if (libraryName.includes('kid') || libraryName.includes('family') || libraryName.includes('child')) {
+      addRule({
+        rule_type: 'rating',
+        operator: 'includes',
+        value: 'G,PG,TV-Y,TV-Y7,TV-G,TV-PG',
+        description: 'Kids-friendly ratings only',
+        is_exception: false,
+        priority: 0
+      });
+    }
+
+    // Christmas/Holiday library patterns
+    if (libraryName.includes('christmas') || libraryName.includes('holiday') || libraryName.includes('xmas') || libraryName.includes('hallmark')) {
+      addRule({
+        rule_type: 'keyword',
+        operator: 'contains',
+        value: 'christmas,holiday,santa,xmas,hallmark',
+        description: 'Holiday/Christmas themed content',
+        is_exception: true, // Exception so it overrides rating rules
+        priority: 0
+      });
+    }
+
+    // Anime library patterns
+    if (libraryName.includes('anime')) {
+      addRule({
+        rule_type: 'genre',
+        operator: 'includes',
+        value: 'animation,anime',
+        description: 'Anime/Animation genre',
+        is_exception: false,
+        priority: 0
+      });
+      addRule({
+        rule_type: 'language',
+        operator: 'equals',
+        value: 'ja',
+        description: 'Japanese language content',
+        is_exception: false,
+        priority: 1
+      });
+    }
+
+    // Comedy/Standup library patterns
+    if (libraryName.includes('comedy') || libraryName.includes('standup') || libraryName.includes('stand-up')) {
+      addRule({
+        rule_type: 'genre',
+        operator: 'includes',
+        value: 'comedy',
+        description: 'Comedy genre',
+        is_exception: false,
+        priority: 0
+      });
+    }
+
+    // Horror library patterns
+    if (libraryName.includes('horror') || libraryName.includes('scary')) {
+      addRule({
+        rule_type: 'genre',
+        operator: 'includes',
+        value: 'horror,thriller',
+        description: 'Horror/Thriller genre',
+        is_exception: false,
+        priority: 0
+      });
+    }
+
+    // Documentary library patterns
+    if (libraryName.includes('documentary') || libraryName.includes('doc')) {
+      addRule({
+        rule_type: 'genre',
+        operator: 'includes',
+        value: 'documentary',
+        description: 'Documentary genre',
+        is_exception: false,
+        priority: 0
+      });
+    }
+
+    // Action library patterns
+    if (libraryName.includes('action')) {
+      addRule({
+        rule_type: 'genre',
+        operator: 'includes',
+        value: 'action,adventure',
+        description: 'Action/Adventure genre',
+        is_exception: false,
+        priority: 0
+      });
+    }
+
+    // Sci-Fi library patterns
+    if (libraryName.includes('sci-fi') || libraryName.includes('scifi') || libraryName.includes('science fiction')) {
+      addRule({
+        rule_type: 'genre',
+        operator: 'includes',
+        value: 'science fiction,sci-fi',
+        description: 'Science Fiction genre',
+        is_exception: false,
+        priority: 0
+      });
+    }
+
+    // Insert generated rules
+    let created = 0;
+    for (const rule of rules) {
+      await db.query(
+        `INSERT INTO library_rules (library_id, rule_type, operator, value, is_exception, priority, description)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [id, rule.rule_type, rule.operator, rule.value, rule.is_exception, rule.priority, rule.description]
+      );
+      created++;
+    }
+
+    logger.info('Auto-generated library rules', { libraryId: id, libraryName: library.name, rulesCreated: created });
+
+    res.json({
+      success: true,
+      libraryName: library.name,
+      rulesCreated: created,
+      rules
+    });
+  } catch (error) {
+    logger.error('Failed to auto-generate rules', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Auto-generate rules for ALL libraries based on their names
+ */
+router.post('/auto-generate-all', async (req, res) => {
+  try {
+    const libraries = await db.query('SELECT id FROM libraries WHERE is_active = true');
+    let totalCreated = 0;
+
+    for (const lib of libraries.rows) {
+      // Call the individual auto-generate internally
+      const checkExisting = await db.query(
+        'SELECT COUNT(*) FROM library_rules WHERE library_id = $1',
+        [lib.id]
+      );
+
+      // Only auto-generate if no rules exist
+      if (parseInt(checkExisting.rows[0].count) === 0) {
+        // Trigger auto-generation for this library
+        const libraryResult = await db.query('SELECT * FROM libraries WHERE id = $1', [lib.id]);
+        if (libraryResult.rows.length > 0) {
+          const library = libraryResult.rows[0];
+          const libraryName = library.name.toLowerCase();
+
+          // Same logic as above, condensed
+          const rules = [];
+
+          if (libraryName.includes('kid') || libraryName.includes('family') || libraryName.includes('child')) {
+            rules.push({ rule_type: 'rating', operator: 'includes', value: 'G,PG,TV-Y,TV-Y7,TV-G,TV-PG', description: 'Kids-friendly ratings only', is_exception: false, priority: 0 });
+          }
+          if (libraryName.includes('christmas') || libraryName.includes('holiday') || libraryName.includes('xmas') || libraryName.includes('hallmark')) {
+            rules.push({ rule_type: 'keyword', operator: 'contains', value: 'christmas,holiday,santa,xmas,hallmark', description: 'Holiday/Christmas themed content', is_exception: true, priority: 0 });
+          }
+          if (libraryName.includes('anime')) {
+            rules.push({ rule_type: 'genre', operator: 'includes', value: 'animation,anime', description: 'Anime/Animation genre', is_exception: false, priority: 0 });
+            rules.push({ rule_type: 'language', operator: 'equals', value: 'ja', description: 'Japanese language content', is_exception: false, priority: 1 });
+          }
+          if (libraryName.includes('comedy') || libraryName.includes('standup')) {
+            rules.push({ rule_type: 'genre', operator: 'includes', value: 'comedy', description: 'Comedy genre', is_exception: false, priority: 0 });
+          }
+          if (libraryName.includes('horror')) {
+            rules.push({ rule_type: 'genre', operator: 'includes', value: 'horror,thriller', description: 'Horror/Thriller genre', is_exception: false, priority: 0 });
+          }
+          if (libraryName.includes('documentary') || libraryName.includes('doc')) {
+            rules.push({ rule_type: 'genre', operator: 'includes', value: 'documentary', description: 'Documentary genre', is_exception: false, priority: 0 });
+          }
+
+          for (const rule of rules) {
+            await db.query(
+              `INSERT INTO library_rules (library_id, rule_type, operator, value, is_exception, priority, description)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              [lib.id, rule.rule_type, rule.operator, rule.value, rule.is_exception, rule.priority, rule.description]
+            );
+            totalCreated++;
+          }
+        }
+      }
+    }
+
+    res.json({ success: true, totalRulesCreated: totalCreated });
+  } catch (error) {
+    logger.error('Failed to auto-generate all rules', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
