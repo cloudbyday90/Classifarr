@@ -567,6 +567,9 @@ class QueueService {
             const patternsResult = await db.query('DELETE FROM learning_patterns RETURNING id');
             const correctionsResult = await db.query('DELETE FROM classification_corrections RETURNING id');
 
+            // 5. Clear library classification rules
+            const rulesResult = await db.query('DELETE FROM library_rules RETURNING id');
+
             // 5. Reset content_analysis in media_server_items (preserve library_id for gap analysis)
             const itemsResult = await db.query(`
                 UPDATE media_server_items 
@@ -592,6 +595,7 @@ class QueueService {
                 historyCleared: historyResult.rowCount,
                 patternsCleared: patternsResult.rowCount,
                 correctionsCleared: correctionsResult.rowCount,
+                rulesCleared: rulesResult.rowCount,
                 itemsReset: itemsResult.rowCount
             };
 
