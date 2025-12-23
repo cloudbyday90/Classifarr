@@ -560,7 +560,10 @@ class QueueService {
             // 2. Clear task queue
             const queueResult = await db.query('DELETE FROM task_queue RETURNING id');
 
-            // 3. Clear classification history
+            // 3. Clear content_analysis_log first (references classification_history)
+            await db.query('DELETE FROM content_analysis_log');
+
+            // 4. Clear classification history
             const historyResult = await db.query('DELETE FROM classification_history RETURNING id');
 
             // 4. Clear learning patterns and corrections (full reset)
@@ -585,7 +588,6 @@ class QueueService {
 
             // 7. Trigger library sync to repopulate library_id on items
             // This runs in background so we don't block the response
-            const db = require('../config/database');
             const mediaSyncService = require('./mediaSync');
             const schedulerService = require('./scheduler');
 
