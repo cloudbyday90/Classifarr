@@ -308,7 +308,11 @@ method VARCHAR(50) CHECK (
         'exact_match',
         'learned_pattern',
         'rule_match',
-        'ai_fallback'
+        'ai_fallback',
+        'source_library',
+        'holiday_detection',
+        'library_rule',
+        'existing_media'
     )
 ),
 reason TEXT,
@@ -724,3 +728,7 @@ VALUES ('basic', 5, false);
 \i /app/database/migrations/009_add_multi_manager.sql
 \i /app/database/migrations/010_add_scheduled_tasks.sql
 \i /app/database/migrations/011_remove_email_column.sql
+\i /app/database/migrations/011_add_library_rules.sql
+\i /app/database/migrations/012_add_library_custom_rules.sql
+\i /app/database/migrations/013_unify_library_rules.sql
+\i /app/database/migrations/014_add_classification_methods.sql

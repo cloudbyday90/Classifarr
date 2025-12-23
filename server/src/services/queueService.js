@@ -567,11 +567,13 @@ class QueueService {
             const patternsResult = await db.query('DELETE FROM learning_patterns RETURNING id');
             const correctionsResult = await db.query('DELETE FROM classification_corrections RETURNING id');
 
-            // 5. Reset content_analysis in media_server_items
+            // 5. Reset content_analysis and library_id in media_server_items
             const itemsResult = await db.query(`
                 UPDATE media_server_items 
-                SET metadata = metadata - 'content_analysis'
-                WHERE metadata->'content_analysis' IS NOT NULL
+                SET metadata = metadata - 'content_analysis',
+                    library_id = NULL
+                WHERE metadata->'content_analysis' IS NOT NULL 
+                   OR library_id IS NOT NULL
                 RETURNING id
             `);
 
