@@ -547,13 +547,27 @@ class QueueService {
      */
     async clearAndResync() {
         try {
-            // Clear task queue
+            logger.info('Starting clear and resync process...');
+
+            // 1. Stop worker to prevent race conditions with active tasks
+            const wasRunning = this.running;
+            if (wasRunning) {
+                this.stopWorker();
+                // Give it a moment to finish current iteration
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            // 2. Clear task queue
             const queueResult = await db.query('DELETE FROM task_queue RETURNING id');
 
-            // Clear classification history
+            // 3. Clear classification history
             const historyResult = await db.query('DELETE FROM classification_history RETURNING id');
 
-            // Reset content_analysis in media_server_items so gap analysis will re-queue them
+            // 4. Clear learning patterns and corrections (full reset)
+            const patternsResult = await db.query('DELETE FROM learning_patterns RETURNING id');
+            const correctionsResult = await db.query('DELETE FROM classification_corrections RETURNING id');
+
+            // 5. Reset content_analysis in media_server_items
             const itemsResult = await db.query(`
                 UPDATE media_server_items 
                 SET metadata = metadata - 'content_analysis'
@@ -561,21 +575,28 @@ class QueueService {
                 RETURNING id
             `);
 
-            // Trigger fresh gap analysis
-            const schedulerService = require('./scheduler');
-            await schedulerService.runGapAnalysis();
+            // 6. Restart worker if it was running
+            if (wasRunning) {
+                this.startWorker();
+            }
 
-            logger.info('Cleared queue and triggered resync', {
-                queueCleared: queueResult.rowCount,
-                historyCleared: historyResult.rowCount,
-                itemsReset: itemsResult.rowCount
+            // 7. Trigger fresh gap analysis
+            const schedulerService = require('./scheduler');
+            // Run in background so we don't block the response
+            schedulerService.runGapAnalysis().catch(err => {
+                logger.error('Failed to run gap analysis after clear', { error: err.message });
             });
 
-            return {
+            const result = {
                 queueCleared: queueResult.rowCount,
                 historyCleared: historyResult.rowCount,
+                patternsCleared: patternsResult.rowCount,
+                correctionsCleared: correctionsResult.rowCount,
                 itemsReset: itemsResult.rowCount
             };
+
+            logger.info('Cleared queue and triggered resync', result);
+            return result;
         } catch (error) {
             logger.error('Failed to clear and resync', { error: error.message });
             throw error;

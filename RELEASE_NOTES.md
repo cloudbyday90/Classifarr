@@ -1,5 +1,22 @@
 # Classifarr Release Notes
 
+## v0.21.0-alpha
+**Smart Rule Builder & Proactive Intelligence**
+
+### New Features
+- **Smart Rule Builder:** Consolidated UI for managing library rules with LLM-powered suggestions.
+- **Smart Suggestions:**
+    - **LLM Integration:** Analyzes library content (types, genres, ratings) to generate high-confidence classification rules using Ollama.
+    - **Data-Driven Rules:** Suggests rules base on dominant patterns (e.g. "80% of items are Anime").
+- **Proactive Notifications:**
+    - **Discord Alerts:** Sends notifications when new smart suggestions are available (requires 70%+ confidence).
+    - **Scheduled Analysis:** Automatically checks libraries every 2 hours for new rule opportunities.
+- **Clear & Re-sync:** Added logic to fully purge all classification data (including learned patterns and corrections) for a clean slate.
+
+### Fixes
+- **Clear & Re-sync:** Fixed a race condition where active tasks could persist after clearing. Now properly stops the queue worker and clears all associated tables.
+- **Form Styling:** Fixed invisible text in Rule Builder dropdowns by enforcing dark backgrounds.
+
 ## v0.20.0
 **Major UI Improvements & Bug Fixes**
 

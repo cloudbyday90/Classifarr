@@ -11,6 +11,8 @@ const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const queueService = require('./queueService');
 const mediaSyncService = require('./mediaSync');
+const discordBot = require('./discordBot');
+const ollamaService = require('./ollama');
 
 const logger = createLogger('SchedulerService');
 
@@ -43,6 +45,12 @@ class SchedulerService {
 
         // Run auto-learn after startup (2 min delay to let gap analysis start first)
         setTimeout(() => this.runAutoLearnRules(), 120000);
+
+        // Smart suggestion notifications every 2 hours
+        this.schedule('smart-suggestion-check', '0 */2 * * *', () => this.runSmartSuggestionCheck());
+
+        // Run smart suggestions after startup (5 min delay)
+        setTimeout(() => this.runSmartSuggestionCheck(), 300000);
     }
 
     /**
@@ -307,6 +315,161 @@ class SchedulerService {
             }
         } catch (error) {
             logger.error('Error running auto-learn rules', { error: error.message });
+        }
+    }
+
+    /**
+     * Check libraries for smart suggestions and notify via Discord
+     * Runs every 2 hours to analyze libraries and suggest rules
+     */
+    async runSmartSuggestionCheck() {
+        try {
+            // Find libraries with analyzed content but room for new rules
+            const result = await db.query(`
+                SELECT l.id, l.name, l.media_type,
+                       COUNT(msi.id) as total_items,
+                       COUNT(msi.id) FILTER (WHERE msi.metadata->'content_analysis' IS NOT NULL) as analyzed_items,
+                       (SELECT COUNT(*) FROM library_rules_v2 WHERE library_id = l.id) as rule_count
+                FROM libraries l
+                LEFT JOIN media_server_items msi ON l.id = msi.library_id
+                WHERE l.is_active = true
+                GROUP BY l.id, l.name, l.media_type
+                HAVING COUNT(msi.id) >= 20
+                   AND COUNT(msi.id) FILTER (WHERE msi.metadata->'content_analysis' IS NOT NULL) >= 10
+            `);
+
+            if (result.rows.length === 0) {
+                logger.debug('Smart suggestion check: No eligible libraries found');
+                return;
+            }
+
+            logger.info(`Smart suggestion check: Found ${result.rows.length} libraries to analyze`);
+
+            for (const library of result.rows) {
+                try {
+                    // Generate smart suggestions for this library
+                    const suggestions = await this.generateSmartSuggestions(library.id);
+
+                    // Only notify if we have high-confidence suggestions
+                    const highConfidence = suggestions.filter(s => s.confidence >= 70);
+
+                    if (highConfidence.length > 0) {
+                        logger.info(`Smart suggestion check: Found ${highConfidence.length} high-confidence suggestions for ${library.name}`);
+
+                        // Send Discord notification
+                        await discordBot.sendSmartSuggestionNotification(library, highConfidence);
+                    }
+                } catch (libError) {
+                    logger.error(`Smart suggestion check: Failed for ${library.name}`, { error: libError.message });
+                }
+            }
+        } catch (error) {
+            logger.error('Error running smart suggestion check', { error: error.message });
+        }
+    }
+
+    /**
+     * Generate smart suggestions for a library using AI analysis
+     */
+    async generateSmartSuggestions(libraryId) {
+        try {
+            // Gather content analysis stats
+            const statsResult = await db.query(`
+                SELECT 
+                    l.name as library_name,
+                    l.media_type,
+                    COUNT(msi.id) as total_items,
+                    COUNT(msi.id) FILTER (WHERE msi.metadata->'content_analysis' IS NOT NULL) as analyzed_items
+                FROM libraries l
+                LEFT JOIN media_server_items msi ON l.id = msi.library_id
+                WHERE l.id = $1
+                GROUP BY l.id, l.name, l.media_type
+            `, [libraryId]);
+
+            if (statsResult.rows.length === 0) return [];
+            const stats = statsResult.rows[0];
+
+            // Get content type distribution
+            const contentTypes = await db.query(`
+                SELECT 
+                    msi.metadata->'content_analysis'->>'type' as type,
+                    COUNT(*) as count
+                FROM media_server_items msi
+                WHERE msi.library_id = $1
+                  AND msi.metadata->'content_analysis'->>'type' IS NOT NULL
+                GROUP BY msi.metadata->'content_analysis'->>'type'
+                ORDER BY count DESC
+                LIMIT 10
+            `, [libraryId]);
+
+            // Get genre distribution
+            const genres = await db.query(`
+                SELECT g as genre, COUNT(*) as count
+                FROM media_server_items msi, UNNEST(msi.genres) as g
+                WHERE msi.library_id = $1 AND g IS NOT NULL
+                GROUP BY g
+                ORDER BY count DESC
+                LIMIT 10
+            `, [libraryId]);
+
+            // Build data-driven suggestions
+            const suggestions = [];
+
+            // Suggest based on dominant content types
+            for (const ct of contentTypes.rows) {
+                const ratio = parseInt(ct.count) / parseInt(stats.total_items);
+                if (ratio >= 0.3) {
+                    suggestions.push({
+                        name: `${ct.type} Content`,
+                        conditions: [{ field: 'content_type', operator: 'equals', value: ct.type }],
+                        confidence: Math.round(ratio * 100),
+                        reasoning: `${Math.round(ratio * 100)}% of items are classified as ${ct.type}`
+                    });
+                }
+            }
+
+            // Suggest based on dominant genres
+            for (const g of genres.rows.slice(0, 3)) {
+                const ratio = parseInt(g.count) / parseInt(stats.total_items);
+                if (ratio >= 0.4) {
+                    suggestions.push({
+                        name: `${g.genre} Genre`,
+                        conditions: [{ field: 'genre', operator: 'contains', value: g.genre }],
+                        confidence: Math.round(ratio * 100),
+                        reasoning: `${Math.round(ratio * 100)}% of items have ${g.genre} genre`
+                    });
+                }
+            }
+
+            // Try LLM-enhanced suggestions if Ollama is configured
+            try {
+                const ollamaConfig = await ollamaService.getConfig();
+                if (ollamaConfig.enabled) {
+                    const prompt = `Analyze this library data and suggest 2-3 classification rules:
+                    Library: "${stats.library_name}" (${stats.media_type})
+                    Total Items: ${stats.total_items}, Analyzed: ${stats.analyzed_items}
+                    Content Types: ${contentTypes.rows.map(c => `${c.type}: ${c.count}`).join(', ') || 'None'}
+                    Top Genres: ${genres.rows.map(g => `${g.genre}: ${g.count}`).join(', ') || 'None'}
+                    
+                    Respond with JSON only: {"suggestions": [{"name": "...", "confidence": 85, "reasoning": "..."}]}`;
+
+                    const response = await ollamaService.generate(prompt, ollamaConfig.model || 'qwen3:14b', 0.3);
+                    const match = response.match(/\{[\s\S]*\}/);
+                    if (match) {
+                        const parsed = JSON.parse(match[0]);
+                        if (parsed.suggestions) {
+                            suggestions.push(...parsed.suggestions.filter(s => s.confidence >= 60));
+                        }
+                    }
+                }
+            } catch (llmError) {
+                logger.debug('LLM suggestions unavailable', { error: llmError.message });
+            }
+
+            return suggestions.slice(0, 5); // Max 5 suggestions
+        } catch (error) {
+            logger.error('Failed to generate smart suggestions', { error: error.message });
+            return [];
         }
     }
 }

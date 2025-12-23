@@ -1074,6 +1074,67 @@ class DiscordBotService {
     if (confidence >= 50) return 0xf59e0b; // Yellow
     return 0xef4444; // Red
   }
+
+  /**
+   * Send notification about smart rule suggestions for a library
+   * @param {Object} library - Library object with id, name, media_type
+   * @param {Array} suggestions - Array of suggestion objects with name, confidence, reasoning
+   */
+  async sendSmartSuggestionNotification(library, suggestions) {
+    if (!this.isInitialized || !this.client) {
+      console.warn('Discord bot not initialized for smart suggestions');
+      return;
+    }
+
+    try {
+      const config = await this.loadConfig();
+      if (!config.enabled) return;
+
+      const channel = await this.client.channels.fetch(this.channelId);
+      if (!channel) {
+        console.error('Discord channel not found');
+        return;
+      }
+
+      // Build embed with suggestions
+      const embed = new EmbedBuilder()
+        .setTitle(`🧠 Smart Rule Suggestions Available`)
+        .setDescription(`**Library:** ${library.name}\n**Type:** ${library.media_type}\n\nNew classification rules have been suggested based on content analysis.`)
+        .setColor(0x9333ea) // Purple for suggestions
+        .setTimestamp();
+
+      // Add each suggestion as a field
+      suggestions.slice(0, 5).forEach((suggestion, idx) => {
+        embed.addFields({
+          name: `${idx + 1}. ${suggestion.name} (${suggestion.confidence}% confidence)`,
+          value: suggestion.reasoning || 'Rule suggested based on content patterns',
+          inline: false
+        });
+      });
+
+      // Add footer with action hint
+      embed.setFooter({ text: `Open the Rule Builder in Classifarr to apply these suggestions` });
+
+      // Create action button to open rule builder
+      const components = [
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setLabel('Open Rule Builder')
+            .setStyle(ButtonStyle.Link)
+            .setURL(`${process.env.APP_URL || 'http://localhost:21324'}/rule-builder/${library.id}`)
+        )
+      ];
+
+      await channel.send({
+        embeds: [embed],
+        components: components
+      });
+
+      console.log(`Sent smart suggestion notification for library ${library.name}`);
+    } catch (error) {
+      console.error('Failed to send smart suggestion notification:', error);
+    }
+  }
 }
 
 module.exports = new DiscordBotService();
