@@ -23,7 +23,7 @@ const logger = createLogger('WebhookService');
 
 class WebhookService {
   async getConfig() {
-    const result = await db.query('SELECT * FROM webhook_config WHERE webhook_type = $1 LIMIT 1', ['overseerr']);
+    const result = await db.query('SELECT * FROM webhook_config WHERE webhook_type = $1 AND enabled = true LIMIT 1', ['overseerr']);
     return result.rows[0] || {
       enabled: true,
       process_pending: true,

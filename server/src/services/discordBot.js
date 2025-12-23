@@ -29,7 +29,7 @@ class DiscordBotService {
   }
 
   async loadConfig() {
-    const result = await db.query('SELECT * FROM notification_config WHERE type = $1 LIMIT 1', ['discord']);
+    const result = await db.query('SELECT * FROM notification_config WHERE type = $1 AND enabled = true LIMIT 1', ['discord']);
     if (result.rows.length > 0) {
       this.config = result.rows[0];
       return this.config;

@@ -214,7 +214,7 @@ class ClassificationService {
   }
 
   async getTavilyConfig() {
-    const result = await db.query('SELECT * FROM tavily_config LIMIT 1');
+    const result = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
     return result.rows[0] || null;
   }
 
