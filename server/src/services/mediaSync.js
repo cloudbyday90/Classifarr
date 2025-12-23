@@ -242,6 +242,7 @@ class MediaSyncService {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
          ON CONFLICT (media_server_id, external_id)
          DO UPDATE SET
+           library_id = EXCLUDED.library_id,
            tmdb_id = EXCLUDED.tmdb_id,
            imdb_id = EXCLUDED.imdb_id,
            tvdb_id = EXCLUDED.tvdb_id,
