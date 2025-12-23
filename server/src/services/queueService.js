@@ -570,8 +570,10 @@ class QueueService {
             const patternsResult = await db.query('DELETE FROM learning_patterns RETURNING id');
             const correctionsResult = await db.query('DELETE FROM classification_corrections RETURNING id');
 
-            // 5. Clear library classification rules
+            // 5. Clear ALL library classification rules (multiple tables for backwards compatibility)
             const rulesResult = await db.query('DELETE FROM library_rules RETURNING id');
+            await db.query('DELETE FROM library_rules_v2');
+            await db.query('DELETE FROM library_custom_rules');
 
             // 5. Reset content_analysis in media_server_items (preserve library_id for gap analysis)
             const itemsResult = await db.query(`
