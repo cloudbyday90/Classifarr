@@ -1,5 +1,15 @@
 # Classifarr Release Notes
 
+## v0.19.1-alpha (2025-12-22)
+
+### Fixed
+- **Config Query Filters (Issue #63):** Added `is_active`/`enabled` filters to prevent stale config entries from being used
+  - tavily_config, notification_config, webhook_config now properly filter inactive records
+- **Missing DB Import:** Added missing database import to `ruleBuilder.js` that caused runtime errors
+- **CI/CD Tests:** Fixed `ruleBuilder.test.js` with proper mocks and test expectations
+
+---
+
 ## v0.19.0-alpha (2025-12-22)
 
 ### Added
