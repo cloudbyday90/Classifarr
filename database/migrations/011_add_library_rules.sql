@@ -39,4 +39,25 @@ WITH
 -- Insert some default rules for common library patterns
 -- These are examples that can be customized per installation
 
+-- Prevent duplicate libraries with same name and media_type
+-- First, remove any duplicates keeping the lowest ID (safe for fresh installs)
+DELETE FROM libraries
+WHERE
+    id NOT IN(
+        SELECT MIN(id)
+        FROM libraries
+        GROUP BY
+            name,
+            media_type
+    );
+
+-- Add unique constraint to prevent future duplicates
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'libraries_name_media_type_unique'
+  ) THEN
+    ALTER TABLE libraries ADD CONSTRAINT libraries_name_media_type_unique UNIQUE (name, media_type);
+  END IF;
+END $$;
+
 -- Comment: Rules will be added dynamically based on library names and user configuration
