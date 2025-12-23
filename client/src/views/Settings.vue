@@ -7,30 +7,37 @@
 -->
 
 <template>
-  <div class="space-y-6">
-    <h1 class="text-2xl font-bold">Settings</h1>
+  <div class="flex gap-6 min-h-[calc(100vh-200px)]">
+    <!-- Sidebar Navigation -->
+    <nav class="w-56 flex-shrink-0">
+      <div class="sticky top-4 space-y-6">
+        <h1 class="text-2xl font-bold px-3">Settings</h1>
+        
+        <!-- Grouped Settings -->
+        <div v-for="group in settingsGroups" :key="group.name" class="space-y-1">
+          <h2 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            {{ group.name }}
+          </h2>
+          <button
+            v-for="tab in group.tabs"
+            :key="tab.id"
+            @click="activeTab = tab.id"
+            :class="[
+              'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+              activeTab === tab.id
+                ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-500'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            ]"
+          >
+            <span>{{ tab.icon }}</span>
+            <span>{{ tab.label }}</span>
+          </button>
+        </div>
+      </div>
+    </nav>
 
-    <!-- Tabs -->
-    <div class="border-b border-gray-700">
-      <nav class="-mb-px flex space-x-8">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          @click="activeTab = tab.id"
-          :class="[
-            'py-4 px-1 border-b-2 font-medium text-sm',
-            activeTab === tab.id
-              ? 'border-blue-500 text-blue-500'
-              : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
-          ]"
-        >
-          {{ tab.label }}
-        </button>
-      </nav>
-    </div>
-
-    <!-- Tab Content -->
-    <div class="mt-6">
+    <!-- Main Content -->
+    <div class="flex-1 min-w-0">
       <component :is="currentTabComponent" />
     </div>
   </div>
@@ -59,31 +66,60 @@ const router = useRouter()
 const route = useRoute()
 const activeTab = ref('general')
 
-const tabs = [
-  { id: 'general', label: 'General', component: General },
-  { id: 'mediaserver', label: 'Media Server', component: MediaServer },
-  { id: 'tmdb', label: 'TMDB', component: TMDB },
-  { id: 'tavily', label: 'Tavily', component: Tavily },
-  { id: 'ollama', label: 'Ollama', component: Ollama },
-  { id: 'radarr', label: 'Radarr', component: Radarr },
-  { id: 'sonarr', label: 'Sonarr', component: Sonarr },
-  { id: 'discord', label: 'Discord', component: Discord },
-  { id: 'webhooks', label: 'Webhooks', component: Webhooks },
-  { id: 'queue', label: 'Queue', component: Queue },
-  { id: 'scheduler', label: 'Scheduler', component: Scheduler },
-  { id: 'backup', label: 'Backup', component: Backup },
-  { id: 'confidence', label: 'Confidence', component: Confidence },
-  { id: 'ssl', label: 'SSL/HTTPS', component: SSL },
-  { id: 'logs', label: 'Logs', component: Logs },
+// Grouped settings for better organization
+const settingsGroups = [
+  {
+    name: 'Application',
+    tabs: [
+      { id: 'general', label: 'General', icon: '⚙️', component: General },
+      { id: 'confidence', label: 'Confidence', icon: '📊', component: Confidence },
+      { id: 'scheduler', label: 'Scheduler', icon: '🕐', component: Scheduler },
+      { id: 'queue', label: 'Queue', icon: '📋', component: Queue },
+    ]
+  },
+  {
+    name: 'Media Sources',
+    tabs: [
+      { id: 'mediaserver', label: 'Media Server', icon: '🖥️', component: MediaServer },
+      { id: 'radarr', label: 'Radarr', icon: '🎬', component: Radarr },
+      { id: 'sonarr', label: 'Sonarr', icon: '📺', component: Sonarr },
+    ]
+  },
+  {
+    name: 'AI & Data',
+    tabs: [
+      { id: 'ollama', label: 'Ollama', icon: '🧠', component: Ollama },
+      { id: 'tmdb', label: 'TMDB', icon: '🎞️', component: TMDB },
+      { id: 'tavily', label: 'Tavily', icon: '🔍', component: Tavily },
+    ]
+  },
+  {
+    name: 'Notifications',
+    tabs: [
+      { id: 'discord', label: 'Discord', icon: '💬', component: Discord },
+      { id: 'webhooks', label: 'Webhooks', icon: '🔗', component: Webhooks },
+    ]
+  },
+  {
+    name: 'System',
+    tabs: [
+      { id: 'backup', label: 'Backup', icon: '💾', component: Backup },
+      { id: 'ssl', label: 'SSL/HTTPS', icon: '🔒', component: SSL },
+      { id: 'logs', label: 'Logs', icon: '📝', component: Logs },
+    ]
+  }
 ]
 
+// Flatten tabs for lookup
+const allTabs = settingsGroups.flatMap(g => g.tabs)
+
 const currentTabComponent = computed(() => {
-  return tabs.find(t => t.id === activeTab.value)?.component
+  return allTabs.find(t => t.id === activeTab.value)?.component
 })
 
 // Initialize tab from URL query on mount
 onMounted(() => {
-  if (route.query.tab && tabs.some(t => t.id === route.query.tab)) {
+  if (route.query.tab && allTabs.some(t => t.id === route.query.tab)) {
     activeTab.value = route.query.tab
   }
 })
@@ -95,8 +131,9 @@ watch(activeTab, (newTab) => {
 
 // Update tab when URL changes (e.g. back button)
 watch(() => route.query.tab, (newTab) => {
-  if (newTab && tabs.some(t => t.id === newTab)) {
+  if (newTab && allTabs.some(t => t.id === newTab)) {
     activeTab.value = newTab
   }
 })
 </script>
+
