@@ -550,6 +550,21 @@ router.get('/ollama/models', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/settings/ollama/recommended-models:
+ *   get:
+ *     summary: Get recommended models for classification tasks
+ */
+router.get('/ollama/recommended-models', async (req, res) => {
+  try {
+    const recommendations = ollamaService.getRecommendedModels();
+    res.json(recommendations);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================
 // TMDB CONFIGURATION
 // ============================================

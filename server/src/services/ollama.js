@@ -101,12 +101,154 @@ class OllamaService {
         temperature,
         stream: false,
       }, {
-        timeout: 180000, // 3 minute timeout for larger AI models
+        timeout: 120000, // 2 minute timeout for non-streaming
       });
       return response.data.response;
     } catch (error) {
       throw new Error(`Failed to generate response: ${error.message}`);
     }
+  }
+
+  /**
+   * Generate response with streaming and progress tracking
+   * @param {string} prompt - The prompt to send
+   * @param {string} model - Model name
+   * @param {number} temperature - Temperature setting
+   * @param {function} onProgress - Callback for progress updates (tokenCount, isComplete)
+   * @returns {Promise<string>} - Complete response text
+   */
+  async generateWithProgress(prompt, model = 'qwen3:14b', temperature = 0.30, onProgress = null) {
+    const config = await this.getConfig();
+
+    return new Promise((resolve, reject) => {
+      let fullResponse = '';
+      let tokenCount = 0;
+      let lastHeartbeat = Date.now();
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => {
+        controller.abort();
+        reject(new Error('Generation timeout - no response after 3 minutes'));
+      }, 180000); // 3 minute absolute timeout
+
+      axios.post(`${config.baseUrl}/api/generate`, {
+        model,
+        prompt,
+        temperature,
+        stream: true,
+      }, {
+        responseType: 'stream',
+        signal: controller.signal,
+      }).then(response => {
+        response.data.on('data', (chunk) => {
+          lastHeartbeat = Date.now();
+          try {
+            const lines = chunk.toString().split('\n').filter(line => line.trim());
+            for (const line of lines) {
+              const json = JSON.parse(line);
+              if (json.response) {
+                fullResponse += json.response;
+                tokenCount++;
+                if (onProgress) {
+                  onProgress(tokenCount, false);
+                }
+              }
+              if (json.done) {
+                clearTimeout(timeout);
+                if (onProgress) {
+                  onProgress(tokenCount, true);
+                }
+                resolve(fullResponse);
+              }
+            }
+          } catch (e) {
+            // Ignore parse errors for partial chunks
+          }
+        });
+
+        response.data.on('error', (err) => {
+          clearTimeout(timeout);
+          reject(new Error(`Stream error: ${err.message}`));
+        });
+
+        response.data.on('end', () => {
+          clearTimeout(timeout);
+          if (!fullResponse) {
+            reject(new Error('Empty response from model'));
+          }
+        });
+      }).catch(err => {
+        clearTimeout(timeout);
+        if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+          reject(new Error('Generation aborted due to timeout'));
+        } else {
+          reject(new Error(`Failed to generate: ${err.message}`));
+        }
+      });
+    });
+  }
+
+  /**
+   * Get recommended models for classification tasks
+   * @returns {Array} List of recommended models with metadata
+   */
+  getRecommendedModels() {
+    return [
+      {
+        name: 'llama3.3:8b',
+        displayName: 'Llama 3.3 8B',
+        size: '8B',
+        speed: 'Fast',
+        accuracy: 'High',
+        description: 'Best balance of speed and accuracy for classification',
+        recommended: true,
+      },
+      {
+        name: 'gemma2:9b',
+        displayName: 'Gemma 2 9B',
+        size: '9B',
+        speed: 'Fast',
+        accuracy: 'High',
+        description: 'Google\'s efficient model, great for edge deployment',
+        recommended: true,
+      },
+      {
+        name: 'mistral:7b',
+        displayName: 'Mistral 7B',
+        size: '7B',
+        speed: 'Very Fast',
+        accuracy: 'Good',
+        description: 'Fastest option with good accuracy',
+        recommended: false,
+      },
+      {
+        name: 'phi3:14b',
+        displayName: 'Phi-3 14B',
+        size: '14B',
+        speed: 'Medium',
+        accuracy: 'High',
+        description: 'Microsoft\'s efficient model for complex tasks',
+        recommended: false,
+      },
+      {
+        name: 'qwen3:14b',
+        displayName: 'Qwen 3 14B',
+        size: '14B',
+        speed: 'Medium',
+        accuracy: 'Very High',
+        description: 'Excellent multilingual support, current default',
+        recommended: false,
+      },
+      {
+        name: 'deepseek-r1:8b',
+        displayName: 'DeepSeek R1 8B',
+        size: '8B',
+        speed: 'Fast',
+        accuracy: 'Very High',
+        description: 'Strong reasoning capabilities',
+        recommended: false,
+      },
+    ];
   }
 }
 
