@@ -89,7 +89,7 @@ class SchedulerService {
                 `SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, msi.tmdb_id,
                         msi.library_id, l.name as library_name, l.media_type
          FROM media_server_items msi
-         JOIN libraries l ON msi.library_id = l.id
+         LEFT JOIN libraries l ON msi.library_id = l.id
          WHERE msi.metadata->'content_analysis' IS NULL
          LIMIT 500`
             );
