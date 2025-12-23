@@ -468,7 +468,7 @@ const getSuggestions = async () => {
     suggestions.value = res.data.suggestions || []
     suggestionsItemCount.value = res.data.totalItems || 0
     if (suggestions.value.length === 0) {
-      toast.add({ title: 'No Suggestions', message: 'No patterns found in library content.' })
+      toast.info('No patterns found in library content.', 'No Suggestions')
     }
   } catch (error) {
     console.error('Failed to get suggestions:', error)
@@ -592,7 +592,7 @@ const pollSyncStatus = async () => {
 const handleSync = async () => {
   syncing.value = true
   try {
-    toast.add({ title: 'Sync Started', message: 'Library synchronization started in background...' })
+    toast.success('Library synchronization started in background...', 'Sync Started')
     await api.syncLibrary(library.value.id)
     
     // Start polling immediately

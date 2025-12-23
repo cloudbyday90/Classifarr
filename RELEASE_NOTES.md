@@ -1,5 +1,23 @@
 # Classifarr Release Notes
 
+## v0.19.5-alpha
+**Critical Bug Fixes**
+
+### Fixes
+- **Rule Application:** Fixed "Failed to apply rule" error caused by duplicate POST route intercepting requests and inserting into wrong table.
+- **Rule Builder:** Fixed blank page caused by missing `useRoute` import in SmartRuleForm.vue.
+- **Toast Notifications:** Fixed `toast.add is not a function` error by using correct toast methods.
+- **Logging:** Removed debug logging added in v0.19.4 as issues are now resolved.
+
+## v0.19.4-alpha
+**Bug Fixes & Rule Builder Support**
+
+### fixes
+- **Rule Builder:** Fixed blank screen issue by adding header slot support to Card component.
+- **Rule Application:** Fixed "Failed to apply rule" error by preventing duplicate rule suggestions.
+- **Custom Rules:** Added database support (`library_custom_rules`) for complex rules created via Rule Builder.
+- **API:** Updated endpoints to support fetching and creating both simple and custom rules.
+
 ## v0.19.3-alpha
 **Bug Fixes & Rule Builder Support**
 

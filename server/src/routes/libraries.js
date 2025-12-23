@@ -212,29 +212,7 @@ router.get('/:id/rules', async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /api/libraries/{id}/rules:
- *   post:
- *     summary: Add custom rule to library
- */
-router.post('/:id/rules', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description, rule_json, is_active } = req.body;
-
-    const result = await db.query(
-      `INSERT INTO library_custom_rules (library_id, name, description, rule_json, is_active)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [id, name, description, JSON.stringify(rule_json), is_active !== false]
-    );
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// NOTE: POST /:id/rules handler moved to line ~632 to properly handle both simple and custom rules
 
 /**
  * @swagger
