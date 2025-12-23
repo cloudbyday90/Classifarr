@@ -1,5 +1,17 @@
 # Classifarr Release Notes
 
+## v0.20.0
+**Major UI Improvements & Bug Fixes**
+
+### New Features
+- **Settings Page Redesign:** Converted horizontal tabs to vertical sidebar with grouped categories (Application, Media Sources, AI & Data, Notifications, System) for easier navigation
+- **Sonarr Settings Tab:** Added missing Sonarr configuration tab to Settings page
+
+### Fixes
+- **Rule Application:** Fixed "Failed to apply rule" error caused by duplicate POST route
+- **Rule Builder:** Fixed blank page caused by missing `useRoute` import
+- **Toast Notifications:** Fixed `toast.add is not a function` error
+
 ## v0.19.5-alpha
 **Critical Bug Fixes**
 
