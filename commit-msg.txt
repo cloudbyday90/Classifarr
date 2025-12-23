@@ -1,7 +1,0 @@
-fix: add missing classification methods and improve queue reset
-
-- Add missing classification methods (source_library, holiday_detection, library_rule, existing_media) to database constraint
-- Fix Clear & Re-sync All to properly clear library_id from media_server_items  
-- Add missing library rules migrations (011-013) to init.sql
-- Add .gitattributes to ensure proper line endings for shell scripts
-- Create migration 014 to add new classification methods to existing databases
