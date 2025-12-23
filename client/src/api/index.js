@@ -479,4 +479,7 @@ export default {
   getPendingTasks(limit = 5) {
     return apiClient.get(`/queue/pending?limit=${limit}`)
   },
+  getOllamaStatus() {
+    return apiClient.get('/queue/ollama-status')
+  },
 }

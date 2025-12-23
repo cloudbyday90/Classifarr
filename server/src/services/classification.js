@@ -865,25 +865,38 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const configResult = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
     const config = configResult.rows[0] || { model: 'qwen3:14b', temperature: 0.30 };
 
-    // Use streaming to monitor progress
-    let lastLogTime = Date.now();
-    const response = await ollamaService.generateWithProgress(
-      prompt,
-      config.model,
-      parseFloat(config.temperature),
-      (tokenCount, isComplete) => {
-        // Log progress every 2 seconds or on completion
-        const now = Date.now();
-        if (isComplete || now - lastLogTime > 2000) {
-          logger.debug('Ollama generation progress', {
-            tokens: tokenCount,
-            complete: isComplete,
-            model: config.model
-          });
-          lastLogTime = now;
+    // Track generation status for UI
+    const itemTitle = metadata.title || 'Unknown';
+    ollamaService.setGenerationStatus(true, config.model, itemTitle);
+
+    let response;
+    try {
+      // Use streaming to monitor progress
+      let lastLogTime = Date.now();
+      response = await ollamaService.generateWithProgress(
+        prompt,
+        config.model,
+        parseFloat(config.temperature),
+        (tokenCount, isComplete) => {
+          // Update token count for UI
+          ollamaService.updateTokenCount(tokenCount);
+
+          // Log progress every 2 seconds or on completion
+          const now = Date.now();
+          if (isComplete || now - lastLogTime > 2000) {
+            logger.debug('Ollama generation progress', {
+              tokens: tokenCount,
+              complete: isComplete,
+              model: config.model
+            });
+            lastLogTime = now;
+          }
         }
-      }
-    );
+      );
+    } finally {
+      // Clear generation status
+      ollamaService.setGenerationStatus(false);
+    }
 
     // Parse AI response - check for CONFIDENT format
     const confidentMatch = response.match(/CONFIDENT\|(\d+)\|(\d+)\|(.+)/);

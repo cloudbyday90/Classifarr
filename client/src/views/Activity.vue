@@ -86,6 +86,35 @@
       </div>
     </Card>
 
+    <!-- Ollama AI Status -->
+    <Card v-if="ollamaStatus.isActive">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="text-xl">🤖</span>
+            <h2 class="text-lg font-semibold">AI Generation in Progress</h2>
+          </div>
+          <span class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+          </span>
+        </div>
+      </template>
+      
+      <div class="flex items-center justify-between p-3 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-lg">
+        <div class="space-y-1">
+          <div class="font-medium text-purple-300">{{ ollamaStatus.itemTitle }}</div>
+          <div class="text-sm text-gray-400">
+            Model: <span class="text-blue-300">{{ ollamaStatus.model }}</span>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl font-bold text-purple-400">{{ ollamaStatus.tokenCount }}</div>
+          <div class="text-sm text-gray-400">tokens • {{ ollamaStatus.elapsedSeconds }}s</div>
+        </div>
+      </div>
+    </Card>
+
     <!-- Live Activity Stream -->
     <Card>
       <template #header>
@@ -198,6 +227,14 @@ const stats = ref({
   gapAnalysis: null
 })
 
+const ollamaStatus = ref({
+  isActive: false,
+  model: null,
+  tokenCount: 0,
+  elapsedSeconds: 0,
+  itemTitle: null
+})
+
 const activityFeed = ref([])
 const processingQueue = ref([])
 
@@ -217,10 +254,11 @@ const refreshData = async () => {
   try {
     loading.value = true
     
-    const [liveStats, liveFeed, pendingTasks] = await Promise.all([
+    const [liveStats, liveFeed, pendingTasks, aiStatus] = await Promise.all([
       api.getLiveStats(),
       api.getLiveFeed(50),
-      api.getPendingTasks(5)
+      api.getPendingTasks(5),
+      api.getOllamaStatus().catch(() => ({ data: { isActive: false } }))
     ])
 
     // Update stats
@@ -242,6 +280,11 @@ const refreshData = async () => {
     // Update processing queue
     if (pendingTasks.data) {
       processingQueue.value = pendingTasks.data.slice(0, 5)
+    }
+
+    // Update Ollama status
+    if (aiStatus.data) {
+      ollamaStatus.value = aiStatus.data
     }
 
     lastUpdated.value = new Date().toLocaleTimeString()

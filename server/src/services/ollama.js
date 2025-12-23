@@ -24,12 +24,69 @@ class OllamaService {
     this.host = null;
     this.port = null;
     this.baseUrl = null;
+
+    // Generation status tracking for UI
+    this.currentGeneration = {
+      isActive: false,
+      model: null,
+      tokenCount: 0,
+      startTime: null,
+      itemTitle: null,
+    };
   }
 
   resetConfig() {
     this.host = null;
     this.port = null;
     this.baseUrl = null;
+  }
+
+  /**
+   * Get current generation status for UI
+   */
+  getGenerationStatus() {
+    if (!this.currentGeneration.isActive) {
+      return { isActive: false };
+    }
+
+    const elapsed = Date.now() - this.currentGeneration.startTime;
+    return {
+      isActive: true,
+      model: this.currentGeneration.model,
+      tokenCount: this.currentGeneration.tokenCount,
+      elapsedSeconds: Math.round(elapsed / 1000),
+      itemTitle: this.currentGeneration.itemTitle,
+    };
+  }
+
+  /**
+   * Set generation status (called from classification service)
+   */
+  setGenerationStatus(isActive, model = null, itemTitle = null) {
+    if (isActive) {
+      this.currentGeneration = {
+        isActive: true,
+        model,
+        tokenCount: 0,
+        startTime: Date.now(),
+        itemTitle,
+      };
+    } else {
+      this.currentGeneration = {
+        isActive: false,
+        model: null,
+        tokenCount: 0,
+        startTime: null,
+        itemTitle: null,
+      };
+    }
+  }
+
+  /**
+   * Update token count during generation
+   */
+  updateTokenCount(count) {
+    this.currentGeneration.tokenCount = count;
   }
 
   async getConfig() {

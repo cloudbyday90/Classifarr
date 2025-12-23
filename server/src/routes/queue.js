@@ -8,10 +8,30 @@
 const express = require('express');
 const router = express.Router();
 const queueService = require('../services/queueService');
+const ollamaService = require('../services/ollama');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('QueueRoutes');
+
+/**
+ * @swagger
+ * /api/queue/ollama-status:
+ *   get:
+ *     summary: Get current Ollama generation status
+ *     responses:
+ *       200:
+ *         description: Current AI generation status including model, tokens, and item being processed
+ */
+router.get('/ollama-status', async (req, res) => {
+    try {
+        const status = ollamaService.getGenerationStatus();
+        res.json(status);
+    } catch (error) {
+        logger.error('Failed to get ollama status', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
 
 /**
  * @swagger
