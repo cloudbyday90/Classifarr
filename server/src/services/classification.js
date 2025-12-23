@@ -329,16 +329,17 @@ class ClassificationService {
 
   /**
    * Check library rules to find matching library
-   * Rules are checked in priority order, exceptions first
+   * Rules are checked in priority order
+   * Now uses library_rules_v2 with conditions JSON format
    */
   async checkLibraryRules(metadata, libraries) {
-    // Get all active rules for all libraries, ordered by exception status and priority
+    // Get all active rules from the v2 table
     const rulesResult = await db.query(`
-      SELECT lr.*, l.name as library_name
-      FROM library_rules lr
-      JOIN libraries l ON lr.library_id = l.id
-      WHERE lr.is_active = true AND l.is_active = true
-      ORDER BY lr.is_exception DESC, l.priority DESC, lr.priority ASC
+      SELECT r.*, l.name as library_name
+      FROM library_rules_v2 r
+      JOIN libraries l ON r.library_id = l.id
+      WHERE r.is_active = true AND l.is_active = true
+      ORDER BY l.priority DESC, r.priority ASC
     `);
 
     if (rulesResult.rows.length === 0) {
@@ -346,79 +347,86 @@ class ClassificationService {
     }
 
     // Prepare metadata for matching
-    const itemRating = (metadata.certification || '').toUpperCase();
-    const itemGenres = (metadata.genres || []).map(g => g.toLowerCase());
-    const itemKeywords = (metadata.keywords || []).map(k => k.toLowerCase());
-    const itemLanguage = (metadata.original_language || '').toLowerCase();
-    const itemYear = metadata.year ? parseInt(metadata.year) : null;
-    const itemTitle = (metadata.title || '').toLowerCase();
-    const itemOverview = (metadata.overview || '').toLowerCase();
+    const itemData = {
+      rating: (metadata.certification || '').toUpperCase(),
+      genre: (metadata.genres || []).map(g => g.toLowerCase()),
+      keyword: (metadata.keywords || []).map(k => k.toLowerCase()),
+      language: (metadata.original_language || '').toLowerCase(),
+      year: metadata.year ? parseInt(metadata.year) : null,
+      title: (metadata.title || '').toLowerCase(),
+      overview: (metadata.overview || '').toLowerCase(),
+      content_type: metadata.contentAnalysis?.bestMatch?.type || null,
+    };
 
     // Check each rule
     for (const rule of rulesResult.rows) {
-      const ruleValues = rule.value.split(',').map(v => v.trim().toLowerCase());
-      let matches = false;
-
-      switch (rule.rule_type) {
-        case 'rating':
-          if (rule.operator === 'includes') {
-            matches = ruleValues.some(v => v.toUpperCase() === itemRating);
-          } else if (rule.operator === 'excludes') {
-            matches = !ruleValues.some(v => v.toUpperCase() === itemRating);
-          }
-          break;
-
-        case 'genre':
-          if (rule.operator === 'includes') {
-            matches = ruleValues.some(v => itemGenres.includes(v));
-          } else if (rule.operator === 'excludes') {
-            matches = !ruleValues.some(v => itemGenres.includes(v));
-          } else if (rule.operator === 'contains') {
-            matches = ruleValues.some(v => itemGenres.some(g => g.includes(v)));
-          }
-          break;
-
-        case 'keyword':
-          if (rule.operator === 'includes') {
-            matches = ruleValues.some(v => itemKeywords.includes(v));
-          } else if (rule.operator === 'contains') {
-            // Check title, overview, and keywords
-            matches = ruleValues.some(v =>
-              itemTitle.includes(v) || itemOverview.includes(v) || itemKeywords.some(k => k.includes(v))
-            );
-          }
-          break;
-
-        case 'language':
-          if (rule.operator === 'equals') {
-            matches = ruleValues.includes(itemLanguage);
-          } else if (rule.operator === 'excludes') {
-            matches = !ruleValues.includes(itemLanguage);
-          }
-          break;
-
-        case 'year':
-          if (itemYear) {
-            const targetYear = parseInt(ruleValues[0]);
-            if (rule.operator === 'equals') {
-              matches = itemYear === targetYear;
-            } else if (rule.operator === 'greater_than') {
-              matches = itemYear > targetYear;
-            } else if (rule.operator === 'less_than') {
-              matches = itemYear < targetYear;
-            }
-          }
-          break;
+      // Parse conditions JSON
+      let conditions;
+      try {
+        conditions = typeof rule.conditions === 'string'
+          ? JSON.parse(rule.conditions)
+          : rule.conditions;
+      } catch (e) {
+        logger.warn('Failed to parse rule conditions', { ruleId: rule.id, error: e.message });
+        continue;
       }
 
-      if (matches) {
+      if (!conditions || !Array.isArray(conditions)) continue;
+
+      // All conditions must match (AND logic)
+      const allMatch = conditions.every(condition => {
+        const { field, operator, value } = condition;
+        const itemValue = itemData[field];
+        const ruleValues = value.split(',').map(v => v.trim().toLowerCase());
+
+        if (itemValue === null || itemValue === undefined) return false;
+
+        // Handle array fields (genre, keyword)
+        if (Array.isArray(itemValue)) {
+          switch (operator) {
+            case 'includes':
+              return ruleValues.some(v => itemValue.includes(v));
+            case 'excludes':
+              return !ruleValues.some(v => itemValue.includes(v));
+            case 'contains':
+              return ruleValues.some(v => itemValue.some(item => item.includes(v)));
+            default:
+              return false;
+          }
+        }
+
+        // Handle string fields (rating, language, title, overview, content_type)
+        const strValue = String(itemValue).toLowerCase();
+        switch (operator) {
+          case 'equals':
+          case 'is':
+            return ruleValues.includes(strValue);
+          case 'includes':
+            return ruleValues.includes(strValue);
+          case 'excludes':
+            return !ruleValues.includes(strValue);
+          case 'contains':
+            return ruleValues.some(v => strValue.includes(v));
+          case 'not_contains':
+            return !ruleValues.some(v => strValue.includes(v));
+          case 'greater_than':
+            return parseFloat(itemValue) > parseFloat(ruleValues[0]);
+          case 'less_than':
+            return parseFloat(itemValue) < parseFloat(ruleValues[0]);
+          default:
+            return false;
+        }
+      });
+
+      if (allMatch) {
         const library = libraries.find(l => l.id === rule.library_id);
         if (library) {
+          const conditionsSummary = conditions.map(c => `${c.field} ${c.operator} "${c.value}"`).join(' AND ');
           return {
             library,
-            isException: rule.is_exception,
-            matchedRule: `${rule.rule_type} ${rule.operator} "${rule.value}"`,
-            reason: rule.description || `Matched rule: ${rule.rule_type} ${rule.operator} "${rule.value}"`
+            isException: false,
+            matchedRule: conditionsSummary,
+            reason: rule.description || `Matched rule: ${rule.name}`
           };
         }
       }
