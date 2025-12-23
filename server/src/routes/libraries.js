@@ -191,79 +191,8 @@ router.delete('/:id/labels/:labelId', async (req, res) => {
   }
 });
 
-/**
- * @swagger
- * /api/libraries/{id}/rules:
- *   get:
- *     summary: Get custom rules for library
- */
-router.get('/:id/rules', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await db.query(
-      'SELECT * FROM library_custom_rules WHERE library_id = $1 ORDER BY created_at DESC',
-      [id]
-    );
-
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// NOTE: POST /:id/rules handler moved to line ~632 to properly handle both simple and custom rules
-
-/**
- * @swagger
- * /api/libraries/{id}/rules/{ruleId}:
- *   put:
- *     summary: Update custom rule
- */
-router.put('/:id/rules/:ruleId', async (req, res) => {
-  try {
-    const { ruleId } = req.params;
-    const { name, description, rule_json, is_active } = req.body;
-
-    const result = await db.query(
-      `UPDATE library_custom_rules
-       SET name = COALESCE($1, name),
-           description = COALESCE($2, description),
-           rule_json = COALESCE($3, rule_json),
-           is_active = COALESCE($4, is_active),
-           updated_at = NOW()
-       WHERE id = $5
-       RETURNING *`,
-      [name, description, rule_json ? JSON.stringify(rule_json) : null, is_active, ruleId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Rule not found' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * @swagger
- * /api/libraries/{id}/rules/{ruleId}:
- *   delete:
- *     summary: Delete custom rule
- */
-router.delete('/:id/rules/:ruleId', async (req, res) => {
-  try {
-    const { ruleId } = req.params;
-
-    await db.query('DELETE FROM library_custom_rules WHERE id = $1', [ruleId]);
-
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// NOTE: Legacy library_custom_rules handlers removed - now using unified library_rules_v2 table
+// See handlers at lines ~565-700 for unified GET/POST/PUT/DELETE endpoints
 
 /**
  * @swagger
@@ -570,31 +499,15 @@ router.get('/:id/rules', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Fetch simple rules
-    const simpleRules = await db.query(
-      `SELECT *, 'simple' as kind FROM library_rules 
+    // Fetch from unified table
+    const result = await db.query(
+      `SELECT * FROM library_rules_v2 
        WHERE library_id = $1 
-       ORDER BY is_exception DESC, priority ASC`,
+       ORDER BY priority ASC, created_at DESC`,
       [id]
     );
 
-    // Fetch custom rules
-    // Check if table exists first to avoid error during migration race? No, we trust migration works.
-    // If table missing, query throws. I'll wrap in try-catch-softly logic or assume migration runs.
-    let customRules = { rows: [] };
-    try {
-      customRules = await db.query(
-        `SELECT *, 'custom' as kind FROM library_custom_rules 
-           WHERE library_id = $1 
-           ORDER BY created_at DESC`,
-        [id]
-      );
-    } catch (e) {
-      // Table might not exist yet if migration failed or didn't run. Ignore.
-      logger.warn('Could not fetch custom rules (table might be missing)', { error: e.message });
-    }
-
-    res.json([...simpleRules.rows, ...customRules.rows]);
+    res.json(result.rows);
   } catch (error) {
     logger.error('Failed to get library rules', { error: error.message });
     res.status(500).json({ error: error.message });
@@ -605,41 +518,38 @@ router.get('/:id/rules', async (req, res) => {
  * @swagger
  * /api/libraries/{id}/rules:
  *   post:
- *     summary: Add a new rule to a library (simple or custom)
+ *     summary: Add a new rule to a library (unified format)
  */
 router.post('/:id/rules', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`[DEBUG] POST /${id}/rules Body:`, JSON.stringify(req.body, null, 2));
-    const { rule_type, operator, value, is_exception = false, priority = 0, description, rule_json, name, is_active } = req.body;
+    const { name, description, conditions, is_active = true, priority = 0 } = req.body;
 
-    // Handle Custom Rule (from Rule Builder)
-    if (rule_json) {
-      if (!name) return res.status(400).json({ error: 'name is required for custom rules' });
-
-      const result = await db.query(
-        `INSERT INTO library_custom_rules (library_id, name, description, rule_json, is_active)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING *`,
-        [id, name, description, JSON.stringify(rule_json), is_active !== false]
-      );
-      logger.info('Custom library rule created', { libraryId: id, name });
-      return res.status(201).json(result.rows[0]);
+    // Support legacy format: convert simple rule to conditions array
+    let conditionsArray = conditions;
+    if (!conditions && req.body.rule_type) {
+      conditionsArray = [{
+        field: req.body.rule_type,
+        operator: req.body.operator,
+        value: req.body.value
+      }];
     }
 
-    // Handle Simple Rule (from Learn suggestions)
-    if (!rule_type || !operator || !value) {
-      return res.status(400).json({ error: 'rule_type, operator, and value are required (or provide rule_json)' });
+    if (!conditionsArray || !Array.isArray(conditionsArray) || conditionsArray.length === 0) {
+      return res.status(400).json({ error: 'conditions array is required' });
     }
+
+    // Auto-generate name if not provided
+    const ruleName = name || conditionsArray.map(c => `${c.field} ${c.operator} ${c.value}`).join(' AND ');
 
     const result = await db.query(
-      `INSERT INTO library_rules (library_id, rule_type, operator, value, is_exception, priority, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO library_rules_v2 (library_id, name, description, conditions, is_active, priority)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [id, rule_type, operator, value, is_exception, priority, description]
+      [id, ruleName, description, JSON.stringify(conditionsArray), is_active, priority]
     );
 
-    logger.info('Library rule created', { libraryId: id, ruleType: rule_type });
+    logger.info('Library rule created', { libraryId: id, name: ruleName });
     res.status(201).json(result.rows[0]);
   } catch (error) {
     logger.error('Failed to create library rule', { error: error.message });
@@ -672,21 +582,19 @@ router.get('/:id/rules/debug-insert', async (req, res) => {
 router.put('/:id/rules/:ruleId', async (req, res) => {
   try {
     const { id, ruleId } = req.params;
-    const { rule_type, operator, value, is_exception, priority, description, is_active } = req.body;
+    const { name, description, conditions, is_active, priority } = req.body;
 
     const result = await db.query(
-      `UPDATE library_rules 
-       SET rule_type = COALESCE($1, rule_type),
-           operator = COALESCE($2, operator),
-           value = COALESCE($3, value),
-           is_exception = COALESCE($4, is_exception),
+      `UPDATE library_rules_v2 
+       SET name = COALESCE($1, name),
+           description = COALESCE($2, description),
+           conditions = COALESCE($3, conditions),
+           is_active = COALESCE($4, is_active),
            priority = COALESCE($5, priority),
-           description = COALESCE($6, description),
-           is_active = COALESCE($7, is_active),
            updated_at = NOW()
-       WHERE id = $8 AND library_id = $9
+       WHERE id = $6 AND library_id = $7
        RETURNING *`,
-      [rule_type, operator, value, is_exception, priority, description, is_active, ruleId, id]
+      [name, description, conditions ? JSON.stringify(conditions) : null, is_active, priority, ruleId, id]
     );
 
     if (result.rows.length === 0) {
@@ -711,7 +619,7 @@ router.delete('/:id/rules/:ruleId', async (req, res) => {
     const { id, ruleId } = req.params;
 
     const result = await db.query(
-      `DELETE FROM library_rules WHERE id = $1 AND library_id = $2 RETURNING id`,
+      `DELETE FROM library_rules_v2 WHERE id = $1 AND library_id = $2 RETURNING id`,
       [ruleId, id]
     );
 

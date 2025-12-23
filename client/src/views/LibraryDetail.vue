@@ -229,19 +229,14 @@
         <div class="space-y-6">
           <div class="flex justify-between items-start">
             <div>
-              <h4 class="font-medium mb-1">Label-based Rules</h4>
+              <h4 class="font-medium mb-1">Smart Rules</h4>
               <p class="text-sm text-gray-400">
-                Configure which content should be included or excluded from this library.
+                AI-powered rules to classify content into this library.
               </p>
             </div>
-            <div class="flex gap-2">
-              <Button @click="getSuggestions" :loading="suggestionsLoading" variant="secondary">
-                🧠 Learn from Library
-              </Button>
-              <Button @click="$router.push(`/rule-builder/${library.id}`)">
-                + New Rule
-              </Button>
-            </div>
+            <Button @click="$router.push(`/rule-builder/${library.id}`)">
+              🧠 Smart Rule Builder
+            </Button>
           </div>
 
           <!-- AI Suggestions Panel -->
@@ -274,7 +269,7 @@
               <tbody class="divide-y divide-gray-700">
                 <tr v-for="rule in rules" :key="rule.id" class="hover:bg-gray-800/50">
                   <td class="px-4 py-3 font-medium">{{ rule.name || rule.description || 'Rule' }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-400">{{ formatConditions(rule.rule_json) || formatSimpleRule(rule) }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-400">{{ formatConditions(rule.conditions) }}</td>
                   <td class="px-4 py-3">
                     <span 
                       class="px-2 py-1 text-xs rounded-full"
@@ -297,7 +292,7 @@
             </table>
           </div>
           <div v-else class="text-center py-8 text-gray-500 border-2 border-dashed border-gray-700 rounded-lg">
-            No classification rules configured yet. Click "Learn from Library" to get AI-suggested rules.
+            No rules configured yet. Click "🧠 Smart Rule Builder" to create AI-powered classification rules.
           </div>
         </div>
       </Card>
@@ -438,16 +433,21 @@ onMounted(async () => {
 })
 
 const formatConditions = (conditions) => {
-  if (!conditions) return null
-  // Handle both array and single object (legacy)
-  const list = Array.isArray(conditions) ? conditions : [conditions]
+  if (!conditions) return 'No conditions'
+  // Handle string (from DB JSONB), array, or single object
+  let list = conditions
+  if (typeof conditions === 'string') {
+    try { list = JSON.parse(conditions) } catch { return conditions }
+  }
+  if (!Array.isArray(list)) list = [list]
+  if (list.length === 0) return 'No conditions'
   return list.map(c => {
-    // Format operator text
+    if (!c || !c.field) return ''
     const op = c.operator === 'equals' ? 'is' : 
                c.operator === 'not_equals' ? 'is not' : 
-               c.operator.replace('_', ' ')
+               c.operator?.replace('_', ' ') || ''
     return `${c.field} ${op} "${c.value}"`
-  }).join(', ')
+  }).filter(Boolean).join(' AND ')
 }
 
 const formatSimpleRule = (rule) => {
