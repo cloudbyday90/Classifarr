@@ -24,9 +24,9 @@ jest.mock('../config/database', () => ({
     query: jest.fn()
 }));
 
-// Mock Ollama
-jest.mock('ollama', () => ({
-    chat: jest.fn()
+// Mock contentTypeAnalyzer (which might use ollama internally, but we mock that separately)
+jest.mock('../services/contentTypeAnalyzer', () => ({
+    analyzeContent: jest.fn().mockResolvedValue({})
 }));
 
 describe('RuleBuilderService', () => {
@@ -37,7 +37,7 @@ describe('RuleBuilderService', () => {
     describe('previewRule', () => {
         test('should build correct SQL for basic title match', async () => {
             const criteria = [
-                { field: 'title', operator: 'equals', value: 'The Matrix' }
+                { field: 'title', operator: 'contains', value: 'The Matrix' }
             ];
 
             db.query.mockResolvedValue({ rows: [] });
@@ -45,7 +45,7 @@ describe('RuleBuilderService', () => {
             await ruleBuilderService.previewRule(1, criteria);
 
             expect(db.query).toHaveBeenCalledWith(
-                expect.stringContaining("AND LOWER(metadata->>'title') LIKE LOWER($2)"),
+                expect.stringContaining("AND LOWER(title) LIKE LOWER($2)"),
                 expect.arrayContaining([1, '%The Matrix%'])
             );
         });

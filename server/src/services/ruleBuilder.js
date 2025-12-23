@@ -17,6 +17,7 @@
  */
 
 const contentTypeAnalyzer = require('./contentTypeAnalyzer');
+const db = require('../config/database');
 
 class RuleBuilderService {
   async analyzeLibrary(libraryId) {
