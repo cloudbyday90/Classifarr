@@ -4,6 +4,9 @@
 **Database Migration Runner & Persistence Fixes**
 
 ### New Features
+- **Cloud AI Providers:** Full support for OpenAI, Google Gemini, OpenRouter, LiteLLM, and compatible Custom endpoints.
+- **Budget Controls:** Set monthly spending limits (USD) and alerts for paid providers.
+- **Hybrid AI Strategy:** Use Ollama as a free fallback when budget is exhausted or for basic classification tasks.
 - **Database Migration Runner:** Automated SQL migration system runs on startup, tracking applied migrations in `schema_migrations`.
 - **Improved Settings Persistence:** Ollama host/model and other settings now persist correctly across restarts.
 

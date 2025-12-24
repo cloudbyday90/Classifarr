@@ -10,6 +10,9 @@ Current stage: **Alpha** (v0.x-alpha)
 ## [0.24.0-alpha] - 2025-12-24
 
 ### Major Features
+- **Cloud AI Providers:** Support for OpenAI, Gemini, OpenRouter, LiteLLM.
+- **Budget Controls:** Monthly limits and alerts for paid providers.
+- **Hybrid AI Strategy:** Intelligent fallback to free local LLMs.
 - **Database Migration Runner:** Automated SQL migration system running on startup to ensure consistent database schema.
 - **Migration Tracking:** Added `schema_migrations` table to prevent re-running applied migrations.
 
