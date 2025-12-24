@@ -80,6 +80,8 @@ class SchedulerService {
 
     /**
      * Run Gap Analysis specifically
+     * NOTE: Items in Plex libraries are for LEARNING, not classification.
+     * Gap analysis enriches metadata to help AI suggestions, not to route content.
      */
     async runGapAnalysis() {
         try {
@@ -99,10 +101,12 @@ class SchedulerService {
                 return;
             }
 
-            logger.info(`Gap analysis: Found ${result.rows.length} unanalyzed items. Queueing for analysis...`);
+            logger.info(`Gap analysis: Found ${result.rows.length} unanalyzed items. Queueing for metadata enrichment (NOT classification)...`);
 
             for (const item of result.rows) {
-                await queueService.enqueue('classification', {
+                // Use 'metadata_enrichment' for existing Plex content (learning data)
+                // Classification is ONLY for new incoming requests (Overseerr, etc.)
+                await queueService.enqueue('metadata_enrichment', {
                     title: item.title,
                     overview: item.metadata?.summary || '',
                     genres: typeof item.genres === 'string' ? JSON.parse(item.genres) : (item.genres || []),
@@ -111,9 +115,9 @@ class SchedulerService {
                     original_language: 'en',
                     tmdb_id: item.tmdb_id,
                     itemId: item.id, // Pass internal ID for efficient updating
-                    source_library_id: item.library_id, // Pass source library for direct matching
+                    source_library_id: item.library_id, // Already in this library - just enriching
                     source_library_name: item.library_name,
-                    media: { media_type: item.media_type || 'movie' } // Include media_type for correct TMDB lookup
+                    media: { media_type: item.media_type || 'movie' }
                 }, {
                     priority: 5, // Lower priority than user actions
                     source: 'gap_analysis'

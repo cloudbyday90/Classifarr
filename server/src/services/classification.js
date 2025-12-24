@@ -131,6 +131,18 @@ class ClassificationService {
         });
       }
 
+      // Enhanced AI metrics logging for monitoring and debugging
+      logger.info('Classification completed', {
+        title: metadata.title,
+        tmdbId: metadata.tmdb_id,
+        mediaType: media_type,
+        library: result.library?.name,
+        confidence: result.confidence,
+        method: result.method,
+        hasSourceLibrary: !!metadata.source_library_id,
+        contentType: metadata.contentAnalysis?.bestMatch?.type || null
+      });
+
       return {
         success: true,
         classification_id: classificationId,
@@ -138,6 +150,8 @@ class ClassificationService {
         confidence: result.confidence,
         method: result.method,
         reason: result.reason,
+        // Include bestMatch for queue service to use
+        bestMatch: metadata.contentAnalysis?.bestMatch
       };
     } catch (error) {
       logger.error('Classification error', { error: error.message });

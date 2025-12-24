@@ -201,6 +201,176 @@ class QueueService {
                     }
                     break;
 
+                case 'metadata_enrichment':
+                    // Metadata enrichment is for items ALREADY in Plex libraries
+                    // This is LEARNING data - we add content_analysis AND Tavily enrichment
+                    const enrichPayload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
+                    // IMPORTANT: Items here are ALREADY in Plex libraries
+                    // They are 100% confidence - DO NOT re-classify with AI
+                    // Just use source library info and enrich with Tavily for learning
+
+                    // Build enrichment data - 100% confidence from source library
+                    const enrichmentData = {
+                        content_analysis: {
+                            type: 'source_library',  // Already classified by library placement
+                            confidence: 100,
+                            detected_at: new Date().toISOString(),
+                            source: 'metadata_enrichment',
+                            source_library_id: enrichPayload.source_library_id,
+                            source_library_name: enrichPayload.source_library_name
+                        }
+                    };
+
+                    // Try to get Tavily web search enrichment if configured
+                    try {
+                        const tavilyConfig = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
+
+                        if (tavilyConfig.rows.length > 0 && tavilyConfig.rows[0].api_key) {
+                            const config = tavilyConfig.rows[0];
+                            const tavilyService = require('./tavily');
+
+                            const searchOptions = {
+                                apiKey: config.api_key,
+                                searchDepth: config.search_depth || 'basic',
+                                maxResults: config.max_results || 3
+                            };
+
+                            // Get IMDB info for richer metadata
+                            try {
+                                const imdbResults = await tavilyService.searchIMDB(
+                                    enrichPayload.title,
+                                    enrichPayload.year,
+                                    enrichPayload.media?.media_type || 'movie',
+                                    searchOptions
+                                );
+
+                                if (imdbResults?.results?.length > 0) {
+                                    enrichmentData.tavily_imdb = {
+                                        fetched_at: new Date().toISOString(),
+                                        results: imdbResults.results.slice(0, 2).map(r => ({
+                                            url: r.url,
+                                            title: r.title,
+                                            snippet: r.content?.substring(0, 500)
+                                        })),
+                                        answer: imdbResults.answer
+                                    };
+                                }
+                            } catch (imdbError) {
+                                logger.debug('Tavily IMDB search failed', { error: imdbError.message });
+                            }
+
+                            // Get content advisory for better classification
+                            try {
+                                const advisoryResults = await tavilyService.getContentAdvisory(
+                                    enrichPayload.title,
+                                    enrichPayload.year,
+                                    searchOptions
+                                );
+
+                                if (advisoryResults?.results?.length > 0) {
+                                    enrichmentData.tavily_advisory = {
+                                        fetched_at: new Date().toISOString(),
+                                        content: advisoryResults.results[0]?.content?.substring(0, 1000),
+                                        answer: advisoryResults.answer
+                                    };
+                                }
+                            } catch (advisoryError) {
+                                logger.debug('Tavily advisory search failed', { error: advisoryError.message });
+                            }
+
+                            // NEW: Get content type classification (documentary, stand-up, etc.)
+                            try {
+                                const contentTypeQuery = `${enrichPayload.title} ${enrichPayload.year} documentary OR stand-up OR comedy special OR animation site:imdb.com`;
+                                const contentTypeResults = await tavilyService.search(contentTypeQuery, {
+                                    ...searchOptions,
+                                    includeDomains: ['imdb.com', 'wikipedia.org'],
+                                    maxResults: 2
+                                });
+                                if (contentTypeResults?.answer) {
+                                    enrichmentData.tavily_content_type = {
+                                        fetched_at: new Date().toISOString(),
+                                        answer: contentTypeResults.answer
+                                    };
+                                }
+                            } catch (ctError) {
+                                logger.debug('Tavily content type search failed', { error: ctError.message });
+                            }
+
+                            // NEW: Check if holiday/Christmas content
+                            try {
+                                const holidayQuery = `${enrichPayload.title} ${enrichPayload.year} Christmas OR holiday OR seasonal movie`;
+                                const holidayResults = await tavilyService.search(holidayQuery, {
+                                    ...searchOptions,
+                                    includeDomains: ['imdb.com', 'wikipedia.org'],
+                                    maxResults: 2
+                                });
+                                if (holidayResults?.answer) {
+                                    enrichmentData.tavily_holiday = {
+                                        fetched_at: new Date().toISOString(),
+                                        answer: holidayResults.answer
+                                    };
+                                }
+                            } catch (holidayError) {
+                                logger.debug('Tavily holiday search failed', { error: holidayError.message });
+                            }
+
+                            // If anime is suspected, get anime-specific info
+                            const isAnime = enrichPayload.original_language === 'ja' ||
+                                (enrichPayload.genres || []).some(g => g.toLowerCase().includes('anime'));
+
+                            if (isAnime) {
+                                try {
+                                    const animeResults = await tavilyService.searchAnimeInfo(
+                                        enrichPayload.title,
+                                        searchOptions
+                                    );
+
+                                    if (animeResults?.results?.length > 0) {
+                                        enrichmentData.tavily_anime = {
+                                            fetched_at: new Date().toISOString(),
+                                            results: animeResults.results.slice(0, 2).map(r => ({
+                                                url: r.url,
+                                                title: r.title,
+                                                snippet: r.content?.substring(0, 500)
+                                            })),
+                                            answer: animeResults.answer
+                                        };
+                                    }
+                                } catch (animeError) {
+                                    logger.debug('Tavily anime search failed', { error: animeError.message });
+                                }
+                            }
+                        }
+                    } catch (tavilyError) {
+                        logger.warn('Tavily enrichment failed', { error: tavilyError.message });
+                        // Continue without Tavily data
+                    }
+
+                    // Update the item's metadata with all enrichment data
+                    if (enrichPayload.itemId) {
+                        await db.query(
+                            `UPDATE media_server_items 
+                             SET metadata = metadata || $1::jsonb
+                             WHERE id = $2`,
+                            [JSON.stringify(enrichmentData), enrichPayload.itemId]
+                        );
+
+                        const hasTavily = !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory || enrichmentData.tavily_content_type || enrichmentData.tavily_holiday);
+                        logger.info('Metadata enrichment complete (no AI, from source library)', {
+                            itemId: enrichPayload.itemId,
+                            title: enrichPayload.title,
+                            sourceLibrary: enrichPayload.source_library_name,
+                            tavilyEnriched: hasTavily
+                        });
+                    }
+
+                    await this.completeTask(task.id, {
+                        enriched: true,
+                        sourceLibrary: enrichPayload.source_library_name,
+                        tavilyEnriched: !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory)
+                    });
+                    break;
+
                 default:
                     logger.warn('Unknown task type', { taskType: task.task_type });
                     await this.failTask(task.id, `Unknown task type: ${task.task_type}`, task.attempts, task.max_attempts);
@@ -604,12 +774,10 @@ class QueueService {
             const rulesV2Result = await db.query('DELETE FROM library_rules_v2 RETURNING id');
             await db.query('DELETE FROM library_custom_rules');
 
-            // 5. Reset content_analysis in media_server_items (preserve library_id for gap analysis)
+            // 6. DELETE all media_server_items entirely (sync will repopulate fresh)
+            // This removes duplicates and stale data - fresh sync is cleaner
             const itemsResult = await db.query(`
-                UPDATE media_server_items 
-                SET metadata = metadata - 'content_analysis'
-                WHERE metadata->'content_analysis' IS NOT NULL
-                RETURNING id
+                DELETE FROM media_server_items RETURNING id
             `);
 
             // 6. Restart worker if it was running

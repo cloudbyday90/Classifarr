@@ -5,22 +5,32 @@
       <template #header>
         <h2 class="text-xl font-semibold">Rule Details</h2>
       </template>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input 
-          v-model="ruleName" 
-          label="Rule Name" 
-          placeholder="e.g. Holiday Movies"
-        />
-        <div class="flex items-center space-x-2 mt-8">
-          <Toggle v-model="isActive" />
-          <span class="text-gray-300">Active</span>
+      <div class="space-y-4">
+        <!-- Library Name (read-only) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-400 mb-1">Library</label>
+          <div class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white opacity-75 cursor-not-allowed">
+            {{ libraryName || 'Loading...' }}
+          </div>
         </div>
-        <div class="md:col-span-2">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input 
-            v-model="description" 
-            label="Description" 
-            placeholder="Automatically classify holiday content..."
+            v-model="ruleName" 
+            label="Rule Name" 
+            placeholder="e.g. Holiday Movies"
           />
+          <div class="flex items-center space-x-2 mt-8">
+            <Toggle v-model="isActive" />
+            <span class="text-gray-300">Active</span>
+          </div>
+          <div class="md:col-span-2">
+            <Input 
+              v-model="description" 
+              label="Description" 
+              placeholder="Automatically classify holiday content..."
+            />
+          </div>
         </div>
       </div>
     </Card>
@@ -363,6 +373,7 @@ const stats = ref({})
 const loadingStats = ref(true)
 const analyzing = ref(false)
 const editingRuleId = ref(null)
+const libraryName = ref('')
 
 // Smart suggestions state
 const smartSuggestions = ref([])
@@ -374,6 +385,14 @@ const isValid = computed(() => {
 })
 
 onMounted(async () => {
+  // Load library name first
+  try {
+    const libResponse = await api.getLibrary(props.libraryId)
+    libraryName.value = libResponse.data.name
+  } catch (error) {
+    console.error('Failed to load library:', error)
+  }
+  
   // Check if we are editing an existing rule
   if (route.query.ruleId) {
     editingRuleId.value = route.query.ruleId
@@ -432,7 +451,7 @@ const loadSmartSuggestions = async () => {
   }
 }
 
-const applySmartSuggestion = (suggestion) => {
+const applySmartSuggestion = async (suggestion) => {
   ruleName.value = suggestion.name
   description.value = suggestion.reasoning || ''
   
@@ -457,6 +476,9 @@ const applySmartSuggestion = (suggestion) => {
     operator: operatorMap[c.operator] || c.operator,
     value: c.value
   }))
+  
+  // Auto-save the rule immediately
+  await saveRule()
 }
 
 const getConfidenceClass = (confidence) => {
@@ -478,17 +500,13 @@ const runAnalysis = async () => {
     })
   } catch (error) {
     console.error('Error running analysis:', error)
-    toast.add({
-      title: 'Analysis Failed',
-      message: error.message || 'Could not run analysis.',
-      type: 'error'
-    })
+    toast.error(error.message || 'Could not run analysis.', 'Analysis Failed')
   } finally {
     analyzing.value = false
   }
 }
 
-const applySuggestion = (type) => {
+const applySuggestion = async (type) => {
   ruleName.value = `${type.charAt(0).toUpperCase() + type.slice(1)} Content`;
   description.value = `Automatically matched ${type} content`;
   conditions.value = [{
@@ -496,7 +514,9 @@ const applySuggestion = (type) => {
     operator: 'equals',
     value: type
   }];
-  previewRule();
+  
+  // Auto-save the rule immediately
+  await saveRule();
 }
 
 const addCondition = () => {
@@ -559,33 +579,21 @@ const saveRule = async () => {
       name: ruleName.value,
       description: description.value,
       is_active: isActive.value,
-      rule_json: conditions.value // Array of conditions
+      conditions: conditions.value // Array of conditions - field name must match backend
     }
     
     if (editingRuleId.value) {
       await api.updateLibraryRule(props.libraryId, editingRuleId.value, payload)
-      toast.add({
-        title: 'Rule Updated',
-        message: 'The classification rule has been updated.',
-        type: 'success'
-      })
+      toast.success('The classification rule has been updated.', 'Rule Updated')
     } else {
       await api.addLibraryRule(props.libraryId, payload)
-      toast.add({
-        title: 'Rule Saved',
-        message: 'The classification rule has been created.',
-        type: 'success'
-      })
+      toast.success('The classification rule has been created.', 'Rule Saved')
     }
     
     emit('save')
   } catch (error) {
     console.error('Save failed:', error)
-    toast.add({
-      title: 'Save Failed',
-      message: error.response?.data?.error || error.message,
-      type: 'error'
-    })
+    toast.error(error.response?.data?.error || error.message, 'Save Failed')
   } finally {
     saving.value = false
   }

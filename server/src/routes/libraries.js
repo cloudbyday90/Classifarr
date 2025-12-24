@@ -874,32 +874,64 @@ router.get('/:id/rules/smart-suggest', async (req, res) => {
       LIMIT 5
     `, [id]);
 
-    // 5. Get total items and analyzed count
+    // 5. Get keyword/tag frequency distribution
+    const keywordResult = await db.query(`
+      SELECT unnest(tags) as keyword, COUNT(*) as count
+      FROM media_server_items
+      WHERE library_id = $1 AND tags IS NOT NULL AND array_length(tags, 1) > 0
+      GROUP BY keyword
+      ORDER BY count DESC
+      LIMIT 20
+    `, [id]);
+
+    // 6. Get total items and analyzed/enriched counts
     const countResult = await db.query(`
       SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE metadata->'content_analysis' IS NOT NULL) as analyzed
+        COUNT(*) FILTER (WHERE metadata->'content_analysis' IS NOT NULL) as analyzed,
+        COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched
       FROM media_server_items
       WHERE library_id = $1
     `, [id]);
+
+    // 7. Get sample Tavily insights (aggregate from enriched items)
+    const tavilyInsightsResult = await db.query(`
+      SELECT 
+        metadata->'tavily_advisory'->>'answer' as advisory_insight,
+        metadata->'tavily_imdb'->>'answer' as imdb_insight,
+        metadata->'tavily_anime'->>'answer' as anime_insight
+      FROM media_server_items
+      WHERE library_id = $1 
+        AND (metadata->'tavily_advisory' IS NOT NULL OR metadata->'tavily_imdb' IS NOT NULL)
+      LIMIT 5
+    `, [id]);
+
+    // Collect unique insights from Tavily enrichment
+    const tavilyInsights = tavilyInsightsResult.rows
+      .flatMap(r => [r.advisory_insight, r.imdb_insight, r.anime_insight])
+      .filter(Boolean)
+      .slice(0, 3);
 
     const stats = {
       libraryName: library.name,
       mediaType: library.media_type,
       totalItems: parseInt(countResult.rows[0]?.total) || 0,
       analyzedItems: parseInt(countResult.rows[0]?.analyzed) || 0,
+      tavilyEnrichedItems: parseInt(countResult.rows[0]?.tavily_enriched) || 0,
       contentTypes: contentTypeResult.rows.map(r => ({ type: r.content_type, count: parseInt(r.count) })),
       genres: genreResult.rows.map(r => ({ genre: r.genre, count: parseInt(r.count) })),
       ratings: ratingResult.rows.map(r => ({ rating: r.content_rating, count: parseInt(r.count) })),
-      languages: languageResult.rows.map(r => ({ language: r.language, count: parseInt(r.count) }))
+      languages: languageResult.rows.map(r => ({ language: r.language, count: parseInt(r.count) })),
+      keywords: keywordResult.rows.map(r => ({ keyword: r.keyword, count: parseInt(r.count) })),
+      tavilyInsights
     };
 
-    // 6. Build prompt for Ollama
+    // 8. Build prompt for Ollama
     const prompt = `You are an AI assistant helping to create classification rules for a media library.
 
 Library Name: "${stats.libraryName}"
 Media Type: ${stats.mediaType}
-Total Items: ${stats.totalItems}, Analyzed: ${stats.analyzedItems}
+Total Items: ${stats.totalItems}, Analyzed: ${stats.analyzedItems}, Web-Enriched: ${stats.tavilyEnrichedItems}
 
 Content Types (from AI analysis):
 ${stats.contentTypes.map(t => `- ${t.type}: ${t.count} items`).join('\n') || 'No AI analysis available yet'}
@@ -913,7 +945,13 @@ ${stats.ratings.map(r => `- ${r.rating}: ${r.count} items`).join('\n') || 'No ra
 Languages:
 ${stats.languages.map(l => `- ${l.language}: ${l.count} items`).join('\n') || 'No language data'}
 
-Based on the library name and this data, suggest 2-4 classification rules that would best define what content belongs in this library. For each rule, provide:
+Keywords/Tags:
+${stats.keywords.slice(0, 10).map(k => `- ${k.keyword}: ${k.count} items`).join('\n') || 'No keyword data'}
+
+${stats.tavilyInsights.length > 0 ? `Web Search Insights (from IMDB/content advisories):
+${stats.tavilyInsights.map(insight => `- ${insight}`).join('\n')}
+
+` : ''}Based on the library name and this data, suggest 2-4 classification rules that would best define what content belongs in this library. For each rule, provide:
 1. A descriptive name
 2. The conditions (field, operator, value)
 3. A confidence score (0-100) based on how well the data supports this rule
@@ -983,6 +1021,96 @@ Valid operators: equals, contains, includes`;
         confidence,
         reasoning: `${confidence}% of items are ${topRatings.join(' or ')} rated`
       });
+    }
+
+    // Language suggestion - particularly for non-English dominant libraries
+    if (stats.languages.length > 0) {
+      const top = stats.languages[0];
+      const confidence = Math.round((top.count / stats.totalItems) * 100);
+      // Only suggest if language is dominant (>50%) and not English (which is default)
+      if (confidence >= 50 && top.language !== 'en') {
+        const languageNames = {
+          'ja': 'Japanese',
+          'ko': 'Korean',
+          'zh': 'Chinese',
+          'es': 'Spanish',
+          'fr': 'French',
+          'de': 'German',
+          'it': 'Italian',
+          'pt': 'Portuguese',
+          'ru': 'Russian',
+          'hi': 'Hindi'
+        };
+        const langName = languageNames[top.language] || top.language.toUpperCase();
+        dataSuggestions.push({
+          name: `${langName} Language Content`,
+          conditions: [{ field: 'language', operator: 'equals', value: top.language }],
+          confidence,
+          reasoning: `${confidence}% of items are in ${langName}`
+        });
+      }
+    }
+
+    // Top keyword suggestions - if significant keywords exist
+    if (stats.keywords.length > 0) {
+      const topKeywords = stats.keywords.slice(0, 3); // Top 3 keywords
+      for (const kw of topKeywords) {
+        const confidence = Math.round((kw.count / stats.totalItems) * 100);
+        // Only suggest if keyword is in at least 20% of items
+        if (confidence >= 20) {
+          dataSuggestions.push({
+            name: `${kw.keyword.charAt(0).toUpperCase() + kw.keyword.slice(1)} Keyword`,
+            conditions: [{ field: 'keyword', operator: 'contains', value: kw.keyword }],
+            confidence,
+            reasoning: `${confidence}% of items have keyword "${kw.keyword}"`
+          });
+        }
+      }
+    }
+
+    // Kids-friendly content detection based on ratings
+    const kidsRatings = ['G', 'PG', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG'];
+    const kidsRatingCounts = stats.ratings.filter(r => kidsRatings.includes(r.rating));
+    if (kidsRatingCounts.length > 0) {
+      const kidsTotal = kidsRatingCounts.reduce((sum, r) => sum + r.count, 0);
+      const kidsConfidence = Math.round((kidsTotal / stats.totalItems) * 100);
+      // If 70%+ is kids-friendly content
+      if (kidsConfidence >= 70) {
+        dataSuggestions.push({
+          name: 'Kids-Friendly Content',
+          conditions: [{ field: 'rating', operator: 'includes', value: kidsRatings.join(',') }],
+          confidence: kidsConfidence,
+          reasoning: `${kidsConfidence}% of items have kids-friendly ratings (${kidsRatingCounts.map(r => r.rating).join(', ')})`
+        });
+      }
+    }
+
+    // Anime detection - Japanese language + Animation genre + library name hints
+    const libraryLower = stats.libraryName.toLowerCase();
+    const hasAnimeInName = libraryLower.includes('anime');
+    const hasJapanese = stats.languages.some(l => l.language === 'ja');
+    const hasAnimation = stats.genres.some(g => g.genre === 'Animation' || g.genre.toLowerCase().includes('anime'));
+
+    if (hasAnimeInName || (hasJapanese && hasAnimation)) {
+      const japaneseCount = stats.languages.find(l => l.language === 'ja')?.count || 0;
+      const animationCount = stats.genres.find(g => g.genre === 'Animation')?.count || 0;
+      const combinedConfidence = Math.round(Math.max(
+        (japaneseCount / stats.totalItems) * 100,
+        (animationCount / stats.totalItems) * 100,
+        hasAnimeInName ? 90 : 0 // High confidence if "anime" is in library name
+      ));
+
+      if (combinedConfidence >= 50) {
+        dataSuggestions.push({
+          name: 'Anime Content',
+          conditions: [
+            { field: 'language', operator: 'equals', value: 'ja' },
+            { field: 'genre', operator: 'contains', value: 'Animation' }
+          ],
+          confidence: combinedConfidence,
+          reasoning: `Library appears to be for Anime content (${hasAnimeInName ? 'name indicates anime' : 'Japanese animation detected'})`
+        });
+      }
     }
 
     res.json({

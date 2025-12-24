@@ -1,23 +1,40 @@
 # Classifarr Release Notes
 
-## v0.22.0-alpha
-**Real-Time AI Monitoring & VRAM Optimization**
+## v0.23.0-alpha
+**AI Learning Overhaul & Enhanced Tavily Integration**
+
+> [!IMPORTANT]
+> **After upgrading, you MUST perform a Clear and Re-Sync All:**
+> 
+> `Settings` → `Queue` (scroll down) → `Advanced Options` → `Clear and Re-Sync All`
+> 
+> This release includes significant changes to how media data is processed and stored.
+
+### Breaking Changes
+- **Clear and Re-Sync Now Fully Clears:** The `Clear and Re-Sync All` function now completely deletes `media_server_items` instead of just resetting metadata. This fixes duplicate entries and stale data issues.
 
 ### New Features
-- **Streaming Ollama Progress:** Implemented true streaming for Ollama generation.
-  - See real-time token generation counts and elapsed time.
-  - Prevents "silent" timeouts by maintaining active connection.
-  - Added "Heartbeat" logging to debug logs.
-- **Activity Page Status Card:** New "AI Generation in Progress" card appears automatically on the Activity dashboard when Ollama is thinking.
-  - Shows Title, Model, Token Count, and Duration.
-  - Visual pulse animation indicates active processing.
-- **Recommended Models API:** New endpoint `/api/settings/ollama/recommended-models` returns curated model list with VRAM requirements.
-- **VRAM Guidance:** Documentation now includes a detailed "Recommended Models by VRAM" table to help users choose the right model (4GB - 24GB+).
+- **No AI Analysis for Library Items:** Items already in your Plex libraries now get **100% confidence** automatically from their source library. No AI classification is run, preventing incorrect low-confidence results.
+- **Enhanced Tavily Enrichment:** New targeted web searches during metadata enrichment:
+  - `tavily_content_type` - Detects documentaries, stand-up specials, animation
+  - `tavily_holiday` - Identifies Christmas/holiday/seasonal content
+  - Existing: `tavily_imdb`, `tavily_advisory`, `tavily_anime`
+- **Smarter AI Suggestions:** Smart Rule Builder now includes Tavily web insights in LLM prompts for better rule recommendations.
 
 ### Improvements
-- **Timeout Handling:** Increased absolute timeout to 3 minutes for complex classifications (streaming keeps connection alive).
-- **Reduced Non-Streaming Timeout:** Reduced fallback timeout to 120s since streaming is preferred.
-- **Documentation:** Added comprehensive "How Classification Works" section to README.
+- **Rule Builder UX:** "Use This Rule" buttons now auto-save rules immediately.
+- **Library Name Display:** Rule Builder shows target library name in read-only field.
+- **Enhanced Logging:** Classification logs now include detailed AI metrics (confidence, method, contentType).
+
+### Fixes
+- **Toast Notifications:** Fixed `TypeError: y.add is not a function` in SmartRuleForm.
+- **Queue Architecture:** Gap analysis now uses `metadata_enrichment` task type instead of `classification` for existing Plex items.
+- **Duplicate Entries:** Clear and Re-Sync now properly removes all items before re-syncing from Plex.
+
+---
+
+## v0.22.0-alpha
+**Real-Time AI Monitoring & VRAM Optimization**
 
 ## v0.21.3-alpha
 **Database Consolidation & Documentation Overhaul**
