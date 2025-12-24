@@ -5,7 +5,22 @@ All notable changes to Classifarr will be documented in this file.
 This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
----
+
+## [0.25.0-alpha] - 2025-12-24
+
+### Major Features
+- **Smart "Use This" Pattern Builder:** Interactive UI to build rules directly from your library's metadata (Phase 2).
+  - Analyzes Genres, Content Ratings, Studios, Collections, and Tags directly from Plex/Emby/Jellyfin.
+  - Interactive selection modal with operators (equals, is one of, contains).
+  - Shows match confidence and item counts for each pattern.
+- **Continuous Pattern Analysis:** Automated system to detect new metadata trends over time (Phase 3).
+- **Dashboard Widget:** "New Pattern Suggestions" widget notifies you when new potential rules are detected in your libraries.
+- **Scheduler Update:** Added "Pattern Analysis" task type to automatically re-scan libraries for new patterns on a schedule.
+
+### Improvements
+- **UI Logic:** "Use This" now correctly prioritizes direct library metadata over AI suggestions.
+- **Performance:** Optimized metadata queries to only fetch distinct values for pattern generation.
+
 
 ## [0.24.0-alpha] - 2025-12-24
 

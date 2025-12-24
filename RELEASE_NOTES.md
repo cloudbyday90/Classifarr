@@ -1,4 +1,26 @@
-# Classifarr Release Notes
+
+## v0.25.0-alpha
+**Smart "Use This" & Continuous Pattern Analysis**
+
+### New Features
+- **Smart "Use This" Builder:**
+  - Build classification rules directly from your media metadata (Plex/Emby/Jellyfin)
+  - Interactive modal showing all available conditions: Genres, Ratings, Studios, Collections, Tags, Years
+  - Live statistics showing exactly how many items match each condition
+  - Support for `is_one_of`, `contains`, `equals`, and `not_equals` operators
+- **Continuous Pattern Analysis:**
+  - Automated system that periodically scans your libraries for new metadata trends
+  - **New Dashboard Widget:** "New Pattern Suggestions" alerts you to potential rules based on your media
+  - Dismiss notifications for suggestions you don't want to use
+- **Updated Scheduler:**
+  - New `Pattern Analysis` task type available for scheduling
+  - Configure how often libraries are re-scanned for new patterns (default: daily)
+
+### Improvements
+- **"Use This" Logic:** Now correctly prioritizes direct library metadata for rule filtering, removing dependency on AI classification for this specific feature. Use AI Suggestions for AI-based rules, and "Use This" for metadata-based rules.
+- **Performance:** Optimized query performance for pattern extraction across large libraries.
+
+---
 
 ## v0.24.0-alpha
 **Database Migration Runner & Persistence Fixes**
