@@ -64,14 +64,24 @@ class OMDbService {
                 throw new OMDbLimitReachedError(`OMDb daily limit of ${config.daily_limit} reached`);
             }
 
-            // Increment usage
-            // Note: We increment BEFORE the request to be conservative
-            await db.query('UPDATE omdb_config SET requests_today = requests_today + 1 WHERE id = $1', [config.id]);
-
-            return config.api_key;
+            // Return config for use - increment will happen AFTER successful API call
+            return { apiKey: config.api_key, configId: config.id };
         } catch (error) {
             if (error.name === 'OMDbLimitReachedError') throw error;
             throw new Error(`Failed to check OMDb usage: ${error.message}`);
+        }
+    }
+
+    /**
+     * Increment usage counter after successful API call
+     */
+    async incrementUsageCounter(configId) {
+        try {
+            await db.query('UPDATE omdb_config SET requests_today = requests_today + 1 WHERE id = $1', [configId]);
+            logger.debug('OMDb usage counter incremented', { configId });
+        } catch (error) {
+            logger.error('Failed to increment OMDb counter', { error: error.message });
+            // Don't throw - this shouldn't fail the request
         }
     }
 
@@ -106,9 +116,11 @@ class OMDbService {
      * @param {string} apiKey - OMDb API key
      */
     async getByTitle(title, year, type = 'movie', apiKey) {
+        let configId = null;
         try {
             // Enforce rate limit managed by DB
-            const validApiKey = await this.checkAndIncrementUsage();
+            const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
+            configId = id;
 
             const params = {
                 apikey: validApiKey,
@@ -126,6 +138,8 @@ class OMDbService {
             const response = await axios.get(this.baseUrl, { params });
 
             if (response.data.Response === 'True') {
+                // Increment counter only on successful response
+                await this.incrementUsageCounter(configId);
                 return this.formatResponse(response.data);
             } else {
                 logger.debug('OMDb not found', { title, error: response.data.Error });
@@ -148,10 +162,12 @@ class OMDbService {
      * @param {string} apiKey - OMDb API key
      */
     async getByIMDBId(imdbId, apiKey) {
+        let configId = null;
         try {
             logger.debug('OMDb lookup by IMDB ID', { imdbId });
 
-            const validApiKey = await this.checkAndIncrementUsage();
+            const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
+            configId = id;
 
             const response = await axios.get(this.baseUrl, {
                 params: {
@@ -162,6 +178,8 @@ class OMDbService {
             });
 
             if (response.data.Response === 'True') {
+                // Increment counter only on successful response
+                await this.incrementUsageCounter(configId);
                 return this.formatResponse(response.data);
             } else {
                 return null;
@@ -179,8 +197,10 @@ class OMDbService {
      * @param {string} apiKey - OMDb API key
      */
     async search(query, type, apiKey) {
+        let configId = null;
         try {
-            const validApiKey = await this.checkAndIncrementUsage();
+            const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
+            configId = id;
 
             const response = await axios.get(this.baseUrl, {
                 params: {
@@ -191,6 +211,8 @@ class OMDbService {
             });
 
             if (response.data.Response === 'True') {
+                // Increment counter only on successful response
+                await this.incrementUsageCounter(configId);
                 return response.data.Search.map(item => ({
                     title: item.Title,
                     year: item.Year,

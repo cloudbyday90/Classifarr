@@ -270,25 +270,16 @@ class QueueService {
                             }
                         }
                     } catch (omdbError) {
-                        try {
-                            if (omdbError.name === 'OMDbLimitReachedError' ||
-                                (omdbError.message && omdbError.message.includes('Limit Reached'))) {
+                        if (omdbError.name === 'OMDbLimitReachedError' ||
+                            (omdbError.message && omdbError.message.includes('Limit Reached'))) {
 
-                                logger.warn('OMDb daily limit reached - Pausing queue system', { error: omdbError.message });
+                            logger.warn('OMDb daily limit reached - Queue will skip OMDb enrichment', { error: omdbError.message });
 
-                                // Pause the queue to prevent further processing
-                                await this.queue.pause();
-                                logger.info('Queue paused successfully due to OMDb limit');
-
-                                // Propagate error so this task fails and is retried later
-                                throw omdbError;
-                            }
-                        } catch (pauseError) {
-                            if (pauseError.name === 'OMDbLimitReachedError') throw pauseError;
-                            logger.error('Failed to pause queue on limit reached', { error: pauseError.message });
+                            // Note: Queue will continue processing but skip OMDb for subsequent tasks
+                            // The limit will reset at midnight UTC
+                        } else {
+                            logger.warn('OMDb enrichment failed', { error: omdbError.message });
                         }
-
-                        logger.warn('OMDb enrichment failed', { error: omdbError.message });
                         // Continue without OMDb data
                     }
 
