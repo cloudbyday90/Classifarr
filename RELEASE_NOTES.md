@@ -1,5 +1,23 @@
 # Classifarr Release Notes
 
+## v0.23.1-alpha
+**Dashboard Enhancements & Activity Stream Separation**
+
+### New Features
+- **Library Enrichment Progress Bar:** Dashboard now shows real-time enrichment progress with visual progress bar, items enriched count, Tavily count, and queue pending indicator.
+- **Dashboard/Activity Separation:** Dashboard "Recent Classifications" now only shows true classifications (Overseerr, manual requests), while Activity page shows all activities including source_library enrichments.
+
+### Improvements
+- **Enrichment Stats API:** New `/api/queue/live-stats` endpoint includes enrichment progress data (total items, enriched, Tavily count, percentage).
+- **Classification History Filter:** Added `excludeMethod` parameter to `/api/classification/history` endpoint.
+- **Improved Tavily Logging:** Enhanced debug logging for Tavily API calls to diagnose rate limit (HTTP 432) errors.
+
+### Fixes
+- **Classification History Insert:** Fixed "column source_library_id does not exist" error when logging enrichment activities.
+- **Dashboard Stats:** "Classified Today" count now excludes source_library enrichments for accurate classification metrics.
+
+---
+
 ## v0.23.0-alpha
 **AI Learning Overhaul & Enhanced Tavily Integration**
 

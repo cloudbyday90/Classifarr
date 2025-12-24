@@ -237,12 +237,14 @@ class QueueService {
 
                             // Get IMDB info for richer metadata
                             try {
+                                logger.info('Attempting Tavily IMDB search', { title: enrichPayload.title, year: enrichPayload.year });
                                 const imdbResults = await tavilyService.searchIMDB(
                                     enrichPayload.title,
                                     enrichPayload.year,
                                     enrichPayload.media?.media_type || 'movie',
                                     searchOptions
                                 );
+                                logger.info('Tavily IMDB result', { hasResults: !!imdbResults?.results?.length, count: imdbResults?.results?.length || 0 });
 
                                 if (imdbResults?.results?.length > 0) {
                                     enrichmentData.tavily_imdb = {
@@ -256,7 +258,7 @@ class QueueService {
                                     };
                                 }
                             } catch (imdbError) {
-                                logger.debug('Tavily IMDB search failed', { error: imdbError.message });
+                                logger.info('Tavily IMDB search failed', { error: imdbError.message, stack: imdbError.stack });
                             }
 
                             // Get content advisory for better classification
@@ -353,6 +355,27 @@ class QueueService {
                              SET metadata = metadata || $1::jsonb
                              WHERE id = $2`,
                             [JSON.stringify(enrichmentData), enrichPayload.itemId]
+                        );
+
+                        // Log to classification_history so it shows in Activity stream
+                        // This is 100% confidence from source library - NO AI analysis
+                        await db.query(
+                            `INSERT INTO classification_history (
+                                tmdb_id, media_type, title, year, library_id, status, 
+                                confidence, method, reason, metadata
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                            [
+                                enrichPayload.tmdbId || null,
+                                enrichPayload.media?.media_type || 'movie',
+                                enrichPayload.title,
+                                enrichPayload.year,
+                                enrichPayload.source_library_id,
+                                'completed',
+                                100, // 100% confidence from source
+                                'source_library', // Method is source_library, not AI
+                                `Already in library: ${enrichPayload.source_library_name}`,
+                                JSON.stringify(enrichPayload)
+                            ]
                         );
 
                         const hasTavily = !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory || enrichmentData.tavily_content_type || enrichmentData.tavily_holiday);

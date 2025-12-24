@@ -37,6 +37,30 @@
       </div>
     </div>
 
+    <!-- Enrichment Progress Row -->
+    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📊</span>
+          <span class="font-medium">Library Enrichment Progress</span>
+        </div>
+        <span class="text-sm text-gray-400">{{ enrichmentStats.enriched }} / {{ enrichmentStats.totalItems }} items</span>
+      </div>
+      <div class="w-full bg-gray-700 rounded-full h-3 mb-2">
+        <div 
+          class="bg-gradient-to-r from-blue-500 to-primary h-3 rounded-full transition-all duration-500"
+          :style="{ width: enrichmentStats.progress + '%' }"
+        ></div>
+      </div>
+      <div class="flex justify-between text-xs text-gray-400">
+        <span>{{ enrichmentStats.progress }}% Complete</span>
+        <div class="flex gap-4">
+          <span>🔍 Tavily: {{ enrichmentStats.tavilyEnriched }}</span>
+          <span>⏳ Pending: {{ queueStats.pending }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Recent Classifications (2/3 width) -->
@@ -160,6 +184,7 @@ const computedAvgConfidence = computed(() => {
 })
 const recentHistory = ref([])
 const queueStats = ref({ pending: 0, processing: 0, completed: 0, failed: 0, ollamaAvailable: true })
+const enrichmentStats = ref({ totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 })
 const methodStats = ref({})
 let pollInterval = null
 
@@ -179,7 +204,7 @@ const loadData = async () => {
   try {
     const [statsRes, historyRes, queueRes] = await Promise.all([
       api.getStats(),
-      api.getHistory({ page: 1, limit: 8 }),
+      api.getHistory({ page: 1, limit: 8, excludeMethod: 'source_library' }),
       api.getQueueStats()
     ])
     
@@ -201,8 +226,17 @@ const loadData = async () => {
 
 const loadQueueStats = async () => {
   try {
-    const res = await api.getQueueStats()
-    queueStats.value = res // getQueueStats already extracts .data
+    const liveRes = await api.getLiveStats()
+    if (liveRes?.data) {
+      queueStats.value = liveRes.data.queue || queueStats.value
+      if (liveRes.data.enrichment) {
+        enrichmentStats.value = liveRes.data.enrichment
+      }
+    } else {
+      // Fallback to basic queue stats
+      const res = await api.getQueueStats()
+      queueStats.value = res
+    }
   } catch (error) {
     console.error('Failed to load queue stats:', error)
   }

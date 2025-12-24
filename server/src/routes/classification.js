@@ -61,7 +61,7 @@ router.post('/classify', async (req, res) => {
  */
 router.get('/history', async (req, res) => {
   try {
-    const { page = 1, limit = 50, media_type, library_id, method } = req.query;
+    const { page = 1, limit = 50, media_type, library_id, method, excludeMethod } = req.query;
     const offset = (page - 1) * limit;
 
     let whereConditions = [];
@@ -83,6 +83,13 @@ router.get('/history', async (req, res) => {
     if (method) {
       whereConditions.push(`ch.method = $${paramIndex}`);
       params.push(method);
+      paramIndex++;
+    }
+
+    // Exclude specific methods (e.g., source_library for Dashboard)
+    if (excludeMethod) {
+      whereConditions.push(`ch.method != $${paramIndex}`);
+      params.push(excludeMethod);
       paramIndex++;
     }
 
