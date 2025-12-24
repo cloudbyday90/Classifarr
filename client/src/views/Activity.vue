@@ -177,21 +177,21 @@
       </div>
     </Card>
 
-    <!-- Processing Queue -->
-    <Card v-if="processingQueue.length > 0">
+    <!-- Up Next Queue (shows next pending items, not stuck processing ghosts) -->
+    <Card v-if="upNextQueue.length > 0">
       <template #header>
-        <h2 class="text-lg font-semibold">Currently Processing</h2>
+        <h2 class="text-lg font-semibold">Up Next</h2>
       </template>
       
       <div class="space-y-2">
         <div 
-          v-for="item in processingQueue"
+          v-for="item in upNextQueue"
           :key="item.id"
           class="flex items-center justify-between p-3 bg-background-light rounded-lg"
         >
           <div class="flex items-center space-x-3">
-            <Spinner class="w-4 h-4" />
-            <span>{{ item.title || 'Processing...' }}</span>
+            <span class="text-gray-400 text-sm">#{{ item.id }}</span>
+            <span>{{ getItemTitle(item) }}</span>
           </div>
           <span class="text-sm text-gray-400">{{ formatTimeAgo(item.created_at) }}</span>
         </div>
@@ -236,7 +236,7 @@ const ollamaStatus = ref({
 })
 
 const activityFeed = ref([])
-const processingQueue = ref([])
+const upNextQueue = ref([])
 
 const healthStatus = computed(() => {
   if (stats.value.health.ollama && stats.value.health.worker) return 'All Systems OK'
@@ -277,9 +277,11 @@ const refreshData = async () => {
       activityFeed.value = liveFeed.data.items
     }
 
-    // Update processing queue
+    // Update up next queue (only pending items, not ghost processing)
     if (pendingTasks.data) {
-      processingQueue.value = pendingTasks.data.slice(0, 5)
+      upNextQueue.value = pendingTasks.data
+        .filter(t => t.status === 'pending')
+        .slice(0, 5)
     }
 
     // Update Ollama status
@@ -293,6 +295,15 @@ const refreshData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const getItemTitle = (item) => {
+  // Try to extract title from payload (which is a JSON object or string)
+  if (item.payload) {
+    const payload = typeof item.payload === 'string' ? JSON.parse(item.payload) : item.payload
+    return payload.title || 'Untitled'
+  }
+  return 'Untitled'
 }
 
 const formatNumber = (num) => {

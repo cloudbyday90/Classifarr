@@ -176,17 +176,43 @@ class OllamaService {
    */
   async generateWithProgress(prompt, model = 'qwen3:14b', temperature = 0.30, onProgress = null) {
     const config = await this.getConfig();
+    const HEARTBEAT_TIMEOUT_MS = 60000; // Solution D: 60 second inactivity timeout
+    const HARD_TIMEOUT_MS = 180000;     // Solution C: 3 minute absolute timeout
 
     return new Promise((resolve, reject) => {
       let fullResponse = '';
       let tokenCount = 0;
-      let lastHeartbeat = Date.now();
+      let lastChunkTime = Date.now();
+      let resolved = false; // Prevent double resolution
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => {
-        controller.abort();
-        reject(new Error('Generation timeout - no response after 3 minutes'));
-      }, 180000); // 3 minute absolute timeout
+
+      // Solution C: Hard 3-minute absolute timeout
+      const hardTimeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          controller.abort();
+          reject(new Error('Generation timeout - no response after 3 minutes'));
+        }
+      }, HARD_TIMEOUT_MS);
+
+      // Solution D: Heartbeat watchdog - check every 10 seconds for 60s inactivity
+      const heartbeatCheck = setInterval(() => {
+        const timeSinceLastChunk = Date.now() - lastChunkTime;
+        if (timeSinceLastChunk > HEARTBEAT_TIMEOUT_MS && !resolved) {
+          resolved = true;
+          clearTimeout(hardTimeout);
+          clearInterval(heartbeatCheck);
+          controller.abort();
+          if (fullResponse) {
+            // We have partial data, consider it a success
+            if (onProgress) onProgress(tokenCount, true);
+            resolve(fullResponse);
+          } else {
+            reject(new Error('Generation stalled - no data received for 60 seconds'));
+          }
+        }
+      }, 10000);
 
       axios.post(`${config.baseUrl}/api/generate`, {
         model,
@@ -198,7 +224,7 @@ class OllamaService {
         signal: controller.signal,
       }).then(response => {
         response.data.on('data', (chunk) => {
-          lastHeartbeat = Date.now();
+          lastChunkTime = Date.now(); // Reset heartbeat timer
           try {
             const lines = chunk.toString().split('\n').filter(line => line.trim());
             for (const line of lines) {
@@ -210,8 +236,10 @@ class OllamaService {
                   onProgress(tokenCount, false);
                 }
               }
-              if (json.done) {
-                clearTimeout(timeout);
+              if (json.done && !resolved) {
+                resolved = true;
+                clearTimeout(hardTimeout);
+                clearInterval(heartbeatCheck);
                 if (onProgress) {
                   onProgress(tokenCount, true);
                 }
@@ -224,22 +252,38 @@ class OllamaService {
         });
 
         response.data.on('error', (err) => {
-          clearTimeout(timeout);
-          reject(new Error(`Stream error: ${err.message}`));
+          if (!resolved) {
+            resolved = true;
+            clearTimeout(hardTimeout);
+            clearInterval(heartbeatCheck);
+            reject(new Error(`Stream error: ${err.message}`));
+          }
         });
 
         response.data.on('end', () => {
-          clearTimeout(timeout);
-          if (!fullResponse) {
-            reject(new Error('Empty response from model'));
+          clearTimeout(hardTimeout);
+          clearInterval(heartbeatCheck);
+          if (!resolved) {
+            resolved = true;
+            if (fullResponse) {
+              // Stream ended with data but no 'done' signal - treat as success
+              if (onProgress) onProgress(tokenCount, true);
+              resolve(fullResponse);
+            } else {
+              reject(new Error('Empty response from model'));
+            }
           }
         });
       }).catch(err => {
-        clearTimeout(timeout);
-        if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
-          reject(new Error('Generation aborted due to timeout'));
-        } else {
-          reject(new Error(`Failed to generate: ${err.message}`));
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(hardTimeout);
+          clearInterval(heartbeatCheck);
+          if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+            reject(new Error('Generation aborted due to timeout'));
+          } else {
+            reject(new Error(`Failed to generate: ${err.message}`));
+          }
         }
       });
     });

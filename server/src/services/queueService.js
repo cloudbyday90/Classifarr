@@ -220,6 +220,33 @@ class QueueService {
     }
 
     /**
+     * Reset any tasks stuck in 'processing' state from previous runs
+     * This handles zombie tasks left behind after crashes/restarts
+     */
+    async resetStaleProcessingTasks() {
+        try {
+            const result = await db.query(
+                `UPDATE task_queue 
+                 SET status = 'pending', started_at = NULL, 
+                     error_message = 'Reset on startup - previous worker crashed'
+                 WHERE status = 'processing'
+                 RETURNING id`
+            );
+
+            if (result.rowCount > 0) {
+                logger.warn('Reset stale processing tasks on startup', {
+                    count: result.rowCount,
+                    taskIds: result.rows.map(r => r.id)
+                });
+            }
+            return result.rowCount;
+        } catch (error) {
+            logger.error('Failed to reset stale tasks', { error: error.message });
+            return 0;
+        }
+    }
+
+    /**
      * Main worker loop
      */
     async startWorker() {
@@ -227,6 +254,9 @@ class QueueService {
             logger.warn('Worker already running');
             return;
         }
+
+        // Solution A: Reset any zombie tasks from previous crashes
+        await this.resetStaleProcessingTasks();
 
         this.running = true;
         logger.info('Queue worker started');

@@ -5,3 +5,5 @@ dist/
 .DS_Store
 coverage/
 data/
+local_test_*.js
+*.local.js
