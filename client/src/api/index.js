@@ -164,6 +164,21 @@ export default {
   getSmartSuggestions(id) {
     return apiClient.get(`/libraries/${id}/rules/smart-suggest`)
   },
+  getPatternSuggestions(libraryId, contentType) {
+    return apiClient.get(`/libraries/${libraryId}/rule-suggestions/${contentType}`)
+  },
+  getAvailablePatterns(libraryId) {
+    return apiClient.get(`/libraries/${libraryId}/available-patterns`)
+  },
+  getPendingSuggestions() {
+    return apiClient.get('/libraries/pending-suggestions')
+  },
+  dismissSuggestions(libraryId) {
+    return apiClient.post(`/libraries/${libraryId}/dismiss-suggestions`)
+  },
+  refreshPatterns(libraryId) {
+    return apiClient.post(`/libraries/${libraryId}/refresh-patterns`)
+  },
   autoGenerateRules(id) {
     return apiClient.post(`/libraries/${id}/rules/auto-generate`)
   },

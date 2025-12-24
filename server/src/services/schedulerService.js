@@ -78,6 +78,9 @@ class SchedulerService {
                 case 'full_rescan':
                     result = await this.runFullRescan(task.library_id);
                     break;
+                case 'pattern_analysis':
+                    result = await this.runPatternAnalysis(task.library_id);
+                    break;
                 default:
                     result = { error: 'Unknown task type' };
             }
@@ -108,6 +111,61 @@ class SchedulerService {
             return await mediaSyncService.syncLibrary(libraryId, { fullRescan: true });
         } else {
             return { message: 'No library specified' };
+        }
+    }
+
+    async runPatternAnalysis(libraryId) {
+        const mediaPatternAnalyzer = require('./mediaPatternAnalyzer');
+
+        // If specific library, analyze just that one
+        if (libraryId) {
+            const result = await mediaPatternAnalyzer.analyzeLibrary(libraryId);
+
+            // Update library_pattern_suggestions with new patterns
+            await db.query(
+                `INSERT INTO library_pattern_suggestions (library_id, detected_patterns, pending_count, last_analyzed, notification_dismissed, updated_at)
+                 VALUES ($1, $2, $3, NOW(), false, NOW())
+                 ON CONFLICT (library_id) 
+                 DO UPDATE SET 
+                   detected_patterns = $2, 
+                   pending_count = $3, 
+                   last_analyzed = NOW(),
+                   notification_dismissed = false,
+                   updated_at = NOW()`,
+                [libraryId, JSON.stringify(result.patterns), result.patterns.length]
+            );
+
+            return { libraryId, patternsDetected: result.patterns.length };
+        } else {
+            // Analyze all libraries
+            const libraries = await db.query('SELECT id FROM libraries WHERE sync_enabled = true');
+            const results = [];
+
+            for (const lib of libraries.rows) {
+                try {
+                    const result = await mediaPatternAnalyzer.analyzeLibrary(lib.id);
+
+                    await db.query(
+                        `INSERT INTO library_pattern_suggestions (library_id, detected_patterns, pending_count, last_analyzed, notification_dismissed, updated_at)
+                         VALUES ($1, $2, $3, NOW(), false, NOW())
+                         ON CONFLICT (library_id) 
+                         DO UPDATE SET 
+                           detected_patterns = $2, 
+                           pending_count = $3, 
+                           last_analyzed = NOW(),
+                           notification_dismissed = false,
+                           updated_at = NOW()`,
+                        [lib.id, JSON.stringify(result.patterns), result.patterns.length]
+                    );
+
+                    results.push({ libraryId: lib.id, patternsDetected: result.patterns.length });
+                } catch (error) {
+                    logger.error('Pattern analysis failed for library', { libraryId: lib.id, error: error.message });
+                }
+            }
+
+            logger.info('Pattern analysis complete for all libraries', { analyzed: results.length });
+            return { libraries: results };
         }
     }
 

@@ -1,31 +1,33 @@
 /**
- * Plex Pattern Analyzer
+ * Media Server Pattern Analyzer
  * 
- * Analyzes Plex metadata patterns from detected content groups to generate
+ * Analyzes media server metadata patterns from detected content groups to generate
  * intelligent rule suggestions based on actual library organization.
+ * 
+ * Supports: Plex, Emby, Jellyfin
  */
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 
-const logger = createLogger('PlexPatternAnalyzer');
+const logger = createLogger('MediaPatternAnalyzer');
 
-class PlexPatternAnalyzer {
+class MediaPatternAnalyzer {
     /**
-     * Analyze a group of items (by content type) and extract common patterns
+     * Analyze ALL items in a library and extract available patterns from media server metadata
+     * This is used when creating rules - shows what filter options are available
      * @param {number} libraryId - Library ID
-     * @param {string} contentType - Content type to analyze (e.g., 'holiday', 'anime')
-     * @returns {Promise<Object>} Detected patterns with match statistics
+     * @returns {Promise<Object>} Detected patterns with statistics
      */
-    async analyzeGroup(libraryId, contentType) {
+    async analyzeLibrary(libraryId) {
         try {
-            logger.info('Analyzing pattern for content group', { libraryId, contentType });
+            logger.info('Analyzing library patterns from media server metadata', { libraryId });
 
-            // Get all items classified as this content type
-            const items = await this.getItemsByContentType(libraryId, contentType);
+            // Get ALL items in library (not filtered by AI classification)
+            const items = await this.getAllLibraryItems(libraryId);
 
             if (items.length === 0) {
-                logger.warn('No items found for content type', { libraryId, contentType });
+                logger.warn('No items found in library', { libraryId });
                 return { patterns: [], totalItems: 0 };
             }
 
@@ -34,10 +36,41 @@ class PlexPatternAnalyzer {
 
             logger.info('Pattern analysis complete', {
                 libraryId,
-                contentType,
                 itemCount: items.length,
                 patternCount: patterns.length
             });
+
+            return {
+                totalItems: items.length,
+                patterns,
+                analyzedAt: new Date().toISOString()
+            };
+        } catch (error) {
+            logger.error('Failed to analyze library', { error: error.message, libraryId });
+            throw error;
+        }
+    }
+
+    /**
+     * Legacy method - analyze group by content type (for backward compatibility)
+     */
+    async analyzeGroup(libraryId, contentType) {
+        // If no content type, analyze entire library
+        if (!contentType || contentType === 'all') {
+            return this.analyzeLibrary(libraryId);
+        }
+
+        try {
+            logger.info('Analyzing pattern for content group', { libraryId, contentType });
+
+            const items = await this.getItemsByContentType(libraryId, contentType);
+
+            if (items.length === 0) {
+                // Fall back to analyzing entire library
+                return this.analyzeLibrary(libraryId);
+            }
+
+            const patterns = await this.extractPatterns(items);
 
             return {
                 contentType,
@@ -49,6 +82,36 @@ class PlexPatternAnalyzer {
             logger.error('Failed to analyze group', { error: error.message, libraryId, contentType });
             throw error;
         }
+    }
+
+    /**
+     * Get ALL items in library from media server
+     * @param {number} libraryId 
+     * @returns {Promise<Array>} Array of media items with metadata
+     */
+    async getAllLibraryItems(libraryId) {
+        const query = `
+            SELECT 
+                msi.id,
+                msi.title,
+                msi.year,
+                msi.media_type,
+                msi.content_rating,
+                msi.genres,
+                msi.collections,
+                msi.tags,
+                msi.studio,
+                msi.metadata,
+                ms.type as media_server_type
+            FROM media_server_items msi
+            INNER JOIN libraries l ON l.id = msi.library_id
+            INNER JOIN media_server ms ON ms.id = l.media_server_id
+            WHERE msi.library_id = $1
+            ORDER BY msi.title
+        `;
+
+        const result = await db.query(query, [libraryId]);
+        return result.rows;
     }
 
     /**
@@ -66,12 +129,16 @@ class PlexPatternAnalyzer {
                 msi.media_type,
                 msi.content_rating,
                 msi.genres,
+                msi.collections,
+                msi.tags,
+                msi.studio,
                 msi.metadata,
-                msi.plex_data
+                ms.type as media_server_type
             FROM media_server_items msi
+            INNER JOIN libraries l ON l.id = msi.library_id
+            INNER JOIN media_server ms ON ms.id = l.media_server_id
             WHERE msi.library_id = $1
                 AND msi.metadata->'content_analysis'->>'type' = $2
-                AND msi.in_library = true
             ORDER BY msi.title
         `;
 
@@ -106,8 +173,8 @@ class PlexPatternAnalyzer {
         );
         if (genrePattern) patterns.push(genrePattern);
 
-        // 3. Collection Pattern (from plex_data)
-        const collectionPattern = this.extractPlexDataPattern(
+        // 3. Collection Pattern (from collections array)
+        const collectionPattern = this.extractArrayPattern(
             items,
             'collections',
             'contains',
@@ -115,17 +182,17 @@ class PlexPatternAnalyzer {
         );
         if (collectionPattern) patterns.push(collectionPattern);
 
-        // 4. Label Pattern (from plex_data)
-        const labelPattern = this.extractPlexDataPattern(
+        // 4. Tags Pattern (from tags array)
+        const tagsPattern = this.extractArrayPattern(
             items,
-            'labels',
+            'tags',
             'is_one_of',
             totalCount
         );
-        if (labelPattern) patterns.push(labelPattern);
+        if (tagsPattern) patterns.push(tagsPattern);
 
-        // 5. Studio Pattern (from plex_data)
-        const studioPattern = this.extractPlexDataPattern(
+        // 5. Studio Pattern (direct field)
+        const studioPattern = this.extractFieldPattern(
             items,
             'studio',
             'equals',
@@ -220,17 +287,19 @@ class PlexPatternAnalyzer {
     }
 
     /**
-     * Extract pattern from plex_data jsonb field
+     * Extract pattern from media server data jsonb field
+     * Supports Plex, Emby, and Jellyfin
      */
-    extractPlexDataPattern(items, plexField, defaultOperator, totalCount) {
+    extractServerDataPattern(items, serverField, defaultOperator, totalCount) {
         const valueCounts = {};
         let matchCount = 0;
 
         items.forEach(item => {
-            if (!item.plex_data) return;
+            // Get data from appropriate media server field
+            const serverData = item.plex_data || item.emby_data || item.jellyfin_data;
+            if (!serverData) return;
 
-            const plexData = item.plex_data;
-            let fieldValue = plexData[plexField];
+            let fieldValue = serverData[serverField];
 
             if (!fieldValue) return;
 
@@ -263,7 +332,7 @@ class PlexPatternAnalyzer {
         const matchPercentage = Math.round((matchCount / totalCount) * 100);
 
         return {
-            field: plexField,
+            field: serverField,
             operator: values.length > 1 ? 'is_one_of' : defaultOperator,
             values,
             valueCounts,
@@ -341,10 +410,14 @@ class PlexPatternAnalyzer {
         let itemValue;
         if (field in item) {
             itemValue = item[field];
-        } else if (item.plex_data && field in item.plex_data) {
-            itemValue = item.plex_data[field];
         } else {
-            return false;
+            // Check media server data (plex, emby, or jellyfin)
+            const serverData = item.plex_data || item.emby_data || item.jellyfin_data;
+            if (serverData && field in serverData) {
+                itemValue = serverData[field];
+            } else {
+                return false;
+            }
         }
 
         switch (operator) {
@@ -373,4 +446,4 @@ class PlexPatternAnalyzer {
     }
 }
 
-module.exports = new PlexPatternAnalyzer();
+module.exports = new MediaPatternAnalyzer();

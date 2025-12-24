@@ -38,7 +38,7 @@
           <div class="flex items-center gap-3 flex-1">
             <div :class="['p-2 rounded-lg', task.enabled ? 'bg-blue-900/20 text-blue-400' : 'bg-gray-700/30 text-gray-500']">
                <span class="text-xl">
-                 {{ task.task_type === 'library_scan' ? '📚' : '🔃' }}
+                 {{ task.task_type === 'library_scan' ? '📚' : task.task_type === 'pattern_analysis' ? '📊' : '🔃' }}
                </span>
             </div>
             <div>
@@ -117,6 +117,7 @@
             >
               <option value="library_scan">📚 Library Scan (Incremental)</option>
               <option value="full_rescan">🔃 Full Rescan (Re-analyze all)</option>
+              <option value="pattern_analysis">📊 Pattern Analysis (Detect new filters)</option>
             </select>
           </div>
           <div>

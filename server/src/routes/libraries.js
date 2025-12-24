@@ -23,7 +23,7 @@ const sonarrService = require('../services/sonarr');
 const mediaSyncService = require('../services/mediaSync');
 const classificationService = require('../services/classification');
 const ollamaService = require('../services/ollama');
-const plexPatternAnalyzer = require('../services/plexPatternAnalyzer');
+const mediaPatternAnalyzer = require('../services/mediaPatternAnalyzer');
 const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
@@ -45,6 +45,41 @@ router.get('/', async (req, res) => {
     `);
     res.json(result.rows);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/pending-suggestions:
+ *   get:
+ *     summary: Get all libraries with pending pattern suggestions
+ *     description: Used by dashboard widget to show libraries needing attention
+ */
+router.get('/pending-suggestions', async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        lps.library_id,
+        l.name as library_name,
+        lps.pending_count,
+        lps.detected_patterns,
+        lps.last_analyzed
+      FROM library_pattern_suggestions lps
+      INNER JOIN libraries l ON l.id = lps.library_id
+      WHERE lps.pending_count > 0 
+        AND lps.notification_dismissed = false
+      ORDER BY lps.pending_count DESC
+    `;
+
+    const result = await db.query(query);
+
+    res.json({
+      totalPending: result.rows.reduce((sum, r) => sum + r.pending_count, 0),
+      libraries: result.rows
+    });
+  } catch (error) {
+    logger.error('Failed to get pending suggestions', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
@@ -1364,13 +1399,94 @@ router.get('/:id/rule-suggestions/:contentType', async (req, res) => {
   try {
     const { id, contentType } = req.params;
 
-    logger.info('Fetching Plex pattern suggestions', { libraryId: id, contentType });
+    logger.info('Fetching media server pattern suggestions', { libraryId: id, contentType });
 
-    const result = await plexPatternAnalyzer.analyzeGroup(parseInt(id), contentType);
+    const result = await mediaPatternAnalyzer.analyzeGroup(parseInt(id), contentType);
 
     res.json(result);
   } catch (error) {
     logger.error('Failed to get pattern suggestions', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/available-patterns:
+ *   get:
+ *     summary: Get available patterns from library media server metadata
+ *     description: Analyzes ALL items in library to extract available filter patterns (ratings, genres, collections, labels, studios, years)
+ */
+router.get('/:id/available-patterns', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    logger.info('Fetching available patterns from library metadata', { libraryId: id });
+
+    const result = await mediaPatternAnalyzer.analyzeLibrary(parseInt(id));
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Failed to get available patterns', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/dismiss-suggestions:
+ *   post:
+ *     summary: Dismiss pending suggestions for a library
+ */
+router.post('/:id/dismiss-suggestions', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await db.query(
+      `UPDATE library_pattern_suggestions 
+       SET notification_dismissed = true, updated_at = NOW() 
+       WHERE library_id = $1`,
+      [id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Failed to dismiss suggestions', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/refresh-patterns:
+ *   post:
+ *     summary: Trigger pattern re-analysis for a library
+ */
+router.post('/:id/refresh-patterns', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    logger.info('Refreshing patterns for library', { libraryId: id });
+
+    const result = await mediaPatternAnalyzer.analyzeLibrary(parseInt(id));
+
+    // Update the library_pattern_suggestions table
+    await db.query(
+      `INSERT INTO library_pattern_suggestions (library_id, detected_patterns, pending_count, last_analyzed, notification_dismissed, updated_at)
+       VALUES ($1, $2, $3, NOW(), false, NOW())
+       ON CONFLICT (library_id) 
+       DO UPDATE SET 
+         detected_patterns = $2, 
+         pending_count = $3, 
+         last_analyzed = NOW(),
+         notification_dismissed = false,
+         updated_at = NOW()`,
+      [id, JSON.stringify(result.patterns), result.patterns.length]
+    );
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Failed to refresh patterns', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

@@ -35,85 +35,96 @@
       </div>
     </Card>
 
-    <!-- Stats & Suggestions -->
+    <!-- Library Patterns - "Use This" Section -->
     <Card v-if="conditions.length === 0 && !editingRuleId">
       <template #header>
-        <h2 class="text-xl font-semibold">Detected Content</h2>
+        <h2 class="text-xl font-semibold">📚 Available Library Filters</h2>
       </template>
       
-      <div v-if="loadingStats" class="text-center py-8">
+      <div v-if="loadingLibraryPatterns" class="text-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p class="text-gray-400">Analyzing library content...</p>
+        <p class="text-gray-400">Analyzing library metadata...</p>
       </div>
       
-      <div v-else-if="stats.types" class="space-y-6">
-        <!-- Analysis Progress -->
-        <div class="bg-background-light p-4 rounded border border-gray-700">
-          <div class="flex justify-between items-end mb-2">
-            <div>
-              <h3 class="font-medium text-white">Analysis Status</h3>
-              <p class="text-sm text-gray-400">
-                {{ stats.analyzed }} of {{ stats.total }} items classified
-              </p>
-            </div>
-            <div class="text-right">
-              <span class="text-2xl font-bold text-primary">{{ Math.round((stats.analyzed / stats.total) * 100) || 0 }}%</span>
-            </div>
-          </div>
-          <div class="w-full bg-gray-700 rounded-full h-2.5">
-            <div 
-              class="bg-primary h-2.5 rounded-full transition-all duration-500 ease-out" 
-              :style="{ width: `${(stats.analyzed / stats.total) * 100}%` }"
-            ></div>
-          </div>
-          <p v-if="stats.analyzed < stats.total" class="text-xs text-blue-400 mt-2 flex items-center gap-2">
-            <span class="animate-pulse">●</span> {{ stats.total - stats.analyzed }} items queued for analysis...
-          </p>
-        </div>
-
+      <div v-else-if="libraryPatterns.length > 0" class="space-y-4">
         <p class="text-gray-400">
-          Click "Use This" on any detected group to automatically create a rule.
+          Select conditions from your library's metadata to build a rule:
         </p>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="space-y-3">
           <div 
-            v-for="stat in stats.types" 
-            :key="stat.type"
-            class="bg-background-light p-4 rounded border border-gray-700 hover:border-primary transition-colors cursor-pointer"
-            @click="applySuggestion(stat.type)"
+            v-for="(pattern, idx) in libraryPatterns" 
+            :key="idx"
+            class="bg-background-light p-4 rounded border"
+            :class="pattern.selected ? 'border-primary' : 'border-gray-700'"
           >
-            <div class="flex justify-between items-start mb-2">
-              <Badge>{{ stat.type }}</Badge>
-              <span class="text-xl font-bold">{{ stat.count }}</span>
+            <div class="flex items-start gap-3">
+              <input 
+                type="checkbox" 
+                v-model="pattern.selected"
+                class="mt-1 w-5 h-5 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
+              />
+              <div class="flex-1">
+                <div class="flex justify-between items-start mb-2">
+                  <div>
+                    <h4 class="font-medium text-white capitalize">{{ pattern.field.replace('_', ' ') }}</h4>
+                    <p class="text-sm text-gray-400">
+                      {{ pattern.matchCount }} items have this data
+                      ({{ pattern.matchPercentage }}% of library)
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex gap-3 flex-wrap">
+                  <div class="flex-shrink-0">
+                    <label class="block text-xs text-gray-400 mb-1">Operator</label>
+                    <select 
+                      v-model="pattern.operator"
+                      class="bg-gray-900 border border-gray-600 rounded px-3 py-1 text-sm text-white focus:outline-none focus:border-primary"
+                    >
+                      <option value="equals">Equals</option>
+                      <option value="not_equals">Not Equals</option>
+                      <option value="contains" v-if="['collections', 'tags', 'genres'].includes(pattern.field)">Contains</option>
+                      <option value="is_one_of">Is one of</option>
+                    </select>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <label class="block text-xs text-gray-400 mb-1">Available Values</label>
+                    <div class="flex flex-wrap gap-2">
+                      <span 
+                        v-for="value in pattern.values.slice(0, 10)" 
+                        :key="value"
+                        class="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-800 text-gray-300"
+                      >
+                        {{ value }}
+                        <span class="ml-1 text-gray-500">({{ pattern.valueCounts[value] }})</span>
+                      </span>
+                      <span v-if="pattern.values.length > 10" class="text-xs text-gray-500 py-1">
+                        +{{ pattern.values.length - 10 }} more
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p class="text-xs text-gray-500 mb-3">Items found</p>
-            <Button size="sm" variant="secondary" class="w-full">Use This</Button>
           </div>
         </div>
         
-        <div class="mt-6 pt-6 border-t border-gray-700 text-center">
-          <p class="text-sm text-gray-500 mb-2">Or create a custom rule from scratch</p>
+        <div class="flex justify-between items-center gap-4 mt-6 pt-4 border-t border-gray-700">
           <Button variant="ghost" @click="addCondition">
-            + Start Empty
-          </Button>
-        </div>
-      </div>
-      
-      <div v-else class="text-center py-12 border-2 border-dashed border-gray-700 rounded-lg">
-        <p class="text-gray-400 mb-4">No content types detected yet.</p>
-        <p class="text-sm text-gray-500 max-w-md mx-auto mb-6">
-          Background analysis runs automatically when new media is added.
-          <br>For existing content, run a one-time scan.
-        </p>
-        <div class="flex justify-center gap-4">
-          <Button @click="runAnalysis" :disabled="analyzing" variant="secondary">
-            <span v-if="analyzing">Scanning Library...</span>
-            <span v-else>Scan Library Content</span>
-          </Button>
-          <Button variant="primary" @click="addCondition">
             + Add Custom Condition
           </Button>
+          <Button variant="primary" @click="applySelectedPatterns" :disabled="!libraryPatterns.some(p => p.selected)">
+            Use Selected Conditions
+          </Button>
         </div>
+      </div>
+      
+      <div v-else class="text-center py-8">
+        <p class="text-gray-500 mb-4">No library items found or still syncing.</p>
+        <Button variant="ghost" @click="addCondition">
+          + Add Custom Condition
+        </Button>
       </div>
     </Card>
 
@@ -330,6 +341,100 @@
       </div>
     </Card>
 
+    <!-- Pattern Selection Modal -->
+    <div 
+      v-if="showPatternModal" 
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
+      @click.self="cancelPatternSelection"
+    >
+      <div class="bg-background border border-gray-700 rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">Select Conditions for "{{ selectedContentType }}" Content</h2>
+            <button @click="cancelPatternSelection" class="text-gray-400 hover:text-white">
+              ✕
+            </button>
+          </div>
+
+          <p class="text-gray-400 text-sm mb-6">
+            Based on your media server library, we detected {{ detectedPatterns.length }} patterns. 
+            Select which conditions you'd like to include in this rule.
+          </p>
+
+          <div v-if="loadingPatterns" class="text-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p class="text-gray-400">Analyzing patterns...</p>
+          </div>
+
+          <div v-else class="space-y-3">
+            <div 
+              v-for="(pattern, idx) in detectedPatterns" 
+              :key="idx"
+              class="bg-background-light p-4 rounded border"
+              :class="pattern.selected ? 'border-primary' : 'border-gray-700'"
+            >
+              <div class="flex items-start gap-3">
+                <input 
+                  type="checkbox" 
+                  v-model="pattern.selected"
+                  class="mt-1 w-5 h-5 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
+                />
+                <div class="flex-1">
+                  <div class="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 class="font-medium text-white capitalize">{{ pattern.field.replace('_', ' ') }}</h4>
+                      <p class="text-sm text-gray-400">
+                        {{ pattern.matchCount }} of {{ pattern.totalCount }} items 
+                        ({{ pattern.matchPercentage }}%)
+                      </p>
+                    </div>
+                    <div v-if="pattern.preSelected" class="text-xs bg-green-900/50 text-green-400 px-2 py-1 rounded">
+                      Recommended
+                    </div>
+                  </div>
+
+                  <div class="flex gap-3">
+                    <div class="flex-shrink-0">
+                      <label class="block text-xs text-gray-400 mb-1">Operator</label>
+                      <select 
+                        v-model="pattern.operator"
+                        class="bg-gray-900 border border-gray-600 rounded px-3 py-1 text-sm text-white focus:outline-none focus:border-primary"
+                      >
+                        <option value="equals">Equals</option>
+                        <option value="not_equals">Not Equals</option>
+                        <option value="contains" v-if="['collections', 'labels', 'genres'].includes(pattern.field)">Contains</option>
+                        <option value="is_one_of">Is one of</option>
+                      </select>
+                    </div>
+                    <div class="flex-1">
+                      <label class="block text-xs text-gray-400 mb-1">Values</label>
+                      <div class="flex flex-wrap gap-2">
+                        <span 
+                          v-for="value in pattern.values" 
+                          :key="value"
+                          class="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-800 text-gray-300"
+                        >
+                          {{ value }}
+                          <span class="ml-2 text-gray-500">({{ pattern.valueCounts[value] }})</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-4 mt-6 pt-4 border-t border-gray-700">
+            <Button variant="secondary" @click="cancelPatternSelection">Cancel</Button>
+            <Button variant="primary" @click="confirmPatterns" :disabled="!detectedPatterns.some(p => p.selected)">
+              Create Rule with Selected Conditions
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Actions -->
     <div class="flex justify-end gap-4">
       <Button variant="secondary" @click="$emit('cancel')">Cancel</Button>
@@ -380,6 +485,16 @@ const smartSuggestions = ref([])
 const smartSuggestionsSource = ref('')
 const loadingSmartSuggestions = ref(false)
 
+// Pattern selection modal state
+const showPatternModal = ref(false)
+const detectedPatterns = ref([])
+const loadingPatterns = ref(false)
+const selectedContentType = ref('')
+
+// Library patterns state (from media server metadata directly)
+const libraryPatterns = ref([])
+const loadingLibraryPatterns = ref(false)
+
 const isValid = computed(() => {
   return ruleName.value.trim() && conditions.value.length > 0
 })
@@ -392,6 +507,9 @@ onMounted(async () => {
   } catch (error) {
     console.error('Failed to load library:', error)
   }
+  
+  // Load available patterns from library metadata
+  await loadLibraryPatterns()
   
   // Check if we are editing an existing rule
   if (route.query.ruleId) {
@@ -506,17 +624,108 @@ const runAnalysis = async () => {
   }
 }
 
-const applySuggestion = async (type) => {
-  ruleName.value = `${type.charAt(0).toUpperCase() + type.slice(1)} Content`;
-  description.value = `Automatically matched ${type} content`;
-  conditions.value = [{
-    field: 'content_type',
-    operator: 'equals',
-    value: type
-  }];
+// Load available patterns from library media server metadata
+const loadLibraryPatterns = async () => {
+  try {
+    loadingLibraryPatterns.value = true
+    const response = await api.getAvailablePatterns(props.libraryId)
+    
+    // Add 'selected' property to each pattern
+    libraryPatterns.value = response.data.patterns.map(pattern => ({
+      ...pattern,
+      selected: false
+    }))
+  } catch (error) {
+    console.error('Failed to load library patterns:', error)
+    // Don't show error toast, just log it - the UI will show empty state
+  } finally {
+    loadingLibraryPatterns.value = false
+  }
+}
+
+// Apply selected library patterns as rule conditions
+const applySelectedPatterns = async () => {
+  const selected = libraryPatterns.value.filter(p => p.selected)
   
-  // Auto-save the rule immediately
-  await saveRule();
+  if (selected.length === 0) {
+    toast.error('Please select at least one condition', 'No Conditions Selected')
+    return
+  }
+  
+  // Set rule name if not already set
+  if (!ruleName.value) {
+    ruleName.value = 'Library Filter Rule'
+    description.value = 'Rule created from library metadata patterns'
+  }
+  
+  // Map patterns to conditions format
+  conditions.value = selected.map(pattern => ({
+    field: pattern.field,
+    operator: pattern.operator,
+    value: pattern.operator === 'is_one_of' ? pattern.values : pattern.values[0]
+  }))
+  
+  // Preview the rule
+  await previewRule()
+  
+  toast.success('Conditions added from library patterns', 'Patterns Applied')
+}
+
+const applySuggestion = async (type) => {
+  try {
+    loadingPatterns.value = true;
+    selectedContentType.value = type;
+    
+    // Fetch pattern suggestions from API
+    const response = await api.getPatternSuggestions(props.libraryId, type);
+    
+    // Add 'selected' property to each pattern (pre-select if preSelected is true)
+    detectedPatterns.value = response.data.patterns.map(pattern => ({
+      ...pattern,
+      selected: pattern.preSelected || false
+    }));
+    
+    // Set default rule name and description
+    ruleName.value = `${type.charAt(0).toUpperCase() + type.slice(1)} Content`;
+    description.value = `Auto-detected ${type} content based on media server metadata`;
+    
+    // Show the pattern selection modal
+    showPatternModal.value = true;
+  } catch (error) {
+    console.error('Failed to load pattern suggestions:', error);
+    toast.error('Failed to load pattern suggestions', 'Error');
+  } finally {
+    loadingPatterns.value = false;
+  }
+}
+
+const confirmPatterns = async () => {
+  // Get selected patterns and convert to conditions
+  const selectedPatterns = detectedPatterns.value.filter(p => p.selected);
+  
+  if (selectedPatterns.length === 0) {
+    toast.error('Please select at least one condition', 'No Conditions Selected');
+    return;
+  }
+  
+  // Map patterns to conditions format
+  conditions.value = selectedPatterns.map(pattern => ({
+    field: pattern.field,
+    operator: pattern.operator,
+    value: pattern.operator === 'is_one_of' ? pattern.values : pattern.values[0]
+  }));
+  
+  // Close modal
+  showPatternModal.value = false;
+  
+  // Optionally auto-preview the rule
+  await previewRule();
+}
+
+const cancelPatternSelection = () => {
+  showPatternModal.value = false;
+  detectedPatterns.value = [];
+  selectedContentType.value = '';
 }
 
 const addCondition = () => {

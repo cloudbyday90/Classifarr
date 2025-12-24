@@ -88,6 +88,9 @@
           </div>
         </Card>
 
+        <!-- Pending Pattern Suggestions -->
+        <PendingSuggestionsWidget />
+
         <!-- Queue Summary -->
         <Card title="Processing Queue">
           <div class="space-y-3">
@@ -143,6 +146,7 @@ import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
+import PendingSuggestionsWidget from '@/components/PendingSuggestionsWidget.vue'
 
 const librariesStore = useLibrariesStore()
 
