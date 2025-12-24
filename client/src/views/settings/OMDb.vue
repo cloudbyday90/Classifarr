@@ -35,6 +35,39 @@
           </p>
         </div>
 
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Daily Request Limit</label>
+          <Input 
+            v-model="config.daily_limit" 
+            type="number"
+            placeholder="1000"
+            min="1"
+          />
+          <p class="text-xs text-gray-500 mt-1">
+            Analysis pauses when limit is reached. Free tier: 1,000 requests/day.
+          </p>
+        </div>
+
+        <div v-if="usage" class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium text-gray-300">Daily Usage</span>
+            <span class="text-sm" :class="usagePercentage >= 90 ? 'text-red-400' : 'text-gray-400'">
+              {{ usage.requests_today }} / {{ config.daily_limit || 1000 }}
+            </span>
+          </div>
+          <div class="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+            <div 
+              class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+              :class="usagePercentage >= 90 ? 'bg-red-500' : 'bg-blue-600'"
+              :style="{ width: `${usagePercentage}%` }"
+            ></div>
+          </div>
+          <p class="text-xs text-gray-500 mt-2 flex justify-between">
+            <span>Resets strictly at implementation logic reset time (UTC/Local)</span>
+            <span v-if="usage.last_reset_date">Last reset: {{ new Date(usage.last_reset_date).toLocaleDateString() }}</span>
+          </p>
+        </div>
+
         <Toggle 
           v-model="config.is_active" 
           label="Enable OMDb Enrichment" 
@@ -93,13 +126,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
+import Input from '@/components/common/Input.vue'
 
 const toast = useToast()
 const loading = ref(true)
@@ -109,7 +143,19 @@ const testResult = ref(null)
 
 const config = ref({
   api_key: '',
-  is_active: false
+  is_active: false,
+  daily_limit: 1000
+})
+
+const usage = ref({
+  requests_today: 0,
+  last_reset_date: null
+})
+
+const usagePercentage = computed(() => {
+  const limit = config.value.daily_limit || 1000
+  const used = usage.value.requests_today || 0
+  return Math.min(100, (used / limit) * 100)
 })
 
 onMounted(async () => {
@@ -118,7 +164,12 @@ onMounted(async () => {
     if (response.data) {
       config.value = {
         api_key: response.data.api_key || '',
-        is_active: response.data.is_active
+        is_active: response.data.is_active,
+        daily_limit: response.data.daily_limit || 1000
+      }
+      usage.value = {
+        requests_today: response.data.requests_today || 0,
+        last_reset_date: response.data.last_reset_date
       }
     }
   } catch (error) {

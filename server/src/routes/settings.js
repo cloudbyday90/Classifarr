@@ -774,25 +774,30 @@ router.get('/omdb', async (req, res) => {
 router.put('/omdb', async (req, res) => {
   const client = await db.pool.connect();
   try {
-    const { api_key, is_active } = req.body;
+    const { api_key, is_active, daily_limit } = req.body;
 
     await client.query('BEGIN');
 
-    // Get existing config to preserve API key if masked value is sent
-    const existingResult = await client.query('SELECT api_key FROM omdb_config LIMIT 1');
-    const existingKey = existingResult.rows[0]?.api_key;
+    // Get existing config to preserve API key if masked AND preserve usage stats
+    const existingResult = await client.query('SELECT * FROM omdb_config LIMIT 1');
+    const existing = existingResult.rows[0];
 
-    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingKey;
+    const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : (existing?.api_key || null);
+    const finalDailyLimit = daily_limit !== undefined ? parseInt(daily_limit) : (existing?.daily_limit || 1000);
 
-    // Delete existing (single config enforcement)
+    // Preserve usage stats if updating same day
+    const preservedRequestsToday = existing?.requests_today || 0;
+    const preservedLastReset = existing?.last_reset_date || null;
+
+    // Delete all rows to enforce single-row pattern
     await client.query('DELETE FROM omdb_config');
 
+    // Insert single row with id=1
     const result = await client.query(
-      `INSERT INTO omdb_config 
-       (api_key, is_active, updated_at)
-       VALUES ($1, $2, NOW())
+      `INSERT INTO omdb_config (id, api_key, is_active, daily_limit, requests_today, last_reset_date, updated_at)
+       VALUES (1, $1, $2, $3, $4, $5, NOW())
        RETURNING *`,
-      [finalApiKey, is_active !== false]
+      [finalApiKey, is_active !== false, finalDailyLimit, preservedRequestsToday, preservedLastReset]
     );
 
     await client.query('COMMIT');

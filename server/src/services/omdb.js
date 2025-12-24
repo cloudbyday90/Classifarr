@@ -9,9 +9,17 @@
  */
 
 const axios = require('axios');
+const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('OMDbService');
+
+class OMDbLimitReachedError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'OMDbLimitReachedError';
+    }
+}
 
 /**
  * OMDb API Service
@@ -21,6 +29,50 @@ const logger = createLogger('OMDbService');
 class OMDbService {
     constructor() {
         this.baseUrl = 'https://www.omdbapi.com';
+    }
+
+    /**
+     * Check daily usage and increment if within limit
+     * @returns {Promise<string>} API Key
+     * @throws {OMDbLimitReachedError} If limit reached
+     */
+    async checkAndIncrementUsage() {
+        try {
+            // Fetch active config (row-agnostic, supports any ID)
+            const result = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
+            const config = result.rows[0];
+
+            if (!config || !config.api_key) {
+                throw new Error('OMDb API key not configured');
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            // Format existing date to YYYY-MM-DD for comparison
+            const lastReset = config.last_reset_date ? new Date(config.last_reset_date).toISOString().split('T')[0] : null;
+
+            let requestsToday = config.requests_today || 0;
+
+            // Reset if new day
+            if (lastReset !== today) {
+                logger.info('Resetting OMDb daily limit counter for new day', { today, lastReset });
+                requestsToday = 0;
+                await db.query('UPDATE omdb_config SET requests_today = 0, last_reset_date = CURRENT_DATE WHERE id = $1', [config.id]);
+            }
+
+            if (requestsToday >= config.daily_limit) {
+                logger.warn('OMDb daily limit reached', { limit: config.daily_limit, used: requestsToday });
+                throw new OMDbLimitReachedError(`OMDb daily limit of ${config.daily_limit} reached`);
+            }
+
+            // Increment usage
+            // Note: We increment BEFORE the request to be conservative
+            await db.query('UPDATE omdb_config SET requests_today = requests_today + 1 WHERE id = $1', [config.id]);
+
+            return config.api_key;
+        } catch (error) {
+            if (error.name === 'OMDbLimitReachedError') throw error;
+            throw new Error(`Failed to check OMDb usage: ${error.message}`);
+        }
     }
 
     /**
@@ -55,8 +107,11 @@ class OMDbService {
      */
     async getByTitle(title, year, type = 'movie', apiKey) {
         try {
+            // Enforce rate limit managed by DB
+            const validApiKey = await this.checkAndIncrementUsage();
+
             const params = {
-                apikey: apiKey,
+                apikey: validApiKey,
                 t: title,
                 type: type === 'tv' ? 'series' : type,
                 plot: 'short'
@@ -77,6 +132,11 @@ class OMDbService {
                 return null;
             }
         } catch (error) {
+            if (error.response?.status === 401) {
+                logger.error('OMDb API Unauthorized (401)', { error: error.message });
+                // Treat 401 as limit reached or invalid key
+                throw new OMDbLimitReachedError('OMDb API Unauthorized: Check API Key or Limits');
+            }
             logger.error('OMDb API error', { title, error: error.message });
             throw error;
         }
@@ -91,9 +151,11 @@ class OMDbService {
         try {
             logger.debug('OMDb lookup by IMDB ID', { imdbId });
 
+            const validApiKey = await this.checkAndIncrementUsage();
+
             const response = await axios.get(this.baseUrl, {
                 params: {
-                    apikey: apiKey,
+                    apikey: validApiKey,
                     i: imdbId,
                     plot: 'short'
                 }
@@ -118,9 +180,11 @@ class OMDbService {
      */
     async search(query, type, apiKey) {
         try {
+            const validApiKey = await this.checkAndIncrementUsage();
+
             const response = await axios.get(this.baseUrl, {
                 params: {
-                    apikey: apiKey,
+                    apikey: validApiKey,
                     s: query,
                     type: type === 'tv' ? 'series' : type
                 }

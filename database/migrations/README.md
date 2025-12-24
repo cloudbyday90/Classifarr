@@ -2,39 +2,83 @@
 
 This directory contains SQL migration files for Classifarr database schema updates.
 
-## Migration Files
+Migrations are automatically run on application startup by `server/src/config/migrations.js`.
 
-- `001_add_arr_settings.sql` - Adds comprehensive *arr integration settings to libraries table
+## Quick Reference
+
+**Naming:** `XXX_descriptive_name.sql` (e.g., `019_cleanup_omdb_config.sql`)
+
+**Key Requirements:**
+1. ✅ **Idempotent** - Safe to run multiple times
+2. ✅ **Preserve data** - Never lose user config/settings
+3. ✅ **Test both scenarios** - Fresh install AND existing data
+
+## Migration Runbook
+
+See `MIGRATION_GUIDE.md` for comprehensive guidelines including:
+- Idempotency patterns
+- Data preservation techniques
+- Common patterns (tables, indexes, constraints, data migration)
+- Anti-patterns to avoid
+- Testing checklist
+- Troubleshooting
+
+## Automatic Migration System
+
+The migration runner (`server/src/config/migrations.js`) automatically:
+- Tracks applied migrations in `schema_migrations` table
+- Runs pending migrations in numerical order on startup
+- Logs all migration activity
+- Stops on first error to prevent partial migrations
 
 ## Running Migrations
 
-### Option 1: Manual Execution
-
-Connect to your PostgreSQL database and run the migration file:
-
+### Development (Local)
+Migrations run automatically when you start the application:
 ```bash
-psql -U your_user -d classifarr_db -f database/migrations/001_add_arr_settings.sql
+npm start
+# or
+docker compose up
 ```
 
-### Option 2: Using Docker
-
-If running Classifarr with Docker:
-
+### Production
+Migrations run on container startup. Check logs:
 ```bash
-docker exec -i classifarr_db psql -U classifarr_user -d classifarr_db < database/migrations/001_add_arr_settings.sql
+docker logs classifarr | grep Migration
 ```
 
-### Option 3: From Running Container
-
+### Manual Execution (Emergency Recovery)
 ```bash
-docker exec -it classifarr_db psql -U classifarr_user -d classifarr_db
-\i /migrations/001_add_arr_settings.sql
+# Connect to database
+docker exec -it classifarr psql -U classifarr_user -d classifarr_db
+
+# Run specific migration
+\i /app/database/migrations/019_cleanup_omdb_config.sql
 ```
 
 ## Migration Order
 
-Migrations should be run in numerical order (001, 002, etc.). Each migration is idempotent and can be safely run multiple times using `IF NOT EXISTS` clauses.
+Migrations MUST be run in numerical order. The system enforces this automatically.
 
-## New Installations
+Current migrations: `001` through `019`
 
-For new installations, use `database/init.sql` which contains the complete schema including all migrations. The migration files are only needed for existing databases.
+## Idempotency Examples
+
+**Tables:**
+```sql
+CREATE TABLE IF NOT EXISTS my_table (...);
+```
+
+**Indexes:**
+```sql
+CREATE INDEX IF NOT EXISTS idx_name ON table(col);
+```
+
+**Data Seeding:**
+```sql
+INSERT INTO config (id, value)
+SELECT 1, 'default'
+WHERE NOT EXISTS (SELECT 1 FROM config WHERE id = 1);
+```
+
+See migration `019_cleanup_omdb_config.sql` for a complete example of data preservation.
