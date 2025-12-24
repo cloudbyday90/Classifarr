@@ -25,70 +25,75 @@ CREATE INDEX IF NOT EXISTS idx_library_rules_v2_library_id ON library_rules_v2 (
 CREATE INDEX IF NOT EXISTS idx_library_rules_v2_conditions ON library_rules_v2 USING GIN (conditions);
 
 -- Migrate data from library_rules (simple rules -> single condition)
-INSERT INTO
-    library_rules_v2 (
-        library_id,
-        name,
-        description,
-        conditions,
-        is_active,
-        priority,
-        created_at,
-        updated_at
-    )
-SELECT
-    library_id,
-    COALESCE(
-        description,
-        rule_type || ' ' || operator || ' ' || value
-    ) as name,
-    description,
-    jsonb_build_array (
-        jsonb_build_object (
-            'field',
-            rule_type,
-            'operator',
-            operator,
-            'value',
-            value
+DO $$
+BEGIN
+    -- Only run migration if destination table is empty
+    IF NOT EXISTS (SELECT 1 FROM library_rules_v2 LIMIT 1) THEN
+        -- Migrate data from library_rules (simple rules -> single condition)
+        INSERT INTO library_rules_v2 (
+            library_id,
+            name,
+            description,
+            conditions,
+            is_active,
+            priority,
+            created_at,
+            updated_at
         )
-    ) as conditions,
-    COALESCE(is_active, true) as is_active,
-    COALESCE(priority, 0) as priority,
-    created_at,
-    updated_at
-FROM library_rules
-WHERE
-    library_id IS NOT NULL;
+        SELECT
+            library_id,
+            COALESCE(
+                description,
+                rule_type || ' ' || operator || ' ' || value
+            ) as name,
+            description,
+            jsonb_build_array (
+                jsonb_build_object (
+                    'field',
+                    rule_type,
+                    'operator',
+                    operator,
+                    'value',
+                    value
+                )
+            ) as conditions,
+            COALESCE(is_active, true) as is_active,
+            COALESCE(priority, 0) as priority,
+            created_at,
+            updated_at
+        FROM library_rules
+        WHERE
+            library_id IS NOT NULL;
 
--- Migrate data from library_custom_rules (complex rules -> use existing rule_json)
-INSERT INTO
-    library_rules_v2 (
-        library_id,
-        name,
-        description,
-        conditions,
-        is_active,
-        priority,
-        created_at,
-        updated_at
-    )
-SELECT
-    library_id,
-    name,
-    description,
-    CASE
-        WHEN jsonb_typeof (rule_json) = 'array' THEN rule_json
-        ELSE jsonb_build_array (rule_json)
-    END as conditions,
-    COALESCE(is_active, true) as is_active,
-    0 as priority,
-    created_at,
-    updated_at
-FROM library_custom_rules
-WHERE
-    library_id IS NOT NULL
-    AND name IS NOT NULL;
+        -- Migrate data from library_custom_rules (complex rules -> use existing rule_json)
+        INSERT INTO library_rules_v2 (
+            library_id,
+            name,
+            description,
+            conditions,
+            is_active,
+            priority,
+            created_at,
+            updated_at
+        )
+        SELECT
+            library_id,
+            name,
+            description,
+            CASE
+                WHEN jsonb_typeof (rule_json) = 'array' THEN rule_json
+                ELSE jsonb_build_array (rule_json)
+            END as conditions,
+            COALESCE(is_active, true) as is_active,
+            0 as priority,
+            created_at,
+            updated_at
+        FROM library_custom_rules
+        WHERE
+            library_id IS NOT NULL
+            AND name IS NOT NULL;
+    END IF;
+END $$;
 
 -- Add trigger for updated_at
 CREATE OR REPLACE FUNCTION update_library_rules_v2_updated_at()

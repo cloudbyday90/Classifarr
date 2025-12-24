@@ -1,5 +1,19 @@
 # Classifarr Release Notes
 
+## v0.24.0-alpha
+**Database Migration Runner & Persistence Fixes**
+
+### New Features
+- **Database Migration Runner:** Automated SQL migration system runs on startup, tracking applied migrations in `schema_migrations`.
+- **Improved Settings Persistence:** Ollama host/model and other settings now persist correctly across restarts.
+
+### Fixes
+- **Ollama Default Host:** Changed default host to `localhost` (from `ollama`) to prevent confusion on unconfigured setups.
+- **Model Selection UI:** Fixed issue where saved model didn't appear in dropdown on initial load.
+- **Migration Idempotency:** Hardened legacy migrations (003, 011-015) to operate safely on existing databases.
+
+---
+
 ## v0.23.1-alpha
 **Dashboard Enhancements & Activity Stream Separation**
 

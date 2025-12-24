@@ -37,30 +37,6 @@
       </div>
     </div>
 
-    <!-- Enrichment Progress Row -->
-    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-      <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center gap-2">
-          <span class="text-xl">📊</span>
-          <span class="font-medium">Library Enrichment Progress</span>
-        </div>
-        <span class="text-sm text-gray-400">{{ enrichmentStats.enriched }} / {{ enrichmentStats.totalItems }} items</span>
-      </div>
-      <div class="w-full bg-gray-700 rounded-full h-3 mb-2">
-        <div 
-          class="bg-gradient-to-r from-blue-500 to-primary h-3 rounded-full transition-all duration-500"
-          :style="{ width: enrichmentStats.progress + '%' }"
-        ></div>
-      </div>
-      <div class="flex justify-between text-xs text-gray-400">
-        <span>{{ enrichmentStats.progress }}% Complete</span>
-        <div class="flex gap-4">
-          <span>🔍 Tavily: {{ enrichmentStats.tavilyEnriched }}</span>
-          <span>⏳ Pending: {{ queueStats.pending }}</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Recent Classifications (2/3 width) -->

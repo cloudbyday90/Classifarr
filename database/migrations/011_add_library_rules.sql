@@ -20,11 +20,11 @@ CREATE TABLE IF NOT EXISTS library_rules (
 );
 
 -- Index for efficient lookups
-CREATE INDEX idx_library_rules_library_id ON library_rules (library_id);
+CREATE INDEX IF NOT EXISTS idx_library_rules_library_id ON library_rules (library_id);
 
-CREATE INDEX idx_library_rules_type ON library_rules (rule_type);
+CREATE INDEX IF NOT EXISTS idx_library_rules_type ON library_rules (rule_type);
 
-CREATE INDEX idx_library_rules_exception ON library_rules (is_exception);
+CREATE INDEX IF NOT EXISTS idx_library_rules_exception ON library_rules (is_exception);
 
 -- Add columns to libraries table for enhanced configuration
 ALTER TABLE libraries

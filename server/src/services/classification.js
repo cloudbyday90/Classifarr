@@ -241,7 +241,7 @@ class ClassificationService {
     try {
       const searchOptions = {
         apiKey: tavilyConfig.api_key,
-        searchDepth: tavilyConfig.search_depth || 'basic',
+        searchDepth: tavilyConfig.search_depth || 'advanced',
         maxResults: tavilyConfig.max_results || 5,
         includeDomains: tavilyConfig.include_domains || ['imdb.com', 'rottentomatoes.com'],
         excludeDomains: tavilyConfig.exclude_domains || []

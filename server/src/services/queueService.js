@@ -221,7 +221,62 @@ class QueueService {
                         }
                     };
 
-                    // Try to get Tavily web search enrichment if configured
+                    // ========== OMDb ENRICHMENT (PRIMARY) ==========
+                    // OMDb provides structured data: content rating, genre, IMDB rating
+                    // This is the PREFERRED source - runs first
+                    try {
+                        const omdbConfig = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
+
+                        if (omdbConfig.rows.length > 0 && omdbConfig.rows[0].api_key) {
+                            const omdbService = require('./omdb');
+                            const omdbApiKey = omdbConfig.rows[0].api_key;
+
+                            // For TV shows, only query the main show, not episodes
+                            const mediaType = enrichPayload.media?.media_type || 'movie';
+
+                            logger.info('OMDb lookup', { title: enrichPayload.title, type: mediaType });
+
+                            const omdbResult = await omdbService.getByTitle(
+                                enrichPayload.title,
+                                enrichPayload.year,
+                                mediaType,
+                                omdbApiKey
+                            );
+
+                            if (omdbResult) {
+                                enrichmentData.omdb = {
+                                    fetched_at: new Date().toISOString(),
+                                    data: omdbResult
+                                };
+
+                                // Extract classification-relevant data for easier access
+                                enrichmentData.content_analysis = {
+                                    ...enrichmentData.content_analysis,
+                                    omdb_rated: omdbResult.rated,
+                                    omdb_genre: omdbResult.genre,
+                                    omdb_imdb_rating: omdbResult.imdbRating,
+                                    is_animation: omdbResult.genre?.toLowerCase().includes('animation'),
+                                    is_documentary: omdbResult.genre?.toLowerCase().includes('documentary'),
+                                    is_family: omdbResult.genre?.toLowerCase().includes('family'),
+                                    is_kids: ['G', 'TV-G', 'TV-Y', 'TV-Y7'].includes(omdbResult.rated),
+                                    is_adult: ['R', 'NC-17', 'TV-MA'].includes(omdbResult.rated)
+                                };
+
+                                logger.info('OMDb enrichment successful', {
+                                    title: enrichPayload.title,
+                                    rated: omdbResult.rated,
+                                    genre: omdbResult.genre
+                                });
+                            }
+                        }
+                    } catch (omdbError) {
+                        logger.warn('OMDb enrichment failed', { error: omdbError.message });
+                        // Continue without OMDb data
+                    }
+
+                    // ========== TAVILY ENRICHMENT (SECONDARY) ==========
+                    // Tavily provides: content advisory, reviews, holiday detection, anime info
+                    // This supplements OMDb with web-scraped content
                     try {
                         const tavilyConfig = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
 
@@ -231,37 +286,11 @@ class QueueService {
 
                             const searchOptions = {
                                 apiKey: config.api_key,
-                                searchDepth: config.search_depth || 'basic',
+                                searchDepth: config.search_depth || 'advanced',
                                 maxResults: config.max_results || 3
                             };
 
-                            // Get IMDB info for richer metadata
-                            try {
-                                logger.info('Attempting Tavily IMDB search', { title: enrichPayload.title, year: enrichPayload.year });
-                                const imdbResults = await tavilyService.searchIMDB(
-                                    enrichPayload.title,
-                                    enrichPayload.year,
-                                    enrichPayload.media?.media_type || 'movie',
-                                    searchOptions
-                                );
-                                logger.info('Tavily IMDB result', { hasResults: !!imdbResults?.results?.length, count: imdbResults?.results?.length || 0 });
-
-                                if (imdbResults?.results?.length > 0) {
-                                    enrichmentData.tavily_imdb = {
-                                        fetched_at: new Date().toISOString(),
-                                        results: imdbResults.results.slice(0, 2).map(r => ({
-                                            url: r.url,
-                                            title: r.title,
-                                            snippet: r.content?.substring(0, 500)
-                                        })),
-                                        answer: imdbResults.answer
-                                    };
-                                }
-                            } catch (imdbError) {
-                                logger.info('Tavily IMDB search failed', { error: imdbError.message, stack: imdbError.stack });
-                            }
-
-                            // Get content advisory for better classification
+                            // Get content advisory (parents guide, violence, etc.)
                             try {
                                 const advisoryResults = await tavilyService.getContentAdvisory(
                                     enrichPayload.title,
@@ -280,25 +309,7 @@ class QueueService {
                                 logger.debug('Tavily advisory search failed', { error: advisoryError.message });
                             }
 
-                            // NEW: Get content type classification (documentary, stand-up, etc.)
-                            try {
-                                const contentTypeQuery = `${enrichPayload.title} ${enrichPayload.year} documentary OR stand-up OR comedy special OR animation site:imdb.com`;
-                                const contentTypeResults = await tavilyService.search(contentTypeQuery, {
-                                    ...searchOptions,
-                                    includeDomains: ['imdb.com', 'wikipedia.org'],
-                                    maxResults: 2
-                                });
-                                if (contentTypeResults?.answer) {
-                                    enrichmentData.tavily_content_type = {
-                                        fetched_at: new Date().toISOString(),
-                                        answer: contentTypeResults.answer
-                                    };
-                                }
-                            } catch (ctError) {
-                                logger.debug('Tavily content type search failed', { error: ctError.message });
-                            }
-
-                            // NEW: Check if holiday/Christmas content
+                            // Check if holiday/Christmas content
                             try {
                                 const holidayQuery = `${enrichPayload.title} ${enrichPayload.year} Christmas OR holiday OR seasonal movie`;
                                 const holidayResults = await tavilyService.search(holidayQuery, {

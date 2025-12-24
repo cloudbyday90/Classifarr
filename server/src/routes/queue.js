@@ -99,14 +99,16 @@ router.get('/live-stats', async (req, res) => {
         const enrichmentResult = await db.query(`
             SELECT 
                 COUNT(*) as total_items,
-                COUNT(*) FILTER (WHERE metadata->'content_analysis' IS NOT NULL) as enriched,
-                COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched
+                COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL OR metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as enriched,
+                COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched,
+                COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL) as omdb_enriched
             FROM media_server_items
         `);
 
         const totalItems = parseInt(enrichmentResult.rows[0]?.total_items) || 0;
         const enrichedItems = parseInt(enrichmentResult.rows[0]?.enriched) || 0;
         const tavilyEnrichedItems = parseInt(enrichmentResult.rows[0]?.tavily_enriched) || 0;
+        const omdbEnrichedItems = parseInt(enrichmentResult.rows[0]?.omdb_enriched) || 0;
         const enrichmentProgress = totalItems > 0 ? Math.round((enrichedItems / totalItems) * 100) : 0;
 
         const classifiedToday = parseInt(todayResult.rows[0]?.count) || 0;
@@ -123,6 +125,7 @@ router.get('/live-stats', async (req, res) => {
                 totalItems,
                 enriched: enrichedItems,
                 tavilyEnriched: tavilyEnrichedItems,
+                omdbEnriched: omdbEnrichedItems,
                 progress: enrichmentProgress
             },
             health: {

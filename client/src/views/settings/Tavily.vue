@@ -135,11 +135,11 @@ const testResult = ref(null)
 
 const config = ref({
   api_key: '',
-  search_depth: 'basic',
+  search_depth: 'advanced',
   max_results: 5,
   include_domains: ['imdb.com', 'rottentomatoes.com', 'myanimelist.net'],
   exclude_domains: [],
-  is_active: false
+  is_active: true
 })
 
 onMounted(async () => {
@@ -148,7 +148,7 @@ onMounted(async () => {
     if (response.data) {
       config.value = {
         api_key: response.data.api_key || '',
-        search_depth: response.data.search_depth || 'basic',
+        search_depth: response.data.search_depth || 'advanced',
         max_results: response.data.max_results || 5,
         include_domains: response.data.include_domains || ['imdb.com', 'rottentomatoes.com', 'myanimelist.net'],
         exclude_domains: response.data.exclude_domains || [],

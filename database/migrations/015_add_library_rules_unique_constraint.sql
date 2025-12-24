@@ -15,10 +15,15 @@ WHERE
     );
 
 -- Add unique constraint
-ALTER TABLE library_rules
-ADD CONSTRAINT library_rules_unique_rule UNIQUE (
-    library_id,
-    rule_type,
-    operator,
-    value
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'library_rules_unique_rule') THEN
+        ALTER TABLE library_rules
+        ADD CONSTRAINT library_rules_unique_rule UNIQUE (
+            library_id,
+            rule_type,
+            operator,
+            value
+        );
+    END IF;
+END $$;

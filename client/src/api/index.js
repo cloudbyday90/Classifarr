@@ -322,6 +322,43 @@ export default {
     return apiClient.post('/settings/tavily/search', data)
   },
 
+  // OMDb
+  getOMDbConfig() {
+    return apiClient.get('/settings/omdb')
+  },
+  updateOMDbConfig(data) {
+    return apiClient.put('/settings/omdb', data)
+  },
+  testOMDb(data) {
+    return apiClient.post('/settings/omdb/test', data)
+  },
+  testOMDbSearch(data) {
+    return apiClient.post('/settings/omdb/search', data)
+  },
+
+  // AI Providers
+  getAIConfig() {
+    return apiClient.get('/settings/ai')
+  },
+  updateAIConfig(data) {
+    return apiClient.put('/settings/ai', data)
+  },
+  testAIConnection(data) {
+    return apiClient.post('/settings/ai/test', data)
+  },
+  getAIModels(data) {
+    return apiClient.post('/settings/ai/models', data)
+  },
+  getAIUsage() {
+    return apiClient.get('/settings/ai/usage')
+  },
+  getAIStatus() {
+    return apiClient.get('/settings/ai/status')
+  },
+  resetAIUsage() {
+    return apiClient.post('/settings/ai/reset-usage')
+  },
+
   // Webhook
   getWebhookConfig() {
     return apiClient.get('/settings/webhook')

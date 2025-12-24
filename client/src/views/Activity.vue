@@ -86,6 +86,39 @@
       </div>
     </Card>
 
+    <!-- Library Enrichment Progress -->
+    <Card v-if="stats.enrichment?.totalItems > 0">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="text-xl">🎬</span>
+            <h2 class="text-lg font-semibold">Library Enrichment Progress</h2>
+          </div>
+          <span class="text-sm text-gray-400">{{ stats.enrichment.enriched }} / {{ stats.enrichment.totalItems }} items</span>
+        </div>
+      </template>
+      
+      <div class="space-y-3">
+        <!-- Progress Bar -->
+        <div class="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
+          <div 
+            class="h-4 rounded-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-500"
+            :style="{ width: `${stats.enrichment.progress}%` }"
+          ></div>
+        </div>
+        
+        <!-- Stats Row -->
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-400">{{ stats.enrichment.progress }}% Complete</span>
+          <div class="flex space-x-4">
+            <span class="text-blue-400">🎬 OMDb: {{ stats.enrichment.omdbEnriched || 0 }}</span>
+            <span class="text-purple-400">🔍 Tavily: {{ stats.enrichment.tavilyEnriched || 0 }}</span>
+            <span class="text-yellow-400">⏳ Pending: {{ stats.queuePending || 0 }}</span>
+          </div>
+        </div>
+      </div>
+    </Card>
+
     <!-- Ollama AI Status -->
     <Card v-if="ollamaStatus.isActive">
       <template #header>
@@ -224,7 +257,8 @@ const stats = ref({
   avgConfidence: 0,
   queuePending: 0,
   health: { ollama: false, worker: false, database: true },
-  gapAnalysis: null
+  gapAnalysis: null,
+  enrichment: null
 })
 
 const ollamaStatus = ref({
@@ -268,7 +302,8 @@ const refreshData = async () => {
         avgConfidence: liveStats.data.today?.avgConfidence || 0,
         queuePending: liveStats.data.queue?.pending || 0,
         health: liveStats.data.health || { ollama: false, worker: false, database: true },
-        gapAnalysis: liveStats.data.gapAnalysis
+        gapAnalysis: liveStats.data.gapAnalysis,
+        enrichment: liveStats.data.enrichment
       }
     }
 

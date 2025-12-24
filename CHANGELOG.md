@@ -7,6 +7,17 @@ Current stage: **Alpha** (v0.x-alpha)
 
 ---
 
+## [0.24.0-alpha] - 2025-12-24
+
+### Major Features
+- **Database Migration Runner:** Automated SQL migration system running on startup to ensure consistent database schema.
+- **Migration Tracking:** Added `schema_migrations` table to prevent re-running applied migrations.
+
+### Fixes
+- **Ollama Default Host:** Changed default host to `localhost` to better support unconfigured setups.
+- **Model Persistence:** Seeding model dropdown ensures saved model is displayed on page load.
+- **Migration Idempotency:** Fixed legacy migrations (003, 011-015) to use `IF NOT EXISTS` and `DO` blocks.
+
 ## [0.17-alpha] - 2025-12-21
 
 ### Platform Enhancement Summary

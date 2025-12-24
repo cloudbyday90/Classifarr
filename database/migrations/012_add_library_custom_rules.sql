@@ -17,4 +17,4 @@ CREATE TABLE IF NOT EXISTS library_custom_rules (
 );
 
 -- Index for efficient lookups
-CREATE INDEX idx_library_custom_rules_library_id ON library_custom_rules (library_id);
+CREATE INDEX IF NOT EXISTS idx_library_custom_rules_library_id ON library_custom_rules (library_id);

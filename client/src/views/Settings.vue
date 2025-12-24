@@ -48,7 +48,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import General from './settings/General.vue'
 import TMDB from './settings/TMDB.vue'
-import Ollama from './settings/Ollama.vue'
+import AI from './settings/AI.vue'
 import Radarr from './settings/Radarr.vue'
 import Sonarr from './settings/Sonarr.vue'
 import MediaServer from './settings/MediaServer.vue'
@@ -61,6 +61,7 @@ import SSL from './settings/SSL.vue'
 import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
 import Tavily from './settings/Tavily.vue'
+import OMDb from './settings/OMDb.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -88,9 +89,10 @@ const settingsGroups = [
   {
     name: 'AI & Data',
     tabs: [
-      { id: 'ollama', label: 'Ollama', icon: '🧠', component: Ollama },
+      { id: 'ai', label: 'AI', icon: '🤖', component: AI },
       { id: 'tmdb', label: 'TMDB', icon: '🎞️', component: TMDB },
       { id: 'tavily', label: 'Tavily', icon: '🔍', component: Tavily },
+      { id: 'omdb', label: 'OMDb', icon: '🎬', component: OMDb },
     ]
   },
   {
