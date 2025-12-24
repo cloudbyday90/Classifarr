@@ -23,6 +23,7 @@ const sonarrService = require('../services/sonarr');
 const mediaSyncService = require('../services/mediaSync');
 const classificationService = require('../services/classification');
 const ollamaService = require('../services/ollama');
+const plexPatternAnalyzer = require('../services/plexPatternAnalyzer');
 const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
@@ -1348,6 +1349,28 @@ router.post('/auto-generate-all', async (req, res) => {
     res.json({ success: true, totalRulesCreated: totalCreated });
   } catch (error) {
     logger.error('Failed to auto-generate all rules', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/rule-suggestions/{contentType}:
+ *   get:
+ *     summary: Get Plex-based pattern suggestions for content type
+ *     description: Analyzes detected content group to extract common Plex metadata patterns (100% confidence)
+ */
+router.get('/:id/rule-suggestions/:contentType', async (req, res) => {
+  try {
+    const { id, contentType } = req.params;
+
+    logger.info('Fetching Plex pattern suggestions', { libraryId: id, contentType });
+
+    const result = await plexPatternAnalyzer.analyzeGroup(parseInt(id), contentType);
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Failed to get pattern suggestions', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
