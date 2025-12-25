@@ -16,7 +16,7 @@ When you first access Classifarr, you'll be prompted to create your admin accoun
    - One number
    - One special character (!@#$%^&*)
 5. After creating your account, you'll be automatically logged in
-6. Complete the TMDB and optional Ollama/Discord configuration
+6. Complete the TMDB and optional AI Provider/Discord configuration
 
 ## Login
 
@@ -95,7 +95,7 @@ Currently, there is no password reset mechanism. If you forget your admin passwo
 
 1. Access your database directly:
    ```bash
-   docker exec -it classifarr-db psql -U classifarr -d classifarr
+   docker exec -it classifarr psql -U classifarr -d classifarr
    ```
 
 2. Generate a new password hash using bcrypt (12 rounds)
