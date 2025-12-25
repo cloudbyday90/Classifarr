@@ -1,4 +1,12 @@
 
+## v0.30.2-alpha
+**Release Workflow Updates**
+
+### Improvements
+- **Release Process:** GitHub CLI now prioritized for creating releases with turbo auto-run
+
+---
+
 ## v0.30.1-alpha
 **Documentation & Docker Configuration Updates**
 

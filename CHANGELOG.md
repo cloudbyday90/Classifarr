@@ -6,6 +6,11 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.30.2-alpha] - 2025-12-25
+
+### Improvements
+- **Release Process:** GitHub CLI prioritized for creating releases with turbo auto-run
+
 ## [0.30.1-alpha] - 2025-12-25
 
 ### Improvements
