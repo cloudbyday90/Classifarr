@@ -18,8 +18,6 @@
 
 const axios = require('axios');
 const db = require('../config/database');
-const fs = require('fs');
-const os = require('os');
 const logger = require('../utils/logger');
 
 class OllamaService {
@@ -46,48 +44,11 @@ class OllamaService {
   }
 
   /**
-   * Detect Docker gateway IP on Linux, fallback to host.docker.internal on Windows/macOS
-   * @returns {string} The detected gateway IP or host.docker.internal
+   * Get default Ollama host
+   * @returns {string} Default host (localhost)
    */
   getDefaultOllamaHost() {
-    if (this.detectedGateway) {
-      return this.detectedGateway;
-    }
-
-    // Windows/macOS: use host.docker.internal
-    if (os.platform() !== 'linux') {
-      this.detectedGateway = 'host.docker.internal';
-      return this.detectedGateway;
-    }
-
-    // Linux: detect gateway from routing table
-    try {
-      const routeTable = fs.readFileSync('/proc/net/route', 'utf8');
-      const lines = routeTable.split('\n');
-
-      for (const line of lines) {
-        const parts = line.split('\t');
-        if (parts[1] === '00000000') {
-          const gatewayHex = parts[2];
-          const ip = [
-            parseInt(gatewayHex.substr(6, 2), 16),
-            parseInt(gatewayHex.substr(4, 2), 16),
-            parseInt(gatewayHex.substr(2, 2), 16),
-            parseInt(gatewayHex.substr(0, 2), 16)
-          ].join('.');
-          this.detectedGateway = ip;
-          logger.info(`Detected Docker gateway IP: ${ip}`);
-          return ip;
-        }
-      }
-    } catch (error) {
-      logger.warn('Could not detect Docker gateway from /proc/net/route, using fallback', { error: error.message });
-    }
-
-    // Fallback for Linux
-    this.detectedGateway = '172.17.0.1';
-    logger.info(`Using fallback Docker gateway IP: ${this.detectedGateway}`);
-    return this.detectedGateway;
+    return 'localhost';
   }
 
   /**
@@ -148,30 +109,9 @@ class OllamaService {
     if (result.rows.length > 0) {
       this.host = result.rows[0].host;
       this.port = result.rows[0].port;
-
-      // Auto-fix host.docker.internal on Linux (for existing installations)
-      if (this.host === 'host.docker.internal' && os.platform() === 'linux') {
-        const detectedHost = this.getDefaultOllamaHost();
-        logger.warn(`Detected Linux environment with host.docker.internal in database. Auto-switching to detected gateway: ${detectedHost}`);
-        
-        try {
-          // Update database with detected gateway (one-time fix)
-          await db.query(
-            'UPDATE ollama_config SET host = $1 WHERE id = $2',
-            [detectedHost, result.rows[0].id]
-          );
-          
-          this.host = detectedHost;
-          logger.info(`Successfully updated Ollama host to ${detectedHost} in database`);
-        } catch (error) {
-          logger.error('Failed to update Ollama host in database', { error: error.message });
-          // Still use detected host even if DB update fails
-          this.host = detectedHost;
-        }
-      }
     } else {
-      // Fall back to environment variables or auto-detection
-      this.host = process.env.OLLAMA_HOST || this.getDefaultOllamaHost();
+      // Fall back to environment variables or default
+      this.host = process.env.OLLAMA_HOST || 'localhost';
       this.port = process.env.OLLAMA_PORT || 11434;
     }
 
@@ -197,7 +137,7 @@ class OllamaService {
       };
     } catch (error) {
       let errorMessage = error.message;
-      
+
       // Provide helpful error messages based on error type
       if (error.code === 'ECONNREFUSED') {
         errorMessage = 'Connection refused - is Ollama running?';
