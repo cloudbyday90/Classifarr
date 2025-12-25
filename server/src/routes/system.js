@@ -41,7 +41,7 @@ router.get('/health', async (req, res) => {
     const health = {
       database: 'disconnected',
       discordBot: 'disconnected',
-      ollama: 'unknown',
+      ai: 'disabled',
       radarr: 'unknown',
       sonarr: 'unknown',
       mediaServer: 'unknown'
@@ -66,9 +66,15 @@ router.get('/health', async (req, res) => {
 
     // Get service configurations from database
     try {
-      // Check Ollama
-      const ollama = await db.query('SELECT id FROM ollama_config WHERE is_active = true LIMIT 1');
-      if (ollama.rows.length > 0) health.ollama = 'configured';
+      // Check AI Provider
+      const aiConfig = await db.query('SELECT primary_provider FROM ai_provider_config WHERE id = 1');
+      if (aiConfig.rows.length > 0 && aiConfig.rows[0].primary_provider !== 'none') {
+        const provider = aiConfig.rows[0].primary_provider;
+        // Capitalize first letter for display
+        health.ai = provider.charAt(0).toUpperCase() + provider.slice(1);
+      } else {
+        health.ai = 'disabled';
+      }
 
       // Check Radarr
       const radarr = await db.query('SELECT id FROM radarr_config WHERE is_active = true LIMIT 1');

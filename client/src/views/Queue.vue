@@ -46,8 +46,8 @@
       <div class="status-indicator" :class="{ online: stats.workerRunning }">
         {{ stats.workerRunning ? 'Worker Active' : 'Worker Stopped' }}
       </div>
-      <div class="status-indicator" :class="{ online: stats.ollamaAvailable }">
-        {{ stats.ollamaAvailable ? 'Ollama Online' : 'Ollama Offline' }}
+      <div class="status-indicator" :class="{ online: stats.aiAvailable }">
+        {{ stats.aiAvailable ? 'AI Online' : 'AI Offline' }}
       </div>
     </div>
 
@@ -147,7 +147,7 @@ const stats = ref({
   failed: 0,
   total: 0,
   workerRunning: false,
-  ollamaAvailable: false
+  aiAvailable: false
 })
 
 const pendingTasks = ref([])

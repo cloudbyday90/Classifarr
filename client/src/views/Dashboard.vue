@@ -12,10 +12,10 @@
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <div class="flex items-center gap-2">
-          <span class="text-2xl">{{ queueStats.ollamaAvailable ? '🟢' : '🔴' }}</span>
+          <span class="text-2xl">{{ queueStats.aiAvailable ? '🟢' : '🔴' }}</span>
           <div>
-            <div class="text-sm font-medium">Ollama</div>
-            <div class="text-xs text-gray-400">{{ queueStats.ollamaAvailable ? 'Online' : 'Offline' }}</div>
+            <div class="text-sm font-medium">AI Provider</div>
+            <div class="text-xs text-gray-400">{{ queueStats.aiAvailable ? 'Online' : 'Offline' }}</div>
           </div>
         </div>
       </div>
@@ -163,7 +163,7 @@ const computedAvgConfidence = computed(() => {
   return Math.round(total / avgData.length)
 })
 const recentHistory = ref([])
-const queueStats = ref({ pending: 0, processing: 0, completed: 0, failed: 0, ollamaAvailable: true })
+const queueStats = ref({ pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true })
 const enrichmentStats = ref({ totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 })
 const methodStats = ref({})
 let pollInterval = null

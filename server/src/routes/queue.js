@@ -129,7 +129,7 @@ router.get('/live-stats', async (req, res) => {
                 progress: enrichmentProgress
             },
             health: {
-                ollama: queueStats?.ollamaAvailable ?? false,
+                ai: queueStats?.aiAvailable ?? false,
                 worker: queueStats?.workerRunning ?? false,
                 database: true
             },
