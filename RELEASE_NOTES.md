@@ -1,4 +1,16 @@
 
+## v0.30.1-alpha
+**Documentation & Docker Configuration Updates**
+
+### Improvements
+- **Docker Volume Configuration:** Updated docker-compose and Unraid template to use read-write media mounts for future direct file moves
+- **Release Process:** Updated release.md workflow to not use pre-release for alpha versions
+
+### Fixes
+- **Documentation:** Fixed README docker examples to include media volume mount
+
+---
+
 ## v0.30.0-alpha
 **Re-Classification System Foundation**
 

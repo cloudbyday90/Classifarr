@@ -6,6 +6,15 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.30.1-alpha] - 2025-12-25
+
+### Improvements
+- **Docker Volumes:** Updated media mounts to read-write for future direct file moves
+- **Release Process:** Updated release.md to not use pre-release for alpha versions
+
+### Fixes
+- **Documentation:** README docker examples now include media volume mount
+
 ## [0.30.0-alpha] - 2025-12-25
 
 ### New Features
