@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.27.9-alpha] - 2025-12-25
+
+### Bug Fixes
+- **AI Suggestions:** Fixed AI suggesting duplicate rules that already exist
+  - AI prompt now includes existing rules so it knows what's already applied
+  - Added server-side fallback filter to remove any duplicates AI might still suggest
+
 ## [0.27.8-alpha] - 2025-12-25
 
 ### UX Improvements

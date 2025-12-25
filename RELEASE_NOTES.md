@@ -1,8 +1,12 @@
 
-## v0.27.8-alpha
-**Plex Sync Fixes & Pattern Suggestions Improvements**
+## v0.27.9-alpha
+**Plex Sync Fixes, Pattern Suggestions & AI Improvements**
 
 ### Fixes
+- **AI Suggestions:** Fixed AI suggesting duplicate rules that already exist
+  - AI prompt now includes existing rules so it knows what's already applied
+  - Added instruction: "Do NOT suggest duplicates, may suggest enhancements"
+  - Added server-side fallback filter to remove any duplicates AI might still suggest
 - **Library Sync:** Fixed Plex sync wiping enrichment progress (OMDb/Tavily data)
   - UPSERT now merges metadata instead of replacing it entirely
 - **Duplicate Classifications:** Fixed same title appearing 81+ times in statistics

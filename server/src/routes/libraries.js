@@ -948,6 +948,13 @@ router.get('/:id/rules/smart-suggest', async (req, res) => {
       .filter(Boolean)
       .slice(0, 3);
 
+    // 8. Get existing rules for this library (to avoid duplicate suggestions)
+    const existingRulesResult = await db.query(
+      `SELECT name, conditions FROM library_rules_v2 WHERE library_id = $1`,
+      [id]
+    );
+    const existingRules = existingRulesResult.rows;
+
     const stats = {
       libraryName: library.name,
       mediaType: library.media_type,
@@ -962,12 +969,19 @@ router.get('/:id/rules/smart-suggest', async (req, res) => {
       tavilyInsights
     };
 
-    // 8. Build prompt for Ollama
+    // 9. Build prompt for Ollama
+    const existingRulesSection = existingRules.length > 0
+      ? `\nEXISTING RULES (DO NOT SUGGEST DUPLICATES OF THESE):
+${existingRules.map(r => `- "${r.name}": ${JSON.stringify(r.conditions)}`).join('\n')}
+`
+      : '';
+
     const prompt = `You are an AI assistant helping to create classification rules for a media library.
 
 Library Name: "${stats.libraryName}"
 Media Type: ${stats.mediaType}
 Total Items: ${stats.totalItems}, Analyzed: ${stats.analyzedItems}, Web-Enriched: ${stats.tavilyEnrichedItems}
+${existingRulesSection}
 
 Content Types (from AI analysis):
 ${stats.contentTypes.map(t => `- ${t.type}: ${t.count} items`).join('\n') || 'No AI analysis available yet'}
@@ -993,6 +1007,8 @@ ${stats.tavilyInsights.map(insight => `- ${insight}`).join('\n')}
 3. A confidence score (0-100) based on how well the data supports this rule
 4. Brief reasoning
 
+IMPORTANT: Do NOT suggest rules that duplicate or closely match any existing rules listed above. You may suggest enhancements or variations that add value, but not identical or near-identical rules.
+
 Respond in this exact JSON format:
 {"suggestions": [{"name": "Rule Name", "conditions": [{"field": "genre", "operator": "contains", "value": "Horror"}], "confidence": 85, "reasoning": "Brief explanation"}]}
 
@@ -1012,6 +1028,25 @@ Valid operators: equals, contains, includes`;
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
           llmSuggestions = parsed.suggestions || [];
+
+          // Filter out any suggestions that duplicate existing rules (backup check)
+          if (existingRules.length > 0) {
+            llmSuggestions = llmSuggestions.filter(suggestion => {
+              // Check if any condition in the suggestion matches an existing rule
+              return !existingRules.some(existingRule => {
+                const existingConditions = existingRule.conditions || [];
+                const suggestedConditions = suggestion.conditions || [];
+
+                // Check for overlap - if any condition field+value matches
+                return suggestedConditions.some(sc =>
+                  existingConditions.some(ec =>
+                    ec.field === sc.field &&
+                    String(ec.value).toLowerCase() === String(sc.value).toLowerCase()
+                  )
+                );
+              });
+            });
+          }
         }
       }
     } catch (llmError) {
