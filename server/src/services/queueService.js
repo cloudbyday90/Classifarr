@@ -888,6 +888,10 @@ class QueueService {
 
                     // Then run gap analysis with fresh library_id associations
                     await schedulerService.runGapAnalysis();
+
+                    // Run pattern analysis to populate library_pattern_suggestions for Dashboard widget
+                    await schedulerService.runPatternAnalysis();
+                    logger.info('Pattern analysis completed after clear');
                 } catch (err) {
                     logger.error('Failed to run library sync after clear', { error: err.message });
                 }

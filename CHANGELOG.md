@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.27.7-alpha] - 2025-12-25
+
+### Bug Fixes
+- **Pattern Suggestions Widget:** Fixed "New Pattern Suggestions" widget showing nothing after sync
+  - `clearAndResync()` now calls `runPatternAnalysis()` to populate `library_pattern_suggestions`
+  - Dashboard widget now shows all libraries with available patterns after Clear & Re-Sync
+
 ## [0.27.6-alpha] - 2025-12-25
 
 ### Bug Fixes
