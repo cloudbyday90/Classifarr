@@ -89,12 +89,14 @@ Create an actual release on GitHub (tags alone don't appear as releases):
 2. Select the tag you just created (e.g., `v0.30.0-alpha`)
 3. Set release title: `vX.X.X-alpha: Title`
 4. Copy the release notes from `RELEASE_NOTES.md` into the description
-5. Check "Set as pre-release" for alpha versions
+5. Ensure "Set as the latest release" is checked
 6. Click "Publish release"
+
+> **Note:** Do NOT check "pre-release" for alpha versions - the `-alpha` suffix in the version name is sufficient. Pre-release designation prevents the release from showing as "Latest".
 
 **Or use GitHub CLI:**
 ```bash
-gh release create vX.X.X-alpha --title "vX.X.X-alpha: Title" --notes-file RELEASE_NOTES.md --prerelease
+gh release create vX.X.X-alpha --title "vX.X.X-alpha: Title" --notes-file RELEASE_NOTES.md --latest
 ```
 
 ## 8. Rebuild Docker (if local testing)
