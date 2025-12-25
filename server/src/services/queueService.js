@@ -563,7 +563,7 @@ class QueueService {
                 stats.total += parseInt(row.count);
             }
 
-            stats.ollamaAvailable = this.ollamaAvailable;
+            stats.aiAvailable = this.aiAvailable;
             stats.workerRunning = this.running;
 
             return stats;
