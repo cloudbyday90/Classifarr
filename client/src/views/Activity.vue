@@ -46,8 +46,8 @@
       <!-- System Health -->
       <div class="bg-gradient-to-br from-purple-600/20 to-purple-800/20 border border-purple-500/30 rounded-xl p-4">
         <div class="flex items-center space-x-2">
-          <span v-if="stats.health.ollama && stats.health.worker" class="text-2xl">✅</span>
-          <span v-else-if="stats.health.ollama || stats.health.worker" class="text-2xl">⚠️</span>
+          <span v-if="stats.health.ai && stats.health.worker" class="text-2xl">✅</span>
+          <span v-else-if="stats.health.ai || stats.health.worker" class="text-2xl">⚠️</span>
           <span v-else class="text-2xl">❌</span>
           <span class="text-lg font-bold" :class="healthColor">{{ healthStatus }}</span>
         </div>
@@ -256,7 +256,7 @@ const stats = ref({
   classifiedToday: 0,
   avgConfidence: 0,
   queuePending: 0,
-  health: { ollama: false, worker: false, database: true },
+  health: { ai: false, worker: false, database: true },
   gapAnalysis: null,
   enrichment: null
 })
@@ -273,14 +273,14 @@ const activityFeed = ref([])
 const upNextQueue = ref([])
 
 const healthStatus = computed(() => {
-  if (stats.value.health.ollama && stats.value.health.worker) return 'All Systems OK'
-  if (stats.value.health.ollama || stats.value.health.worker) return 'Partial'
+  if (stats.value.health.ai && stats.value.health.worker) return 'All Systems OK'
+  if (stats.value.health.ai || stats.value.health.worker) return 'Partial'
   return 'Offline'
 })
 
 const healthColor = computed(() => {
-  if (stats.value.health.ollama && stats.value.health.worker) return 'text-green-400'
-  if (stats.value.health.ollama || stats.value.health.worker) return 'text-yellow-400'
+  if (stats.value.health.ai && stats.value.health.worker) return 'text-green-400'
+  if (stats.value.health.ai || stats.value.health.worker) return 'text-yellow-400'
   return 'text-red-400'
 })
 
@@ -297,11 +297,13 @@ const refreshData = async () => {
 
     // Update stats
     if (liveStats.data) {
+      // Safeguard: merge with defaults to ensure expected fields exist
+      const defaultHealth = { ai: false, worker: false, database: false }
       stats.value = {
         classifiedToday: liveStats.data.today?.classified || 0,
         avgConfidence: liveStats.data.today?.avgConfidence || 0,
         queuePending: liveStats.data.queue?.pending || 0,
-        health: liveStats.data.health || { ollama: false, worker: false, database: true },
+        health: { ...defaultHealth, ...liveStats.data.health },
         gapAnalysis: liveStats.data.gapAnalysis,
         enrichment: liveStats.data.enrichment
       }

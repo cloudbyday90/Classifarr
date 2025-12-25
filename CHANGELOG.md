@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.27.5-alpha] - 2025-12-25
+
+### Bug Fixes
+- **Health Status:** Fixed Activity page always showing "Partial" instead of "All Systems OK"
+  - Frontend was checking `health.ollama` but backend returns `health.ai`
+  - Added safeguard to merge API response with defaults to prevent silent field name mismatches
+
 ## [0.27.4-alpha] - 2025-12-25
 
 ### Bug Fixes
