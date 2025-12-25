@@ -6,6 +6,14 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.27.2-alpha] - 2025-12-25
+
+### Bug Fixes
+- **OpenAI API Keys:** Fixed authentication errors when switching to OpenAI from other providers ([#68](https://github.com/cloudbyday90/Classifarr/issues/68))
+  - `getEndpoint()` now only uses custom endpoints for LiteLLM/custom providers
+  - OpenAI, Gemini, and OpenRouter always use their official hardcoded endpoints
+  - Prevents stale endpoint configuration when switching between providers
+
 ## [0.27.1-alpha] - 2025-12-25
 
 ### Bug Fixes

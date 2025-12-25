@@ -70,9 +70,13 @@ class CloudLLMService {
 
     /**
      * Get the API endpoint for a provider
+     * Note: Only litellm/custom use custom endpoints. OpenAI/OpenRouter/Gemini 
+     * always use their official endpoints to prevent stale configuration issues
+     * when switching providers (fixes issue #68)
      */
     getEndpoint(config) {
-        if (config.api_endpoint) {
+        // Only use custom endpoints for providers that genuinely need them
+        if (config.api_endpoint && ['litellm', 'custom'].includes(config.primary_provider)) {
             return config.api_endpoint;
         }
         return this.defaultEndpoints[config.primary_provider] || config.api_endpoint;
