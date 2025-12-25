@@ -91,6 +91,42 @@ class OllamaService {
   }
 
   /**
+   * Try to discover a working Ollama host by testing common alternatives
+   * @param {number} port - Port to test
+   * @returns {Promise<{host: string, success: boolean}|null>} Working host or null
+   */
+  async discoverOllamaHost(port = 11434) {
+    const candidates = [
+      'ollama',                    // Container name (most common in Docker Compose)
+      'localhost',                 // Ollama on same container/host
+      this.getDefaultOllamaHost(), // Detected gateway IP
+      'host.docker.internal',      // Docker Desktop (Mac/Windows)
+    ];
+
+    // Remove duplicates
+    const uniqueCandidates = [...new Set(candidates)];
+
+    logger.info('Attempting Ollama auto-discovery', { candidates: uniqueCandidates });
+
+    for (const candidate of uniqueCandidates) {
+      try {
+        const testUrl = `http://${candidate}:${port}`;
+        const response = await axios.get(`${testUrl}/api/tags`, { timeout: 3000 });
+
+        if (response.status === 200) {
+          logger.info(`Ollama auto-discovery succeeded`, { host: candidate, port });
+          return { host: candidate, success: true };
+        }
+      } catch (error) {
+        logger.debug(`Ollama auto-discovery failed for ${candidate}:${port}`, { error: error.code || error.message });
+      }
+    }
+
+    logger.warn('Ollama auto-discovery failed for all candidates', { candidates: uniqueCandidates });
+    return null;
+  }
+
+  /**
    * Get current generation status for UI
    */
   getGenerationStatus() {
@@ -153,14 +189,14 @@ class OllamaService {
       if (this.host === 'host.docker.internal' && os.platform() === 'linux') {
         const detectedHost = this.getDefaultOllamaHost();
         logger.warn(`Detected Linux environment with host.docker.internal in database. Auto-switching to detected gateway: ${detectedHost}`);
-        
+
         try {
           // Update database with detected gateway (one-time fix)
           await db.query(
             'UPDATE ollama_config SET host = $1 WHERE id = $2',
             [detectedHost, result.rows[0].id]
           );
-          
+
           this.host = detectedHost;
           logger.info(`Successfully updated Ollama host to ${detectedHost} in database`);
         } catch (error) {
@@ -170,9 +206,29 @@ class OllamaService {
         }
       }
     } else {
-      // Fall back to environment variables or auto-detection
-      this.host = process.env.OLLAMA_HOST || this.getDefaultOllamaHost();
-      this.port = process.env.OLLAMA_PORT || 11434;
+      // No config in database - try auto-discovery for first run
+      const port = process.env.OLLAMA_PORT || 11434;
+
+      if (process.env.OLLAMA_HOST) {
+        // User explicitly set env var - respect it
+        this.host = process.env.OLLAMA_HOST;
+        this.port = port;
+        logger.info(`Using Ollama host from environment: ${this.host}:${this.port}`);
+      } else {
+        // Try to discover a working Ollama host
+        const discovered = await this.discoverOllamaHost(port);
+
+        if (discovered && discovered.success) {
+          this.host = discovered.host;
+          this.port = port;
+          logger.info(`Auto-discovered Ollama at ${this.host}:${this.port}`);
+        } else {
+          // Fall back to default detection
+          this.host = this.getDefaultOllamaHost();
+          this.port = port;
+          logger.info(`Using default Ollama host: ${this.host}:${this.port}`);
+        }
+      }
     }
 
     this.baseUrl = `http://${this.host}:${this.port}`;
@@ -197,7 +253,7 @@ class OllamaService {
       };
     } catch (error) {
       let errorMessage = error.message;
-      
+
       // Provide helpful error messages based on error type
       if (error.code === 'ECONNREFUSED') {
         errorMessage = 'Connection refused - is Ollama running?';
