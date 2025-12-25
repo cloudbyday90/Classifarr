@@ -1,4 +1,21 @@
 
+## v0.30.4-alpha
+**UI Refactor & Bug Fixes**
+
+### New Features
+- **Library Mappings Integration:** Library mappings now appear directly in Radarr/Sonarr settings when a media server is linked (removed standalone tab)
+- **Path Configuration Guide:** Collapsible guide added to Radarr/Sonarr settings with Docker path mapping help
+
+### Improvements
+- **SSL Toggle UX:** SSL verification toggle is now disabled and greyed out when protocol is HTTP, with explanatory text
+- **Settings Navigation:** Removed standalone "Library Mappings" and "Path Testing" tabs for cleaner navigation
+
+### Fixes
+- **Media Server Dropdown:** Fixed "Associated Media Server" dropdown not populating with configured media servers
+- **API Key Test Connection:** Fixed test connection failing after page refresh when API key is masked (now resolves from database)
+
+---
+
 ## v0.30.3-alpha
 **Queue Settings Fix**
 

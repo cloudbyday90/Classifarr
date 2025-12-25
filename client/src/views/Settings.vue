@@ -62,8 +62,6 @@ import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
 import Tavily from './settings/Tavily.vue'
 import OMDb from './settings/OMDb.vue'
-import LibraryMappings from './settings/LibraryMappings.vue'
-import PathTest from './settings/PathTest.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -86,7 +84,6 @@ const settingsGroups = [
       { id: 'mediaserver', label: 'Media Server', icon: '🖥️', component: MediaServer },
       { id: 'radarr', label: 'Radarr', icon: '🎬', component: Radarr },
       { id: 'sonarr', label: 'Sonarr', icon: '📺', component: Sonarr },
-      { id: 'mappings', label: 'Library Mappings', icon: '🔗', component: LibraryMappings },
     ]
   },
   {
@@ -111,7 +108,6 @@ const settingsGroups = [
       { id: 'backup', label: 'Backup', icon: '💾', component: Backup },
       { id: 'ssl', label: 'SSL/HTTPS', icon: '🔒', component: SSL },
       { id: 'logs', label: 'Logs', icon: '📝', component: Logs },
-      { id: 'pathtest', label: 'Path Testing', icon: '🔧', component: PathTest },
     ]
   }
 ]

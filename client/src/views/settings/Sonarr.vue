@@ -67,6 +67,15 @@
       </div>
     </div>
 
+    <!-- Library Mappings (when configured) -->
+    <div v-if="isConfigured && !isEditing && config.media_server_id" class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <LibraryMappingPanel
+        arrType="sonarr"
+        :arrConfigId="config.id"
+        :mediaServerId="config.media_server_id"
+      />
+    </div>
+
     <!-- Configuration Form -->
     <div v-else class="space-y-4">
       <div v-if="isConfigured" class="flex justify-end">
@@ -115,8 +124,15 @@
         </div>
 
         <!-- SSL Verification -->
-        <div>
-          <Toggle v-model="config.verify_ssl" label="Verify SSL Certificate" />
+        <div :class="{ 'opacity-50': config.protocol === 'http' }">
+          <Toggle 
+            v-model="config.verify_ssl" 
+            label="Verify SSL Certificate" 
+            :disabled="config.protocol === 'http'"
+          />
+          <p v-if="config.protocol === 'http'" class="text-xs text-gray-500 mt-1">
+            SSL verification only applies when using HTTPS
+          </p>
         </div>
       </div>
 
@@ -176,10 +192,12 @@ import { useToast } from '@/stores/toast'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
 import Toggle from '@/components/common/Toggle.vue'
+import LibraryMappingPanel from '@/components/settings/LibraryMappingPanel.vue'
 
 const toast = useToast()
 
 const config = ref({
+  id: null,
   protocol: 'http',
   host: 'localhost',
   port: 8989,

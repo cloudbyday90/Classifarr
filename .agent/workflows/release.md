@@ -125,7 +125,8 @@ Minimum files to modify for ANY release:
 1. `client/package.json` - version
 2. `server/package.json` - version
 3. `client/src/components/layout/Sidebar.vue` - UI version display
-4. `RELEASE_NOTES.md` - changelog entry
+4. `RELEASE_NOTES.md` - release notes entry
+5. `CHANGELOG.md` - changelog entry (keep-a-changelog format)
 
 ## Important Notes
 

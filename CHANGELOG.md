@@ -6,6 +6,29 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.30.4-alpha] - 2025-12-25
+
+### Added
+- **Library Mappings Integration:** Library mappings now embedded in Radarr/Sonarr settings (removed standalone tab)
+- **Path Configuration Guide:** Collapsible Docker path mapping guide in *arr settings
+
+### Changed
+- **SSL Toggle UX:** Disabled and greyed out when protocol is HTTP with explanatory text
+- **Settings Navigation:** Removed standalone "Library Mappings" and "Path Testing" tabs
+
+### Fixed
+- **Media Server Dropdown:** "Associated Media Server" dropdown now populates correctly
+- **API Key Test Connection:** Test connection now works after page refresh (resolves masked tokens from database)
+
+## [0.30.3-alpha] - 2025-12-25
+
+### Changed
+- **Queue Settings UX:** Save Settings button moved to separate row, Clear buttons show counts and are disabled when empty
+
+### Fixed
+- **Queue Settings:** Fixed JSON parsing error when saving queue settings
+- **API Client:** Added category-based settings endpoints for queue, scheduler, classification
+
 ## [0.30.2-alpha] - 2025-12-25
 
 ### Improvements

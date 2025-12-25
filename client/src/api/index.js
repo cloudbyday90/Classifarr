@@ -90,6 +90,12 @@ export default {
   syncMediaServer() {
     return apiClient.post('/media-server/sync')
   },
+  // Returns all media servers as an array (currently max 1 is active)
+  async getMediaServers() {
+    const response = await apiClient.get('/media-server')
+    // Wrap single server in array, or return empty array if none configured
+    return { data: response.data ? [response.data] : [] }
+  },
 
   // Plex OAuth
   createPlexPin() {

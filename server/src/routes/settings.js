@@ -373,6 +373,29 @@ router.delete('/radarr/:id', async (req, res) => {
 router.post('/radarr/test', async (req, res) => {
   try {
     const config = req.body;
+
+    // If the api_key is masked, get the real one from the database
+    if (config.api_key && isMaskedToken(config.api_key)) {
+      // Try to get the real API key from the database using the config id or by host/port
+      let realApiKey = null;
+
+      if (config.id) {
+        const existingResult = await db.query('SELECT api_key FROM radarr_config WHERE id = $1', [config.id]);
+        realApiKey = existingResult.rows[0]?.api_key;
+      } else if (config.host && config.port) {
+        const existingResult = await db.query('SELECT api_key FROM radarr_config WHERE host = $1 AND port = $2', [config.host, config.port]);
+        realApiKey = existingResult.rows[0]?.api_key;
+      }
+
+      if (!realApiKey) {
+        return res.json({
+          success: false,
+          error: { message: 'No saved API key found. Please enter the API key manually.' }
+        });
+      }
+      config.api_key = realApiKey;
+    }
+
     const result = await radarrService.testConnection(config);
     res.json(result);
   } catch (error) {
@@ -559,6 +582,29 @@ router.delete('/sonarr/:id', async (req, res) => {
 router.post('/sonarr/test', async (req, res) => {
   try {
     const config = req.body;
+
+    // If the api_key is masked, get the real one from the database
+    if (config.api_key && isMaskedToken(config.api_key)) {
+      // Try to get the real API key from the database using the config id or by host/port
+      let realApiKey = null;
+
+      if (config.id) {
+        const existingResult = await db.query('SELECT api_key FROM sonarr_config WHERE id = $1', [config.id]);
+        realApiKey = existingResult.rows[0]?.api_key;
+      } else if (config.host && config.port) {
+        const existingResult = await db.query('SELECT api_key FROM sonarr_config WHERE host = $1 AND port = $2', [config.host, config.port]);
+        realApiKey = existingResult.rows[0]?.api_key;
+      }
+
+      if (!realApiKey) {
+        return res.json({
+          success: false,
+          error: { message: 'No saved API key found. Please enter the API key manually.' }
+        });
+      }
+      config.api_key = realApiKey;
+    }
+
     const result = await sonarrService.testConnection(config);
     res.json(result);
   } catch (error) {
