@@ -189,7 +189,7 @@ class SchedulerService {
             return { libraryId, patternsDetected: result.patterns.length };
         } else {
             // Analyze all libraries
-            const libraries = await db.query('SELECT id FROM libraries WHERE sync_enabled = true');
+            const libraries = await db.query('SELECT id FROM libraries WHERE is_active = true');
             const results = [];
 
             for (const lib of libraries.rows) {

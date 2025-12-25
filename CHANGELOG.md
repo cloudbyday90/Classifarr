@@ -6,6 +6,15 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.27.6-alpha] - 2025-12-25
+
+### Bug Fixes
+- **Pattern Suggestions:** Fixed pattern analysis only running for one library
+  - Changed `sync_enabled` to `is_active` - column didn't exist, so only first library was analyzed
+  - All libraries now show in "New Pattern Suggestions" widget on Dashboard
+- **Clear & Re-Sync All:** Now clears `library_pattern_suggestions` table
+  - Available Library Filters are now properly reset during full resync
+
 ## [0.27.5-alpha] - 2025-12-25
 
 ### Bug Fixes

@@ -855,6 +855,9 @@ class QueueService {
             const rulesV2Result = await db.query('DELETE FROM library_rules_v2 RETURNING id');
             await db.query('DELETE FROM library_custom_rules');
 
+            // 5b. Clear library pattern suggestions (Available Library Filters)
+            await db.query('DELETE FROM library_pattern_suggestions');
+
             // 6. DELETE all media_server_items entirely (sync will repopulate fresh)
             // This removes duplicates and stale data - fresh sync is cleaner
             const itemsResult = await db.query(`
