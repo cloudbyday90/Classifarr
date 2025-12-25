@@ -23,6 +23,8 @@ services:
       # Adjust /volume1 to your specific volume if different
       - /volume1/docker/classifarr:/app/data
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:21324/health" ]
       interval: 30s

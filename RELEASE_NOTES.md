@@ -1,4 +1,36 @@
 
+## v0.26.0-alpha
+**Linux/Unraid Ollama Connection Fix**
+
+### Major Fixes
+- **Ollama Connection on Linux/Unraid:** Fixed the "getaddrinfo ENOTFOUND host.docker.internal" error that prevented Ollama connectivity on Linux-based systems (Unraid, Synology, standard Docker on Linux).
+  - **Auto-Detection:** The application now automatically detects the Docker gateway IP on Linux by parsing the system routing table.
+  - **Auto-Migration:** Existing installations with `host.docker.internal` saved in the database will be automatically updated to use the correct gateway IP on the next container restart.
+  - **Fallback Protection:** Added `extra_hosts` mapping to all docker-compose files to make `host.docker.internal` resolve correctly as a backup.
+  - **Enhanced Diagnostics:** Connection test errors now provide platform-specific troubleshooting suggestions.
+
+### Improvements
+- **Platform-Aware Defaults:** The system intelligently selects the appropriate default host:
+  - **Linux:** Auto-detects Docker gateway (typically `172.17.0.1`)
+  - **Windows/macOS:** Uses `host.docker.internal` (native support)
+- **Unraid Template Updated:** The Community Applications template now includes `--add-host host.docker.internal:host-gateway` for seamless setup.
+- **Better Error Messages:** Connection failures now explain the issue and suggest specific fixes based on the error type and platform.
+
+### Technical Changes
+- Modified `server/src/services/ollama.js`:
+  - Added `getDefaultOllamaHost()` method to detect Docker gateway from `/proc/net/route`
+  - Updated `getConfig()` to auto-fix legacy `host.docker.internal` configs on Linux
+  - Enhanced `testConnection()` with context-aware error messages
+- Updated all docker-compose files with `extra_hosts: - "host.docker.internal:host-gateway"`
+- Updated `unraid/classifarr.xml` template with host mapping parameter
+
+### User Impact
+- **New Users:** Ollama connection works out-of-the-box on Linux without manual configuration
+- **Existing Users:** Auto-fixed on next container restart (logged to console)
+- **No Breaking Changes:** Windows/macOS users unaffected, manual configurations still work
+
+---
+
 ## v0.25.0-alpha
 **Smart "Use This" & Continuous Pattern Analysis**
 

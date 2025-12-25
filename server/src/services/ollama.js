@@ -18,12 +18,16 @@
 
 const axios = require('axios');
 const db = require('../config/database');
+const fs = require('fs');
+const os = require('os');
+const logger = require('../utils/logger');
 
 class OllamaService {
   constructor() {
     this.host = null;
     this.port = null;
     this.baseUrl = null;
+    this.detectedGateway = null;
 
     // Generation status tracking for UI
     this.currentGeneration = {
@@ -39,6 +43,51 @@ class OllamaService {
     this.host = null;
     this.port = null;
     this.baseUrl = null;
+  }
+
+  /**
+   * Detect Docker gateway IP on Linux, fallback to host.docker.internal on Windows/macOS
+   * @returns {string} The detected gateway IP or host.docker.internal
+   */
+  getDefaultOllamaHost() {
+    if (this.detectedGateway) {
+      return this.detectedGateway;
+    }
+
+    // Windows/macOS: use host.docker.internal
+    if (os.platform() !== 'linux') {
+      this.detectedGateway = 'host.docker.internal';
+      return this.detectedGateway;
+    }
+
+    // Linux: detect gateway from routing table
+    try {
+      const routeTable = fs.readFileSync('/proc/net/route', 'utf8');
+      const lines = routeTable.split('\n');
+
+      for (const line of lines) {
+        const parts = line.split('\t');
+        if (parts[1] === '00000000') {
+          const gatewayHex = parts[2];
+          const ip = [
+            parseInt(gatewayHex.substr(6, 2), 16),
+            parseInt(gatewayHex.substr(4, 2), 16),
+            parseInt(gatewayHex.substr(2, 2), 16),
+            parseInt(gatewayHex.substr(0, 2), 16)
+          ].join('.');
+          this.detectedGateway = ip;
+          logger.info(`Detected Docker gateway IP: ${ip}`);
+          return ip;
+        }
+      }
+    } catch (error) {
+      logger.warn('Could not detect Docker gateway from /proc/net/route, using fallback', { error: error.message });
+    }
+
+    // Fallback for Linux
+    this.detectedGateway = '172.17.0.1';
+    logger.info(`Using fallback Docker gateway IP: ${this.detectedGateway}`);
+    return this.detectedGateway;
   }
 
   /**
@@ -95,13 +144,34 @@ class OllamaService {
     }
 
     // Try to load from database
-    const result = await db.query('SELECT host, port FROM ollama_config WHERE is_active = true LIMIT 1');
+    const result = await db.query('SELECT id, host, port FROM ollama_config WHERE is_active = true LIMIT 1');
     if (result.rows.length > 0) {
       this.host = result.rows[0].host;
       this.port = result.rows[0].port;
+
+      // Auto-fix host.docker.internal on Linux (for existing installations)
+      if (this.host === 'host.docker.internal' && os.platform() === 'linux') {
+        const detectedHost = this.getDefaultOllamaHost();
+        logger.warn(`Detected Linux environment with host.docker.internal in database. Auto-switching to detected gateway: ${detectedHost}`);
+        
+        try {
+          // Update database with detected gateway (one-time fix)
+          await db.query(
+            'UPDATE ollama_config SET host = $1 WHERE id = $2',
+            [detectedHost, result.rows[0].id]
+          );
+          
+          this.host = detectedHost;
+          logger.info(`Successfully updated Ollama host to ${detectedHost} in database`);
+        } catch (error) {
+          logger.error('Failed to update Ollama host in database', { error: error.message });
+          // Still use detected host even if DB update fails
+          this.host = detectedHost;
+        }
+      }
     } else {
-      // Fall back to environment variables
-      this.host = process.env.OLLAMA_HOST || 'host.docker.internal';
+      // Fall back to environment variables or auto-detection
+      this.host = process.env.OLLAMA_HOST || this.getDefaultOllamaHost();
       this.port = process.env.OLLAMA_PORT || 11434;
     }
 
@@ -126,11 +196,28 @@ class OllamaService {
         message: 'Connection successful'
       };
     } catch (error) {
+      let errorMessage = error.message;
+      
+      // Provide helpful error messages based on error type
+      if (error.code === 'ECONNREFUSED') {
+        errorMessage = 'Connection refused - is Ollama running?';
+      } else if (error.code === 'ENOTFOUND') {
+        if (testHost === 'host.docker.internal' && os.platform() === 'linux') {
+          const detectedGateway = this.getDefaultOllamaHost();
+          errorMessage = `Cannot resolve hostname '${testHost}'. This hostname is not available on Linux. Try using the detected gateway IP: ${detectedGateway}, or use your Ollama container name if on the same Docker network.`;
+        } else {
+          errorMessage = `Cannot resolve hostname '${testHost}'. Check that the hostname or IP address is correct.`;
+        }
+      } else if (error.code === 'ETIMEDOUT') {
+        errorMessage = `Connection timed out. Verify the host (${testHost}) is reachable and port ${testPort} is accessible.`;
+      } else if (error.code === 'EHOSTUNREACH') {
+        errorMessage = `Host unreachable. Check network connectivity to ${testHost}.`;
+      }
+
       return {
         success: false,
-        error: error.code === 'ECONNREFUSED'
-          ? 'Connection refused - is Ollama running?'
-          : error.message
+        error: errorMessage,
+        errorCode: error.code
       };
     }
   }
