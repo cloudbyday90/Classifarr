@@ -1,4 +1,28 @@
 
+## v0.27.8-alpha
+**Plex Sync Fixes & Pattern Suggestions Improvements**
+
+### Fixes
+- **Library Sync:** Fixed Plex sync wiping enrichment progress (OMDb/Tavily data)
+  - UPSERT now merges metadata instead of replacing it entirely
+- **Duplicate Classifications:** Fixed same title appearing 81+ times in statistics
+  - Added duplicate check before inserting classification_history entries
+- **Health Status:** Fixed Activity page showing "Partial" instead of "All Systems OK"
+  - Frontend was checking wrong field name (`ollama` vs `ai`)
+- **Pattern Suggestions:** Fixed pattern analysis only running for one library
+  - Changed `sync_enabled` to `is_active` - column didn't exist
+- **Clear & Re-Sync All:** Now properly resets all data including:
+  - `library_pattern_suggestions` table
+  - Triggers `runPatternAnalysis()` after sync to populate suggestions
+
+### UX Improvements
+- **Pattern Suggestions Widget:** Removed dismiss (X) button from library tiles
+  - Users must now review patterns in Rule Builder to dismiss individually
+  - Prevents accidentally hiding libraries without reviewing available filters
+  - Widget count updates automatically as patterns are dismissed or applied
+
+---
+
 ## v0.27.0-alpha
 **Pattern Suggestions Enhancement**
 

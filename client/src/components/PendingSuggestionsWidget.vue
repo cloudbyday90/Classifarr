@@ -28,16 +28,7 @@
           <span class="font-medium text-white">{{ lib.library_name }}</span>
           <span class="text-sm text-gray-400 ml-2">{{ lib.pending_count }} patterns</span>
         </div>
-        <div class="flex items-center gap-2">
-          <button 
-            @click.stop="dismiss(lib.library_id)"
-            class="text-gray-500 hover:text-gray-300 text-xs"
-            title="Dismiss"
-          >
-            ✕
-          </button>
-          <span class="text-primary group-hover:translate-x-1 transition-transform">→</span>
-        </div>
+        <span class="text-primary group-hover:translate-x-1 transition-transform">→</span>
       </div>
     </div>
   </div>

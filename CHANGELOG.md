@@ -6,6 +6,14 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.27.8-alpha] - 2025-12-25
+
+### UX Improvements
+- **Pattern Suggestions Widget:** Removed dismiss (X) button from library tiles
+  - Users must now review patterns in Rule Builder and dismiss individually
+  - Prevents accidentally hiding libraries without reviewing available filters
+  - Widget count updates automatically as patterns are dismissed or applied in Rule Builder
+
 ## [0.27.7-alpha] - 2025-12-25
 
 ### Bug Fixes
