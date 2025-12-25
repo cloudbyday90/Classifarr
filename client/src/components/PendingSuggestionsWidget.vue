@@ -68,7 +68,7 @@ const loadSuggestions = async () => {
 }
 
 const goToRuleBuilder = (libraryId) => {
-  router.push(`/libraries/${libraryId}/rules/new`)
+  router.push(`/rule-builder/${libraryId}`)
 }
 
 const dismiss = async (libraryId) => {
