@@ -103,10 +103,14 @@ services:
       - TZ=America/New_York  # Your timezone
     volumes:
       - ./data:/app/data
+      # Media libraries - mount your Plex/Radarr/Sonarr media root
+      - /path/to/media:/data/media
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"  # Required for Ollama on Linux
 ```
+
+> **Important:** The media volume (`/data/media`) should point to the same root folder that Plex, Radarr, and Sonarr access. This enables re-classification path testing and media move features.
 
 3. **Start the container:**
 
@@ -124,6 +128,7 @@ docker run -d \
   -e PGID=1000 \
   -e TZ=America/New_York \
   -v ./data:/app/data \
+  -v /path/to/media:/data/media \
   --add-host host.docker.internal:host-gateway \
   --restart unless-stopped \
   ghcr.io/cloudbyday90/classifarr:latest
