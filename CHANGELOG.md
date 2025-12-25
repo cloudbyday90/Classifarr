@@ -6,6 +6,16 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.27.4-alpha] - 2025-12-25
+
+### Bug Fixes
+- **Library Sync:** Fixed Plex sync wiping enrichment progress (OMDb/Tavily data)
+  - UPSERT now merges metadata instead of replacing it entirely
+  - Existing `omdb`, `tavily_*` fields preserved during re-sync
+- **Duplicate Classifications:** Fixed same title appearing 81+ times in statistics
+  - Added duplicate check before inserting classification_history entries
+  - Re-sync no longer creates duplicate `source_library` records
+
 ## [0.27.3-alpha] - 2025-12-25
 
 ### Bug Fixes

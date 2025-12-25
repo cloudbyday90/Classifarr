@@ -254,7 +254,7 @@ class MediaSyncService {
            collections = EXCLUDED.collections,
            studio = EXCLUDED.studio,
            content_rating = EXCLUDED.content_rating,
-           metadata = EXCLUDED.metadata,
+           metadata = COALESCE(media_server_items.metadata, '{}')::jsonb || EXCLUDED.metadata::jsonb,
            last_synced = NOW()`,
         [
           mediaServerId,

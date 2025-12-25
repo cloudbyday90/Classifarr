@@ -408,24 +408,33 @@ class QueueService {
 
                         // Log to classification_history so it shows in Activity stream
                         // This is 100% confidence from source library - NO AI analysis
-                        await db.query(
-                            `INSERT INTO classification_history (
-                                tmdb_id, media_type, title, year, library_id, status, 
-                                confidence, method, reason, metadata
-                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-                            [
-                                enrichPayload.tmdbId || null,
-                                enrichPayload.media?.media_type || 'movie',
-                                enrichPayload.title,
-                                enrichPayload.year,
-                                enrichPayload.source_library_id,
-                                'completed',
-                                100, // 100% confidence from source
-                                'source_library', // Method is source_library, not AI
-                                `Already in library: ${enrichPayload.source_library_name}`,
-                                JSON.stringify(enrichPayload)
-                            ]
+                        // Only insert if not already logged (prevents duplicates on re-sync)
+                        const existingEntry = await db.query(
+                            `SELECT 1 FROM classification_history 
+                             WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
+                            [enrichPayload.tmdbId, enrichPayload.source_library_id]
                         );
+
+                        if (existingEntry.rows.length === 0) {
+                            await db.query(
+                                `INSERT INTO classification_history (
+                                    tmdb_id, media_type, title, year, library_id, status, 
+                                    confidence, method, reason, metadata
+                                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                                [
+                                    enrichPayload.tmdbId || null,
+                                    enrichPayload.media?.media_type || 'movie',
+                                    enrichPayload.title,
+                                    enrichPayload.year,
+                                    enrichPayload.source_library_id,
+                                    'completed',
+                                    100, // 100% confidence from source
+                                    'source_library', // Method is source_library, not AI
+                                    `Already in library: ${enrichPayload.source_library_name}`,
+                                    JSON.stringify(enrichPayload)
+                                ]
+                            );
+                        }
 
                         const hasTavily = !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory || enrichmentData.tavily_content_type || enrichmentData.tavily_holiday);
                         logger.info('Metadata enrichment complete (no AI, from source library)', {
