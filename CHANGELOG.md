@@ -6,24 +6,15 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
-## [0.26.0-alpha] - 2025-12-25
+## [0.26.1-alpha] - 2025-12-25
 
-### Major Fixes
-- **Linux/Unraid Ollama Connection:** Fixed "getaddrinfo ENOTFOUND host.docker.internal" error on Linux-based systems.
-  - Auto-detects Docker gateway IP on Linux by parsing routing table
-  - Automatically migrates existing `host.docker.internal` configs on container restart
-  - Added `extra_hosts` to docker-compose files as fallback solution
-  - Enhanced error messages with actionable troubleshooting guidance
+### Bug Fixes
+- **Ollama Test Connection:** Test now uses input field values instead of cached DB values (fixes Issue #66)
+- **AI Provider Selection:** Queue now respects configured provider - users can switch to OpenAI without Ollama blocking
 
 ### Improvements
-- **Smart Gateway Detection:** Automatically uses correct gateway IP (e.g., 172.17.0.1) on Linux while maintaining `host.docker.internal` support on Windows/macOS
-- **Unraid Template Update:** Template now includes `--add-host host.docker.internal:host-gateway` for seamless Ollama connectivity
-- **Better Error Messages:** Connection errors now provide context-aware suggestions based on platform and error type
-
-### Technical Details
-- Modified `server/src/services/ollama.js` to detect platform and parse `/proc/net/route` for gateway IP
-- Updated `docker-compose.yml`, `docker-compose.unraid.yml`, `docker-compose.synology.yml` with `extra_hosts`
-- Updated `unraid/classifarr.xml` template with Docker host mapping
+- **Simplified Defaults:** Ollama default is now `localhost` - removed complex gateway detection logic
+- **Cleaner Code:** Removed ~60 lines of platform-specific detection code
 
 
 ## [0.25.0-alpha] - 2025-12-24

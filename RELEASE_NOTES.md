@@ -1,4 +1,17 @@
 
+## v0.26.1-alpha
+**Ollama Connection Fix (Issue #66)**
+
+### Bug Fixes
+- **Test Connection Fixed:** Uses input field values instead of cached DB values
+- **AI Provider Selection:** Queue respects configured provider - OpenAI works without Ollama
+
+### Improvements
+- **Simplified Defaults:** Ollama default is now `localhost`
+- **Cleaner Code:** Removed ~60 lines of complex gateway detection
+
+---
+
 ## v0.26.0-alpha
 **Linux/Unraid Ollama Connection Fix**
 
