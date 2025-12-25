@@ -78,22 +78,69 @@ Classifarr is an intelligent media classification platform that automatically ro
 
 ### Installation
 
-1. **Clone the repository:**
+#### Option 1: Docker Compose (Recommended)
+
+1. **Create a directory and docker-compose.yml:**
 
 ```bash
-git clone https://github.com/cloudbyday90/Classifarr.git
-cd Classifarr
+mkdir classifarr && cd classifarr
 ```
 
-2. **Start Classifarr:**
+2. **Create `docker-compose.yml`:**
+
+```yaml
+services:
+  classifarr:
+    image: ghcr.io/cloudbyday90/classifarr:latest
+    container_name: classifarr
+    ports:
+      - "21324:21324"
+    environment:
+      - PUID=1000        # Your user ID (run `id -u` to find)
+      - PGID=1000        # Your group ID (run `id -g` to find)
+      - TZ=America/New_York  # Your timezone
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Required for Ollama on Linux
+```
+
+3. **Start the container:**
 
 ```bash
 docker compose up -d
 ```
 
-3. **Access the web interface:**
+#### Option 2: Docker Run
 
-Open `http://localhost:21324` - first startup takes 30-60 seconds for database initialization.
+```bash
+docker run -d \
+  --name classifarr \
+  -p 21324:21324 \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  -e TZ=America/New_York \
+  -v ./data:/app/data \
+  --add-host host.docker.internal:host-gateway \
+  --restart unless-stopped \
+  ghcr.io/cloudbyday90/classifarr:latest
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PUID` | User ID for file permissions | `1000` |
+| `PGID` | Group ID for file permissions | `1000` |
+| `TZ` | Timezone (e.g., `America/New_York`) | `UTC` |
+| `UMASK` | File permission mask | `022` |
+
+> **Note:** First startup takes 30-60 seconds for database initialization.
+
+4. **Access the web interface:**
+
+Open `http://localhost:21324`
 
 ### First-Time Setup
 
@@ -143,7 +190,7 @@ Create classification rules through an intuitive interface:
 4. Preview matching items
 5. Save the rule
 
-**AI Suggestions:** Click "Get Smart Suggestions" to have Ollama analyze your library and suggest rules based on content patterns.
+**AI Suggestions:** Click "Get Smart Suggestions" to have your AI provider analyze your library and suggest rules based on content patterns.
 
 ## 🔄 Clear & Re-sync
 
@@ -324,16 +371,7 @@ See deployment guides:
 - [Discord Bot Setup](DISCORD_SETUP.md)
 - [Authentication](AUTHENTICATION.md)
 
-## 🔧 Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Web server port | `21324` |
-| `POSTGRES_PASSWORD` | Database password | `classifarr_secret` |
-| `NODE_ENV` | Environment mode | `production` |
-| `TZ` | Timezone | `UTC` |
-
-Additional settings are configured through the web UI.
 
 ## 🐛 Troubleshooting
 
@@ -351,10 +389,10 @@ Additional settings are configured through the web UI.
 ### AI Not Working
 1. Go to **Settings** → **AI** and test connection
 2. **For Ollama:** 
-   - Verify host is running: `curl http://your-ollama-host:11434/api/tags`
-   - **Linux/Unraid users:** The app auto-detects Docker gateway (e.g., `172.17.0.1`) on startup
-   - Check logs for: `"Detected Docker gateway IP: X.X.X.X"`
-   - If using custom networks, use the Ollama container name or add `--add-host host.docker.internal:host-gateway` to Docker parameters
+   - Enter your Ollama host (IP address or container name)
+   - Default is `localhost` - change if Ollama runs on a different machine
+   - Use **Test Connection** to verify before saving
+   - Verify Ollama is running: `curl http://your-ollama-host:11434/api/tags`
 3. **For Cloud Providers:** Check API key is valid and has credits
 4. Check budget hasn't been exhausted (see Usage Statistics)
 5. View container logs: `docker logs classifarr | grep -i ai`
