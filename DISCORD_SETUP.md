@@ -25,7 +25,6 @@ This guide walks you through setting up a Discord bot for Classifarr from scratc
 5. Accept the Discord Developer Terms of Service
 6. Click **"Create"**
 
-![Create Application](https://i.imgur.com/placeholder.png)
 
 > **Note:** The application name will be your bot's display name in Discord.
 
