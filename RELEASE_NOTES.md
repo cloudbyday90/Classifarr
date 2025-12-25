@@ -1,4 +1,43 @@
 
+## v0.30.0-alpha
+**Re-Classification System Foundation**
+
+> [!NOTE]
+> This release adds the infrastructure for re-classification but the Setup Banner is disabled pending bug fixes in a future minor release.
+
+### New Features
+- **Re-Classification Service:** New backend service for moving media between *arr root folders
+  - `reclassificationService.js` with execute, preview, and rollback support
+  - Media type isolation (movies → Radarr only, TV → Sonarr only)
+  - Learned corrections integration for future classifications
+- **Library Mapping System:** Map Plex libraries to *arr root folders
+  - `libraryMappingService.js` with auto-detection from Plex
+  - New `/api/mappings` endpoints for CRUD operations
+  - `LibraryMappings.vue` UI in Settings → Media Sources
+- **Path Testing:** Verify Docker path accessibility for re-classification
+  - `pathTestService.js` with health checks and path accessibility tests
+  - `PathTest.vue` UI in Settings → System → Path Testing
+  - API endpoints for testing path translation
+- **Learned Corrections:** User corrections now inform future classifications
+  - `checkLearnedCorrections()` added to classification chain (100% confidence)
+  - Highest priority after source_library match
+- **New API Endpoints:**
+  - `POST /api/classification/reclassify` - Execute full re-classification with media move
+  - `POST /api/classification/reclassify/preview` - Preview without executing
+  - `POST /api/settings/path-test` - Test path accessibility
+  - `GET /api/settings/path-test/health` - Re-classification health check
+
+### Database Changes
+- New tables: `library_arr_mappings`, `learned_corrections`, `app_settings`
+- New columns: `media_server_id` in `radarr_config` and `sonarr_config`
+
+### Technical Changes
+- Added `media_server_id` dropdown to Radarr/Sonarr settings
+- Classification priority now includes learned_correction method
+- Startup service for setup status detection
+
+---
+
 ## v0.27.9-alpha
 **Plex Sync Fixes, Pattern Suggestions & AI Improvements**
 

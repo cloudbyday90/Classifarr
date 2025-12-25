@@ -30,8 +30,49 @@ const tmdbService = require('../services/tmdb');
 const discordBotService = require('../services/discordBot');
 const tavilyService = require('../services/tavily');
 const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
+const startupService = require('../services/startupService');
+const pathTestService = require('../services/pathTestService');
 
 const router = express.Router();
+
+// ============================================
+// SETUP STATUS (for dashboard banner)
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/setup-status:
+ *   get:
+ *     summary: Get re-classification setup status for dashboard banner
+ */
+router.get('/setup-status', async (req, res) => {
+  try {
+    const status = await startupService.getSetupStatus();
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/media-path:
+ *   post:
+ *     summary: Configure Classifarr media path
+ */
+router.post('/media-path', async (req, res) => {
+  try {
+    const { path } = req.body;
+    if (!path) {
+      return res.status(400).json({ error: 'Path is required' });
+    }
+    await startupService.setMediaPath(path);
+    const status = await startupService.checkMediaPathStatus();
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Rate limiter for SSL certificate testing - 10 attempts per hour
 const sslTestLimiter = rateLimit({
@@ -124,13 +165,13 @@ router.get('/radarr', async (req, res) => {
  */
 router.post('/radarr', async (req, res) => {
   try {
-    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id } = req.body;
 
     const result = await db.query(
-      `INSERT INTO radarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO radarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [name, url, api_key, protocol || 'http', host || 'localhost', port || 7878, base_path || '', verify_ssl !== false, timeout || 30]
+      [name, url, api_key, protocol || 'http', host || 'localhost', port || 7878, base_path || '', verify_ssl !== false, timeout || 30, media_server_id || null]
     );
 
     // Mask API key in response
@@ -153,7 +194,7 @@ router.post('/radarr', async (req, res) => {
 router.put('/radarr/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id } = req.body;
 
     // Get existing config to preserve API key if masked value is sent
     const existingResult = await db.query('SELECT api_key FROM radarr_config WHERE id = $1', [id]);
@@ -177,10 +218,11 @@ router.put('/radarr/:id', async (req, res) => {
            verify_ssl = COALESCE($8, verify_ssl),
            timeout = COALESCE($9, timeout),
            is_active = COALESCE($10, is_active),
+           media_server_id = $11,
            updated_at = NOW()
-       WHERE id = $11
+       WHERE id = $12
        RETURNING *`,
-      [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, id]
+      [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, id]
     );
 
     if (result.rows.length === 0) {
@@ -309,13 +351,13 @@ router.get('/sonarr', async (req, res) => {
  */
 router.post('/sonarr', async (req, res) => {
   try {
-    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id } = req.body;
 
     const result = await db.query(
-      `INSERT INTO sonarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO sonarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [name, url, api_key, protocol || 'http', host || 'localhost', port || 8989, base_path || '', verify_ssl !== false, timeout || 30]
+      [name, url, api_key, protocol || 'http', host || 'localhost', port || 8989, base_path || '', verify_ssl !== false, timeout || 30, media_server_id || null]
     );
 
     // Mask API key in response
@@ -338,7 +380,7 @@ router.post('/sonarr', async (req, res) => {
 router.put('/sonarr/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id } = req.body;
 
     // Get existing config to preserve API key if masked value is sent
     const existingResult = await db.query('SELECT api_key FROM sonarr_config WHERE id = $1', [id]);
@@ -362,10 +404,11 @@ router.put('/sonarr/:id', async (req, res) => {
            verify_ssl = COALESCE($8, verify_ssl),
            timeout = COALESCE($9, timeout),
            is_active = COALESCE($10, is_active),
+           media_server_id = $11,
            updated_at = NOW()
-       WHERE id = $11
+       WHERE id = $12
        RETURNING *`,
-      [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, id]
+      [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, id]
     );
 
     if (result.rows.length === 0) {
@@ -2019,6 +2062,100 @@ router.post('/ai/reset-usage', async (req, res) => {
   try {
     await cloudLLMService.resetMonthlyUsage();
     res.json({ success: true, message: 'Monthly usage reset successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// PATH TESTING (for re-classification setup)
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/path-test:
+ *   post:
+ *     summary: Test if a path is accessible from Classifarr
+ */
+router.post('/path-test', async (req, res) => {
+  try {
+    const { path } = req.body;
+
+    if (!path) {
+      return res.status(400).json({ error: 'Path is required' });
+    }
+
+    const result = await pathTestService.testPathAccessibility(path);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/path-test/translation:
+ *   post:
+ *     summary: Test path translation between environments
+ */
+router.post('/path-test/translation', async (req, res) => {
+  try {
+    const { plexPath, arrPath, classiflarrPath, sampleFile } = req.body;
+
+    const result = await pathTestService.testPathTranslation({
+      plexPath,
+      arrPath,
+      classiflarrPath,
+      sampleFile
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/path-test/mappings/{mediaServerId}:
+ *   get:
+ *     summary: Test all library mappings for a media server
+ */
+router.get('/path-test/mappings/:mediaServerId', async (req, res) => {
+  try {
+    const { mediaServerId } = req.params;
+    const result = await pathTestService.testAllMappings(parseInt(mediaServerId));
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/path-test/health:
+ *   get:
+ *     summary: Get re-classification health check status
+ */
+router.get('/path-test/health', async (req, res) => {
+  try {
+    const result = await pathTestService.healthCheck();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/media-path-config:
+ *   get:
+ *     summary: Get media path configuration and accessibility
+ */
+router.get('/media-path-config', async (req, res) => {
+  try {
+    const result = await pathTestService.getMediaPathConfig();
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

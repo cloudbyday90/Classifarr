@@ -8,6 +8,9 @@
 
 <template>
   <div class="space-y-6">
+    <!-- Setup Banner (disabled for v0.30.0 - will enable after bugs fixed) -->
+    <!-- <SetupBanner /> -->
+    
     <!-- System Status Row -->
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
@@ -147,6 +150,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
 import PendingSuggestionsWidget from '@/components/PendingSuggestionsWidget.vue'
+import SetupBanner from '@/components/SetupBanner.vue'
 
 const librariesStore = useLibrariesStore()
 

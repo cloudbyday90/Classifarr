@@ -81,15 +81,31 @@ git tag -a vX.X.X-alpha -m "vX.X.X-alpha: Title - ADDITIONAL NOTES"
 git push origin main --tags
 ```
 
-## 7. Rebuild Docker (if local testing)
+## 7. Create GitHub Release
+
+Create an actual release on GitHub (tags alone don't appear as releases):
+
+1. Go to: https://github.com/cloudbyday90/Classifarr/releases/new
+2. Select the tag you just created (e.g., `v0.30.0-alpha`)
+3. Set release title: `vX.X.X-alpha: Title`
+4. Copy the release notes from `RELEASE_NOTES.md` into the description
+5. Check "Set as pre-release" for alpha versions
+6. Click "Publish release"
+
+**Or use GitHub CLI:**
+```bash
+gh release create vX.X.X-alpha --title "vX.X.X-alpha: Title" --notes-file RELEASE_NOTES.md --prerelease
+```
+
+## 8. Rebuild Docker (if local testing)
 
 ```bash
 docker compose down; docker compose up -d --build
 ```
 
-## 8. Verify
+## 9. Verify
 
-1. Check GitHub releases page
+1. Check GitHub releases page shows new release as "Latest"
 2. Verify version shows correctly in UI (bottom-left sidebar)
 3. Test any breaking changes documented
 

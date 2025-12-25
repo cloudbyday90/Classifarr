@@ -6,6 +6,33 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.30.0-alpha] - 2025-12-25
+
+### New Features
+- **Re-Classification System:** Foundation for moving media between *arr root folders
+  - `reclassificationService.js` with execute, preview, and rollback support
+  - Media type isolation (movies → Radarr only, TV → Sonarr only)
+- **Library Mapping System:** Map Plex libraries to *arr root folders
+  - `libraryMappingService.js` with auto-detection
+  - `LibraryMappings.vue` UI in Settings → Media Sources
+- **Path Testing:** Verify Docker path accessibility
+  - `pathTestService.js` with health checks
+  - `PathTest.vue` UI in Settings → System → Path Testing
+- **Learned Corrections:** User corrections inform future classifications
+  - `checkLearnedCorrections()` in classification chain (100% confidence)
+- **New API Endpoints:**
+  - `POST /api/classification/reclassify` - Execute re-classification
+  - `POST /api/classification/reclassify/preview` - Preview
+  - `POST /api/settings/path-test` - Test path accessibility
+  - `GET /api/settings/path-test/health` - Health check
+
+### Database Changes
+- New tables: `library_arr_mappings`, `learned_corrections`, `app_settings`
+- New columns: `media_server_id` in `radarr_config` and `sonarr_config`
+
+### Notes
+- SetupBanner disabled pending bug fixes in future minor release
+
 ## [0.27.9-alpha] - 2025-12-25
 
 ### Bug Fixes

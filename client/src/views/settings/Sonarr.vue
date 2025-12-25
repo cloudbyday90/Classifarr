@@ -120,6 +120,25 @@
         </div>
       </div>
 
+      <!-- Media Server Association -->
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <h3 class="text-lg font-medium mb-3">Media Server Association</h3>
+        <p class="text-sm text-gray-400 mb-3">Link this Sonarr instance to a media server for library mapping and re-classification.</p>
+        <div>
+          <label class="block text-sm font-medium mb-2">Associated Media Server</label>
+          <select 
+            v-model="config.media_server_id" 
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg"
+          >
+            <option :value="null">None (Not linked)</option>
+            <option v-for="server in mediaServers" :key="server.id" :value="server.id">
+              {{ server.name }} ({{ server.type }})
+            </option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">Required for re-classification feature</p>
+        </div>
+      </div>
+
       <!-- Advanced Settings -->
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <h3 class="text-lg font-medium mb-3">Advanced Settings</h3>
@@ -167,8 +186,11 @@ const config = ref({
   base_path: '',
   api_key: '',
   verify_ssl: true,
-  timeout: 30
+  timeout: 30,
+  media_server_id: null
 })
+
+const mediaServers = ref([])
 
 const loading = ref(false)
 const saving = ref(false)
@@ -184,8 +206,18 @@ const connectionStatus = ref({
 })
 
 onMounted(async () => {
+  await loadMediaServers()
   await loadConfig()
 })
+
+const loadMediaServers = async () => {
+  try {
+    const response = await api.getMediaServers()
+    mediaServers.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load media servers:', error)
+  }
+}
 
 const loadConfig = async () => {
   try {
@@ -201,7 +233,8 @@ const loadConfig = async () => {
         api_key: data.api_key || '',
         verify_ssl: data.verify_ssl !== false,
         timeout: data.timeout || 30,
-        name: data.name || 'Sonarr'
+        name: data.name || 'Sonarr',
+        media_server_id: data.media_server_id || null
       }
       
       // If we have an ID, it's a saved config
@@ -292,7 +325,8 @@ const saveSettings = async () => {
       base_path: config.value.base_path,
       verify_ssl: config.value.verify_ssl,
       timeout: config.value.timeout,
-      is_active: true
+      is_active: true,
+      media_server_id: config.value.media_server_id
     }
 
     if (config.value.id) {
