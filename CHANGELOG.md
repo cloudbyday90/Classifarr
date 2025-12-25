@@ -6,6 +6,13 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.27.3-alpha] - 2025-12-25
+
+### Bug Fixes
+- **Model Persistence:** Fixed cloud provider model selection disappearing after page refresh
+  - Model dropdown now seeds with saved model on load (same pattern as Ollama)
+  - Affects OpenAI, Gemini, OpenRouter, LiteLLM, and Custom providers
+
 ## [0.27.2-alpha] - 2025-12-25
 
 ### Bug Fixes

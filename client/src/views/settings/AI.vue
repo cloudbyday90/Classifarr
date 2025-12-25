@@ -470,6 +470,12 @@ onMounted(async () => {
       if (loadedConfig.ollama_model) {
         ollamaModels.value = [{ name: loadedConfig.ollama_model }]
       }
+      
+      // Seed cloud provider model if one is saved (so it's visible in dropdown)
+      const cloudProviders = ['openai', 'gemini', 'openrouter', 'litellm', 'custom']
+      if (loadedConfig.model && cloudProviders.includes(loadedConfig.primary_provider)) {
+        availableModels.value = [{ id: loadedConfig.model, name: loadedConfig.model }]
+      }
     }
     if (usageResponse?.data) {
       usageStats.value = usageResponse.data
