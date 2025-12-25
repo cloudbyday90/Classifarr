@@ -6,6 +6,12 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.27.1-alpha] - 2025-12-25
+
+### Bug Fixes
+- **Correction Submission:** Fixed "l.post is not a function" error when submitting corrections in History view ([#67](https://github.com/cloudbyday90/Classifarr/issues/67))
+  - Changed incorrect `api.post()` call to use the existing `api.submitCorrection()` method
+
 ## [0.26.2-alpha] - 2025-12-25
 
 ### Bug Fixes

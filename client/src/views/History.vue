@@ -262,7 +262,7 @@ const submitCorrection = async () => {
   
   submitting.value = true
   try {
-    await api.post('/classification/corrections', {
+    await api.submitCorrection({
       classification_id: selectedItem.value.id,
       corrected_library_id: correctedLibraryId.value,
       corrected_by: 'user'
