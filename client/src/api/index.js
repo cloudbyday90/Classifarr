@@ -300,8 +300,8 @@ export default {
   updateOllamaConfig(data) {
     return apiClient.put('/settings/ollama', data)
   },
-  testOllama() {
-    return apiClient.post('/settings/ollama/test')
+  testOllama(host, port) {
+    return apiClient.post('/settings/ollama/test', { host, port })
   },
   getOllamaModels() {
     return apiClient.get('/settings/ollama/models')

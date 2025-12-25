@@ -535,7 +535,8 @@ const testOllamaConnection = async () => {
   testingOllama.value = true
   ollamaTestResult.value = null
   try {
-    const response = await api.testOllama()
+    // Pass the current form values, not saved DB values
+    const response = await api.testOllama(config.value.ollama_host, config.value.ollama_port)
     ollamaTestResult.value = response.data
     if (response.data.success) {
       toast.success('Ollama connected!')
