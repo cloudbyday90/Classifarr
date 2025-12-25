@@ -12,6 +12,7 @@ const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const classificationService = require('./classification');
 const ollamaService = require('./ollama');
+const aiRouterService = require('./aiRouter');
 
 const logger = createLogger('QueueService');
 
@@ -24,7 +25,7 @@ class QueueService {
     constructor() {
         this.running = false;
         this.processing = 0;
-        this.ollamaAvailable = true;
+        this.aiAvailable = true;
     }
 
     /**
@@ -129,30 +130,58 @@ class QueueService {
 
 
     /**
-     * Check if Ollama is available
+     * Check if AI is available (respects configured provider)
      */
-    async checkOllamaAvailability() {
+    async checkAIAvailability() {
         try {
-            const result = await ollamaService.testConnection();
+            // Get the configured AI provider
+            const provider = await aiRouterService.getProvider('classification');
 
-            if (result.success) {
-                if (!this.ollamaAvailable) {
-                    logger.info('Ollama is now available');
+            // No provider configured or AI disabled
+            if (!provider) {
+                if (this.aiAvailable) {
+                    logger.info('AI is disabled or no provider configured');
                 }
-                this.ollamaAvailable = true;
-                return true;
-            } else {
-                if (this.ollamaAvailable) {
-                    logger.warn('Ollama is offline', { error: result.error });
-                }
-                this.ollamaAvailable = false;
+                this.aiAvailable = false;
                 return false;
             }
-        } catch (error) {
-            if (this.ollamaAvailable) {
-                logger.warn('Ollama is offline', { error: error.message });
+
+            // Cloud provider (OpenAI, Gemini, etc.) - assume available if configured
+            if (provider.isCloud) {
+                if (!this.aiAvailable) {
+                    logger.info(`Cloud AI provider available: ${provider.type}`);
+                }
+                this.aiAvailable = true;
+                return true;
             }
-            this.ollamaAvailable = false;
+
+            // Ollama provider - need to check connection
+            if (provider.type === 'ollama') {
+                const result = await ollamaService.testConnection();
+
+                if (result.success) {
+                    if (!this.aiAvailable) {
+                        logger.info('Ollama is now available');
+                    }
+                    this.aiAvailable = true;
+                    return true;
+                } else {
+                    if (this.aiAvailable) {
+                        logger.warn('Ollama is offline', { error: result.error });
+                    }
+                    this.aiAvailable = false;
+                    return false;
+                }
+            }
+
+            // Unknown provider type
+            logger.warn('Unknown AI provider type', { type: provider.type });
+            return false;
+        } catch (error) {
+            if (this.aiAvailable) {
+                logger.warn('AI availability check failed', { error: error.message });
+            }
+            this.aiAvailable = false;
             return false;
         }
     }
@@ -476,10 +505,10 @@ class QueueService {
 
         while (this.running) {
             try {
-                // Check if Ollama is available before processing
-                const ollamaReady = await this.checkOllamaAvailability();
+                // Check if AI provider is available before processing
+                const aiReady = await this.checkAIAvailability();
 
-                if (ollamaReady && this.processing < MAX_CONCURRENT) {
+                if (aiReady && this.processing < MAX_CONCURRENT) {
                     const task = await this.dequeue();
 
                     if (task) {
