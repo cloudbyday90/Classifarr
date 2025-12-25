@@ -5,21 +5,22 @@
 Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr/Seer to the correct Radarr/Sonarr library. It leverages your existing Plex/Emby/Jellyfin library structure combined with AI content analysis to make accurate classification decisions. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-0.26.2--alpha-blue)
+![Version](https://img.shields.io/badge/version-0.30.0--alpha-blue)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 ## ✨ Features
 
 - **🔐 Secure Authentication System** - JWT-based login with first-run setup wizard
 - **🎭 Multi-Server Support** - Plex, Emby, and Jellyfin with OAuth flows
-- **🤖 Multi-Provider AI** - OpenAI, Gemini, OpenRouter, Ollama with budget controls
-- **📚 Smart Rule Builder** - Create classification rules with AI-suggested conditions
-- **🗄️ Embedded PostgreSQL** - All data in a single volume, auto-initialized
-- **💬 Discord Bot** - Real-time notifications with correction buttons
-- **🔄 Learning System** - Improves from user corrections over time
-- **📊 Dashboard & Statistics** - Track classifications and system performance
-- **🔗 Webhook Integration** - Automatic processing of Overseerr requests
-- **🐳 Single Container** - Just `docker compose up -d`
+- 🤖 Multi-Provider AI - OpenAI, Gemini, OpenRouter, Ollama with budget controls
+- 📚 Smart Rule Builder - Create classification rules with AI-suggested conditions
+- 🗄️ Embedded PostgreSQL - All data in a single volume, auto-initialized
+- 💬 Discord Bot - Real-time notifications with correction buttons
+- 🔄 Learning System - Improves from user corrections over time
+- 📊 Dashboard & Statistics - Track classifications and system performance
+- 🔗 Webhook Integration - Automatic processing of Overseerr requests
+- 🔧 Library Mapping - Map Plex libraries to *arr root folders for re-classification
+- 🐳 Single Container - Just `docker compose up -d`
 
 ## 🏗️ Architecture
 
@@ -37,10 +38,11 @@ Classifarr is an intelligent media classification platform that automatically ro
 │  │   Classification Engine           │ │
 │  │   ┌─────────────────────────────┐ │ │
 │  │   │ 1. Source Library (100%)   │ │ │
-│  │   │ 2. Holiday Detection (95%) │ │ │
-│  │   │ 3. Custom Rules (90%)      │ │ │
-│  │   │ 4. AI Analysis (Cloud/Ollama) │ │ │
-│  │   │ 5. Learned Patterns (80%)  │ │ │
+│  │   │ 2. Learned Corrections (100%) │ │ │
+│  │   │ 3. Holiday Detection (95%) │ │ │
+│  │   │ 4. Custom Rules (90%)      │ │ │
+│  │   │ 5. AI Analysis (Cloud/Ollama) │ │ │
+│  │   │ 6. Learned Patterns (80%)  │ │ │
 │  │   └─────────────────────────────┘ │ │
 │  └───────────────────────────────────┘ │
 │                                         │

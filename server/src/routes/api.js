@@ -34,6 +34,7 @@ const requestsRouter = require('./requests');
 const statsRouter = require('./stats');
 const schedulerRouter = require('./scheduler');
 const backupRouter = require('./backup');
+const mappingsRouter = require('./mappings');
 
 const router = express.Router();
 
@@ -55,6 +56,7 @@ router.use('/requests', requestsRouter);
 router.use('/stats', statsRouter);
 router.use('/scheduler', schedulerRouter);
 router.use('/backup', backupRouter);
+router.use('/mappings', mappingsRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {

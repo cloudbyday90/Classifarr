@@ -19,6 +19,7 @@
 const express = require('express');
 const db = require('../config/database');
 const classificationService = require('../services/classification');
+const reclassificationService = require('../services/reclassificationService');
 
 const router = express.Router();
 
@@ -228,6 +229,63 @@ router.post('/corrections', async (req, res) => {
     );
 
     res.json(correctionResult.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/reclassify:
+ *   post:
+ *     summary: Execute a full re-classification with media move
+ *     description: Corrects classification AND moves media files in *arr
+ */
+router.post('/reclassify', async (req, res) => {
+  try {
+    const { classification_id, target_library_id, corrected_by } = req.body;
+
+    if (!classification_id || !target_library_id) {
+      return res.status(400).json({ error: 'classification_id and target_library_id are required' });
+    }
+
+    // Execute the full re-classification (DB update + *arr media move)
+    const result = await reclassificationService.executeReclassification({
+      classificationId: classification_id,
+      targetLibraryId: target_library_id,
+      correctedBy: corrected_by || 'user'
+    });
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/reclassify/preview:
+ *   post:
+ *     summary: Preview a re-classification without executing
+ */
+router.post('/reclassify/preview', async (req, res) => {
+  try {
+    const { classification_id, target_library_id } = req.body;
+
+    if (!classification_id || !target_library_id) {
+      return res.status(400).json({ error: 'classification_id and target_library_id are required' });
+    }
+
+    const preview = await reclassificationService.previewReclassification({
+      classificationId: classification_id,
+      targetLibraryId: target_library_id
+    });
+
+    res.json(preview);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

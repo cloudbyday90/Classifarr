@@ -493,6 +493,27 @@ class ClassificationService {
       }
     }
 
+    // Step -0.75: LEARNED CORRECTIONS (highest priority - user corrections are "truth")
+    // This checks if a user previously corrected this exact tmdb_id
+    const learnedCorrection = await this.checkLearnedCorrections(metadata.tmdb_id, metadata.media_type);
+    if (learnedCorrection) {
+      const correctedLibrary = libraries.find(l => l.id === learnedCorrection.corrected_library_id);
+      if (correctedLibrary) {
+        logger.info('Matched learned correction from user', {
+          title: metadata.title,
+          library: correctedLibrary.name,
+          correctedAt: learnedCorrection.created_at
+        });
+        return {
+          library: correctedLibrary,
+          confidence: 100,
+          method: 'learned_correction',
+          reason: `Previously corrected by user: ${learnedCorrection.corrected_by || 'user'}`,
+          libraries: libraries,
+        };
+      }
+    }
+
     // Step -0.5: Detect seasonal/holiday content from overview keywords
     const holidayLibrary = await this.detectHolidayContent(metadata, libraries);
     if (holidayLibrary) {
@@ -637,6 +658,39 @@ class ClassificationService {
        ORDER BY confidence DESC, usage_count DESC LIMIT 1`
     );
     return result.rows[0] || null;
+  }
+
+  /**
+   * Check for learned corrections from user feedback
+   * This has HIGHEST PRIORITY - user corrections are "truth"
+   * Returns the correction if this exact TMDB ID was previously corrected
+   */
+  async checkLearnedCorrections(tmdbId, mediaType) {
+    if (!tmdbId) return null;
+
+    try {
+      const result = await db.query(
+        `SELECT corrected_library_id, corrected_by, title, created_at, user_note
+         FROM learned_corrections 
+         WHERE tmdb_id = $1 AND media_type = $2
+         ORDER BY updated_at DESC LIMIT 1`,
+        [tmdbId, mediaType]
+      );
+
+      if (result.rows.length > 0) {
+        logger.info('Found learned correction', {
+          tmdbId,
+          mediaType,
+          correctedLibraryId: result.rows[0].corrected_library_id
+        });
+      }
+
+      return result.rows[0] || null;
+    } catch (error) {
+      // Table might not exist yet in older installations
+      logger.warn('Failed to check learned corrections', { error: error.message });
+      return null;
+    }
   }
 
   async matchRules(metadata, libraries) {

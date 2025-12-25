@@ -19,6 +19,21 @@ services:
       - TZ=${TZ:-UTC}
     volumes:
       - ./data:/app/data
+      # ═══════════════════════════════════════════════════════════════
+      # MEDIA ACCESS (Required for Re-Classification feature)
+      # ═══════════════════════════════════════════════════════════════
+      # Map your media folders so Classifarr can verify file moves.
+      # Use read-only (:ro) if you don't want Classifarr to modify files.
+      #
+      # Format: /host/path:/container/path:ro
+      #
+      # Example for single media folder:
+      # - /mnt/user/media:/data/media:ro
+      #
+      # Example for separate movie/tv folders:
+      # - /mnt/user/movies:/data/movies:ro
+      # - /mnt/user/tv:/data/tv:ro
+      # ═══════════════════════════════════════════════════════════════
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"

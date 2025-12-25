@@ -29,10 +29,10 @@ class SonarrService {
     const host = config.host || 'localhost';
     const port = config.port || 8989;
     const basePath = config.base_path || '';
-    
+
     // Ensure base path starts with / if present
     const normalizedPath = basePath && !basePath.startsWith('/') ? `/${basePath}` : basePath;
-    
+
     return `${protocol}://${host}:${port}${normalizedPath}`;
   }
 
@@ -59,14 +59,14 @@ class SonarrService {
         timeout,
         // SECURITY: Allow disabling SSL verification for self-signed certificates
         // This is controlled by user configuration and is only enabled when verify_ssl is explicitly set to false
-        httpsAgent: config && typeof config === 'object' && config.verify_ssl === false ? 
+        httpsAgent: config && typeof config === 'object' && config.verify_ssl === false ?
           new (require('https').Agent)({ rejectUnauthorized: false }) : undefined,
       });
 
       // Get additional stats for detailed response
       // SECURITY: Allow disabling SSL verification for self-signed certificates
       // This is controlled by user configuration and is only enabled when verify_ssl is explicitly set to false
-      const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ? 
+      const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ?
         new (require('https').Agent)({ rejectUnauthorized: false }) : undefined;
 
       const [seriesResponse, rootFoldersResponse, qualityProfilesResponse, languageProfilesResponse] = await Promise.allSettled([
@@ -210,6 +210,79 @@ class SonarrService {
       return response.data.map(tag => ({ id: tag.id, label: tag.label }));
     } catch (error) {
       throw new Error(`Failed to fetch tags: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a series by TVDB ID (from Sonarr's library)
+   * @param {string} url - Sonarr URL
+   * @param {string} apiKey - API key
+   * @param {number} tvdbId - TVDB ID
+   * @returns {Object|null} Series object or null if not found
+   */
+  async getSeriesByTvdbId(url, apiKey, tvdbId) {
+    try {
+      const response = await axios.get(`${url}/api/v3/series`, {
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+      });
+
+      const series = response.data.find(s => s.tvdbId === parseInt(tvdbId));
+      return series || null;
+    } catch (error) {
+      throw new Error(`Failed to find series by TVDB ID: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update a series root folder path (triggers file move in Sonarr)
+   * @param {string} url - Sonarr URL
+   * @param {string} apiKey - API key
+   * @param {number} seriesId - Sonarr series ID
+   * @param {string} newRootFolderPath - New root folder path
+   * @param {number} qualityProfileId - Quality profile ID (optional)
+   * @returns {Object} Updated series object
+   */
+  async updateSeriesPath(url, apiKey, seriesId, newRootFolderPath, qualityProfileId = null) {
+    try {
+      // First, get the current series data
+      const getResponse = await axios.get(`${url}/api/v3/series/${seriesId}`, {
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+      });
+
+      const series = getResponse.data;
+
+      // Calculate the new path (root folder + title folder)
+      const titleFolder = series.path.split('/').pop() || series.path.split('\\').pop();
+      const newPath = newRootFolderPath.endsWith('/') || newRootFolderPath.endsWith('\\')
+        ? `${newRootFolderPath}${titleFolder}`
+        : `${newRootFolderPath}/${titleFolder}`;
+
+      // Update the series with new path
+      const updateData = {
+        ...series,
+        path: newPath,
+        rootFolderPath: newRootFolderPath,
+        moveFiles: true, // This tells Sonarr to actually move the files
+      };
+
+      if (qualityProfileId) {
+        updateData.qualityProfileId = qualityProfileId;
+      }
+
+      const updateResponse = await axios.put(`${url}/api/v3/series/${seriesId}`, updateData, {
+        headers: {
+          'X-Api-Key': apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return updateResponse.data;
+    } catch (error) {
+      throw new Error(`Failed to update series path: ${error.message}`);
     }
   }
 

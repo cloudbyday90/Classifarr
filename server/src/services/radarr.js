@@ -29,10 +29,10 @@ class RadarrService {
     const host = config.host || 'localhost';
     const port = config.port || 7878;
     const basePath = config.base_path || '';
-    
+
     // Ensure base path starts with / if present
     const normalizedPath = basePath && !basePath.startsWith('/') ? `/${basePath}` : basePath;
-    
+
     return `${protocol}://${host}:${port}${normalizedPath}`;
   }
 
@@ -59,14 +59,14 @@ class RadarrService {
         timeout,
         // SECURITY: Allow disabling SSL verification for self-signed certificates
         // This is controlled by user configuration and is only enabled when verify_ssl is explicitly set to false
-        httpsAgent: config && typeof config === 'object' && config.verify_ssl === false ? 
+        httpsAgent: config && typeof config === 'object' && config.verify_ssl === false ?
           new (require('https').Agent)({ rejectUnauthorized: false }) : undefined,
       });
 
       // Get additional stats for detailed response
       // SECURITY: Allow disabling SSL verification for self-signed certificates
       // This is controlled by user configuration and is only enabled when verify_ssl is explicitly set to false
-      const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ? 
+      const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ?
         new (require('https').Agent)({ rejectUnauthorized: false }) : undefined;
 
       const [moviesResponse, rootFoldersResponse, qualityProfilesResponse] = await Promise.allSettled([
@@ -198,6 +198,79 @@ class RadarrService {
       return response.data.map(tag => ({ id: tag.id, label: tag.label }));
     } catch (error) {
       throw new Error(`Failed to fetch tags: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a movie by TMDB ID (from Radarr's library)
+   * @param {string} url - Radarr URL
+   * @param {string} apiKey - API key
+   * @param {number} tmdbId - TMDB ID
+   * @returns {Object|null} Movie object or null if not found
+   */
+  async getMovieByTmdbId(url, apiKey, tmdbId) {
+    try {
+      const response = await axios.get(`${url}/api/v3/movie`, {
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+      });
+
+      const movie = response.data.find(m => m.tmdbId === parseInt(tmdbId));
+      return movie || null;
+    } catch (error) {
+      throw new Error(`Failed to find movie by TMDB ID: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update a movie's root folder path (triggers file move in Radarr)
+   * @param {string} url - Radarr URL
+   * @param {string} apiKey - API key
+   * @param {number} movieId - Radarr movie ID
+   * @param {string} newRootFolderPath - New root folder path
+   * @param {number} qualityProfileId - Quality profile ID (optional)
+   * @returns {Object} Updated movie object
+   */
+  async updateMoviePath(url, apiKey, movieId, newRootFolderPath, qualityProfileId = null) {
+    try {
+      // First, get the current movie data
+      const getResponse = await axios.get(`${url}/api/v3/movie/${movieId}`, {
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+      });
+
+      const movie = getResponse.data;
+
+      // Calculate the new path (root folder + title folder)
+      const titleFolder = movie.path.split('/').pop() || movie.path.split('\\').pop();
+      const newPath = newRootFolderPath.endsWith('/') || newRootFolderPath.endsWith('\\')
+        ? `${newRootFolderPath}${titleFolder}`
+        : `${newRootFolderPath}/${titleFolder}`;
+
+      // Update the movie with new path
+      const updateData = {
+        ...movie,
+        path: newPath,
+        rootFolderPath: newRootFolderPath,
+        moveFiles: true, // This tells Radarr to actually move the files
+      };
+
+      if (qualityProfileId) {
+        updateData.qualityProfileId = qualityProfileId;
+      }
+
+      const updateResponse = await axios.put(`${url}/api/v3/movie/${movieId}`, updateData, {
+        headers: {
+          'X-Api-Key': apiKey,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return updateResponse.data;
+    } catch (error) {
+      throw new Error(`Failed to update movie path: ${error.message}`);
     }
   }
 
