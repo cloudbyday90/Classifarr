@@ -24,6 +24,7 @@
           <div class="text-sm text-gray-400">
             <span class="text-blue-400">{{ stats.pending }}</span> pending · 
             <span class="text-yellow-400">{{ stats.processing }}</span> processing · 
+            <span class="text-green-400">{{ stats.completed }}</span> completed · 
             <span class="text-red-400">{{ stats.failed }}</span> failed
           </div>
         </div>
@@ -189,6 +190,25 @@
       </div>
     </div>
 
+    <!-- Save All Queue Settings -->
+    <div class="flex items-center justify-between bg-gray-800/50 border border-gray-700 rounded-lg px-6 py-4">
+      <div>
+        <span class="text-sm text-gray-400">Save all queue configuration settings above</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span v-if="saveMessage" class="text-sm" :class="saveSuccess ? 'text-green-400' : 'text-red-400'">
+          {{ saveMessage }}
+        </span>
+        <button
+          @click="saveSettings"
+          :disabled="saving"
+          class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded font-medium transition-colors disabled:opacity-50"
+        >
+          {{ saving ? 'Saving...' : 'Save Settings' }}
+        </button>
+      </div>
+    </div>
+
     <!-- Maintenance Actions -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <h3 class="text-lg font-medium mb-4">Queue Maintenance</h3>
@@ -196,29 +216,33 @@
       <div class="flex flex-wrap gap-3">
         <button
           @click="clearCompleted"
-          :disabled="actionLoading"
-          class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50"
+          :disabled="actionLoading || stats.completed === 0"
+          title="Removes completed entries from the queue list (does not affect classification history)"
+          class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          🧹 Clear Completed Tasks
+          🧹 Clear Completed ({{ stats.completed }})
         </button>
         <button
           @click="clearFailed"
-          :disabled="actionLoading"
-          class="px-4 py-2 bg-red-900/50 hover:bg-red-800/50 text-red-300 rounded transition-colors disabled:opacity-50"
+          :disabled="actionLoading || stats.failed === 0"
+          title="Removes permanently failed entries from the queue list"
+          class="px-4 py-2 bg-red-900/50 hover:bg-red-800/50 text-red-300 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          ❌ Clear Failed Tasks
+          ❌ Clear Failed ({{ stats.failed }})
         </button>
         <button
           @click="retryAllFailed"
           :disabled="actionLoading || stats.failed === 0"
-          class="px-4 py-2 bg-blue-900/50 hover:bg-blue-800/50 text-blue-300 rounded transition-colors disabled:opacity-50"
+          title="Re-queues all failed tasks to try again"
+          class="px-4 py-2 bg-blue-900/50 hover:bg-blue-800/50 text-blue-300 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           🔄 Retry All Failed ({{ stats.failed }})
         </button>
         <button
           @click="cancelAllPending"
           :disabled="actionLoading || stats.pending === 0"
-          class="px-4 py-2 bg-yellow-900/50 hover:bg-yellow-800/50 text-yellow-300 rounded transition-colors disabled:opacity-50"
+          title="Cancels all pending tasks in the queue"
+          class="px-4 py-2 bg-yellow-900/50 hover:bg-yellow-800/50 text-yellow-300 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           ⏹ Cancel All Pending ({{ stats.pending }})
         </button>
@@ -259,17 +283,6 @@
         </ul>
       </div>
     </div>
-
-    <!-- Save Button -->
-    <div class="flex justify-end">
-      <button
-        @click="saveSettings"
-        :disabled="saving"
-        class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded font-medium transition-colors disabled:opacity-50"
-      >
-        {{ saving ? 'Saving...' : 'Save Settings' }}
-      </button>
-    </div>
   </div>
 </template>
 
@@ -279,6 +292,8 @@ import api from '@/api'
 
 const loading = ref(true)
 const saving = ref(false)
+const saveMessage = ref('')
+const saveSuccess = ref(false)
 const actionLoading = ref(false)
 const actionMessage = ref('')
 const actionSuccess = ref(false)
@@ -333,7 +348,7 @@ const loadStats = async () => {
 
 const loadSettings = async () => {
   try {
-    const response = await api.getSettings('queue')
+    const response = await api.getQueueSettings()
     if (response.data) {
       settings.value = { ...settings.value, ...response.data }
     }
@@ -344,11 +359,15 @@ const loadSettings = async () => {
 
 const saveSettings = async () => {
   saving.value = true
+  saveMessage.value = ''
   try {
-    await api.updateSettings('queue', settings.value)
-    showAction('Settings saved successfully', true)
+    await api.updateQueueSettings(settings.value)
+    saveMessage.value = 'Settings saved successfully'
+    saveSuccess.value = true
+    setTimeout(() => { saveMessage.value = '' }, 3000)
   } catch (error) {
-    showAction('Failed to save settings', false)
+    saveMessage.value = 'Failed to save settings'
+    saveSuccess.value = false
     console.error('Failed to save settings:', error)
   } finally {
     saving.value = false

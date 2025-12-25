@@ -133,6 +133,114 @@ router.put('/', async (req, res) => {
 });
 
 // ============================================
+// CATEGORY-BASED SETTINGS
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/category/{name}:
+ *   get:
+ *     summary: Get settings for a specific category
+ *     parameters:
+ *       - name: name
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [queue, scheduler, classification]
+ */
+router.get('/category/:name', async (req, res) => {
+  try {
+    const category = req.params.name;
+    const validCategories = ['queue', 'scheduler', 'classification'];
+
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({ error: `Invalid category. Valid categories: ${validCategories.join(', ')}` });
+    }
+
+    // Get all settings that start with the category prefix
+    const result = await db.query(
+      'SELECT key, value FROM settings WHERE key LIKE $1 ORDER BY key',
+      [`${category}_%`]
+    );
+
+    // Transform to object format (strip category prefix for cleaner API)
+    const settings = {};
+    result.rows.forEach(row => {
+      const keyWithoutPrefix = row.key.replace(`${category}_`, '');
+      // Convert snake_case to camelCase
+      const camelKey = keyWithoutPrefix.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      settings[camelKey] = row.value;
+    });
+
+    // Apply defaults for queue settings if not set
+    if (category === 'queue') {
+      settings.workerEnabled = settings.workerEnabled ?? true;
+      settings.concurrentWorkers = settings.concurrentWorkers ?? 1;
+      settings.maxRetryAttempts = settings.maxRetryAttempts ?? 5;
+      settings.retryStrategy = settings.retryStrategy ?? 'exponential';
+      settings.autoDeleteCompleted = settings.autoDeleteCompleted ?? '7d';
+      settings.autoDeleteFailed = settings.autoDeleteFailed ?? 'never';
+    }
+
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/category/{name}:
+ *   put:
+ *     summary: Update settings for a specific category
+ *     parameters:
+ *       - name: name
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [queue, scheduler, classification]
+ */
+router.put('/category/:name', async (req, res) => {
+  try {
+    const category = req.params.name;
+    const settings = req.body;
+
+    const validCategories = ['queue', 'scheduler', 'classification'];
+
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({ error: `Invalid category. Valid categories: ${validCategories.join(', ')}` });
+    }
+
+    if (!settings || typeof settings !== 'object') {
+      return res.status(400).json({ error: 'Settings must be a valid object' });
+    }
+
+    // Save each setting with the category prefix
+    for (const [key, value] of Object.entries(settings)) {
+      // Convert camelCase to snake_case for storage
+      const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      const fullKey = `${category}_${snakeKey}`;
+
+      // Serialize value for storage (handle booleans, numbers, etc.)
+      const serializedValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+
+      await db.query(
+        `INSERT INTO settings (key, value) VALUES ($1, $2)
+         ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+        [fullKey, serializedValue]
+      );
+    }
+
+    res.json({ success: true, category, updated: Object.keys(settings).length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// ============================================
 // RADARR CONFIGURATION
 // ============================================
 

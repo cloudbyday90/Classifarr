@@ -1,4 +1,20 @@
 
+## v0.30.3-alpha
+**Queue Settings Fix**
+
+### Fixes
+- **Queue Settings:** Fixed JSON parsing error when saving queue settings (GitHub Issue #69)
+- **API Client:** Added category-based settings endpoints (`/api/settings/category/:name`) for queue, scheduler, and classification settings
+- **API Client:** Added generic HTTP methods (`get`, `post`, `put`, `delete`) to API client for inline calls
+
+### Improvements
+- **Queue Settings UX:** Save Settings button moved to separate row after all configuration options
+- **Queue Settings UX:** Clear Completed/Failed buttons now show task counts and are disabled when count is 0
+- **Queue Settings UX:** Save message now displays next to Save button instead of in Queue Maintenance section
+- **Queue Stats:** Added "completed" count to the quick stats banner in Queue Settings
+
+---
+
 ## v0.30.2-alpha
 **Release Workflow Updates**
 

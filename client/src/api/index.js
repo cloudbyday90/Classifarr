@@ -47,12 +47,34 @@ apiClient.interceptors.response.use(
 )
 
 export default {
-  // General Settings
-  getSettings() {
+  // Generic HTTP methods for direct API calls
+  get(url, config) {
+    return apiClient.get(url, config)
+  },
+  post(url, data, config) {
+    return apiClient.post(url, data, config)
+  },
+  put(url, data, config) {
+    return apiClient.put(url, data, config)
+  },
+  delete(url, config) {
+    return apiClient.delete(url, config)
+  },
+
+  // General Settings (supports optional category for queue, scheduler, etc.)
+  getSettings(category = null) {
+    if (category) {
+      return apiClient.get(`/settings/category/${category}`)
+    }
     return apiClient.get('/settings')
   },
-  updateSettings(settings) {
-    return apiClient.put('/settings', settings)
+  updateSettings(categoryOrSettings, settings = null) {
+    // Support both updateSettings(settings) and updateSettings(category, settings)
+    if (settings !== null && typeof categoryOrSettings === 'string') {
+      return apiClient.put(`/settings/category/${categoryOrSettings}`, settings)
+    }
+    // Legacy: updateSettings(settings)
+    return apiClient.put('/settings', categoryOrSettings)
   },
 
   // Media Server
@@ -501,6 +523,14 @@ export default {
   },
   previewBackup(data) {
     return apiClient.post('/backup/preview', { data })
+  },
+
+  // Queue Settings
+  getQueueSettings() {
+    return apiClient.get('/settings/category/queue')
+  },
+  updateQueueSettings(settings) {
+    return apiClient.put('/settings/category/queue', settings)
   },
 
   // Queue Management
