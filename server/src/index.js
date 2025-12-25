@@ -130,6 +130,19 @@ async function initializeServices() {
   } catch (error) {
     console.warn('Scheduler service start failed:', error.message);
   }
+
+  // Run pattern analysis for all libraries on startup (async, don't wait)
+  try {
+    const schedulerService = require('./services/schedulerService');
+    // Run in background - don't block startup
+    schedulerService.runPatternAnalysis().then(result => {
+      console.log('Startup pattern analysis complete:', result);
+    }).catch(error => {
+      console.warn('Startup pattern analysis failed:', error.message);
+    });
+  } catch (error) {
+    console.warn('Pattern analysis service not available:', error.message);
+  }
 }
 
 // Start server

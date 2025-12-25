@@ -47,6 +47,14 @@ apiClient.interceptors.response.use(
 )
 
 export default {
+  // General Settings
+  getSettings() {
+    return apiClient.get('/settings')
+  },
+  updateSettings(settings) {
+    return apiClient.put('/settings', settings)
+  },
+
   // Media Server
   getMediaServerConfig() {
     return apiClient.get('/media-server')
@@ -178,6 +186,15 @@ export default {
   },
   refreshPatterns(libraryId) {
     return apiClient.post(`/libraries/${libraryId}/refresh-patterns`)
+  },
+  dismissPattern(libraryId, patternType, patternValue) {
+    return apiClient.post(`/libraries/${libraryId}/dismiss-pattern`, { patternType, patternValue })
+  },
+  restorePattern(libraryId, patternType, patternValue) {
+    return apiClient.post(`/libraries/${libraryId}/restore-pattern`, { patternType, patternValue })
+  },
+  getDismissedPatterns(libraryId) {
+    return apiClient.get(`/libraries/${libraryId}/dismissed-patterns`)
   },
   autoGenerateRules(id) {
     return apiClient.post(`/libraries/${id}/rules/auto-generate`)

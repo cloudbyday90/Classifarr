@@ -49,6 +49,9 @@ class SchedulerService {
             for (const task of dueTasks) {
                 await this.executeTask(task);
             }
+
+            // Checks for global recurring tasks (like pattern analysis)
+            await this.checkPatternAnalysisSchedule();
         } catch (error) {
             logger.error('Error checking due tasks', { error: error.message });
         }
@@ -63,6 +66,54 @@ class SchedulerService {
       LIMIT 10
     `);
         return result.rows;
+    }
+
+    async checkPatternAnalysisSchedule() {
+        try {
+            // Get frequency setting
+            const settingResult = await db.query("SELECT value FROM settings WHERE key = 'pattern_sync_frequency'");
+            const frequency = settingResult.rows[0]?.value || 'daily';
+
+            if (frequency === 'never') return;
+
+            // Get last analysis time (from any library)
+            const lastRunResult = await db.query("SELECT MAX(last_analyzed) as last_run FROM library_pattern_suggestions");
+            const lastRun = lastRunResult.rows[0]?.last_run ? new Date(lastRunResult.rows[0].last_run) : null;
+
+            if (!lastRun) {
+                // Never ran, run now (unless successfully ran recently via startup trigger)
+                // Actually startup trigger runs it, so we should be good. If this returns null, it means startup hasn't finished or failed.
+                // We'll trust the startup trigger or let it run here if it missed.
+                logger.info('No previous pattern analysis found, running initial analysis');
+                await this.runPatternAnalysis();
+                return;
+            }
+
+            const now = new Date();
+            let shouldRun = false;
+
+            switch (frequency) {
+                case 'hourly':
+                    // Run if > 1 hour ago
+                    shouldRun = (now - lastRun) > 60 * 60 * 1000;
+                    break;
+                case 'daily':
+                    // Run if > 24 hours ago
+                    shouldRun = (now - lastRun) > 24 * 60 * 60 * 1000;
+                    break;
+                case 'weekly':
+                    // Run if > 7 days ago
+                    shouldRun = (now - lastRun) > 7 * 24 * 60 * 60 * 1000;
+                    break;
+            }
+
+            if (shouldRun) {
+                logger.info(`Pattern analysis due (Frequency: ${frequency}). Last run: ${lastRun.toISOString()}`);
+                await this.runPatternAnalysis();
+            }
+        } catch (error) {
+            logger.error('Error checking pattern analysis schedule', { error: error.message });
+        }
     }
 
     async executeTask(task) {

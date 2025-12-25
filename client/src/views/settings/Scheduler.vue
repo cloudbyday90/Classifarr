@@ -14,6 +14,33 @@
       </Button>
     </div>
 
+    <!-- Global Sync Settings -->
+    <Card>
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-medium text-white">Global Maintenance Schedules</h3>
+          <p class="text-sm text-gray-400">System-wide automation settings</p>
+        </div>
+      </div>
+      
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm font-medium mb-2 text-gray-300">Pattern Analysis Frequency</label>
+          <p class="text-xs text-gray-500 mb-2">How often to scan libraries for new classification patterns</p>
+          <select 
+            v-model="patternSyncFrequency" 
+            @change="updatePatternFrequency"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 text-white"
+          >
+            <option value="never">Never (Manual only)</option>
+            <option value="hourly">Hourly</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+      </div>
+    </Card>
+
     <!-- Tasks List -->
     <Card class="overflow-hidden p-0">
       <div v-if="loading" class="p-8 text-center text-gray-400">
@@ -179,6 +206,7 @@ const tasks = ref([])
 const libraries = ref([])
 const showAddModal = ref(false)
 const running = ref(null)
+const patternSyncFrequency = ref('daily')
 const newTask = ref({
   name: '',
   task_type: 'library_scan',
@@ -192,17 +220,32 @@ onMounted(async () => {
 
 const loadData = async () => {
   try {
-    const [tasksRes, libsRes] = await Promise.all([
+    const [tasksRes, libsRes, settingsRes] = await Promise.all([
       api.getScheduledTasks(),
-      api.getLibraries()
+      api.getLibraries(),
+      api.getSettings()
     ])
     tasks.value = tasksRes.data
     libraries.value = libsRes.data
+    
+    if (settingsRes.data && settingsRes.data.pattern_sync_frequency) {
+      patternSyncFrequency.value = settingsRes.data.pattern_sync_frequency
+    }
   } catch (error) {
     console.error('Failed to load data:', error)
     toast.error('Failed to load scheduled tasks')
   } finally {
     loading.value = false
+  }
+}
+
+const updatePatternFrequency = async () => {
+  try {
+    await api.updateSettings({ pattern_sync_frequency: patternSyncFrequency.value })
+    toast.success(`Pattern analysis frequency set to ${patternSyncFrequency.value}`)
+  } catch (error) {
+    console.error('Failed to update pattern frequency:', error)
+    toast.error('Failed to update setting')
   }
 }
 

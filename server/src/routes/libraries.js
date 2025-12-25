@@ -1491,4 +1491,103 @@ router.post('/:id/refresh-patterns', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/libraries/{id}/dismissed-patterns:
+ *   get:
+ *     summary: Get dismissed patterns for a library
+ */
+router.get('/:id/dismissed-patterns', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(
+      `SELECT id, pattern_type, pattern_value, dismissed_at 
+       FROM dismissed_patterns 
+       WHERE library_id = $1 
+       ORDER BY dismissed_at DESC`,
+      [id]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    logger.error('Failed to get dismissed patterns', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/dismiss-pattern:
+ *   post:
+ *     summary: Dismiss a specific pattern suggestion
+ */
+router.post('/:id/dismiss-pattern', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { patternType, patternValue } = req.body;
+
+    if (!patternType || !patternValue) {
+      return res.status(400).json({ error: 'patternType and patternValue are required' });
+    }
+
+    await db.query(
+      `INSERT INTO dismissed_patterns (library_id, pattern_type, pattern_value)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (library_id, pattern_type, pattern_value) DO NOTHING`,
+      [id, patternType, patternValue]
+    );
+
+    // Update pending count in library_pattern_suggestions
+    await db.query(
+      `UPDATE library_pattern_suggestions 
+       SET pending_count = GREATEST(pending_count - 1, 0), updated_at = NOW()
+       WHERE library_id = $1`,
+      [id]
+    );
+
+    res.json({ success: true, message: 'Pattern dismissed' });
+  } catch (error) {
+    logger.error('Failed to dismiss pattern', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/restore-pattern:
+ *   post:
+ *     summary: Restore a previously dismissed pattern
+ */
+router.post('/:id/restore-pattern', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { patternType, patternValue } = req.body;
+
+    if (!patternType || !patternValue) {
+      return res.status(400).json({ error: 'patternType and patternValue are required' });
+    }
+
+    await db.query(
+      `DELETE FROM dismissed_patterns 
+       WHERE library_id = $1 AND pattern_type = $2 AND pattern_value = $3`,
+      [id, patternType, patternValue]
+    );
+
+    // Update pending count in library_pattern_suggestions
+    await db.query(
+      `UPDATE library_pattern_suggestions 
+       SET pending_count = pending_count + 1, updated_at = NOW()
+       WHERE library_id = $1`,
+      [id]
+    );
+
+    res.json({ success: true, message: 'Pattern restored' });
+  } catch (error) {
+    logger.error('Failed to restore pattern', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
+

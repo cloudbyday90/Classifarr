@@ -1,4 +1,24 @@
 
+## v0.27.0-alpha
+**Pattern Suggestions Enhancement**
+
+### New Features
+- **Configurable Pattern Suggestions:**
+  - **Individual Dismissal:** You can now dismiss specific pattern filters from the Rule Builder that you don't want to see.
+  - **Restore Filters:** View and restore previously dismissed filters via the new "Show Dismissed" toggle.
+  - **Scheduled Analysis:** Configure how often the system re-scans media metadata for patterns (Hourly, Daily, Weekly, or Never) in Settings > Scheduler.
+- **Startup Trigger:** Pattern analysis now runs automatically on server startup to ensure suggestions are always up to date.
+
+### Fixes
+- **Dashboard Widget:** Fixed "New Pattern Suggestions" widget navigation to correctly open the Rule Builder.
+- **Data Refresh:** Ensured suggestion widget shows accurate counts by respecting dismissed items and running analysis proactively.
+
+### Technical Changes
+- Added `dismissed_patterns` table and `pattern_sync_frequency` setting.
+- Updated `SchedulerService` to support global maintenance schedules.
+
+---
+
 ## v0.26.2-alpha
 **Dashboard AI Status Fix**
 

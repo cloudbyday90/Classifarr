@@ -73,6 +73,13 @@
                       ({{ pattern.matchPercentage }}% of library)
                     </p>
                   </div>
+                  <button 
+                    @click.stop="dismissPattern(pattern)" 
+                    class="text-gray-500 hover:text-red-400 transition-colors text-sm p-1"
+                    title="Dismiss this filter"
+                  >
+                    ✕
+                  </button>
                 </div>
 
                 <div class="flex gap-3 flex-wrap">
@@ -108,6 +115,40 @@
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- Show Dismissed Toggle -->
+        <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-700">
+          <button 
+            @click="showDismissedPatterns = !showDismissedPatterns"
+            class="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+          >
+            <span>{{ showDismissedPatterns ? '▼' : '▶' }}</span>
+            Show Dismissed ({{ dismissedPatterns.length }})
+          </button>
+        </div>
+        
+        <!-- Dismissed Patterns Section -->
+        <div v-if="showDismissedPatterns && dismissedPatterns.length > 0" class="mt-4 space-y-2">
+          <div 
+            v-for="dp in dismissedPatterns" 
+            :key="`${dp.pattern_type}-${dp.pattern_value}`"
+            class="flex items-center justify-between bg-gray-900/50 p-3 rounded border border-gray-700"
+          >
+            <div>
+              <span class="text-gray-400 capitalize">{{ dp.pattern_type.replace('_', ' ') }}:</span>
+              <span class="ml-2 text-gray-300">{{ dp.pattern_value }}</span>
+            </div>
+            <button 
+              @click="restorePattern(dp)"
+              class="text-sm text-primary hover:text-primary-light transition-colors"
+            >
+              Restore
+            </button>
+          </div>
+        </div>
+        <div v-else-if="showDismissedPatterns" class="mt-4 text-center text-gray-500 text-sm py-4">
+          No dismissed patterns
         </div>
         
         <div class="flex justify-between items-center gap-4 mt-6 pt-4 border-t border-gray-700">
@@ -628,18 +669,101 @@ const runAnalysis = async () => {
 const loadLibraryPatterns = async () => {
   try {
     loadingLibraryPatterns.value = true
-    const response = await api.getAvailablePatterns(props.libraryId)
     
-    // Add 'selected' property to each pattern
-    libraryPatterns.value = response.data.patterns.map(pattern => ({
-      ...pattern,
-      selected: false
-    }))
+    // Load metadata patterns and dismissed patterns in parallel
+    const [patternsResponse, dismissedResponse] = await Promise.all([
+      api.getAvailablePatterns(props.libraryId),
+      api.getDismissedPatterns(props.libraryId)
+    ])
+    
+    dismissedPatterns.value = dismissedResponse.data
+    
+    const dismissedKeys = new Set(
+      dismissedPatterns.value.map(dp => `${dp.pattern_type}:${dp.pattern_value}`)
+    )
+    
+    // Filter out dismissed patterns and add 'selected' property
+    libraryPatterns.value = patternsResponse.data.patterns
+      .filter(p => !dismissedKeys.has(`${p.field}:${p.values}`)) // Simple check, might need refinement for array values
+      // Better check:
+      .filter(pattern => {
+        // pattern.values is an array like ['PG-13']. Check if this specific combination is dismissed
+        // For array values like genres, the pattern suggestions usually return top individual values
+        // If the pattern represents a single value (common case for top suggestions), check against dismissed
+        if (pattern.values.length === 1) {
+           return !dismissedKeys.has(`${pattern.field}:${pattern.values[0]}`)
+        }
+        return true // Keep complex patterns for now
+      })
+      .map(pattern => ({
+        ...pattern,
+        selected: false
+      }))
+      
   } catch (error) {
     console.error('Failed to load library patterns:', error)
-    // Don't show error toast, just log it - the UI will show empty state
   } finally {
     loadingLibraryPatterns.value = false
+  }
+}
+
+// Dismissed patterns state
+const dismissedPatterns = ref([])
+const showDismissedPatterns = ref(false)
+
+const loadDismissedPatterns = async () => {
+  try {
+    const response = await api.getDismissedPatterns(props.libraryId)
+    dismissedPatterns.value = response.data
+  } catch (error) {
+    console.error('Failed to load dismissed patterns:', error)
+  }
+}
+
+const dismissPattern = async (pattern) => {
+  // Only handling single-value patterns for dismissal for now (common case)
+  if (!pattern.values || pattern.values.length !== 1) {
+    toast.info('Can only dismiss single-value patterns')
+    return
+  }
+  
+  const value = pattern.values[0]
+  
+  try {
+    await api.dismissPattern(props.libraryId, pattern.field, value)
+    
+    // Remove from active list
+    libraryPatterns.value = libraryPatterns.value.filter(p => p !== pattern)
+    
+    // Add to dismissed list
+    dismissedPatterns.value.unshift({
+      pattern_type: pattern.field,
+      pattern_value: value,
+      dismissed_at: new Date().toISOString()
+    })
+    
+    toast.success('Filter dismissed')
+  } catch (error) {
+    console.error('Failed to dismiss pattern:', error)
+    toast.error('Failed to dismiss pattern')
+  }
+}
+
+const restorePattern = async (dismissedPattern) => {
+  try {
+    await api.restorePattern(props.libraryId, dismissedPattern.pattern_type, dismissedPattern.pattern_value)
+    
+    // Remove from dismissed list
+    dismissedPatterns.value = dismissedPatterns.value.filter(dp => dp !== dismissedPattern)
+    
+    // Reload active patterns to bring it back
+    // We could manually add it back if we had the full pattern object, but reloading is safer
+    await loadLibraryPatterns()
+    
+    toast.success('Filter restored')
+  } catch (error) {
+    console.error('Failed to restore pattern:', error)
+    toast.error('Failed to restore pattern')
   }
 }
 
