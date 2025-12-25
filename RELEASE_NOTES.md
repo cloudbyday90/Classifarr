@@ -1,4 +1,13 @@
 
+## v0.26.2-alpha
+**Dashboard AI Status Fix**
+
+### Bug Fixes
+- **Dashboard Status:** Fixed AI Provider showing "Offline" when it was actually working
+- **Consistent Naming:** All UI now shows "AI Provider" instead of "Ollama"
+
+---
+
 ## v0.26.1-alpha
 **Ollama Connection Fix (Issue #66)**
 

@@ -6,6 +6,16 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.26.2-alpha] - 2025-12-25
+
+### Bug Fixes
+- **Dashboard AI Status:** Fixed "Offline" indicator showing incorrectly when AI provider was configured and working
+- **Consistent AI Naming:** Renamed all Ollama-specific references to generic "AI Provider" throughout the codebase
+
+### Technical Details
+- Fixed `queueService.getStats()` to return `aiAvailable` instead of the renamed `ollamaAvailable`
+- Updated Dashboard, Queue views, system health endpoint to use `ai`/`aiAvailable` field names
+
 ## [0.26.1-alpha] - 2025-12-25
 
 ### Bug Fixes
