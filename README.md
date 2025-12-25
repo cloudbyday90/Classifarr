@@ -5,7 +5,7 @@
 Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr/Seer to the correct Radarr/Sonarr library. It leverages your existing Plex/Emby/Jellyfin library structure combined with AI content analysis to make accurate classification decisions. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-0.21.3--alpha-blue)
+![Version](https://img.shields.io/badge/version-0.26.0--alpha-blue)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 ## ✨ Features
@@ -350,7 +350,11 @@ Additional settings are configured through the web UI.
 
 ### AI Not Working
 1. Go to **Settings** → **AI** and test connection
-2. **For Ollama:** Verify host is running: `curl http://your-ollama-host:11434/api/tags`
+2. **For Ollama:** 
+   - Verify host is running: `curl http://your-ollama-host:11434/api/tags`
+   - **Linux/Unraid users:** The app auto-detects Docker gateway (e.g., `172.17.0.1`) on startup
+   - Check logs for: `"Detected Docker gateway IP: X.X.X.X"`
+   - If using custom networks, use the Ollama container name or add `--add-host host.docker.internal:host-gateway` to Docker parameters
 3. **For Cloud Providers:** Check API key is valid and has credits
 4. Check budget hasn't been exhausted (see Usage Statistics)
 5. View container logs: `docker logs classifarr | grep -i ai`
