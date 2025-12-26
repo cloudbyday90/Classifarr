@@ -143,6 +143,16 @@ docker run -d \
 | `TZ` | Timezone (e.g., `America/New_York`) | `UTC` |
 | `UMASK` | File permission mask | `022` |
 
+> [!CAUTION]
+> **PUID/PGID Must Match Across All Containers**
+> 
+> For Classifarr to move media files between libraries, it must run with the **same PUID/PGID** as your other media containers (Radarr, Sonarr, Plex, etc.). If these don't match, file moves will fail due to permission issues.
+> 
+> To find your PUID/PGID:
+> - Linux: Run `id -u` (PUID) and `id -g` (PGID) 
+> - UnRaid: Default is `PUID=99`, `PGID=100`
+> - Synology: Default is `PUID=1026`, `PGID=100`
+
 > **Note:** First startup takes 30-60 seconds for database initialization.
 
 4. **Access the web interface:**

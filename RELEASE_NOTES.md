@@ -1,4 +1,30 @@
 
+## v0.30.8-alpha
+**Plex Scan Integration & Batch Reclassification**
+
+### New Features
+- **Plex Library Scanning:** Plex library scans now trigger automatically after reclassification moves
+  - Partial scans (specific paths) attempted first for efficiency
+  - Falls back to full library scan if partial fails
+  - Both source and destination libraries scanned
+- **Batch Reclassification:** Select and reclassify multiple items at once from History page
+  - Multi-step workflow: Configure → Validate → Execute
+  - Progress tracking with real-time updates
+  - Pause-on-error with skip/retry options
+  - Checkboxes with select-all in History table
+- **UID/GID Validation:** Dry-run now warns if PUID/PGID mismatch detected between source and destination
+
+### Improvements
+- **Database Migration Docs:** Added `docs/migrations.md` documenting the schema management system
+- **README Updated:** Added CAUTION block about PUID/PGID matching requirements for Docker deployments
+
+### Technical
+- New `reclassificationBatchService.js` with database tables for batch tracking
+- New `/api/reclassification/batch/*` endpoints for batch operations
+- New `BatchReclassifyModal.vue` component with multi-step workflow
+
+---
+
 ## v0.30.5-alpha
 **Multi-Instance Arr Support & UX Improvements**
 

@@ -320,9 +320,19 @@ class FileOperationsService {
             destParentExists: false,
             destParentWritable: false,
             destConflict: false,
+            uidMatch: true,
+            gidMatch: true,
             estimatedSize: 0,
-            fileCount: 0
+            fileCount: 0,
+            processUid: process.getuid ? process.getuid() : null,
+            processGid: process.getgid ? process.getgid() : null,
+            srcUid: null,
+            srcGid: null,
+            destUid: null,
+            destGid: null
         };
+
+        const warnings = [];
 
         try {
             // Check source exists and is readable
@@ -330,6 +340,9 @@ class FileOperationsService {
             checks.srcExists = srcStats.exists;
 
             if (srcStats.exists) {
+                checks.srcUid = srcStats.uid;
+                checks.srcGid = srcStats.gid;
+
                 try {
                     await fs.access(srcPath, fsSync.constants.R_OK);
                     checks.srcReadable = true;
@@ -346,6 +359,16 @@ class FileOperationsService {
                     checks.estimatedSize = srcStats.size;
                     checks.fileCount = 1;
                 }
+
+                // Check if process UID matches source UID (for permission preservation)
+                if (checks.processUid !== null && srcStats.uid !== checks.processUid) {
+                    checks.uidMatch = false;
+                    warnings.push(`Source file UID (${srcStats.uid}) differs from process UID (${checks.processUid}). Ownership may change after move.`);
+                }
+                if (checks.processGid !== null && srcStats.gid !== checks.processGid) {
+                    checks.gidMatch = false;
+                    warnings.push(`Source file GID (${srcStats.gid}) differs from process GID (${checks.processGid}). Group may change after move.`);
+                }
             }
 
             // Check destination parent exists and is writable
@@ -354,11 +377,19 @@ class FileOperationsService {
             checks.destParentExists = destDirStats.exists;
 
             if (destDirStats.exists) {
+                checks.destUid = destDirStats.uid;
+                checks.destGid = destDirStats.gid;
+
                 try {
                     await fs.access(destDir, fsSync.constants.W_OK);
                     checks.destParentWritable = true;
                 } catch {
                     checks.destParentWritable = false;
+                }
+
+                // Additional warning if destination has different ownership
+                if (checks.processUid !== null && destDirStats.uid !== checks.processUid) {
+                    warnings.push(`Destination directory UID (${destDirStats.uid}) differs from process UID (${checks.processUid}). May need elevated permissions.`);
                 }
             }
 
@@ -377,14 +408,16 @@ class FileOperationsService {
                 success: true,
                 wouldSucceed,
                 checks,
-                issues: this.getDryRunIssues(checks)
+                issues: this.getDryRunIssues(checks),
+                warnings
             };
         } catch (error) {
             return {
                 success: false,
                 wouldSucceed: false,
                 error: error.message,
-                checks
+                checks,
+                warnings
             };
         }
     }

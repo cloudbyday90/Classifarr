@@ -58,7 +58,7 @@ class PlexService {
 
   async getLibraryItems(url, apiKey, libraryKey, options = {}) {
     const { offset = 0, limit = 100 } = options;
-    
+
     try {
       const response = await axios.get(`${url}/library/sections/${libraryKey}/all`, {
         headers: {
@@ -73,7 +73,7 @@ class PlexService {
 
       const container = response.data.MediaContainer;
       const items = container.Metadata || [];
-      
+
       return items.map(item => ({
         external_id: item.ratingKey,
         title: item.title,
@@ -161,6 +161,111 @@ class PlexService {
     });
 
     return result;
+  }
+
+  /**
+   * Trigger a full library scan for a specific library
+   * @param {string} url - Plex server URL
+   * @param {string} apiKey - Plex API token
+   * @param {string} libraryKey - Library section key/id
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async triggerLibraryScan(url, apiKey, libraryKey) {
+    try {
+      await axios.get(`${url}/library/sections/${libraryKey}/refresh`, {
+        headers: {
+          'X-Plex-Token': apiKey,
+          'Accept': 'application/json',
+        },
+        timeout: 10000,
+      });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Trigger a partial scan for specific folder paths within a library
+   * Requires Plex Media Server >= 1.20.0.3125
+   * @param {string} url - Plex server URL
+   * @param {string} apiKey - Plex API token
+   * @param {string} libraryKey - Library section key/id
+   * @param {string[]} paths - Array of folder paths to scan (from Plex's perspective)
+   * @returns {Promise<{success: boolean, scanned: number, failed: number, errors: string[]}>}
+   */
+  async triggerPartialScan(url, apiKey, libraryKey, paths) {
+    const results = {
+      success: true,
+      scanned: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    for (const path of paths) {
+      try {
+        // URL-encode the path for the API call
+        const encodedPath = encodeURIComponent(path);
+
+        await axios.get(`${url}/library/sections/${libraryKey}/refresh`, {
+          headers: {
+            'X-Plex-Token': apiKey,
+            'Accept': 'application/json',
+          },
+          params: {
+            path: path, // axios will URL-encode this
+          },
+          timeout: 10000,
+        });
+
+        results.scanned++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push(`Failed to scan ${path}: ${error.message}`);
+      }
+    }
+
+    if (results.failed > 0) {
+      results.success = false;
+    }
+
+    return results;
+  }
+
+  /**
+   * Trigger scan for a library after file moves
+   * Attempts partial scan first, falls back to full scan on error
+   * @param {string} url - Plex server URL
+   * @param {string} apiKey - Plex API token
+   * @param {string} libraryKey - Library section key/id
+   * @param {string[]} paths - Optional: specific paths to scan (partial scan)
+   * @returns {Promise<{success: boolean, type: string, details: object}>}
+   */
+  async triggerScanAfterMove(url, apiKey, libraryKey, paths = []) {
+    // Try partial scan if paths provided
+    if (paths.length > 0) {
+      const partialResult = await this.triggerPartialScan(url, apiKey, libraryKey, paths);
+
+      if (partialResult.success) {
+        return {
+          success: true,
+          type: 'partial',
+          details: partialResult,
+        };
+      }
+
+      // Partial scan failed, try full scan as fallback
+      console.warn(`Partial scan failed for library ${libraryKey}, falling back to full scan`);
+    }
+
+    // Full library scan
+    const fullResult = await this.triggerLibraryScan(url, apiKey, libraryKey);
+
+    return {
+      success: fullResult.success,
+      type: 'full',
+      details: fullResult,
+    };
   }
 }
 

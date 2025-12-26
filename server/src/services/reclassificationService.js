@@ -13,6 +13,7 @@ const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const libraryMappingService = require('./libraryMappingService');
 const fileOperationsService = require('./fileOperationsService');
+const plexService = require('./plex');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('ReclassificationService');
@@ -117,6 +118,20 @@ class ReclassificationService {
                 title,
                 correctedBy
             });
+
+            // 8. Trigger Plex library scan for both old and new locations
+            try {
+                const plexScanResult = await this.triggerPlexScan({
+                    targetLibraryId,
+                    originalLibraryId,
+                    newPath: moveResult.newPath,
+                    oldPath: moveResult.oldPath
+                });
+                logger.info('Plex scan triggered', plexScanResult);
+            } catch (plexError) {
+                // Log but don't fail the operation if Plex scan fails
+                logger.warn('Plex scan failed (move was successful)', { error: plexError.message });
+            }
 
             logger.info('Re-classification successful', {
                 classificationId,
@@ -439,6 +454,94 @@ class ReclassificationService {
             canProceed: !!targetMapping,
             warning: !targetMapping ? 'Target library has no *arr mapping configured' : null
         };
+    }
+
+    /**
+     * Trigger Plex library scan after successful file move
+     * Scans both old location (to remove) and new location (to add)
+     * @param {Object} params - Parameters
+     * @param {number} params.targetLibraryId - Target library ID
+     * @param {number} params.originalLibraryId - Original library ID
+     * @param {string} params.newPath - New file path
+     * @param {string} params.oldPath - Old file path
+     * @returns {Promise<{success: boolean, scans: object[]}>}
+     */
+    async triggerPlexScan({ targetLibraryId, originalLibraryId, newPath, oldPath }) {
+        const scans = [];
+
+        try {
+            // Get library info with media server details for target library
+            const targetLibResult = await db.query(`
+                SELECT l.id, l.name, l.external_id as plex_library_key, 
+                       ms.id as media_server_id, ms.url as plex_url, ms.api_key as plex_token
+                FROM libraries l
+                JOIN media_servers ms ON l.media_server_id = ms.id
+                WHERE l.id = $1 AND ms.type = 'plex'
+            `, [targetLibraryId]);
+
+            // Scan new location (target library)
+            if (targetLibResult.rows.length > 0) {
+                const { plex_url, plex_token, plex_library_key, name } = targetLibResult.rows[0];
+
+                if (plex_url && plex_token && plex_library_key) {
+                    const scanResult = await plexService.triggerScanAfterMove(
+                        plex_url,
+                        plex_token,
+                        plex_library_key,
+                        newPath ? [newPath] : []
+                    );
+                    scans.push({
+                        library: name,
+                        libraryId: targetLibraryId,
+                        type: 'target',
+                        ...scanResult
+                    });
+                }
+            }
+
+            // Get original library info for scanning old location
+            if (originalLibraryId !== targetLibraryId) {
+                const origLibResult = await db.query(`
+                    SELECT l.id, l.name, l.external_id as plex_library_key, 
+                           ms.id as media_server_id, ms.url as plex_url, ms.api_key as plex_token
+                    FROM libraries l
+                    JOIN media_servers ms ON l.media_server_id = ms.id
+                    WHERE l.id = $1 AND ms.type = 'plex'
+                `, [originalLibraryId]);
+
+                // Scan old location (original library) to remove stale entries
+                if (origLibResult.rows.length > 0) {
+                    const { plex_url, plex_token, plex_library_key, name } = origLibResult.rows[0];
+
+                    if (plex_url && plex_token && plex_library_key) {
+                        const scanResult = await plexService.triggerScanAfterMove(
+                            plex_url,
+                            plex_token,
+                            plex_library_key,
+                            oldPath ? [oldPath] : []
+                        );
+                        scans.push({
+                            library: name,
+                            libraryId: originalLibraryId,
+                            type: 'source',
+                            ...scanResult
+                        });
+                    }
+                }
+            }
+
+            return {
+                success: scans.every(s => s.success),
+                scans
+            };
+        } catch (error) {
+            logger.error('Failed to trigger Plex scan', { error: error.message });
+            return {
+                success: false,
+                error: error.message,
+                scans
+            };
+        }
     }
 }
 

@@ -587,4 +587,39 @@ export default {
   getOllamaStatus() {
     return apiClient.get('/queue/ollama-status')
   },
+
+  // Batch Reclassification
+  createReclassificationBatch(items, pauseOnError = true) {
+    return apiClient.post('/reclassification/batch', { items, pauseOnError })
+  },
+  validateReclassificationBatch(batchId) {
+    return apiClient.post(`/reclassification/batch/${batchId}/validate`)
+  },
+  executeReclassificationBatch(batchId) {
+    return apiClient.post(`/reclassification/batch/${batchId}/execute`)
+  },
+  pauseReclassificationBatch(batchId) {
+    return apiClient.post(`/reclassification/batch/${batchId}/pause`)
+  },
+  resumeReclassificationBatch(batchId) {
+    return apiClient.post(`/reclassification/batch/${batchId}/resume`)
+  },
+  cancelReclassificationBatch(batchId) {
+    return apiClient.post(`/reclassification/batch/${batchId}/cancel`)
+  },
+  getReclassificationBatchStatus(batchId) {
+    return apiClient.get(`/reclassification/batch/${batchId}`)
+  },
+  getReclassificationBatchProgress(batchId) {
+    return apiClient.get(`/reclassification/batch/${batchId}/progress`)
+  },
+  skipReclassificationItem(batchId, itemId) {
+    return apiClient.post(`/reclassification/batch/${batchId}/item/${itemId}/skip`)
+  },
+  retryReclassificationItem(batchId, itemId) {
+    return apiClient.post(`/reclassification/batch/${batchId}/item/${itemId}/retry`)
+  },
+  listReclassificationBatches(limit = 20) {
+    return apiClient.get(`/reclassification/batches?limit=${limit}`)
+  },
 }

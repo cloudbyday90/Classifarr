@@ -8,7 +8,18 @@
 
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-bold">Classification History</h1>
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Classification History</h1>
+      <div v-if="selectedItems.length > 0" class="flex items-center gap-3">
+        <span class="text-sm text-gray-400">{{ selectedItems.length }} selected</span>
+        <Button @click="showBatchModal = true" variant="warning">
+          🔄 Batch Reclassify
+        </Button>
+        <Button @click="clearSelection" variant="secondary" size="sm">
+          Clear
+        </Button>
+      </div>
+    </div>
 
     <Card>
       <div v-if="loading" class="text-center py-12 text-gray-400">
@@ -23,6 +34,14 @@
         <table class="w-full">
           <thead class="border-b border-gray-800">
             <tr class="text-left text-sm text-gray-400">
+              <th class="pb-3 w-8">
+                <input 
+                  type="checkbox" 
+                  :checked="isAllSelected" 
+                  @change="toggleSelectAll"
+                  class="w-4 h-4 rounded"
+                />
+              </th>
               <th class="pb-3">Title</th>
               <th class="pb-3">Type</th>
               <th class="pb-3">Library</th>
@@ -36,27 +55,35 @@
               v-for="item in history"
               :key="item.id"
               class="border-b border-gray-800 hover:bg-background transition-colors cursor-pointer"
-              @click="openDetail(item)"
+              :class="{ 'bg-primary/10': isSelected(item.id) }"
             >
-              <td class="py-3">
+              <td class="py-3" @click.stop>
+                <input 
+                  type="checkbox" 
+                  :checked="isSelected(item.id)" 
+                  @change="toggleSelection(item)"
+                  class="w-4 h-4 rounded"
+                />
+              </td>
+              <td class="py-3" @click="openDetail(item)">
                 <div class="font-medium">{{ item.title }}</div>
                 <div class="text-sm text-gray-400">{{ item.year }}</div>
               </td>
-              <td class="py-3">
+              <td class="py-3" @click="openDetail(item)">
                 <Badge>{{ item.media_type }}</Badge>
               </td>
-              <td class="py-3">{{ item.library_name }}</td>
-              <td class="py-3">
+              <td class="py-3" @click="openDetail(item)">{{ item.library_name }}</td>
+              <td class="py-3" @click="openDetail(item)">
                 <Badge :variant="getMethodVariant(item.method)">
                   {{ item.method }}
                 </Badge>
               </td>
-              <td class="py-3">
+              <td class="py-3" @click="openDetail(item)">
                 <Badge :variant="getConfidenceVariant(item.confidence)">
                   {{ item.confidence }}%
                 </Badge>
               </td>
-              <td class="py-3 text-sm text-gray-400">
+              <td class="py-3 text-sm text-gray-400" @click="openDetail(item)">
                 {{ formatDate(item.created_at) }}
               </td>
             </tr>
@@ -202,6 +229,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Batch Reclassify Modal -->
+    <BatchReclassifyModal
+      v-model="showBatchModal"
+      :items="selectedItems"
+      @complete="onBatchComplete"
+    />
   </div>
 </template>
 
@@ -212,6 +246,7 @@ import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
+import BatchReclassifyModal from '@/components/BatchReclassifyModal.vue'
 
 const librariesStore = useLibrariesStore()
 const libraries = computed(() => librariesStore.libraries)
@@ -223,6 +258,44 @@ const selectedItem = ref(null)
 const correcting = ref(false)
 const correctedLibraryId = ref('')
 const submitting = ref(false)
+
+// Batch selection state
+const selectedItems = ref([])
+const showBatchModal = ref(false)
+
+const isAllSelected = computed(() => {
+  return history.value.length > 0 && selectedItems.value.length === history.value.length
+})
+
+const isSelected = (id) => {
+  return selectedItems.value.some(item => item.id === id)
+}
+
+const toggleSelection = (item) => {
+  const index = selectedItems.value.findIndex(i => i.id === item.id)
+  if (index >= 0) {
+    selectedItems.value.splice(index, 1)
+  } else {
+    selectedItems.value.push(item)
+  }
+}
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedItems.value = []
+  } else {
+    selectedItems.value = [...history.value]
+  }
+}
+
+const clearSelection = () => {
+  selectedItems.value = []
+}
+
+const onBatchComplete = () => {
+  clearSelection()
+  loadPage(pagination.value?.page || 1)
+}
 
 const parsedMetadata = computed(() => {
   if (!selectedItem.value?.metadata) return null

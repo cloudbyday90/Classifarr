@@ -6,6 +6,24 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.30.8-alpha] - 2025-12-25
+
+### Added
+- **Plex Library Scanning:** Automatic Plex library scans after reclassification moves
+- **Batch Reclassification:** Multi-select and reclassify items from History page
+- **BatchReclassifyModal:** Multi-step workflow with validation, progress, pause/resume
+- **UID/GID Dry-Run Validation:** Warns when PUID/PGID mismatch detected
+- **Database Migration Docs:** Added `docs/migrations.md` for schema management reference
+
+### Changed
+- **History Page:** Added checkbox column and batch selection toolbar
+- **README:** Added CAUTION block about PUID/PGID container matching
+
+### Technical
+- New `reclassificationBatchService.js` with auto-created batch tables
+- New `/api/reclassification/batch/*` REST endpoints
+- New batch API methods in frontend `api/index.js`
+
 ## [0.30.5-alpha] - 2025-12-25
 
 ### Added
