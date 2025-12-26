@@ -6,6 +6,12 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.30.9-alpha] - 2025-12-26
+
+### Fixed
+- **Radarr/Sonarr Config Save (#70):** Fixed "null value in column url" database error when adding new instances
+- **Configure Media Server Button (#71):** Button now navigates to correct settings tab
+
 ## [0.30.8-alpha] - 2025-12-25
 
 ### Added

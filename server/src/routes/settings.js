@@ -275,11 +275,18 @@ router.post('/radarr', async (req, res) => {
   try {
     const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id } = req.body;
 
+    // Construct URL from components if not provided
+    const finalProtocol = protocol || 'http';
+    const finalHost = host || 'localhost';
+    const finalPort = port || 7878;
+    const finalBasePath = base_path || '';
+    const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
+
     const result = await db.query(
       `INSERT INTO radarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [name, url, api_key, protocol || 'http', host || 'localhost', port || 7878, base_path || '', verify_ssl !== false, timeout || 30, media_server_id || null]
+      [name, constructedUrl, api_key, finalProtocol, finalHost, finalPort, finalBasePath, verify_ssl !== false, timeout || 30, media_server_id || null]
     );
 
     // Mask API key in response
@@ -314,6 +321,9 @@ router.put('/radarr/:id', async (req, res) => {
     // Use existing API key if the provided one is masked
     const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
+    // Construct URL from components if not provided
+    const constructedUrl = url || (protocol && host && port ? `${protocol}://${host}:${port}${base_path || ''}` : null);
+
     const result = await db.query(
       `UPDATE radarr_config
        SET name = COALESCE($1, name),
@@ -330,7 +340,7 @@ router.put('/radarr/:id', async (req, res) => {
            updated_at = NOW()
        WHERE id = $12
        RETURNING *`,
-      [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, id]
+      [name, constructedUrl, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, id]
     );
 
     if (result.rows.length === 0) {
@@ -484,11 +494,18 @@ router.post('/sonarr', async (req, res) => {
   try {
     const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id } = req.body;
 
+    // Construct URL from components if not provided
+    const finalProtocol = protocol || 'http';
+    const finalHost = host || 'localhost';
+    const finalPort = port || 8989;
+    const finalBasePath = base_path || '';
+    const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
+
     const result = await db.query(
       `INSERT INTO sonarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [name, url, api_key, protocol || 'http', host || 'localhost', port || 8989, base_path || '', verify_ssl !== false, timeout || 30, media_server_id || null]
+      [name, constructedUrl, api_key, finalProtocol, finalHost, finalPort, finalBasePath, verify_ssl !== false, timeout || 30, media_server_id || null]
     );
 
     // Mask API key in response
@@ -523,6 +540,9 @@ router.put('/sonarr/:id', async (req, res) => {
     // Use existing API key if the provided one is masked
     const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
+    // Construct URL from components if not provided
+    const constructedUrl = url || (protocol && host && port ? `${protocol}://${host}:${port}${base_path || ''}` : null);
+
     const result = await db.query(
       `UPDATE sonarr_config
        SET name = COALESCE($1, name),
@@ -539,7 +559,7 @@ router.put('/sonarr/:id', async (req, res) => {
            updated_at = NOW()
        WHERE id = $12
        RETURNING *`,
-      [name, url, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, id]
+      [name, constructedUrl, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, id]
     );
 
     if (result.rows.length === 0) {

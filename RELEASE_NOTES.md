@@ -1,4 +1,15 @@
 
+## v0.30.9-alpha
+**Bug Fixes: Radarr/Sonarr Config & UI Navigation**
+
+### Fixes
+- **Radarr/Sonarr Config Save (#70):** Fixed "null value in column url" error when adding new Radarr/Sonarr instances
+  - Backend now constructs URL from protocol/host/port/base_path components when not provided
+  - Applies to both POST (create) and PUT (update) operations
+- **Configure Media Server Button (#71):** Button on Libraries page now correctly links to `/settings?tab=mediaserver` instead of just `/settings`
+
+---
+
 ## v0.30.8-alpha
 **Plex Scan Integration & Batch Reclassification**
 

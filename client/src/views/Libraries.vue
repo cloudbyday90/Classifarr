@@ -21,7 +21,7 @@
 
     <div v-else-if="libraries.length === 0" class="text-center py-12">
       <div class="text-gray-400 mb-4">No libraries found</div>
-      <Button @click="$router.push('/settings')">
+      <Button @click="$router.push('/settings?tab=mediaserver')">
         Configure Media Server
       </Button>
     </div>
