@@ -12,6 +12,7 @@ const db = require('../config/database');
 const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const libraryMappingService = require('./libraryMappingService');
+const fileOperationsService = require('./fileOperationsService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('ReclassificationService');
@@ -156,8 +157,13 @@ class ReclassificationService {
 
     /**
      * Move a movie in Radarr
+     * Flow: 1. Get current path from Radarr
+     *       2. Classifarr moves the folder to new root
+     *       3. Update Radarr with new path (moveFiles=false)
+     * @param {Object} params - Move parameters
+     * @param {boolean} params.dryRun - If true, only test if move would succeed
      */
-    async moveMovie({ tmdbId, targetMapping, originalMapping, title }) {
+    async moveMovie({ tmdbId, targetMapping, originalMapping, title, dryRun = false }) {
         try {
             const { arr_config_id, arr_root_folder_path, quality_profile_id } = targetMapping;
 
@@ -173,36 +179,98 @@ class ReclassificationService {
             // Find the movie in Radarr
             const movie = await radarrService.getMovieByTmdbId(url, config.api_key, tmdbId);
             if (!movie) {
-                // Movie not in Radarr yet - might have been added to wrong instance
-                // Try adding to the correct Radarr instance
                 return { success: true, message: 'Movie not found in Radarr - no move needed' };
             }
 
-            // Update the movie's root folder path (this triggers Radarr to move the files)
+            // Get current path and calculate new path
+            const currentPath = movie.path;
+            const titleFolder = currentPath.split('/').pop() || currentPath.split('\\').pop();
+            const newPath = arr_root_folder_path.endsWith('/')
+                ? `${arr_root_folder_path}${titleFolder}`
+                : `${arr_root_folder_path}/${titleFolder}`;
+
+            // Validate destination is within a configured root folder
+            const validation = await radarrService.validatePathInRootFolder(url, config.api_key, newPath);
+            if (!validation.isValid) {
+                throw new Error(validation.error || 'Destination path is not within a configured Radarr root folder');
+            }
+
+            logger.info('Preparing movie move', {
+                title,
+                from: currentPath,
+                to: newPath,
+                matchedRootFolder: validation.matchedRootFolder,
+                dryRun
+            });
+
+            // Step 1: Use FileOperationsService to move the folder
+            const moveResult = await fileOperationsService.moveFolder(currentPath, newPath, {
+                dryRun,
+                skipVerification: false
+            });
+
+            if (!moveResult.success) {
+                throw new Error(moveResult.error || 'File move failed');
+            }
+
+            if (dryRun) {
+                return {
+                    success: true,
+                    dryRun: true,
+                    message: `Dry run: Move would succeed`,
+                    details: {
+                        from: currentPath,
+                        to: newPath,
+                        estimatedSize: moveResult.estimatedSize,
+                        fileCount: moveResult.fileCount
+                    }
+                };
+            }
+
+            // Step 2: Update Radarr with new path (moveFiles=false - we already moved)
             const updateResult = await radarrService.updateMoviePath(
                 url,
                 config.api_key,
                 movie.id,
-                arr_root_folder_path,
-                quality_profile_id
+                newPath,
+                { moveFiles: false, qualityProfileId: quality_profile_id }
             );
+
+            logger.info('Movie move completed', {
+                title,
+                from: currentPath,
+                to: newPath,
+                duration: moveResult.duration,
+                fileCount: moveResult.fileCount
+            });
 
             return {
                 success: true,
                 message: `Movie moved to ${arr_root_folder_path}`,
+                details: {
+                    from: currentPath,
+                    to: newPath,
+                    fileCount: moveResult.fileCount,
+                    duration: moveResult.duration
+                },
                 data: updateResult
             };
 
         } catch (error) {
-            logger.error('Failed to move movie', { tmdbId, error: error.message });
+            logger.error('Failed to move movie', { tmdbId, title, error: error.message });
             return { success: false, error: error.message };
         }
     }
 
     /**
      * Move a series in Sonarr
+     * Flow: 1. Get current path from Sonarr
+     *       2. Classifarr moves the folder to new root
+     *       3. Update Sonarr with new path (moveFiles=false)
+     * @param {Object} params - Move parameters
+     * @param {boolean} params.dryRun - If true, only test if move would succeed
      */
-    async moveSeries({ tvdbId, targetMapping, originalMapping, title }) {
+    async moveSeries({ tvdbId, targetMapping, originalMapping, title, dryRun = false }) {
         try {
             const { arr_config_id, arr_root_folder_path, quality_profile_id } = targetMapping;
 
@@ -221,23 +289,82 @@ class ReclassificationService {
                 return { success: true, message: 'Series not found in Sonarr - no move needed' };
             }
 
-            // Update the series root folder path
+            // Get current path and calculate new path
+            const currentPath = series.path;
+            const titleFolder = currentPath.split('/').pop() || currentPath.split('\\').pop();
+            const newPath = arr_root_folder_path.endsWith('/')
+                ? `${arr_root_folder_path}${titleFolder}`
+                : `${arr_root_folder_path}/${titleFolder}`;
+
+            // Validate destination is within a configured root folder
+            const validation = await sonarrService.validatePathInRootFolder(url, config.api_key, newPath);
+            if (!validation.isValid) {
+                throw new Error(validation.error || 'Destination path is not within a configured Sonarr root folder');
+            }
+
+            logger.info('Preparing series move', {
+                title,
+                from: currentPath,
+                to: newPath,
+                matchedRootFolder: validation.matchedRootFolder,
+                dryRun
+            });
+
+            // Step 1: Use FileOperationsService to move the folder
+            const moveResult = await fileOperationsService.moveFolder(currentPath, newPath, {
+                dryRun,
+                skipVerification: false
+            });
+
+            if (!moveResult.success) {
+                throw new Error(moveResult.error || 'File move failed');
+            }
+
+            if (dryRun) {
+                return {
+                    success: true,
+                    dryRun: true,
+                    message: `Dry run: Move would succeed`,
+                    details: {
+                        from: currentPath,
+                        to: newPath,
+                        estimatedSize: moveResult.estimatedSize,
+                        fileCount: moveResult.fileCount
+                    }
+                };
+            }
+
+            // Step 2: Update Sonarr with new path (moveFiles=false - we already moved)
             const updateResult = await sonarrService.updateSeriesPath(
                 url,
                 config.api_key,
                 series.id,
-                arr_root_folder_path,
-                quality_profile_id
+                newPath,
+                { moveFiles: false, qualityProfileId: quality_profile_id }
             );
+
+            logger.info('Series move completed', {
+                title,
+                from: currentPath,
+                to: newPath,
+                duration: moveResult.duration,
+                fileCount: moveResult.fileCount
+            });
 
             return {
                 success: true,
                 message: `Series moved to ${arr_root_folder_path}`,
+                details: {
+                    from: currentPath,
+                    to: newPath,
+                    fileCount: moveResult.fileCount,
+                    duration: moveResult.duration
+                },
                 data: updateResult
             };
 
         } catch (error) {
-            logger.error('Failed to move series', { tvdbId, error: error.message });
+            logger.error('Failed to move series', { tvdbId, title, error: error.message });
             return { success: false, error: error.message };
         }
     }

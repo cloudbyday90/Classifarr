@@ -158,6 +158,51 @@ class RadarrService {
     }
   }
 
+  /**
+   * Validate that a destination path is within a configured root folder
+   * @param {string} url - Radarr URL
+   * @param {string} apiKey - API key
+   * @param {string} destinationPath - The path to validate
+   * @returns {Object} Validation result with isValid and matchedRootFolder
+   */
+  async validatePathInRootFolder(url, apiKey, destinationPath) {
+    try {
+      const rootFolders = await this.getRootFolders(url, apiKey);
+
+      // Normalize paths for comparison (handle trailing slashes)
+      const normalizedDest = destinationPath.replace(/[/\\]+$/, '');
+
+      for (const folder of rootFolders) {
+        const normalizedRoot = folder.path.replace(/[/\\]+$/, '');
+
+        // Check if destination starts with this root folder
+        if (normalizedDest.startsWith(normalizedRoot + '/') ||
+          normalizedDest.startsWith(normalizedRoot + '\\') ||
+          normalizedDest === normalizedRoot) {
+          return {
+            isValid: true,
+            matchedRootFolder: folder.path,
+            freeSpace: folder.freeSpace,
+            destinationPath
+          };
+        }
+      }
+
+      return {
+        isValid: false,
+        availableRootFolders: rootFolders.map(f => f.path),
+        destinationPath,
+        error: `Path "${destinationPath}" is not within any configured Radarr root folder`
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        error: `Failed to validate root folder: ${error.message}`,
+        destinationPath
+      };
+    }
+  }
+
   async addMovie(url, apiKey, movieData) {
     try {
       const response = await axios.post(`${url}/api/v3/movie`, movieData, {
@@ -224,53 +269,84 @@ class RadarrService {
   }
 
   /**
-   * Update a movie's root folder path (triggers file move in Radarr)
+   * Update a movie's path in Radarr
+   * When moveFiles=false, Radarr only updates its database (Classifarr handles the actual move)
+   * When moveFiles=true, Radarr moves the files itself (legacy behavior)
+   * 
    * @param {string} url - Radarr URL
    * @param {string} apiKey - API key
    * @param {number} movieId - Radarr movie ID
-   * @param {string} newRootFolderPath - New root folder path
-   * @param {number} qualityProfileId - Quality profile ID (optional)
+   * @param {string} newPath - New absolute path for the movie folder
+   * @param {Object} options - Update options
+   * @param {boolean} options.moveFiles - Whether Radarr should move files (default: false)
+   * @param {number} options.qualityProfileId - Quality profile ID (optional)
    * @returns {Object} Updated movie object
    */
-  async updateMoviePath(url, apiKey, movieId, newRootFolderPath, qualityProfileId = null) {
+  async updateMoviePath(url, apiKey, movieId, newPath, options = {}) {
+    const { moveFiles = false, qualityProfileId = null } = options;
+
     try {
       // First, get the current movie data
-      const getResponse = await axios.get(`${url}/api/v3/movie/${movieId}`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
-      });
+      const movie = await this.getMovieById(url, apiKey, movieId);
+      if (!movie) {
+        throw new Error(`Movie not found with ID: ${movieId}`);
+      }
 
-      const movie = getResponse.data;
-
-      // Calculate the new path (root folder + title folder)
-      const titleFolder = movie.path.split('/').pop() || movie.path.split('\\').pop();
-      const newPath = newRootFolderPath.endsWith('/') || newRootFolderPath.endsWith('\\')
-        ? `${newRootFolderPath}${titleFolder}`
-        : `${newRootFolderPath}/${titleFolder}`;
+      // Extract root folder from new path
+      // If newPath is "/movies/4k/The Matrix (1999)", root is "/movies/4k"
+      const pathParts = newPath.replace(/\/$/, '').split('/');
+      const titleFolder = pathParts.pop();
+      const newRootFolderPath = pathParts.join('/');
 
       // Update the movie with new path
       const updateData = {
         ...movie,
         path: newPath,
         rootFolderPath: newRootFolderPath,
-        moveFiles: true, // This tells Radarr to actually move the files
       };
 
       if (qualityProfileId) {
         updateData.qualityProfileId = qualityProfileId;
       }
 
-      const updateResponse = await axios.put(`${url}/api/v3/movie/${movieId}`, updateData, {
-        headers: {
-          'X-Api-Key': apiKey,
-          'Content-Type': 'application/json',
-        },
-      });
+      // PUT request with moveFiles query parameter
+      const updateResponse = await axios.put(
+        `${url}/api/v3/movie/${movieId}?moveFiles=${moveFiles}`,
+        updateData,
+        {
+          headers: {
+            'X-Api-Key': apiKey,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       return updateResponse.data;
     } catch (error) {
       throw new Error(`Failed to update movie path: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a movie by its Radarr internal ID
+   * @param {string} url - Radarr URL
+   * @param {string} apiKey - API key
+   * @param {number} movieId - Radarr movie ID
+   * @returns {Object|null} Movie object or null
+   */
+  async getMovieById(url, apiKey, movieId) {
+    try {
+      const response = await axios.get(`${url}/api/v3/movie/${movieId}`, {
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw new Error(`Failed to get movie: ${error.message}`);
     }
   }
 

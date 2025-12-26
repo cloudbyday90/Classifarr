@@ -1,4 +1,25 @@
 
+## v0.30.5-alpha
+**Multi-Instance Arr Support & UX Improvements**
+
+### New Features
+- **Multi-Instance Radarr/Sonarr Support:** Configure multiple Radarr and Sonarr instances for different quality tiers (e.g., 1080p vs 4K)
+- **Add Instance Button:** "Add Radarr Instance" / "Add Sonarr Instance" button appears when existing config exists
+- **Instance Management:** Edit and delete individual instances with per-instance library mappings
+
+### Improvements
+- **Settings View/Edit Mode:** Clear separation between view mode (read-only summary) and edit mode (full configuration)
+- **Inline Library Mappings:** Library mappings now configurable directly within the arr instance edit form
+- **Read-Only Summary:** View mode shows library mappings as read-only summary for quick reference
+- **Message Clarity:** Empty state messages now differentiate between "no mappings configured" (view mode) and "no libraries found" (edit mode)
+
+### Fixes
+- **Library Detection:** Fixed Plex libraries not loading in edit mode (JavaScript hoisting bug with arrow functions)
+- **Cancel Button:** "Cancel Editing" button now works correctly to exit edit mode
+- **Media Server Dropdown:** Dropdown now properly disabled in view mode, only editable in edit mode
+
+---
+
 ## v0.30.4-alpha
 **UI Refactor & Bug Fixes**
 

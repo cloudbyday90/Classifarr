@@ -8,8 +8,8 @@
 
 <template>
   <div class="space-y-4">
-    <!-- Section Header -->
-    <div class="flex items-center justify-between">
+    <!-- Section Header - only show in edit mode -->
+    <div v-if="!readonly" class="flex items-center justify-between">
       <div>
         <h3 class="text-lg font-medium">Library Mappings</h3>
         <p class="text-sm text-gray-400">Map Plex libraries to {{ arrType === 'radarr' ? 'Radarr' : 'Sonarr' }} root folders</p>
@@ -39,7 +39,7 @@
     <!-- Content when media server is configured -->
     <template v-else>
       <!-- Unmapped Libraries Warning -->
-      <div v-if="unmappedLibraries.length > 0" class="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4">
+      <div v-if="!readonly && unmappedLibraries.length > 0" class="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4">
         <h4 class="text-yellow-400 font-medium mb-2">⚠️ Unmapped Libraries ({{ unmappedLibraries.length }})</h4>
         <div class="space-y-2">
           <div 
@@ -68,7 +68,7 @@
             <tr class="text-left text-sm text-gray-400">
               <th class="p-3">Library</th>
               <th class="p-3">Root Folder</th>
-              <th class="p-3 text-right">Actions</th>
+              <th v-if="!readonly" class="p-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -83,7 +83,7 @@
               <td class="p-3">
                 <code class="text-xs bg-gray-900 px-2 py-1 rounded">{{ mapping.arr_root_folder_path }}</code>
               </td>
-              <td class="p-3 text-right">
+              <td v-if="!readonly" class="p-3 text-right">
                 <button 
                   @click="deleteMapping(mapping.library_id)"
                   class="text-red-400 hover:text-red-300 text-sm"
@@ -96,14 +96,15 @@
         </table>
       </div>
 
-      <!-- No Libraries Found -->
+      <!-- No Mappings Configured -->
       <div v-if="!loading && mappings.length === 0 && unmappedLibraries.length === 0" class="text-center py-6 text-gray-400 border border-gray-700 border-dashed rounded-lg">
-        <p>No {{ arrType === 'radarr' ? 'movie' : 'TV' }} libraries found on the associated media server</p>
+        <p v-if="readonly">No library mappings configured for this {{ arrType === 'radarr' ? 'Radarr' : 'Sonarr' }} instance</p>
+        <p v-else>No {{ arrType === 'radarr' ? 'movie' : 'TV' }} libraries found on the associated media server</p>
       </div>
     </template>
 
-    <!-- Path Configuration Guide (Collapsible) -->
-    <details v-if="mediaServerId" class="bg-gray-800/30 border border-gray-700 rounded-lg">
+    <!-- Path Configuration Guide (Collapsible) - only in edit mode -->
+    <details v-if="!readonly && mediaServerId" class="bg-gray-800/30 border border-gray-700 rounded-lg">
       <summary class="px-4 py-3 cursor-pointer text-sm font-medium text-gray-300 hover:text-white">
         📖 Path Configuration Guide
       </summary>
@@ -192,6 +193,10 @@ const props = defineProps({
   mediaServerId: {
     type: Number,
     default: null
+  },
+  readonly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -211,24 +216,7 @@ const mappingForm = ref({
   root_folder: ''
 })
 
-// Watch for changes in mediaServerId and reload mappings
-watch(() => props.mediaServerId, async (newId) => {
-  if (newId) {
-    await loadMappings()
-    await loadRootFolders()
-  } else {
-    mappings.value = []
-    unmappedLibraries.value = []
-  }
-}, { immediate: true })
-
-// Also reload root folders when arrConfigId changes
-watch(() => props.arrConfigId, async (newId) => {
-  if (newId && props.mediaServerId) {
-    await loadRootFolders()
-  }
-})
-
+// Define functions BEFORE watchers that use them (arrow functions aren't hoisted)
 const loadMappings = async () => {
   if (!props.mediaServerId) return
   
@@ -268,6 +256,24 @@ const loadRootFolders = async () => {
     console.error('Failed to load root folders:', error)
   }
 }
+
+// Watch for changes in mediaServerId and reload mappings
+watch(() => props.mediaServerId, async (newId) => {
+  if (newId) {
+    await loadMappings()
+    await loadRootFolders()
+  } else {
+    mappings.value = []
+    unmappedLibraries.value = []
+  }
+}, { immediate: true })
+
+// Also reload root folders when arrConfigId changes
+watch(() => props.arrConfigId, async (newId) => {
+  if (newId && props.mediaServerId) {
+    await loadRootFolders()
+  }
+})
 
 const autoDetect = async () => {
   if (!props.mediaServerId) return

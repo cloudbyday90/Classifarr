@@ -6,6 +6,24 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.30.5-alpha] - 2025-12-25
+
+### Added
+- **Multi-Instance Arr Support:** Configure multiple Radarr/Sonarr instances for quality tiers (1080p, 4K)
+- **Add Instance Button:** New button to add additional arr instances when config exists
+- **Instance Management:** Edit and delete individual instances with per-instance library mappings
+- **Read-Only Library Summary:** View mode shows library mappings as read-only reference
+
+### Changed
+- **Settings View/Edit Mode:** Clear separation between view and edit modes
+- **Inline Library Mappings:** Mappings now configurable within arr instance edit form
+- **Message Clarity:** Empty state messages differentiate "no mappings" vs "no libraries found"
+
+### Fixed
+- **Library Detection Bug:** Fixed Plex libraries not loading (JavaScript hoisting issue)
+- **Cancel Button:** "Cancel Editing" now correctly exits edit mode
+- **Media Server Dropdown:** Disabled in view mode, editable in edit mode only
+
 ## [0.30.4-alpha] - 2025-12-25
 
 ### Added

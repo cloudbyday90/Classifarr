@@ -170,6 +170,51 @@ class SonarrService {
     }
   }
 
+  /**
+   * Validate that a destination path is within a configured root folder
+   * @param {string} url - Sonarr URL
+   * @param {string} apiKey - API key
+   * @param {string} destinationPath - The path to validate
+   * @returns {Object} Validation result with isValid and matchedRootFolder
+   */
+  async validatePathInRootFolder(url, apiKey, destinationPath) {
+    try {
+      const rootFolders = await this.getRootFolders(url, apiKey);
+
+      // Normalize paths for comparison (handle trailing slashes)
+      const normalizedDest = destinationPath.replace(/[/\\]+$/, '');
+
+      for (const folder of rootFolders) {
+        const normalizedRoot = folder.path.replace(/[/\\]+$/, '');
+
+        // Check if destination starts with this root folder
+        if (normalizedDest.startsWith(normalizedRoot + '/') ||
+          normalizedDest.startsWith(normalizedRoot + '\\') ||
+          normalizedDest === normalizedRoot) {
+          return {
+            isValid: true,
+            matchedRootFolder: folder.path,
+            freeSpace: folder.freeSpace,
+            destinationPath
+          };
+        }
+      }
+
+      return {
+        isValid: false,
+        availableRootFolders: rootFolders.map(f => f.path),
+        destinationPath,
+        error: `Path "${destinationPath}" is not within any configured Sonarr root folder`
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        error: `Failed to validate root folder: ${error.message}`,
+        destinationPath
+      };
+    }
+  }
+
   async addSeries(url, apiKey, seriesData) {
     try {
       const response = await axios.post(`${url}/api/v3/series`, seriesData, {
@@ -236,53 +281,84 @@ class SonarrService {
   }
 
   /**
-   * Update a series root folder path (triggers file move in Sonarr)
+   * Update a series path in Sonarr
+   * When moveFiles=false, Sonarr only updates its database (Classifarr handles the actual move)
+   * When moveFiles=true, Sonarr moves the files itself (legacy behavior)
+   * 
    * @param {string} url - Sonarr URL
    * @param {string} apiKey - API key
    * @param {number} seriesId - Sonarr series ID
-   * @param {string} newRootFolderPath - New root folder path
-   * @param {number} qualityProfileId - Quality profile ID (optional)
+   * @param {string} newPath - New absolute path for the series folder
+   * @param {Object} options - Update options
+   * @param {boolean} options.moveFiles - Whether Sonarr should move files (default: false)
+   * @param {number} options.qualityProfileId - Quality profile ID (optional)
    * @returns {Object} Updated series object
    */
-  async updateSeriesPath(url, apiKey, seriesId, newRootFolderPath, qualityProfileId = null) {
+  async updateSeriesPath(url, apiKey, seriesId, newPath, options = {}) {
+    const { moveFiles = false, qualityProfileId = null } = options;
+
     try {
       // First, get the current series data
-      const getResponse = await axios.get(`${url}/api/v3/series/${seriesId}`, {
-        headers: {
-          'X-Api-Key': apiKey,
-        },
-      });
+      const series = await this.getSeriesById(url, apiKey, seriesId);
+      if (!series) {
+        throw new Error(`Series not found with ID: ${seriesId}`);
+      }
 
-      const series = getResponse.data;
-
-      // Calculate the new path (root folder + title folder)
-      const titleFolder = series.path.split('/').pop() || series.path.split('\\').pop();
-      const newPath = newRootFolderPath.endsWith('/') || newRootFolderPath.endsWith('\\')
-        ? `${newRootFolderPath}${titleFolder}`
-        : `${newRootFolderPath}/${titleFolder}`;
+      // Extract root folder from new path
+      // If newPath is "/tv/anime/Naruto", root is "/tv/anime"
+      const pathParts = newPath.replace(/\/$/, '').split('/');
+      const titleFolder = pathParts.pop();
+      const newRootFolderPath = pathParts.join('/');
 
       // Update the series with new path
       const updateData = {
         ...series,
         path: newPath,
         rootFolderPath: newRootFolderPath,
-        moveFiles: true, // This tells Sonarr to actually move the files
       };
 
       if (qualityProfileId) {
         updateData.qualityProfileId = qualityProfileId;
       }
 
-      const updateResponse = await axios.put(`${url}/api/v3/series/${seriesId}`, updateData, {
-        headers: {
-          'X-Api-Key': apiKey,
-          'Content-Type': 'application/json',
-        },
-      });
+      // PUT request with moveFiles query parameter
+      const updateResponse = await axios.put(
+        `${url}/api/v3/series/${seriesId}?moveFiles=${moveFiles}`,
+        updateData,
+        {
+          headers: {
+            'X-Api-Key': apiKey,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       return updateResponse.data;
     } catch (error) {
       throw new Error(`Failed to update series path: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get a series by its Sonarr internal ID
+   * @param {string} url - Sonarr URL
+   * @param {string} apiKey - API key
+   * @param {number} seriesId - Sonarr series ID
+   * @returns {Object|null} Series object or null
+   */
+  async getSeriesById(url, apiKey, seriesId) {
+    try {
+      const response = await axios.get(`${url}/api/v3/series/${seriesId}`, {
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw new Error(`Failed to get series: ${error.message}`);
     }
   }
 
