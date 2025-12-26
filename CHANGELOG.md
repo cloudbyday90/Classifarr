@@ -6,6 +6,52 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.31.0-alpha] - 2025-12-26
+
+### Added
+- **Event Detection Expansion:** Auto-detection now covers 5 content types:
+  - 🎄 **Holiday** (95% confidence): Christmas, Halloween, Thanksgiving, Easter, New Years, Hanukkah, Kwanzaa
+  - 🏈 **Sports** (92% confidence): NFL, NBA, MLB, NHL, MLS, FIFA, Olympics, Super Bowl, World Series, Stanley Cup
+  - 🥊 **PPV/Combat** (93% confidence): UFC, MMA, Boxing, WWE, WrestleMania, Bellator, One Championship
+  - 🎤 **Concert/Comedy** (90% confidence): Live concerts, music festivals, stand-up comedy specials
+  - 🏆 **Awards** (88% confidence): Oscars, Emmys, Grammys, Golden Globes, BAFTA, Tony Awards
+- **Queue Self-Healing:** Stale queue items auto-recover missing data from database:
+  - `tmdb_id` lookup from `media_server_items` table
+  - `source_library_id` and `source_library_name` lookup via library join
+- **Periodic Library Sync:** Automatic Plex library sync every 6 hours to keep metadata fresh
+- **Initial Startup Sync:** Library sync triggered 2 minutes after application startup
+- **Database Migration (020):** Auto-migrates legacy classification method names to standardized names
+
+### Changed
+- **Classification Methods Standardized:** Renamed for consistency and clarity:
+  - `ai_fallback` → `ai_analysis` (AI provider classification)
+  - `library_rule` / `rule_match` → `custom_rule` (user-defined rules)
+  - `holiday_detection` → `event_detection` (expanded to all event types)
+  - `learned_correction` → `manual_correction` (user corrections)
+- **Statistics Dashboard:** "Total Classifications" now correctly excludes `source_library` enrichments
+- **Activity Page:** "Classified Today" now includes ALL methods (including `source_library`)
+- **Frontend Display Mappings:** All Vue components updated with legacy backwards compatibility:
+  - `Activity.vue`: Method icons and display names
+  - `Statistics.vue`: Method colors
+  - `History.vue`: Method badge variants
+- **detectEventContent():** Replaces `detectHolidayContent()` with comprehensive event type detection
+- **Event Detection Return Value:** Now returns full event info (type, confidence, icon, reason, keywords)
+
+### Fixed
+- **Plex TMDB IDs (#72):** Added `includeGuids=1` parameter to Plex API calls to retrieve TMDB/IMDB/TVDB IDs
+- **SQL Query Error:** Fixed PostgreSQL "column 'level' does not exist" in confidence distribution stats
+- **Queue Processing:** Queue worker now correctly processes `metadata_enrichment` tasks without AI
+- **NOT NULL Constraint:** Fixed potential NOT NULL error when inserting classification history without TMDB ID
+
+### Technical
+- New `detectEventContent()` function in `classification.js` with:
+  - 5 event type configurations with keywords and library patterns
+  - Dynamic confidence levels per event type
+  - Event-specific icons for UI display
+- New `runPeriodicLibrarySync()` function in `scheduler.js`
+- Self-healing logic in `queueService.js` for stale queue items
+- Frontend icon function now accepts optional `eventType` parameter for dynamic icons
+
 ## [0.30.9-alpha] - 2025-12-26
 
 ### Fixed
