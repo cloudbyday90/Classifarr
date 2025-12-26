@@ -390,7 +390,8 @@ const getMethodIcon = (method, eventType = null) => {
     'holiday': '🎄',
     'sports': '🏈',
     'ppv': '🥊',
-    'concert': '🎤',
+    'concert': '🎵',
+    'standup': '🎤',
     'awards': '🏆'
   }
   

@@ -283,6 +283,36 @@ class ClassificationService {
   }
 
   /**
+   * Detect all matching event types from metadata (for rule condition evaluation)
+   * Returns array of event type strings that match keywords in metadata
+   */
+  detectEventTypesFromMetadata(metadata) {
+    const textToSearch = [
+      metadata.title || '',
+      metadata.overview || '',
+      ...(metadata.keywords || []),
+      ...(metadata.genres || [])
+    ].join(' ').toLowerCase();
+
+    const eventKeywords = {
+      holiday: ['christmas', 'xmas', 'santa', 'halloween', 'thanksgiving', 'easter', 'hanukkah', 'kwanzaa', 'new years eve', 'holiday'],
+      sports: ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'fifa', 'super bowl', 'world series', 'olympics', 'championship', 'playoffs'],
+      ppv: ['ufc', 'mma', 'boxing', 'wwe', 'wrestling', 'wrestlemania', 'bellator', 'fight night', 'knockout'],
+      concert: ['concert', 'live tour', 'music festival', 'live performance', 'symphony', 'orchestra', 'unplugged'],
+      standup: ['stand-up', 'standup', 'comedy special', 'comedian', 'comedy tour', 'roast', 'improv'],
+      awards: ['oscars', 'academy awards', 'emmys', 'golden globes', 'grammys', 'tony awards', 'bafta', 'red carpet']
+    };
+
+    const matchedTypes = [];
+    for (const [eventType, keywords] of Object.entries(eventKeywords)) {
+      if (keywords.some(kw => textToSearch.includes(kw))) {
+        matchedTypes.push(eventType);
+      }
+    }
+    return matchedTypes;
+  }
+
+  /**
    * Detect event/special content from metadata
    * Covers: holidays, sports, PPV/combat, concerts, awards shows
    * Returns matched library and event type for detailed classification
@@ -355,19 +385,30 @@ class ClassificationService {
         reason: 'Detected PPV/combat sports content'
       },
       concert: {
-        libraryPatterns: ['concert', 'music', 'live', 'performance', 'stand-up', 'standup', 'comedy'],
+        libraryPatterns: ['concert', 'music', 'live music', 'performance'],
         keywords: [
-          // Concerts
+          // Live music
           'concert', 'live performance', 'live tour', 'world tour', 'music festival',
           'coachella', 'lollapalooza', 'glastonbury', 'rock concert', 'pop concert',
           'symphony', 'orchestra', 'unplugged', 'acoustic session', 'mtv unplugged',
-          // Stand-up comedy
+          'live album', 'concert film', 'tour documentary'
+        ],
+        confidence: 90,
+        icon: '🎵',
+        reason: 'Detected concert/live music content'
+      },
+      standup: {
+        libraryPatterns: ['stand-up', 'standup', 'comedy special', 'comedy'],
+        keywords: [
+          // Stand-up comedy specials
           'stand-up', 'standup', 'comedy special', 'netflix special', 'hbo special',
-          'live at the apollo', 'def comedy jam', 'comedian', 'comedy tour'
+          'live at the apollo', 'def comedy jam', 'comedian', 'comedy tour',
+          'comedy central', 'roast', 'just for laughs', 'improv', 'one-man show',
+          'one-woman show', 'comedy night', 'stand up comedy'
         ],
         confidence: 90,
         icon: '🎤',
-        reason: 'Detected concert/performance content'
+        reason: 'Detected stand-up comedy content'
       },
       awards: {
         libraryPatterns: ['awards', 'ceremony', 'gala'],
@@ -383,44 +424,150 @@ class ClassificationService {
       }
     };
 
-    // Check each event type
+    // Check each event type for keyword matches
     for (const [eventType, config] of Object.entries(eventTypes)) {
-      // Find matching library
-      const matchedLibrary = libraries.find(l =>
-        config.libraryPatterns.some(pattern =>
-          l.name.toLowerCase().includes(pattern)
-        )
-      );
-
-      if (!matchedLibrary) {
-        continue; // No library configured for this event type
-      }
-
-      // Check for keyword matches
+      // Check for keyword matches in content
       const matchedKeywords = config.keywords.filter(keyword =>
         textToSearch.includes(keyword.toLowerCase())
       );
 
-      if (matchedKeywords.length > 0) {
-        logger.info(`Event content detected: ${eventType}`, {
+      if (matchedKeywords.length === 0) {
+        continue; // No keywords matched for this event type
+      }
+
+      // Find library explicitly assigned to this event type (via dropdown)
+      const assignedLibrary = libraries.find(l => l.event_detection_type === eventType);
+      if (!assignedLibrary) {
+        continue; // No library configured for this event type
+      }
+
+      // Check library's custom rules for exceptions
+      // If library has EXCLUDE rules that match, skip this library and continue to next phase
+      const rulesResult = await this.checkLibraryRulesForExceptions(metadata, assignedLibrary);
+      if (rulesResult && rulesResult.isExcluded) {
+        logger.info(`Event detection skipped due to exclude rule`, {
           title: metadata.title,
           eventType,
-          matchedKeywords: matchedKeywords.slice(0, 5),
-          library: matchedLibrary.name
+          library: assignedLibrary.name,
+          excludeReason: rulesResult.reason
         });
-
-        return {
-          library: matchedLibrary,
-          eventType,
-          confidence: config.confidence,
-          icon: config.icon,
-          reason: config.reason,
-          matchedKeywords
-        };
+        continue; // Skip this library, continue checking other event types
       }
+
+      logger.info(`Event content detected: ${eventType}`, {
+        title: metadata.title,
+        eventType,
+        matchedKeywords: matchedKeywords.slice(0, 5),
+        library: assignedLibrary.name,
+        confirmedByRule: rulesResult?.isConfirmed || false
+      });
+
+      return {
+        library: assignedLibrary,
+        eventType,
+        // Boost confidence if custom rules confirm the match
+        confidence: rulesResult?.isConfirmed ? 98 : config.confidence,
+        icon: config.icon,
+        reason: config.reason,
+        matchedKeywords
+      };
     }
 
     return null;
+  }
+
+  /**
+   * Check library rules specifically for exceptions/confirmations
+   * Used by event detection to validate matches
+   */
+  async checkLibraryRulesForExceptions(metadata, library) {
+    const rulesResult = await db.query(`
+      SELECT * FROM library_rules_v2 
+      WHERE library_id = $1 AND is_active = true
+      ORDER BY priority ASC
+    `, [library.id]);
+
+    if (rulesResult.rows.length === 0) {
+      return null; // No rules defined
+    }
+
+    // Prepare metadata for matching
+    const itemData = {
+      rating: (metadata.certification || '').toUpperCase(),
+      genre: (metadata.genres || []).map(g => g.toLowerCase()),
+      keyword: (metadata.keywords || []).map(k => k.toLowerCase()),
+      language: (metadata.original_language || '').toLowerCase(),
+      year: metadata.year ? parseInt(metadata.year) : null,
+      title: (metadata.title || '').toLowerCase(),
+      overview: (metadata.overview || '').toLowerCase(),
+    };
+
+    let isConfirmed = false;
+    let isExcluded = false;
+    let reason = '';
+
+    for (const rule of rulesResult.rows) {
+      let conditions;
+      try {
+        conditions = typeof rule.conditions === 'string'
+          ? JSON.parse(rule.conditions)
+          : rule.conditions;
+      } catch (e) {
+        continue;
+      }
+
+      if (!conditions || !Array.isArray(conditions)) continue;
+
+      // Check if all conditions match
+      const allMatch = conditions.every(condition => {
+        const { field, operator, value } = condition;
+        const itemValue = itemData[field];
+        const ruleValues = value.split(',').map(v => v.trim().toLowerCase());
+
+        if (itemValue === null || itemValue === undefined) return false;
+
+        // Handle array fields
+        if (Array.isArray(itemValue)) {
+          switch (operator) {
+            case 'includes': return ruleValues.some(v => itemValue.includes(v));
+            case 'excludes': return !ruleValues.some(v => itemValue.includes(v));
+            case 'contains': return ruleValues.some(v => itemValue.some(item => item.includes(v)));
+            default: return false;
+          }
+        }
+
+        // Handle string fields
+        const strValue = String(itemValue).toLowerCase();
+        switch (operator) {
+          case 'equals':
+          case 'is': return ruleValues.includes(strValue);
+          case 'includes': return ruleValues.includes(strValue);
+          case 'excludes': return !ruleValues.includes(strValue);
+          case 'contains': return ruleValues.some(v => strValue.includes(v));
+          case 'not_contains': return !ruleValues.some(v => strValue.includes(v));
+          default: return false;
+        }
+      });
+
+      if (allMatch) {
+        // Check if this is an exception (exclude) rule
+        // Rules with 'not_contains' or 'excludes' operators act as exceptions
+        const hasExcludeOperator = conditions.some(c =>
+          c.operator === 'excludes' || c.operator === 'not_contains'
+        );
+
+        if (hasExcludeOperator) {
+          isExcluded = true;
+          reason = rule.description || rule.name;
+          break;
+        } else {
+          isConfirmed = true;
+          reason = rule.description || rule.name;
+        }
+      }
+    }
+
+    return { isExcluded, isConfirmed, reason };
   }
 
   /**
@@ -452,6 +599,8 @@ class ClassificationService {
       title: (metadata.title || '').toLowerCase(),
       overview: (metadata.overview || '').toLowerCase(),
       content_type: metadata.contentAnalysis?.bestMatch?.type || null,
+      // Detect event types for rule matching
+      event_type: this.detectEventTypesFromMetadata(metadata),
     };
 
     // Check each rule

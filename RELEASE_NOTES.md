@@ -1,4 +1,25 @@
 
+## v0.31.2-alpha
+**Event Detection Rules & Library Assignment**
+
+### New Features
+- **Event Detection Library Assignment:** Assign event types directly to libraries via dropdown:
+  - 🎄 **Holiday** - Christmas, Halloween, Thanksgiving, Easter, etc.
+  - 🏈 **Sports** - NFL, NBA, MLB, NHL, Olympics, Super Bowl, etc.
+  - 🥊 **PPV/Combat** - UFC, MMA, Boxing, WWE, WrestleMania, etc.
+  - 🎵 **Concert** - Live concerts, music festivals, symphonies
+  - 🎤 **Stand-up Comedy** - Comedy specials, Netflix/HBO specials, roasts
+  - 🏆 **Awards** - Oscars, Emmys, Grammys, Golden Globes, etc.
+- **Smart Rule Builder Event Conditions:** Use `event_type` as a rule condition with `includes` operator
+- **Keywords Tooltip:** Hover (i) icon shows all detection keywords for each event type
+- **Custom Rule Override Tip:** Tooltip explains using Smart Rule Builder for custom keyword routing
+
+### Improvements
+- **Separated Concert & Stand-up:** Now distinct event types instead of combined
+- **Database Schema:** Added `event_detection_type` column to libraries table
+
+---
+
 ## v0.31.0-alpha
 **Classification Methods Standardization & Event Detection Expansion**
 

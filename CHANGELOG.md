@@ -6,6 +6,20 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.31.2-alpha] - 2025-12-26
+
+### Added
+- **Event Detection Library Assignment:** Explicit `event_detection_type` dropdown in Library Configuration
+  - 🎄 Holiday, 🏈 Sports, 🥊 PPV/Combat, 🎵 Concert, 🎤 Stand-up Comedy, 🏆 Awards
+- **Smart Rule Builder `event_type` Condition:** Create rules based on detected event types
+- **Keywords Tooltip:** Info (i) icon shows detection keywords for each event type
+- **Database Migration (025):** Added `event_detection_type` column to `libraries` table
+
+### Changed
+- **Separated Concert & Stand-up:** Now 6 distinct event types instead of 5 combined
+- **Event Detection Logic:** Uses explicit library assignment instead of name-pattern matching
+- **Custom Rules Integration:** Library rules can override/confirm event detection matches
+
 ## [0.31.0-alpha] - 2025-12-26
 
 ### Added

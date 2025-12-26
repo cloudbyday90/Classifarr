@@ -130,7 +130,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active } = req.body;
+    const { name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, event_detection_type } = req.body;
 
     const result = await db.query(
       `UPDATE libraries 
@@ -141,10 +141,11 @@ router.put('/:id', async (req, res) => {
            root_folder = COALESCE($5, root_folder),
            quality_profile_id = COALESCE($6, quality_profile_id),
            is_active = COALESCE($7, is_active),
+           event_detection_type = $8,
            updated_at = NOW()
-       WHERE id = $8
+       WHERE id = $9
        RETURNING *`,
-      [name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, id]
+      [name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, event_detection_type, id]
     );
 
     if (result.rows.length === 0) {

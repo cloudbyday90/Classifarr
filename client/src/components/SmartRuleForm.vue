@@ -255,6 +255,7 @@
               class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary [&>option]:bg-gray-800 [&>option]:text-white"
             >
               <option value="content_type">Content Type</option>
+              <option value="event_type">Event Type</option>
               <option value="genres">Genre</option>
               <option value="keywords">Keyword</option>
               <option value="certification">Content Rating</option>
@@ -273,7 +274,8 @@
               <option value="not_equals">Does not equal</option>
               <option value="contains" v-if="['genres', 'keywords', 'title'].includes(condition.field)">Contains</option>
               <option value="not_contains" v-if="['genres', 'keywords', 'title'].includes(condition.field)">Does not contain</option>
-              <option value="is_one_of" v-if="['content_type', 'certification', 'genres'].includes(condition.field)">Is one of...</option>
+              <option value="includes" v-if="condition.field === 'event_type'">Includes any of</option>
+              <option value="is_one_of" v-if="['content_type', 'certification', 'genres', 'event_type'].includes(condition.field)">Is one of...</option>
               <option v-if="condition.field === 'year'" value="greater_than">Greater than</option>
               <option v-if="condition.field === 'year'" value="less_than">Less than</option>
             </select>
@@ -299,6 +301,22 @@
               <option value="adultAnimation">Adult Animation</option>
               <option value="halloween">Halloween</option>
               <option value="documentary">Documentary</option>
+            </select>
+            
+            <!-- Event Type Select (NEW) -->
+            <select 
+              v-else-if="condition.field === 'event_type'"
+              v-model="condition.value"
+              :multiple="['is_one_of', 'includes'].includes(condition.operator)"
+              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+              :class="{ 'h-32': ['is_one_of', 'includes'].includes(condition.operator) }"
+            >
+              <option value="holiday">🎄 Holiday</option>
+              <option value="sports">🏈 Sports</option>
+              <option value="ppv">🥊 PPV/Combat</option>
+              <option value="concert">🎵 Concert</option>
+              <option value="standup">🎤 Stand-up Comedy</option>
+              <option value="awards">🏆 Awards</option>
             </select>
             
             <!-- Certification Select (New) -->

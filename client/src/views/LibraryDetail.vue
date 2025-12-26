@@ -31,6 +31,46 @@
             ]"
             placeholder="Select ARR type"
           />
+          <Select
+            v-model="library.event_detection_type"
+            label="Event Detection Type"
+            :options="eventDetectionOptions"
+            placeholder="None (skip event detection)"
+          />
+          <div class="col-span-2">
+            <div v-if="library.event_detection_type" class="flex items-start gap-2 mt-1">
+              <p class="text-xs text-gray-400">
+                {{ getEventDescription(library.event_detection_type) }}
+              </p>
+              <div class="relative group">
+                <button 
+                  type="button"
+                  class="w-4 h-4 rounded-full bg-gray-700 text-gray-300 text-xs flex items-center justify-center hover:bg-gray-600 transition-colors"
+                  title="View detection keywords"
+                >
+                  i
+                </button>
+                <div class="absolute left-6 top-0 w-80 p-3 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <h4 class="text-sm font-medium text-white mb-2">🔍 Detection Keywords</h4>
+                  <p class="text-xs text-gray-400 mb-2">Content with these keywords will auto-route to this library:</p>
+                  <div class="flex flex-wrap gap-1">
+                    <span 
+                      v-for="keyword in getEventKeywords(library.event_detection_type)" 
+                      :key="keyword"
+                      class="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded"
+                    >
+                      {{ keyword }}
+                    </span>
+                  </div>
+                  <div class="mt-3 pt-2 border-t border-gray-700">
+                    <p class="text-xs text-blue-400">
+                      💡 <strong>Tip:</strong> Use the Smart Rule Builder to route specific keywords (e.g., "halloween") to a different library.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="flex items-end">
             <Button @click="saveLibrary" :loading="saving">Save Changes</Button>
           </div>
@@ -527,6 +567,7 @@ const saveLibrary = async () => {
     await api.updateLibrary(library.value.id, {
       priority: library.value.priority,
       arr_type: library.value.arr_type,
+      event_detection_type: library.value.event_detection_type || null,
     })
     toast.success('Library updated successfully')
   } catch (error) {
@@ -535,6 +576,44 @@ const saveLibrary = async () => {
   } finally {
     saving.value = false
   }
+}
+
+// Event Detection Type options and descriptions
+const eventDetectionOptions = [
+  { label: 'None', value: null },
+  { label: '🎄 Holiday', value: 'holiday' },
+  { label: '🏈 Sports', value: 'sports' },
+  { label: '🥊 PPV/Combat', value: 'ppv' },
+  { label: '🎵 Concert', value: 'concert' },
+  { label: '🎤 Stand-up Comedy', value: 'standup' },
+  { label: '🏆 Awards', value: 'awards' },
+]
+
+const eventDescriptions = {
+  holiday: 'Christmas, Halloween, Thanksgiving, Easter, New Years, etc.',
+  sports: 'NFL, NBA, MLB, NHL, Olympics, Super Bowl, World Cup, etc.',
+  ppv: 'UFC, MMA, Boxing, WWE, WrestleMania, Bellator, etc.',
+  concert: 'Live concerts, music festivals, symphonies, MTV Unplugged, etc.',
+  standup: 'Stand-up comedy specials, Netflix/HBO specials, roasts, improv shows, etc.',
+  awards: 'Oscars, Emmys, Grammys, Golden Globes, BAFTA, etc.',
+}
+
+// Keywords that trigger each event type detection
+const eventKeywords = {
+  holiday: ['christmas', 'xmas', 'santa', 'holiday', 'halloween', 'thanksgiving', 'easter', 'hanukkah', 'kwanzaa', 'new years eve', 'valentines', 'st patricks'],
+  sports: ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'fifa', 'super bowl', 'world series', 'olympics', 'championship', 'playoffs', 'espn', 'world cup'],
+  ppv: ['ufc', 'mma', 'boxing', 'wwe', 'wrestling', 'wrestlemania', 'bellator', 'fight night', 'knockout', 'title fight'],
+  concert: ['concert', 'live tour', 'music festival', 'live performance', 'symphony', 'orchestra', 'unplugged', 'coachella', 'lollapalooza'],
+  standup: ['stand-up', 'standup', 'comedy special', 'comedian', 'comedy tour', 'roast', 'improv', 'netflix special', 'hbo special'],
+  awards: ['oscars', 'academy awards', 'emmys', 'golden globes', 'grammys', 'tony awards', 'bafta', 'red carpet', 'award show'],
+}
+
+const getEventDescription = (type) => {
+  return eventDescriptions[type] || ''
+}
+
+const getEventKeywords = (type) => {
+  return eventKeywords[type] || []
 }
 
 const saveArrSettings = async () => {
