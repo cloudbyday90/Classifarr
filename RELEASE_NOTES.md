@@ -1,4 +1,13 @@
 
+## v0.31.3-alpha
+**Event Detection Dropdown Fix**
+
+### Fixes
+- **Dropdown Selection:** Fixed issue where "None" option couldn't be selected after choosing an event type
+- **Removed Duplicate Options:** Eliminated duplicate placeholder/option in Event Detection Type dropdown
+
+---
+
 ## v0.31.2-alpha
 **Event Detection Rules & Library Assignment**
 

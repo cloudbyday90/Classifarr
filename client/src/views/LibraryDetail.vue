@@ -35,7 +35,6 @@
             v-model="library.event_detection_type"
             label="Event Detection Type"
             :options="eventDetectionOptions"
-            placeholder="None (skip event detection)"
           />
           <div class="col-span-2">
             <div v-if="library.event_detection_type" class="flex items-start gap-2 mt-1">
@@ -580,7 +579,7 @@ const saveLibrary = async () => {
 
 // Event Detection Type options and descriptions
 const eventDetectionOptions = [
-  { label: 'None', value: null },
+  { label: 'None (skip event detection)', value: '' },
   { label: '🎄 Holiday', value: 'holiday' },
   { label: '🏈 Sports', value: 'sports' },
   { label: '🥊 PPV/Combat', value: 'ppv' },

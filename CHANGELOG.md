@@ -6,6 +6,12 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.31.3-alpha] - 2025-12-26
+
+### Fixed
+- **Dropdown Selection:** Event Detection Type dropdown now properly allows selecting "None" after choosing an event type
+- **Duplicate Options:** Removed duplicate placeholder/option in Event Detection Type dropdown
+
 ## [0.31.2-alpha] - 2025-12-26
 
 ### Added
