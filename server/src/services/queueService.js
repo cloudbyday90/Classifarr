@@ -238,6 +238,44 @@ class QueueService {
                     // They are 100% confidence - DO NOT re-classify with AI
                     // Just use source library info and enrich with Tavily for learning
 
+                    // SELF-HEALING: If key fields are missing from payload (stale queue item),
+                    // look them up from the database (which may have been updated by a sync)
+                    let enrichTmdbId = enrichPayload.tmdbId || enrichPayload.tmdb_id;
+                    let enrichSourceLibraryId = enrichPayload.source_library_id;
+                    let enrichSourceLibraryName = enrichPayload.source_library_name;
+
+                    if (enrichPayload.itemId && (!enrichTmdbId || !enrichSourceLibraryId)) {
+                        try {
+                            const itemResult = await db.query(
+                                `SELECT msi.tmdb_id, msi.library_id, l.name as library_name 
+                                 FROM media_server_items msi 
+                                 LEFT JOIN libraries l ON msi.library_id = l.id 
+                                 WHERE msi.id = $1`,
+                                [enrichPayload.itemId]
+                            );
+                            if (itemResult.rows.length > 0) {
+                                const row = itemResult.rows[0];
+                                if (!enrichTmdbId && row.tmdb_id) {
+                                    enrichTmdbId = row.tmdb_id;
+                                }
+                                if (!enrichSourceLibraryId && row.library_id) {
+                                    enrichSourceLibraryId = row.library_id;
+                                }
+                                if (!enrichSourceLibraryName && row.library_name) {
+                                    enrichSourceLibraryName = row.library_name;
+                                }
+                                logger.info('Self-heal: Retrieved missing metadata from database', {
+                                    itemId: enrichPayload.itemId,
+                                    tmdbId: enrichTmdbId,
+                                    libraryId: enrichSourceLibraryId,
+                                    libraryName: enrichSourceLibraryName
+                                });
+                            }
+                        } catch (lookupError) {
+                            logger.debug('Self-heal lookup failed', { error: lookupError.message });
+                        }
+                    }
+
                     // Build enrichment data - 100% confidence from source library
                     const enrichmentData = {
                         content_analysis: {
@@ -245,8 +283,8 @@ class QueueService {
                             confidence: 100,
                             detected_at: new Date().toISOString(),
                             source: 'metadata_enrichment',
-                            source_library_id: enrichPayload.source_library_id,
-                            source_library_name: enrichPayload.source_library_name
+                            source_library_id: enrichSourceLibraryId,
+                            source_library_name: enrichSourceLibraryName
                         }
                     };
 
@@ -408,39 +446,42 @@ class QueueService {
 
                         // Log to classification_history so it shows in Activity stream
                         // This is 100% confidence from source library - NO AI analysis
-                        // Only insert if not already logged (prevents duplicates on re-sync)
-                        const existingEntry = await db.query(
-                            `SELECT 1 FROM classification_history 
-                             WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
-                            [enrichPayload.tmdbId, enrichPayload.source_library_id]
-                        );
-
-                        if (existingEntry.rows.length === 0) {
-                            await db.query(
-                                `INSERT INTO classification_history (
-                                    tmdb_id, media_type, title, year, library_id, status, 
-                                    confidence, method, reason, metadata
-                                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-                                [
-                                    enrichPayload.tmdbId || null,
-                                    enrichPayload.media?.media_type || 'movie',
-                                    enrichPayload.title,
-                                    enrichPayload.year,
-                                    enrichPayload.source_library_id,
-                                    'completed',
-                                    100, // 100% confidence from source
-                                    'source_library', // Method is source_library, not AI
-                                    `Already in library: ${enrichPayload.source_library_name}`,
-                                    JSON.stringify(enrichPayload)
-                                ]
+                        // Only insert if: has tmdb_id AND not already logged (prevents duplicates)
+                        // Uses enrichTmdbId which includes self-healing lookup
+                        if (enrichTmdbId) {
+                            const existingEntry = await db.query(
+                                `SELECT 1 FROM classification_history 
+                                 WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
+                                [enrichTmdbId, enrichSourceLibraryId]
                             );
+
+                            if (existingEntry.rows.length === 0) {
+                                await db.query(
+                                    `INSERT INTO classification_history (
+                                        tmdb_id, media_type, title, year, library_id, status, 
+                                        confidence, method, reason, metadata
+                                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                                    [
+                                        enrichTmdbId,
+                                        enrichPayload.media?.media_type || 'movie',
+                                        enrichPayload.title,
+                                        enrichPayload.year,
+                                        enrichSourceLibraryId,
+                                        'completed',
+                                        100, // 100% confidence from source
+                                        'source_library', // Method is source_library, not AI
+                                        `Already in library: ${enrichSourceLibraryName}`,
+                                        JSON.stringify(enrichPayload)
+                                    ]
+                                );
+                            }
                         }
 
                         const hasTavily = !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory || enrichmentData.tavily_content_type || enrichmentData.tavily_holiday);
                         logger.info('Metadata enrichment complete (no AI, from source library)', {
                             itemId: enrichPayload.itemId,
                             title: enrichPayload.title,
-                            sourceLibrary: enrichPayload.source_library_name,
+                            sourceLibrary: enrichSourceLibraryName,
                             tavilyEnriched: hasTavily
                         });
                     }
@@ -514,13 +555,26 @@ class QueueService {
 
         while (this.running) {
             try {
-                // Check if AI provider is available before processing
-                const aiReady = await this.checkAIAvailability();
-
-                if (aiReady && this.processing < MAX_CONCURRENT) {
+                if (this.processing < MAX_CONCURRENT) {
                     const task = await this.dequeue();
 
                     if (task) {
+                        // Only check AI availability for classification tasks
+                        // metadata_enrichment tasks don't need AI
+                        if (task.task_type === 'classification') {
+                            const aiReady = await this.checkAIAvailability();
+                            if (!aiReady) {
+                                // Put task back in queue
+                                await db.query(
+                                    `UPDATE task_queue SET status = 'pending', started_at = NULL WHERE id = $1`,
+                                    [task.id]
+                                );
+                                // Wait and continue
+                                await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+                                continue;
+                            }
+                        }
+
                         this.processing++;
                         this.processTask(task).finally(() => {
                             this.processing--;

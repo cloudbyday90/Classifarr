@@ -19,6 +19,7 @@
 const express = require('express');
 const db = require('../config/database');
 const discordBot = require('../services/discordBot');
+const healthCheckService = require('../services/healthCheckService');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -32,70 +33,110 @@ router.use(authenticateToken);
  *   get:
  *     summary: Get health status of all services
  *     tags: [System]
+ *     parameters:
+ *       - in: query
+ *         name: refresh
+ *         schema:
+ *           type: boolean
+ *         description: Force refresh health checks (default: use cache)
  *     responses:
  *       200:
  *         description: Health status of all services
  */
 router.get('/health', async (req, res) => {
   try {
-    const health = {
-      database: 'disconnected',
-      discordBot: 'disconnected',
-      ai: 'disabled',
-      radarr: 'unknown',
-      sonarr: 'unknown',
-      mediaServer: 'unknown'
+    const forceRefresh = req.query.refresh === 'true';
+
+    let health;
+    if (forceRefresh) {
+      // Run fresh health checks
+      health = await healthCheckService.runAllHealthChecks();
+    } else {
+      // Use cached results
+      health = healthCheckService.getHealthCache();
+
+      // If cache is empty (first load), run checks
+      if (!health.database.lastCheck) {
+        health = await healthCheckService.runAllHealthChecks();
+      }
+    }
+
+    // Format response for frontend compatibility
+    const response = {
+      database: health.database.status,
+      discordBot: health.discordBot.status,
+      ollama: health.ollama.status,
+      radarr: health.radarr.status,
+      sonarr: health.sonarr.status,
+      mediaServer: health.mediaServer.status,
+      tmdb: health.tmdb.status,
+      tavily: health.tavily.status,
+      // Include detailed info
+      details: health,
+      // Heartbeat status
+      heartbeatActive: healthCheckService.isHeartbeatRunning()
     };
 
-    // Check database
-    try {
-      await db.query('SELECT 1');
-      health.database = 'connected';
-    } catch (error) {
-      console.error('Database health check failed:', error);
-    }
-
-    // Check Discord bot
-    try {
-      if (discordBot.client && discordBot.client.isReady()) {
-        health.discordBot = 'connected';
-      }
-    } catch (error) {
-      console.error('Discord bot health check failed:', error);
-    }
-
-    // Get service configurations from database
-    try {
-      // Check AI Provider
-      const aiConfig = await db.query('SELECT primary_provider FROM ai_provider_config WHERE id = 1');
-      if (aiConfig.rows.length > 0 && aiConfig.rows[0].primary_provider !== 'none') {
-        const provider = aiConfig.rows[0].primary_provider;
-        // Capitalize first letter for display
-        health.ai = provider.charAt(0).toUpperCase() + provider.slice(1);
-      } else {
-        health.ai = 'disabled';
-      }
-
-      // Check Radarr
-      const radarr = await db.query('SELECT id FROM radarr_config WHERE is_active = true LIMIT 1');
-      if (radarr.rows.length > 0) health.radarr = 'configured';
-
-      // Check Sonarr
-      const sonarr = await db.query('SELECT id FROM sonarr_config WHERE is_active = true LIMIT 1');
-      if (sonarr.rows.length > 0) health.sonarr = 'configured';
-
-      // Check Media Server
-      const mediaServer = await db.query('SELECT id FROM media_server WHERE is_active = true LIMIT 1');
-      if (mediaServer.rows.length > 0) health.mediaServer = 'configured';
-    } catch (error) {
-      console.error('Failed to check service configurations:', error);
-    }
-
-    res.json(health);
+    res.json(response);
   } catch (error) {
     console.error('Health check error:', error);
     res.status(500).json({ error: 'Failed to check system health' });
   }
+});
+
+/**
+ * @swagger
+ * /api/system/health/refresh:
+ *   post:
+ *     summary: Force refresh all health checks
+ *     tags: [System]
+ */
+router.post('/health/refresh', async (req, res) => {
+  try {
+    const health = await healthCheckService.runAllHealthChecks();
+    res.json({ success: true, health });
+  } catch (error) {
+    console.error('Health refresh error:', error);
+    res.status(500).json({ error: 'Failed to refresh health checks' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/system/heartbeat:
+ *   get:
+ *     summary: Get heartbeat scheduler status
+ *     tags: [System]
+ */
+router.get('/heartbeat', (req, res) => {
+  res.json({
+    active: healthCheckService.isHeartbeatRunning()
+  });
+});
+
+/**
+ * @swagger
+ * /api/system/heartbeat/start:
+ *   post:
+ *     summary: Start heartbeat scheduler
+ *     tags: [System]
+ */
+router.post('/heartbeat/start', (req, res) => {
+  const intervalMinutes = parseInt(req.body.intervalMinutes) || 15;
+  healthCheckService.startHeartbeat(intervalMinutes * 60 * 1000);
+  res.json({ success: true, intervalMinutes });
+});
+
+/**
+ * @swagger
+ * /api/system/heartbeat/stop:
+ *   post:
+ *     summary: Stop heartbeat scheduler
+ *     tags: [System]
+ */
+router.post('/heartbeat/stop', (req, res) => {
+  healthCheckService.stopHeartbeat();
+  res.json({ success: true });
 });
 
 /**

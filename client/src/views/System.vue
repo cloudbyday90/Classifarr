@@ -30,7 +30,7 @@
         <p class="text-gray-400 mt-2">Checking health...</p>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div 
           v-for="service in healthServices"
           :key="service.name"
@@ -43,6 +43,10 @@
             </Badge>
           </div>
           <p class="text-sm text-gray-400">{{ service.description }}</p>
+          <div v-if="service.responseTime || service.lastCheck" class="mt-2 flex items-center gap-3 text-xs text-gray-500">
+            <span v-if="service.responseTime">{{ service.responseTime }}ms</span>
+            <span v-if="service.lastCheck">{{ formatLastCheck(service.lastCheck) }}</span>
+          </div>
         </div>
       </div>
     </Card>
@@ -148,14 +152,17 @@ import api from '@/api'
 const loadingHealth = ref(true)
 const loadingStatus = ref(true)
 const refreshing = ref(false)
+const healthDetails = ref(null)
 
 const healthServices = ref([
-  { name: 'Database', status: 'unknown', description: 'PostgreSQL connection' },
-  { name: 'Discord Bot', status: 'unknown', description: 'Discord notification service' },
-  { name: 'Ollama', status: 'unknown', description: 'AI inference engine' },
-  { name: 'Radarr', status: 'unknown', description: 'Movie management' },
-  { name: 'Sonarr', status: 'unknown', description: 'TV show management' },
-  { name: 'Media Server', status: 'unknown', description: 'Plex/Jellyfin/Emby' },
+  { name: 'Database', key: 'database', status: 'unknown', description: 'PostgreSQL connection', responseTime: null, lastCheck: null },
+  { name: 'Media Server', key: 'mediaServer', status: 'unknown', description: 'Plex/Jellyfin/Emby', responseTime: null, lastCheck: null },
+  { name: 'Radarr', key: 'radarr', status: 'unknown', description: 'Movie management', responseTime: null, lastCheck: null },
+  { name: 'Sonarr', key: 'sonarr', status: 'unknown', description: 'TV show management', responseTime: null, lastCheck: null },
+  { name: 'AI Provider', key: 'ollama', status: 'unknown', description: 'Ollama/OpenAI/Anthropic', responseTime: null, lastCheck: null },
+  { name: 'TMDB', key: 'tmdb', status: 'unknown', description: 'Movie/TV metadata', responseTime: null, lastCheck: null },
+  { name: 'Discord Bot', key: 'discordBot', status: 'unknown', description: 'Notifications', responseTime: null, lastCheck: null },
+  { name: 'Tavily', key: 'tavily', status: 'unknown', description: 'Web search (optional)', responseTime: null, lastCheck: null },
 ])
 
 const systemStatus = ref({
@@ -169,18 +176,77 @@ const systemStatus = ref({
 
 const loadHealth = async () => {
   try {
-    // Use the specific API method instead of generic get
     const response = await api.getSystemHealth()
     
     if (response.data) {
       const statusMap = response.data
+      healthDetails.value = statusMap.details || {}
+      
       healthServices.value = [
-        { name: 'Database', status: statusMap.database || 'unknown', description: 'PostgreSQL connection' },
-        { name: 'Discord Bot', status: statusMap.discordBot || 'unknown', description: 'Discord notification service' },
-        { name: 'Ollama', status: statusMap.ollama || 'unknown', description: 'AI inference engine' },
-        { name: 'Radarr', status: statusMap.radarr || 'unknown', description: 'Movie management' },
-        { name: 'Sonarr', status: statusMap.sonarr || 'unknown', description: 'TV show management' },
-        { name: 'Media Server', status: statusMap.mediaServer || 'unknown', description: 'Plex/Jellyfin/Emby' },
+        { 
+          name: 'Database', 
+          key: 'database',
+          status: statusMap.database || 'unknown', 
+          description: 'PostgreSQL connection',
+          responseTime: healthDetails.value.database?.responseTime,
+          lastCheck: healthDetails.value.database?.lastCheck
+        },
+        { 
+          name: 'Media Server', 
+          key: 'mediaServer',
+          status: statusMap.mediaServer || 'unknown', 
+          description: healthDetails.value.mediaServer?.type ? `${healthDetails.value.mediaServer.type} - ${healthDetails.value.mediaServer.name || ''}` : 'Plex/Jellyfin/Emby',
+          responseTime: healthDetails.value.mediaServer?.responseTime,
+          lastCheck: healthDetails.value.mediaServer?.lastCheck
+        },
+        { 
+          name: 'Radarr', 
+          key: 'radarr',
+          status: statusMap.radarr || 'unknown', 
+          description: healthDetails.value.radarr?.instances?.length ? `${healthDetails.value.radarr.instances.length} instance(s)` : 'Movie management',
+          responseTime: healthDetails.value.radarr?.responseTime,
+          lastCheck: healthDetails.value.radarr?.lastCheck
+        },
+        { 
+          name: 'Sonarr', 
+          key: 'sonarr',
+          status: statusMap.sonarr || 'unknown', 
+          description: healthDetails.value.sonarr?.instances?.length ? `${healthDetails.value.sonarr.instances.length} instance(s)` : 'TV show management',
+          responseTime: healthDetails.value.sonarr?.responseTime,
+          lastCheck: healthDetails.value.sonarr?.lastCheck
+        },
+        { 
+          name: 'AI Provider', 
+          key: 'ollama',
+          status: statusMap.ollama || 'unknown', 
+          description: healthDetails.value.ollama?.provider ? healthDetails.value.ollama.provider : 'Ollama/OpenAI/Anthropic',
+          responseTime: healthDetails.value.ollama?.responseTime,
+          lastCheck: healthDetails.value.ollama?.lastCheck
+        },
+        { 
+          name: 'TMDB', 
+          key: 'tmdb',
+          status: statusMap.tmdb || 'unknown', 
+          description: 'Movie/TV metadata',
+          responseTime: healthDetails.value.tmdb?.responseTime,
+          lastCheck: healthDetails.value.tmdb?.lastCheck
+        },
+        { 
+          name: 'Discord Bot', 
+          key: 'discordBot',
+          status: statusMap.discordBot || 'unknown', 
+          description: 'Notifications',
+          responseTime: healthDetails.value.discordBot?.responseTime,
+          lastCheck: healthDetails.value.discordBot?.lastCheck
+        },
+        { 
+          name: 'Tavily', 
+          key: 'tavily',
+          status: statusMap.tavily || 'unknown', 
+          description: 'Web search (optional)',
+          responseTime: healthDetails.value.tavily?.responseTime,
+          lastCheck: healthDetails.value.tavily?.lastCheck
+        },
       ]
     }
   } catch (error) {
@@ -193,7 +259,6 @@ const loadHealth = async () => {
 
 const loadStatus = async () => {
   try {
-    // Use the specific API method instead of generic get
     const response = await api.getSystemStatus()
     
     if (response.data) {
@@ -208,14 +273,36 @@ const loadStatus = async () => {
 
 const refreshHealth = async () => {
   refreshing.value = true
+  // Force refresh from backend
+  try {
+    await api.post('/system/health/refresh')
+  } catch (e) {
+    // Fallback to regular load
+  }
   await loadHealth()
 }
 
 const getHealthBadgeVariant = (status) => {
   if (status === 'connected') return 'success'
+  if (status === 'partial') return 'warning'
   if (status === 'configured') return 'warning'
-  if (status === 'disconnected') return 'error'
+  if (status === 'disconnected' || status === 'error') return 'error'
+  if (status === 'not configured') return 'default'
   return 'default'
+}
+
+const formatLastCheck = (isoString) => {
+  if (!isoString) return ''
+  const date = new Date(isoString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  return date.toLocaleDateString()
 }
 
 const formatUptime = (seconds) => {

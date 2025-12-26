@@ -87,12 +87,17 @@ router.get('/live-stats', async (req, res) => {
             queueService.getGapAnalysisStats()
         ]);
 
-        // Get today's classification count (excluding source_library enrichments)
+        // Get today's classification counts
+        // - classifiedToday: excludes source_library (new classifications only - for Dashboard)
+        // - allClassifiedToday: includes source_library (all activity - for Activity page)
         const todayResult = await db.query(`
-            SELECT COUNT(*) as count, AVG(confidence) as avg_confidence
+            SELECT 
+                COUNT(*) FILTER (WHERE method != 'source_library') as new_classified,
+                COUNT(*) as all_classified,
+                AVG(confidence) FILTER (WHERE method != 'source_library') as new_avg_confidence,
+                AVG(confidence) as all_avg_confidence
             FROM classification_history 
             WHERE created_at >= CURRENT_DATE
-              AND method != 'source_library'
         `);
 
         // Get enrichment progress stats
@@ -111,15 +116,21 @@ router.get('/live-stats', async (req, res) => {
         const omdbEnrichedItems = parseInt(enrichmentResult.rows[0]?.omdb_enriched) || 0;
         const enrichmentProgress = totalItems > 0 ? Math.round((enrichedItems / totalItems) * 100) : 0;
 
-        const classifiedToday = parseInt(todayResult.rows[0]?.count) || 0;
-        const avgConfidence = parseFloat(todayResult.rows[0]?.avg_confidence) || 0;
+        const newClassifiedToday = parseInt(todayResult.rows[0]?.new_classified) || 0;
+        const allClassifiedToday = parseInt(todayResult.rows[0]?.all_classified) || 0;
+        const newAvgConfidence = parseFloat(todayResult.rows[0]?.new_avg_confidence) || 0;
+        const allAvgConfidence = parseFloat(todayResult.rows[0]?.all_avg_confidence) || 0;
 
         res.json({
             queue: queueStats,
             gapAnalysis: gapStats,
             today: {
-                classified: classifiedToday,
-                avgConfidence: Math.round(avgConfidence)
+                // New classifications only (excludes source_library) - for Dashboard
+                classified: newClassifiedToday,
+                avgConfidence: Math.round(newAvgConfidence),
+                // All activity including enrichments - for Activity page
+                allClassified: allClassifiedToday,
+                allAvgConfidence: Math.round(allAvgConfidence)
             },
             enrichment: {
                 totalItems,

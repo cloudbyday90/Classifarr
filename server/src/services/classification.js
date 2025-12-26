@@ -283,59 +283,141 @@ class ClassificationService {
   }
 
   /**
-   * Detect holiday/Christmas content from metadata
-   * Comprehensive keyword list for seasonal film detection
+   * Detect event/special content from metadata
+   * Covers: holidays, sports, PPV/combat, concerts, awards shows
+   * Returns matched library and event type for detailed classification
    */
-  async detectHolidayContent(metadata, libraries) {
-    // Find holiday/Christmas library (look for library with Christmas/Holiday in name)
-    const holidayLibrary = libraries.find(l =>
-      l.name.toLowerCase().includes('christmas') ||
-      l.name.toLowerCase().includes('holiday') ||
-      l.name.toLowerCase().includes('xmas')
-    );
-
-    if (!holidayLibrary) {
-      return null; // No holiday library configured
-    }
-
-    // Comprehensive Christmas/Holiday keyword list
-    const christmasKeywords = [
-      // Core Christmas terms
-      'christmas', 'xmas', 'x-mas', 'santa', 'santa claus', 'father christmas',
-      'north pole', 'reindeer', 'rudolph', 'frosty', 'snowman',
-      'christmas eve', 'christmas day', 'december 25', 'yuletide', 'yule',
-      'noel', 'nativity', 'bethlehem', 'three wise men', 'manger',
-      // Christmas characters/figures
-      'scrooge', 'ebenezer', 'grinch', 'krampus', 'nutcracker', 'elf', 'elves',
-      'mrs claus', 'jack frost', 'the polar express',
-      // Christmas activities/items
-      'christmas tree', 'christmas carol', 'christmas spirit', 'christmas miracle',
-      'mistletoe', 'sleigh', 'stocking', 'chimney', 'gift wrap', 'candy cane',
-      'gingerbread', 'eggnog', 'figgy pudding', 'christmas dinner', 'christmas present',
-      // Other winter holidays
-      'hanukkah', 'chanukah', 'menorah', 'dreidel', 'kwanzaa',
-      // Holiday themes
-      'holiday season', 'holiday spirit', 'winter holiday', 'festive season',
-      'new year', 'new years eve', 'december holiday'
-    ];
-
-    // Check overview, title, and keywords for holiday content
+  async detectEventContent(metadata, libraries) {
     const textToSearch = [
       metadata.title || '',
       metadata.overview || '',
-      ...(metadata.keywords || [])
+      ...(metadata.keywords || []),
+      ...(metadata.genres || [])
     ].join(' ').toLowerCase();
 
-    const matchedKeywords = christmasKeywords.filter(keyword =>
-      textToSearch.includes(keyword.toLowerCase())
-    );
+    // Event type definitions with keywords and library name patterns
+    const eventTypes = {
+      holiday: {
+        libraryPatterns: ['christmas', 'holiday', 'xmas', 'seasonal'],
+        keywords: [
+          // Christmas
+          'christmas', 'xmas', 'x-mas', 'santa', 'santa claus', 'father christmas',
+          'north pole', 'reindeer', 'rudolph', 'frosty', 'snowman',
+          'christmas eve', 'christmas day', 'december 25', 'yuletide', 'yule',
+          'noel', 'nativity', 'bethlehem', 'scrooge', 'grinch', 'krampus',
+          'nutcracker', 'polar express', 'christmas tree', 'christmas carol',
+          'mistletoe', 'candy cane', 'gingerbread', 'eggnog',
+          // Other holidays
+          'halloween', 'trick or treat', 'haunted', 'hanukkah', 'chanukah',
+          'kwanzaa', 'thanksgiving', 'easter', 'valentines day',
+          'new years eve', 'new year celebration'
+        ],
+        confidence: 95,
+        icon: '🎄',
+        reason: 'Detected holiday/seasonal content'
+      },
+      sports: {
+        libraryPatterns: ['sports', 'sport', 'athletics', 'games'],
+        keywords: [
+          // Major leagues
+          'nfl', 'nba', 'mlb', 'nhl', 'mls', 'fifa', 'uefa', 'premier league',
+          'super bowl', 'world series', 'stanley cup', 'world cup',
+          // Sports terms
+          'championship', 'playoffs', 'tournament', 'Olympics', 'olympic games',
+          'espn', 'sports documentary', 'football game', 'basketball game',
+          'baseball game', 'hockey game', 'soccer match', 'tennis match',
+          'golf tournament', 'motorsports', 'nascar', 'formula 1', 'f1',
+          'indy 500', 'grand prix', 'marathon', 'world series of poker',
+          // Athletes
+          '30 for 30', 'sports biography'
+        ],
+        confidence: 92,
+        icon: '🏈',
+        reason: 'Detected sports content'
+      },
+      ppv: {
+        libraryPatterns: ['ppv', 'fighting', 'combat', 'ufc', 'mma', 'boxing', 'wrestling'],
+        keywords: [
+          // MMA/UFC
+          'ufc', 'mma', 'ultimate fighting', 'bellator', 'pride fc', 'one championship',
+          'mixed martial arts', 'cage fight', 'octagon',
+          // Boxing  
+          'boxing', 'heavyweight', 'middleweight', 'welterweight', 'title fight',
+          'championship bout', 'knockout', 'floyd mayweather', 'mike tyson',
+          // Wrestling
+          'wwe', 'wrestling', 'wrestlemania', 'royal rumble', 'summerslam',
+          'aew', 'pro wrestling', 'smackdown', 'raw',
+          // General PPV
+          'pay per view', 'ppv', 'fight night', 'main event'
+        ],
+        confidence: 93,
+        icon: '🥊',
+        reason: 'Detected PPV/combat sports content'
+      },
+      concert: {
+        libraryPatterns: ['concert', 'music', 'live', 'performance', 'stand-up', 'standup', 'comedy'],
+        keywords: [
+          // Concerts
+          'concert', 'live performance', 'live tour', 'world tour', 'music festival',
+          'coachella', 'lollapalooza', 'glastonbury', 'rock concert', 'pop concert',
+          'symphony', 'orchestra', 'unplugged', 'acoustic session', 'mtv unplugged',
+          // Stand-up comedy
+          'stand-up', 'standup', 'comedy special', 'netflix special', 'hbo special',
+          'live at the apollo', 'def comedy jam', 'comedian', 'comedy tour'
+        ],
+        confidence: 90,
+        icon: '🎤',
+        reason: 'Detected concert/performance content'
+      },
+      awards: {
+        libraryPatterns: ['awards', 'ceremony', 'gala'],
+        keywords: [
+          'oscars', 'academy awards', 'emmys', 'golden globes', 'grammys',
+          'tony awards', 'bafta', 'mtv awards', 'vma', 'ama', 'billboard awards',
+          'peoples choice', 'critics choice', 'sag awards', 'bet awards',
+          'award ceremony', 'award show', 'red carpet'
+        ],
+        confidence: 88,
+        icon: '🏆',
+        reason: 'Detected awards show content'
+      }
+    };
 
-    if (matchedKeywords.length > 0) {
-      logger.info('Holiday keywords detected', {
-        title: metadata.title,
-        matchedKeywords: matchedKeywords.slice(0, 5) // Log first 5 matches
-      });
-      return holidayLibrary;
+    // Check each event type
+    for (const [eventType, config] of Object.entries(eventTypes)) {
+      // Find matching library
+      const matchedLibrary = libraries.find(l =>
+        config.libraryPatterns.some(pattern =>
+          l.name.toLowerCase().includes(pattern)
+        )
+      );
+
+      if (!matchedLibrary) {
+        continue; // No library configured for this event type
+      }
+
+      // Check for keyword matches
+      const matchedKeywords = config.keywords.filter(keyword =>
+        textToSearch.includes(keyword.toLowerCase())
+      );
+
+      if (matchedKeywords.length > 0) {
+        logger.info(`Event content detected: ${eventType}`, {
+          title: metadata.title,
+          eventType,
+          matchedKeywords: matchedKeywords.slice(0, 5),
+          library: matchedLibrary.name
+        });
+
+        return {
+          library: matchedLibrary,
+          eventType,
+          confidence: config.confidence,
+          icon: config.icon,
+          reason: config.reason,
+          matchedKeywords
+        };
+      }
     }
 
     return null;
@@ -507,25 +589,28 @@ class ClassificationService {
         return {
           library: correctedLibrary,
           confidence: 100,
-          method: 'learned_correction',
+          method: 'manual_correction',
           reason: `Previously corrected by user: ${learnedCorrection.corrected_by || 'user'}`,
           libraries: libraries,
         };
       }
     }
 
-    // Step -0.5: Detect seasonal/holiday content from overview keywords
-    const holidayLibrary = await this.detectHolidayContent(metadata, libraries);
-    if (holidayLibrary) {
-      logger.info('Holiday content detected from overview', {
+    // Step -0.5: Detect event/special content (holidays, sports, PPV, concerts, awards)
+    const eventMatch = await this.detectEventContent(metadata, libraries);
+    if (eventMatch) {
+      logger.info('Event content detected', {
         title: metadata.title,
-        library: holidayLibrary.name
+        eventType: eventMatch.eventType,
+        library: eventMatch.library.name
       });
       return {
-        library: holidayLibrary,
-        confidence: 95,
-        method: 'holiday_detection',
-        reason: `Detected holiday/Christmas content in overview`,
+        library: eventMatch.library,
+        confidence: eventMatch.confidence,
+        method: 'event_detection',
+        reason: `${eventMatch.reason} (${eventMatch.eventType})`,
+        eventType: eventMatch.eventType,
+        eventIcon: eventMatch.icon,
         libraries: libraries,
       };
     }
@@ -541,7 +626,7 @@ class ClassificationService {
       return {
         library: ruleMatch.library,
         confidence: ruleMatch.isException ? 98 : 90,
-        method: 'library_rule',
+        method: 'custom_rule',
         reason: ruleMatch.reason,
         libraries: libraries,
       };
@@ -603,7 +688,7 @@ class ClassificationService {
     if (legacyRuleMatch && legacyRuleMatch.confidence >= 80) {
       return {
         ...legacyRuleMatch,
-        method: 'rule_match',
+        method: 'custom_rule',
         libraries: libraries,
       };
     }
@@ -613,7 +698,7 @@ class ClassificationService {
       const aiMatch = await this.aiClassify(metadata, libraries);
       return {
         ...aiMatch,
-        method: 'ai_fallback',
+        method: 'ai_analysis',
         libraries: libraries,
       };
     } catch (error) {
@@ -622,7 +707,7 @@ class ClassificationService {
       if (legacyRuleMatch) {
         return {
           ...legacyRuleMatch,
-          method: 'rule_match',
+          method: 'custom_rule',
           libraries: libraries,
         };
       }
@@ -632,7 +717,7 @@ class ClassificationService {
       return {
         library: fallbackLibrary,
         confidence: 50,
-        method: 'rule_match',
+        method: 'custom_rule',
         reason: `Default library - no rules matched (fell back to ${fallbackLibrary.name})`,
         libraries: libraries,
       };

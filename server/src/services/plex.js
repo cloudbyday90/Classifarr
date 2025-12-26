@@ -68,6 +68,7 @@ class PlexService {
         params: {
           'X-Plex-Container-Start': offset,
           'X-Plex-Container-Size': limit,
+          'includeGuids': 1,  // CRITICAL: Required to get TMDB/IMDB/TVDB IDs
         },
       });
 

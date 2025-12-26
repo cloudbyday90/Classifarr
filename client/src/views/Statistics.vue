@@ -111,45 +111,64 @@
           </div>
         </div>
 
-        <!-- By Media Type -->
+        <!-- Confidence Distribution -->
         <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium mb-4">By Media Type</h3>
+          <h3 class="text-lg font-medium mb-4">Confidence Distribution</h3>
           <div class="space-y-4">
             <div
-              v-for="type in stats.byMediaType"
-              :key="type.media_type"
-              class="flex items-center gap-3"
+              v-for="level in stats.confidenceDistribution"
+              :key="level.level"
+              class="space-y-1"
             >
-              <span class="text-2xl">{{ type.media_type === 'movie' ? '🎬' : '📺' }}</span>
-              <div class="flex-1">
-                <div class="flex justify-between">
-                  <span class="capitalize">{{ type.media_type }}</span>
-                  <span class="font-medium">{{ type.count }}</span>
-                </div>
-                <div class="text-xs text-gray-500">{{ type.avg_confidence }}% avg</div>
+              <div class="flex justify-between text-sm">
+                <span class="flex items-center gap-2">
+                  <span :class="getConfidenceColor(level.level)" class="w-3 h-3 rounded-full"></span>
+                  <span class="capitalize">{{ level.level }} ({{ getLevelRange(level.level) }})</span>
+                </span>
+                <span>{{ level.count }}</span>
+              </div>
+              <div class="w-full bg-gray-700 rounded-full h-2">
+                <div
+                  class="h-2 rounded-full transition-all"
+                  :class="getConfidenceColor(level.level)"
+                  :style="{ width: getConfidenceWidth(level.count) }"
+                ></div>
               </div>
             </div>
-            <div v-if="stats.byMediaType?.length === 0" class="text-gray-500 text-center py-4">
-              No media type data yet
+            <div v-if="!stats.confidenceDistribution?.length" class="text-gray-500 text-center py-4">
+              No classification data yet
             </div>
           </div>
         </div>
 
-        <!-- Top Titles -->
+        <!-- Queue Health -->
         <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-lg font-medium mb-4">Top Classified Titles</h3>
-          <div class="space-y-2">
-            <div
-              v-for="(title, index) in stats.topTitles"
-              :key="index"
-              class="flex items-center gap-2 text-sm"
-            >
-              <span class="text-gray-500 w-4">{{ index + 1 }}.</span>
-              <span class="flex-1 truncate">{{ title.title }}</span>
-              <span class="text-gray-400">{{ title.count }}x</span>
+          <h3 class="text-lg font-medium mb-4">Queue Health</h3>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-yellow-400">⏳ Pending</span>
+              <span class="font-medium">{{ stats.queueHealth?.pending || 0 }}</span>
             </div>
-            <div v-if="stats.topTitles?.length === 0" class="text-gray-500 text-center py-4">
-              No classification data yet
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-blue-400">⚙️ Processing</span>
+              <span class="font-medium">{{ stats.queueHealth?.processing || 0 }}</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-green-400">✓ Completed (24h)</span>
+              <span class="font-medium">{{ stats.queueHealth?.completed_today || 0 }}</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-red-400">✗ Failed</span>
+              <span class="font-medium">{{ stats.queueHealth?.failed || 0 }}</span>
+            </div>
+            <div class="mt-3 pt-3 border-t border-gray-700 flex items-center justify-between">
+              <span class="text-gray-400">Success Rate</span>
+              <span 
+                class="font-bold"
+                :class="stats.queueHealth?.success_rate >= 95 ? 'text-green-400' : stats.queueHealth?.success_rate >= 80 ? 'text-yellow-400' : 'text-red-400'"
+              >
+                {{ stats.queueHealth?.success_rate || 100 }}%
+              </span>
             </div>
           </div>
         </div>
@@ -196,11 +215,23 @@ const getMethodWidth = (count) => {
 
 const getMethodColor = (method) => {
   const colors = {
-    exact: 'bg-green-500',
-    learned: 'bg-blue-500',
-    rule: 'bg-purple-500',
-    ai: 'bg-yellow-500',
-    unknown: 'bg-gray-500'
+    // New standardized names
+    'exact_match': 'bg-green-500',
+    'learned_pattern': 'bg-blue-500',
+    'custom_rule': 'bg-purple-500',
+    'ai_analysis': 'bg-yellow-500',
+    'source_library': 'bg-cyan-500',
+    'event_detection': 'bg-red-500',
+    'manual_correction': 'bg-pink-500',
+    'existing_media': 'bg-teal-500',
+    'reclassification': 'bg-orange-500',
+    // Legacy names (backwards compatibility)
+    'rule_match': 'bg-purple-500',
+    'library_rule': 'bg-purple-500',
+    'ai_fallback': 'bg-yellow-500',
+    'holiday_detection': 'bg-red-500',
+    'learned_correction': 'bg-pink-500',
+    'unknown': 'bg-gray-500'
   }
   return colors[method] || colors.unknown
 }
@@ -208,5 +239,32 @@ const getMethodColor = (method) => {
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const totalConfidence = computed(() => {
+  if (!stats.value.confidenceDistribution?.length) return 1
+  return stats.value.confidenceDistribution.reduce((sum, l) => sum + parseInt(l.count), 0) || 1
+})
+
+const getConfidenceColor = (level) => {
+  const colors = {
+    high: 'bg-green-500',
+    medium: 'bg-yellow-500',
+    low: 'bg-red-500'
+  }
+  return colors[level] || 'bg-gray-500'
+}
+
+const getLevelRange = (level) => {
+  const ranges = {
+    high: '90%+',
+    medium: '50-89%',
+    low: '<50%'
+  }
+  return ranges[level] || ''
+}
+
+const getConfidenceWidth = (count) => {
+  return `${(count / totalConfidence.value) * 100}%`
 }
 </script>

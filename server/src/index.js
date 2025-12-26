@@ -143,6 +143,15 @@ async function initializeServices() {
   } catch (error) {
     console.warn('Pattern analysis service not available:', error.message);
   }
+
+  // Start health check heartbeat (every 15 minutes)
+  try {
+    const healthCheckService = require('./services/healthCheckService');
+    healthCheckService.startHeartbeat(15 * 60 * 1000);
+    console.log('Health check heartbeat started (15 min interval)');
+  } catch (error) {
+    console.warn('Health check heartbeat failed to start:', error.message);
+  }
 }
 
 // Start server

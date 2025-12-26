@@ -1,4 +1,38 @@
 
+## v0.31.0-alpha
+**Classification Methods Standardization & Event Detection Expansion**
+
+### New Features
+- **Event Detection Expansion:** Auto-detection now covers 5 content types:
+  - 🎄 **Holiday** (95%): Christmas, Halloween, Thanksgiving, Easter, etc.
+  - 🏈 **Sports** (92%): NFL, NBA, MLB, NHL, Olympics, Super Bowl, etc.
+  - 🥊 **PPV/Combat** (93%): UFC, MMA, Boxing, WWE, WrestleMania, etc.
+  - 🎤 **Concert** (90%): Live concerts, comedy specials, music festivals
+  - 🏆 **Awards** (88%): Oscars, Emmys, Grammys, Golden Globes, etc.
+- **Queue Self-Healing:** Stale queue items now auto-recover missing TMDB IDs and library info from database
+- **Periodic Library Sync:** Automatic Plex library sync every 6 hours to keep metadata fresh
+
+### Improvements
+- **Classification Methods Standardized:** Renamed methods for consistency:
+  - `ai_fallback` → `ai_analysis`
+  - `library_rule` / `rule_match` → `custom_rule`
+  - `holiday_detection` → `event_detection`
+  - `learned_correction` → `manual_correction`
+- **Statistics Accuracy:** Dashboard "Total Classifications" now correctly excludes source_library enrichments
+- **Activity Page:** "Classified Today" now includes ALL methods (including source_library)
+- **Frontend:** All method display mappings updated with legacy backwards compatibility
+
+### Fixes
+- **Plex TMDB IDs:** Added `includeGuids=1` parameter to Plex API calls to retrieve TMDB/IMDB/TVDB IDs
+- **SQL Query Error:** Fixed PostgreSQL "column 'level' does not exist" error in confidence distribution stats
+
+### Technical
+- New `detectEventContent()` function with comprehensive keyword matching
+- Database migration (020) to rename legacy method names
+- Frontend display mappings updated in Activity.vue, Statistics.vue, History.vue
+
+---
+
 ## v0.30.9-alpha
 **Bug Fixes: Radarr/Sonarr Config & UI Navigation**
 

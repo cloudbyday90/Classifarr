@@ -51,6 +51,40 @@ class SchedulerService {
 
         // Run smart suggestions after startup (5 min delay)
         setTimeout(() => this.runSmartSuggestionCheck(), 300000);
+
+        // Periodic library sync every 6 hours to keep Plex data fresh
+        // This ensures TMDB IDs and other metadata stay up-to-date
+        this.schedule('library-sync', '0 */6 * * *', () => this.runPeriodicLibrarySync());
+
+        // Also run initial sync after startup (2 min delay)
+        setTimeout(() => this.runPeriodicLibrarySync(), 120000);
+    }
+
+    /**
+     * Sync all active libraries from media server
+     */
+    async runPeriodicLibrarySync() {
+        try {
+            const libraries = await db.query('SELECT id, name FROM libraries WHERE is_active = true');
+
+            if (libraries.rows.length === 0) {
+                logger.debug('Periodic sync: No active libraries to sync');
+                return;
+            }
+
+            logger.info(`Periodic sync: Syncing ${libraries.rows.length} libraries`);
+
+            for (const library of libraries.rows) {
+                try {
+                    await mediaSyncService.syncLibrary(library.id);
+                    logger.info(`Periodic sync: Completed ${library.name}`);
+                } catch (libError) {
+                    logger.warn(`Periodic sync: Failed ${library.name}`, { error: libError.message });
+                }
+            }
+        } catch (error) {
+            logger.error('Error running periodic library sync', { error: error.message });
+        }
     }
 
     /**

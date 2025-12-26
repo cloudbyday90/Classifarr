@@ -299,8 +299,8 @@ router.post('/reclassify/preview', async (req, res) => {
  */
 router.get('/stats', async (req, res) => {
   try {
-    // Total classifications
-    const totalResult = await db.query('SELECT COUNT(*) as total FROM classification_history');
+    // Total classifications (exclude source_library - those are enrichments, not new classifications)
+    const totalResult = await db.query("SELECT COUNT(*) as total FROM classification_history WHERE method != 'source_library'");
 
     // By method
     const methodResult = await db.query(`

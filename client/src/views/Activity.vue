@@ -300,8 +300,8 @@ const refreshData = async () => {
       // Safeguard: merge with defaults to ensure expected fields exist
       const defaultHealth = { ai: false, worker: false, database: false }
       stats.value = {
-        classifiedToday: liveStats.data.today?.classified || 0,
-        avgConfidence: liveStats.data.today?.avgConfidence || 0,
+        classifiedToday: liveStats.data.today?.allClassified || liveStats.data.today?.classified || 0,
+        avgConfidence: liveStats.data.today?.allAvgConfidence || liveStats.data.today?.avgConfidence || 0,
         queuePending: liveStats.data.queue?.pending || 0,
         health: { ...defaultHealth, ...liveStats.data.health },
         gapAnalysis: liveStats.data.gapAnalysis,
@@ -364,24 +364,58 @@ const formatTimeAgo = (timestamp) => {
 
 const formatMethod = (method) => {
   const methods = {
-    'ai_fallback': 'AI',
+    // New standardized names
+    'ai_analysis': 'AI',
     'source_library': 'Source',
-    'rule_match': 'Rule',
+    'custom_rule': 'Rule',
     'exact_match': 'Exact',
-    'library_rule': 'Library Rule',
-    'holiday_detection': 'Holiday'
+    'event_detection': 'Event',
+    'manual_correction': 'Corrected',
+    'learned_pattern': 'Learned',
+    'existing_media': 'Exists',
+    'reclassification': 'Reclassified',
+    // Legacy names (backwards compatibility)
+    'ai_fallback': 'AI',
+    'rule_match': 'Rule',
+    'library_rule': 'Rule',
+    'holiday_detection': 'Event',
+    'learned_correction': 'Corrected'
   }
   return methods[method] || method
 }
 
-const getMethodIcon = (method) => {
+const getMethodIcon = (method, eventType = null) => {
+  // Event-specific icons
+  const eventIcons = {
+    'holiday': '🎄',
+    'sports': '🏈',
+    'ppv': '🥊',
+    'concert': '🎤',
+    'awards': '🏆'
+  }
+  
+  // If event type is provided, use it
+  if (method === 'event_detection' && eventType && eventIcons[eventType]) {
+    return eventIcons[eventType]
+  }
+
   const icons = {
-    'ai_fallback': '🤖',
+    // New standardized names
+    'ai_analysis': '🤖',
     'source_library': '📚',
-    'rule_match': '📋',
+    'custom_rule': '📋',
     'exact_match': '🎯',
+    'event_detection': '🎄', // Default event icon
+    'manual_correction': '✏️',
+    'learned_pattern': '🧠',
+    'existing_media': '✅',
+    'reclassification': '🔄',
+    // Legacy names (backwards compatibility)
+    'ai_fallback': '🤖',
+    'rule_match': '📋',
     'library_rule': '📖',
-    'holiday_detection': '🎄'
+    'holiday_detection': '🎄',
+    'learned_correction': '✏️'
   }
   return icons[method] || '✓'
 }
