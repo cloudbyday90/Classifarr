@@ -6,6 +6,12 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.31.4-alpha] - 2025-12-26
+
+### Fixed
+- **Statistics SQL Error:** Fixed PostgreSQL GROUP BY error in `getConfidenceDistribution()` using subquery
+- **Statistics Zero Values:** Removed `source_library` exclusion filter showing all classification data
+
 ## [0.31.3-alpha] - 2025-12-26
 
 ### Fixed

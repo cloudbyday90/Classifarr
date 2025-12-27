@@ -85,7 +85,6 @@ router.get('/daily', async (req, res) => {
 
 // Helper functions
 async function getOverallStats() {
-  // Exclude source_library - those are enrichments, not new classifications
   const result = await db.query(`
     SELECT 
       COUNT(*) as total,
@@ -95,7 +94,6 @@ async function getOverallStats() {
       COUNT(CASE WHEN created_at > NOW() - INTERVAL '24 hours' THEN 1 END) as last_24h,
       COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as last_7d
     FROM classification_history
-    WHERE method != 'source_library'
   `);
 
   return result.rows[0] || {};
@@ -134,24 +132,24 @@ async function getStatsByMethod() {
 async function getConfidenceDistribution() {
   const result = await db.query(`
     SELECT 
-      CASE 
-        WHEN confidence >= 90 THEN 'high'
-        WHEN confidence >= 50 THEN 'medium'
-        ELSE 'low'
-      END as level,
+      level,
       COUNT(*) as count,
-      ROUND(AVG(confidence)::numeric, 1) as avg_confidence
-    FROM classification_history
-    GROUP BY 
-      CASE 
-        WHEN confidence >= 90 THEN 'high'
-        WHEN confidence >= 50 THEN 'medium'
-        ELSE 'low'
-      END
+      ROUND(AVG(avg_conf)::numeric, 1) as avg_confidence
+    FROM (
+      SELECT 
+        confidence as avg_conf,
+        CASE 
+          WHEN confidence >= 90 THEN 'high'
+          WHEN confidence >= 50 THEN 'medium'
+          ELSE 'low'
+        END as level
+      FROM classification_history
+    ) sub
+    GROUP BY level
     ORDER BY 
-      CASE 
-        WHEN confidence >= 90 THEN 1 
-        WHEN confidence >= 50 THEN 2 
+      CASE level
+        WHEN 'high' THEN 1 
+        WHEN 'medium' THEN 2 
         ELSE 3 
       END
   `);

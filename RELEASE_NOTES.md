@@ -1,4 +1,13 @@
 
+## v0.31.4-alpha
+**Statistics Page SQL Fixes**
+
+### Fixes
+- **Statistics SQL Error:** Fixed PostgreSQL GROUP BY error in confidence distribution query using subquery approach
+- **Zero Stats Values:** Removed exclusion filter that was hiding all `source_library` classification data from statistics
+
+---
+
 ## v0.31.3-alpha
 **Event Detection Dropdown Fix**
 
