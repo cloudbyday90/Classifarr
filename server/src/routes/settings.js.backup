@@ -323,11 +323,11 @@ router.put('/radarr/:id', async (req, res) => {
 
     // Construct URL from components if not provided
        const finalProtocol = protocol || 'http';
+       const finalProtocol = protocol || 'http';
        const finalHost = host || 'localhost';
        const finalPort = port || 7878;
        const finalBasePath = base_path || '';
        const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
-
     const result = await db.query(
       `UPDATE radarr_config
        SET name = COALESCE($1, name),
@@ -545,11 +545,7 @@ router.put('/sonarr/:id', async (req, res) => {
     const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
     // Construct URL from components if not provided
-       const finalProtocol = protocol || 'http';
-       const finalHost = host || 'localhost';
-       const finalPort = port || 8989;
-       const finalBasePath = base_path || '';
-       const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
+    const constructedUrl = url || (protocol && host && port ? `${protocol}://${host}:${port}${base_path || ''}` : null);
 
     const result = await db.query(
       `UPDATE sonarr_config

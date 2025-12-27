@@ -1,4 +1,14 @@
 
+## v0.32.1-alpha
+**Title: Fix Media Sources Save Bug**
+
+### Fixes
+- Fixed issue where saving Radarr/Sonarr configurations would fail with "null value in column 'url' violates not-null constraint"
+- Resolved GitHub Issue #72: Media Sources configuration now saves correctly even when some fields are missing
+- Improved URL construction logic in PUT endpoints to match POST endpoint behavior
+
+---
+
 ## v0.32.0-alpha
 **Path Mapping & Reclassification**
 
