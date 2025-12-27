@@ -427,7 +427,7 @@ class SchedulerService {
             if (statsResult.rows.length === 0) return [];
             const stats = statsResult.rows[0];
 
-            // Get content type distribution
+            // Get content type distribution (exclude source_library - that's a system method, not AI classification)
             const contentTypes = await db.query(`
                 SELECT 
                     msi.metadata->'content_analysis'->>'type' as type,
@@ -435,6 +435,7 @@ class SchedulerService {
                 FROM media_server_items msi
                 WHERE msi.library_id = $1
                   AND msi.metadata->'content_analysis'->>'type' IS NOT NULL
+                  AND msi.metadata->'content_analysis'->>'type' != 'source_library'
                 GROUP BY msi.metadata->'content_analysis'->>'type'
                 ORDER BY count DESC
                 LIMIT 10

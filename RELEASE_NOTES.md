@@ -1,4 +1,17 @@
 
+## v0.32.0-alpha
+**Path Mapping & Reclassification**
+
+### New Features
+- **Path Mapping:** Configure path translations between *arr containers and Classifarr (e.g. `/movies` -> `/data/movies`)
+- **Path Verification:** Test connectivity and permissions of configured paths
+- **Enhanced Reclassification:** File operations now respect path mappings
+
+### Fixes
+- **Rollup Build Error:** Fixed missing import in PathMapping component
+
+---
+
 ## v0.31.4-alpha
 **Statistics Page SQL Fixes**
 

@@ -192,9 +192,17 @@
       </div>
       
       <div v-else-if="smartSuggestions.length > 0" class="space-y-4">
-        <p class="text-gray-400 text-sm">
-          {{ smartSuggestionsSource === 'llm' ? '🤖 AI-generated' : '📊 Data-driven' }} suggestions based on your library content
-        </p>
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+          <span class="text-gray-400">
+            {{ smartSuggestionsSource === 'llm' ? '🤖 AI-generated' : '📊 Data-driven' }} suggestions
+          </span>
+          <span v-if="suggestionsHasNewData" class="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs">
+            ✨ New data available
+          </span>
+          <span v-if="suggestionsLastAnalyzed" class="text-gray-500 text-xs ml-auto">
+            Last analyzed: {{ formatTimeAgo(suggestionsLastAnalyzed) }}
+          </span>
+        </div>
         
         <div v-for="(suggestion, idx) in smartSuggestions" :key="idx" class="bg-background-light p-4 rounded border border-gray-700 hover:border-primary transition-colors">
           <div class="flex justify-between items-start mb-2">
@@ -278,6 +286,7 @@
               <option value="is_one_of" v-if="['content_type', 'certification', 'genres', 'event_type'].includes(condition.field)">Is one of...</option>
               <option v-if="condition.field === 'year'" value="greater_than">Greater than</option>
               <option v-if="condition.field === 'year'" value="less_than">Less than</option>
+              <option v-if="condition.field === 'year'" value="between">Between</option>
             </select>
           </div>
 
@@ -334,6 +343,30 @@
               <option value="NC-17">NC-17</option>
               <option value="NR">Not Rated</option>
             </select>
+
+            <!-- Year Between Inputs -->
+            <div 
+              v-else-if="condition.field === 'year' && condition.operator === 'between'"
+              class="flex gap-2 items-center"
+            >
+              <input 
+                v-model="condition.value"
+                type="number"
+                class="w-24 bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+                placeholder="1990"
+                min="1900"
+                max="2100"
+              />
+              <span class="text-gray-400">to</span>
+              <input 
+                v-model="condition.value2"
+                type="number"
+                class="w-24 bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+                placeholder="1999"
+                min="1900"
+                max="2100"
+              />
+            </div>
 
             <!-- Default Input -->
             <input 
@@ -543,6 +576,8 @@ const libraryName = ref('')
 const smartSuggestions = ref([])
 const smartSuggestionsSource = ref('')
 const loadingSmartSuggestions = ref(false)
+const suggestionsLastAnalyzed = ref(null)
+const suggestionsHasNewData = ref(false)
 
 // Pattern selection modal state
 const showPatternModal = ref(false)
@@ -557,6 +592,20 @@ const loadingLibraryPatterns = ref(false)
 const isValid = computed(() => {
   return ruleName.value.trim() && conditions.value.length > 0
 })
+
+// Helper to format relative time
+const formatTimeAgo = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const seconds = Math.floor((now - date) / 1000)
+  
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`
+  return date.toLocaleDateString()
+}
 
 onMounted(async () => {
   // Load library name first
@@ -620,6 +669,8 @@ const loadSmartSuggestions = async () => {
     const response = await api.getSmartSuggestions(props.libraryId)
     smartSuggestions.value = response.data.suggestions || []
     smartSuggestionsSource.value = response.data.source || 'data-analysis'
+    suggestionsLastAnalyzed.value = response.data.lastAnalyzed
+    suggestionsHasNewData.value = response.data.hasNewData || false
   } catch (error) {
     console.error('Error loading smart suggestions:', error)
     smartSuggestions.value = []
@@ -926,11 +977,19 @@ const saveRule = async () => {
   
   saving.value = true
   try {
+    // Transform conditions - combine value+value2 for between operator
+    const transformedConditions = conditions.value.map(c => {
+      if (c.operator === 'between' && c.value2) {
+        return { ...c, value: `${c.value},${c.value2}` }
+      }
+      return c
+    })
+    
     const payload = {
       name: ruleName.value,
       description: description.value,
       is_active: isActive.value,
-      conditions: conditions.value // Array of conditions - field name must match backend
+      conditions: transformedConditions
     }
     
     if (editingRuleId.value) {

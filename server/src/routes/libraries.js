@@ -870,13 +870,15 @@ router.get('/:id/rules/smart-suggest', async (req, res) => {
     }
     const library = libraryResult.rows[0];
 
-    // 1. Get AI content_analysis type distribution
+    // 1. Get AI content_analysis type distribution (exclude source_library - that's not an AI classification type)
     const contentTypeResult = await db.query(`
       SELECT 
         metadata->'content_analysis'->>'type' as content_type,
         COUNT(*) as count
       FROM media_server_items 
-      WHERE library_id = $1 AND metadata->'content_analysis' IS NOT NULL
+      WHERE library_id = $1 
+        AND metadata->'content_analysis' IS NOT NULL
+        AND metadata->'content_analysis'->>'type' != 'source_library'
       GROUP BY content_type
       ORDER BY count DESC
       LIMIT 10
@@ -926,10 +928,20 @@ router.get('/:id/rules/smart-suggest', async (req, res) => {
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE metadata->'content_analysis' IS NOT NULL) as analyzed,
-        COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched
+        COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched,
+        MAX(added_at) as last_item_added,
+        MAX(updated_at) as last_item_updated
       FROM media_server_items
       WHERE library_id = $1
     `, [id]);
+
+    // 6a. Get last suggestion generation metadata
+    const suggestionMetaResult = await db.query(`
+      SELECT last_analyzed, pending_count
+      FROM library_pattern_suggestions
+      WHERE library_id = $1
+    `, [id]);
+    const suggestionMeta = suggestionMetaResult.rows[0] || null;
 
     // 7. Get sample Tavily insights (aggregate from enriched items)
     const tavilyInsightsResult = await db.query(`
@@ -1185,10 +1197,19 @@ Valid operators: equals, contains, includes`;
       }
     }
 
+    // Determine if new data exists since last suggestion generation
+    const lastItemTime = countResult.rows[0]?.last_item_added || countResult.rows[0]?.last_item_updated;
+    const lastAnalyzed = suggestionMeta?.last_analyzed;
+    const hasNewData = !lastAnalyzed || (lastItemTime && new Date(lastItemTime) > new Date(lastAnalyzed));
+
     res.json({
       stats,
       suggestions: llmSuggestions.length > 0 ? llmSuggestions : dataSuggestions,
-      source: llmSuggestions.length > 0 ? 'llm' : 'data-analysis'
+      source: llmSuggestions.length > 0 ? 'llm' : 'data-analysis',
+      lastAnalyzed: lastAnalyzed ? new Date(lastAnalyzed).toISOString() : null,
+      lastItemAdded: lastItemTime ? new Date(lastItemTime).toISOString() : null,
+      hasNewData,
+      analyzedAt: new Date().toISOString()
     });
   } catch (error) {
     logger.error('Failed to generate smart suggestions', { error: error.message });

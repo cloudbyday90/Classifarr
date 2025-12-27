@@ -6,6 +6,17 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.32.0-alpha] - 2025-12-26
+
+### Added
+- **Path Mapping:** Settings tab to configure path translations between *arr containers and Classifarr (e.g. `/movies` -> `/data/movies`)
+- **Path Verification:** Ability to test connectivity and permissions of configured paths
+- **Enhanced Reclassification:** File operations now respect configured path mappings
+- **Database Migration:** Added `path_mappings` table (`026_path_mappings.sql`)
+
+### Fixed
+- **Rollup Build Error:** Fixed missing import in PathMapping component
+
 ## [0.31.4-alpha] - 2025-12-26
 
 ### Fixed

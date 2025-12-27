@@ -200,9 +200,7 @@ class MediaPatternAnalyzer {
         );
         if (studioPattern) patterns.push(studioPattern);
 
-        // 6. Year/Decade Pattern
-        const yearPattern = this.extractYearPattern(items, totalCount);
-        if (yearPattern) patterns.push(yearPattern);
+        // Note: Year/Decade removed from auto-suggestions - users can add manually with 'between' operator
 
         // Sort by match percentage (highest first)
         patterns.sort((a, b) => b.matchPercentage - a.matchPercentage);
@@ -265,8 +263,8 @@ class MediaPatternAnalyzer {
 
         if (itemsWithField === 0) return null;
 
-        // Only include values that appear in at least 20% of items
-        const threshold = Math.ceil(totalCount * 0.2);
+        // Only include values that appear in at least 15% of items
+        const threshold = Math.ceil(totalCount * 0.15);
         const values = Object.keys(valueCounts).filter(v => valueCounts[v] >= threshold);
 
         if (values.length === 0) return null;

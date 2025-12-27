@@ -13,6 +13,7 @@ const fsSync = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { createLogger } = require('../utils/logger');
+const db = require('../config/database');
 
 const logger = createLogger('FileOperationsService');
 
@@ -25,10 +26,55 @@ const logger = createLogger('FileOperationsService');
  * - Checksum verification (SHA256)
  * - Cross-filesystem safe moves (copy → verify → delete)
  * - Dry run mode for testing
+ * - Path translation between *arr and Classifarr containers
  */
 class FileOperationsService {
     constructor() {
         this.CHUNK_SIZE = 64 * 1024 * 1024; // 64MB chunks for large files
+        this._pathMappingsCache = null;
+        this._pathMappingsCacheTime = 0;
+    }
+
+    /**
+     * Translate a path from *arr format to local Classifarr format
+     * Uses configured path mappings from database
+     * @param {string} arrPath - Path as seen by Radarr/Sonarr
+     * @returns {Promise<string>} Translated path for local filesystem
+     */
+    async translatePath(arrPath) {
+        try {
+            // Cache mappings for 60 seconds to avoid DB hits
+            const now = Date.now();
+            if (!this._pathMappingsCache || (now - this._pathMappingsCacheTime) > 60000) {
+                const result = await db.query('SELECT * FROM path_mappings WHERE is_active = true ORDER BY LENGTH(arr_path) DESC');
+                this._pathMappingsCache = result.rows;
+                this._pathMappingsCacheTime = now;
+            }
+
+            // Try each mapping (longest match first due to ORDER BY)
+            for (const mapping of this._pathMappingsCache) {
+                if (arrPath.startsWith(mapping.arr_path)) {
+                    const translated = arrPath.replace(mapping.arr_path, mapping.local_path);
+                    logger.debug('Path translated', { original: arrPath, translated, mapping: mapping.id });
+                    return translated;
+                }
+            }
+
+            // No mapping found - return as-is
+            logger.debug('No path mapping found, using original', { path: arrPath });
+            return arrPath;
+        } catch (error) {
+            logger.warn('Path translation failed, using original path', { path: arrPath, error: error.message });
+            return arrPath;
+        }
+    }
+
+    /**
+     * Clear the path mappings cache (call when mappings are updated)
+     */
+    clearPathMappingsCache() {
+        this._pathMappingsCache = null;
+        this._pathMappingsCacheTime = 0;
     }
 
     /**

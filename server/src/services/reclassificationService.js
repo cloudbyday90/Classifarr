@@ -218,8 +218,19 @@ class ReclassificationService {
                 dryRun
             });
 
+            // Translate paths from *arr format to Classifarr container format
+            const localCurrentPath = await fileOperationsService.translatePath(currentPath);
+            const localNewPath = await fileOperationsService.translatePath(newPath);
+
+            logger.info('Paths translated for file operations', {
+                arrCurrentPath: currentPath,
+                arrNewPath: newPath,
+                localCurrentPath,
+                localNewPath
+            });
+
             // Step 1: Use FileOperationsService to move the folder
-            const moveResult = await fileOperationsService.moveFolder(currentPath, newPath, {
+            const moveResult = await fileOperationsService.moveFolder(localCurrentPath, localNewPath, {
                 dryRun,
                 skipVerification: false
             });
@@ -325,8 +336,19 @@ class ReclassificationService {
                 dryRun
             });
 
+            // Translate paths from *arr format to Classifarr container format
+            const localCurrentPath = await fileOperationsService.translatePath(currentPath);
+            const localNewPath = await fileOperationsService.translatePath(newPath);
+
+            logger.info('Paths translated for file operations', {
+                arrCurrentPath: currentPath,
+                arrNewPath: newPath,
+                localCurrentPath,
+                localNewPath
+            });
+
             // Step 1: Use FileOperationsService to move the folder
-            const moveResult = await fileOperationsService.moveFolder(currentPath, newPath, {
+            const moveResult = await fileOperationsService.moveFolder(localCurrentPath, localNewPath, {
                 dryRun,
                 skipVerification: false
             });

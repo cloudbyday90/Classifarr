@@ -658,6 +658,13 @@ class ClassificationService {
             return parseFloat(itemValue) > parseFloat(ruleValues[0]);
           case 'less_than':
             return parseFloat(itemValue) < parseFloat(ruleValues[0]);
+          case 'between':
+            // value format: "1990,1999" or value + value2
+            const yearVal = parseFloat(itemValue);
+            const [minYear, maxYear] = ruleValues[0].includes(',')
+              ? ruleValues[0].split(',').map(v => parseFloat(v.trim()))
+              : [parseFloat(ruleValues[0]), parseFloat(ruleValues[1] || ruleValues[0])];
+            return yearVal >= minYear && yearVal <= maxYear;
           default:
             return false;
         }
@@ -1090,6 +1097,11 @@ class ClassificationService {
         return parseFloat(fieldValue) > parseFloat(value);
       case 'less_than':
         return parseFloat(fieldValue) < parseFloat(value);
+      case 'between':
+        // value format: "1990,1999"
+        const yearVal = parseFloat(fieldValue);
+        const [minYear, maxYear] = value.split(',').map(v => parseFloat(v.trim()));
+        return yearVal >= minYear && yearVal <= maxYear;
       default:
         return false;
     }
