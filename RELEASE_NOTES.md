@@ -1,4 +1,17 @@
 
+## v0.32.2-alpha
+**Issue #74 Fix: Library Mappings Persistence**
+
+### Fixes
+- **Issue #74:** Library mappings no longer disappear after media server settings resync
+- **Root Cause:** Media server settings UPDATE was creating new DB row instead of updating existing
+- **Solution:** POST /api/media-server now preserves server ID by updating in-place
+
+### Tests
+- Added regression tests for `mediaServer.js` to prevent future issues
+
+---
+
 ## v0.32.1-alpha
 **Title: Fix Media Sources Save Bug**
 

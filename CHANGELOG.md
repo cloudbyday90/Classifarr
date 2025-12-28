@@ -6,6 +6,16 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.32.2-alpha] - 2025-12-28
+
+### Fixed
+- **Issue #74:** Library mappings no longer disappear after media server settings resync
+- **Root Cause:** POST /api/media-server was creating new DB row instead of updating existing
+- **Solution:** Media server UPDATE now preserves ID in-place
+
+### Added
+- Regression tests for `mediaServer.js` API endpoints
+
 ## [0.32.0-alpha] - 2025-12-26
 
 ### Added

@@ -92,16 +92,28 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'API key is required' });
     }
 
-    // Deactivate existing servers
-    await client.query('UPDATE media_server SET is_active = false');
+    // Check if we have an existing active media server
+    const activeServerResult = await client.query('SELECT id FROM media_server WHERE is_active = true LIMIT 1');
 
-    // Insert new server
-    const result = await client.query(
-      `INSERT INTO media_server (type, name, url, api_key, is_active)
-       VALUES ($1, $2, $3, $4, true)
-       RETURNING *`,
-      [type, name, url, finalApiKey]
-    );
+    let result;
+    if (activeServerResult.rows.length > 0) {
+      // UPDATE existing server to preserve ID (fixes issue #74)
+      result = await client.query(
+        `UPDATE media_server 
+         SET type = $1, name = $2, url = $3, api_key = $4, updated_at = NOW()
+         WHERE id = $5
+         RETURNING *`,
+        [type, name, url, finalApiKey, activeServerResult.rows[0].id]
+      );
+    } else {
+      // No active server exists, INSERT new one
+      result = await client.query(
+        `INSERT INTO media_server (type, name, url, api_key, is_active)
+         VALUES ($1, $2, $3, $4, true)
+         RETURNING *`,
+        [type, name, url, finalApiKey]
+      );
+    }
 
     await client.query('COMMIT');
 
