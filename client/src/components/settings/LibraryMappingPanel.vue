@@ -159,7 +159,7 @@
               class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg"
             >
               <option value="">Select root folder...</option>
-              <option v-for="folder in rootFolders" :key="folder.id" :value="folder.id + ':' + folder.path">
+              <option v-for="folder in availableRootFolders" :key="folder.id" :value="folder.id + ':' + folder.path">
                 {{ folder.path }}
               </option>
             </select>
@@ -252,7 +252,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 
@@ -298,6 +298,17 @@ const showFolderBrowser = ref(false)
 const browsingPath = ref('/')
 const browserFolders = ref([])
 const browserLoading = ref(false)
+
+// Computed: available root folders (exclude already-mapped folders)
+const availableRootFolders = computed(() => {
+  // Get list of already-mapped root folder IDs
+  const mappedFolderIds = mappings.value
+    .filter(m => m.library_id !== mappingForm.value.library_id) // Allow current mapping's folder when editing
+    .map(m => m.arr_root_folder_id)
+  
+  // Filter out folders that are already mapped
+  return rootFolders.value.filter(folder => !mappedFolderIds.includes(folder.id))
+})
 
 // Define functions BEFORE watchers that use them (arrow functions aren't hoisted)
 const loadMappings = async () => {

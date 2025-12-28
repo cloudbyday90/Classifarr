@@ -1,4 +1,13 @@
 
+## v0.32.3a-alpha
+**Hotfix: Root Folder One-to-One Relationship**
+
+### Fixed
+- Root folder dropdown now excludes folders already mapped to other libraries
+- When editing a mapping, the current folder remains selectable
+
+---
+
 ## v0.32.3-alpha
 **Library Mappings Enhancement + Auto-Detect Fix**
 

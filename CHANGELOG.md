@@ -6,6 +6,11 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.32.3a-alpha] - 2025-12-28
+
+### Fixed
+- Root folder dropdown now enforces one-to-one mapping (excludes already-mapped folders)
+
 ## [0.32.3-alpha] - 2025-12-28
 
 ### Added
