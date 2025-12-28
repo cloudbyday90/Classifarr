@@ -237,9 +237,9 @@ class LibraryMappingService {
             }
         }
 
-        // Match libraries to root folders
+        // Match libraries to root folders - EXACT MATCH ONLY
         for (const library of unmappedLibraries) {
-            const libraryName = library.name.toLowerCase();
+            const libraryName = library.name.toLowerCase().trim();
             const mediaType = library.media_type;
 
             // Filter to appropriate *arr type
@@ -248,71 +248,46 @@ class LibraryMappingService {
                 (mediaType === 'tv' && f.arr_type === 'sonarr')
             );
 
-            // Score each folder based on name similarity
-            let bestMatch = null;
-            let bestScore = 0;
+            // EXACT MATCH ONLY: Extract folder name from path and compare to library name
+            let exactMatch = null;
 
             for (const folder of candidateFolders) {
-                const folderPath = folder.path.toLowerCase();
-                let score = 0;
+                // Get the last segment of the path (folder name)
+                const pathParts = folder.path.replace(/\\/g, '/').split('/').filter(p => p);
+                const folderName = pathParts[pathParts.length - 1]?.toLowerCase().trim();
 
-                // Check if library name appears in folder path
-                if (folderPath.includes(libraryName)) {
-                    score += 50;
-                }
-
-                // Check for common keywords
-                const keywords = ['anime', 'kids', '4k', 'uhd', 'hdr', 'foreign', 'documentary'];
-                for (const keyword of keywords) {
-                    if (libraryName.includes(keyword) && folderPath.includes(keyword)) {
-                        score += 30;
-                    }
-                }
-
-                // Check for media type alignment
-                if (mediaType === 'movie' && (folderPath.includes('movie') || folderPath.includes('film'))) {
-                    score += 10;
-                }
-                if (mediaType === 'tv' && (folderPath.includes('tv') || folderPath.includes('series') || folderPath.includes('show'))) {
-                    score += 10;
-                }
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMatch = folder;
+                // Only match if folder name EXACTLY equals library name
+                if (folderName === libraryName) {
+                    exactMatch = folder;
+                    break;
                 }
             }
 
-            if (bestMatch && bestScore >= 30) {
+            if (exactMatch) {
                 const suggestion = {
                     library_id: library.id,
                     library_name: library.name,
                     media_type: library.media_type,
-                    arr_type: bestMatch.arr_type,
-                    arr_config_id: bestMatch.arr_config_id,
-                    arr_name: bestMatch.arr_name,
-                    arr_root_folder_id: bestMatch.id,
-                    arr_root_folder_path: bestMatch.path,
-                    confidence: bestScore
+                    arr_type: exactMatch.arr_type,
+                    arr_config_id: exactMatch.arr_config_id,
+                    arr_name: exactMatch.arr_name,
+                    arr_root_folder_id: exactMatch.id,
+                    arr_root_folder_path: exactMatch.path,
+                    confidence: 100 // Exact match = 100% confidence
                 };
 
-                if (bestScore >= 50) {
-                    // High confidence - auto-apply
-                    try {
-                        await this.saveMapping({
-                            library_id: library.id,
-                            arr_type: bestMatch.arr_type,
-                            arr_config_id: bestMatch.arr_config_id,
-                            arr_root_folder_id: bestMatch.id,
-                            arr_root_folder_path: bestMatch.path
-                        });
-                        applied.push(suggestion);
-                    } catch (e) {
-                        logger.error('Failed to auto-apply mapping', { error: e.message, suggestion });
-                        suggestions.push(suggestion);
-                    }
-                } else {
-                    // Lower confidence - suggest for review
+                // Exact match - auto-apply
+                try {
+                    await this.saveMapping({
+                        library_id: library.id,
+                        arr_type: exactMatch.arr_type,
+                        arr_config_id: exactMatch.arr_config_id,
+                        arr_root_folder_id: exactMatch.id,
+                        arr_root_folder_path: exactMatch.path
+                    });
+                    applied.push(suggestion);
+                } catch (e) {
+                    logger.error('Failed to auto-apply mapping', { error: e.message, suggestion });
                     suggestions.push(suggestion);
                 }
             }

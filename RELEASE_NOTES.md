@@ -1,4 +1,23 @@
 
+## v0.32.3-alpha
+**Library Mappings Enhancement + Auto-Detect Fix**
+
+### Features
+- **Classifarr Path Column:** Mappings table now shows Classifarr container path
+- **Edit Mapping:** Click "Edit" on existing mappings to modify them
+- **📁 Folder Browser:** Browse container filesystem when setting Classifarr path
+- **Removed Path Mapping Tab:** Consolidated into Radarr/Sonarr settings
+
+### Fixes
+- **Auto-Detect:** Now uses EXACT folder name matching only (no more partial matches)
+  - Library "Family" only matches folder ending with `/Family`, not `/local/movies/Christmas`
+  - Applies to both Radarr and Sonarr
+
+### Tests
+- Added 5 regression tests for auto-detect exact match logic
+
+---
+
 ## v0.32.2-alpha
 **Issue #74 Fix: Library Mappings Persistence**
 

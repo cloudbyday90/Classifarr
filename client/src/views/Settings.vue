@@ -62,7 +62,6 @@ import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
 import Tavily from './settings/Tavily.vue'
 import OMDb from './settings/OMDb.vue'
-import PathMapping from './settings/PathMapping.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -77,7 +76,6 @@ const settingsGroups = [
       { id: 'confidence', label: 'Confidence', icon: '📊', component: Confidence },
       { id: 'scheduler', label: 'Scheduler', icon: '🕐', component: Scheduler },
       { id: 'queue', label: 'Queue', icon: '📋', component: Queue },
-      { id: 'pathmapping', label: 'Path Mapping', icon: '📁', component: PathMapping },
     ]
   },
   {

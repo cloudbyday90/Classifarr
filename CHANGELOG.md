@@ -6,6 +6,21 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.32.3-alpha] - 2025-12-28
+
+### Added
+- Classifarr Path column in library mappings table
+- Edit button for existing library mappings
+- Folder browser for selecting Classifarr container paths (`/api/system/browse-folders`)
+- Regression tests for auto-detect exact match logic
+
+### Changed
+- Auto-detect now uses EXACT folder name matching only (library name must exactly match folder name)
+- Removed separate Path Mapping tab - integrated into Radarr/Sonarr settings
+
+### Fixed
+- Auto-detect incorrectly mapping libraries to folders with partial name matches
+
 ## [0.32.2-alpha] - 2025-12-28
 
 ### Fixed

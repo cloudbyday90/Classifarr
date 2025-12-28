@@ -106,7 +106,13 @@
               <td class="p-3">
                 <code class="text-xs bg-gray-900 px-2 py-1 rounded">{{ mapping.arr_root_folder_path }}</code>
               </td>
-              <td class="p-3">
+              <td class="p-3 flex gap-2">
+                <button 
+                  @click="editMapping(mapping)"
+                  class="text-blue-400 hover:text-blue-300 text-sm"
+                >
+                  Edit
+                </button>
                 <button 
                   @click="deleteMapping(mapping.library_id)"
                   class="text-red-400 hover:text-red-300 text-sm"
@@ -172,6 +178,27 @@
             </select>
           </div>
 
+          <!-- Classifarr Path with Browse -->
+          <div v-if="mappingForm.root_folder">
+            <label class="block text-sm font-medium mb-2">Classifarr Path</label>
+            <div class="flex gap-2">
+              <input 
+                v-model="mappingForm.classifarr_path"
+                type="text"
+                class="flex-1 px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg"
+                placeholder="/data/movies"
+              />
+              <button 
+                @click="openFolderBrowser"
+                type="button"
+                class="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm"
+              >
+                📁 Browse
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Path as seen inside Classifarr container</p>
+          </div>
+
           <div class="flex gap-3 pt-4 border-t border-gray-700">
             <button 
               @click="saveMapping" 
@@ -187,6 +214,64 @@
               Cancel
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Folder Browser Modal -->
+    <div v-if="showFolderBrowser" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" @click.self="closeFolderBrowser">
+      <div class="bg-gray-800 rounded-lg border border-gray-700 max-w-lg w-full mx-4 max-h-[80vh] flex flex-col">
+        <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+          <h3 class="text-lg font-medium">Browse Folders</h3>
+          <button @click="closeFolderBrowser" class="text-gray-400 hover:text-white text-xl">&times;</button>
+        </div>
+        
+        <div class="p-4 border-b border-gray-700">
+          <div class="flex items-center gap-2">
+            <button 
+              v-if="browsingPath !== '/'"
+              @click="browseTo(browsingPath.split('/').slice(0, -1).join('/') || '/')"
+              class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+            >
+              ⬆️ Up
+            </button>
+            <code class="flex-1 text-sm bg-gray-900 px-3 py-2 rounded overflow-hidden text-ellipsis">{{ browsingPath }}</code>
+          </div>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-4">
+          <div v-if="browserLoading" class="text-center py-8 text-gray-400">
+            Loading...
+          </div>
+          <div v-else-if="browserFolders.length === 0" class="text-center py-8 text-gray-500">
+            No subdirectories found
+          </div>
+          <div v-else class="space-y-1">
+            <button 
+              v-for="folder in browserFolders" 
+              :key="folder.path"
+              @click="browseTo(folder.path)"
+              class="w-full text-left px-3 py-2 hover:bg-gray-700 rounded flex items-center gap-2"
+            >
+              <span>📁</span>
+              <span>{{ folder.name }}</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="p-4 border-t border-gray-700 flex gap-3">
+          <button 
+            @click="selectFolder"
+            class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium"
+          >
+            Select This Folder
+          </button>
+          <button 
+            @click="closeFolderBrowser"
+            class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
@@ -216,8 +301,15 @@ const mappingForm = ref({
   library_name: '',
   media_type: '',
   arr_selection: '',
-  root_folder: ''
+  root_folder: '',
+  classifarr_path: ''
 })
+
+// Folder browser state
+const showFolderBrowser = ref(false)
+const browsingPath = ref('/')
+const browserFolders = ref([])
+const browserLoading = ref(false)
 
 onMounted(async () => {
   await loadMediaServers()
@@ -330,7 +422,8 @@ const saveMapping = async () => {
       arr_type: arrType,
       arr_config_id: parseInt(arrId),
       arr_root_folder_id: parseInt(folderId),
-      arr_root_folder_path: folderPath
+      arr_root_folder_path: folderPath,
+      classifarr_path_prefix: mappingForm.value.classifarr_path || null
     })
     
     toast.success('Mapping saved successfully')
@@ -355,5 +448,54 @@ const deleteMapping = async (libraryId) => {
     console.error('Failed to delete mapping:', error)
     toast.error('Failed to remove mapping')
   }
+}
+
+// Folder browser methods
+const openFolderBrowser = async () => {
+  showFolderBrowser.value = true
+  browsingPath.value = mappingForm.value.classifarr_path || '/'
+  await loadBrowserFolders(browsingPath.value)
+}
+
+const loadBrowserFolders = async (path) => {
+  browserLoading.value = true
+  try {
+    const response = await api.get(`/system/browse-folders?path=${encodeURIComponent(path)}`)
+    browsingPath.value = response.data.currentPath
+    browserFolders.value = response.data.folders || []
+  } catch (error) {
+    console.error('Failed to browse folders:', error)
+    toast.error(error.response?.data?.error || 'Failed to browse folders')
+  } finally {
+    browserLoading.value = false
+  }
+}
+
+const browseTo = async (path) => {
+  await loadBrowserFolders(path)
+}
+
+const selectFolder = () => {
+  mappingForm.value.classifarr_path = browsingPath.value
+  showFolderBrowser.value = false
+}
+
+const closeFolderBrowser = () => {
+  showFolderBrowser.value = false
+}
+
+// Edit existing mapping
+const editMapping = (mapping) => {
+  mappingForm.value = {
+    library_id: mapping.library_id,
+    library_name: mapping.library_name,
+    media_type: mapping.media_type,
+    arr_selection: `${mapping.arr_type}:${mapping.arr_config_id}`,
+    root_folder: `${mapping.arr_root_folder_id}:${mapping.arr_root_folder_path}`,
+    classifarr_path: mapping.classifarr_path_prefix || ''
+  }
+  // Load root folders for the selected *arr instance
+  loadRootFolders()
+  showMappingModal.value = true
 }
 </script>

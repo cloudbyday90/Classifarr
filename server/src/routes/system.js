@@ -224,4 +224,68 @@ router.get('/logs', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/system/browse-folders:
+ *   get:
+ *     summary: Browse directories in the container filesystem
+ *     tags: [System]
+ *     parameters:
+ *       - in: query
+ *         name: path
+ *         schema:
+ *           type: string
+ *         description: Path to browse (default: /)
+ *     responses:
+ *       200:
+ *         description: List of directories at the given path
+ */
+router.get('/browse-folders', async (req, res) => {
+  try {
+    const fs = require('fs').promises;
+    const path = require('path');
+
+    const browsePath = req.query.path || '/';
+
+    // Security: Prevent path traversal attacks
+    const normalizedPath = path.normalize(browsePath);
+    if (normalizedPath.includes('..')) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+
+    // Check if path exists and is a directory
+    const stats = await fs.stat(normalizedPath);
+    if (!stats.isDirectory()) {
+      return res.status(400).json({ error: 'Path is not a directory' });
+    }
+
+    // Read directory contents
+    const entries = await fs.readdir(normalizedPath, { withFileTypes: true });
+
+    // Filter to directories only and sort
+    const folders = entries
+      .filter(entry => entry.isDirectory())
+      .map(entry => ({
+        name: entry.name,
+        path: path.join(normalizedPath, entry.name)
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    res.json({
+      currentPath: normalizedPath,
+      parentPath: path.dirname(normalizedPath),
+      folders
+    });
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return res.status(404).json({ error: 'Path not found' });
+    }
+    if (error.code === 'EACCES') {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+    console.error('Browse folders error:', error);
+    res.status(500).json({ error: 'Failed to browse folders' });
+  }
+});
+
 module.exports = router;
