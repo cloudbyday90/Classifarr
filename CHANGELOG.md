@@ -6,6 +6,11 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.33.1a-alpha] - 2025-12-29
+
+### Fixed
+- Removed deprecated `--build-from-source` npm flag from Dockerfile
+
 ## [0.33.1-alpha] - 2025-12-29
 
 ### Fixed

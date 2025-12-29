@@ -1,4 +1,12 @@
 
+## v0.33.1a-alpha
+**Hotfix: Dockerfile Deprecation Warning**
+
+### Fixed
+- Removed deprecated `--build-from-source` npm flag from Dockerfile
+
+---
+
 ## v0.33.1-alpha
 **Dependency Updates & Test Fixes**
 
