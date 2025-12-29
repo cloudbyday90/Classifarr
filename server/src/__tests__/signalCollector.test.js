@@ -14,8 +14,18 @@ jest.mock('../config/database', () => ({
 
 // Mock tmdbService 
 jest.mock('../services/tmdb', () => ({
-    getById: jest.fn(),
+    getMovieDetails: jest.fn(),
     getCollectionDetails: jest.fn(),
+}));
+
+// Mock logger to suppress console output
+jest.mock('../utils/logger', () => ({
+    createLogger: () => ({
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+    }),
 }));
 
 const db = require('../config/database');
@@ -32,12 +42,16 @@ describe('SignalCollector', () => {
     describe('SIGNAL_TYPES', () => {
         it('should define all required signal types', () => {
             expect(SIGNAL_TYPES.EXACT_MATCH).toBe('exact_match');
-            expect(SIGNAL_TYPES.PATTERN_MATCH).toBe('pattern_match');
             expect(SIGNAL_TYPES.LEARNED_PATTERN).toBe('learned_pattern');
-            expect(SIGNAL_TYPES.FRANCHISE_MATCH).toBe('franchise_match');
             expect(SIGNAL_TYPES.COLLECTION_MATCH).toBe('collection_match');
             expect(SIGNAL_TYPES.KEYWORD_MATCH).toBe('keyword_match');
             expect(SIGNAL_TYPES.GENRE_MATCH).toBe('genre_match');
+            expect(SIGNAL_TYPES.SOURCE_LIBRARY).toBe('source_library');
+            expect(SIGNAL_TYPES.MANUAL_CORRECTION).toBe('manual_correction');
+            expect(SIGNAL_TYPES.EVENT_DETECTION).toBe('event_detection');
+            expect(SIGNAL_TYPES.CUSTOM_RULE).toBe('custom_rule');
+            expect(SIGNAL_TYPES.EXISTING_MEDIA).toBe('existing_media');
+            expect(SIGNAL_TYPES.CONTENT_ANALYSIS).toBe('content_analysis');
         });
     });
 
@@ -65,13 +79,13 @@ describe('SignalCollector', () => {
             expect(signals[0].type).toBe(SIGNAL_TYPES.EXACT_MATCH);
             expect(signals[0].data.tmdb_id).toBe(123);
             expect(signals[0].rawScore).toBe(95);
-            expect(signals[0].suggestedLibrary).toEqual(library);
-            expect(signals[0].timestamp).toBeInstanceOf(Date);
+            expect(signals[0].library).toEqual(library);
+            expect(signals[0].timestamp).toBeDefined();
         });
 
         it('should add multiple signals', () => {
             collector.addSignal(SIGNAL_TYPES.EXACT_MATCH, {}, 100);
-            collector.addSignal(SIGNAL_TYPES.PATTERN_MATCH, {}, 80);
+            collector.addSignal(SIGNAL_TYPES.CUSTOM_RULE, {}, 80);
             collector.addSignal(SIGNAL_TYPES.GENRE_MATCH, {}, 60);
 
             expect(collector.getSignals().length).toBe(3);
@@ -81,7 +95,7 @@ describe('SignalCollector', () => {
     describe('getSignalsByType', () => {
         it('should filter signals by type', () => {
             collector.addSignal(SIGNAL_TYPES.EXACT_MATCH, { id: 1 }, 100);
-            collector.addSignal(SIGNAL_TYPES.PATTERN_MATCH, { id: 2 }, 80);
+            collector.addSignal(SIGNAL_TYPES.CUSTOM_RULE, { id: 2 }, 80);
             collector.addSignal(SIGNAL_TYPES.EXACT_MATCH, { id: 3 }, 90);
 
             const exactMatches = collector.getSignalsByType(SIGNAL_TYPES.EXACT_MATCH);
@@ -93,16 +107,16 @@ describe('SignalCollector', () => {
         it('should return empty array if no matching signals', () => {
             collector.addSignal(SIGNAL_TYPES.EXACT_MATCH, {}, 100);
 
-            const patternMatches = collector.getSignalsByType(SIGNAL_TYPES.PATTERN_MATCH);
-            expect(patternMatches).toEqual([]);
+            const customRules = collector.getSignalsByType(SIGNAL_TYPES.CUSTOM_RULE);
+            expect(customRules).toEqual([]);
         });
     });
 
     describe('hasSignal', () => {
         it('should return true if signal type exists', () => {
-            collector.addSignal(SIGNAL_TYPES.FRANCHISE_MATCH, {}, 85);
+            collector.addSignal(SIGNAL_TYPES.COLLECTION_MATCH, {}, 85);
 
-            expect(collector.hasSignal(SIGNAL_TYPES.FRANCHISE_MATCH)).toBe(true);
+            expect(collector.hasSignal(SIGNAL_TYPES.COLLECTION_MATCH)).toBe(true);
             expect(collector.hasSignal(SIGNAL_TYPES.EXACT_MATCH)).toBe(false);
         });
     });
@@ -110,7 +124,7 @@ describe('SignalCollector', () => {
     describe('getHighestScoringSignal', () => {
         it('should return the signal with highest rawScore', () => {
             collector.addSignal(SIGNAL_TYPES.EXACT_MATCH, { id: 1 }, 80);
-            collector.addSignal(SIGNAL_TYPES.PATTERN_MATCH, { id: 2 }, 95);
+            collector.addSignal(SIGNAL_TYPES.CUSTOM_RULE, { id: 2 }, 95);
             collector.addSignal(SIGNAL_TYPES.GENRE_MATCH, { id: 3 }, 60);
 
             const highest = collector.getHighestScoringSignal();
@@ -129,19 +143,19 @@ describe('SignalCollector', () => {
             const lib2 = { id: 2, name: 'TV Shows' };
 
             collector.addSignal(SIGNAL_TYPES.EXACT_MATCH, {}, 100, lib1);
-            collector.addSignal(SIGNAL_TYPES.PATTERN_MATCH, {}, 80, lib1);
+            collector.addSignal(SIGNAL_TYPES.CUSTOM_RULE, {}, 80, lib1);
             collector.addSignal(SIGNAL_TYPES.GENRE_MATCH, {}, 70, lib2);
 
             const grouped = collector.getSignalsByLibrary();
             expect(Object.keys(grouped)).toContain('1');
             expect(Object.keys(grouped)).toContain('2');
-            expect(grouped['1'].length).toBe(2);
-            expect(grouped['2'].length).toBe(1);
+            expect(grouped['1'].signals.length).toBe(2);
+            expect(grouped['2'].signals.length).toBe(1);
         });
 
         it('should exclude signals without a library', () => {
             collector.addSignal(SIGNAL_TYPES.EXACT_MATCH, {}, 100, null);
-            collector.addSignal(SIGNAL_TYPES.PATTERN_MATCH, {}, 80, { id: 1, name: 'Movies' });
+            collector.addSignal(SIGNAL_TYPES.CUSTOM_RULE, {}, 80, { id: 1, name: 'Movies' });
 
             const grouped = collector.getSignalsByLibrary();
             expect(Object.keys(grouped).length).toBe(1);
@@ -156,26 +170,34 @@ describe('SignalCollector', () => {
                     name: 'Harry Potter Collection'
                 }
             };
-            tmdbService.getById.mockResolvedValue(mockMovie);
+            tmdbService.getMovieDetails.mockResolvedValue(mockMovie);
 
             const result = await collector.checkFranchiseMembership(671, 'movie');
 
-            expect(tmdbService.getById).toHaveBeenCalledWith(671, 'movie');
+            expect(tmdbService.getMovieDetails).toHaveBeenCalledWith(671);
             expect(result).toEqual({
                 collectionId: 1241,
-                collectionName: 'Harry Potter Collection'
+                collectionName: 'Harry Potter Collection',
+                posterPath: undefined,
+                backdropPath: undefined
             });
         });
 
         it('should return null if no collection found', async () => {
-            tmdbService.getById.mockResolvedValue({ title: 'Standalone Movie' });
+            tmdbService.getMovieDetails.mockResolvedValue({ title: 'Standalone Movie' });
 
             const result = await collector.checkFranchiseMembership(123, 'movie');
             expect(result).toBeNull();
         });
 
+        it('should return null for TV shows (collections only apply to movies)', async () => {
+            const result = await collector.checkFranchiseMembership(123, 'tv');
+            expect(result).toBeNull();
+            expect(tmdbService.getMovieDetails).not.toHaveBeenCalled();
+        });
+
         it('should handle API errors gracefully', async () => {
-            tmdbService.getById.mockRejectedValue(new Error('API error'));
+            tmdbService.getMovieDetails.mockRejectedValue(new Error('API error'));
 
             const result = await collector.checkFranchiseMembership(123, 'movie');
             expect(result).toBeNull();
@@ -202,25 +224,31 @@ describe('SignalCollector', () => {
             const result = await collector.findRelatedClassifiedItems(1241);
             expect(result).toEqual([]);
         });
+
+        it('should return empty array when no collectionId provided', async () => {
+            const result = await collector.findRelatedClassifiedItems(null);
+            expect(result).toEqual([]);
+            expect(db.query).not.toHaveBeenCalled();
+        });
     });
 
     describe('toAIContext', () => {
         it('should serialize signals for AI consumption', () => {
             const lib = { id: 1, name: 'Anime Movies' };
             collector.addSignal(SIGNAL_TYPES.EXACT_MATCH, { title: 'Spirited Away' }, 100, lib);
-            collector.addSignal(SIGNAL_TYPES.PATTERN_MATCH, { pattern: 'anime' }, 85, lib);
+            collector.addSignal(SIGNAL_TYPES.CUSTOM_RULE, { reason: 'anime' }, 85, lib);
 
             const context = collector.toAIContext();
 
             expect(typeof context).toBe('string');
             expect(context).toContain('exact_match');
-            expect(context).toContain('pattern_match');
-            expect(context).toContain('Spirited Away');
+            expect(context).toContain('custom_rule');
+            expect(context).toContain('100%');
         });
 
         it('should return appropriate message for no signals', () => {
             const context = collector.toAIContext();
-            expect(context.toLowerCase()).toContain('no signal');
+            expect(context).toBe('No classification signals detected.');
         });
     });
 
@@ -238,13 +266,11 @@ describe('SignalCollector', () => {
             ];
 
             const detectors = {
-                checkExactMatch: jest.fn().mockResolvedValue({ match: true, library: libraries[0], score: 100 }),
-                checkPatterns: jest.fn().mockResolvedValue([{ match: true, library: libraries[0], score: 80 }]),
-                checkTitleRules: jest.fn().mockResolvedValue(null),
+                checkExactMatch: jest.fn().mockResolvedValue({ library_id: 1, library: libraries[0] }),
             };
 
-            // Mock franchise check to return null
-            tmdbService.getById.mockResolvedValue({});
+            // Mock franchise check to return null (no collection)
+            tmdbService.getMovieDetails.mockResolvedValue({});
             db.query.mockResolvedValue({ rows: [] });
 
             const signals = await collector.collectAll(metadata, libraries, detectors);
