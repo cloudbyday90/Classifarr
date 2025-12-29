@@ -39,6 +39,13 @@
           <span class="stat-label">Failed</span>
         </div>
       </div>
+      <div class="stat-card awaiting" v-if="pendingClassifications.length > 0">
+        <div class="stat-icon">❓</div>
+        <div class="stat-content">
+          <span class="stat-value">{{ pendingClassifications.length }}</span>
+          <span class="stat-label">Awaiting Decision</span>
+        </div>
+      </div>
     </div>
 
     <!-- Worker Status -->
@@ -64,6 +71,13 @@
         @click="activeTab = 'failed'; loadFailedTasks()"
       >
         Failed ({{ stats.failed }})
+      </button>
+      <button 
+        :class="{ active: activeTab === 'awaiting' }" 
+        @click="activeTab = 'awaiting'"
+        class="awaiting-tab"
+      >
+        ❓ Awaiting Decision ({{ pendingClassifications.length }})
       </button>
     </div>
 
@@ -122,16 +136,114 @@
               >
                 Cancel
               </button>
+              <!-- Manual Classification: Skip AI -->
+              <button 
+                v-if="task.status === 'pending'" 
+                class="btn-classify"
+                @click="showManualClassify(task)"
+                :disabled="classifyingTaskId === task.id"
+                title="Bypass AI and classify immediately. Item will NOT be queued for AI analysis - you select the library directly."
+              >
+                {{ classifyingTaskId === task.id ? 'Classifying...' : '🏷️ Classify' }}
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
+    <!-- Pending Classifications (Awaiting Decision) -->
+    <div v-if="activeTab === 'awaiting'" class="pending-classifications">
+      <div v-if="pendingClassifications.length === 0" class="empty-state">
+        <p>No items awaiting decision</p>
+      </div>
+      <div v-else class="pending-grid">
+        <div v-for="item in pendingClassifications" :key="item.id" class="pending-card">
+          <div class="pending-header">
+            <span class="media-type-badge">{{ item.media_type }}</span>
+            <span class="confidence-badge">{{ item.confidence }}% confident</span>
+          </div>
+          <h3 class="pending-title">{{ item.title }} ({{ item.year || 'N/A' }})</h3>
+          <p class="pending-reason" v-if="item.pending_reason">{{ item.pending_reason }}</p>
+          
+          <!-- Policy Question -->
+          <div v-if="item.policy_question" class="policy-question">
+            <p class="question-text">{{ item.policy_question.question }}</p>
+            <p class="uncertainty-reason">{{ item.policy_question.why_uncertain }}</p>
+            <div class="options-grid">
+              <button 
+                v-for="option in item.policy_question.options" 
+                :key="option.value"
+                class="option-btn"
+                :class="{ 'has-library': option.library_id }"
+                @click="resolveClassification(item.id, option)"
+                :disabled="resolvingId === item.id"
+              >
+                {{ option.label }}
+                <span v-if="option.library_name" class="library-hint">→ {{ option.library_name }}</span>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Manual Selection if no policy question -->
+          <div v-else class="manual-selection">
+            <p>Select a library:</p>
+            <select v-model="selectedLibraries[item.id]" class="library-select">
+              <option :value="undefined">Choose library...</option>
+              <option v-for="lib in libraries" :key="lib.id" :value="lib.id">
+                {{ lib.name }}
+              </option>
+            </select>
+            <button 
+              class="btn-resolve" 
+              @click="resolveManual(item.id)"
+              :disabled="!selectedLibraries[item.id] || resolvingId === item.id"
+            >
+              {{ resolvingId === item.id ? 'Resolving...' : 'Resolve' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Auto-refresh indicator -->
     <div class="refresh-info">
       Auto-refreshes every 5 seconds
       <button @click="refreshData" class="btn-refresh">Refresh Now</button>
+    </div>
+
+    <!-- Manual Classification Modal -->
+    <div v-if="manualClassifyTask" class="modal-overlay" @click.self="closeManualClassify">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>🏷️ Classify Manually</h3>
+          <button class="modal-close" @click="closeManualClassify">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-title">{{ getTaskTitle(manualClassifyTask) }}</p>
+          <p class="modal-subtitle">Skip AI and assign directly to a library</p>
+          
+          <div class="modal-form">
+            <label>Select Library:</label>
+            <select v-model="selectedClassifyLibrary" class="library-select">
+              <option :value="null">Choose library...</option>
+              <option v-for="lib in filteredLibraries" :key="lib.id" :value="lib.id">
+                {{ lib.name }} ({{ lib.media_type }})
+              </option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="closeManualClassify">Cancel</button>
+          <button 
+            class="btn-resolve" 
+            @click="submitManualClassify" 
+            :disabled="!selectedClassifyLibrary || classifyingTaskId"
+          >
+            {{ classifyingTaskId ? 'Classifying...' : 'Classify & Route' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -152,12 +264,48 @@ const stats = ref({
 
 const pendingTasks = ref([])
 const failedTasks = ref([])
+const pendingClassifications = ref([])
+const libraries = ref([])
+const selectedLibraries = ref({})
+const resolvingId = ref(null)
 const activeTab = ref('pending')
 const loading = ref(true)
+// Manual classification from worker queue
+const classifyingTaskId = ref(null)
+const manualClassifyTask = ref(null)
+const selectedClassifyLibrary = ref(null)
 let refreshInterval = null
 
 const currentTasks = computed(() => {
   return activeTab.value === 'pending' ? pendingTasks.value : failedTasks.value
+})
+
+// Filter libraries by task's media type (movie/tv)
+const filteredLibraries = computed(() => {
+  if (!manualClassifyTask.value) return libraries.value
+  
+  // Extract media_type from task payload - check multiple possible locations
+  // Overseerr/Jellyseerr use different structures
+  const task = manualClassifyTask.value
+  const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload
+  
+  // Check all possible paths where media_type might be stored
+  const mediaType = 
+    payload?.media?.media_type ||      // Standard media object
+    payload?.media_type ||              // Direct property
+    payload?.mediaType ||               // Overseerr/Jellyseerr camelCase
+    payload?.subject?.mediaType ||      // Overseerr notification format
+    payload?.request?.media?.mediaType || // Overseerr request format
+    payload?.type ||                    // Simple type property
+    null
+  
+  // Normalize: Overseerr uses 'tv' or 'movie', but might also use 'series'
+  const normalizedType = mediaType === 'series' ? 'tv' : mediaType
+  
+  if (!normalizedType) return libraries.value // Show all if can't determine
+  
+  // Filter: 'movie' matches 'movie', 'tv' matches 'tv'
+  return libraries.value.filter(lib => lib.media_type === normalizedType)
 })
 
 async function loadStats() {
@@ -190,8 +338,74 @@ async function loadFailedTasks() {
 async function refreshData() {
   await loadStats()
   await loadPendingTasks()
+  await loadPendingClassifications()
   if (activeTab.value === 'failed') {
     await loadFailedTasks()
+  }
+}
+
+async function loadPendingClassifications() {
+  try {
+    const data = await api.get('/classification/pending')
+    pendingClassifications.value = data.items || []
+  } catch (error) {
+    console.error('Failed to load pending classifications:', error)
+  }
+}
+
+async function loadLibraries() {
+  try {
+    const response = await api.get('/libraries')
+    // Handle different response structures
+    const libData = response.data || response
+    libraries.value = Array.isArray(libData) ? libData.filter(lib => lib.is_active) : []
+    console.log('Loaded libraries:', libraries.value.length)
+  } catch (error) {
+    console.error('Failed to load libraries:', error)
+  }
+}
+
+async function resolveClassification(classificationId, option) {
+  if (!option.library_id) {
+    alert('This option has no linked library. Please select manually.')
+    return
+  }
+  resolvingId.value = classificationId
+  try {
+    await api.post(`/classification/pending/${classificationId}/resolve`, {
+      library_id: option.library_id,
+      selected_option: option.label,
+      resolved_by: 'admin',
+      generate_rule: true
+    })
+    await loadPendingClassifications()
+  } catch (error) {
+    console.error('Failed to resolve classification:', error)
+    alert('Failed to resolve: ' + error.message)
+  } finally {
+    resolvingId.value = null
+  }
+}
+
+async function resolveManual(classificationId) {
+  const libraryId = selectedLibraries.value[classificationId]
+  if (!libraryId) return
+  
+  resolvingId.value = classificationId
+  try {
+    await api.post(`/classification/pending/${classificationId}/resolve`, {
+      library_id: libraryId,
+      selected_option: 'Manual selection',
+      resolved_by: 'admin',
+      generate_rule: true
+    })
+    await loadPendingClassifications()
+    delete selectedLibraries.value[classificationId]
+  } catch (error) {
+    console.error('Failed to resolve classification:', error)
+    alert('Failed to resolve: ' + error.message)
+  } finally {
+    resolvingId.value = null
   }
 }
 
@@ -210,6 +424,45 @@ async function cancelTask(taskId) {
     await refreshData()
   } catch (error) {
     console.error('Failed to cancel task:', error)
+  }
+}
+
+// Manual classification from worker queue - bypasses AI
+async function showManualClassify(task) {
+  manualClassifyTask.value = task
+  selectedClassifyLibrary.value = null
+  // Load libraries if not already loaded
+  if (libraries.value.length === 0) {
+    await loadLibraries()
+  }
+}
+
+function closeManualClassify() {
+  manualClassifyTask.value = null
+  selectedClassifyLibrary.value = null
+  classifyingTaskId.value = null
+}
+
+async function submitManualClassify() {
+  if (!manualClassifyTask.value || !selectedClassifyLibrary.value) return
+  
+  const task = manualClassifyTask.value
+  const libraryId = selectedClassifyLibrary.value
+  
+  classifyingTaskId.value = task.id
+  try {
+    // Call backend to manually classify this task
+    await api.post(`/queue/tasks/${task.id}/classify`, {
+      library_id: libraryId,
+      resolved_by: 'admin'
+    })
+    closeManualClassify()
+    await refreshData()
+  } catch (error) {
+    console.error('Failed to manually classify:', error)
+    alert('Failed to classify: ' + error.message)
+  } finally {
+    classifyingTaskId.value = null
   }
 }
 
@@ -241,6 +494,7 @@ function formatTime(timestamp) {
 }
 
 onMounted(async () => {
+  await loadLibraries()
   await refreshData()
   loading.value = false
   refreshInterval = setInterval(refreshData, 5000)
@@ -508,5 +762,277 @@ onUnmounted(() => {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* Pending Classifications Styles */
+.stat-card.awaiting { border-left: 4px solid #8b5cf6; }
+
+.awaiting-tab {
+  background: rgba(139, 92, 246, 0.1) !important;
+  color: #8b5cf6 !important;
+}
+
+.awaiting-tab.active {
+  background: #8b5cf6 !important;
+  color: white !important;
+}
+
+.pending-classifications {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  padding: 1.5rem;
+}
+
+.pending-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 1rem;
+}
+
+.pending-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid #8b5cf6;
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.pending-header {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.media-type-badge {
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.confidence-badge {
+  padding: 0.25rem 0.5rem;
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.pending-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.pending-reason {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0 0 1rem 0;
+}
+
+.policy-question {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.question-text {
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+}
+
+.uncertainty-reason {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0 0 1rem 0;
+  font-style: italic;
+}
+
+.options-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.option-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+  min-width: 120px;
+}
+
+.option-btn:hover {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.option-btn.has-library {
+  border-color: #10b981;
+}
+
+.option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.library-hint {
+  font-size: 0.7rem;
+  color: #10b981;
+  margin-top: 0.25rem;
+}
+
+.manual-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.library-select {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  min-width: 180px;
+}
+
+/* Fix dropdown options visibility */
+.library-select option {
+  background: #1f2937;
+  color: #f3f4f6;
+  padding: 0.5rem;
+}
+
+.btn-resolve {
+  padding: 0.5rem 1rem;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-resolve:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Classify button in pending queue */
+.btn-classify {
+  background: #8b5cf6;
+  color: white;
+  padding: 0.375rem 0.75rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-classify:hover {
+  background: #7c3aed;
+}
+
+.btn-classify:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.98);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #1f2937;
+  border: 2px solid #374151;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 450px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 1.25rem;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+
+.modal-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0 0 1rem 0;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal-form label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
 }
 </style>

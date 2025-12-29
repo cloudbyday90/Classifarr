@@ -117,43 +117,79 @@ class OMDbService {
      */
     async getByTitle(title, year, type = 'movie', apiKey) {
         let configId = null;
-        try {
-            // Enforce rate limit managed by DB
-            const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
-            configId = id;
+        const maxRetries = 2;
 
-            const params = {
-                apikey: validApiKey,
-                t: title,
-                type: type === 'tv' ? 'series' : type,
-                plot: 'short'
-            };
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                // Enforce rate limit managed by DB
+                const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
+                configId = id;
 
-            if (year) {
-                params.y = year;
+                const params = {
+                    apikey: validApiKey,
+                    t: title,
+                    type: type === 'tv' ? 'series' : type,
+                    plot: 'short'
+                };
+
+                if (year) {
+                    params.y = year;
+                }
+
+                logger.debug('OMDb lookup by title', { title, year, type, attempt });
+
+                const response = await axios.get(this.baseUrl, {
+                    params,
+                    timeout: 15000, // 15 second timeout
+                });
+
+                if (response.data.Response === 'True') {
+                    // Increment counter only on successful response
+                    await this.incrementUsageCounter(configId);
+                    return this.formatResponse(response.data);
+                } else {
+                    logger.debug('OMDb not found', { title, error: response.data.Error });
+                    return null;
+                }
+            } catch (error) {
+                const status = error.response?.status;
+                const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+                const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503;
+
+                // Retry on timeout or Cloudflare errors
+                if ((isTimeout || isCloudflareError) && attempt < maxRetries) {
+                    logger.warn('OMDb API timeout/error, retrying', {
+                        title,
+                        attempt,
+                        status,
+                        code: error.code
+                    });
+                    // Wait before retry (exponential backoff)
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    continue;
+                }
+
+                if (status === 401) {
+                    logger.error('OMDb API Unauthorized (401)', { error: error.message });
+                    throw new OMDbLimitReachedError('OMDb API Unauthorized: Check API Key or Limits');
+                }
+
+                // Log but don't throw for network errors - return null so enrichment continues
+                if (isTimeout || isCloudflareError) {
+                    logger.warn('OMDb API unavailable, skipping enrichment', {
+                        title,
+                        status,
+                        code: error.code,
+                        message: error.message
+                    });
+                    return null; // Graceful degradation
+                }
+
+                logger.error('OMDb API error', { title, error: error.message });
+                throw error;
             }
-
-            logger.debug('OMDb lookup by title', { title, year, type });
-
-            const response = await axios.get(this.baseUrl, { params });
-
-            if (response.data.Response === 'True') {
-                // Increment counter only on successful response
-                await this.incrementUsageCounter(configId);
-                return this.formatResponse(response.data);
-            } else {
-                logger.debug('OMDb not found', { title, error: response.data.Error });
-                return null;
-            }
-        } catch (error) {
-            if (error.response?.status === 401) {
-                logger.error('OMDb API Unauthorized (401)', { error: error.message });
-                // Treat 401 as limit reached or invalid key
-                throw new OMDbLimitReachedError('OMDb API Unauthorized: Check API Key or Limits');
-            }
-            logger.error('OMDb API error', { title, error: error.message });
-            throw error;
         }
+        return null; // Fallback
     }
 
     /**

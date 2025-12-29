@@ -785,12 +785,13 @@ class DiscordBotService {
 
   /**
    * Process AI clarification response - when user clicks an AI-generated option button
+   * v0.33: Enhanced to use policy_question with library_id mapping
    */
   async processClarificationResponse(classificationId, optionIndex, interaction) {
     try {
       // Get classification details
       const classResult = await db.query(
-        'SELECT * FROM classification_history WHERE id = $1',
+        'SELECT *, policy_question FROM classification_history WHERE id = $1',
         [classificationId]
       );
 
@@ -800,31 +801,70 @@ class DiscordBotService {
       }
 
       const classification = classResult.rows[0];
-      const metadata = classification.metadata;
 
-      // Get the selected option label from button
-      const selectedButton = interaction.message.components[0]?.components[optionIndex];
-      const selectedLabel = selectedButton?.label || `Option ${optionIndex + 1}`;
+      // Get the selected option from policy_question if available (v0.33)
+      let selectedLabel = `Option ${optionIndex + 1}`;
+      let libraryId = classification.library_id;
 
-      // For now, route to the current library (user confirmed by selecting an option)
-      // In the future, we could map options to specific libraries
-      const libraryId = classification.library_id;
+      // v0.33: Check policy_question for library_id mapping
+      if (classification.policy_question) {
+        try {
+          const policyQuestion = typeof classification.policy_question === 'string'
+            ? JSON.parse(classification.policy_question)
+            : classification.policy_question;
 
-      // Update classification status
-      await db.query(
-        `UPDATE classification_history 
-         SET status = 'clarified', 
-             clarification_status = 'resolved',
-             clarification_response = $1
-         WHERE id = $2`,
-        [JSON.stringify({ option_index: optionIndex, label: selectedLabel, answered_by: interaction.user.username }), classificationId]
-      );
+          if (policyQuestion.options && policyQuestion.options[optionIndex]) {
+            const selectedOption = policyQuestion.options[optionIndex];
+            selectedLabel = selectedOption.label;
 
-      // Store exact match pattern for learning
-      await this.extractClarificationPatterns(classificationId, libraryId, selectedLabel);
+            // Use library_id from the option if available
+            if (selectedOption.library_id) {
+              libraryId = selectedOption.library_id;
+            }
+          }
+        } catch (parseError) {
+          console.error('Failed to parse policy_question:', parseError);
+        }
+      } else {
+        // Fallback: Get label from button if no policy_question
+        const selectedButton = interaction.message.components[0]?.components[optionIndex];
+        selectedLabel = selectedButton?.label || selectedLabel;
+      }
 
-      // Route to arr if not already done
-      await this.routeAfterClarification(classificationId);
+      // v0.33: Use resolvePolicyQuestion for proper pattern generation
+      try {
+        const resolveResult = await clarificationService.resolvePolicyQuestion(
+          classificationId,
+          libraryId,
+          selectedLabel,
+          interaction.user.username,
+          true // generateRule = true
+        );
+
+        // Route to arr if resolution indicates we should
+        if (resolveResult.shouldRoute) {
+          await this.routeAfterClarification(classificationId);
+        }
+      } catch (resolveError) {
+        console.error('resolvePolicyQuestion failed, falling back to legacy handling:', resolveError);
+
+        // Fallback to legacy handling
+        await db.query(
+          `UPDATE classification_history 
+           SET status = 'completed', 
+               clarification_status = 'resolved',
+               clarification_response = $1
+           WHERE id = $2`,
+          [JSON.stringify({ option_index: optionIndex, label: selectedLabel, answered_by: interaction.user.username }), classificationId]
+        );
+
+        await this.extractClarificationPatterns(classificationId, libraryId, selectedLabel);
+        await this.routeAfterClarification(classificationId);
+      }
+
+      // Get library name for display
+      const libResult = await db.query('SELECT name FROM libraries WHERE id = $1', [libraryId]);
+      const libraryName = libResult.rows[0]?.name || 'Unknown';
 
       // Update Discord message
       await interaction.update({
@@ -832,8 +872,11 @@ class DiscordBotService {
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
             .setColor(0x22c55e) // Green
-            .addFields({ name: 'Your Answer', value: selectedLabel, inline: true })
-            .setFooter({ text: `✅ Resolved by ${interaction.user.username} • Learning saved` })
+            .addFields(
+              { name: 'Your Answer', value: selectedLabel, inline: true },
+              { name: 'Routed To', value: libraryName, inline: true }
+            )
+            .setFooter({ text: `✅ Resolved by ${interaction.user.username} • Pattern saved for future` })
         ],
       });
     } catch (error) {

@@ -18,6 +18,7 @@
 
 const axios = require('axios');
 const db = require('../config/database');
+const { rateLimiters } = require('../utils/rateLimiter');
 
 class TMDBService {
   constructor() {
@@ -70,12 +71,14 @@ class TMDBService {
   async getMovieDetails(tmdbId) {
     try {
       const apiKey = await this.getApiKey();
-      const response = await axios.get(`${this.baseUrl}/movie/${tmdbId}`, {
-        params: {
-          api_key: apiKey,
-          append_to_response: 'keywords,releases,credits',
-        },
-      });
+      const response = await rateLimiters.tmdb.execute(() =>
+        axios.get(`${this.baseUrl}/movie/${tmdbId}`, {
+          params: {
+            api_key: apiKey,
+            append_to_response: 'keywords,releases,credits',
+          },
+        })
+      );
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch movie details: ${error.message}`);
@@ -85,12 +88,14 @@ class TMDBService {
   async getTVDetails(tmdbId) {
     try {
       const apiKey = await this.getApiKey();
-      const response = await axios.get(`${this.baseUrl}/tv/${tmdbId}`, {
-        params: {
-          api_key: apiKey,
-          append_to_response: 'keywords,content_ratings,credits',
-        },
-      });
+      const response = await rateLimiters.tmdb.execute(() =>
+        axios.get(`${this.baseUrl}/tv/${tmdbId}`, {
+          params: {
+            api_key: apiKey,
+            append_to_response: 'keywords,content_ratings,credits',
+          },
+        })
+      );
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch TV details: ${error.message}`);
@@ -101,11 +106,13 @@ class TMDBService {
     try {
       const apiKey = await this.getApiKey();
       const endpoint = mediaType === 'movie' ? 'movie' : 'tv';
-      const response = await axios.get(`${this.baseUrl}/${endpoint}/${tmdbId}/keywords`, {
-        params: {
-          api_key: apiKey,
-        },
-      });
+      const response = await rateLimiters.tmdb.execute(() =>
+        axios.get(`${this.baseUrl}/${endpoint}/${tmdbId}/keywords`, {
+          params: {
+            api_key: apiKey,
+          },
+        })
+      );
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch keywords: ${error.message}`);
@@ -116,19 +123,23 @@ class TMDBService {
     try {
       const apiKey = await this.getApiKey();
       if (mediaType === 'movie') {
-        const response = await axios.get(`${this.baseUrl}/movie/${tmdbId}/releases`, {
-          params: {
-            api_key: apiKey,
-          },
-        });
+        const response = await rateLimiters.tmdb.execute(() =>
+          axios.get(`${this.baseUrl}/movie/${tmdbId}/releases`, {
+            params: {
+              api_key: apiKey,
+            },
+          })
+        );
         const usRelease = response.data.countries.find(c => c.iso_3166_1 === 'US');
         return usRelease?.certification || 'NR';
       } else {
-        const response = await axios.get(`${this.baseUrl}/tv/${tmdbId}/content_ratings`, {
-          params: {
-            api_key: apiKey,
-          },
-        });
+        const response = await rateLimiters.tmdb.execute(() =>
+          axios.get(`${this.baseUrl}/tv/${tmdbId}/content_ratings`, {
+            params: {
+              api_key: apiKey,
+            },
+          })
+        );
         const usRating = response.data.results.find(r => r.iso_3166_1 === 'US');
         return usRating?.rating || 'NR';
       }
@@ -149,15 +160,17 @@ class TMDBService {
         : mediaType === 'movie' ? 'search/movie'
           : 'search/tv';
 
-      const response = await axios.get(`${this.baseUrl}/${endpoint}`, {
-        params: {
-          api_key: apiKey,
-          query: query,
-          page: 1,
-          include_adult: false
-        },
-        timeout: 10000
-      });
+      const response = await rateLimiters.tmdb.execute(() =>
+        axios.get(`${this.baseUrl}/${endpoint}`, {
+          params: {
+            api_key: apiKey,
+            query: query,
+            page: 1,
+            include_adult: false
+          },
+          timeout: 10000
+        })
+      );
 
       // Filter and format results
       return response.data.results

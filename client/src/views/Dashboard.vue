@@ -91,6 +91,19 @@
           </div>
         </Card>
 
+        <!-- Awaiting Decision (Policy Questions) -->
+        <Card title="❓ Awaiting Decision" class="awaiting-card">
+          <div class="space-y-3">
+            <div class="text-center">
+              <span class="text-3xl font-bold text-purple-400">{{ awaitingDecisionCount }}</span>
+              <p class="text-sm text-gray-400 mt-1">{{ awaitingDecisionCount > 0 ? 'items need your input' : 'no items pending' }}</p>
+            </div>
+            <Button @click="$router.push('/queue')" class="w-full" variant="secondary">
+              {{ awaitingDecisionCount > 0 ? 'Review Pending Items →' : 'View Queue →' }}
+            </Button>
+          </div>
+        </Card>
+
         <!-- Pending Pattern Suggestions -->
         <PendingSuggestionsWidget />
 
@@ -170,6 +183,7 @@ const recentHistory = ref([])
 const queueStats = ref({ pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true })
 const enrichmentStats = ref({ totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 })
 const methodStats = ref({})
+const awaitingDecisionCount = ref(0)
 let pollInterval = null
 
 onMounted(async () => {
@@ -195,6 +209,14 @@ const loadData = async () => {
     stats.value = statsRes.data
     recentHistory.value = historyRes.data.data || []
     queueStats.value = queueRes // getQueueStats already extracts .data
+    
+    // Load awaiting decision count
+    try {
+      const pendingRes = await api.get('/classification/pending/count')
+      awaitingDecisionCount.value = pendingRes.count || 0
+    } catch (e) {
+      console.error('Failed to load awaiting decision count:', e)
+    }
     
     // Calculate method stats from recent history
     const methods = {}

@@ -340,4 +340,113 @@ router.post('/clear-and-resync', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/queue/tasks/{id}/classify:
+ *   post:
+ *     summary: Manually classify a pending task, bypassing AI
+ *     description: Admin can pick a task from the pending queue and assign it to a library directly
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ */
+router.post('/tasks/:id/classify', async (req, res) => {
+    try {
+        const taskId = parseInt(req.params.id);
+        const { library_id, resolved_by = 'admin' } = req.body;
+
+        if (!library_id) {
+            return res.status(400).json({ error: 'library_id is required' });
+        }
+
+        // Get the task details
+        const taskResult = await db.query(
+            'SELECT * FROM task_queue WHERE id = $1',
+            [taskId]
+        );
+
+        if (taskResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Task not found' });
+        }
+
+        const task = taskResult.rows[0];
+        const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
+
+        // Get library details
+        const libResult = await db.query('SELECT * FROM libraries WHERE id = $1', [library_id]);
+        if (libResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Library not found' });
+        }
+        const library = libResult.rows[0];
+
+        // Extract metadata from task payload
+        const metadata = payload.media || payload.metadata || payload;
+        const title = metadata.title || payload.title || 'Unknown';
+        const year = metadata.year || payload.year;
+        const tmdbId = metadata.tmdb_id || payload.tmdb_id;
+        const mediaType = metadata.media_type || library.media_type || 'movie';
+
+        // Create classification history entry with manual_classification method
+        const insertResult = await db.query(
+            `INSERT INTO classification_history 
+             (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             RETURNING id`,
+            [
+                tmdbId,
+                mediaType,
+                title,
+                year,
+                library_id,
+                library.name,
+                100, // Manual = 100% confidence
+                'manual_classification',
+                `Manually classified by ${resolved_by}`,
+                JSON.stringify(metadata),
+                'completed'
+            ]
+        );
+
+        const classificationId = insertResult.rows[0].id;
+
+        // Mark the task as completed
+        await db.query(
+            `UPDATE task_queue SET status = 'completed', completed_at = NOW() WHERE id = $1`,
+            [taskId]
+        );
+
+        // Route to Radarr/Sonarr
+        const classificationService = require('../services/classification');
+        await classificationService.routeToArr(metadata, library);
+
+        // Store learning pattern for this tmdb_id
+        if (tmdbId) {
+            await db.query(
+                `INSERT INTO learning_patterns 
+                 (tmdb_id, media_type, library_id, pattern_type, confidence, metadata, created_by)
+                 VALUES ($1, $2, $3, 'exact_match', 100, $4, $5)
+                 ON CONFLICT (tmdb_id, pattern_type) 
+                 DO UPDATE SET library_id = $3, confidence = 100, updated_at = NOW()`,
+                [tmdbId, mediaType, library_id, JSON.stringify({ title, resolved_by }), resolved_by]
+            );
+        }
+
+        logger.info('Manually classified task', { taskId, classificationId, libraryId: library_id, title });
+
+        res.json({
+            success: true,
+            classificationId,
+            libraryId: library_id,
+            libraryName: library.name,
+            message: `Classified "${title}" to ${library.name}`
+        });
+    } catch (error) {
+        logger.error('Failed to manually classify task', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

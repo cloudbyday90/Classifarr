@@ -1304,38 +1304,72 @@ const getTokenHelp = () => {
 
 const testConnection = async () => {
   loading.value = true
+  
+  // Determine what to test: selected connection during OAuth flow, or saved config
+  let testConfig = null
+  
+  if (selectedConnection.value && selectedServer.value) {
+    // User is in Plex OAuth flow and has selected a connection - test that
+    testConfig = {
+      type: 'plex',
+      url: selectedConnection.value.uri,
+      api_key: selectedServer.value.accessToken
+    }
+  } else if (config.value.url && config.value.api_key) {
+    // Fall back to saved database config
+    testConfig = config.value
+  } else {
+    // Nothing to test
+    loading.value = false
+    connectionStatus.value = {
+      status: 'error',
+      serviceName: capitalizeFirst(config.value.type || 'plex'),
+      details: null,
+      error: {
+        message: 'No connection selected',
+        troubleshooting: [
+          'Select a connection from the list above first',
+          'Or configure a media server and save it'
+        ]
+      },
+      lastChecked: new Date()
+    }
+    toast.error('No connection to test - select one from the list first')
+    return
+  }
+  
   connectionStatus.value = {
     status: 'testing',
-    serviceName: capitalizeFirst(config.value.type),
+    serviceName: capitalizeFirst(testConfig.type),
     details: null,
     error: null,
     lastChecked: null
   }
 
   try {
-    const response = await api.testMediaServerConnection(config.value)
+    const response = await api.testMediaServerConnection(testConfig)
     
     if (response.data.success) {
       connectionStatus.value = {
         status: 'success',
-        serviceName: capitalizeFirst(config.value.type),
+        serviceName: capitalizeFirst(testConfig.type),
         details: response.data.details || {
-          serverName: capitalizeFirst(config.value.type),
+          serverName: capitalizeFirst(testConfig.type),
           status: 'Connected'
         },
         error: null,
         lastChecked: new Date()
       }
-      toast.success(`Successfully connected to ${capitalizeFirst(config.value.type)}`)
+      toast.success(`Successfully connected to ${capitalizeFirst(testConfig.type)}`)
     } else {
       connectionStatus.value = {
         status: 'error',
-        serviceName: capitalizeFirst(config.value.type),
+        serviceName: capitalizeFirst(testConfig.type),
         details: null,
         error: response.data.error || {
           message: 'Connection failed',
           troubleshooting: [
-            `Check that ${capitalizeFirst(config.value.type)} is running`,
+            `Check that ${capitalizeFirst(testConfig.type)} is running`,
             'Verify the URL is correct',
             'Ensure the API key/token is valid'
           ]
@@ -1347,12 +1381,12 @@ const testConnection = async () => {
   } catch (error) {
     connectionStatus.value = {
       status: 'error',
-      serviceName: capitalizeFirst(config.value.type),
+      serviceName: capitalizeFirst(testConfig.type),
       details: null,
       error: {
         message: error.response?.data?.error || error.message,
         troubleshooting: [
-          `Check that ${capitalizeFirst(config.value.type)} is running`,
+          `Check that ${capitalizeFirst(testConfig.type)} is running`,
           'Verify the URL is correct',
           'Ensure the API key/token is valid'
         ]

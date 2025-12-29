@@ -38,7 +38,7 @@ router.use(authenticateToken);
  *         name: refresh
  *         schema:
  *           type: boolean
- *         description: Force refresh health checks (default: use cache)
+ *         description: "Force refresh health checks (default: use cache)"
  *     responses:
  *       200:
  *         description: Health status of all services
@@ -235,7 +235,7 @@ router.get('/logs', async (req, res) => {
  *         name: path
  *         schema:
  *           type: string
- *         description: Path to browse (default: /)
+ *         description: "Path to browse (default: /)"
  *     responses:
  *       200:
  *         description: List of directories at the given path

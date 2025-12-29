@@ -37,6 +37,7 @@ const backupRouter = require('./backup');
 const mappingsRouter = require('./mappings');
 const reclassificationRouter = require('./reclassification');
 const pathMappingsRouter = require('./pathMappings');
+const confidenceRouter = require('./confidence');
 
 const router = express.Router();
 
@@ -61,6 +62,7 @@ router.use('/backup', backupRouter);
 router.use('/mappings', mappingsRouter);
 router.use('/reclassification', reclassificationRouter);
 router.use('/settings/path-mappings', pathMappingsRouter);
+router.use('/confidence', confidenceRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {

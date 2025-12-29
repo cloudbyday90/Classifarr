@@ -1,4 +1,48 @@
 
+## v0.33.0-alpha
+**Major: AI-Centric Classification Refactor**
+
+This release fundamentally restructures how Classifarr classifies media. Instead of using AI as the primary decision-maker, AI now serves as a **verification layer** that confirms or adjusts signals collected from multiple sources.
+
+### How It Works
+
+**Old Flow:** Media → AI decides → Library assigned  
+**New Flow:** Media → Collect signals → Calculate confidence → AI verifies (if needed) → Library assigned
+
+#### Signal Collection
+The new `SignalCollector` service aggregates multiple classification signals:
+- **Exact Match:** Previously classified TMDb ID, learned patterns
+- **Pattern Match:** Title rules, genre patterns, keywords
+- **Franchise Match:** Other items from same collection (e.g., all Harry Potter films → same library)
+- **Keyword/Genre:** Signal-based matching from TMDb metadata
+
+#### Confidence Calculation
+The `ConfidenceCalculator` applies configurable weights to each signal:
+- Configure weights in **Settings → Confidence Settings**
+- Signals above 100% confidence **skip AI entirely**
+- Signals below threshold become **pending items** requiring human decision
+
+#### Pending Queue
+Items the AI is uncertain about go to the **Awaiting Decision** queue:
+- Visible in Queue page → "Awaiting Decision" tab
+- Visible in Dashboard → "Awaiting Decision" widget
+- AI generates **policy questions** with library options
+- Click an option to resolve and generate a **learned pattern**
+
+### New Features
+- **🏷️ Manual Classify:** Button in pending queue bypasses AI entirely
+  - Select library → 100% confidence + `manual_classification` method
+  - Filtered by media type (movies only show movie libraries)
+- **Policy Questions:** AI generates clarifying questions for edge cases
+- **Discord Integration:** Policy questions work via Discord buttons
+- **SignalCollector Tests:** Unit test suite for the new service
+
+### Fixes
+- **OMDb API:** 15s timeout, 2 retries with backoff, graceful degradation
+- **MediaServer Test:** Tests selected connection, not saved config
+
+---
+
 ## v0.32.3a-alpha
 **Hotfix: Root Folder One-to-One Relationship**
 

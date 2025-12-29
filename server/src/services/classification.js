@@ -26,6 +26,9 @@ const tavilyService = require('./tavily');
 const mediaSyncService = require('./mediaSync');
 const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 const clarificationService = require('./clarificationService');
+const { SignalCollector, SIGNAL_TYPES } = require('./signalCollector');
+const confidenceCalculator = require('./confidenceCalculator');
+const contextManager = require('./contextManager');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -849,32 +852,99 @@ class ClassificationService {
       };
     }
 
-    // Step 4: AI fallback (Ollama)
+    // Step 4: Collect signals and calculate confidence for AI verification
+    // v0.33 Signal Aggregation Model
+    const signalCollector = new SignalCollector(metadata.tmdb_id, metadata.media_type);
+
+    // Add detected signals
+    if (eventMatch) {
+      signalCollector.addSignal(SIGNAL_TYPES.EVENT_DETECTION,
+        eventMatch.library,
+        eventMatch.confidence,
+        { eventType: eventMatch.eventType }
+      );
+    }
+
+    if (ruleMatch) {
+      signalCollector.addSignal(SIGNAL_TYPES.CUSTOM_RULE,
+        ruleMatch.library,
+        ruleMatch.confidence,
+        { rule: ruleMatch.matchedRule }
+      );
+    }
+
+    if (learnedPattern && learnedPattern.confidence < 80) {
+      signalCollector.addSignal(SIGNAL_TYPES.LEARNED_PATTERN,
+        libraries.find(l => l.id === learnedPattern.library_id),
+        learnedPattern.confidence,
+        {}
+      );
+    }
+
+    if (legacyRuleMatch && legacyRuleMatch.confidence < 80) {
+      signalCollector.addSignal(SIGNAL_TYPES.CUSTOM_RULE,
+        legacyRuleMatch.library,
+        legacyRuleMatch.confidence,
+        { rule: legacyRuleMatch.ruleName }
+      );
+    }
+
+    if (metadata.contentAnalysis?.bestMatch) {
+      // Find best matching library for content type
+      const contentType = metadata.contentAnalysis.bestMatch.type;
+      const matchingLib = libraries.find(l =>
+        l.name.toLowerCase().includes(contentType.toLowerCase())
+      ) || libraries[0];
+
+      signalCollector.addSignal(SIGNAL_TYPES.CONTENT_ANALYSIS,
+        matchingLib,
+        metadata.contentAnalysis.bestMatch.confidence,
+        { contentType }
+      );
+    }
+
+    // Load weights and calculate confidence
+    await confidenceCalculator.loadWeights();
+    const confidenceResult = confidenceCalculator.calculate(signalCollector.getSignals());
+
+    // Generate AI context
+    const aiContext = confidenceCalculator.toAIContext(confidenceResult);
+
+    // Create signal context for AI verification
+    const signalContext = {
+      ...confidenceResult,
+      aiContext,
+      signals: signalCollector.getSignals(),
+    };
+
+    // Step 5: AI verification (receives pre-calculated confidence)
     try {
-      const aiMatch = await this.aiClassify(metadata, libraries);
+      const aiMatch = await this.aiClassify(metadata, libraries, signalContext);
       return {
         ...aiMatch,
-        method: 'ai_analysis',
+        method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
         libraries: libraries,
+        signalContext: signalContext, // Include for logging
       };
     } catch (error) {
       logger.error('AI classification failed', { error: error.message });
-      // Fallback to rule match even if confidence is low
-      if (legacyRuleMatch) {
+      // Fallback to calculated result if AI fails
+      if (confidenceResult.suggestedLibrary && confidenceResult.confidence >= 50) {
         return {
-          ...legacyRuleMatch,
-          method: 'custom_rule',
+          library: confidenceResult.suggestedLibrary,
+          confidence: confidenceResult.confidence,
+          method: 'signal_calculation',
+          reason: `Calculated from signals (AI unavailable)`,
           libraries: libraries,
         };
       }
-      // Last resort: use the lowest priority library (usually a generic catch-all)
-      // Don't use libraries[0] because that's the highest priority specialized library
+      // Last resort: use the lowest priority library
       const fallbackLibrary = libraries[libraries.length - 1];
       return {
         library: fallbackLibrary,
         confidence: 50,
-        method: 'custom_rule',
-        reason: `Default library - no rules matched (fell back to ${fallbackLibrary.name})`,
+        method: 'fallback',
+        reason: `Default library - AI unavailable (fell back to ${fallbackLibrary.name})`,
         libraries: libraries,
       };
     }
@@ -1107,17 +1177,19 @@ class ClassificationService {
     }
   }
 
-  async aiClassify(metadata, libraries) {
+  async aiClassify(metadata, libraries, signalContext = null) {
     // Try to get web search results if Tavily is enabled
     const webSearchResults = await this.enrichWithWebSearch(metadata);
 
-    // Build prompt for AI with contextual clarification support
-    let prompt = `You are a media classification assistant for a home media server. Your job is to determine which library a ${metadata.media_type} belongs to.
+    // Build prompt for AI - VERIFICATION ROLE
+    // AI receives pre-calculated confidence and must verify or request clarification
+    let prompt = `You are a media classification VERIFIER for a home media server. Your role is to VERIFY a pre-calculated classification decision.
 
 CRITICAL RULES:
-1. NEVER GUESS. If you are uncertain, you MUST ask for clarification.
-2. Base your decision ONLY on verifiable data, not assumptions.
-3. When there are conflicting signals (e.g., multiple genres that could route differently), ask for help.
+1. You CANNOT override the calculated confidence score.
+2. Your job is to VERIFY the suggested library makes sense, OR request clarification if there are conflicts.
+3. If the calculated confidence is high and signals align, CONFIRM the decision.
+4. If signals conflict or you see a potential error, REQUEST CLARIFICATION.
 
 --- MEDIA INFORMATION ---
 Title: ${metadata.title}
@@ -1132,6 +1204,17 @@ Overview: ${metadata.overview || 'No overview available'}
     // Add content analysis if available
     if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {
       prompt += `\nContent Analysis Detection: ${metadata.contentAnalysis.bestMatch.type} (${metadata.contentAnalysis.bestMatch.confidence}% confident)`;
+    }
+
+    // Add signal context if provided (v0.33 verification mode)
+    if (signalContext) {
+      prompt += `\n\n--- SIGNAL ANALYSIS (pre-calculated) ---
+${signalContext.aiContext}
+
+SUGGESTED LIBRARY: "${signalContext.suggestedLibrary?.name || 'Unknown'}"
+CALCULATED CONFIDENCE: ${signalContext.confidence}%
+${signalContext.hasConflict ? '⚠️ CONFLICT DETECTED - Multiple libraries have similar scores' : ''}
+`;
     }
 
     // Add web search results if available
@@ -1155,6 +1238,21 @@ Overview: ${metadata.overview || 'No overview available'}
 ${libraries.map((lib, i) => `${i + 1}. "${lib.name}" (${lib.media_type})`).join('\n')}
 
 --- YOUR RESPONSE ---
+${signalContext ? `
+VERIFICATION MODE: The system has pre-calculated confidence of ${signalContext.confidence}% for library "${signalContext.suggestedLibrary?.name}".
+
+Respond in ONE of these two formats:
+
+FORMAT 1 - CONFIRM the suggested library (if signals align and decision makes sense):
+CONFIRM|<library_number>|<brief_verification_reason>
+
+Example: CONFIRM|3|Signals align correctly - Japanese animation with anime keywords confirms Anime library
+
+FORMAT 2 - REQUEST CLARIFICATION (if signals conflict or you see a potential error):
+CLARIFY|<problem_summary>|<why_uncertain>|<question_to_ask>|<option1>|<option2>|<option3_optional>
+
+Example: CLARIFY|Anime vs Kids conflict|Content has both anime keywords AND kids-friendly rating|Is "${metadata.title}" primarily anime content or kids content?|Anime Library|Kids Library|Review manually
+` : `
 Analyze the media and respond in ONE of these two formats:
 
 FORMAT 1 - If you are confident (can determine the correct library from the data):
@@ -1165,8 +1263,8 @@ Example: CONFIDENT|3|92|Japanese animation with anime keywords, clearly belongs 
 FORMAT 2 - If you need clarification (conflicting signals, ambiguous data, or uncertain):
 CLARIFY|<problem_summary>|<why_uncertain>|<question_to_ask>|<option1>|<option2>|<option3_optional>
 
-Example: CLARIFY|Biographical music film with drama elements|TMDB lists Drama, Music, and Biography genres - I cannot determine the PRIMARY classification from this data|Is "${metadata.title}" primarily a biographical drama about a musician's life, or a music-focused documentary with performance footage?|Biographical Drama|Music Documentary|Neither - route manually
-
+Example: CLARIFY|Biographical music film with drama elements|TMDB lists Drama, Music, and Biography genres|Is this primarily a biographical drama or music documentary?|Biographical Drama|Music Documentary|Neither
+`}
 IMPORTANT FOR CLARIFICATION:
 - The problem_summary should be SHORT (max 50 chars)
 - The why_uncertain should explain WHAT DATA conflicts and WHY you can't decide
@@ -1212,7 +1310,29 @@ Think step by step, then respond with ONLY one of the formats above.`;
       ollamaService.setGenerationStatus(false);
     }
 
-    // Parse AI response - check for CONFIDENT format
+    // Parse AI response - check for CONFIRM format (verification mode)
+    const confirmMatch = response.match(/CONFIRM\|(\d+)\|(.+)/);
+    if (confirmMatch && signalContext) {
+      const libraryIndex = parseInt(confirmMatch[1]) - 1;
+      const reason = confirmMatch[2].trim();
+
+      if (libraryIndex >= 0 && libraryIndex < libraries.length) {
+        logger.info('AI confirmed classification', {
+          title: metadata.title,
+          library: libraries[libraryIndex].name,
+          originalConfidence: signalContext.confidence
+        });
+        return {
+          library: libraries[libraryIndex],
+          confidence: signalContext.confidence, // Use the pre-calculated confidence
+          reason: `AI verified: ${reason}`,
+          needs_clarification: false,
+          verified_by_ai: true,
+        };
+      }
+    }
+
+    // Parse AI response - check for CONFIDENT format (legacy/fallback mode)
     const confidentMatch = response.match(/CONFIDENT\|(\d+)\|(\d+)\|(.+)/);
     if (confidentMatch) {
       const libraryIndex = parseInt(confidentMatch[1]) - 1;
@@ -1235,30 +1355,53 @@ Think step by step, then respond with ONLY one of the formats above.`;
       const problemSummary = clarifyMatch[1].trim();
       const whyUncertain = clarifyMatch[2].trim();
       const question = clarifyMatch[3].trim();
-      const options = [clarifyMatch[4].trim(), clarifyMatch[5].trim()];
+      const optionTexts = [clarifyMatch[4].trim(), clarifyMatch[5].trim()];
       if (clarifyMatch[6]) {
-        options.push(clarifyMatch[6].trim());
+        optionTexts.push(clarifyMatch[6].trim());
       }
 
-      logger.info('AI requests clarification', {
-        title: metadata.title,
-        problem: problemSummary
+      // Try to match options to actual libraries
+      const options = optionTexts.map((opt, idx) => {
+        // Find library that matches this option text
+        const matchedLibrary = libraries.find(lib =>
+          opt.toLowerCase().includes(lib.name.toLowerCase()) ||
+          lib.name.toLowerCase().includes(opt.toLowerCase().replace(/\s*(library|content|media)\s*/gi, ''))
+        );
+
+        return {
+          label: opt,
+          value: opt.toLowerCase().replace(/\s+/g, '_').substring(0, 30),
+          library_id: matchedLibrary?.id || null,
+          library_name: matchedLibrary?.name || null,
+        };
       });
 
+      logger.info('AI requests clarification (policy question)', {
+        title: metadata.title,
+        problem: problemSummary,
+        options: options.map(o => o.label),
+        hasSignalContext: !!signalContext
+      });
+
+      // Build policy question object for pending queue storage
+      const policyQuestion = {
+        problem_summary: problemSummary,
+        why_uncertain: whyUncertain,
+        question: question,
+        options: options,
+        generated_at: new Date().toISOString(),
+        signal_breakdown: signalContext?.breakdown || [],
+        calculated_confidence: signalContext?.confidence || null,
+      };
+
       return {
-        library: libraries[0], // Tentative - will be updated after clarification
-        confidence: 55, // Low confidence triggers clarification flow
+        library: signalContext?.suggestedLibrary || libraries[0], // Use calculated library if available
+        confidence: signalContext?.confidence || 55, // Use calculated confidence or low default
         reason: `Needs clarification: ${problemSummary}`,
         needs_clarification: true,
-        clarification: {
-          problem_summary: problemSummary,
-          why_uncertain: whyUncertain,
-          question: question,
-          options: options.map((opt, idx) => ({
-            label: opt,
-            value: opt.toLowerCase().replace(/\s+/g, '_').substring(0, 30),
-          })),
-        },
+        clarification: policyQuestion, // Enhanced policy question object
+        pending_reason: problemSummary,
+        policy_question: policyQuestion, // For database storage
       };
     }
 
@@ -1283,10 +1426,21 @@ Think step by step, then respond with ONLY one of the formats above.`;
   }
 
   async logClassification(metadata, result) {
+    // Extract collection_id from metadata if available
+    const collectionId = metadata.collectionId || null;
+    const libraryName = result.library?.name || null;
+    const signalsJson = result.signals ? JSON.stringify(result.signals) :
+      result.signalContext?.signals ? JSON.stringify(result.signalContext.signals) : null;
+
+    // For pending items (needs clarification)
+    const pendingReason = result.pending_reason || (result.needs_clarification ? result.reason : null);
+    const policyQuestion = result.policy_question ? JSON.stringify(result.policy_question) : null;
+    const status = result.needs_clarification ? 'awaiting_decision' : 'completed';
+
     const insertResult = await db.query(
       `INSERT INTO classification_history 
-       (tmdb_id, media_type, title, year, library_id, confidence, method, reason, metadata, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING id`,
       [
         metadata.tmdb_id,
@@ -1294,15 +1448,29 @@ Think step by step, then respond with ONLY one of the formats above.`;
         metadata.title,
         metadata.year,
         result.library?.id,
+        libraryName,
         result.confidence,
         result.method,
         result.reason,
         JSON.stringify(metadata),
-        'completed'
+        status,
+        collectionId,
+        signalsJson,
+        pendingReason,
+        policyQuestion
       ]
     );
 
     const classificationId = insertResult.rows[0].id;
+
+    // Log policy question for pending items
+    if (result.needs_clarification) {
+      logger.info('Classification pending - awaiting clarification', {
+        id: classificationId,
+        title: metadata.title,
+        reason: pendingReason
+      });
+    }
 
     // Log content analysis if available
     if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {

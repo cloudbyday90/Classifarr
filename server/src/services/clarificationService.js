@@ -62,7 +62,7 @@ class ClarificationService {
          LIMIT 1`,
         [confidence]
       );
-      
+
       return result.rows[0] || null;
     } catch (error) {
       logger.error('Error getting tier', { error: error.message });
@@ -97,7 +97,7 @@ class ClarificationService {
 
         // Score by keyword match (30 points max)
         const triggerKeywords = question.trigger_keywords || [];
-        const keywordMatches = triggerKeywords.filter(tk => 
+        const keywordMatches = triggerKeywords.filter(tk =>
           keywords.includes(tk.toLowerCase())
         );
         if (keywordMatches.length > 0) {
@@ -107,7 +107,7 @@ class ClarificationService {
 
         // Score by genre match (20 points max)
         const triggerGenres = question.trigger_genres || [];
-        const genreMatches = triggerGenres.filter(tg => 
+        const genreMatches = triggerGenres.filter(tg =>
           genres.includes(tg.toLowerCase())
         );
         if (genreMatches.length > 0) {
@@ -419,6 +419,142 @@ class ClarificationService {
     } catch (error) {
       logger.error('Error checking require_all_confirmations setting', { error: error.message });
       return false;
+    }
+  }
+
+  /**
+   * Resolve a pending policy question and optionally generate a learned rule
+   * v0.33 - Called when user selects an option from the pending queue
+   * 
+   * @param {number} classificationId - Classification history ID
+   * @param {number} selectedLibraryId - The library ID user selected
+   * @param {string} selectedOption - The option value selected
+   * @param {string} resolvedBy - Who resolved (discord user ID or 'admin')
+   * @param {boolean} generateRule - Whether to generate a learned pattern from this decision
+   * @returns {Promise<object>} Resolution result
+   */
+  async resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true) {
+    const client = await db.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Get the classification details
+      const classResult = await client.query(
+        `SELECT ch.*, l.name as library_name, l.arr_type 
+         FROM classification_history ch
+         LEFT JOIN libraries l ON l.id = $2
+         WHERE ch.id = $1`,
+        [classificationId, selectedLibraryId]
+      );
+
+      if (classResult.rows.length === 0) {
+        throw new Error('Classification not found');
+      }
+
+      const classification = classResult.rows[0];
+      const metadata = JSON.parse(classification.metadata || '{}');
+
+      // Update classification to resolved status
+      // method = 'manual_classification' since a human made this decision
+      await client.query(
+        `UPDATE classification_history 
+         SET status = 'completed',
+             library_id = $2,
+             library_name = $3,
+             confidence = 100,
+             method = 'manual_classification',
+             reason = $4,
+             pending_reason = NULL
+         WHERE id = $1`,
+        [
+          classificationId,
+          selectedLibraryId,
+          classification.library_name,
+          `Resolved by ${resolvedBy}: ${selectedOption}`
+        ]
+      );
+
+      // Optionally generate a learned pattern
+      let learnedPattern = null;
+      if (generateRule && metadata.tmdb_id) {
+        // Check if this is a tmdb_id that was previously uncertain
+        // Create an exact_match pattern so this exact item is remembered
+        const patternResult = await client.query(
+          `INSERT INTO learning_patterns 
+           (tmdb_id, media_type, library_id, pattern_type, confidence, metadata, created_by)
+           VALUES ($1, $2, $3, 'exact_match', 100, $4, $5)
+           ON CONFLICT (tmdb_id, pattern_type) 
+           DO UPDATE SET library_id = $3, confidence = 100, updated_at = NOW()
+           RETURNING *`,
+          [
+            metadata.tmdb_id,
+            classification.media_type,
+            selectedLibraryId,
+            JSON.stringify({
+              title: classification.title,
+              resolved_from: 'policy_question',
+              original_question: classification.policy_question ? JSON.parse(classification.policy_question).question : null,
+              selected_option: selectedOption,
+            }),
+            resolvedBy
+          ]
+        );
+        learnedPattern = patternResult.rows[0];
+
+        logger.info('Generated learned pattern from policy resolution', {
+          tmdbId: metadata.tmdb_id,
+          libraryId: selectedLibraryId,
+          patternId: learnedPattern?.id
+        });
+      }
+
+      // Log the resolution
+      logger.info('Policy question resolved', {
+        classificationId,
+        selectedLibrary: classification.library_name,
+        resolvedBy,
+        generatedRule: !!learnedPattern
+      });
+
+      await client.query('COMMIT');
+
+      return {
+        success: true,
+        classificationId,
+        libraryId: selectedLibraryId,
+        libraryName: classification.library_name,
+        generatedPattern: learnedPattern,
+        shouldRoute: true, // Signal that this should be routed to Radarr/Sonarr
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      logger.error('Error resolving policy question', { error: error.message });
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Get all pending classifications awaiting policy decisions
+   * @returns {Promise<Array>} Pending items
+   */
+  async getPendingClassifications() {
+    try {
+      const result = await db.query(
+        `SELECT 
+           ch.*,
+           l.name as suggested_library_name,
+           l.arr_type
+         FROM classification_history ch
+         LEFT JOIN libraries l ON l.id = ch.library_id
+         WHERE ch.status = 'awaiting_decision'
+         ORDER BY ch.created_at DESC`
+      );
+      return result.rows;
+    } catch (error) {
+      logger.error('Error getting pending classifications', { error: error.message });
+      return [];
     }
   }
 }

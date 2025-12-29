@@ -6,6 +6,46 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.33.0-alpha] - 2025-12-29
+
+### 🚀 Major: AI-Centric Classification Refactor
+
+This release fundamentally restructures how Classifarr classifies media. Instead of using AI as the primary decision-maker, AI now serves as a **verification layer** that confirms or adjusts signals collected from multiple sources.
+
+### Added
+- **SignalCollector Service:** Aggregates all classification signals before making decisions
+  - Exact match detection (TMDb ID, learned patterns)
+  - Pattern matching (title rules, genres, keywords)
+  - Franchise/collection detection (Harry Potter → same library)
+  - Related item lookup (other items from same collection)
+- **ConfidenceCalculator Service:** Weighted formula for confidence scoring
+  - Configurable weights via API (`/api/classification/confidence/weights`)
+  - Confidence Settings UI for adjusting weights
+- **Policy Question Generation:** AI generates clarifying questions for edge cases
+  - Questions include library-specific routing options
+  - Stored in `classification_history.policy_question` column
+- **Pending Queue UI:** Wait for human decisions on uncertain items
+  - Queue.vue "Awaiting Decision" tab (always visible)
+  - Dashboard.vue "Awaiting Decision" widget (always visible)
+- **Admin Override (Manual Classification):**
+  - "🏷️ Classify" button in pending queue
+  - Bypass AI and assign to library directly
+  - 100% confidence + `manual_classification` method
+  - Library filtering by media type (movies vs TV)
+- **Discord Integration Enhancement:**
+  - `processClarificationResponse`: policy question + library_id mapping
+  - Resolution via Discord buttons routes to *arr
+- **Unit Tests:** SignalCollector test suite
+
+### Changed
+- AI now **verifies** rather than **decides** classification
+- Classifications with 100% confidence skip AI entirely
+- Classifications below threshold generate policy questions
+
+### Fixed
+- **OMDb API Timeouts:** 15s timeout, 2 retries with exponential backoff, graceful degradation
+- **MediaServer Test Connection:** Tests selected connection, not saved config
+
 ## [0.32.3a-alpha] - 2025-12-28
 
 ### Fixed

@@ -929,8 +929,7 @@ router.get('/:id/rules/smart-suggest', async (req, res) => {
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE metadata->'content_analysis' IS NOT NULL) as analyzed,
         COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched,
-        MAX(added_at) as last_item_added,
-        MAX(updated_at) as last_item_updated
+        MAX(added_at) as last_item_added
       FROM media_server_items
       WHERE library_id = $1
     `, [id]);
@@ -1198,7 +1197,7 @@ Valid operators: equals, contains, includes`;
     }
 
     // Determine if new data exists since last suggestion generation
-    const lastItemTime = countResult.rows[0]?.last_item_added || countResult.rows[0]?.last_item_updated;
+    const lastItemTime = countResult.rows[0]?.last_item_added;
     const lastAnalyzed = suggestionMeta?.last_analyzed;
     const hasNewData = !lastAnalyzed || (lastItemTime && new Date(lastItemTime) > new Date(lastAnalyzed));
 

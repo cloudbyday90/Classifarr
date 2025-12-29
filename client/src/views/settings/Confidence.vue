@@ -214,6 +214,50 @@
               </div>
               <Toggle v-model="form.require_all_confirmations" />
             </div>
+
+            <!-- Signal Weights Section -->
+            <div class="p-4 bg-gray-900/30 rounded-lg border border-gray-700/50">
+              <div 
+                class="flex items-center justify-between cursor-pointer"
+                @click="showWeights = !showWeights"
+              >
+                <div>
+                  <h4 class="font-medium mb-1 flex items-center gap-2">
+                    ⚖️ Signal Weights
+                    <span class="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Advanced</span>
+                  </h4>
+                  <p class="text-sm text-gray-400">
+                    Adjust how much each signal type influences confidence calculations.
+                  </p>
+                </div>
+                <span class="text-gray-400 text-xl transition-transform" :class="showWeights ? 'rotate-180' : ''">
+                  ▼
+                </span>
+              </div>
+
+              <div v-if="showWeights" class="mt-6 space-y-4">
+                <!-- Weight sliders -->
+                <div v-for="(label, key) in signalLabels" :key="key" class="space-y-2">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-300">{{ label }}</span>
+                    <span class="text-sm font-mono text-blue-400">{{ form.weights[key] }}</span>
+                  </div>
+                  <Slider
+                    v-model="form.weights[key]"
+                    :min="0"
+                    :max="100"
+                    :step="5"
+                  />
+                </div>
+
+                <!-- Reset to defaults button -->
+                <div class="pt-4 border-t border-gray-700/50">
+                  <Button variant="ghost" size="sm" @click="resetWeightsToDefaults">
+                    Reset to Defaults
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Action Buttons -->
@@ -249,6 +293,36 @@ const toast = useToast()
 const loading = ref(true)
 const isEditing = ref(false)
 const isSaving = ref(false)
+const showWeights = ref(false)
+
+// Human-readable labels for signal types
+const signalLabels = {
+  source_library: 'Source Library (from Plex)',
+  manual_correction: 'Manual Corrections',
+  existing_media: 'Already in Library',
+  exact_match: 'Previously Confirmed',
+  event_detection: 'Holiday/Event Detection',
+  custom_rule: 'Custom Rules',
+  collection_match: 'Franchise/Collection Match',
+  learned_pattern: 'Learned Patterns',
+  content_analysis: 'Content Type Analysis',
+  keyword_match: 'Keyword Matching',
+  genre_match: 'Genre Matching'
+}
+
+const defaultWeights = {
+  source_library: 100,
+  manual_correction: 100,
+  existing_media: 100,
+  exact_match: 100,
+  event_detection: 30,
+  custom_rule: 35,
+  collection_match: 25,
+  learned_pattern: 20,
+  content_analysis: 15,
+  keyword_match: 10,
+  genre_match: 10
+}
 
 const config = ref({
   enable_clarification: true,
@@ -259,7 +333,8 @@ const config = ref({
 const form = reactive({
   enable_clarification: true,
   clarification_threshold: 75,
-  require_all_confirmations: false
+  require_all_confirmations: false,
+  weights: { ...defaultWeights }
 })
 
 const stats = ref({
@@ -270,7 +345,7 @@ const stats = ref({
 })
 
 onMounted(async () => {
-  await Promise.all([loadSettings(), loadStats()])
+  await Promise.all([loadSettings(), loadStats(), loadWeights()])
 })
 
 const loadSettings = async () => {
@@ -288,6 +363,20 @@ const loadSettings = async () => {
     console.error('Failed to load settings:', error)
     toast.error('Failed to load configuration')
     loading.value = false
+  }
+}
+
+const loadWeights = async () => {
+  try {
+    const response = await axios.get('/api/confidence/weights')
+    if (response.data?.weights) {
+      // Merge loaded weights with defaults (in case new signal types are added)
+      Object.assign(form.weights, defaultWeights, response.data.weights)
+    }
+  } catch (error) {
+    console.error('Failed to load weights:', error)
+    // Use defaults on error
+    Object.assign(form.weights, defaultWeights)
   }
 }
 
@@ -327,6 +416,11 @@ const saveConfig = async () => {
       require_all_confirmations: form.require_all_confirmations.toString()
     })
 
+    // Save weights if they were modified
+    await axios.put('/api/confidence/weights', {
+      weights: form.weights
+    })
+
     // Update local state
     config.value = { ...form }
     isEditing.value = false
@@ -338,5 +432,10 @@ const saveConfig = async () => {
   } finally {
     isSaving.value = false
   }
+}
+
+const resetWeightsToDefaults = () => {
+  Object.assign(form.weights, defaultWeights)
+  toast.info('Weights reset to defaults')
 }
 </script>

@@ -20,6 +20,7 @@ const express = require('express');
 const db = require('../config/database');
 const classificationService = require('../services/classification');
 const reclassificationService = require('../services/reclassificationService');
+const clarificationService = require('../services/clarificationService');
 
 const router = express.Router();
 
@@ -388,6 +389,105 @@ router.get('/live-feed', async (req, res) => {
       })),
       timestamp: new Date().toISOString()
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/pending:
+ *   get:
+ *     summary: Get pending classifications awaiting policy decisions
+ *     description: Returns all items with status='pending' that need user decision
+ */
+router.get('/pending', async (req, res) => {
+  try {
+    const pending = await clarificationService.getPendingClassifications();
+
+    // Parse policy_question JSON for each item
+    const items = pending.map(item => ({
+      ...item,
+      policy_question: item.policy_question ? JSON.parse(item.policy_question) : null,
+    }));
+
+    res.json({
+      count: items.length,
+      items,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/pending/{id}/resolve:
+ *   post:
+ *     summary: Resolve a pending classification
+ *     description: User selects a library for a pending item, generates learned rule
+ */
+router.post('/pending/:id/resolve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { library_id, selected_option, resolved_by = 'admin', generate_rule = true } = req.body;
+
+    if (!library_id) {
+      return res.status(400).json({ error: 'library_id is required' });
+    }
+
+    const result = await clarificationService.resolvePolicyQuestion(
+      parseInt(id),
+      parseInt(library_id),
+      selected_option || 'Manual selection',
+      resolved_by,
+      generate_rule
+    );
+
+    // Route to Radarr/Sonarr if resolution indicates we should
+    if (result.shouldRoute && result.libraryId) {
+      try {
+        const classResult = await db.query(
+          `SELECT ch.*, l.arr_type FROM classification_history ch
+           JOIN libraries l ON l.id = $2
+           WHERE ch.id = $1`,
+          [id, library_id]
+        );
+
+        if (classResult.rows.length > 0) {
+          const { metadata, arr_type } = classResult.rows[0];
+          const parsedMeta = JSON.parse(metadata || '{}');
+
+          // Get library for routing
+          const libResult = await db.query('SELECT * FROM libraries WHERE id = $1', [library_id]);
+          if (libResult.rows.length > 0) {
+            await classificationService.routeToArr(parsedMeta, libResult.rows[0]);
+          }
+        }
+      } catch (routeError) {
+        console.error('Error routing after resolution:', routeError.message);
+        // Don't fail the resolution, just log the routing error
+      }
+    }
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/pending/count:
+ *   get:
+ *     summary: Get count of pending classifications
+ */
+router.get('/pending/count', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT COUNT(*) as count FROM classification_history WHERE status = 'awaiting_decision'`
+    );
+    res.json({ count: parseInt(result.rows[0].count) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
