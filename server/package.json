@@ -27,7 +27,7 @@
     "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {
-    "@testcontainers/postgresql": "^11.10.0",
+    "@testcontainers/postgresql": "^11.11.0",
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
     "pg-mem": "^3.0.5",
