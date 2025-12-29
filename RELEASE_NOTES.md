@@ -1,4 +1,20 @@
 
+## v0.33.1-alpha
+**Dependency Updates & Test Fixes**
+
+### Fixes
+- **SignalCollector Tests:** Fixed test file to match actual implementation (correct SIGNAL_TYPES, mock methods)
+- **All 211 tests now pass**
+
+### Updated Dependencies
+- `supertest`: 6.3.4 → 7.1.4 (fixes deprecated superagent warning)
+- `node-cron`: 3.0.3 → 4.2.1 (TypeScript rewrite, API unchanged)
+- `testcontainers`: 11.10.0 → 11.11.0
+- `@testcontainers/postgresql`: 11.10.0 → 11.11.0
+- `jsdom`: 24.1.3 → 27.4.0
+
+---
+
 ## v0.33.0-alpha
 **Major: AI-Centric Classification Refactor**
 

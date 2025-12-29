@@ -6,6 +6,14 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.33.1-alpha] - 2025-12-29
+
+### Fixed
+- SignalCollector test file now matches actual implementation
+
+### Changed
+- Dependencies updated: supertest 7.1.4, node-cron 4.2.1, testcontainers 11.11.0, jsdom 27.4.0
+
 ## [0.33.0-alpha] - 2025-12-29
 
 ### 🚀 Major: AI-Centric Classification Refactor
