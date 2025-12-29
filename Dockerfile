@@ -32,7 +32,7 @@ COPY server/package*.json ./
 RUN npm ci --only=production
 
 # Rebuild bcrypt for Alpine's musl libc
-RUN npm rebuild bcrypt --build-from-source
+RUN npm rebuild bcrypt
 
 # Stage 3: Production Runtime
 FROM node:24-alpine AS production
