@@ -1,4 +1,19 @@
 
+## v0.34.1-alpha
+**Hotfix: Error Logs & Docker Compose**
+
+### Fixes
+
+- **Error Logs Page**: Fixed "Internal Server Error" on Settings > Error Logs - restored `error_log` table that was incorrectly dropped in migration 034
+- **Docker Compose**: Updated environment variable format to match README with helpful comments for PUID/PGID
+- **Docker Compose**: Removed incorrect read-only (:ro) suggestion from media volume comments - re-classification requires write access
+
+### Database Changes
+
+- **Migration 035**: Restores `error_log` table with full schema and indexes
+
+---
+
 ## v0.34.0-alpha
 **Title: RAG Semantic Search & Enrichment Improvements**
 
