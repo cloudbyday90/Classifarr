@@ -8,13 +8,9 @@ services:
     ports:
       - "21324:21324"
     environment:
-      # User/Group IDs - Set to match your host user for proper file permissions
-      - PUID=${PUID:-1000}
-      - PGID=${PGID:-1000}
-      - UMASK=${UMASK:-022}
-      # Application settings
-      - NODE_ENV=production
-      - TZ=${TZ:-UTC}
+      - PUID=1000 # Your user ID (run `id -u` to find)
+      - PGID=1000 # Your group ID (run `id -g` to find)
+      - TZ=America/New_York # Your timezone
     volumes:
       - ./data:/app/data
       # ═══════════════════════════════════════════════════════════════
