@@ -68,6 +68,37 @@ class TMDBService {
     }
   }
 
+  /**
+   * Find TMDB entry by external ID (TVDB, IMDB)
+   * Used for TVDB→TMDB and IMDB→TMDB conversion
+   * @param {string|number} externalId - External ID to look up
+   * @param {string} source - Source type: 'tvdb_id', 'imdb_id'
+   * @returns {Promise<object>} TMDB find results
+   */
+  async findByExternalId(externalId, source) {
+    try {
+      const apiKey = await this.getApiKey();
+      if (!apiKey) {
+        return { movie_results: [], tv_results: [] };
+      }
+
+      const response = await rateLimiters.tmdb.execute(() =>
+        axios.get(`${this.baseUrl}/find/${externalId}`, {
+          params: {
+            api_key: apiKey,
+            external_source: source
+          },
+          timeout: 10000
+        })
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error(`TMDB find by external ID failed: ${error.message}`);
+      return { movie_results: [], tv_results: [] };
+    }
+  }
+
   async getMovieDetails(tmdbId) {
     try {
       const apiKey = await this.getApiKey();

@@ -29,6 +29,19 @@ class SchedulerService {
         // Check immediately on start
         await this.checkDueTasks();
 
+        // Auto-backfill enrichment retry queue on startup
+        // This queues any items missing OMDb data for Tavily fallback
+        try {
+            const enrichmentRetryService = require('./enrichmentRetryService');
+            const backfillResult = await enrichmentRetryService.backfillRetryQueue();
+            if (backfillResult.queued > 0) {
+                logger.info('Enrichment retry queue backfill complete', { queued: backfillResult.queued });
+            }
+        } catch (err) {
+            // Table may not exist yet on first run before migration
+            logger.debug('Enrichment retry queue backfill skipped', { error: err.message });
+        }
+
         // Then poll periodically
         this.pollInterval = setInterval(() => this.checkDueTasks(), this.checkIntervalMs);
     }
@@ -52,6 +65,9 @@ class SchedulerService {
 
             // Checks for global recurring tasks (like pattern analysis)
             await this.checkPatternAnalysisSchedule();
+
+            // Check for RAG embedding backfill
+            await this.checkRagBackfillSchedule();
         } catch (error) {
             logger.error('Error checking due tasks', { error: error.message });
         }
@@ -113,6 +129,94 @@ class SchedulerService {
             }
         } catch (error) {
             logger.error('Error checking pattern analysis schedule', { error: error.message });
+        }
+    }
+
+    /**
+     * Check if RAG backfill should run
+     * Runs every 5 minutes when enabled, processing 10 items per batch
+     */
+    async checkRagBackfillSchedule() {
+        try {
+            // Check if RAG is enabled
+            const configResult = await db.query(
+                'SELECT rag_enabled FROM ai_provider_config WHERE id = 1'
+            );
+            const ragEnabled = configResult.rows[0]?.rag_enabled === true;
+
+            if (!ragEnabled) return;
+
+            // Check how many items still need embeddings
+            const pendingResult = await db.query(`
+                SELECT COUNT(*) as pending FROM classification_history ch
+                LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
+                WHERE ce.id IS NULL
+            `);
+            const pendingCount = parseInt(pendingResult.rows[0]?.pending || 0);
+
+            if (pendingCount === 0) return;
+
+            // Check last backfill time (stored in embedding_costs)
+            const lastBackfillResult = await db.query(`
+                SELECT MAX(created_at) as last_run FROM embedding_costs
+            `);
+            const lastRun = lastBackfillResult.rows[0]?.last_run;
+
+            // Run every 5 minutes (or if never ran)
+            const shouldRun = !lastRun || (Date.now() - new Date(lastRun).getTime()) > 5 * 60 * 1000;
+
+            if (shouldRun) {
+                logger.info(`RAG backfill: ${pendingCount} items pending. Processing batch...`);
+                await this.runRagBackfill();
+            }
+        } catch (error) {
+            logger.error('Error checking RAG backfill schedule', { error: error.message });
+        }
+    }
+
+    /**
+     * Run a batch of RAG embedding backfills
+     */
+    async runRagBackfill() {
+        try {
+            const embeddingService = require('./embeddingService');
+
+            // Get classifications without embeddings (batch of 10)
+            const result = await db.query(`
+                SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
+                FROM classification_history ch
+                LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
+                WHERE ce.id IS NULL
+                LIMIT 10
+            `);
+
+            let processed = 0;
+            let failed = 0;
+
+            for (const row of result.rows) {
+                try {
+                    const metadata = typeof row.metadata === 'string'
+                        ? JSON.parse(row.metadata)
+                        : row.metadata || {};
+
+                    await embeddingService.generateAndStore(row.id, {
+                        ...metadata,
+                        title: row.title,
+                        media_type: row.media_type,
+                        library_name: row.library_name
+                    });
+                    processed++;
+                } catch (error) {
+                    failed++;
+                    logger.debug('Backfill item failed', { id: row.id, error: error.message });
+                }
+            }
+
+            if (processed > 0) {
+                logger.info(`RAG backfill batch complete`, { processed, failed });
+            }
+        } catch (error) {
+            logger.error('RAG backfill failed', { error: error.message });
         }
     }
 

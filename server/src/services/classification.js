@@ -28,6 +28,8 @@ const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 const clarificationService = require('./clarificationService');
 const { SignalCollector, SIGNAL_TYPES } = require('./signalCollector');
 const confidenceCalculator = require('./confidenceCalculator');
+const ragRetriever = require('./ragRetriever');
+const embeddingService = require('./embeddingService');
 const contextManager = require('./contextManager');
 const { createLogger } = require('../utils/logger');
 
@@ -903,6 +905,41 @@ class ClassificationService {
       );
     }
 
+    // Step 4.5: RAG-based semantic similarity (v0.34)
+    let ragContext = null;
+    try {
+      const similarItems = await ragRetriever.semanticSearch(metadata, 5);
+      if (similarItems && similarItems.length > 0) {
+        const suggestedLibrary = ragRetriever.getSuggestedLibrary(similarItems);
+        const dynamicWeight = ragRetriever.calculateDynamicWeight(similarItems);
+
+        if (suggestedLibrary) {
+          const ragLibrary = libraries.find(l => l.id === suggestedLibrary.libraryId);
+          if (ragLibrary) {
+            signalCollector.addSignal(
+              SIGNAL_TYPES.SEMANTIC_SIMILARITY,
+              ragLibrary,
+              dynamicWeight,
+              {
+                similarItems: similarItems.slice(0, 3),
+                avgSimilarity: suggestedLibrary.avgSimilarity,
+                voteCount: suggestedLibrary.voteCount
+              }
+            );
+            ragContext = ragRetriever.formatForAIContext(similarItems);
+            logger.info('RAG signal added', {
+              title: metadata.title,
+              library: ragLibrary.name,
+              weight: dynamicWeight,
+              matches: similarItems.length
+            });
+          }
+        }
+      }
+    } catch (ragError) {
+      logger.debug('RAG search failed, continuing without', { error: ragError.message });
+    }
+
     // Load weights and calculate confidence
     await confidenceCalculator.loadWeights();
     const confidenceResult = confidenceCalculator.calculate(signalCollector.getSignals());
@@ -914,6 +951,7 @@ class ClassificationService {
     const signalContext = {
       ...confidenceResult,
       aiContext,
+      ragContext,  // RAG similar items context for AI
       signals: signalCollector.getSignals(),
     };
 
@@ -1476,6 +1514,20 @@ Think step by step, then respond with ONLY one of the formats above.`;
     if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {
       const analysis = metadata.contentAnalysis.bestMatch;
       await contentTypeAnalyzer.analyze(metadata, classificationId);
+    }
+
+    // Generate embedding for RAG (async, don't wait)
+    if (status === 'completed' && result.library) {
+      setImmediate(async () => {
+        try {
+          await embeddingService.generateAndStore(classificationId, {
+            ...metadata,
+            library_name: libraryName
+          });
+        } catch (embedError) {
+          logger.debug('Embedding generation deferred', { id: classificationId });
+        }
+      });
     }
 
     return classificationId;

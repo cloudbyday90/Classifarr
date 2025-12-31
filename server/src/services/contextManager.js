@@ -234,6 +234,17 @@ ${sig.hasConflict ? '⚠️ CONFLICT DETECTED' : ''}`;
                     compressedContent: summaryContent, // Use summary as compressed version
                 });
             }
+
+            // RAG context - HIGH (v0.34 semantic similarity)
+            if (sig.ragContext) {
+                sections.push({
+                    name: 'ragContext',
+                    content: `--- RAG SIMILARITY MATCHES ---\n${sig.ragContext}`,
+                    tokens: this.estimateTokens(sig.ragContext),
+                    priority: CONTEXT_PRIORITY.HIGH,
+                    order: order++,
+                });
+            }
         }
 
         // Overview - MEDIUM

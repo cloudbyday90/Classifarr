@@ -17,8 +17,8 @@ const aiRouterService = require('./aiRouter');
 const logger = createLogger('QueueService');
 
 // Configuration
-const POLL_INTERVAL_MS = 5000;  // Check queue every 5 seconds
-const MAX_CONCURRENT = 1;       // Process one at a time to avoid overloading Ollama
+const POLL_INTERVAL_MS = 1000;  // Check queue every 1 second when idle
+const MAX_CONCURRENT = 5;       // Process up to 5 tasks concurrently
 const RETRY_DELAYS = [30, 60, 120, 300, 600]; // Seconds: 30s, 1m, 2m, 5m, 10m
 
 class QueueService {
@@ -334,6 +334,20 @@ class QueueService {
                                     rated: omdbResult.rated,
                                     genre: omdbResult.genre
                                 });
+                            } else if (enrichPayload.itemId) {
+                                // OMDb returned no result - queue for Tavily fallback
+                                try {
+                                    const enrichmentRetryService = require('./enrichmentRetryService');
+                                    await enrichmentRetryService.queueForRetry(
+                                        enrichPayload.itemId,
+                                        'tavily',
+                                        'OMDb not found',
+                                        5
+                                    );
+                                    logger.debug('Queued item for Tavily fallback', { title: enrichPayload.title });
+                                } catch (retryErr) {
+                                    logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                }
                             }
                         }
                     } catch (omdbError) {
@@ -342,10 +356,36 @@ class QueueService {
 
                             logger.warn('OMDb daily limit reached - Queue will skip OMDb enrichment', { error: omdbError.message });
 
-                            // Note: Queue will continue processing but skip OMDb for subsequent tasks
-                            // The limit will reset at midnight UTC
+                            // Queue for Tavily fallback when OMDb limit reached
+                            if (enrichPayload.itemId) {
+                                try {
+                                    const enrichmentRetryService = require('./enrichmentRetryService');
+                                    await enrichmentRetryService.queueForRetry(
+                                        enrichPayload.itemId,
+                                        'tavily',
+                                        'OMDb limit reached',
+                                        3 // Higher priority since it's a quota issue
+                                    );
+                                } catch (retryErr) {
+                                    logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                }
+                            }
                         } else {
                             logger.warn('OMDb enrichment failed', { error: omdbError.message });
+                            // Queue for Tavily fallback on other errors
+                            if (enrichPayload.itemId) {
+                                try {
+                                    const enrichmentRetryService = require('./enrichmentRetryService');
+                                    await enrichmentRetryService.queueForRetry(
+                                        enrichPayload.itemId,
+                                        'tavily',
+                                        `OMDb error: ${omdbError.message?.substring(0, 100)}`,
+                                        7
+                                    );
+                                } catch (retryErr) {
+                                    logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                }
+                            }
                         }
                         // Continue without OMDb data
                     }
@@ -437,6 +477,104 @@ class QueueService {
 
                     // Update the item's metadata with all enrichment data
                     if (enrichPayload.itemId) {
+                        // Force set content_analysis to mark item as processed
+                        // This prevents Gap Analysis from re-queuing it
+                        enrichmentData.content_analysis = {
+                            type: enrichPayload.media?.media_type || 'unknown',
+                            confidence: 100,
+                            method: 'source_library',
+                            detected_at: new Date().toISOString()
+                        };
+
+                        // ========== TVDB/IMDB → TMDB CONVERSION ==========
+                        // If we don't have TMDB ID, try to discover it from other provider IDs
+                        if (!enrichTmdbId) {
+                            const tmdbService = require('./tmdb');
+
+                            // Try TVDB → TMDB first (common for TV shows)
+                            if (!enrichTmdbId && enrichPayload.tvdb_id) {
+                                try {
+                                    const tvdbLookup = await tmdbService.findByExternalId(enrichPayload.tvdb_id, 'tvdb_id');
+                                    const tvResults = tvdbLookup.tv_results || [];
+                                    if (tvResults.length > 0) {
+                                        enrichTmdbId = tvResults[0].id;
+                                        logger.info('TVDB→TMDB conversion successful', {
+                                            tvdbId: enrichPayload.tvdb_id,
+                                            tmdbId: enrichTmdbId,
+                                            title: enrichPayload.title
+                                        });
+                                    }
+                                } catch (e) {
+                                    logger.debug('TVDB→TMDB lookup failed', { error: e.message });
+                                }
+                            }
+
+                            // Try IMDB → TMDB (from OMDb enrichment or payload)
+                            const imdbId = enrichmentData.omdb?.data?.imdbID || enrichPayload.imdb_id;
+                            if (!enrichTmdbId && imdbId) {
+                                try {
+                                    const imdbLookup = await tmdbService.findByExternalId(imdbId, 'imdb_id');
+                                    const results = imdbLookup.movie_results?.length > 0
+                                        ? imdbLookup.movie_results
+                                        : imdbLookup.tv_results || [];
+                                    if (results.length > 0) {
+                                        enrichTmdbId = results[0].id;
+                                        logger.info('IMDB→TMDB conversion successful', {
+                                            imdbId: imdbId,
+                                            tmdbId: enrichTmdbId,
+                                            title: enrichPayload.title
+                                        });
+                                    }
+                                } catch (e) {
+                                    logger.debug('IMDB→TMDB lookup failed', { error: e.message });
+                                }
+                            }
+
+                            // ========== TMDB TITLE SEARCH (FINAL FALLBACK) ==========
+                            // If still no TMDB ID, try searching TMDB by title and year
+                            if (!enrichTmdbId && enrichPayload.title) {
+                                try {
+                                    const mediaType = enrichPayload.media?.media_type || 'movie';
+                                    const searchQuery = enrichPayload.year
+                                        ? `${enrichPayload.title} ${enrichPayload.year}`
+                                        : enrichPayload.title;
+
+                                    const searchResults = await tmdbService.search(searchQuery, mediaType);
+
+                                    if (searchResults && searchResults.length > 0) {
+                                        // Find best match - prioritize exact title + year match
+                                        const bestMatch = searchResults.find(r =>
+                                            r.title?.toLowerCase() === enrichPayload.title?.toLowerCase() &&
+                                            (!enrichPayload.year || r.year === String(enrichPayload.year))
+                                        ) || searchResults[0];
+
+                                        enrichTmdbId = bestMatch.id;
+                                        logger.info('TMDB title search successful', {
+                                            query: searchQuery,
+                                            tmdbId: enrichTmdbId,
+                                            matchedTitle: bestMatch.title,
+                                            title: enrichPayload.title
+                                        });
+                                    }
+                                } catch (e) {
+                                    logger.debug('TMDB title search failed', { error: e.message });
+                                }
+                            }
+
+                            // If we discovered TMDB ID, backfill it to media_server_items
+                            if (enrichTmdbId && enrichPayload.itemId) {
+                                await db.query(
+                                    'UPDATE media_server_items SET tmdb_id = $1 WHERE id = $2 AND tmdb_id IS NULL',
+                                    [enrichTmdbId, enrichPayload.itemId]
+                                );
+                                logger.info('Backfilled TMDB ID to media_server_items', {
+                                    itemId: enrichPayload.itemId,
+                                    tmdbId: enrichTmdbId
+                                });
+                            }
+                        }
+
+
                         await db.query(
                             `UPDATE media_server_items 
                              SET metadata = metadata || $1::jsonb
@@ -446,14 +584,20 @@ class QueueService {
 
                         // Log to classification_history so it shows in Activity stream
                         // This is 100% confidence from source library - NO AI analysis
-                        // Only insert if: has tmdb_id AND not already logged (prevents duplicates)
-                        // Uses enrichTmdbId which includes self-healing lookup
-                        if (enrichTmdbId) {
-                            const existingEntry = await db.query(
-                                `SELECT 1 FROM classification_history 
-                                 WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
-                                [enrichTmdbId, enrichSourceLibraryId]
-                            );
+                        // Now logs ALL items with a library ID (TMDB optional for visibility)
+                        if (enrichSourceLibraryId) {
+                            // Check for duplicates using itemId OR tmdb_id (handle both cases)
+                            const existingEntry = enrichTmdbId
+                                ? await db.query(
+                                    `SELECT 1 FROM classification_history 
+                                     WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
+                                    [enrichTmdbId, enrichSourceLibraryId]
+                                )
+                                : await db.query(
+                                    `SELECT 1 FROM classification_history 
+                                     WHERE title = $1 AND library_id = $2 AND method = 'source_library' AND tmdb_id IS NULL LIMIT 1`,
+                                    [enrichPayload.title, enrichSourceLibraryId]
+                                );
 
                             if (existingEntry.rows.length === 0) {
                                 await db.query(
@@ -462,7 +606,7 @@ class QueueService {
                                         confidence, method, reason, metadata
                                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
                                     [
-                                        enrichTmdbId,
+                                        enrichTmdbId || null,  // Now allows NULL
                                         enrichPayload.media?.media_type || 'movie',
                                         enrichPayload.title,
                                         enrichPayload.year,
@@ -470,12 +614,15 @@ class QueueService {
                                         'completed',
                                         100, // 100% confidence from source
                                         'source_library', // Method is source_library, not AI
-                                        `Already in library: ${enrichSourceLibraryName}`,
+                                        enrichTmdbId
+                                            ? `Already in library: ${enrichSourceLibraryName}`
+                                            : `Already in library: ${enrichSourceLibraryName} (no TMDB match)`,
                                         JSON.stringify(enrichPayload)
                                     ]
                                 );
                             }
                         }
+
 
                         const hasTavily = !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory || enrichmentData.tavily_content_type || enrichmentData.tavily_holiday);
                         logger.info('Metadata enrichment complete (no AI, from source library)', {
@@ -579,13 +726,18 @@ class QueueService {
                         this.processTask(task).finally(() => {
                             this.processing--;
                         });
+
+                        // If we found a task, don't wait - check for more work immediately
+                        // Small delay to yield to event loop
+                        await new Promise(resolve => setImmediate(resolve));
+                        continue;
                     }
                 }
             } catch (error) {
                 logger.error('Worker loop error', { error: error.message });
             }
 
-            // Wait before next poll
+            // Wait before next poll if no task was found or max concurrent reached
             await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
         }
 
@@ -605,11 +757,14 @@ class QueueService {
      */
     async getStats() {
         try {
+            // Only count classification tasks - metadata_enrichment is tracked separately
+            // in Library Enrichment Progress on the dashboard
             const result = await db.query(`
         SELECT 
           status,
           COUNT(*) as count
         FROM task_queue
+        WHERE task_type = 'classification'
         GROUP BY status
       `);
 

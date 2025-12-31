@@ -454,6 +454,137 @@ class CloudLLMService {
     }
 
     /**
+     * Generate embeddings using OpenAI-compatible API (OpenAI, OpenRouter, LiteLLM)
+     * @param {string} text - Text to embed
+     * @param {object} config - Provider configuration
+     * @param {string} model - Embedding model (default: text-embedding-3-small)
+     * @returns {Promise<{embedding: number[], dims: number, cost: number}>}
+     */
+    async embed(text, config, model = 'text-embedding-3-small') {
+        const endpoint = this.getEndpoint(config);
+
+        try {
+            logger.debug('Embedding request', {
+                provider: config.primary_provider,
+                model: model,
+                textLength: text.length
+            });
+
+            const response = await axios.post(
+                `${endpoint}/embeddings`,
+                {
+                    model: model,
+                    input: text
+                },
+                {
+                    headers: this.getHeaders(config),
+                    timeout: 60000
+                }
+            );
+
+            const embedding = response.data.data?.[0]?.embedding;
+            const usage = response.data.usage || {};
+
+            // Calculate cost (embedding models are cheaper)
+            // text-embedding-3-small: $0.02/1M tokens
+            // text-embedding-3-large: $0.13/1M tokens
+            const costPerMillion = model.includes('large') ? 0.13 : 0.02;
+            const cost = (usage.total_tokens || 0) / 1000000 * costPerMillion;
+
+            // Log embedding cost separately
+            await this.logEmbeddingCost(config.primary_provider, model, usage.total_tokens || 0, cost);
+
+            logger.info('Embedding generated', {
+                provider: config.primary_provider,
+                model: model,
+                dims: embedding?.length || 0,
+                cost: `$${cost.toFixed(6)}`
+            });
+
+            return {
+                embedding: embedding,
+                dims: embedding?.length || 0,
+                cost: cost,
+                tokens: usage.total_tokens || 0
+            };
+        } catch (error) {
+            logger.error('Embedding request failed', {
+                provider: config.primary_provider,
+                error: error.response?.data?.error?.message || error.message
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Generate embeddings using Gemini API
+     * @param {string} text - Text to embed
+     * @param {object} config - Gemini configuration
+     * @param {string} model - Embedding model (default: text-embedding-005)
+     * @returns {Promise<{embedding: number[], dims: number, cost: number}>}
+     */
+    async embedGemini(text, config, model = 'text-embedding-005') {
+        try {
+            logger.debug('Gemini embedding request', {
+                model: model,
+                textLength: text.length
+            });
+
+            const response = await axios.post(
+                `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${config.api_key}`,
+                {
+                    content: {
+                        parts: [{ text: text }]
+                    }
+                },
+                { timeout: 60000 }
+            );
+
+            const embedding = response.data.embedding?.values;
+
+            // Gemini embedding cost: ~$0.025/1M characters
+            const cost = (text.length / 1000000) * 0.025;
+
+            // Log embedding cost
+            await this.logEmbeddingCost('gemini', model, text.length, cost);
+
+            logger.info('Gemini embedding generated', {
+                model: model,
+                dims: embedding?.length || 0,
+                cost: `$${cost.toFixed(6)}`
+            });
+
+            return {
+                embedding: embedding,
+                dims: embedding?.length || 0,
+                cost: cost,
+                tokens: text.length
+            };
+        } catch (error) {
+            logger.error('Gemini embedding request failed', {
+                error: error.response?.data?.error?.message || error.message
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Log embedding cost to database (separate from LLM costs)
+     */
+    async logEmbeddingCost(provider, model, tokens, costUSD) {
+        try {
+            await db.query(`
+                INSERT INTO embedding_costs 
+                (provider, model, tokens, items_embedded, cost_usd, period_start)
+                VALUES ($1, $2, $3, 1, $4, CURRENT_DATE)
+            `, [provider, model, tokens, costUSD]);
+        } catch (error) {
+            // Don't fail on cost logging errors
+            logger.warn('Failed to log embedding cost', { error: error.message });
+        }
+    }
+
+    /**
      * Calculate cost based on provider and token usage
      */
     calculateCost(provider, model, promptTokens, completionTokens, headers = {}) {

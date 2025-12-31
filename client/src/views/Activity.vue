@@ -113,8 +113,31 @@
           <div class="flex space-x-4">
             <span class="text-blue-400">🎬 OMDb: {{ stats.enrichment.omdbEnriched || 0 }}</span>
             <span class="text-purple-400">🔍 Tavily: {{ stats.enrichment.tavilyEnriched || 0 }}</span>
-            <span class="text-yellow-400">⏳ Pending: {{ stats.queuePending || 0 }}</span>
+            <span class="text-yellow-400">⏳ Pending: {{ (stats.enrichment?.pending || 0) + (stats.enrichment?.retryQueue?.total?.pending || 0) }}</span>
           </div>
+        </div>
+        
+        <!-- Retry Queue Status -->
+        <div v-if="stats.enrichment?.retryQueue?.total?.pending > 0" 
+             class="mt-3 p-3 bg-orange-900/20 border border-orange-500/30 rounded-lg">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="text-orange-400">🔄</span>
+              <span class="text-sm text-orange-300">
+                {{ stats.enrichment.retryQueue.total.pending }} items queued for Tavily retry
+              </span>
+            </div>
+            <button 
+              @click="processRetryQueue" 
+              :disabled="retryProcessing"
+              class="px-3 py-1 text-xs bg-orange-600 hover:bg-orange-500 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {{ retryProcessing ? 'Processing...' : 'Process Queue' }}
+            </button>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">
+            Items where OMDb couldn't find data. Processing uses Tavily quota.
+          </p>
         </div>
       </div>
     </Card>
@@ -247,7 +270,8 @@ import Button from '@/components/common/Button.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import api from '@/api'
 
-const refreshInterval = 2 // seconds
+// Activity page polling interval in seconds (configurable in settings)
+const refreshInterval = ref(30) // Default 30 seconds
 const loading = ref(true)
 const lastUpdated = ref('')
 let refreshTimer = null
@@ -271,6 +295,7 @@ const ollamaStatus = ref({
 
 const activityFeed = ref([])
 const upNextQueue = ref([])
+const retryProcessing = ref(false)
 
 const healthStatus = computed(() => {
   if (stats.value.health.ai && stats.value.health.worker) return 'All Systems OK'
@@ -355,11 +380,26 @@ const formatTimeAgo = (timestamp) => {
   const diffSecs = Math.floor(diffMs / 1000)
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
   
   if (diffSecs < 60) return `${diffSecs}s ago`
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
-  return date.toLocaleDateString()
+  return `${diffDays}d ago`
+}
+
+const processRetryQueue = async () => {
+  try {
+    retryProcessing.value = true
+    await api.processRetryQueue({ limit: 50, enrichmentType: 'tavily' })
+    // Refresh stats after processing
+    await refreshData()
+  } catch (error) {
+    console.error('Failed to process retry queue:', error)
+    alert('Failed to process retry queue. Check if Tavily is configured and has quota.')
+  } finally {
+    retryProcessing.value = false
+  }
 }
 
 const formatMethod = (method) => {
@@ -421,13 +461,23 @@ const getMethodIcon = (method, eventType = null) => {
   return icons[method] || '✓'
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Load queue settings for polling interval
+  try {
+    const settingsRes = await api.getQueueSettings()
+    if (settingsRes.data?.activityRefreshInterval) {
+      refreshInterval.value = parseInt(settingsRes.data.activityRefreshInterval) || 30
+    }
+  } catch (e) {
+    // Use default if settings not available
+  }
+  
   refreshData()
   
-  // Auto-refresh every 2 seconds
+  // Auto-refresh based on configured interval
   refreshTimer = setInterval(() => {
     refreshData()
-  }, refreshInterval * 1000)
+  }, refreshInterval.value * 1000)
 })
 
 onUnmounted(() => {

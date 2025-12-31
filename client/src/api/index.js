@@ -588,6 +588,17 @@ export default {
     return apiClient.get('/queue/ollama-status')
   },
 
+  // Enrichment Retry Queue
+  getRetryStats() {
+    return apiClient.get('/queue/retry-stats')
+  },
+  processRetryQueue(options = {}) {
+    return apiClient.post('/queue/retry-process', options)
+  },
+  backfillRetryQueue() {
+    return apiClient.post('/queue/retry-backfill')
+  },
+
   // Batch Reclassification
   createReclassificationBatch(items, pauseOnError = true) {
     return apiClient.post('/reclassification/batch', { items, pauseOnError })

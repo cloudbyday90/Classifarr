@@ -322,11 +322,11 @@ router.put('/radarr/:id', async (req, res) => {
     const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
     // Construct URL from components if not provided
-       const finalProtocol = protocol || 'http';
-       const finalHost = host || 'localhost';
-       const finalPort = port || 7878;
-       const finalBasePath = base_path || '';
-       const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
+    const finalProtocol = protocol || 'http';
+    const finalHost = host || 'localhost';
+    const finalPort = port || 7878;
+    const finalBasePath = base_path || '';
+    const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
 
     const result = await db.query(
       `UPDATE radarr_config
@@ -545,11 +545,11 @@ router.put('/sonarr/:id', async (req, res) => {
     const finalApiKey = (api_key && !isMaskedToken(api_key)) ? api_key : existingApiKey;
 
     // Construct URL from components if not provided
-       const finalProtocol = protocol || 'http';
-       const finalHost = host || 'localhost';
-       const finalPort = port || 8989;
-       const finalBasePath = base_path || '';
-       const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
+    const finalProtocol = protocol || 'http';
+    const finalHost = host || 'localhost';
+    const finalPort = port || 8989;
+    const finalBasePath = base_path || '';
+    const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
 
     const result = await db.query(
       `UPDATE sonarr_config
@@ -1979,7 +1979,15 @@ router.get('/ai', async (req, res) => {
         ollama_for_budget_exhausted: true,
         ollama_host: 'localhost',
         ollama_port: 11434,
-        ollama_model: 'llama3.2'
+        ollama_model: 'llama3.2',
+        // RAG settings
+        rag_enabled: false,
+        embedding_provider: 'auto',
+        embedding_model: '',
+        rag_similarity_threshold: 0.70,
+        rag_min_history_count: 50,
+        rag_backfill_budget_type: 'percentage',
+        rag_backfill_budget_value: 25
       });
     }
 
@@ -2019,7 +2027,15 @@ router.put('/ai', async (req, res) => {
       ollama_for_budget_exhausted,
       ollama_host,
       ollama_port,
-      ollama_model
+      ollama_model,
+      // RAG settings
+      rag_enabled,
+      embedding_provider,
+      embedding_model,
+      rag_similarity_threshold,
+      rag_min_history_count,
+      rag_backfill_budget_type,
+      rag_backfill_budget_value
     } = req.body;
 
     // Handle API key - don't update if masked
@@ -2034,9 +2050,14 @@ router.put('/ai', async (req, res) => {
                 id, primary_provider, api_endpoint, api_key, model, temperature, max_tokens,
                 monthly_budget_usd, budget_alert_threshold, pause_on_budget_exhausted,
                 ollama_fallback_enabled, ollama_for_basic_tasks, ollama_for_budget_exhausted,
-                ollama_host, ollama_port, ollama_model, updated_at
+                ollama_host, ollama_port, ollama_model,
+                rag_enabled, embedding_provider, embedding_model,
+                rag_similarity_threshold, rag_min_history_count,
+                rag_backfill_budget_type, rag_backfill_budget_value,
+                updated_at
             ) VALUES (
-                1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
+                1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                $16, $17, $18, $19, $20, $21, $22, NOW()
             )
             ON CONFLICT (id) DO UPDATE SET
                 primary_provider = EXCLUDED.primary_provider,
@@ -2054,6 +2075,13 @@ router.put('/ai', async (req, res) => {
                 ollama_host = EXCLUDED.ollama_host,
                 ollama_port = EXCLUDED.ollama_port,
                 ollama_model = EXCLUDED.ollama_model,
+                rag_enabled = EXCLUDED.rag_enabled,
+                embedding_provider = EXCLUDED.embedding_provider,
+                embedding_model = EXCLUDED.embedding_model,
+                rag_similarity_threshold = EXCLUDED.rag_similarity_threshold,
+                rag_min_history_count = EXCLUDED.rag_min_history_count,
+                rag_backfill_budget_type = EXCLUDED.rag_backfill_budget_type,
+                rag_backfill_budget_value = EXCLUDED.rag_backfill_budget_value,
                 updated_at = NOW()
             RETURNING *
         `, [
@@ -2071,7 +2099,14 @@ router.put('/ai', async (req, res) => {
       ollama_for_budget_exhausted !== false,
       ollama_host || 'localhost',
       ollama_port || 11434,
-      ollama_model || 'llama3.2'
+      ollama_model || 'llama3.2',
+      rag_enabled || false,
+      embedding_provider || 'auto',
+      embedding_model || '',
+      rag_similarity_threshold || 0.70,
+      rag_min_history_count || 50,
+      rag_backfill_budget_type || 'percentage',
+      rag_backfill_budget_value || 25
     ]);
 
     // Clear config cache

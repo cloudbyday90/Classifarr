@@ -45,7 +45,8 @@ LABEL org.opencontainers.image.vendor="cloudbyday90"
 LABEL org.opencontainers.image.source="https://github.com/cloudbyday90/Classifarr"
 LABEL org.opencontainers.image.licenses="GPL-3.0"
 
-# Install runtime dependencies including PostgreSQL
+# Install runtime dependencies including PostgreSQL 17
+# NOTE: pgvector is built from source to ensure PG17 compatibility
 RUN apk add --no-cache \
     tini \
     curl \
@@ -53,9 +54,20 @@ RUN apk add --no-cache \
     netcat-openbsd \
     postgresql17 \
     postgresql17-contrib \
+    postgresql17-dev \
     su-exec \
     shadow \
     && rm -rf /var/cache/apk/*
+
+# Build pgvector extension for PostgreSQL 17
+# Use PG17-specific pg_config to ensure compatibility
+RUN apk add --no-cache --virtual .build-deps git make gcc musl-dev \
+    && git clone --branch v0.8.0 https://github.com/pgvector/pgvector.git /tmp/pgvector \
+    && cd /tmp/pgvector \
+    && make PG_CONFIG=/usr/libexec/postgresql17/pg_config \
+    && make install PG_CONFIG=/usr/libexec/postgresql17/pg_config \
+    && cd / && rm -rf /tmp/pgvector \
+    && apk del .build-deps
 
 # Create non-root user for security
 # Remove existing node user (UID/GID 1000) from base image to avoid conflicts

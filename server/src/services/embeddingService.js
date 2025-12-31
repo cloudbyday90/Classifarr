@@ -1,0 +1,297 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2025 cloudbyday90
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
+const db = require('../config/database');
+const embeddingRouter = require('./embeddingRouter');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('EmbeddingService');
+
+/**
+ * Embedding Service
+ * Handles generating, storing, and managing embeddings for classifications
+ */
+class EmbeddingService {
+    /**
+     * Format metadata into text suitable for embedding
+     * @param {object} metadata - Classification metadata
+     * @returns {string} Formatted text for embedding
+     */
+    formatForEmbedding(metadata) {
+        const parts = [];
+
+        // Title and year
+        if (metadata.title) {
+            parts.push(metadata.title);
+        }
+        if (metadata.year) {
+            parts.push(`(${metadata.year})`);
+        }
+
+        // Media type
+        if (metadata.media_type) {
+            parts.push(`[${metadata.media_type}]`);
+        }
+
+        // Genres
+        if (metadata.genres && metadata.genres.length > 0) {
+            const genreNames = metadata.genres.map(g =>
+                typeof g === 'string' ? g : g.name
+            ).filter(Boolean);
+            if (genreNames.length > 0) {
+                parts.push(`Genres: ${genreNames.join(', ')}`);
+            }
+        }
+
+        // Keywords
+        if (metadata.keywords && metadata.keywords.length > 0) {
+            const keywordNames = metadata.keywords.slice(0, 10).map(k =>
+                typeof k === 'string' ? k : k.name
+            ).filter(Boolean);
+            if (keywordNames.length > 0) {
+                parts.push(`Keywords: ${keywordNames.join(', ')}`);
+            }
+        }
+
+        // Overview (truncated)
+        if (metadata.overview) {
+            const truncatedOverview = metadata.overview.slice(0, 500);
+            parts.push(truncatedOverview);
+        }
+
+        // Library if known
+        if (metadata.library_name) {
+            parts.push(`Library: ${metadata.library_name}`);
+        }
+
+        return parts.join(' ').trim();
+    }
+
+    /**
+     * Generate and store embedding for a classification
+     * @param {number} classificationId - ID of classification_history record
+     * @param {object} metadata - Classification metadata
+     * @returns {Promise<object>} Stored embedding info
+     */
+    async generateAndStore(classificationId, metadata) {
+        try {
+            // Format metadata for embedding
+            const text = this.formatForEmbedding(metadata);
+
+            if (!text || text.length < 10) {
+                logger.warn('Text too short for embedding', { classificationId, textLength: text?.length });
+                throw new Error('Text too short for embedding');
+            }
+
+            // Generate embedding
+            const result = await embeddingRouter.embed(text);
+
+            // Store embedding
+            const stored = await this.storeEmbedding(classificationId, result);
+
+            logger.info('Embedding generated and stored', {
+                classificationId,
+                dims: result.dims,
+                provider: result.provider,
+                cost: result.cost
+            });
+
+            return stored;
+        } catch (error) {
+            logger.error('Failed to generate embedding', {
+                classificationId,
+                error: error.message
+            });
+
+            // Add to retry queue
+            await this.addToRetryQueue(classificationId, error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Store embedding in database
+     */
+    async storeEmbedding(classificationId, embeddingResult) {
+        try {
+            // Convert embedding array to pgvector format
+            const vectorString = `[${embeddingResult.embedding.join(',')}]`;
+
+            const result = await db.query(`
+                INSERT INTO classification_embeddings 
+                (classification_id, embedding, embedding_dims, provider, model)
+                VALUES ($1, $2::vector, $3, $4, $5)
+                ON CONFLICT (classification_id) 
+                DO UPDATE SET 
+                    embedding = $2::vector,
+                    embedding_dims = $3,
+                    provider = $4,
+                    model = $5,
+                    is_stale = false,
+                    updated_at = NOW()
+                RETURNING id
+            `, [
+                classificationId,
+                vectorString,
+                embeddingResult.dims,
+                embeddingResult.provider,
+                embeddingResult.model
+            ]);
+
+            return {
+                id: result.rows[0].id,
+                dims: embeddingResult.dims,
+                provider: embeddingResult.provider
+            };
+        } catch (error) {
+            logger.error('Failed to store embedding', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Mark embeddings as stale (when provider changes)
+     * @param {string} oldProvider - Previous provider
+     * @param {string} oldModel - Previous model
+     */
+    async markStale(oldProvider = null, oldModel = null) {
+        try {
+            let query = 'UPDATE classification_embeddings SET is_stale = true';
+            const params = [];
+
+            if (oldProvider) {
+                query += ' WHERE provider = $1';
+                params.push(oldProvider);
+
+                if (oldModel) {
+                    query += ' AND model = $2';
+                    params.push(oldModel);
+                }
+            }
+
+            const result = await db.query(query, params);
+            logger.info('Marked embeddings as stale', { count: result.rowCount });
+            return result.rowCount;
+        } catch (error) {
+            logger.error('Failed to mark embeddings stale', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Add failed embedding to retry queue
+     */
+    async addToRetryQueue(classificationId, errorMessage) {
+        try {
+            await db.query(`
+                INSERT INTO embedding_retry_queue 
+                (classification_id, last_error, next_retry_at)
+                VALUES ($1, $2, NOW() + INTERVAL '5 minutes')
+                ON CONFLICT DO NOTHING
+            `, [classificationId, errorMessage]);
+        } catch (error) {
+            logger.warn('Failed to add to retry queue', { error: error.message });
+        }
+    }
+
+    /**
+     * Process retry queue
+     */
+    async processRetryQueue() {
+        try {
+            const items = await db.query(`
+                SELECT rq.*, ch.title, ch.media_type, ch.library_name
+                FROM embedding_retry_queue rq
+                JOIN classification_history ch ON rq.classification_id = ch.id
+                WHERE rq.status = 'pending' 
+                AND rq.next_retry_at <= NOW()
+                AND rq.attempt_count < rq.max_attempts
+                LIMIT 10
+            `);
+
+            for (const item of items.rows) {
+                try {
+                    await this.generateAndStore(item.classification_id, item);
+
+                    // Remove from queue on success
+                    await db.query(
+                        'DELETE FROM embedding_retry_queue WHERE id = $1',
+                        [item.id]
+                    );
+                } catch (error) {
+                    // Update attempt count
+                    await db.query(`
+                        UPDATE embedding_retry_queue 
+                        SET attempt_count = attempt_count + 1,
+                            last_error = $1,
+                            next_retry_at = NOW() + INTERVAL '15 minutes',
+                            updated_at = NOW()
+                        WHERE id = $2
+                    `, [error.message, item.id]);
+                }
+            }
+
+            return items.rows.length;
+        } catch (error) {
+            logger.error('Failed to process retry queue', { error: error.message });
+            return 0;
+        }
+    }
+
+    /**
+     * Get embedding statistics
+     */
+    async getStats() {
+        try {
+            const result = await db.query(`
+                SELECT 
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE is_stale = true) as stale,
+                    COUNT(DISTINCT provider) as providers,
+                    AVG(embedding_dims) as avg_dims
+                FROM classification_embeddings
+            `);
+
+            const queueResult = await db.query(`
+                SELECT COUNT(*) as pending FROM embedding_retry_queue WHERE status = 'pending'
+            `);
+
+            const stats = result.rows[0];
+            return {
+                total: parseInt(stats.total) || 0,
+                stale: parseInt(stats.stale) || 0,
+                providers: parseInt(stats.providers) || 0,
+                avgDims: Math.round(parseFloat(stats.avg_dims)) || 0,
+                pendingRetries: parseInt(queueResult.rows[0].pending) || 0
+            };
+        } catch (error) {
+            logger.error('Failed to get embedding stats', { error: error.message });
+            return null;
+        }
+    }
+
+    /**
+     * Check if we have enough embeddings for RAG to be useful
+     */
+    async hasMinimumEmbeddings() {
+        try {
+            const config = await embeddingRouter.getConfig();
+            const minCount = config?.rag_min_history_count || 50;
+
+            const result = await db.query(
+                'SELECT COUNT(*) as count FROM classification_embeddings WHERE is_stale = false'
+            );
+
+            return parseInt(result.rows[0].count) >= minCount;
+        } catch (error) {
+            return false;
+        }
+    }
+}
+
+module.exports = new EmbeddingService();

@@ -87,7 +87,7 @@ const rateLimiters = {
 
     // OMDb: 1000 per day (~42 per hour, ~1 per minute to be safe)
     // Being conservative to avoid hitting daily limit
-    omdb: new RateLimiter({ maxRequests: 10, intervalMs: 10000 }),
+    omdb: new RateLimiter({ maxRequests: 50, intervalMs: 10000 }),
 
     // Tavily: Depends on plan, default to conservative
     tavily: new RateLimiter({ maxRequests: 20, intervalMs: 10000 }),

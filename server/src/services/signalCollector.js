@@ -27,6 +27,7 @@ const SIGNAL_TYPES = {
     COLLECTION_MATCH: 'collection_match',    // Part of same franchise/collection
     KEYWORD_MATCH: 'keyword_match',          // Keyword-based matching
     GENRE_MATCH: 'genre_match',              // Genre-based matching
+    SEMANTIC_SIMILARITY: 'semantic_similarity', // RAG-based similar item matching
 };
 
 /**

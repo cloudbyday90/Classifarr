@@ -98,6 +98,22 @@
             <option :value="5">5</option>
           </select>
         </div>
+
+        <!-- Activity Refresh Interval -->
+        <div>
+          <label class="block font-medium mb-1">Activity Page Refresh Interval</label>
+          <p class="text-sm text-gray-400 mb-2">How often the Activity page polls for updates (reduces log noise)</p>
+          <select
+            v-model="settings.activityRefreshInterval"
+            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-40"
+          >
+            <option :value="5">5 seconds</option>
+            <option :value="10">10 seconds</option>
+            <option :value="15">15 seconds</option>
+            <option :value="30">30 seconds (default)</option>
+            <option :value="60">60 seconds</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -314,7 +330,8 @@ const settings = ref({
   maxRetryAttempts: 5,
   retryStrategy: 'exponential',
   autoDeleteCompleted: '7d',
-  autoDeleteFailed: 'never'
+  autoDeleteFailed: 'never',
+  activityRefreshInterval: 30
 })
 
 let pollInterval = null

@@ -5,7 +5,7 @@
 Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr/Seer to the correct Radarr/Sonarr library. It leverages your existing Plex/Emby/Jellyfin library structure combined with AI content analysis to make accurate classification decisions. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-0.30.0--alpha-blue)
+![Version](https://img.shields.io/badge/version-0.34.0--alpha-blue)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 ## ✨ Features
@@ -14,7 +14,8 @@ Classifarr is an intelligent media classification platform that automatically ro
 - **🎭 Multi-Server Support** - Plex, Emby, and Jellyfin with OAuth flows
 - 🤖 Multi-Provider AI - OpenAI, Gemini, OpenRouter, Ollama with budget controls
 - 📚 Smart Rule Builder - Create classification rules with AI-suggested conditions
-- 🗄️ Embedded PostgreSQL - All data in a single volume, auto-initialized
+- � RAG Semantic Search - Learns from your classification history for better decisions
+- �🗄️ Embedded PostgreSQL - All data in a single volume, auto-initialized
 - 💬 Discord Bot - Real-time notifications with correction buttons
 - 🔄 Learning System - Improves from user corrections over time
 - 📊 Dashboard & Statistics - Track classifications and system performance
@@ -41,8 +42,9 @@ Classifarr is an intelligent media classification platform that automatically ro
 │  │   │ 2. Learned Corrections (100%) │ │ │
 │  │   │ 3. Holiday Detection (95%) │ │ │
 │  │   │ 4. Custom Rules (90%)      │ │ │
-│  │   │ 5. AI Analysis (Cloud/Ollama) │ │ │
-│  │   │ 6. Learned Patterns (80%)  │ │ │
+│  │   │ 5. RAG Similarity (50-90%) │ │ │
+│  │   │ 6. AI Analysis (Cloud/Ollama) │ │ │
+│  │   │ 7. Learned Patterns (80%)  │ │ │
 │  │   └─────────────────────────────┘ │ │
 │  └───────────────────────────────────┘ │
 │                                         │
@@ -181,15 +183,19 @@ Automatic detection of Christmas, Halloween, and other holiday content based on 
 ### Step 3: Custom Rules (90% Confidence)
 User-defined rules created via the Smart Rule Builder match based on genre, rating, language, keywords, and more.
 
-### Step 4: AI Content Analysis
+### Step 4: RAG Semantic Search (50-90% Confidence)
+When enabled, Classifarr searches your classification history for similar items using vector similarity. If you classified similar movies to a specific library, RAG suggests the same for new items. Confidence is dynamic based on match quality.
+
+### Step 5: AI Content Analysis
 If confidence is below threshold, your configured AI provider analyzes the content:
 - Metadata review (plot, genres, ratings)
 - Content type detection
 - Library recommendation with reasoning
+- **RAG context included** - AI sees how similar items were classified
 
 **Supported Providers:** OpenAI (GPT-4o/5), Google Gemini, OpenRouter (100+ models), Ollama (local).
 
-### Step 5: Learned Patterns (80% Confidence)
+### Step 6: Learned Patterns (80% Confidence)
 Patterns extracted from user corrections improve future classifications.
 
 ## 📚 Smart Rule Builder
@@ -330,6 +336,136 @@ OpenRouter provides unified access to 100+ models. Best picks for classification
 | **Want to try different providers** | OpenRouter with budget controls |
 
 > **Ollama Fallback:** Enable Ollama as a fallback for basic tasks or when cloud budget is exhausted.
+
+---
+
+### 🔮 Semantic Search (RAG)
+
+RAG (Retrieval-Augmented Generation) is Classifarr's learning system that uses your classification history to improve future decisions. Instead of treating each new request in isolation, Classifarr remembers how you classified similar content and uses that knowledge to make better decisions.
+
+#### Why RAG for Media Classification?
+
+Traditional rule-based systems struggle with edge cases. RAG solves this by learning from your preferences:
+
+- **Franchise Consistency**: Classified "Harry Potter and the Sorcerer's Stone" to your Kids library? RAG remembers this and suggests the same library for subsequent Harry Potter films.
+- **Studio Patterns**: If you route all Pixar films to a specific library, RAG learns this pattern and applies it to new Pixar releases.
+- **Genre Nuances**: A horror-comedy like "Shaun of the Dead" might not fit neatly into rules, but if you've classified similar films before, RAG uses that context.
+- **Personal Preferences**: Your library organization is unique. RAG learns YOUR preferences, not generic rules.
+
+#### How RAG Works in Classifarr
+
+```
+New Request: "Encanto (2021)"
+        │
+        ▼
+┌────────────────────────────────────┐
+│  1. Generate Embedding Vector      │
+│     (title, genres, studio, etc.)  │
+└─────────────┬──────────────────────┘
+              │
+              ▼
+┌────────────────────────────────────┐
+│  2. Search Classification History  │
+│     using pgvector similarity      │
+│                                    │
+│     Found similar:                 │
+│     • "Moana" → Family (92% match) │
+│     • "Coco" → Family (89% match)  │
+│     • "Frozen" → Family (87% match)│
+└─────────────┬──────────────────────┘
+              │
+              ▼
+┌────────────────────────────────────┐
+│  3. Inject Context into AI Prompt  │
+│     "Similar items went to Family" │
+└─────────────┬──────────────────────┘
+              │
+              ▼
+┌────────────────────────────────────┐
+│  4. AI makes informed decision     │
+│     → Routes to Family library     │
+│        with 90% confidence         │
+└────────────────────────────────────┘
+```
+
+#### Classification Flow Integration
+
+RAG integrates into the signal-based classification chain:
+
+1. **Exact Match (100%)**: Previously classified TMDB ID or learned correction
+2. **Pattern Match (90%)**: Title rules, genre patterns
+3. **Franchise Match (85%)**: Other items from same collection
+4. **🔮 RAG Similarity (50-90%)**: Similar past classifications ← *NEW*
+5. **AI Analysis**: Falls back to AI with RAG context injected
+
+RAG confidence dynamically adjusts based on match quality:
+- **3+ unanimous matches with 90%+ similarity** → 90% confidence
+- **2+ unanimous matches with 80%+ similarity** → 80% confidence  
+- **Any match above 70% similarity** → 70% confidence
+
+#### Setup
+
+1. Go to **Settings** → **AI** → **🔮 Semantic Search (RAG)**
+2. Enable RAG
+3. Choose your **Embedding Provider** (Ollama recommended - free!)
+4. Select an embedding model from the dropdown
+5. Save and wait for 50+ embeddings to be generated
+
+> **Tip:** Use Ollama for embeddings even if you use a cloud provider for classification - it's free and runs locally!
+
+#### Ollama Embedding Models
+
+| Model | Dims | Size | Best For |
+|-------|------|------|----------|
+| `nomic-embed-text` ⭐ | 768 | 274MB | **Recommended** - High-quality, large context window |
+| `mxbai-embed-large` ⭐ | 1024 | 670MB | State-of-the-art quality, slightly larger |
+| `bge-m3` | 1024 | 1.1GB | Multi-lingual, multi-granularity |
+| `all-minilm` | 384 | 46MB | **Fastest** - Low resource usage |
+| `snowflake-arctic-embed` | 1024 | 670MB | Optimized performance suite |
+| `snowflake-arctic-embed2` | 1024 | 1.1GB | Multilingual with English focus |
+| `nomic-embed-text-v2-moe` | 768 | varies | Multilingual MoE model |
+| `bge-large` | 1024 | 670MB | BAAI embedding model |
+| `qwen3-embedding` | 1024 | varies | Qwen3 series embeddings |
+| `granite-embedding` | 768 | 568MB | IBM multilingual model |
+| `embeddinggemma` | 768 | 600MB | Google's 300M parameter model |
+| `paraphrase-multilingual` | 768 | 556MB | Semantic search & clustering |
+
+To install an Ollama embedding model:
+```bash
+ollama pull nomic-embed-text
+# or
+ollama pull mxbai-embed-large
+```
+
+#### Cloud Embedding Models
+
+**OpenAI:**
+| Model | Dims | Cost (per 1M tokens) | Notes |
+|-------|------|---------------------|-------|
+| `text-embedding-3-small` ⭐ | 1536 | $0.02 | **Best value** for most use cases |
+| `text-embedding-3-large` | 3072 | $0.13 | Highest quality |
+| `text-embedding-ada-002` | 1536 | $0.10 | Legacy, widely supported |
+
+**Google Gemini:**
+| Model | Dims | Notes |
+|-------|------|-------|
+| `text-embedding-005` ⭐ | 768 | Latest Gemini embedding |
+| `text-embedding-004` | 768 | Previous generation |
+
+#### Backfilling
+
+When you enable RAG, existing classification history can be backfilled to seed the system:
+- Backfill runs in the background when enabled
+- You can monitor progress in the RAG status section
+- Once 50+ embeddings exist, RAG activates automatically
+
+#### Configuration Options
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Similarity Threshold | 70% | Minimum match similarity to consider |
+| Min History Count | 50 | Classifications needed before RAG activates |
+| Backfill Budget | 25% | Daily budget allocation for embedding existing items |
 
 ### TMDB
 - Enter API key for metadata enrichment

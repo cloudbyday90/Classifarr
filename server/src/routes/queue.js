@@ -110,6 +110,13 @@ router.get('/live-stats', async (req, res) => {
             FROM media_server_items
         `);
 
+        // Get enrichment queue pending count separately (metadata_enrichment tasks only)
+        const enrichmentQueueResult = await db.query(`
+            SELECT COUNT(*) as pending FROM task_queue 
+            WHERE task_type = 'metadata_enrichment' AND status = 'pending'
+        `);
+        const enrichmentPending = parseInt(enrichmentQueueResult.rows[0]?.pending) || 0;
+
         const totalItems = parseInt(enrichmentResult.rows[0]?.total_items) || 0;
         const enrichedItems = parseInt(enrichmentResult.rows[0]?.enriched) || 0;
         const tavilyEnrichedItems = parseInt(enrichmentResult.rows[0]?.tavily_enriched) || 0;
@@ -120,6 +127,15 @@ router.get('/live-stats', async (req, res) => {
         const allClassifiedToday = parseInt(todayResult.rows[0]?.all_classified) || 0;
         const newAvgConfidence = parseFloat(todayResult.rows[0]?.new_avg_confidence) || 0;
         const allAvgConfidence = parseFloat(todayResult.rows[0]?.all_avg_confidence) || 0;
+
+        // Get retry queue stats
+        let retryQueueStats = { tavily: { pending: 0 }, total: { pending: 0 } };
+        try {
+            const enrichmentRetryService = require('../services/enrichmentRetryService');
+            retryQueueStats = await enrichmentRetryService.getStats();
+        } catch (e) {
+            // Retry queue table may not exist yet
+        }
 
         res.json({
             queue: queueStats,
@@ -137,7 +153,9 @@ router.get('/live-stats', async (req, res) => {
                 enriched: enrichedItems,
                 tavilyEnriched: tavilyEnrichedItems,
                 omdbEnriched: omdbEnrichedItems,
-                progress: enrichmentProgress
+                progress: enrichmentProgress,
+                pending: enrichmentPending,
+                retryQueue: retryQueueStats
             },
             health: {
                 ai: queueStats?.aiAvailable ?? false,
@@ -449,4 +467,80 @@ router.post('/tasks/:id/classify', async (req, res) => {
     }
 });
 
+// ========== ENRICHMENT RETRY QUEUE ENDPOINTS ==========
+
+/**
+ * @swagger
+ * /api/queue/retry-stats:
+ *   get:
+ *     summary: Get enrichment retry queue statistics
+ *     responses:
+ *       200:
+ *         description: Retry queue statistics by type and status
+ */
+router.get('/retry-stats', async (req, res) => {
+    try {
+        const enrichmentRetryService = require('../services/enrichmentRetryService');
+        const stats = await enrichmentRetryService.getStats();
+        res.json(stats);
+    } catch (error) {
+        logger.error('Failed to get retry stats', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/queue/retry-process:
+ *   post:
+ *     summary: Process pending items in the retry queue
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               limit:
+ *                 type: integer
+ *                 default: 50
+ *               enrichmentType:
+ *                 type: string
+ *                 default: tavily
+ *     responses:
+ *       200:
+ *         description: Processing result
+ */
+router.post('/retry-process', async (req, res) => {
+    try {
+        const { limit = 50, enrichmentType = 'tavily' } = req.body;
+        const enrichmentRetryService = require('../services/enrichmentRetryService');
+        const result = await enrichmentRetryService.processRetryQueue(limit, enrichmentType);
+        res.json(result);
+    } catch (error) {
+        logger.error('Failed to process retry queue', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/queue/retry-backfill:
+ *   post:
+ *     summary: Backfill retry queue with items missing OMDb data
+ *     responses:
+ *       200:
+ *         description: Number of items queued
+ */
+router.post('/retry-backfill', async (req, res) => {
+    try {
+        const enrichmentRetryService = require('../services/enrichmentRetryService');
+        const result = await enrichmentRetryService.backfillRetryQueue();
+        res.json(result);
+    } catch (error) {
+        logger.error('Failed to backfill retry queue', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
+

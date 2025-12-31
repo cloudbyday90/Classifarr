@@ -19,6 +19,7 @@ let healthCache = {
     database: { status: 'unknown', lastCheck: null, responseTime: null },
     discordBot: { status: 'unknown', lastCheck: null, responseTime: null },
     ollama: { status: 'unknown', lastCheck: null, responseTime: null },
+    rag: { status: 'unknown', lastCheck: null, pgvector: false, provider: null },
     radarr: { status: 'unknown', lastCheck: null, responseTime: null, instances: [] },
     sonarr: { status: 'unknown', lastCheck: null, responseTime: null, instances: [] },
     mediaServer: { status: 'unknown', lastCheck: null, responseTime: null, type: null },
@@ -414,6 +415,68 @@ async function checkTavily() {
 }
 
 /**
+ * Check RAG (Semantic Search) status
+ */
+async function checkRAG() {
+    try {
+        // Check if RAG is enabled
+        const config = await db.query(
+            'SELECT rag_enabled, embedding_provider, embedding_model FROM ai_provider_config WHERE id = 1'
+        );
+
+        if (config.rows.length === 0 || !config.rows[0].rag_enabled) {
+            healthCache.rag = {
+                status: 'disabled',
+                lastCheck: new Date().toISOString(),
+                pgvector: false,
+                provider: null
+            };
+            return healthCache.rag;
+        }
+
+        // Check pgvector extension
+        let pgvectorAvailable = false;
+        try {
+            await db.query("SELECT 'test'::vector(3)");
+            pgvectorAvailable = true;
+        } catch (pgError) {
+            // pgvector not installed
+        }
+
+        // Check embedding count
+        let embeddingCount = 0;
+        let staleCount = 0;
+        try {
+            const countResult = await db.query('SELECT COUNT(*) FROM classification_embeddings');
+            const staleResult = await db.query('SELECT COUNT(*) FROM classification_embeddings WHERE is_stale = true');
+            embeddingCount = parseInt(countResult.rows[0].count) || 0;
+            staleCount = parseInt(staleResult.rows[0].count) || 0;
+        } catch (e) {
+            // Table may not exist yet
+        }
+
+        healthCache.rag = {
+            status: pgvectorAvailable ? 'available' : 'unavailable',
+            lastCheck: new Date().toISOString(),
+            pgvector: pgvectorAvailable,
+            provider: config.rows[0].embedding_provider,
+            model: config.rows[0].embedding_model,
+            embeddingCount: embeddingCount,
+            staleCount: staleCount
+        };
+    } catch (error) {
+        healthCache.rag = {
+            status: 'error',
+            lastCheck: new Date().toISOString(),
+            error: error.message,
+            pgvector: false
+        };
+    }
+
+    return healthCache.rag;
+}
+
+/**
  * Run all health checks
  */
 async function runAllHealthChecks() {
@@ -425,6 +488,7 @@ async function runAllHealthChecks() {
         checkDatabase(),
         checkDiscordBot(),
         checkOllama(),
+        checkRAG(),
         checkRadarr(),
         checkSonarr(),
         checkMediaServer(),
@@ -484,6 +548,7 @@ module.exports = {
     checkDatabase,
     checkDiscordBot,
     checkOllama,
+    checkRAG,
     checkRadarr,
     checkSonarr,
     checkMediaServer,

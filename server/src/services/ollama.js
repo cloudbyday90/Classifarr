@@ -104,15 +104,22 @@ class OllamaService {
       return { host: this.host, port: this.port, baseUrl: this.baseUrl };
     }
 
-    // Try to load from database
+    // Try to load from ollama_config table first
     const result = await db.query('SELECT id, host, port FROM ollama_config WHERE is_active = true LIMIT 1');
     if (result.rows.length > 0) {
       this.host = result.rows[0].host;
       this.port = result.rows[0].port;
     } else {
-      // Fall back to environment variables or default
-      this.host = process.env.OLLAMA_HOST || 'localhost';
-      this.port = process.env.OLLAMA_PORT || 11434;
+      // Try ai_provider_config as fallback (unified settings)
+      const aiResult = await db.query('SELECT ollama_host, ollama_port FROM ai_provider_config WHERE id = 1');
+      if (aiResult.rows.length > 0 && aiResult.rows[0].ollama_host) {
+        this.host = aiResult.rows[0].ollama_host;
+        this.port = aiResult.rows[0].ollama_port || 11434;
+      } else {
+        // Fall back to environment variables or default
+        this.host = process.env.OLLAMA_HOST || 'localhost';
+        this.port = process.env.OLLAMA_PORT || 11434;
+      }
     }
 
     this.baseUrl = `http://${this.host}:${this.port}`;
@@ -190,6 +197,67 @@ class OllamaService {
       return response.data.response;
     } catch (error) {
       throw new Error(`Failed to generate response: ${error.message}`);
+    }
+  }
+
+  /**
+   * Generate embeddings for text
+   * @param {string} text - Text to embed
+   * @param {string} model - Embedding model name (default: nomic-embed-text-v2-moe)
+   * @returns {Promise<{embedding: number[], dims: number}>} Embedding vector and dimensions
+   */
+  async embed(text, model = 'nomic-embed-text-v2-moe') {
+    try {
+      const config = await this.getConfig();
+
+      // Ensure model is available
+      const models = await this.getModels();
+      const modelExists = models.some(m => m.name === model || m.name.startsWith(model));
+
+      if (!modelExists) {
+        console.log(`[Ollama] Embedding model ${model} not found, attempting to pull...`);
+        await this.pullModel(model);
+      }
+
+      const response = await axios.post(`${config.baseUrl}/api/embeddings`, {
+        model,
+        prompt: text,
+      }, {
+        timeout: 60000, // 1 minute timeout for embeddings
+      });
+
+      const embedding = response.data.embedding;
+      return {
+        embedding: embedding,
+        dims: embedding.length
+      };
+    } catch (error) {
+      throw new Error(`Failed to generate embedding: ${error.message}`);
+    }
+  }
+
+  /**
+   * Pull a model from Ollama library
+   * @param {string} model - Model name to pull
+   * @returns {Promise<boolean>} True if successful
+   */
+  async pullModel(model) {
+    try {
+      const config = await this.getConfig();
+      console.log(`[Ollama] Pulling model: ${model}`);
+
+      const response = await axios.post(`${config.baseUrl}/api/pull`, {
+        name: model,
+        stream: false,
+      }, {
+        timeout: 300000, // 5 minute timeout for model pull
+      });
+
+      console.log(`[Ollama] Model ${model} pulled successfully`);
+      return true;
+    } catch (error) {
+      console.error(`[Ollama] Failed to pull model ${model}: ${error.message}`);
+      throw new Error(`Failed to pull model ${model}: ${error.message}`);
     }
   }
 

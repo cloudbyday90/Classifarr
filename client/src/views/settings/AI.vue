@@ -354,6 +354,135 @@
       </div>
     </Card>
 
+    <!-- RAG (Semantic Search) Settings -->
+    <Card v-if="config.primary_provider !== 'none'" title="🔮 Semantic Search (RAG)">
+      <div class="space-y-4">
+        <!-- Enable Toggle -->
+        <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+          <div>
+            <div class="font-medium text-gray-200">Enable Semantic Search</div>
+            <div class="text-sm text-gray-400">Learn from past classifications to improve future suggestions</div>
+          </div>
+          <Toggle v-model="config.rag_enabled" />
+        </div>
+
+        <div v-if="config.rag_enabled" class="space-y-4">
+          <!-- Embedding Provider -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Provider</label>
+              <select 
+                v-model="config.embedding_provider"
+                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+              >
+                <option value="auto">Auto (use primary AI provider)</option>
+                <option value="ollama">Ollama (Local, Free)</option>
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Google Gemini</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Model</label>
+              <select 
+                v-model="config.embedding_model"
+                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+              >
+                <option value="">Default for provider</option>
+                <!-- Ollama models -->
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="nomic-embed-text">⭐ nomic-embed-text (768d) - Recommended</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="mxbai-embed-large">⭐ mxbai-embed-large (1024d) - High Quality</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="bge-m3">bge-m3 (1024d) - Multilingual</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="all-minilm">all-minilm (384d) - Fast/Lightweight</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="snowflake-arctic-embed">snowflake-arctic-embed (1024d)</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="snowflake-arctic-embed2">snowflake-arctic-embed2 (1024d)</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="nomic-embed-text-v2-moe">nomic-embed-text-v2-moe (768d)</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="bge-large">bge-large (1024d)</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="qwen3-embedding">qwen3-embedding (1024d)</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="granite-embedding">granite-embedding (768d)</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="embeddinggemma">embeddinggemma (768d)</option>
+                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="paraphrase-multilingual">paraphrase-multilingual (768d)</option>
+                <!-- OpenAI models -->
+                <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-3-small">⭐ text-embedding-3-small (1536d) - Best Value</option>
+                <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-3-large">text-embedding-3-large (3072d) - Highest Quality</option>
+                <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-ada-002">text-embedding-ada-002 (1536d) - Legacy</option>
+                <!-- Gemini models -->
+                <option v-if="effectiveEmbeddingProvider === 'gemini'" value="text-embedding-005">⭐ text-embedding-005 (768d) - Latest</option>
+                <option v-if="effectiveEmbeddingProvider === 'gemini'" value="text-embedding-004">text-embedding-004 (768d)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Thresholds -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Similarity Threshold</label>
+              <div class="flex items-center gap-2">
+                <input 
+                  v-model.number="config.rag_similarity_threshold"
+                  type="range"
+                  min="0.5"
+                  max="0.95"
+                  step="0.05"
+                  class="flex-1"
+                />
+                <span class="text-white w-12 text-right">{{ (config.rag_similarity_threshold * 100).toFixed(0) }}%</span>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Minimum similarity to consider a match</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Min History Count</label>
+              <input 
+                v-model.number="config.rag_min_history_count"
+                type="number"
+                min="10"
+                max="500"
+                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+              />
+              <p class="text-xs text-gray-500 mt-1">RAG activates after this many classifications</p>
+            </div>
+          </div>
+
+          <!-- Backfill Budget (Cloud only) -->
+          <div v-if="effectiveEmbeddingProvider !== 'ollama'" class="p-4 bg-gray-800/50 rounded-lg">
+            <div class="font-medium text-gray-200 mb-3">Backfill Budget</div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm text-gray-400 mb-1">Budget Type</label>
+                <select 
+                  v-model="config.rag_backfill_budget_type"
+                  class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                >
+                  <option value="percentage">% of daily AI budget</option>
+                  <option value="fixed">Fixed $ amount</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm text-gray-400 mb-1">
+                  {{ config.rag_backfill_budget_type === 'percentage' ? 'Percentage' : 'Amount ($)' }}
+                </label>
+                <input 
+                  v-model.number="config.rag_backfill_budget_value"
+                  type="number"
+                  :min="config.rag_backfill_budget_type === 'percentage' ? 1 : 0.01"
+                  :max="config.rag_backfill_budget_type === 'percentage' ? 100 : 10"
+                  :step="config.rag_backfill_budget_type === 'percentage' ? 5 : 0.1"
+                  class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                />
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Budget for embedding existing classifications in the background</p>
+          </div>
+
+          <!-- RAG Status -->
+          <div v-if="ragStats" class="flex items-center gap-4 text-sm text-gray-400">
+            <span>📊 {{ ragStats.total }} embeddings</span>
+            <span v-if="ragStats.stale > 0" class="text-yellow-400">⚠️ {{ ragStats.stale }} stale</span>
+            <span v-if="ragStats.pendingRetries > 0" class="text-orange-400">🔄 {{ ragStats.pendingRetries }} pending retry</span>
+          </div>
+        </div>
+      </div>
+    </Card>
+
     <!-- Save Button -->
     <div class="flex justify-end">
       <Button @click="saveConfig" :disabled="saving">
@@ -404,7 +533,15 @@ const config = ref({
   ollama_for_budget_exhausted: true,
   ollama_host: 'localhost',
   ollama_port: 11434,
-  ollama_model: 'llama3.2'
+  ollama_model: 'llama3.2',
+  // RAG settings
+  rag_enabled: false,
+  embedding_provider: 'auto',
+  embedding_model: '',
+  rag_similarity_threshold: 0.70,
+  rag_min_history_count: 50,
+  rag_backfill_budget_type: 'percentage',
+  rag_backfill_budget_value: 25
 })
 
 const isCloudProvider = computed(() => {
@@ -415,6 +552,17 @@ const budgetPercentUsed = computed(() => {
   if (!config.value.monthly_budget_usd) return 0
   return Math.round((config.value.current_month_usage_usd / config.value.monthly_budget_usd) * 100)
 })
+
+// Effective embedding provider (auto = same as primary)
+const effectiveEmbeddingProvider = computed(() => {
+  if (config.value.embedding_provider === 'auto') {
+    return config.value.primary_provider
+  }
+  return config.value.embedding_provider
+})
+
+// RAG statistics
+const ragStats = ref(null)
 
 // Helper to parse a URL string and extract host and port
 const parseOllamaHost = (hostValue) => {

@@ -7,3 +7,7 @@ coverage/
 data/
 local_test_*.js
 *.local.js
+
+# Test output files
+test_output*.txt
+test_results*.json

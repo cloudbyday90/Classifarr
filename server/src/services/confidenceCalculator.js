@@ -24,6 +24,7 @@ const DEFAULT_WEIGHTS = {
     [SIGNAL_TYPES.MANUAL_CORRECTION]: 100,   // Absolute trust - user corrected this TMDB ID
     [SIGNAL_TYPES.EXISTING_MEDIA]: 100,      // Already in a library
     [SIGNAL_TYPES.EXACT_MATCH]: 100,         // Previously confirmed for this TMDB ID
+    [SIGNAL_TYPES.SEMANTIC_SIMILARITY]: 75,  // RAG-based similarity (dynamic: 50-90)
     [SIGNAL_TYPES.EVENT_DETECTION]: 30,      // Holiday/sports detection
     [SIGNAL_TYPES.CUSTOM_RULE]: 35,          // User-defined rules
     [SIGNAL_TYPES.COLLECTION_MATCH]: 25,     // Franchise consistency

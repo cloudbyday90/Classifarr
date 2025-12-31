@@ -114,8 +114,29 @@ if [ ! -f "$PG_DATA/PG_VERSION" ]; then
     
     echo "PostgreSQL initialized successfully!"
 else
+    # SAFEGUARD: Check PostgreSQL version compatibility
+    DATA_PG_VERSION=$(cat "$PG_DATA/PG_VERSION")
+    # Use PG17-specific pg_config to get installed version
+    PG17_CONFIG="/usr/libexec/postgresql17/pg_config"
+    INSTALLED_PG_VERSION=$($PG17_CONFIG --version | sed 's/PostgreSQL //' | cut -d. -f1)
+    
+    if [ "$DATA_PG_VERSION" != "$INSTALLED_PG_VERSION" ]; then
+        echo "=============================================================="
+        echo "ERROR: PostgreSQL version mismatch detected!"
+        echo "Data directory version: $DATA_PG_VERSION"
+        echo "Installed PostgreSQL:   $INSTALLED_PG_VERSION"
+        echo ""
+        echo "To prevent data corruption, Classifarr will NOT start."
+        echo ""
+        echo "Options:"
+        echo "1. Use a Classifarr image with PostgreSQL $DATA_PG_VERSION"
+        echo "2. Backup and migrate your data to PostgreSQL $INSTALLED_PG_VERSION"
+        echo "=============================================================="
+        exit 1
+    fi
+    
     # Start existing PostgreSQL
-    echo "Starting existing PostgreSQL database..."
+    echo "Starting existing PostgreSQL database (version $DATA_PG_VERSION)..."
     su-exec classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
     
     # Wait for PostgreSQL to be ready

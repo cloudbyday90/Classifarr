@@ -1,4 +1,67 @@
 
+## v0.34.0-alpha
+**Title: RAG Semantic Search & Enrichment Improvements**
+
+This major release introduces **Semantic Search (RAG)** using pgvector for intelligent similarity-based classification, plus an **Enrichment Retry Queue** for improved metadata coverage. The database has also been cleaned up with removal of unused legacy tables.
+
+### New Features
+
+#### 🔮 RAG Semantic Search
+
+**Why RAG for Media Classification?**
+
+Traditional rule-based systems struggle with edge cases. RAG learns from your classification history to make better decisions:
+
+- **Franchise Consistency**: Classified "Harry Potter" to Kids? RAG remembers and suggests the same for subsequent Harry Potter films.
+- **Studio Patterns**: Route all Pixar films to a specific library? RAG learns this pattern for new Pixar releases.
+- **Genre Nuances**: Horror-comedies like "Shaun of the Dead" don't fit neatly into rules, but RAG uses context from similar classifications.
+- **Personal Preferences**: Your library organization is unique—RAG learns YOUR preferences, not generic rules.
+
+**Technical Implementation:**
+- **pgvector Integration:** Full vector similarity search using PostgreSQL pgvector extension
+- **RAGRetriever Service:** New service for semantic, hybrid, and full-text search across classification history
+- **Embedding Support:** Generate and store embeddings for all classifications
+  - Supports Ollama, OpenAI, and Gemini embedding models
+  - Configure in Settings → AI → Semantic Search (RAG)
+- **Dynamic Weighting:** RAG signals dynamically weighted based on match quality (50-90% confidence)
+- **AI Context Enhancement:** Similar past classifications are included in AI prompts for better decisions
+- **Backfill Support:** Automatically generate embeddings for existing classification history
+
+**Supported Embedding Models:**
+- **Ollama (Free):** nomic-embed-text, mxbai-embed-large, bge-m3, all-minilm
+- **OpenAI:** text-embedding-3-small, text-embedding-3-large
+- **Gemini:** text-embedding-005, text-embedding-004
+
+#### 🔄 Enrichment Retry Queue
+- **Tavily Fallback:** Items that fail OMDb enrichment are automatically queued for Tavily web search
+- **Priority-Based Processing:** Queue processes items by priority with configurable max attempts
+- **IMDb Data Extraction:** Automatically extracts IMDb IDs, ratings, and genres from web results
+- **Backfill Support:** Bulk-queue items missing OMDb data for Tavily enrichment
+
+### Improvements
+
+- **Classification History:** Allow NULL tmdb_id for items without TMDB matches (personal videos, obscure content)
+- **Signal Collector:** Enhanced integration with RAG retriever for similarity-based signals
+- **Confidence Calculator:** RAG matches now contribute to confidence scoring
+- **Context Manager:** RAG context injected into AI classification prompts
+- **Health Check Service:** Added RAG embedding status monitoring
+
+### Database Changes
+
+- **Migration 031:** RAG infrastructure - pgvector extension, classification_embeddings table, embedding_costs tracking, HNSW index for fast similarity search
+- **Migration 032:** Allow NULL tmdb_id in classification_history for non-TMDB content
+- **Migration 033:** Enrichment retry queue table with priority-based processing
+- **Migration 034:** Database cleanup - removed unused legacy tables (library_rules, ollama_config, ssl_config, learning_patterns, etc.)
+
+### Technical Notes
+
+- RAG requires minimum 50 embeddings before activating (configurable)
+- Similarity threshold default: 70% (configurable 50-95%)
+- HNSW index parameters: m=16, ef_construction=64 for balanced speed/accuracy
+- Embedding dimensions: Up to 2000 (supports all major providers)
+
+---
+
 ## v0.33.1a-alpha
 **Hotfix: Dockerfile Deprecation Warning**
 
