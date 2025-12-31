@@ -26,8 +26,16 @@ DROP TABLE IF EXISTS media_requests CASCADE;
 -- Drop content_analysis_log (empty, analysis stored in metadata)
 DROP TABLE IF EXISTS content_analysis_log CASCADE;
 
--- Drop empty error_log (errors stored in app_log)
-DROP TABLE IF EXISTS error_log CASCADE;
+-- ═══════════════════════════════════════════════════════════════════════════
+-- WARNING: The following DROP was incorrect! error_log IS actively used by:
+--   - server/src/utils/logger.js (Logger.persistToDb)
+--   - server/src/routes/logs.js (Error Logs API)
+--   - client/src/views/settings/ErrorLogs.vue
+--
+-- FIX: Migration 035_restore_error_log.sql recreates this table.
+-- DO NOT uncomment this line!
+-- ═══════════════════════════════════════════════════════════════════════════
+-- DROP TABLE IF EXISTS error_log CASCADE;  -- REMOVED - Table is in use!
 
 -- Clean up arr_profiles_cache if empty (cache table)
 DROP TABLE IF EXISTS arr_profiles_cache CASCADE;
