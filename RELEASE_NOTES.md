@@ -1,4 +1,32 @@
 
+
+## v0.34.3-alpha
+**CRITICAL HOTFIX: Database Restoration**
+
+### Emergency Fixes
+
+- **Database Restoration**: Restored ALL tables incorrectly dropped in migration 034. This fixes:
+  - **Notifications**: Discord notifications now work again.
+  - **SSL Settings**: HTTPS/SSL configuration page restored.
+  - **Classification**: Rules engine functional again.
+  - **Webhooks**: Overseerr/Jellyseerr requests processing restored.
+  - **AI Learning**: Feedback loop patterns restored.
+  - **Content Analysis**: Analysis logs restored.
+
+### Database Changes
+
+- **Migration 037**: Re-creates all missing tables with original schemas.
+- **Migration 034**: DEPRECATED & NEUTRALIZED. Drop statements commented out to prevent future issues.
+
+---
+
+## v0.34.2-alpha
+**Hotfix: Ollama Config**
+
+- **Fix**: Restored `ollama_config` table (Migration 036) to fix "relation does not exist" error on fresh installs.
+
+---
+
 ## v0.34.1-alpha
 **Hotfix: Error Logs & Docker Compose**
 

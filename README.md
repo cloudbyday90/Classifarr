@@ -5,7 +5,7 @@
 Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr/Seer to the correct Radarr/Sonarr library. It leverages your existing Plex/Emby/Jellyfin library structure combined with AI content analysis to make accurate classification decisions. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-0.34.1--alpha-blue)
+![Version](https://img.shields.io/badge/version-0.34.3--alpha-blue)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 ## ✨ Features
