@@ -1,5 +1,14 @@
 
 
+## v0.34.3b-alpha
+**Title: Hotfix: Library Enrichment Stall**
+
+### Fixes
+- **Enrichment Logic:** Fixed a critical bug where pre-existing library items were skipped by the enrichment process because they were classified as "analyzed" by the sync process. The gap analysis now correctly identifies items that have sync data but lack OMDb enrichment.
+- **Immediate Trigger:** Saving OMDb settings now immediately triggers the enrichment process (Gap Analysis) instead of waiting for the 5-minute scheduled interval.
+
+---
+
 ## v0.34.3a-alpha
 **Title: UI Polish & Bug Fixes**
 

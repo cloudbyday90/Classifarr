@@ -1033,6 +1033,16 @@ router.put('/omdb', async (req, res) => {
       result.rows[0].api_key = maskToken(result.rows[0].api_key);
     }
 
+    // Trigger immediate gap analysis to start enrichment
+    // Check if activated and run in background
+    if (is_active !== false) {
+      const schedulerService = require('../services/scheduler');
+      console.log('OMDb settings saved - Triggering immediate gap analysis...');
+      schedulerService.runGapAnalysis().catch(err => {
+        console.error('Failed to trigger manual gap analysis:', err);
+      });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');

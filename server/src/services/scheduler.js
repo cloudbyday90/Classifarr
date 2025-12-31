@@ -121,13 +121,23 @@ class SchedulerService {
         try {
             // Find items that have NO content analysis AND are not already queued
             // Limit to 500 at a time to prevent flooding the queue
+            // Find items that need enrichment:
+            // 1. Completely unanalyzed items (content_analysis IS NULL)
+            // 2. Analyzed items (from Sync or AI) that haven't been through enrichment pipeline (source != metadata_enrichment)
+            //    AND are missing OMDb data.
             const result = await db.query(
                 `SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, 
                         msi.tmdb_id, msi.tvdb_id, msi.imdb_id, msi.year,
                         msi.library_id, l.name as library_name, l.media_type
          FROM media_server_items msi
          LEFT JOIN libraries l ON msi.library_id = l.id
-         WHERE msi.metadata->'content_analysis' IS NULL
+         WHERE (
+             msi.metadata->'content_analysis' IS NULL
+             OR (
+                 msi.metadata->'omdb' IS NULL
+                 AND msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'
+             )
+         )
          AND NOT EXISTS (
              SELECT 1 FROM task_queue tq 
              WHERE tq.task_type = 'metadata_enrichment' 
