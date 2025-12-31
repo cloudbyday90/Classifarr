@@ -191,14 +191,8 @@ class MediaPatternAnalyzer {
         );
         if (tagsPattern) patterns.push(tagsPattern);
 
-        // 5. Studio Pattern (direct field)
-        const studioPattern = this.extractFieldPattern(
-            items,
-            'studio',
-            'equals',
-            totalCount
-        );
-        if (studioPattern) patterns.push(studioPattern);
+        // NOTE: Studio pattern removed - rarely useful for classification rules
+        // Studios like "Court Five (1)" or "First National Pictures (1)" aren't meaningful filters
 
         // Note: Year/Decade removed from auto-suggestions - users can add manually with 'between' operator
 
@@ -210,6 +204,7 @@ class MediaPatternAnalyzer {
 
     /**
      * Extract pattern for a simple field (e.g., content_rating)
+     * Only includes values that appear in at least 5% of items
      */
     extractFieldPattern(items, field, defaultOperator, totalCount) {
         const valueCounts = {};
@@ -225,14 +220,25 @@ class MediaPatternAnalyzer {
 
         if (matchCount === 0) return null;
 
-        const values = Object.keys(valueCounts);
+        // Only include values that appear in at least 5% of items (minimum 5 items)
+        const threshold = Math.max(5, Math.ceil(totalCount * 0.05));
+        const values = Object.keys(valueCounts)
+            .filter(v => valueCounts[v] >= threshold)
+            .sort((a, b) => valueCounts[b] - valueCounts[a]); // Sort by count descending
+
+        if (values.length === 0) return null;
+
+        // Filter valueCounts to only include values above threshold
+        const filteredValueCounts = {};
+        values.forEach(v => { filteredValueCounts[v] = valueCounts[v]; });
+
         const matchPercentage = Math.round((matchCount / totalCount) * 100);
 
         return {
             field,
             operator: values.length > 1 ? 'is_one_of' : defaultOperator,
             values,
-            valueCounts,
+            valueCounts: filteredValueCounts,
             matchCount,
             totalCount,
             matchPercentage,
@@ -263,11 +269,17 @@ class MediaPatternAnalyzer {
 
         if (itemsWithField === 0) return null;
 
-        // Only include values that appear in at least 15% of items
-        const threshold = Math.ceil(totalCount * 0.15);
-        const values = Object.keys(valueCounts).filter(v => valueCounts[v] >= threshold);
+        // Only include values that appear in at least 5% of items (minimum 5 items)
+        const threshold = Math.max(5, Math.ceil(totalCount * 0.05));
+        const values = Object.keys(valueCounts)
+            .filter(v => valueCounts[v] >= threshold)
+            .sort((a, b) => valueCounts[b] - valueCounts[a]); // Sort by count descending
 
         if (values.length === 0) return null;
+
+        // Filter valueCounts to only include values above threshold
+        const filteredValueCounts = {};
+        values.forEach(v => { filteredValueCounts[v] = valueCounts[v]; });
 
         const matchPercentage = Math.round((itemsWithField / totalCount) * 100);
 
@@ -275,7 +287,7 @@ class MediaPatternAnalyzer {
             field,
             operator: defaultOperator,
             values,
-            valueCounts,
+            valueCounts: filteredValueCounts,
             matchCount: itemsWithField,
             totalCount,
             matchPercentage,

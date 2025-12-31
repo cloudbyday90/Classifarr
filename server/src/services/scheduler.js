@@ -475,18 +475,8 @@ class SchedulerService {
             // Build data-driven suggestions
             const suggestions = [];
 
-            // Suggest based on dominant content types
-            for (const ct of contentTypes.rows) {
-                const ratio = parseInt(ct.count) / parseInt(stats.total_items);
-                if (ratio >= 0.3) {
-                    suggestions.push({
-                        name: `${ct.type} Content`,
-                        conditions: [{ field: 'content_type', operator: 'equals', value: ct.type }],
-                        confidence: Math.round(ratio * 100),
-                        reasoning: `${Math.round(ratio * 100)}% of items are classified as ${ct.type}`
-                    });
-                }
-            }
+            // NOTE: Removed content_type suggestions - libraries are already type-specific
+            // (e.g., a movie library only contains movies, so suggesting "content_type = movie" is redundant)
 
             // Suggest based on dominant genres
             for (const g of genres.rows.slice(0, 3)) {

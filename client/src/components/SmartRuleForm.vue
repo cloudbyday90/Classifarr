@@ -103,8 +103,10 @@
                         :key="value"
                         class="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-800 text-gray-300"
                       >
-                        {{ value }}
-                        <span class="ml-1 text-gray-500">({{ pattern.valueCounts[value] }})</span>
+                        {{ formatRatingLabel(pattern.field, value) }}
+                        <span class="ml-1 text-gray-500">
+                          ({{ pattern.valueCounts[value] }} · {{ Math.round((pattern.valueCounts[value] / pattern.totalCount) * 100) }}%)
+                        </span>
                       </span>
                       <span v-if="pattern.values.length > 10" class="text-xs text-gray-500 py-1">
                         +{{ pattern.values.length - 10 }} more
@@ -607,6 +609,44 @@ const formatTimeAgo = (dateString) => {
   return date.toLocaleDateString()
 }
 
+// Helper to format content rating labels with friendly names
+const formatRatingLabel = (field, value) => {
+  if (field !== 'content_rating') return value
+  
+  // Map numeric age ratings to friendly labels
+  const ratingMap = {
+    '0': 'All Ages',
+    '6': 'Age 6+',
+    '7': 'Age 7+ / TV-Y7',
+    '8': 'Age 8+',
+    '9': 'Age 9+',
+    '10': 'Age 10+',
+    '11': 'Age 11+',
+    '12': 'PG / Age 12+',
+    '13': 'PG-13 / TV-14',
+    '14': 'TV-14',
+    '15': 'Age 15+',
+    '16': 'Age 16+',
+    '17': 'TV-MA',
+    '18': 'R / Age 18+',
+    // Standard US ratings passthrough
+    'G': 'G',
+    'PG': 'PG',
+    'PG-13': 'PG-13',
+    'R': 'R',
+    'NC-17': 'NC-17',
+    'NR': 'Not Rated',
+    'TV-Y': 'TV-Y',
+    'TV-Y7': 'TV-Y7',
+    'TV-G': 'TV-G',
+    'TV-PG': 'TV-PG',
+    'TV-14': 'TV-14',
+    'TV-MA': 'TV-MA'
+  }
+  
+  return ratingMap[value] || value
+}
+
 onMounted(async () => {
   // Load library name first
   try {
@@ -705,8 +745,10 @@ const applySmartSuggestion = async (suggestion) => {
     value: c.value
   }))
   
-  // Auto-save the rule immediately
-  await saveRule()
+  // Preview the rule (but don't auto-save - let user add more conditions or review)
+  await previewRule()
+  
+  toast.success('AI suggestion applied. Review and click Save when ready.', 'Suggestion Applied')
 }
 
 const getConfidenceClass = (confidence) => {

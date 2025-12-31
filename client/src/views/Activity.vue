@@ -376,7 +376,7 @@ const formatNumber = (num) => {
 const formatTimeAgo = (timestamp) => {
   const date = new Date(timestamp)
   const now = new Date()
-  const diffMs = now - date
+  const diffMs = Math.abs(now - date) // Use absolute value to handle timezone/future issues
   const diffSecs = Math.floor(diffMs / 1000)
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)

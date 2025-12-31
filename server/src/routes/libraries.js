@@ -1059,6 +1059,14 @@ Valid operators: equals, contains, includes`;
               });
             });
           }
+
+          // Filter out content_type conditions - libraries are already type-specific
+          llmSuggestions = llmSuggestions
+            .map(suggestion => ({
+              ...suggestion,
+              conditions: (suggestion.conditions || []).filter(c => c.field !== 'content_type')
+            }))
+            .filter(suggestion => suggestion.conditions && suggestion.conditions.length > 0);
         }
       }
     } catch (llmError) {
@@ -1066,20 +1074,9 @@ Valid operators: equals, contains, includes`;
       // Continue with data-only suggestions
     }
 
-    // 8. Build fallback suggestions from data if LLM failed or no config
+    // NOTE: content_type suggestions removed - libraries are already type-specific
+    // (e.g., a movie library only contains movies, so suggesting "content_type = movie" is redundant)
     const dataSuggestions = [];
-
-    // Top content type suggestion
-    if (stats.contentTypes.length > 0) {
-      const top = stats.contentTypes[0];
-      const confidence = Math.round((top.count / stats.totalItems) * 100);
-      dataSuggestions.push({
-        name: `${top.type} Content`,
-        conditions: [{ field: 'content_type', operator: 'equals', value: top.type }],
-        confidence,
-        reasoning: `${confidence}% of analyzed items are ${top.type}`
-      });
-    }
 
     // Top genre suggestion
     if (stats.genres.length > 0) {

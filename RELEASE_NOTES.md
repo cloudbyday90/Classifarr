@@ -1,5 +1,21 @@
 
 
+## v0.34.5-alpha
+**Title: Rule Builder Improvements**
+
+### Improvements
+- **Improved Filter Suggestions:** Available Library Filters now only show values with meaningful coverage (5%+ of library)
+- **Content Rating Labels:** Numeric ratings (13, 14, 15) now display as friendly labels (PG-13, TV-14, Age 15+)
+- **Percentage Display:** Filter values show both count and percentage (e.g., "PG-13 (415 · 15%)")
+- **Removed Redundant Suggestions:** AI Suggestions no longer suggest content_type (libraries are already type-specific)
+- **Removed Studio Filters:** Studio suggestions removed as they rarely have meaningful coverage
+
+### Bug Fixes
+- **Rule Builder Navigation:** Fixed "Use This Rule" and "Use Selected Conditions" buttons navigating away instead of staying on page
+- **Negative Timestamps:** Fixed Live Activity Stream showing negative timestamps (timezone mismatch)
+
+---
+
 ## v0.34.4-alpha
 **Title: Mobile Responsiveness**
 
