@@ -1,5 +1,21 @@
 
 
+## v0.34.4-alpha
+**Title: Mobile Responsiveness**
+
+### New Features
+- **Mobile-Friendly Navigation:** Sidebar is now hidden by default on mobile devices with a hamburger menu toggle
+- **Slide-In Overlay:** Sidebar slides in from the left as an overlay on mobile
+- **Auto-Close Navigation:** Sidebar automatically closes when navigating to a new page
+- **PWA Support:** Added web app manifest for "Add to Home Screen" functionality on mobile
+
+### Improvements
+- **Touch Targets:** Increased padding and touch-friendly spacing on mobile
+- **iOS Support:** Added Apple web app meta tags for better iOS experience
+- **Responsive Padding:** Reduced content padding on mobile for more usable space
+
+---
+
 ## v0.34.3b-alpha
 **Title: Hotfix: Library Enrichment Stall**
 

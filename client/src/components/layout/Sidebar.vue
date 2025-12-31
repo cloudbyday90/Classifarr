@@ -7,7 +7,23 @@
 -->
 
 <template>
-  <aside class="w-64 bg-sidebar border-r border-gray-800 flex flex-col">
+  <!-- Desktop: Always visible sidebar -->
+  <!-- Mobile: Slide-in overlay when isOpen is true -->
+  <aside 
+    :class="[
+      'fixed md:static inset-y-0 left-0 w-72 md:w-64 bg-sidebar border-r border-gray-800 flex flex-col transform transition-transform duration-300 ease-in-out',
+      isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+    ]"
+  >
+    <!-- Mobile Close Button -->
+    <button 
+      @click="$emit('close')"
+      class="absolute top-4 right-4 p-2 text-gray-400 hover:text-white md:hidden"
+      aria-label="Close menu"
+    >
+      <XMarkIcon class="w-6 h-6" />
+    </button>
+
     <div class="p-6">
       <h1 class="text-2xl font-bold text-primary">Classifarr</h1>
       <p class="text-sm text-gray-400 mt-1">AI Media Classification</p>
@@ -46,7 +62,7 @@
     </nav>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-          <div>v0.34.3b-alpha</div>
+      <div>v0.34.4-alpha</div>
     </div>
   </aside>
 </template>
@@ -62,8 +78,18 @@ import {
   ServerIcon,
   PlusCircleIcon,
   ChartBarIcon,
-  QueueListIcon
+  QueueListIcon,
+  XMarkIcon
 } from '@heroicons/vue/24/outline'
+
+defineProps({
+  isOpen: {
+    type: Boolean,
+    default: false
+  }
+})
+
+defineEmits(['close'])
 
 const route = useRoute()
 

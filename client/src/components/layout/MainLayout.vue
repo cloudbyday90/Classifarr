@@ -8,10 +8,24 @@
 
 <template>
   <div class="flex h-screen bg-background">
-    <Sidebar />
+    <!-- Mobile Overlay Backdrop -->
+    <div 
+      v-if="sidebarOpen" 
+      class="fixed inset-0 bg-black/50 z-40 md:hidden"
+      @click="sidebarOpen = false"
+    ></div>
+    
+    <!-- Sidebar -->
+    <Sidebar 
+      :isOpen="sidebarOpen" 
+      @close="sidebarOpen = false"
+      class="z-50"
+    />
+    
+    <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <Header />
-      <main class="flex-1 overflow-y-auto p-6">
+      <Header @toggleSidebar="sidebarOpen = !sidebarOpen" />
+      <main class="flex-1 overflow-y-auto p-4 md:p-6">
         <router-view />
       </main>
     </div>
@@ -19,6 +33,16 @@
 </template>
 
 <script setup>
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
+
+const route = useRoute()
+const sidebarOpen = ref(false)
+
+// Close sidebar on route change (mobile navigation)
+watch(() => route.path, () => {
+  sidebarOpen.value = false
+})
 </script>

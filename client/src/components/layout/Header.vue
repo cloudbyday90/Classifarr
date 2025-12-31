@@ -7,8 +7,18 @@
 -->
 
 <template>
-  <header class="bg-sidebar border-b border-gray-800 px-6 py-4">
+  <header class="bg-sidebar border-b border-gray-800 px-4 md:px-6 py-4">
     <div class="flex items-center justify-between">
+      <!-- Mobile Hamburger Menu -->
+      <button 
+        @click="$emit('toggleSidebar')"
+        class="p-2 -ml-2 text-gray-400 hover:text-white md:hidden"
+        aria-label="Open menu"
+      >
+        <Bars3Icon class="w-6 h-6" />
+      </button>
+
+      <!-- Breadcrumbs -->
       <nav class="flex items-center space-x-2 text-sm">
         <router-link to="/" class="text-gray-400 hover:text-white transition-colors">
           Classifarr
@@ -31,8 +41,10 @@
           <span v-if="index < breadcrumbs.length - 1" class="text-gray-600">/</span>
         </template>
       </nav>
+
+      <!-- Time -->
       <div class="flex items-center space-x-4">
-        <div class="text-sm text-gray-400">
+        <div class="text-sm text-gray-400 hidden sm:block">
           {{ currentTime }}
         </div>
       </div>
@@ -41,8 +53,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { Bars3Icon } from '@heroicons/vue/24/outline'
+
+defineEmits(['toggleSidebar'])
 
 const route = useRoute()
 const currentTime = ref(new Date().toLocaleTimeString())
