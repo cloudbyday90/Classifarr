@@ -20,17 +20,17 @@ services:
       # ═══════════════════════════════════════════════════════════════
       # MEDIA ACCESS (Required for Re-Classification feature)
       # ═══════════════════════════════════════════════════════════════
-      # Map your media folders so Classifarr can verify file moves.
-      # Use read-only (:ro) if you don't want Classifarr to modify files.
+      # Map your media folders so Classifarr can move files during
+      # re-classification. Write access is required.
       #
-      # Format: /host/path:/container/path:ro
+      # Format: /host/path:/container/path
       #
       # Example for single media folder:
-      # - /mnt/user/media:/data/media:ro
+      # - /mnt/user/media:/data/media
       #
       # Example for separate movie/tv folders:
-      # - /mnt/user/movies:/data/movies:ro
-      # - /mnt/user/tv:/data/tv:ro
+      # - /mnt/user/movies:/data/movies
+      # - /mnt/user/tv:/data/tv
       # ═══════════════════════════════════════════════════════════════
     restart: unless-stopped
     extra_hosts:
