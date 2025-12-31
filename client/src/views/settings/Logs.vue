@@ -389,7 +389,29 @@ async function copyBugReport() {
       headers: { Authorization: `Bearer ${token}` }
     })
     
-    await navigator.clipboard.writeText(response.data.report)
+    // Improved clipboard copy with fallback for insecure/non-https contexts
+    const text = response.data.report
+    
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      // Fallback for http or older environments
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-9999px'
+      textArea.style.top = '0'
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      try {
+        document.execCommand('copy')
+      } catch (err) {
+        throw new Error('Fallback copy failed')
+      }
+      document.body.removeChild(textArea)
+    }
+
     copySuccess.value = true
     
     setTimeout(() => {

@@ -1,5 +1,20 @@
 
 
+## v0.34.3a-alpha
+**Title: UI Polish & Bug Fixes**
+
+### Improvements
+- **UI:** Filtered out embedding models (e.g., `nomic-embed`, `minilm`) from the primary "Generation Model" dropdown to reduce clutter.
+- **UI:** Added http-fallback for "Copy to Clipboard" in Logs view, enabling functionality in non-secure environments.
+- **UX:** Improved error feedback when fetching Ollama models fails.
+
+### Fixes
+- **Ollama:** Fixed critical bug where `fetchOllamaModels` ignored custom Host/Port settings and queried `localhost` by default.
+- **Scheduler:** Fixed `smart suggestion check` crash caused by undefined config property.
+- **Database:** (Inherited from v0.34.3) Restored all missing tables dropped by broken migration 034.
+
+---
+
 ## v0.34.3-alpha
 **CRITICAL HOTFIX: Database Restoration**
 

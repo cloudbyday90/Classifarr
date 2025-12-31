@@ -413,7 +413,7 @@ class SchedulerService {
                 }
             }
         } catch (error) {
-            logger.error('Error running smart suggestion check', { error: error.message });
+            logger.error('Error running smart suggestion check', { error: error.message, stack: error.stack });
         }
     }
 
@@ -494,7 +494,7 @@ class SchedulerService {
             // Try LLM-enhanced suggestions if Ollama is configured
             try {
                 const ollamaConfig = await ollamaService.getConfig();
-                if (ollamaConfig.enabled) {
+                if (ollamaConfig.host) { // getConfig returns {host, port...}, not enabled
                     const prompt = `Analyze this library data and suggest 2-3 classification rules:
                     Library: "${stats.library_name}" (${stats.media_type})
                     Total Items: ${stats.total_items}, Analyzed: ${stats.analyzed_items}

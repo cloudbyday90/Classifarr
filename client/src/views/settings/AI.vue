@@ -324,7 +324,10 @@
           </span>
         </div>
       </div>
+
     </Card>
+
+
 
     <!-- Usage Statistics -->
     <Card v-if="isCloudProvider && usageStats" title="📊 Usage Statistics">
@@ -707,14 +710,26 @@ const testOllamaConnection = async () => {
 const fetchOllamaModels = async () => {
   loadingOllamaModels.value = true
   try {
-    const response = await api.getOllamaModels()
-    ollamaModels.value = response.data || []
-    // Add current model if not in list
+    const response = await api.getOllamaModels(config.value.ollama_host, config.value.ollama_port)
+    const allModels = response.data || []
+    
+    // Filter out embedding models from the generation dropdown
+    // Users should select generation models here, and embedding models in the RAG section
+    ollamaModels.value = allModels.filter(m => {
+      const name = m.name.toLowerCase()
+      return !name.includes('embed') && 
+             !name.includes('minilm') && 
+             !name.includes('bert') && 
+             !name.includes('bge')
+    })
+
+    // Add current model if not in list (even if it looks like an embedding model, to avoid confusion)
     if (config.value.ollama_model && !ollamaModels.value.find(m => m.name === config.value.ollama_model)) {
       ollamaModels.value.unshift({ name: config.value.ollama_model })
     }
   } catch (error) {
     console.error('Failed to fetch Ollama models:', error)
+    toast.error(`Failed to fetch models: ${error.message}`)
     // Keep current model
     if (config.value.ollama_model) {
       ollamaModels.value = [{ name: config.value.ollama_model }]

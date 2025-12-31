@@ -348,8 +348,8 @@ export default {
   testOllama(host, port) {
     return apiClient.post('/settings/ollama/test', { host, port })
   },
-  getOllamaModels() {
-    return apiClient.get('/settings/ollama/models')
+  getOllamaModels(host, port) {
+    return apiClient.get('/settings/ollama/models', { params: { host, port } })
   },
 
   // TMDB
