@@ -121,6 +121,7 @@ describe('Logger', () => {
     });
 
     test('should capture request context when provided', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
       const errorId = '123e4567-e89b-12d3-a456-426614174000';
       db.query.mockResolvedValue({
         rows: [{ error_id: errorId }]
@@ -141,6 +142,7 @@ describe('Logger', () => {
       const callArgs = db.query.mock.calls[0];
       expect(callArgs[0]).toContain('INSERT INTO error_log');
       expect(callArgs[1]).toHaveLength(7); // level, module, message, stack_trace, request_context, system_context, metadata
+      consoleSpy.mockRestore();
     });
   });
 
