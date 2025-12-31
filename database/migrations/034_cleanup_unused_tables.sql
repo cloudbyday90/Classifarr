@@ -11,8 +11,16 @@ DROP TABLE IF EXISTS library_rules_v2 CASCADE;
 DROP TABLE IF EXISTS library_custom_rules CASCADE;
 
 -- Drop unused configuration tables
+-- ═══════════════════════════════════════════════════════════════════════════
+-- WARNING: The following DROP was incorrect! ollama_config IS actively used by:
+--   - server/src/routes/settings.js
+--   - server/src/routes/libraries.js
+--
+-- FIX: Migration 036_restore_ollama_config.sql recreates this table.
+-- DO NOT uncomment this line!
+-- ═══════════════════════════════════════════════════════════════════════════
 -- (ollama_config merged into ai_provider_config)
-DROP TABLE IF EXISTS ollama_config CASCADE;
+-- DROP TABLE IF EXISTS ollama_config CASCADE;  -- REMOVED - Table is in use!
 
 -- Drop unused/unimplemented feature tables
 DROP TABLE IF EXISTS ssl_config CASCADE;
