@@ -1,5 +1,25 @@
 
 
+## v0.34.6-alpha
+**Title: Event Sub-Categories**
+
+### New Features
+- **Event Sub-Types:** When selecting Holiday, Sports, or PPV as an Event Detection Type, a second dropdown now appears allowing you to specify the exact sub-type:
+  - **Holidays:** Christmas/Xmas, Halloween, Thanksgiving, Easter, Valentine's Day, New Year's, 4th of July
+  - **Sports:** Football/NFL, Basketball/NBA, Baseball/MLB, Hockey/NHL, Soccer, Golf, Racing/F1/NASCAR
+  - **PPV/Combat:** UFC/MMA, Boxing, Wrestling/WWE
+- Sub-types are available in both **Library Configuration** and **Rule Builder**
+- Specific keywords are displayed for each sub-type selection
+
+### Bug Fixes
+- **Tavily API Key Fix:** Fixed enrichment failing with "Tavily API key is required" error when processing retry queue - API key is now properly passed to the Tavily service
+
+### Technical
+- New database migration `038_add_event_sub_type.sql` adds `event_sub_type` column to libraries table
+- Backend route updated to save `event_sub_type` with library configuration
+
+---
+
 ## v0.34.5-alpha
 **Title: Rule Builder Improvements**
 

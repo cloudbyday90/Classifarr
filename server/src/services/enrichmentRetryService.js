@@ -135,8 +135,8 @@ class EnrichmentRetryService {
                     [item.queue_id]
                 );
 
-                // Try Tavily enrichment
-                const result = await this.enrichWithTavily(item);
+                // Try Tavily enrichment (pass API key from config)
+                const result = await this.enrichWithTavily(item, config.api_key);
 
                 if (result.success) {
                     // Update queue status
@@ -187,8 +187,9 @@ class EnrichmentRetryService {
     /**
      * Enrich a media item using Tavily
      * @param {object} item - Item details from retry queue
+     * @param {string} apiKey - Tavily API key
      */
-    async enrichWithTavily(item) {
+    async enrichWithTavily(item, apiKey) {
         try {
             // Search for IMDb data using Tavily
             const searchQuery = item.imdb_id
@@ -196,6 +197,7 @@ class EnrichmentRetryService {
                 : `${item.title} ${item.year || ''} IMDb rating`;
 
             const searchResult = await tavilyService.search(searchQuery, {
+                apiKey,
                 searchDepth: 'basic',
                 maxResults: 3
             });

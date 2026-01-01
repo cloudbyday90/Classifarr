@@ -130,7 +130,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, event_detection_type } = req.body;
+    const { name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, event_detection_type, event_sub_type } = req.body;
 
     const result = await db.query(
       `UPDATE libraries 
@@ -142,10 +142,11 @@ router.put('/:id', async (req, res) => {
            quality_profile_id = COALESCE($6, quality_profile_id),
            is_active = COALESCE($7, is_active),
            event_detection_type = $8,
+           event_sub_type = $9,
            updated_at = NOW()
-       WHERE id = $9
+       WHERE id = $10
        RETURNING *`,
-      [name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, event_detection_type, id]
+      [name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, event_detection_type, event_sub_type, id]
     );
 
     if (result.rows.length === 0) {
@@ -491,6 +492,86 @@ router.get('/label-presets/all', async (req, res) => {
     );
     res.json(result.rows);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/event-types:
+ *   get:
+ *     summary: Get event type categories with sub-items for rule building
+ */
+router.get('/event-types', async (req, res) => {
+  try {
+    const categories = [
+      {
+        name: 'Holidays',
+        icon: '🎄',
+        items: [
+          { id: 'christmas', name: 'Christmas/Xmas', keywords: ['christmas', 'xmas', 'santa', 'elf', 'snowman', 'north pole', 'reindeer'] },
+          { id: 'hallmark', name: 'Hallmark/Romance', keywords: ['hallmark', 'lifetime movie', 'romantic holiday'] },
+          { id: 'halloween', name: 'Halloween', keywords: ['halloween', 'spooky', 'trick or treat', 'haunted', 'pumpkin'] },
+          { id: 'thanksgiving', name: 'Thanksgiving', keywords: ['thanksgiving', 'turkey day', 'pilgrim', 'gratitude'] },
+          { id: 'easter', name: 'Easter', keywords: ['easter', 'bunny', 'egg hunt', 'spring'] },
+          { id: 'valentines', name: "Valentine's Day", keywords: ['valentine', 'cupid', 'love story', 'romantic'] },
+          { id: 'july4', name: '4th of July', keywords: ['july 4th', 'fourth of july', 'independence day', 'fireworks', 'america'] },
+          { id: 'newyear', name: "New Year's", keywords: ['new year', 'new years eve', 'countdown', 'resolution'] }
+        ]
+      },
+      {
+        name: 'Sports',
+        icon: '🏈',
+        items: [
+          { id: 'football', name: 'Football/NFL', keywords: ['nfl', 'super bowl', 'football', 'touchdown', 'quarterback'] },
+          { id: 'basketball', name: 'Basketball/NBA', keywords: ['nba', 'basketball', 'march madness', 'slam dunk', 'ncaa'] },
+          { id: 'ufc', name: 'UFC/MMA', keywords: ['ufc', 'mma', 'ultimate fighting', 'fight night', 'knockout', 'octagon'] },
+          { id: 'boxing', name: 'Boxing', keywords: ['boxing', 'heavyweight', 'title fight', 'knockout', 'ring'] },
+          { id: 'wrestling', name: 'Wrestling/WWE', keywords: ['wwe', 'wrestling', 'wrestlemania', 'raw', 'smackdown', 'aew'] },
+          { id: 'baseball', name: 'Baseball/MLB', keywords: ['mlb', 'baseball', 'world series', 'home run'] },
+          { id: 'soccer', name: 'Soccer/Football', keywords: ['soccer', 'world cup', 'premier league', 'futbol', 'fifa'] },
+          { id: 'hockey', name: 'Hockey/NHL', keywords: ['nhl', 'hockey', 'stanley cup', 'puck'] },
+          { id: 'golf', name: 'Golf', keywords: ['golf', 'pga', 'masters', 'green jacket'] },
+          { id: 'racing', name: 'Racing/F1/NASCAR', keywords: ['f1', 'formula 1', 'nascar', 'racing', 'grand prix', 'daytona'] }
+        ]
+      },
+      {
+        name: 'Entertainment',
+        icon: '🎬',
+        items: [
+          { id: 'standup', name: 'Stand-up Comedy', keywords: ['standup', 'stand-up', 'comedy special', 'comedian', 'live comedy'] },
+          { id: 'concert', name: 'Concerts/Live Music', keywords: ['concert', 'live performance', 'tour', 'music festival', 'in concert'] },
+          { id: 'awards', name: 'Award Shows', keywords: ['oscars', 'academy awards', 'emmy', 'grammy', 'golden globe', 'awards show', 'red carpet'] },
+          { id: 'realitytv', name: 'Reality Competition', keywords: ['reality', 'competition', 'elimination', 'contestant', 'survivor', 'big brother'] },
+          { id: 'documentary', name: 'Documentary', keywords: ['documentary', 'docuseries', 'true story', 'real life'] }
+        ]
+      },
+      {
+        name: 'International',
+        icon: '🌍',
+        items: [
+          { id: 'anime', name: 'Anime', keywords: ['anime', 'manga', 'japanese animation', 'shounen', 'isekai', 'dubbed'] },
+          { id: 'kdrama', name: 'K-Drama', keywords: ['kdrama', 'k-drama', 'korean drama', 'korean series'] },
+          { id: 'bollywood', name: 'Bollywood/Indian', keywords: ['bollywood', 'hindi', 'indian cinema', 'desi'] },
+          { id: 'british', name: 'British/UK', keywords: ['british', 'bbc', 'uk series', 'english'] },
+          { id: 'telenovela', name: 'Telenovela/Spanish', keywords: ['telenovela', 'spanish', 'latino', 'novela'] }
+        ]
+      },
+      {
+        name: 'Content Types',
+        icon: '🎥',
+        items: [
+          { id: 'kids', name: 'Kids/Family', keywords: ['kids', 'children', 'family friendly', 'animated', 'disney', 'pixar'] },
+          { id: 'adult_animation', name: 'Adult Animation', keywords: ['adult animation', 'adult cartoon', 'animated sitcom', 'mature animation'] },
+          { id: 'classic', name: 'Classic/Vintage', keywords: ['classic', 'vintage', 'retro', 'old hollywood', 'golden age'] },
+          { id: 'cult', name: 'Cult/B-Movie', keywords: ['cult', 'b-movie', 'grindhouse', 'exploitation', 'midnight movie'] }
+        ]
+      }
+    ];
+
+    res.json({ categories });
+  } catch (error) {
+    logger.error('Failed to get event types', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

@@ -36,6 +36,27 @@
             label="Event Detection Type"
             :options="eventDetectionOptions"
           />
+          
+          <!-- Event Sub-Type Selectors -->
+          <Select
+            v-if="library.event_detection_type === 'holiday'"
+            v-model="library.event_sub_type"
+            label="Holiday Sub-Type"
+            :options="holidaySubTypeOptions"
+          />
+          <Select
+            v-if="library.event_detection_type === 'sports'"
+            v-model="library.event_sub_type"
+            label="Sports Sub-Type"
+            :options="sportsSubTypeOptions"
+          />
+          <Select
+            v-if="library.event_detection_type === 'ppv'"
+            v-model="library.event_sub_type"
+            label="Combat Sports Sub-Type"
+            :options="ppvSubTypeOptions"
+          />
+          
           <div class="col-span-2">
             <div v-if="library.event_detection_type" class="flex items-start gap-2 mt-1">
               <p class="text-xs text-gray-400">
@@ -54,7 +75,7 @@
                   <p class="text-xs text-gray-400 mb-2">Content with these keywords will auto-route to this library:</p>
                   <div class="flex flex-wrap gap-1">
                     <span 
-                      v-for="keyword in getEventKeywords(library.event_detection_type)" 
+                      v-for="keyword in getEventKeywords(library.event_detection_type, library.event_sub_type)" 
                       :key="keyword"
                       class="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded"
                     >
@@ -567,6 +588,7 @@ const saveLibrary = async () => {
       priority: library.value.priority,
       arr_type: library.value.arr_type,
       event_detection_type: library.value.event_detection_type || null,
+      event_sub_type: library.value.event_sub_type || null,
     })
     toast.success('Library updated successfully')
   } catch (error) {
@@ -588,6 +610,36 @@ const eventDetectionOptions = [
   { label: '🏆 Awards', value: 'awards' },
 ]
 
+// Sub-type options for each category
+const holidaySubTypeOptions = [
+  { label: 'All Holidays (generic)', value: '' },
+  { label: '🎄 Christmas/Xmas', value: 'christmas' },
+  { label: '🎃 Halloween', value: 'halloween' },
+  { label: '🦃 Thanksgiving', value: 'thanksgiving' },
+  { label: '🐰 Easter', value: 'easter' },
+  { label: '❤️ Valentine\'s Day', value: 'valentines' },
+  { label: '🎆 New Year\'s', value: 'newyear' },
+  { label: '🇺🇸 4th of July', value: 'july4' },
+]
+
+const sportsSubTypeOptions = [
+  { label: 'All Sports (generic)', value: '' },
+  { label: '🏈 Football/NFL', value: 'football' },
+  { label: '🏀 Basketball/NBA', value: 'basketball' },
+  { label: '⚾ Baseball/MLB', value: 'baseball' },
+  { label: '🏒 Hockey/NHL', value: 'hockey' },
+  { label: '⚽ Soccer/Football', value: 'soccer' },
+  { label: '⛳ Golf', value: 'golf' },
+  { label: '🏎️ Racing/F1/NASCAR', value: 'racing' },
+]
+
+const ppvSubTypeOptions = [
+  { label: 'All Combat Sports', value: '' },
+  { label: '🥊 UFC/MMA', value: 'ufc' },
+  { label: '🥊 Boxing', value: 'boxing' },
+  { label: '💪 Wrestling/WWE', value: 'wrestling' },
+]
+
 const eventDescriptions = {
   holiday: 'Christmas, Halloween, Thanksgiving, Easter, New Years, etc.',
   sports: 'NFL, NBA, MLB, NHL, Olympics, Super Bowl, World Cup, etc.',
@@ -597,22 +649,51 @@ const eventDescriptions = {
   awards: 'Oscars, Emmys, Grammys, Golden Globes, BAFTA, etc.',
 }
 
-// Keywords that trigger each event type detection
-const eventKeywords = {
-  holiday: ['christmas', 'xmas', 'santa', 'holiday', 'halloween', 'thanksgiving', 'easter', 'hanukkah', 'kwanzaa', 'new years eve', 'valentines', 'st patricks'],
-  sports: ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'fifa', 'super bowl', 'world series', 'olympics', 'championship', 'playoffs', 'espn', 'world cup'],
-  ppv: ['ufc', 'mma', 'boxing', 'wwe', 'wrestling', 'wrestlemania', 'bellator', 'fight night', 'knockout', 'title fight'],
-  concert: ['concert', 'live tour', 'music festival', 'live performance', 'symphony', 'orchestra', 'unplugged', 'coachella', 'lollapalooza'],
-  standup: ['stand-up', 'standup', 'comedy special', 'comedian', 'comedy tour', 'roast', 'improv', 'netflix special', 'hbo special'],
-  awards: ['oscars', 'academy awards', 'emmys', 'golden globes', 'grammys', 'tony awards', 'bafta', 'red carpet', 'award show'],
+// Keywords that trigger each event type detection (with sub-type support)
+const eventKeywordMap = {
+  holiday: {
+    '': ['christmas', 'xmas', 'santa', 'holiday', 'halloween', 'thanksgiving', 'easter', 'hanukkah', 'kwanzaa', 'new years eve', 'valentines'],
+    christmas: ['christmas', 'xmas', 'santa', 'elf', 'snowman', 'north pole', 'reindeer', 'rudolph'],
+    halloween: ['halloween', 'spooky', 'trick or treat', 'haunted', 'pumpkin', 'horror'],
+    thanksgiving: ['thanksgiving', 'turkey', 'pilgrim', 'gratitude'],
+    easter: ['easter', 'bunny', 'egg hunt', 'spring'],
+    valentines: ['valentine', 'cupid', 'romantic', 'love'],
+    newyear: ['new year', 'countdown', 'resolution', 'nye', 'new years eve'],
+    july4: ['july 4th', 'independence day', 'fireworks', 'america', 'fourth of july']
+  },
+  sports: {
+    '': ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'fifa', 'super bowl', 'world series', 'olympics', 'championship', 'playoffs'],
+    football: ['nfl', 'super bowl', 'football', 'touchdown', 'quarterback', 'gridiron'],
+    basketball: ['nba', 'basketball', 'march madness', 'slam dunk', 'ncaa'],
+    baseball: ['mlb', 'baseball', 'world series', 'home run'],
+    hockey: ['nhl', 'hockey', 'stanley cup', 'puck'],
+    soccer: ['soccer', 'world cup', 'premier league', 'futbol', 'fifa'],
+    golf: ['golf', 'pga', 'masters', 'green jacket'],
+    racing: ['f1', 'formula 1', 'nascar', 'racing', 'grand prix', 'daytona']
+  },
+  ppv: {
+    '': ['ufc', 'mma', 'boxing', 'wwe', 'wrestling', 'wrestlemania', 'bellator', 'fight night'],
+    ufc: ['ufc', 'mma', 'ultimate fighting', 'octagon', 'dana white'],
+    boxing: ['boxing', 'heavyweight', 'title fight', 'knockout'],
+    wrestling: ['wwe', 'wrestling', 'wrestlemania', 'raw', 'smackdown', 'aew']
+  },
+  concert: {
+    '': ['concert', 'live tour', 'music festival', 'live performance', 'symphony', 'orchestra', 'unplugged']
+  },
+  standup: {
+    '': ['stand-up', 'standup', 'comedy special', 'comedian', 'comedy tour', 'roast']
+  },
+  awards: {
+    '': ['oscars', 'academy awards', 'emmys', 'golden globes', 'grammys', 'tony awards', 'bafta', 'red carpet']
+  }
 }
 
 const getEventDescription = (type) => {
   return eventDescriptions[type] || ''
 }
 
-const getEventKeywords = (type) => {
-  return eventKeywords[type] || []
+const getEventKeywords = (type, subType = '') => {
+  return eventKeywordMap[type]?.[subType || ''] || eventKeywordMap[type]?.[''] || []
 }
 
 const saveArrSettings = async () => {
