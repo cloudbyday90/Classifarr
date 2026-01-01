@@ -185,3 +185,57 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  cleanup-old-releases:
+    name: Cleanup Old Container Images
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: docker-release
+
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete old GHCR packages (keep last 5)
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'classifarr'
+          package-type: 'container'
+          min-versions-to-keep: 5
+          delete-only-untagged-versions: false
+
+      - name: Get Docker Hub token
+        id: docker-token
+        run: |
+          TOKEN=$(curl -s -H "Content-Type: application/json" -X POST \
+            -d '{"username": "${{ secrets.DOCKERHUB_USERNAME }}", "password": "${{ secrets.DOCKERHUB_TOKEN }}"}' \
+            https://hub.docker.com/v2/users/login/ | jq -r .token)
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Get and delete old Docker Hub tags (keep last 5)
+        run: |
+          # Get all tags sorted by last_updated
+          TAGS=$(curl -s -H "Authorization: Bearer ${{ steps.docker-token.outputs.token }}" \
+            "https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/tags?page_size=100" \
+            | jq -r '.results | sort_by(.last_updated) | .[].name')
+          
+          # Count tags (exclude 'latest')
+          TAG_COUNT=$(echo "$TAGS" | grep -v "^latest$" | wc -l)
+          KEEP_COUNT=5
+          
+          if [ "$TAG_COUNT" -gt "$KEEP_COUNT" ]; then
+            DELETE_COUNT=$((TAG_COUNT - KEEP_COUNT))
+            echo "Deleting $DELETE_COUNT old tags from Docker Hub..."
+            
+            # Get oldest tags to delete (excluding 'latest')
+            TAGS_TO_DELETE=$(echo "$TAGS" | grep -v "^latest$" | head -n $DELETE_COUNT)
+            
+            for TAG in $TAGS_TO_DELETE; do
+              echo "Deleting tag: $TAG"
+              curl -s -X DELETE \
+                -H "Authorization: Bearer ${{ steps.docker-token.outputs.token }}" \
+                "https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/tags/$TAG/"
+            done
+          else
+            echo "Only $TAG_COUNT tags exist, keeping all (minimum is $KEEP_COUNT)"
+          fi
