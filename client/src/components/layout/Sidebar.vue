@@ -24,13 +24,13 @@
       <XMarkIcon class="w-6 h-6" />
     </button>
 
-    <div0.35.0-alphaclass="p-6">
+    <div class="p-6">
       <h1 class="text-2xl font-bold text-primary">Classifarr</h1>
       <p class="text-sm text-gray-400 mt-1">AI Media Classification</p>
     </div>
     
-    <nav0.35.0-alphaclass="flex-1 px-2">
-      <div0.35.0-alphaclass="mb-4">
+    <nav class="flex-1 px-2">
+      <div class="mb-4">
         <router-link
           v-for="item in mainMenuItems"
           :key="item.path"
@@ -38,13 +38,13 @@
           class="nav-item group relative flex items-center px-4 py-3 mb-1 transition-colors"
           :class="isActive(item.path) ? 'active' : ''"
         >
-          <div0.35.0-alphaclass="active-indicator" v-if="isActive(item.path)"></div>
+          <div class="active-indicator" v-if="isActive(item.path)"></div>
           <component :is="item.icon" class="w-5 h-5 mr-3" />
           <span>{{ item.label }}</span>
         </router-link>
       </div>
 
-      <div0.35.0-alphaclass="border-t border-gray-800 my-4"></div>
+      <div class="border-t border-gray-800 my-4"></div>
 
       <div>
         <router-link
@@ -54,7 +54,7 @@
           class="nav-item group relative flex items-center px-4 py-3 mb-1 transition-colors"
           :class="isActive(item.path) ? 'active' : ''"
         >
-          <div0.35.0-alphaclass="active-indicator" v-if="isActive(item.path)"></div>
+          <div class="active-indicator" v-if="isActive(item.path)"></div>
           <component :is="item.icon" class="w-5 h-5 mr-3" />
           <span>{{ item.label }}</span>
         </router-link>
@@ -62,7 +62,7 @@
     </nav>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.35.0-alpha</div>
+      <div>v0.35.1-alpha</div>
     </div>
   </aside>
 </template>

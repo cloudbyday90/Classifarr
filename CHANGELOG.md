@@ -6,6 +6,12 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.35.1-alpha] - 2026-01-02
+
+### Fixed
+- **Build Fix:** Fixed corrupted HTML tags in Sidebar.vue that caused CI/CD build failures
+- **Cleanup:** Removed duplicate files with malformed names (`RELEASE_NOTES. md`, `server/package. json`)
+
 ## [0.35.0-alpha] - 2026-01-02
 
 ### 🚀 Major: RAG Enhancements

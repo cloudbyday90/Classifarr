@@ -1,3 +1,12 @@
+## v0.35.1-alpha
+**Title: Hotfix - Build Fix**
+
+### Fixes
+- **Build Fix:** Fixed corrupted HTML tags in Sidebar.vue that caused Vite build to fail
+- **Cleanup:** Removed duplicate files with malformed names (`RELEASE_NOTES. md`, `server/package. json`)
+
+---
+
 ## v0.35.0-alpha
 **Title: RAG Enhancements - RRF Hybrid Search, Rich Embeddings v2, Pattern Mining**
 
