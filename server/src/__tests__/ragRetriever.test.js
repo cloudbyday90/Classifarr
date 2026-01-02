@@ -155,7 +155,13 @@ describe('RAGRetriever', () => {
     });
 
     describe('hybridSearch', () => {
-        it('should combine semantic and text search results', async () => {
+        it('should combine semantic and text search results with RRF', async () => {
+            // Mock embeddingRouter for config
+            embeddingRouter.getConfig.mockResolvedValue({ 
+                rag_fusion_method: 'rrf',
+                rag_rrf_k: 60
+            });
+            
             // Mock semanticSearch
             jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([
                 { classificationId: 1, similarity: 0.9, libraryId: 1 }
@@ -168,7 +174,8 @@ describe('RAGRetriever', () => {
             const results = await ragRetriever.hybridSearch({ title: 'Test' });
 
             expect(results.length).toBeGreaterThan(0);
-            expect(results[0]).toHaveProperty('combinedScore');
+            // With RRF, results should have rrfScore
+            expect(results[0]).toHaveProperty('rrfScore');
         });
     });
 });
