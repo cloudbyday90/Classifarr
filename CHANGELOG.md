@@ -6,6 +6,67 @@ This project uses [Semantic Versioning](https://semver.org/) for releases.
 Current stage: **Alpha** (v0.x-alpha)
 
 
+## [0.35.0-alpha] - 2026-01-02
+
+### 🚀 Major: RAG Enhancements
+
+This release introduces significant improvements to the RAG (Retrieval-Augmented Generation) system with advanced hybrid search, richer embeddings, and automatic pattern discovery.
+
+### Added
+- **RRF (Reciprocal Rank Fusion) Hybrid Search:** Industry-standard algorithm replaces weighted-average fusion
+  - Configurable k parameter (default 60) via `rag_rrf_k` column
+  - Items appearing in both semantic and full-text results get boosted scores
+  - Legacy fusion method available for rollback via `rag_fusion_method` setting
+- **Rich Embeddings v2:** Enhanced embedding format with 8+ metadata fields
+  - Studio/production companies (top 3)
+  - Franchise/collection information
+  - Cast members (top 3)
+  - Content certification/rating
+  - Vote average score
+  - Original language
+  - Pipe-separated structured format
+  - Background migration service re-embeds at ~120 items/hour
+- **Pattern Mining Infrastructure:** Automatic discovery of classification patterns (opt-in)
+  - Studio patterns (70%+ confidence, 3+ occurrences)
+  - Franchise patterns (80%+ confidence, 2+ occurrences)
+  - Genre patterns (60%+ confidence, 5+ occurrences)
+  - Certification patterns (65%+ confidence, 5+ occurrences)
+  - Auto-approval at 85%+ confidence
+  - Pattern decay for stale patterns (90 days)
+  - Manual approval/rejection workflow
+- **Enhanced Error Logging:** RAG-specific error categorization and metrics
+  - 12 error types (quota_exceeded, timeout, dimension_mismatch, etc.)
+  - Operation tracking (semantic_search, hybrid_search, embedding_generation, pattern_mining)
+  - Duration metrics and recoverable flag
+  - Health dashboard with 24h/1h operation windows
+- **New API Endpoints:**
+  - `GET /api/rag/health` - Health summary with recent errors
+  - `GET /api/rag/metrics?hours=24` - Detailed metrics by operation
+  - `GET /api/rag/errors` - RAG error log with filtering
+  - `GET /api/rag/migration/status` - Migration progress tracking
+  - `POST /api/rag/migration/start` - Manual migration trigger
+  - `GET /api/rag/patterns` - List discovered patterns
+  - `POST /api/rag/patterns/discover` - Trigger pattern discovery
+  - `PUT /api/rag/patterns/:id/approve` - Approve pattern
+  - `PUT /api/rag/patterns/:id/reject` - Reject pattern
+
+### Changed
+- Hybrid search now uses RRF by default (configurable via database)
+- Embedding format version tracked for migration management
+- RAG metrics stored with hourly aggregation
+
+### Fixed
+- SQL injection vulnerability in pattern decay function (parameterized queries)
+- NaN validation for vote_average parsing
+- Null-safe division in health summary calculations
+
+### Technical
+- Database migration `039_rag_enhancements.sql`
+- New services: `embeddingMigrationService`, `patternMiningService`
+- New utilities: `ragErrorHandler`, `ragLogger`
+- 50 new tests (8 RRF, 25 rich embeddings, 17 pattern mining)
+- All tests passing (333/333)
+
 ## [0.33.1a-alpha] - 2025-12-29
 
 ### Fixed

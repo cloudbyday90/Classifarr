@@ -17,8 +17,60 @@ const logger = createLogger('EmbeddingService');
  * Handles generating, storing, and managing embeddings for classifications
  */
 class EmbeddingService {
+    constructor() {
+        // Embedding format version for migration tracking
+        this.EMBEDDING_FORMAT_VERSION = 2;
+    }
+
     /**
-     * Format metadata into text suitable for embedding
+     * Safe get for nested object properties
+     * @param {object} obj - Object to access
+     * @param {string} path - Dot-separated path (e.g., 'metadata.studio')
+     * @param {*} defaultValue - Default value if path doesn't exist
+     */
+    safeGet(obj, path, defaultValue = null) {
+        if (!obj) return defaultValue;
+        
+        const keys = path.split('.');
+        let result = obj;
+        
+        for (const key of keys) {
+            if (result === null || result === undefined || typeof result !== 'object') {
+                return defaultValue;
+            }
+            result = result[key];
+        }
+        
+        return result !== undefined ? result : defaultValue;
+    }
+
+    /**
+     * Extract names from array of objects or strings
+     * @param {Array} items - Array of items
+     * @param {number} limit - Max items to extract
+     * @returns {Array<string>} Array of names
+     */
+    extractNames(items, limit = 3) {
+        if (!Array.isArray(items) || items.length === 0) {
+            return [];
+        }
+        
+        return items
+            .slice(0, limit)
+            .map(item => {
+                if (typeof item === 'string') {
+                    return item;
+                }
+                if (item && typeof item === 'object') {
+                    return item.name || item.title || null;
+                }
+                return null;
+            })
+            .filter(Boolean);
+    }
+
+    /**
+     * Format metadata into text suitable for embedding (v2 with rich context)
      * @param {object} metadata - Classification metadata
      * @returns {string} Formatted text for embedding
      */
@@ -27,49 +79,111 @@ class EmbeddingService {
 
         // Title and year
         if (metadata.title) {
-            parts.push(metadata.title);
+            parts.push(`Title: ${metadata.title}`);
         }
         if (metadata.year) {
-            parts.push(`(${metadata.year})`);
+            parts.push(`Year: ${metadata.year}`);
         }
 
         // Media type
         if (metadata.media_type) {
-            parts.push(`[${metadata.media_type}]`);
+            const typeLabel = metadata.media_type === 'movie' ? 'Movie' : 'TV Series';
+            parts.push(`Type: ${typeLabel}`);
         }
 
         // Genres
         if (metadata.genres && metadata.genres.length > 0) {
-            const genreNames = metadata.genres.map(g =>
-                typeof g === 'string' ? g : g.name
-            ).filter(Boolean);
+            const genreNames = this.extractNames(metadata.genres, 5);
             if (genreNames.length > 0) {
                 parts.push(`Genres: ${genreNames.join(', ')}`);
             }
         }
 
-        // Keywords
+        // Certification/Rating
+        const certification = this.safeGet(metadata, 'certification') || 
+                             this.safeGet(metadata, 'content_rating');
+        if (certification) {
+            parts.push(`Rating: ${certification}`);
+        }
+
+        // Original language
+        if (metadata.original_language) {
+            parts.push(`Language: ${metadata.original_language}`);
+        }
+
+        // Studio/Production companies (top 3)
+        const studios = this.safeGet(metadata, 'production_companies', []);
+        if (studios && studios.length > 0) {
+            const studioNames = this.extractNames(studios, 3);
+            if (studioNames.length > 0) {
+                parts.push(`Studio: ${studioNames.join(', ')}`);
+            }
+        }
+
+        // Franchise/Collection
+        const collection = this.safeGet(metadata, 'belongs_to_collection');
+        if (collection) {
+            const franchiseName = typeof collection === 'object' 
+                ? collection.name 
+                : collection;
+            if (franchiseName) {
+                parts.push(`Franchise: ${franchiseName}`);
+            }
+        }
+
+        // Cast (top 3)
+        const cast = this.safeGet(metadata, 'cast', []);
+        if (cast && cast.length > 0) {
+            const castNames = this.extractNames(cast, 3);
+            if (castNames.length > 0) {
+                parts.push(`Cast: ${castNames.join(', ')}`);
+            }
+        }
+
+        // Keywords (top 8)
         if (metadata.keywords && metadata.keywords.length > 0) {
-            const keywordNames = metadata.keywords.slice(0, 10).map(k =>
-                typeof k === 'string' ? k : k.name
-            ).filter(Boolean);
+            const keywordNames = this.extractNames(metadata.keywords, 8);
             if (keywordNames.length > 0) {
                 parts.push(`Keywords: ${keywordNames.join(', ')}`);
             }
         }
 
-        // Overview (truncated)
-        if (metadata.overview) {
-            const truncatedOverview = metadata.overview.slice(0, 500);
-            parts.push(truncatedOverview);
+        // Vote average/Score
+        const voteAverage = this.safeGet(metadata, 'vote_average');
+        if (voteAverage !== null && voteAverage !== undefined && !isNaN(parseFloat(voteAverage))) {
+            parts.push(`Score: ${parseFloat(voteAverage).toFixed(1)}/10`);
         }
 
         // Library if known
         if (metadata.library_name) {
-            parts.push(`Library: ${metadata.library_name}`);
+            parts.push(`Classified: ${metadata.library_name}`);
         }
 
-        return parts.join(' ').trim();
+        // Overview (truncated to 300 chars)
+        if (metadata.overview) {
+            const truncatedOverview = metadata.overview.length > 300 
+                ? metadata.overview.slice(0, 300) + '...'
+                : metadata.overview;
+            parts.push(`Synopsis: ${truncatedOverview}`);
+        }
+
+        return parts.join(' | ').trim();
+    }
+
+    /**
+     * Check if embedding version mismatch exists
+     * @returns {Promise<boolean>} True if mismatch detected
+     */
+    async checkEmbeddingVersionMismatch() {
+        try {
+            const config = await embeddingRouter.getConfig();
+            const configVersion = config?.embedding_format_version || 1;
+            
+            return configVersion !== this.EMBEDDING_FORMAT_VERSION;
+        } catch (error) {
+            logger.warn('Failed to check embedding version mismatch', { error: error.message });
+            return false;
+        }
     }
 
     /**
