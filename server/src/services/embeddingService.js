@@ -150,7 +150,7 @@ class EmbeddingService {
 
         // Vote average/Score
         const voteAverage = this.safeGet(metadata, 'vote_average');
-        if (voteAverage !== null && voteAverage !== undefined) {
+        if (voteAverage !== null && voteAverage !== undefined && !isNaN(parseFloat(voteAverage))) {
             parts.push(`Score: ${parseFloat(voteAverage).toFixed(1)}/10`);
         }
 

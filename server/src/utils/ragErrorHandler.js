@@ -98,7 +98,9 @@ function categorizeError(error) {
         return RAG_ERROR_TYPES.INVALID_VECTOR;
     }
     
-    // Database errors
+    // Database errors (PostgreSQL error codes)
+    // 23xxx: Integrity constraint violations
+    // 42xxx: Syntax errors and access rule violations
     if (message.includes('database') || message.includes('postgres') ||
         message.includes('sql') || error.code?.startsWith('23') || error.code?.startsWith('42')) {
         return RAG_ERROR_TYPES.DATABASE_ERROR;

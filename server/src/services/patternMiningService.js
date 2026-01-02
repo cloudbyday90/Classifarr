@@ -380,13 +380,19 @@ class PatternMiningService {
      */
     async decayStalePatterns(daysSinceLastSeen = 90) {
         try {
+            // Validate input to prevent SQL injection
+            const days = parseInt(daysSinceLastSeen);
+            if (isNaN(days) || days < 0) {
+                throw new Error('Invalid daysSinceLastSeen parameter');
+            }
+
             const result = await db.query(`
                 UPDATE discovered_patterns
                 SET status = 'decayed',
                     updated_at = NOW()
-                WHERE last_seen_at < NOW() - INTERVAL '${daysSinceLastSeen} days'
+                WHERE last_seen_at < NOW() - INTERVAL '1 day' * $1
                 AND status NOT IN ('rejected', 'decayed')
-            `);
+            `, [days]);
 
             logger.info('Decayed stale patterns', { count: result.rowCount });
             return result.rowCount;

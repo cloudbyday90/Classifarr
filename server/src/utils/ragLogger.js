@@ -141,13 +141,14 @@ class RAGLogger {
             }
 
             const row = result.rows[0];
+            const operations24h = parseInt(row.operations_24h) || 0;
             return {
-                operations_24h: parseInt(row.operations_24h) || 0,
+                operations_24h: operations24h,
                 operations_1h: parseInt(row.operations_1h) || 0,
                 successful_24h: parseInt(row.successful_24h) || 0,
                 failed_24h: parseInt(row.failed_24h) || 0,
-                success_rate_24h: row.operations_24h > 0 
-                    ? Math.round((row.successful_24h / row.operations_24h) * 100) / 100
+                success_rate_24h: operations24h > 0 
+                    ? Math.round((parseInt(row.successful_24h) / operations24h) * 100) / 100
                     : 0,
                 avg_duration_ms_24h: Math.round(parseFloat(row.avg_duration_ms_24h) || 0),
                 semantic_searches_24h: parseInt(row.semantic_searches_24h) || 0,

@@ -162,7 +162,8 @@ describe('PatternMiningService', () => {
 
             expect(count).toBe(5);
             expect(db.query).toHaveBeenCalledWith(
-                expect.stringContaining("last_seen_at < NOW() - INTERVAL '90 days'")
+                expect.stringContaining("last_seen_at < NOW() - INTERVAL '1 day' * $1"),
+                [90]
             );
         });
 
@@ -173,7 +174,8 @@ describe('PatternMiningService', () => {
 
             expect(count).toBe(3);
             expect(db.query).toHaveBeenCalledWith(
-                expect.stringContaining("last_seen_at < NOW() - INTERVAL '60 days'")
+                expect.stringContaining("last_seen_at < NOW() - INTERVAL '1 day' * $1"),
+                [60]
             );
         });
     });
