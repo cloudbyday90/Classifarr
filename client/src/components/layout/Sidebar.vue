@@ -61,7 +61,7 @@
       </div>
     </nav>
 
-    <div0.35.0-alphaclass="p-4 border-t border-gray-800 text-sm text-gray-400">
+    <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
       <div>v0.35.0-alpha</div>
     </div>
   </aside>

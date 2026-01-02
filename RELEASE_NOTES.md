@@ -1,48 +1,4 @@
 ## v0.35.0-alpha
-**Title:  RAG Enhancements - RRF Hybrid Search, Rich Embeddings & Pattern Mining**
-
-> [! IMPORTANT]
-> Existing embeddings will be automatically re-generated in the background using the new rich format.  Monitor progress at Settings ? AI ? RAG ? Migration Status.
-
-### New Features
-- **RRF Hybrid Search:** Industry-standard Reciprocal Rank Fusion replaces simple weighted averaging for combining semantic and full-text search results
-- **Rich Contextual Embeddings:** Enhanced embedding format now includes studio, franchise, cast, certification, and vote average for better similarity matching
-- **Pattern Mining Infrastructure:** Foundation for automatic rule discovery from classification history (opt-in via Settings ? AI ? RAG)
-- **RAG Health Dashboard:** New endpoints for monitoring RAG performance, metrics, and errors
-- **Embedding Migration Service:** Background re-embedding when format changes with progress tracking
-
-### Improvements
-- **Better Search Ranking:** Items appearing in both semantic and text results are properly boosted
-- **Edge Case Handling:** Comprehensive guards for empty results, null metadata, and API failures
-- **RAG Error Categorization:** Errors now categorized by type (quota, timeout, dimension mismatch, etc.)
-- **Performance Metrics:** Track duration, cost, and success rate per RAG operation
-
-### API Additions
-- `GET /api/rag/health` - Health summary with recent errors
-- `GET /api/rag/metrics` - Detailed metrics by operation
-- `GET /api/rag/errors` - RAG-specific error log
-- `GET /api/rag/migration/status` - Embedding migration progress
-- `POST /api/rag/migration/start` - Manual migration trigger
-- `GET /api/rag/patterns` - List discovered patterns
-- `POST /api/rag/patterns/discover` - Trigger pattern discovery
-- `PUT /api/rag/patterns/: id/approve` - Approve pattern
-- `PUT /api/rag/patterns/:id/reject` - Reject pattern
-
-### Database Changes
-- New tables: `discovered_patterns`, `pattern_match_log`, `rag_metrics`
-- New columns in `ai_provider_config`: `rag_fusion_method`, `rag_rrf_k`, `embedding_format_version`, `pattern_mining_enabled`, `pattern_auto_approve_threshold`, `pattern_min_occurrences`
-- New columns in `error_log`: `rag_operation`, `rag_context`, `duration_ms`, `recoverable`
-- New view: `rag_health_summary`
-
-### Configuration
-- `rag_fusion_method`: Choose 'rrf' (default), 'weighted' (legacy), or 'semantic_only'
-- `pattern_mining_enabled`: Enable automatic pattern discovery (default: false)
-
----
-
-
-
-## v0.35.0-alpha
 **Title: RAG Enhancements - RRF Hybrid Search, Rich Embeddings v2, Pattern Mining**
 
 ### 🚀 Major Features
