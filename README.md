@@ -14,8 +14,10 @@ Classifarr is an intelligent media classification platform that automatically ro
 - **🎭 Multi-Server Support** - Plex, Emby, and Jellyfin with OAuth flows
 - 🤖 Multi-Provider AI - OpenAI, Gemini, OpenRouter, Ollama with budget controls
 - 📚 Smart Rule Builder - Create classification rules with AI-suggested conditions
-- � RAG Semantic Search - Learns from your classification history for better decisions
-- �🗄️ Embedded PostgreSQL - All data in a single volume, auto-initialized
+- 🔍 **RAG with RRF Hybrid Search** - Learns from history using Reciprocal Rank Fusion algorithm
+- 🧠 **Rich Embeddings v2** - Enhanced semantic search with studio, cast, franchise metadata
+- 🔎 **Pattern Mining** - Automatic discovery of classification patterns from history
+- 🗄️ Embedded PostgreSQL - All data in a single volume, auto-initialized
 - 💬 Discord Bot - Real-time notifications with correction buttons
 - 🔄 Learning System - Improves from user corrections over time
 - 📊 Dashboard & Statistics - Track classifications and system performance

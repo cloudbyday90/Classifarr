@@ -1,5 +1,166 @@
 
 
+## v0.35.0-alpha
+**Title: RAG Enhancements - RRF Hybrid Search, Rich Embeddings v2, Pattern Mining**
+
+### 🚀 Major Features
+
+#### Reciprocal Rank Fusion (RRF) Hybrid Search
+The RAG hybrid search now uses **Reciprocal Rank Fusion (RRF)**, an industry-standard algorithm for combining semantic and full-text search results. RRF provides better fusion than the previous weighted average approach by:
+- Giving higher scores to items that appear in both result sets
+- Using rank-based scoring rather than raw similarity scores
+- Providing more robust handling of score scale differences
+
+**How it works:**
+```
+RRF Score = Σ 1/(k + rank + 1) across all sources
+```
+where k=60 is the smoothing constant (configurable via `rag_rrf_k` database field).
+
+**Rollback available:** Set `rag_fusion_method = 'legacy'` in `ai_provider_config` table to use the previous 70/30 weighted approach.
+
+#### Rich Embeddings v2
+Embeddings now include significantly more metadata for better semantic matching:
+
+**v1 Format:**
+```
+Title (Year) [Type] Genres: X, Y Keywords: A, B Overview...
+```
+
+**v2 Format:**
+```
+Title: X | Year: Y | Type: Movie | Genres: A, B | Rating: PG-13 | 
+Language: en | Studio: Warner Bros, Marvel | Franchise: MCU |
+Cast: Actor1, Actor2, Actor3 | Keywords: hero, action | 
+Score: 8.4/10 | Classified: Movies | Synopsis: ...
+```
+
+**New fields:**
+- **Studio:** Top 3 production companies
+- **Franchise:** Collection/series information
+- **Cast:** Top 3 cast members
+- **Rating:** Content certification (PG-13, TV-MA, etc.)
+- **Score:** Vote average formatted as X.X/10
+- **Language:** Original language code
+
+**Migration:** Existing embeddings are automatically detected as stale and re-generated in the background at ~120 items/hour. Monitor progress via `GET /api/rag/migration/status`.
+
+#### Pattern Mining (Opt-In)
+Classifarr can now automatically discover classification patterns from your history:
+
+**Pattern Types:**
+- **Studio Patterns:** "Warner Bros movies → Action Movies library" (70%+ confidence, 3+ examples)
+- **Franchise Patterns:** "Marvel Cinematic Universe → Superhero library" (80%+ confidence, 2+ examples)
+- **Genre Patterns:** "Anime genre → Anime library" (60%+ confidence, 5+ examples)
+- **Certification Patterns:** "TV-MA rating → Adult Animation library" (65%+ confidence, 5+ examples)
+
+**Workflow:**
+1. Patterns are discovered automatically from classification history
+2. High-confidence patterns (≥85%) are auto-approved
+3. Review and approve/reject patterns via new API endpoints
+4. Stale patterns (not seen in 90 days) are automatically decayed
+
+**Enable pattern mining:** Set `pattern_mining_enabled = true` in `ai_provider_config` table, then call `POST /api/rag/patterns/discover`.
+
+### 📊 Enhanced Observability
+
+#### RAG Error Categorization
+Errors are now automatically categorized into 12 types:
+- `quota_exceeded` - API rate limits hit
+- `timeout` - Request timeouts
+- `dimension_mismatch` - Vector dimension incompatibility
+- `invalid_vector` - NaN/Infinity in embeddings
+- `database_error` - PostgreSQL errors
+- `provider_error` - Ollama/OpenAI/Gemini failures
+- `configuration_error` - Missing/invalid settings
+- And 5 more...
+
+Each error includes:
+- RAG operation context (semantic_search, hybrid_search, etc.)
+- Duration in milliseconds
+- Recoverable flag for retry logic
+- Full stack trace
+
+#### Health Dashboard
+New endpoint `GET /api/rag/health` provides:
+- Operations count (24h and 1h windows)
+- Success/failure rates
+- Average duration
+- Breakdown by operation type
+- Recent errors list
+
+#### Metrics Tracking
+All RAG operations are logged with:
+- Operation type and duration
+- Items processed
+- Success/failure status
+- Hourly aggregation for performance analysis
+
+Query via `GET /api/rag/metrics?hours=24`.
+
+### 🔧 New API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/rag/health` | GET | Health summary with 24h/1h metrics |
+| `/api/rag/metrics` | GET | Detailed metrics by operation type |
+| `/api/rag/errors` | GET | RAG error log with filtering |
+| `/api/rag/migration/status` | GET | Embedding migration progress |
+| `/api/rag/migration/start` | POST | Trigger manual migration |
+| `/api/rag/patterns` | GET | List discovered patterns |
+| `/api/rag/patterns/discover` | POST | Run pattern discovery |
+| `/api/rag/patterns/:id/approve` | PUT | Approve a pattern |
+| `/api/rag/patterns/:id/reject` | PUT | Reject a pattern |
+
+### 🔒 Security Fixes
+- **SQL Injection:** Pattern decay function now uses parameterized queries
+- **NaN Validation:** Vote average parsing validates numeric values
+- **Null Safety:** Health metrics division protected against null values
+
+### 🗄️ Database Changes
+- **Migration 039:** Adds RAG configuration columns, pattern mining tables, enhanced error logging, metrics tables
+- **New Tables:** `discovered_patterns`, `pattern_match_log`, `rag_metrics`
+- **New Columns:** `rag_fusion_method`, `rag_rrf_k`, `embedding_format_version` (ai_provider_config), `rag_operation`, `rag_context`, `duration_ms`, `recoverable` (error_log)
+- **New View:** `rag_health_summary` for dashboard queries
+
+### 🧪 Testing
+- **50 new tests** covering RRF algorithm, rich embeddings, and pattern mining
+- **100% test pass rate** (333/333 tests)
+- Comprehensive edge case coverage
+
+### 💡 Usage Tips
+
+**Monitor Migration:**
+```bash
+curl http://localhost:21324/api/rag/migration/status
+```
+
+**Check RAG Health:**
+```bash
+curl http://localhost:21324/api/rag/health
+```
+
+**Discover Patterns:**
+```sql
+-- Enable pattern mining
+UPDATE ai_provider_config SET pattern_mining_enabled = true;
+```
+```bash
+# Run discovery
+curl -X POST http://localhost:21324/api/rag/patterns/discover
+```
+
+**Advanced Tuning (Optional):**
+```sql
+-- Use legacy fusion instead of RRF
+UPDATE ai_provider_config SET rag_fusion_method = 'legacy';
+
+-- Adjust RRF k parameter (higher = more conservative fusion)
+UPDATE ai_provider_config SET rag_rrf_k = 80;
+```
+
+---
+
 ## v0.34.6-alpha
 **Title: Event Sub-Categories**
 
