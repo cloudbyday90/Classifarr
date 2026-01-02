@@ -27,15 +27,27 @@ describe('RAGRetriever - RRF Algorithm', () => {
             expect(ragRetriever.calculateRRF(null, null)).toEqual([]);
             expect(ragRetriever.calculateRRF([], [])).toEqual([]);
 
-            // Only semantic
+            // Only semantic - should still add RRF scores
             const semanticOnly = [{ classificationId: 1, similarity: 0.9 }];
-            expect(ragRetriever.calculateRRF(semanticOnly, [])).toEqual(semanticOnly);
-            expect(ragRetriever.calculateRRF(semanticOnly, null)).toEqual(semanticOnly);
+            const semanticResult = ragRetriever.calculateRRF(semanticOnly, []);
+            expect(semanticResult).toHaveLength(1);
+            expect(semanticResult[0].classificationId).toBe(1);
+            expect(semanticResult[0].rrfScore).toBeDefined();
 
-            // Only text
+            const semanticResult2 = ragRetriever.calculateRRF(semanticOnly, null);
+            expect(semanticResult2).toHaveLength(1);
+            expect(semanticResult2[0].rrfScore).toBeDefined();
+
+            // Only text - should still add RRF scores
             const textOnly = [{ classificationId: 2, textScore: 0.8 }];
-            expect(ragRetriever.calculateRRF([], textOnly)).toEqual(textOnly);
-            expect(ragRetriever.calculateRRF(null, textOnly)).toEqual(textOnly);
+            const textResult = ragRetriever.calculateRRF([], textOnly);
+            expect(textResult).toHaveLength(1);
+            expect(textResult[0].classificationId).toBe(2);
+            expect(textResult[0].rrfScore).toBeDefined();
+
+            const textResult2 = ragRetriever.calculateRRF(null, textOnly);
+            expect(textResult2).toHaveLength(1);
+            expect(textResult2[0].rrfScore).toBeDefined();
         });
 
         it('should calculate RRF for single-source results', () => {
@@ -73,7 +85,8 @@ describe('RAGRetriever - RRF Algorithm', () => {
             // Find Movie B (id=2) - should be first due to appearing in both sources
             const movieB = results.find(r => r.classificationId === 2);
             expect(movieB).toBeDefined();
-            expect(movieB.rrfScore).toBeCloseTo((1/61) + (1/61), 5); // Appears in both at rank 0
+            // Movie B: semantic rank 2 (index 1) = 1/62, text rank 1 (index 0) = 1/61
+            expect(movieB.rrfScore).toBeCloseTo((1/62) + (1/61), 5);
             expect(movieB.semanticRank).toBe(2);
             expect(movieB.textRank).toBe(1);
         });
@@ -110,9 +123,13 @@ describe('RAGRetriever - RRF Algorithm', () => {
             const results = ragRetriever.calculateRRF(semanticMatches, textMatches, 60);
 
             // Items with same RRF score should be ordered by semantic rank (if present)
-            // Items in semantic search should come before text-only items when RRF scores are equal
+            // ID 1 (semantic rank 1): 1/61, ID 3 (text rank 1): 1/61
+            // ID 2 (semantic rank 2): 1/62, ID 4 (text rank 2): 1/62
+            // Tie-breaking: semantic before text, so: 1, 3, 2, 4
             expect(results[0].classificationId).toBe(1); // Best semantic match
-            expect(results[1].classificationId).toBe(2); // Second semantic match
+            expect(results[1].classificationId).toBe(3); // Text match with same RRF as ID 1
+            expect(results[2].classificationId).toBe(2); // Second semantic match
+            expect(results[3].classificationId).toBe(4); // Text match with same RRF as ID 2
         });
 
         it('should preserve scores in results', () => {

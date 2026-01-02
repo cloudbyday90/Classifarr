@@ -113,11 +113,14 @@ class RAGRetriever {
         if (!semanticMatches && !textMatches) {
             return [];
         }
-        if (!semanticMatches || semanticMatches.length === 0) {
-            return textMatches || [];
-        }
-        if (!textMatches || textMatches.length === 0) {
-            return semanticMatches || [];
+        
+        // Ensure we have arrays
+        const semantic = semanticMatches || [];
+        const text = textMatches || [];
+        
+        // If both are empty, return empty
+        if (semantic.length === 0 && text.length === 0) {
+            return [];
         }
 
         // Validate k parameter
@@ -128,7 +131,7 @@ class RAGRetriever {
         const combined = new Map();
 
         // Process semantic matches (rank starting from 0)
-        semanticMatches.forEach((match, index) => {
+        semantic.forEach((match, index) => {
             if (!match.classificationId) {
                 logger.debug('Skipping match without classificationId', { match });
                 return;
@@ -146,7 +149,7 @@ class RAGRetriever {
         });
 
         // Process text matches
-        textMatches.forEach((match, index) => {
+        text.forEach((match, index) => {
             if (!match.classificationId) {
                 logger.debug('Skipping match without classificationId', { match });
                 return;
