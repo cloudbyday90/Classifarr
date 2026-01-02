@@ -10,6 +10,7 @@ const db = require('../config/database');
 const embeddingRouter = require('./embeddingRouter');
 const embeddingService = require('./embeddingService');
 const { createLogger } = require('../utils/logger');
+const ragLogger = require('../utils/ragLogger');
 
 const logger = createLogger('RAGRetriever');
 
@@ -101,56 +102,186 @@ class RAGRetriever {
     }
 
     /**
+     * Calculate RRF (Reciprocal Rank Fusion) score
+     * @param {Array} semanticMatches - Results from semantic search
+     * @param {Array} textMatches - Results from full-text search
+     * @param {number} k - RRF smoothing constant (default 60)
+     * @returns {Array} Fused results with RRF scores
+     */
+    calculateRRF(semanticMatches, textMatches, k = 60) {
+        // Handle edge cases
+        if (!semanticMatches && !textMatches) {
+            return [];
+        }
+        if (!semanticMatches || semanticMatches.length === 0) {
+            return textMatches || [];
+        }
+        if (!textMatches || textMatches.length === 0) {
+            return semanticMatches || [];
+        }
+
+        // Validate k parameter
+        if (typeof k !== 'number' || k < 0) {
+            k = 60;
+        }
+
+        const combined = new Map();
+
+        // Process semantic matches (rank starting from 0)
+        semanticMatches.forEach((match, index) => {
+            if (!match.classificationId) {
+                logger.debug('Skipping match without classificationId', { match });
+                return;
+            }
+
+            const rrfScore = 1 / (k + index + 1);
+            combined.set(match.classificationId, {
+                ...match,
+                rrfScore,
+                semanticRank: index + 1,
+                textRank: null,
+                vectorScore: match.similarity || 0,
+                textScore: 0
+            });
+        });
+
+        // Process text matches
+        textMatches.forEach((match, index) => {
+            if (!match.classificationId) {
+                logger.debug('Skipping match without classificationId', { match });
+                return;
+            }
+
+            const rrfScore = 1 / (k + index + 1);
+            
+            if (combined.has(match.classificationId)) {
+                // Item appears in both sources - boost with combined RRF
+                const existing = combined.get(match.classificationId);
+                existing.rrfScore += rrfScore;
+                existing.textRank = index + 1;
+                existing.textScore = match.textScore || 0;
+            } else {
+                // Item only in text search
+                combined.set(match.classificationId, {
+                    ...match,
+                    rrfScore,
+                    semanticRank: null,
+                    textRank: index + 1,
+                    vectorScore: 0,
+                    textScore: match.textScore || 0
+                });
+            }
+        });
+
+        // Sort by RRF score (descending), then by semantic rank for tie-breaking
+        const results = Array.from(combined.values())
+            .sort((a, b) => {
+                if (b.rrfScore !== a.rrfScore) {
+                    return b.rrfScore - a.rrfScore;
+                }
+                // Tie-breaking: prefer items with better semantic rank
+                if (a.semanticRank !== null && b.semanticRank !== null) {
+                    return a.semanticRank - b.semanticRank;
+                }
+                if (a.semanticRank !== null) return -1;
+                if (b.semanticRank !== null) return 1;
+                return 0;
+            });
+
+        return results;
+    }
+
+    /**
+     * Legacy hybrid combine (weighted average)
+     * Kept for rollback capability
+     */
+    legacyHybridCombine(semanticMatches, textMatches, limit = 5) {
+        const combined = new Map();
+
+        // Add semantic matches with vector score
+        for (const match of semanticMatches) {
+            combined.set(match.classificationId, {
+                ...match,
+                vectorScore: match.similarity,
+                textScore: 0
+            });
+        }
+
+        // Add/update text matches
+        for (const match of textMatches) {
+            if (combined.has(match.classificationId)) {
+                combined.get(match.classificationId).textScore = match.textScore;
+            } else {
+                combined.set(match.classificationId, {
+                    ...match,
+                    vectorScore: 0,
+                    textScore: match.textScore
+                });
+            }
+        }
+
+        // Calculate combined score and sort
+        const results = Array.from(combined.values())
+            .map(item => ({
+                ...item,
+                combinedScore: (item.vectorScore * 0.7) + (item.textScore * 0.3)
+            }))
+            .sort((a, b) => b.combinedScore - a.combinedScore)
+            .slice(0, limit);
+
+        return results;
+    }
+
+    /**
      * Hybrid search combining vector similarity and full-text search
      * @param {object} metadata - Metadata to search for
      * @param {number} limit - Max results
      * @returns {Promise<Array>} Combined search results
      */
     async hybridSearch(metadata, limit = 5) {
+        const startTime = Date.now();
+        
         try {
+            // Get config for fusion method
+            const config = await embeddingRouter.getConfig();
+            const fusionMethod = config?.rag_fusion_method || 'rrf';
+            const rrfK = config?.rag_rrf_k || 60;
+
             // Get semantic matches
             const semanticMatches = await this.semanticSearch(metadata, limit);
 
             // Get full-text matches
             const textMatches = await this.fullTextSearch(metadata, limit);
 
-            // Combine and deduplicate by classification_id
-            const combined = new Map();
-
-            // Add semantic matches with vector score
-            for (const match of semanticMatches) {
-                combined.set(match.classificationId, {
-                    ...match,
-                    vectorScore: match.similarity,
-                    textScore: 0
-                });
+            let results;
+            if (fusionMethod === 'rrf') {
+                // Use RRF algorithm
+                results = this.calculateRRF(semanticMatches, textMatches, rrfK);
+            } else {
+                // Use legacy weighted average
+                results = this.legacyHybridCombine(semanticMatches, textMatches, limit);
             }
 
-            // Add/update text matches
-            for (const match of textMatches) {
-                if (combined.has(match.classificationId)) {
-                    combined.get(match.classificationId).textScore = match.textScore;
-                } else {
-                    combined.set(match.classificationId, {
-                        ...match,
-                        vectorScore: 0,
-                        textScore: match.textScore
-                    });
+            // Limit results
+            results = results.slice(0, limit);
+
+            // Log operation metrics
+            const duration = Date.now() - startTime;
+            await ragLogger.logOperation('hybrid_search', duration, true, {
+                itemsProcessed: results.length,
+                metadata: {
+                    fusionMethod,
+                    semanticMatches: semanticMatches.length,
+                    textMatches: textMatches.length,
+                    fusedResults: results.length
                 }
-            }
-
-            // Calculate combined score and sort
-            const results = Array.from(combined.values())
-                .map(item => ({
-                    ...item,
-                    combinedScore: (item.vectorScore * 0.7) + (item.textScore * 0.3)
-                }))
-                .sort((a, b) => b.combinedScore - a.combinedScore)
-                .slice(0, limit);
+            });
 
             return results;
 
         } catch (error) {
+            const duration = Date.now() - startTime;
+            await ragLogger.logError(error, 'hybrid_search', { duration_ms: duration });
             logger.error('Hybrid search failed', { error: error.message });
             return [];
         }

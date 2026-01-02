@@ -152,6 +152,15 @@ async function initializeServices() {
   } catch (error) {
     console.warn('Health check heartbeat failed to start:', error.message);
   }
+
+  // Check and start embedding migration if needed
+  try {
+    const embeddingMigrationService = require('./services/embeddingMigrationService');
+    await embeddingMigrationService.checkAndStartMigration();
+    console.log('Embedding migration check completed');
+  } catch (error) {
+    console.warn('Embedding migration check failed:', error.message);
+  }
 }
 
 // Start server
