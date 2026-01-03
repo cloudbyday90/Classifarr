@@ -241,8 +241,14 @@
 
 <script>
 import { ref, onMounted, reactive } from 'vue';
-import { Card, Button, Badge, Spinner, Input, Select, Modal } from '../../components/common';
-import api from '../../api/client';
+import Card from '@/components/common/Card.vue';
+import Button from '@/components/common/Button.vue';
+import Badge from '@/components/common/Badge.vue';
+import Spinner from '@/components/common/Spinner.vue';
+import Input from '@/components/common/Input.vue';
+import Select from '@/components/common/Select.vue';
+import Modal from '@/components/common/Modal.vue';
+import api from '@/api';
 
 export default {
   name: 'PatternManagement',
