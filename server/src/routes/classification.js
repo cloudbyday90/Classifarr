@@ -21,6 +21,7 @@ const db = require('../config/database');
 const classificationService = require('../services/classification');
 const reclassificationService = require('../services/reclassificationService');
 const clarificationService = require('../services/clarificationService');
+const patternReinforcementService = require('../services/patternReinforcementService');
 
 const router = express.Router();
 
@@ -228,6 +229,40 @@ router.post('/corrections', async (req, res) => {
        ON CONFLICT DO NOTHING`,
       [tmdb_id, corrected_library_id, 'exact_match', metadata, 100.00]
     );
+
+    // Pattern reinforcement - async, don't wait
+    setImmediate(async () => {
+      try {
+        // Get pattern signals from classification
+        const signalsResult = await db.query(
+          'SELECT signals_json FROM classification_history WHERE id = $1',
+          [classification_id]
+        );
+        
+        if (signalsResult.rows.length > 0 && signalsResult.rows[0].signals_json) {
+          const signals = signalsResult.rows[0].signals_json;
+          const patternSignals = signals.filter(s => 
+            s.type && (
+              s.type.startsWith('pattern_') ||
+              s.type === 'pattern_studio' ||
+              s.type === 'pattern_franchise' ||
+              s.type === 'pattern_genre' ||
+              s.type === 'pattern_certification'
+            )
+          );
+          
+          if (patternSignals.length > 0) {
+            await patternReinforcementService.reinforceOnCorrection(
+              classification_id,
+              patternSignals,
+              corrected_library_id
+            );
+          }
+        }
+      } catch (error) {
+        // Silent fail for pattern reinforcement
+      }
+    });
 
     res.json(correctionResult.rows[0]);
   } catch (error) {
