@@ -1,0 +1,340 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2025 cloudbyday90
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
+const db = require('../config/database');
+const embeddingRouter = require('./embeddingRouter');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('PatternSignalCollector');
+
+/**
+ * Pattern Signal Collector Service
+ * Collects classification signals from discovered patterns
+ */
+class PatternSignalCollector {
+    /**
+     * Check if pattern-based classification is enabled
+     */
+    async isEnabled() {
+        try {
+            const config = await embeddingRouter.getConfig();
+            return config?.pattern_mining_enabled === true;
+        } catch (error) {
+            logger.error('Failed to check pattern enabled status', { error: error.message });
+            return false;
+        }
+    }
+
+    /**
+     * Collect pattern-based signals for a media item
+     * @param {object} metadata - Media metadata (genres, keywords, studios, etc.)
+     * @param {number} minConfidence - Minimum confidence threshold (0-100)
+     * @returns {Array} Array of pattern signals sorted by confidence (descending)
+     */
+    async collectSignals(metadata, minConfidence = 50) {
+        try {
+            const enabled = await this.isEnabled();
+            if (!enabled) {
+                logger.debug('Pattern-based classification is disabled');
+                return [];
+            }
+
+            if (!metadata) {
+                logger.warn('No metadata provided for pattern signal collection');
+                return [];
+            }
+
+            const signals = [];
+
+            // Collect studio patterns
+            if (metadata.studios && metadata.studios.length > 0) {
+                const studioSignals = await this.collectStudioPatterns(metadata.studios, minConfidence);
+                signals.push(...studioSignals);
+            }
+
+            // Collect franchise patterns (from collections, keywords)
+            if (metadata.collection || (metadata.keywords && metadata.keywords.length > 0)) {
+                const franchiseSignals = await this.collectFranchisePatterns(metadata, minConfidence);
+                signals.push(...franchiseSignals);
+            }
+
+            // Collect genre combination patterns
+            if (metadata.genres && metadata.genres.length > 0) {
+                const genreSignals = await this.collectGenrePatterns(metadata.genres, minConfidence);
+                signals.push(...genreSignals);
+            }
+
+            // Collect certification patterns
+            if (metadata.certification) {
+                const certSignals = await this.collectCertificationPatterns(metadata.certification, minConfidence);
+                signals.push(...certSignals);
+            }
+
+            // Sort by confidence descending
+            signals.sort((a, b) => b.confidence - a.confidence);
+
+            logger.debug('Collected pattern signals', {
+                total: signals.length,
+                topConfidence: signals.length > 0 ? signals[0].confidence : 0
+            });
+
+            return signals;
+        } catch (error) {
+            logger.error('Error collecting pattern signals', { error: error.message });
+            return [];
+        }
+    }
+
+    /**
+     * Collect studio-based pattern signals
+     */
+    async collectStudioPatterns(studios, minConfidence) {
+        const signals = [];
+
+        try {
+            for (const studio of studios) {
+                const result = await db.query(`
+                    SELECT 
+                        dp.*,
+                        l.name as library_name,
+                        l.id as library_id
+                    FROM discovered_patterns dp
+                    JOIN libraries l ON l.id = dp.library_id
+                    WHERE 
+                        dp.pattern_type = 'studio'
+                        AND dp.pattern_value = $1
+                        AND dp.status IN ('discovered', 'approved')
+                        AND dp.confidence >= $2
+                    ORDER BY dp.confidence DESC
+                    LIMIT 1
+                `, [studio, minConfidence]);
+
+                if (result.rows.length > 0) {
+                    const pattern = result.rows[0];
+                    signals.push({
+                        type: 'pattern_studio',
+                        pattern_id: pattern.id,
+                        pattern_type: 'studio',
+                        pattern_value: studio,
+                        library: {
+                            id: pattern.library_id,
+                            name: pattern.library_name
+                        },
+                        confidence: parseFloat(pattern.confidence),
+                        sample_size: pattern.sample_size,
+                        status: pattern.status
+                    });
+                }
+            }
+        } catch (error) {
+            logger.error('Error collecting studio patterns', { error: error.message });
+        }
+
+        return signals;
+    }
+
+    /**
+     * Collect franchise-based pattern signals
+     */
+    async collectFranchisePatterns(metadata, minConfidence) {
+        const signals = [];
+
+        try {
+            // Check collection name
+            if (metadata.collection?.name) {
+                const result = await db.query(`
+                    SELECT 
+                        dp.*,
+                        l.name as library_name,
+                        l.id as library_id
+                    FROM discovered_patterns dp
+                    JOIN libraries l ON l.id = dp.library_id
+                    WHERE 
+                        dp.pattern_type = 'franchise'
+                        AND dp.pattern_value = $1
+                        AND dp.status IN ('discovered', 'approved')
+                        AND dp.confidence >= $2
+                    ORDER BY dp.confidence DESC
+                    LIMIT 1
+                `, [metadata.collection.name, minConfidence]);
+
+                if (result.rows.length > 0) {
+                    const pattern = result.rows[0];
+                    signals.push({
+                        type: 'pattern_franchise',
+                        pattern_id: pattern.id,
+                        pattern_type: 'franchise',
+                        pattern_value: metadata.collection.name,
+                        library: {
+                            id: pattern.library_id,
+                            name: pattern.library_name
+                        },
+                        confidence: parseFloat(pattern.confidence),
+                        sample_size: pattern.sample_size,
+                        status: pattern.status
+                    });
+                }
+            }
+
+            // Check keywords for franchise markers
+            if (metadata.keywords && metadata.keywords.length > 0) {
+                const franchiseKeywords = metadata.keywords.filter(k => 
+                    k.toLowerCase().includes('universe') || 
+                    k.toLowerCase().includes('series') ||
+                    k.toLowerCase().includes('franchise')
+                );
+
+                for (const keyword of franchiseKeywords) {
+                    const result = await db.query(`
+                        SELECT 
+                            dp.*,
+                            l.name as library_name,
+                            l.id as library_id
+                        FROM discovered_patterns dp
+                        JOIN libraries l ON l.id = dp.library_id
+                        WHERE 
+                            dp.pattern_type = 'franchise'
+                            AND dp.pattern_value = $1
+                            AND dp.status IN ('discovered', 'approved')
+                            AND dp.confidence >= $2
+                        ORDER BY dp.confidence DESC
+                        LIMIT 1
+                    `, [keyword, minConfidence]);
+
+                    if (result.rows.length > 0) {
+                        const pattern = result.rows[0];
+                        signals.push({
+                            type: 'pattern_franchise',
+                            pattern_id: pattern.id,
+                            pattern_type: 'franchise',
+                            pattern_value: keyword,
+                            library: {
+                                id: pattern.library_id,
+                                name: pattern.library_name
+                            },
+                            confidence: parseFloat(pattern.confidence),
+                            sample_size: pattern.sample_size,
+                            status: pattern.status
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error('Error collecting franchise patterns', { error: error.message });
+        }
+
+        return signals;
+    }
+
+    /**
+     * Collect genre combination pattern signals
+     */
+    async collectGenrePatterns(genres, minConfidence) {
+        const signals = [];
+
+        try {
+            // Sort genres to ensure consistent matching
+            const sortedGenres = [...genres].sort().join(',');
+
+            const result = await db.query(`
+                SELECT 
+                    dp.*,
+                    l.name as library_name,
+                    l.id as library_id
+                FROM discovered_patterns dp
+                JOIN libraries l ON l.id = dp.library_id
+                WHERE 
+                    dp.pattern_type = 'genre'
+                    AND dp.pattern_value = $1
+                    AND dp.status IN ('discovered', 'approved')
+                    AND dp.confidence >= $2
+                ORDER BY dp.confidence DESC
+                LIMIT 1
+            `, [sortedGenres, minConfidence]);
+
+            if (result.rows.length > 0) {
+                const pattern = result.rows[0];
+                signals.push({
+                    type: 'pattern_genre',
+                    pattern_id: pattern.id,
+                    pattern_type: 'genre',
+                    pattern_value: sortedGenres,
+                    library: {
+                        id: pattern.library_id,
+                        name: pattern.library_name
+                    },
+                    confidence: parseFloat(pattern.confidence),
+                    sample_size: pattern.sample_size,
+                    status: pattern.status
+                });
+            }
+        } catch (error) {
+            logger.error('Error collecting genre patterns', { error: error.message });
+        }
+
+        return signals;
+    }
+
+    /**
+     * Collect certification-based pattern signals
+     */
+    async collectCertificationPatterns(certification, minConfidence) {
+        const signals = [];
+
+        try {
+            const result = await db.query(`
+                SELECT 
+                    dp.*,
+                    l.name as library_name,
+                    l.id as library_id
+                FROM discovered_patterns dp
+                JOIN libraries l ON l.id = dp.library_id
+                WHERE 
+                    dp.pattern_type = 'certification'
+                    AND dp.pattern_value = $1
+                    AND dp.status IN ('discovered', 'approved')
+                    AND dp.confidence >= $2
+                ORDER BY dp.confidence DESC
+                LIMIT 1
+            `, [certification, minConfidence]);
+
+            if (result.rows.length > 0) {
+                const pattern = result.rows[0];
+                signals.push({
+                    type: 'pattern_certification',
+                    pattern_id: pattern.id,
+                    pattern_type: 'certification',
+                    pattern_value: certification,
+                    library: {
+                        id: pattern.library_id,
+                        name: pattern.library_name
+                    },
+                    confidence: parseFloat(pattern.confidence),
+                    sample_size: pattern.sample_size,
+                    status: pattern.status
+                });
+            }
+        } catch (error) {
+            logger.error('Error collecting certification patterns', { error: error.message });
+        }
+
+        return signals;
+    }
+
+    /**
+     * Get the best matching pattern for given metadata
+     * @param {object} metadata - Media metadata
+     * @returns {object|null} Best pattern signal or null
+     */
+    async getBestMatch(metadata) {
+        const signals = await this.collectSignals(metadata, 50);
+        return signals.length > 0 ? signals[0] : null;
+    }
+}
+
+module.exports = new PatternSignalCollector();

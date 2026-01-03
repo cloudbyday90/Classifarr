@@ -62,7 +62,11 @@ class EmbeddingRouter {
                     api_endpoint,
                     ollama_host,
                     ollama_port,
-                    ollama_fallback_enabled
+                    ollama_fallback_enabled,
+                    pattern_mining_enabled,
+                    pattern_rule_priority,
+                    pattern_ai_skip_threshold,
+                    pattern_notification_dismissed
                 FROM ai_provider_config 
                 WHERE id = 1
             `);
