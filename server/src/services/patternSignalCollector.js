@@ -96,26 +96,37 @@ class PatternSignalCollector {
     async collectStudioPatterns(studios, minConfidence) {
         const signals = [];
 
-        try {
-            for (const studio of studios) {
-                const result = await db.query(`
-                    SELECT 
-                        dp.*,
-                        l.name as library_name,
-                        l.id as library_id
-                    FROM discovered_patterns dp
-                    JOIN libraries l ON l.id = dp.library_id
-                    WHERE 
-                        dp.pattern_type = 'studio'
-                        AND dp.pattern_value = $1
-                        AND dp.status IN ('discovered', 'approved')
-                        AND dp.confidence >= $2
-                    ORDER BY dp.confidence DESC
-                    LIMIT 1
-                `, [studio, minConfidence]);
+        if (!studios || studios.length === 0) {
+            return signals;
+        }
 
-                if (result.rows.length > 0) {
-                    const pattern = result.rows[0];
+        try {
+            // Fetch all matching patterns in a single query using ANY
+            const result = await db.query(`
+                SELECT DISTINCT ON (dp.pattern_value)
+                    dp.*,
+                    l.name as library_name,
+                    l.id as library_id
+                FROM discovered_patterns dp
+                JOIN libraries l ON l.id = dp.library_id
+                WHERE 
+                    dp.pattern_type = 'studio'
+                    AND dp.pattern_value = ANY($1)
+                    AND dp.status IN ('discovered', 'approved')
+                    AND dp.confidence >= $2
+                ORDER BY dp.pattern_value, dp.confidence DESC
+            `, [studios, minConfidence]);
+
+            // Create a map for O(1) lookups
+            const patternMap = new Map();
+            for (const row of result.rows) {
+                patternMap.set(row.pattern_value, row);
+            }
+
+            // Maintain original studio order
+            for (const studio of studios) {
+                const pattern = patternMap.get(studio);
+                if (pattern) {
                     signals.push({
                         type: 'pattern_studio',
                         pattern_id: pattern.id,
@@ -145,31 +156,57 @@ class PatternSignalCollector {
         const signals = [];
 
         try {
-            // Check collection name
+            // Collect all franchise values to search
+            const franchiseValues = [];
+            
             if (metadata.collection?.name) {
-                const result = await db.query(`
-                    SELECT 
-                        dp.*,
-                        l.name as library_name,
-                        l.id as library_id
-                    FROM discovered_patterns dp
-                    JOIN libraries l ON l.id = dp.library_id
-                    WHERE 
-                        dp.pattern_type = 'franchise'
-                        AND dp.pattern_value = $1
-                        AND dp.status IN ('discovered', 'approved')
-                        AND dp.confidence >= $2
-                    ORDER BY dp.confidence DESC
-                    LIMIT 1
-                `, [metadata.collection.name, minConfidence]);
+                franchiseValues.push(metadata.collection.name);
+            }
 
-                if (result.rows.length > 0) {
-                    const pattern = result.rows[0];
+            if (metadata.keywords && metadata.keywords.length > 0) {
+                const franchiseKeywords = metadata.keywords.filter(k => 
+                    k.toLowerCase().includes('universe') || 
+                    k.toLowerCase().includes('series') ||
+                    k.toLowerCase().includes('franchise')
+                );
+                franchiseValues.push(...franchiseKeywords);
+            }
+
+            if (franchiseValues.length === 0) {
+                return signals;
+            }
+
+            // Fetch all matching patterns in a single query
+            const result = await db.query(`
+                SELECT DISTINCT ON (dp.pattern_value)
+                    dp.*,
+                    l.name as library_name,
+                    l.id as library_id
+                FROM discovered_patterns dp
+                JOIN libraries l ON l.id = dp.library_id
+                WHERE 
+                    dp.pattern_type = 'franchise'
+                    AND dp.pattern_value = ANY($1)
+                    AND dp.status IN ('discovered', 'approved')
+                    AND dp.confidence >= $2
+                ORDER BY dp.pattern_value, dp.confidence DESC
+            `, [franchiseValues, minConfidence]);
+
+            // Create a map for O(1) lookups
+            const patternMap = new Map();
+            for (const row of result.rows) {
+                patternMap.set(row.pattern_value, row);
+            }
+
+            // Maintain original order
+            for (const value of franchiseValues) {
+                const pattern = patternMap.get(value);
+                if (pattern) {
                     signals.push({
                         type: 'pattern_franchise',
                         pattern_id: pattern.id,
                         pattern_type: 'franchise',
-                        pattern_value: metadata.collection.name,
+                        pattern_value: value,
                         library: {
                             id: pattern.library_id,
                             name: pattern.library_name
@@ -178,50 +215,6 @@ class PatternSignalCollector {
                         sample_size: pattern.sample_size,
                         status: pattern.status
                     });
-                }
-            }
-
-            // Check keywords for franchise markers
-            if (metadata.keywords && metadata.keywords.length > 0) {
-                const franchiseKeywords = metadata.keywords.filter(k => 
-                    k.toLowerCase().includes('universe') || 
-                    k.toLowerCase().includes('series') ||
-                    k.toLowerCase().includes('franchise')
-                );
-
-                for (const keyword of franchiseKeywords) {
-                    const result = await db.query(`
-                        SELECT 
-                            dp.*,
-                            l.name as library_name,
-                            l.id as library_id
-                        FROM discovered_patterns dp
-                        JOIN libraries l ON l.id = dp.library_id
-                        WHERE 
-                            dp.pattern_type = 'franchise'
-                            AND dp.pattern_value = $1
-                            AND dp.status IN ('discovered', 'approved')
-                            AND dp.confidence >= $2
-                        ORDER BY dp.confidence DESC
-                        LIMIT 1
-                    `, [keyword, minConfidence]);
-
-                    if (result.rows.length > 0) {
-                        const pattern = result.rows[0];
-                        signals.push({
-                            type: 'pattern_franchise',
-                            pattern_id: pattern.id,
-                            pattern_type: 'franchise',
-                            pattern_value: keyword,
-                            library: {
-                                id: pattern.library_id,
-                                name: pattern.library_name
-                            },
-                            confidence: parseFloat(pattern.confidence),
-                            sample_size: pattern.sample_size,
-                            status: pattern.status
-                        });
-                    }
                 }
             }
         } catch (error) {

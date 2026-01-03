@@ -16,115 +16,34 @@ const { createLogger } = require('../utils/logger');
 const logger = createLogger('PatternsRoute');
 const router = express.Router();
 
+// Valid values for pattern_rule_priority
+const VALID_PRIORITIES = ['rules_first', 'patterns_first'];
+
 /**
- * @swagger
- * /api/patterns:
- *   get:
- *     summary: List discovered patterns with filtering
- *     description: Get list of patterns with optional filters
+ * Validate and parse integer parameter
  */
-router.get('/', async (req, res) => {
-    try {
-        const {
-            status,
-            type,
-            min_confidence,
-            search,
-            page = 1,
-            per_page = 30
-        } = req.query;
+function parseIntParam(value, defaultValue, min = null, max = null) {
+    const parsed = parseInt(value);
+    if (isNaN(parsed)) return defaultValue;
+    if (min !== null && parsed < min) return defaultValue;
+    if (max !== null && parsed > max) return defaultValue;
+    return parsed;
+}
 
-        let query = `
-            SELECT 
-                dp.*,
-                l.name as library_name,
-                COUNT(pml.id) as match_count
-            FROM discovered_patterns dp
-            LEFT JOIN libraries l ON l.id = dp.library_id
-            LEFT JOIN pattern_match_log pml ON pml.pattern_id = dp.id
-            WHERE 1=1
-        `;
-        const params = [];
-        let paramIndex = 1;
+/**
+ * Validate and parse float parameter
+ */
+function parseFloatParam(value, defaultValue, min = null, max = null) {
+    const parsed = parseFloat(value);
+    if (isNaN(parsed)) return defaultValue;
+    if (min !== null && parsed < min) return defaultValue;
+    if (max !== null && parsed > max) return defaultValue;
+    return parsed;
+}
 
-        // Apply filters
-        if (status) {
-            query += ` AND dp.status = $${paramIndex}`;
-            params.push(status);
-            paramIndex++;
-        }
-
-        if (type) {
-            query += ` AND dp.pattern_type = $${paramIndex}`;
-            params.push(type);
-            paramIndex++;
-        }
-
-        if (min_confidence) {
-            query += ` AND dp.confidence >= $${paramIndex}`;
-            params.push(parseFloat(min_confidence));
-            paramIndex++;
-        }
-
-        if (search) {
-            query += ` AND dp.pattern_value ILIKE $${paramIndex}`;
-            params.push(`%${search}%`);
-            paramIndex++;
-        }
-
-        query += `
-            GROUP BY dp.id, l.name
-            ORDER BY dp.confidence DESC, dp.created_at DESC
-            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-        `;
-        params.push(parseInt(per_page));
-        params.push((parseInt(page) - 1) * parseInt(per_page));
-
-        const result = await db.query(query, params);
-
-        // Get total count for pagination
-        let countQuery = `SELECT COUNT(DISTINCT dp.id) FROM discovered_patterns dp WHERE 1=1`;
-        const countParams = [];
-        let countParamIndex = 1;
-
-        if (status) {
-            countQuery += ` AND dp.status = $${countParamIndex}`;
-            countParams.push(status);
-            countParamIndex++;
-        }
-        if (type) {
-            countQuery += ` AND dp.pattern_type = $${countParamIndex}`;
-            countParams.push(type);
-            countParamIndex++;
-        }
-        if (min_confidence) {
-            countQuery += ` AND dp.confidence >= $${countParamIndex}`;
-            countParams.push(parseFloat(min_confidence));
-            countParamIndex++;
-        }
-        if (search) {
-            countQuery += ` AND dp.pattern_value ILIKE $${countParamIndex}`;
-            countParams.push(`%${search}%`);
-            countParamIndex++;
-        }
-
-        const countResult = await db.query(countQuery, countParams);
-        const total = parseInt(countResult.rows[0].count);
-
-        res.json({
-            patterns: result.rows,
-            pagination: {
-                page: parseInt(page),
-                per_page: parseInt(per_page),
-                total,
-                total_pages: Math.ceil(total / parseInt(per_page))
-            }
-        });
-    } catch (error) {
-        logger.error('Error listing patterns', { error: error.message });
-        res.status(500).json({ error: 'Failed to list patterns' });
-    }
-});
+// ============================================================================
+// SPECIFIC ROUTES - Must come before parameterized routes
+// ============================================================================
 
 /**
  * @swagger
@@ -180,157 +99,6 @@ router.get('/summary', async (req, res) => {
     } catch (error) {
         logger.error('Error getting pattern summary', { error: error.message });
         res.status(500).json({ error: 'Failed to get pattern summary' });
-    }
-});
-
-/**
- * @swagger
- * /api/patterns/:id:
- *   get:
- *     summary: Get pattern details with match history
- */
-router.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // Get pattern details
-        const patternResult = await db.query(`
-            SELECT 
-                dp.*,
-                l.name as library_name
-            FROM discovered_patterns dp
-            LEFT JOIN libraries l ON l.id = dp.library_id
-            WHERE dp.id = $1
-        `, [id]);
-
-        if (patternResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Pattern not found' });
-        }
-
-        const pattern = patternResult.rows[0];
-
-        // Get accuracy statistics
-        const accuracy = await patternReinforcementService.getPatternAccuracy(id);
-
-        // Get recent match history
-        const historyResult = await db.query(`
-            SELECT 
-                pml.*,
-                ch.title,
-                ch.library_name,
-                ch.created_at as classification_date
-            FROM pattern_match_log pml
-            JOIN classification_history ch ON ch.id = pml.classification_id
-            WHERE pml.pattern_id = $1
-            ORDER BY pml.created_at DESC
-            LIMIT 20
-        `, [id]);
-
-        res.json({
-            pattern,
-            accuracy,
-            recent_matches: historyResult.rows
-        });
-    } catch (error) {
-        logger.error('Error getting pattern details', { error: error.message, id: req.params.id });
-        res.status(500).json({ error: 'Failed to get pattern details' });
-    }
-});
-
-/**
- * @swagger
- * /api/patterns/:id/approve:
- *   put:
- *     summary: Approve a pattern
- */
-router.put('/:id/approve', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { approved_by = 'user' } = req.body;
-
-        const result = await db.query(`
-            UPDATE discovered_patterns
-            SET 
-                status = 'approved',
-                approved_by = $1,
-                approved_at = NOW(),
-                updated_at = NOW()
-            WHERE id = $2
-            RETURNING *
-        `, [approved_by, id]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Pattern not found' });
-        }
-
-        logger.info('Pattern approved', { id, approved_by });
-        res.json(result.rows[0]);
-    } catch (error) {
-        logger.error('Error approving pattern', { error: error.message, id: req.params.id });
-        res.status(500).json({ error: 'Failed to approve pattern' });
-    }
-});
-
-/**
- * @swagger
- * /api/patterns/:id/reject:
- *   put:
- *     summary: Reject a pattern
- */
-router.put('/:id/reject', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { rejected_by = 'user', rejection_reason } = req.body;
-
-        const result = await db.query(`
-            UPDATE discovered_patterns
-            SET 
-                status = 'rejected',
-                rejected_by = $1,
-                rejected_at = NOW(),
-                rejection_reason = $2,
-                updated_at = NOW()
-            WHERE id = $3
-            RETURNING *
-        `, [rejected_by, rejection_reason, id]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Pattern not found' });
-        }
-
-        logger.info('Pattern rejected', { id, rejected_by, reason: rejection_reason });
-        res.json(result.rows[0]);
-    } catch (error) {
-        logger.error('Error rejecting pattern', { error: error.message, id: req.params.id });
-        res.status(500).json({ error: 'Failed to reject pattern' });
-    }
-});
-
-/**
- * @swagger
- * /api/patterns/:id:
- *   delete:
- *     summary: Delete a pattern
- */
-router.delete('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const result = await db.query(`
-            DELETE FROM discovered_patterns
-            WHERE id = $1
-            RETURNING *
-        `, [id]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Pattern not found' });
-        }
-
-        logger.info('Pattern deleted', { id });
-        res.json({ success: true, pattern: result.rows[0] });
-    } catch (error) {
-        logger.error('Error deleting pattern', { error: error.message, id: req.params.id });
-        res.status(500).json({ error: 'Failed to delete pattern' });
     }
 });
 
@@ -416,12 +184,22 @@ router.put('/config', async (req, res) => {
         }
 
         if (pattern_rule_priority) {
+            if (!VALID_PRIORITIES.includes(pattern_rule_priority)) {
+                return res.status(400).json({ 
+                    error: `Invalid pattern_rule_priority. Must be one of: ${VALID_PRIORITIES.join(', ')}` 
+                });
+            }
             updates.push(`pattern_rule_priority = $${paramIndex}`);
             params.push(pattern_rule_priority);
             paramIndex++;
         }
 
         if (typeof pattern_ai_skip_threshold === 'number') {
+            if (pattern_ai_skip_threshold < 0 || pattern_ai_skip_threshold > 100) {
+                return res.status(400).json({ 
+                    error: 'pattern_ai_skip_threshold must be between 0 and 100' 
+                });
+            }
             updates.push(`pattern_ai_skip_threshold = $${paramIndex}`);
             params.push(pattern_ai_skip_threshold);
             paramIndex++;
@@ -455,6 +233,302 @@ router.put('/config', async (req, res) => {
     } catch (error) {
         logger.error('Error updating pattern config', { error: error.message });
         res.status(500).json({ error: 'Failed to update pattern config' });
+    }
+});
+
+// ============================================================================
+// GENERAL ROUTES
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/patterns:
+ *   get:
+ *     summary: List discovered patterns with filtering
+ *     description: Get list of patterns with optional filters
+ */
+router.get('/', async (req, res) => {
+    try {
+        const {
+            status,
+            type,
+            min_confidence,
+            search,
+            page = 1,
+            per_page = 30
+        } = req.query;
+
+        // Validate and parse pagination parameters
+        const validatedPage = parseIntParam(page, 1, 1);
+        const validatedPerPage = parseIntParam(per_page, 30, 1, 100);
+        
+        // Validate min_confidence if provided
+        let validatedMinConfidence = null;
+        if (min_confidence !== undefined && min_confidence !== '') {
+            validatedMinConfidence = parseFloatParam(min_confidence, null, 0, 100);
+            if (validatedMinConfidence === null) {
+                return res.status(400).json({ error: 'min_confidence must be a number between 0 and 100' });
+            }
+        }
+
+        let query = `
+            SELECT 
+                dp.*,
+                l.name as library_name,
+                COUNT(pml.id) as match_count
+            FROM discovered_patterns dp
+            LEFT JOIN libraries l ON l.id = dp.library_id
+            LEFT JOIN pattern_match_log pml ON pml.pattern_id = dp.id
+            WHERE 1=1
+        `;
+        const params = [];
+        let paramIndex = 1;
+
+        // Apply filters
+        if (status) {
+            query += ` AND dp.status = $${paramIndex}`;
+            params.push(status);
+            paramIndex++;
+        }
+
+        if (type) {
+            query += ` AND dp.pattern_type = $${paramIndex}`;
+            params.push(type);
+            paramIndex++;
+        }
+
+        if (validatedMinConfidence !== null) {
+            query += ` AND dp.confidence >= $${paramIndex}`;
+            params.push(validatedMinConfidence);
+            paramIndex++;
+        }
+
+        if (search) {
+            query += ` AND dp.pattern_value ILIKE $${paramIndex}`;
+            params.push(`%${search}%`);
+            paramIndex++;
+        }
+
+        query += `
+            GROUP BY dp.id, l.name
+            ORDER BY dp.confidence DESC, dp.created_at DESC
+            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+        `;
+        params.push(validatedPerPage);
+        params.push((validatedPage - 1) * validatedPerPage);
+
+        const result = await db.query(query, params);
+
+        // Get total count for pagination
+        let countQuery = `SELECT COUNT(DISTINCT dp.id) FROM discovered_patterns dp WHERE 1=1`;
+        const countParams = [];
+        let countParamIndex = 1;
+
+        if (status) {
+            countQuery += ` AND dp.status = $${countParamIndex}`;
+            countParams.push(status);
+            countParamIndex++;
+        }
+        if (type) {
+            countQuery += ` AND dp.pattern_type = $${countParamIndex}`;
+            countParams.push(type);
+            countParamIndex++;
+        }
+        if (validatedMinConfidence !== null) {
+            countQuery += ` AND dp.confidence >= $${countParamIndex}`;
+            countParams.push(validatedMinConfidence);
+            countParamIndex++;
+        }
+        if (search) {
+            countQuery += ` AND dp.pattern_value ILIKE $${countParamIndex}`;
+            countParams.push(`%${search}%`);
+            countParamIndex++;
+        }
+
+        const countResult = await db.query(countQuery, countParams);
+        const total = parseInt(countResult.rows[0].count);
+
+        res.json({
+            patterns: result.rows,
+            pagination: {
+                page: validatedPage,
+                per_page: validatedPerPage,
+                total,
+                total_pages: Math.ceil(total / validatedPerPage)
+            }
+        });
+    } catch (error) {
+        logger.error('Error listing patterns', { error: error.message });
+        res.status(500).json({ error: 'Failed to list patterns' });
+    }
+});
+
+// ============================================================================
+// PARAMETERIZED ROUTES - Must come after specific routes
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/patterns/:id:
+ *   get:
+ *     summary: Get pattern details with match history
+ */
+router.get('/:id', async (req, res) => {
+    try {
+        const id = parseIntParam(req.params.id, null, 1);
+        if (id === null) {
+            return res.status(400).json({ error: 'Invalid pattern ID' });
+        }
+
+        // Get pattern details
+        const patternResult = await db.query(`
+            SELECT 
+                dp.*,
+                l.name as library_name
+            FROM discovered_patterns dp
+            LEFT JOIN libraries l ON l.id = dp.library_id
+            WHERE dp.id = $1
+        `, [id]);
+
+        if (patternResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Pattern not found' });
+        }
+
+        const pattern = patternResult.rows[0];
+
+        // Get accuracy statistics
+        const accuracy = await patternReinforcementService.getPatternAccuracy(id);
+
+        // Get recent match history
+        const historyResult = await db.query(`
+            SELECT 
+                pml.*,
+                ch.title,
+                ch.library_name,
+                ch.created_at as classification_date
+            FROM pattern_match_log pml
+            JOIN classification_history ch ON ch.id = pml.classification_id
+            WHERE pml.pattern_id = $1
+            ORDER BY pml.created_at DESC
+            LIMIT 20
+        `, [id]);
+
+        res.json({
+            pattern,
+            accuracy,
+            recent_matches: historyResult.rows
+        });
+    } catch (error) {
+        logger.error('Error getting pattern details', { error: error.message, id: req.params.id });
+        res.status(500).json({ error: 'Failed to get pattern details' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/patterns/:id/approve:
+ *   put:
+ *     summary: Approve a pattern
+ */
+router.put('/:id/approve', async (req, res) => {
+    try {
+        const id = parseIntParam(req.params.id, null, 1);
+        if (id === null) {
+            return res.status(400).json({ error: 'Invalid pattern ID' });
+        }
+
+        const { approved_by = 'user' } = req.body;
+
+        const result = await db.query(`
+            UPDATE discovered_patterns
+            SET 
+                status = 'approved',
+                approved_by = $1,
+                approved_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $2
+            RETURNING *
+        `, [approved_by, id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Pattern not found' });
+        }
+
+        logger.info('Pattern approved', { id, approved_by });
+        res.json(result.rows[0]);
+    } catch (error) {
+        logger.error('Error approving pattern', { error: error.message, id: req.params.id });
+        res.status(500).json({ error: 'Failed to approve pattern' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/patterns/:id/reject:
+ *   put:
+ *     summary: Reject a pattern
+ */
+router.put('/:id/reject', async (req, res) => {
+    try {
+        const id = parseIntParam(req.params.id, null, 1);
+        if (id === null) {
+            return res.status(400).json({ error: 'Invalid pattern ID' });
+        }
+
+        const { rejected_by = 'user', rejection_reason } = req.body;
+
+        const result = await db.query(`
+            UPDATE discovered_patterns
+            SET 
+                status = 'rejected',
+                rejected_by = $1,
+                rejected_at = NOW(),
+                rejection_reason = $2,
+                updated_at = NOW()
+            WHERE id = $3
+            RETURNING *
+        `, [rejected_by, rejection_reason, id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Pattern not found' });
+        }
+
+        logger.info('Pattern rejected', { id, rejected_by, reason: rejection_reason });
+        res.json(result.rows[0]);
+    } catch (error) {
+        logger.error('Error rejecting pattern', { error: error.message, id: req.params.id });
+        res.status(500).json({ error: 'Failed to reject pattern' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/patterns/:id:
+ *   delete:
+ *     summary: Delete a pattern
+ */
+router.delete('/:id', async (req, res) => {
+    try {
+        const id = parseIntParam(req.params.id, null, 1);
+        if (id === null) {
+            return res.status(400).json({ error: 'Invalid pattern ID' });
+        }
+
+        const result = await db.query(`
+            DELETE FROM discovered_patterns
+            WHERE id = $1
+            RETURNING *
+        `, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Pattern not found' });
+        }
+
+        logger.info('Pattern deleted', { id });
+        res.json({ success: true, pattern: result.rows[0] });
+    } catch (error) {
+        logger.error('Error deleting pattern', { error: error.message, id: req.params.id });
+        res.status(500).json({ error: 'Failed to delete pattern' });
     }
 });
 

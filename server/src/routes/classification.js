@@ -254,7 +254,11 @@ router.post('/corrections', async (req, res) => {
           }
         }
       } catch (error) {
-        // Silent fail for pattern reinforcement
+        // Log error for debugging but don't fail the request
+        logger.error('Pattern reinforcement failed for classification', {
+          classification_id,
+          error: error.message
+        });
       }
     });
 
