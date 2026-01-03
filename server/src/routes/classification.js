@@ -22,6 +22,7 @@ const classificationService = require('../services/classification');
 const reclassificationService = require('../services/reclassificationService');
 const clarificationService = require('../services/clarificationService');
 const patternReinforcementService = require('../services/patternReinforcementService');
+const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector');
 
 const router = express.Router();
 
@@ -241,15 +242,8 @@ router.post('/corrections', async (req, res) => {
         
         if (signalsResult.rows.length > 0 && signalsResult.rows[0].signals_json) {
           const signals = signalsResult.rows[0].signals_json;
-          const patternSignals = signals.filter(s => 
-            s.type && (
-              s.type.startsWith('pattern_') ||
-              s.type === 'pattern_studio' ||
-              s.type === 'pattern_franchise' ||
-              s.type === 'pattern_genre' ||
-              s.type === 'pattern_certification'
-            )
-          );
+          // Use shared constant for filtering pattern signals
+          const patternSignals = signals.filter(s => s.type && PATTERN_SIGNAL_TYPES.includes(s.type));
           
           if (patternSignals.length > 0) {
             await patternReinforcementService.reinforceOnCorrection(

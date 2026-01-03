@@ -238,8 +238,8 @@ class PatternSignalCollector {
         const signals = [];
 
         try {
-            // Sort genres to ensure consistent matching
-            const sortedGenres = [...genres].sort().join(',');
+            // Sort genres using locale-aware comparison for consistent cross-platform behavior
+            const sortedGenres = [...genres].sort((a, b) => a.localeCompare(b)).join(',');
 
             const result = await db.query(`
                 SELECT 

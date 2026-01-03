@@ -36,6 +36,16 @@ const SIGNAL_TYPES = {
 };
 
 /**
+ * Pattern signal types for filtering
+ */
+const PATTERN_SIGNAL_TYPES = [
+    SIGNAL_TYPES.PATTERN_STUDIO,
+    SIGNAL_TYPES.PATTERN_FRANCHISE,
+    SIGNAL_TYPES.PATTERN_GENRE,
+    SIGNAL_TYPES.PATTERN_CERTIFICATION
+];
+
+/**
  * SignalCollector - Aggregates all classification signals without early exits
  * 
  * The new classification flow:
@@ -96,12 +106,7 @@ class SignalCollector {
      * Get all pattern signals
      */
     getPatternSignals() {
-        return this.signals.filter(s => 
-            s.type === SIGNAL_TYPES.PATTERN_STUDIO ||
-            s.type === SIGNAL_TYPES.PATTERN_FRANCHISE ||
-            s.type === SIGNAL_TYPES.PATTERN_GENRE ||
-            s.type === SIGNAL_TYPES.PATTERN_CERTIFICATION
-        );
+        return this.signals.filter(s => PATTERN_SIGNAL_TYPES.includes(s.type));
     }
 
     /**
@@ -465,4 +470,5 @@ class SignalCollector {
 module.exports = {
     SignalCollector,
     SIGNAL_TYPES,
+    PATTERN_SIGNAL_TYPES,
 };
