@@ -249,6 +249,7 @@ import Input from '@/components/common/Input.vue';
 import Select from '@/components/common/Select.vue';
 import Modal from '@/components/common/Modal.vue';
 import api from '@/api';
+import { useToast } from '@/stores/toast';
 
 export default {
   name: 'PatternManagement',
@@ -262,6 +263,7 @@ export default {
     Modal
   },
   setup() {
+    const toast = useToast();
     const loading = ref(true);
     const discovering = ref(false);
     const patterns = ref([]);
@@ -287,6 +289,7 @@ export default {
         summary.value = response.data;
       } catch (error) {
         console.error('Failed to load pattern summary:', error);
+        toast.error('Failed to load pattern statistics', 'Error');
       }
     };
 
@@ -303,6 +306,7 @@ export default {
         pagination.value = response.data.pagination;
       } catch (error) {
         console.error('Failed to load patterns:', error);
+        toast.error('Failed to load patterns. Please try again.', 'Error');
       } finally {
         loading.value = false;
       }
@@ -314,8 +318,10 @@ export default {
         await api.post('/patterns/discover');
         await loadSummary();
         await loadPatterns();
+        toast.success('Pattern discovery completed successfully', 'Success');
       } catch (error) {
         console.error('Failed to discover patterns:', error);
+        toast.error('Failed to discover patterns. Please try again.', 'Discovery Failed');
       } finally {
         discovering.value = false;
       }
@@ -326,8 +332,10 @@ export default {
         await api.post('/patterns/resolve-conflicts');
         await loadSummary();
         await loadPatterns();
+        toast.success('Conflicts resolved successfully', 'Success');
       } catch (error) {
         console.error('Failed to resolve conflicts:', error);
+        toast.error('Failed to resolve conflicts. Please try again.', 'Error');
       }
     };
 
@@ -338,6 +346,7 @@ export default {
         patternDetails.value = response.data;
       } catch (error) {
         console.error('Failed to load pattern details:', error);
+        toast.error('Failed to load pattern details', 'Error');
       }
     };
 
@@ -346,8 +355,10 @@ export default {
         await api.put(`/patterns/${id}/approve`, { approved_by: 'user' });
         await loadPatterns();
         await loadSummary();
+        toast.success('Pattern approved successfully', 'Success');
       } catch (error) {
         console.error('Failed to approve pattern:', error);
+        toast.error('Failed to approve pattern. Please try again.', 'Error');
       }
     };
 
@@ -356,8 +367,10 @@ export default {
         await api.put(`/patterns/${id}/reject`, { rejected_by: 'user', rejection_reason: 'Manual rejection' });
         await loadPatterns();
         await loadSummary();
+        toast.success('Pattern rejected successfully', 'Success');
       } catch (error) {
         console.error('Failed to reject pattern:', error);
+        toast.error('Failed to reject pattern. Please try again.', 'Error');
       }
     };
 
@@ -367,8 +380,10 @@ export default {
         await api.delete(`/patterns/${id}`);
         await loadPatterns();
         await loadSummary();
+        toast.success('Pattern deleted successfully', 'Success');
       } catch (error) {
         console.error('Failed to delete pattern:', error);
+        toast.error('Failed to delete pattern. Please try again.', 'Error');
       }
     };
 
