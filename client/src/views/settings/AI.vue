@@ -276,51 +276,6 @@
         </div>
 
         <div v-if="config.rag_enabled" class="space-y-4">
-          <!-- Embedding Provider -->
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Provider</label>
-              <select 
-                v-model="config.embedding_provider"
-                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-              >
-                <option value="auto">Auto (use primary AI provider)</option>
-                <option value="ollama">Ollama (Local, Free)</option>
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Google Gemini</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Model</label>
-              <select 
-                v-model="config.embedding_model"
-                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-              >
-                <option value="">Default for provider</option>
-                <!-- Ollama models -->
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="nomic-embed-text">⭐ nomic-embed-text (768d) - Recommended</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="mxbai-embed-large">⭐ mxbai-embed-large (1024d) - High Quality</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="bge-m3">bge-m3 (1024d) - Multilingual</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="all-minilm">all-minilm (384d) - Fast/Lightweight</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="snowflake-arctic-embed">snowflake-arctic-embed (1024d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="snowflake-arctic-embed2">snowflake-arctic-embed2 (1024d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="nomic-embed-text-v2-moe">nomic-embed-text-v2-moe (768d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="bge-large">bge-large (1024d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="qwen3-embedding">qwen3-embedding (1024d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="granite-embedding">granite-embedding (768d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="embeddinggemma">embeddinggemma (768d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="paraphrase-multilingual">paraphrase-multilingual (768d)</option>
-                <!-- OpenAI models -->
-                <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-3-small">⭐ text-embedding-3-small (1536d) - Best Value</option>
-                <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-3-large">text-embedding-3-large (3072d) - Highest Quality</option>
-                <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-ada-002">text-embedding-ada-002 (1536d) - Legacy</option>
-                <!-- Gemini models -->
-                <option v-if="effectiveEmbeddingProvider === 'gemini'" value="text-embedding-005">⭐ text-embedding-005 (768d) - Latest</option>
-                <option v-if="effectiveEmbeddingProvider === 'gemini'" value="text-embedding-004">text-embedding-004 (768d)</option>
-              </select>
-            </div>
-          </div>
-
           <!-- Thresholds -->
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -423,7 +378,12 @@
               <option value="patterns_first">Patterns First</option>
             </select>
             <p class="text-xs text-gray-500 mt-1">
-              When patterns and rules conflict, which takes precedence?
+              <template v-if="patternConfig.pattern_rule_priority === 'rules_first'">
+                Custom rules take precedence over discovered patterns
+              </template>
+              <template v-else>
+                Discovered patterns take precedence over custom rules
+              </template>
             </p>
           </div>
 
@@ -456,7 +416,7 @@
               type="range"
               v-model.number="patternConfig.pattern_ai_skip_threshold"
               min="70"
-              max="99"
+              max="100"
               step="1"
               class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
             />
