@@ -435,7 +435,7 @@
             <input 
               v-model.number="config.monthly_budget_usd"
               type="number"
-              step="0.01"
+              step="1"
               min="0"
               placeholder="No limit"
               class="w-32 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
