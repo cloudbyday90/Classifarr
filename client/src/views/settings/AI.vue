@@ -465,22 +465,22 @@
         <!-- Cost Summary Widget -->
         <div class="cost-summary">
           <h4 class="text-sm font-medium text-gray-300 mb-4">📊 This Month</h4>
-          <div v-if="costSummary?.callsMade > 0" class="stats-grid grid grid-cols-4 gap-4">
-            <div class="stat bg-gray-800/50 p-4 rounded-lg text-center">
-              <div class="value text-2xl font-bold text-blue-400">{{ costSummary.callsMade }}</div>
-              <div class="label text-xs text-gray-400 mt-1">AI Calls Made</div>
+          <div v-if="costSummary?.callsMade > 0" class="grid grid-cols-4 gap-4">
+            <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-blue-400">{{ costSummary.callsMade }}</div>
+              <div class="text-xs text-gray-400 mt-1">AI Calls Made</div>
             </div>
-            <div class="stat bg-gray-800/50 p-4 rounded-lg text-center">
-              <div class="value text-2xl font-bold text-green-500">{{ costSummary.callsAvoided }}</div>
-              <div class="label text-xs text-gray-400 mt-1">Calls Avoided</div>
+            <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-green-500">{{ costSummary.callsAvoided }}</div>
+              <div class="text-xs text-gray-400 mt-1">Calls Avoided</div>
             </div>
-            <div class="stat bg-gray-800/50 p-4 rounded-lg text-center">
-              <div class="value text-2xl font-bold text-green-500">{{ costSummary.savingsPercent }}%</div>
-              <div class="label text-xs text-gray-400 mt-1">Savings</div>
+            <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-green-500">{{ costSummary.savingsPercent }}%</div>
+              <div class="text-xs text-gray-400 mt-1">Savings</div>
             </div>
-            <div class="stat bg-gray-800/50 p-4 rounded-lg text-center">
-              <div class="value text-2xl font-bold text-yellow-400">${{ costSummary.estimatedCost?.toFixed(2) || '0.00' }}</div>
-              <div class="label text-xs text-gray-400 mt-1">Estimated Cost</div>
+            <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-yellow-400">${{ costSummary.estimatedCost?.toFixed(2) || '0.00' }}</div>
+              <div class="text-xs text-gray-400 mt-1">Estimated Cost</div>
             </div>
           </div>
           <div v-else class="text-sm text-gray-400 text-center py-4">
