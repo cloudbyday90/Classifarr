@@ -124,7 +124,7 @@ router.post('/resolve-conflicts', async (req, res) => {
  * @swagger
  * /api/patterns/discover:
  *   post:
- *     summary: Manually trigger pattern discovery
+ *     summary: Manually trigger pattern discovery for all libraries
  */
 router.post('/discover', async (req, res) => {
     try {
@@ -134,6 +134,67 @@ router.post('/discover', async (req, res) => {
     } catch (error) {
         logger.error('Error discovering patterns', { error: error.message });
         res.status(500).json({ error: 'Failed to discover patterns' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/patterns/discover/:libraryId:
+ *   post:
+ *     summary: Discover patterns for a specific library
+ */
+router.post('/discover/:libraryId', async (req, res) => {
+    try {
+        const libraryId = parseIntParam(req.params.libraryId, null, 1);
+        if (libraryId === null) {
+            return res.status(400).json({ error: 'Invalid library ID' });
+        }
+
+        const result = await patternMiningService.discoverPatterns({ libraryId });
+        logger.info('Library-specific pattern discovery triggered', { libraryId, result });
+        res.json(result);
+    } catch (error) {
+        logger.error('Error discovering patterns for library', { 
+            error: error.message,
+            libraryId: req.params.libraryId 
+        });
+        res.status(500).json({ error: 'Failed to discover patterns for library' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/patterns/library/:libraryId:
+ *   get:
+ *     summary: Get patterns for a specific library
+ */
+router.get('/library/:libraryId', async (req, res) => {
+    try {
+        const libraryId = parseIntParam(req.params.libraryId, null, 1);
+        if (libraryId === null) {
+            return res.status(400).json({ error: 'Invalid library ID' });
+        }
+
+        const result = await db.query(`
+            SELECT 
+                dp.*,
+                l.name as library_name,
+                COUNT(pml.id) as match_count
+            FROM discovered_patterns dp
+            LEFT JOIN libraries l ON l.id = dp.library_id
+            LEFT JOIN pattern_match_log pml ON pml.pattern_id = dp.id
+            WHERE dp.library_id = $1
+            GROUP BY dp.id, l.name
+            ORDER BY dp.confidence DESC, dp.created_at DESC
+        `, [libraryId]);
+
+        res.json({ patterns: result.rows });
+    } catch (error) {
+        logger.error('Error getting library patterns', { 
+            error: error.message,
+            libraryId: req.params.libraryId 
+        });
+        res.status(500).json({ error: 'Failed to get library patterns' });
     }
 });
 
@@ -252,6 +313,7 @@ router.get('/', async (req, res) => {
         const {
             status,
             type,
+            libraryId,
             min_confidence,
             search,
             page = 1,
@@ -268,6 +330,15 @@ router.get('/', async (req, res) => {
             validatedMinConfidence = parseFloatParam(min_confidence, null, 0, 100);
             if (validatedMinConfidence === null) {
                 return res.status(400).json({ error: 'min_confidence must be a number between 0 and 100' });
+            }
+        }
+
+        // Validate libraryId if provided
+        let validatedLibraryId = null;
+        if (libraryId !== undefined && libraryId !== '') {
+            validatedLibraryId = parseIntParam(libraryId, null, 1);
+            if (validatedLibraryId === null) {
+                return res.status(400).json({ error: 'libraryId must be a valid integer' });
             }
         }
 
@@ -294,6 +365,12 @@ router.get('/', async (req, res) => {
         if (type) {
             query += ` AND dp.pattern_type = $${paramIndex}`;
             params.push(type);
+            paramIndex++;
+        }
+
+        if (validatedLibraryId !== null) {
+            query += ` AND dp.library_id = $${paramIndex}`;
+            params.push(validatedLibraryId);
             paramIndex++;
         }
 
@@ -332,6 +409,11 @@ router.get('/', async (req, res) => {
         if (type) {
             countQuery += ` AND dp.pattern_type = $${countParamIndex}`;
             countParams.push(type);
+            countParamIndex++;
+        }
+        if (validatedLibraryId !== null) {
+            countQuery += ` AND dp.library_id = $${countParamIndex}`;
+            countParams.push(validatedLibraryId);
             countParamIndex++;
         }
         if (validatedMinConfidence !== null) {

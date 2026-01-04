@@ -96,6 +96,11 @@ const router = createRouter({
           name: 'Queue',
           component: () => import('@/views/Queue.vue'),
         },
+        {
+          path: '/patterns',
+          name: 'Patterns',
+          component: () => import('@/views/patterns/PatternManagement.vue'),
+        },
       ],
     },
   ],

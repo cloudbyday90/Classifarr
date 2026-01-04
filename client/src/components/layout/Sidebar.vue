@@ -79,6 +79,7 @@ import {
   PlusCircleIcon,
   ChartBarIcon,
   QueueListIcon,
+  PuzzlePieceIcon,
   XMarkIcon
 } from '@heroicons/vue/24/outline'
 
@@ -100,6 +101,7 @@ const mainMenuItems = [
   { path: '/history', label: 'History', icon: DocumentTextIcon },
   { path: '/request', label: 'Request', icon: PlusCircleIcon },
   { path: '/statistics', label: 'Statistics', icon: ChartBarIcon },
+  { path: '/patterns', label: 'Patterns', icon: PuzzlePieceIcon },
   { path: '/settings', label: 'Settings', icon: CogIcon },
 ]
 

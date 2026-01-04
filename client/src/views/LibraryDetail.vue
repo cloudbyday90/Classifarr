@@ -356,6 +356,11 @@
           </div>
         </div>
       </Card>
+
+      <!-- Learned Patterns Section -->
+      <Card title="🧩 Learned Patterns">
+        <LibraryPatterns :library-id="library.id" />
+      </Card>
     </div>
   </div>
 </template>
@@ -368,6 +373,7 @@ import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
+import LibraryPatterns from '@/components/library/LibraryPatterns.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 
