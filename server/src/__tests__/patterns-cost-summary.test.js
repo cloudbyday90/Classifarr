@@ -127,22 +127,23 @@ describe('Patterns Cost Summary Endpoint Logic', () => {
 
     describe('Classification Method Filtering', () => {
         it('should count AI methods correctly', () => {
-            const aiMethods = ['ai_fallback', 'ai_classification'];
-            const patternMethods = ['learned_pattern', 'rule_match', 'exact_match'];
+            const aiMethods = ['ai_verified', 'ai_analysis'];
+            const patternMethods = ['learned_pattern', 'rule_match', 'exact_match', 'custom_rule'];
 
             // Simulate checking if a method is AI-based
             const isAIMethod = (method) => aiMethods.includes(method);
 
-            expect(isAIMethod('ai_fallback')).toBe(true);
-            expect(isAIMethod('ai_classification')).toBe(true);
+            expect(isAIMethod('ai_verified')).toBe(true);
+            expect(isAIMethod('ai_analysis')).toBe(true);
             expect(isAIMethod('learned_pattern')).toBe(false);
             expect(isAIMethod('rule_match')).toBe(false);
             expect(isAIMethod('exact_match')).toBe(false);
+            expect(isAIMethod('custom_rule')).toBe(false);
         });
 
         it('should count pattern/rule methods correctly', () => {
-            const aiMethods = ['ai_fallback', 'ai_classification'];
-            const patternMethods = ['learned_pattern', 'rule_match', 'exact_match'];
+            const aiMethods = ['ai_verified', 'ai_analysis'];
+            const patternMethods = ['learned_pattern', 'rule_match', 'exact_match', 'custom_rule'];
 
             // Simulate checking if a method avoids AI
             const avoidsAI = (method) => patternMethods.includes(method);
@@ -150,8 +151,9 @@ describe('Patterns Cost Summary Endpoint Logic', () => {
             expect(avoidsAI('learned_pattern')).toBe(true);
             expect(avoidsAI('rule_match')).toBe(true);
             expect(avoidsAI('exact_match')).toBe(true);
-            expect(avoidsAI('ai_fallback')).toBe(false);
-            expect(avoidsAI('ai_classification')).toBe(false);
+            expect(avoidsAI('custom_rule')).toBe(true);
+            expect(avoidsAI('ai_verified')).toBe(false);
+            expect(avoidsAI('ai_analysis')).toBe(false);
         });
     });
 });

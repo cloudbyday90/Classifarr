@@ -111,10 +111,12 @@ router.get('/summary', async (req, res) => {
 router.get('/cost-summary', async (req, res) => {
     try {
         // Count AI calls vs pattern-based classifications
+        // AI methods: ai_verified, ai_analysis
+        // Pattern/rule methods: learned_pattern, rule_match, exact_match, custom_rule
         const result = await db.query(`
             SELECT 
-                COUNT(*) FILTER (WHERE method IN ('ai_fallback', 'ai_classification')) as calls_made,
-                COUNT(*) FILTER (WHERE method IN ('learned_pattern', 'rule_match', 'exact_match')) as calls_avoided
+                COUNT(*) FILTER (WHERE method IN ('ai_verified', 'ai_analysis')) as calls_made,
+                COUNT(*) FILTER (WHERE method IN ('learned_pattern', 'rule_match', 'exact_match', 'custom_rule')) as calls_avoided
             FROM classification_history
             WHERE created_at >= DATE_TRUNC('month', NOW())
         `);

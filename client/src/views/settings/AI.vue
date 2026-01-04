@@ -216,7 +216,7 @@
         />
 
         <!-- Cost Summary Widget -->
-        <div v-if="costSummary && (costSummary.totalCalls > 0)" class="mt-6 pt-6 border-t border-gray-700">
+        <div v-if="costSummary?.totalCalls > 0" class="mt-6 pt-6 border-t border-gray-700">
           <h4 class="text-sm font-medium text-gray-300 mb-4">This Month's Stats</h4>
           <div class="grid grid-cols-3 gap-4">
             <div class="bg-gray-800/50 p-4 rounded-lg text-center">
