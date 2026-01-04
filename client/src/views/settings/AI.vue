@@ -44,7 +44,7 @@
         </div>
 
         <!-- Cloud Provider Settings (not shown for Ollama or None) -->
-        <div v-if="isCloudProvider" class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+        <div v-if="isApiProvider" class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
           <h3 class="font-medium text-gray-200">Cloud Provider Settings</h3>
           
           <!-- API Endpoint (Custom only) -->
@@ -417,7 +417,7 @@
               v-model.number="patternConfig.pattern_ai_skip_threshold"
               min="70"
               max="100"
-              step="1"
+              step="5"
               class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
             />
             <span class="text-white w-12 text-right">{{ patternConfig.pattern_ai_skip_threshold }}%</span>
@@ -626,9 +626,6 @@ const config = ref({
 const isApiProvider = computed(() => {
   return ['openai', 'gemini', 'openrouter', 'litellm', 'custom'].includes(config.value.primary_provider)
 })
-
-// Keep isCloudProvider as alias for backward compatibility
-const isCloudProvider = computed(() => isApiProvider.value)
 
 const budgetPercentUsed = computed(() => {
   if (!config.value.monthly_budget_usd) return 0
