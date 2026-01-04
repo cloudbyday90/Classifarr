@@ -1,6 +1,6 @@
 <!--
   Classifarr - AI-powered media classification for the *arr ecosystem
-  Copyright (C) 2025 cloudbyday90
+  Copyright (C) 2026 cloudbyday90
   
   This program is free software: licensed under GPL-3.0
   See LICENSE file for details.
@@ -62,6 +62,7 @@ import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
 import Tavily from './settings/Tavily.vue'
 import OMDb from './settings/OMDb.vue'
+import Rules from './settings/Rules.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -70,16 +71,15 @@ const activeTab = ref('general')
 // Grouped settings for better organization
 const settingsGroups = [
   {
-    name: 'Application',
+    name: 'General',
     tabs: [
       { id: 'general', label: 'General', icon: '⚙️', component: General },
-      { id: 'confidence', label: 'Confidence', icon: '📊', component: Confidence },
       { id: 'scheduler', label: 'Scheduler', icon: '🕐', component: Scheduler },
       { id: 'queue', label: 'Queue', icon: '📋', component: Queue },
     ]
   },
   {
-    name: 'Media Sources',
+    name: 'Connections',
     tabs: [
       { id: 'mediaserver', label: 'Media Server', icon: '🖥️', component: MediaServer },
       { id: 'radarr', label: 'Radarr', icon: '🎬', component: Radarr },
@@ -87,12 +87,19 @@ const settingsGroups = [
     ]
   },
   {
-    name: 'AI & Data',
+    name: 'Metadata',
+    tabs: [
+      { id: 'tmdb', label: 'TMDB', icon: '🎞️', component: TMDB },
+      { id: 'omdb', label: 'OMDb', icon: '🎬', component: OMDb },
+      { id: 'tavily', label: 'Tavily', icon: '🔍', component: Tavily },
+    ]
+  },
+  {
+    name: 'Classification',
     tabs: [
       { id: 'ai', label: 'AI', icon: '🤖', component: AI },
-      { id: 'tmdb', label: 'TMDB', icon: '🎞️', component: TMDB },
-      { id: 'tavily', label: 'Tavily', icon: '🔍', component: Tavily },
-      { id: 'omdb', label: 'OMDb', icon: '🎬', component: OMDb },
+      { id: 'confidence', label: 'Confidence', icon: '📊', component: Confidence },
+      { id: 'rules', label: 'Rules', icon: '🎯', component: Rules },
     ]
   },
   {

@@ -1,6 +1,6 @@
 <!--
   Classifarr - AI-powered media classification for the *arr ecosystem
-  Copyright (C) 2025 cloudbyday90
+  Copyright (C) 2026 cloudbyday90
   
   This program is free software: licensed under GPL-3.0
   See LICENSE file for details.
@@ -8,7 +8,7 @@
 
 <template>
   <div class="space-y-6">
-    <!-- Primary AI Provider Card -->
+    <!-- 1. AI Provider Section -->
     <Card title="🤖 AI Provider">
       <div v-if="loading" class="text-center py-8">
         <Spinner />
@@ -18,7 +18,7 @@
       <div v-else class="space-y-6">
         <!-- Provider Selection -->
         <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">Primary Provider</label>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Classification Provider</label>
           <select 
             v-model="config.primary_provider" 
             class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -116,6 +116,110 @@
             <span v-if="testResult" :class="testResult.success ? 'text-green-400' : 'text-red-400'">
               {{ testResult.message || testResult.error }}
             </span>
+          </div>
+        </div>
+
+        <!-- Ollama Primary Settings (shown when Ollama is primary) -->
+        <div v-if="config.primary_provider === 'ollama'" class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+          <h3 class="font-medium text-gray-200">Ollama Settings</h3>
+          
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Ollama Host</label>
+              <input 
+                v-model="config.ollama_host"
+                type="text"
+                placeholder="192.168.1.100"
+                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Port</label>
+              <input 
+                v-model.number="config.ollama_port"
+                type="number"
+                placeholder="11434"
+                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
+              <div class="flex gap-2">
+                <select 
+                  v-model="config.ollama_model"
+                  class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+                >
+                  <option v-if="ollamaModels.length === 0" value="">-- Select model --</option>
+                  <option v-for="model in ollamaModels" :key="model.name" :value="model.name">
+                    {{ model.name }}
+                  </option>
+                </select>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  @click="fetchOllamaModels"
+                  :disabled="loadingOllamaModels"
+                >
+                  <span v-if="loadingOllamaModels">...</span>
+                  <span v-else>🔄</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <Button variant="secondary" @click="testOllamaConnection" :disabled="testingOllama">
+              <span v-if="testingOllama">Testing...</span>
+              <span v-else>🔌 Test Connection</span>
+            </Button>
+            <span v-if="ollamaTestResult" :class="ollamaTestResult.success ? 'text-green-400' : 'text-red-400'">
+              {{ ollamaTestResult.message || ollamaTestResult.error }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Embedding Provider -->
+        <div v-if="config.primary_provider !== 'none'" class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Provider</label>
+            <select 
+              v-model="config.embedding_provider"
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+            >
+              <option value="auto">Auto (use primary AI provider)</option>
+              <option value="ollama">Ollama (Local, Free)</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Model</label>
+            <select 
+              v-model="config.embedding_model"
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
+            >
+              <option value="">Default for provider</option>
+              <!-- Ollama models -->
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="nomic-embed-text">⭐ nomic-embed-text (768d) - Recommended</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="mxbai-embed-large">⭐ mxbai-embed-large (1024d) - High Quality</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="bge-m3">bge-m3 (1024d) - Multilingual</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="all-minilm">all-minilm (384d) - Fast/Lightweight</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="snowflake-arctic-embed">snowflake-arctic-embed (1024d)</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="snowflake-arctic-embed2">snowflake-arctic-embed2 (1024d)</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="nomic-embed-text-v2-moe">nomic-embed-text-v2-moe (768d)</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="bge-large">bge-large (1024d)</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="qwen3-embedding">qwen3-embedding (1024d)</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="granite-embedding">granite-embedding (768d)</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="embeddinggemma">embeddinggemma (768d)</option>
+              <option v-if="effectiveEmbeddingProvider === 'ollama'" value="paraphrase-multilingual">paraphrase-multilingual (768d)</option>
+              <!-- OpenAI models -->
+              <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-3-small">⭐ text-embedding-3-small (1536d) - Best Value</option>
+              <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-3-large">text-embedding-3-large (3072d) - Highest Quality</option>
+              <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-ada-002">text-embedding-ada-002 (1536d) - Legacy</option>
+              <!-- Gemini models -->
+              <option v-if="effectiveEmbeddingProvider === 'gemini'" value="text-embedding-005">⭐ text-embedding-005 (768d) - Latest</option>
+              <option v-if="effectiveEmbeddingProvider === 'gemini'" value="text-embedding-004">text-embedding-004 (768d)</option>
+            </select>
           </div>
         </div>
 
@@ -289,69 +393,7 @@
       </div>
     </Card>
 
-    <!-- Ollama Primary Settings (shown when Ollama is primary) -->
-    <Card v-if="config.primary_provider === 'ollama'" title="🦙 Ollama Settings">
-      <div class="space-y-4">
-        <div class="grid grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Ollama Host</label>
-            <input 
-              v-model="config.ollama_host"
-              type="text"
-              placeholder="192.168.1.100"
-              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Port</label>
-            <input 
-              v-model.number="config.ollama_port"
-              type="number"
-              placeholder="11434"
-              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
-            <div class="flex gap-2">
-              <select 
-                v-model="config.ollama_model"
-                class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-              >
-                <option v-if="ollamaModels.length === 0" value="">-- Select model --</option>
-                <option v-for="model in ollamaModels" :key="model.name" :value="model.name">
-                  {{ model.name }}
-                </option>
-              </select>
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                @click="fetchOllamaModels"
-                :disabled="loadingOllamaModels"
-              >
-                <span v-if="loadingOllamaModels">...</span>
-                <span v-else>🔄</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <Button variant="secondary" @click="testOllamaConnection" :disabled="testingOllama">
-            <span v-if="testingOllama">Testing...</span>
-            <span v-else>🔌 Test Connection</span>
-          </Button>
-          <span v-if="ollamaTestResult" :class="ollamaTestResult.success ? 'text-green-400' : 'text-red-400'">
-            {{ ollamaTestResult.message || ollamaTestResult.error }}
-          </span>
-        </div>
-      </div>
-
-    </Card>
-
-
-
-    <!-- Usage Statistics -->
+    <!-- RAG (Semantic Search) Settings -->
     <Card v-if="isCloudProvider && usageStats" title="📊 Usage Statistics">
       <div class="space-y-4">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -659,9 +701,12 @@ const config = ref({
   rag_backfill_budget_value: 25
 })
 
-const isCloudProvider = computed(() => {
+const isApiProvider = computed(() => {
   return ['openai', 'gemini', 'openrouter', 'litellm', 'custom'].includes(config.value.primary_provider)
 })
+
+// Keep isCloudProvider as alias for backward compatibility
+const isCloudProvider = computed(() => isApiProvider.value)
 
 const budgetPercentUsed = computed(() => {
   if (!config.value.monthly_budget_usd) return 0
