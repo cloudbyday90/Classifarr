@@ -1,612 +1,232 @@
 # Changelog
 
-All notable changes to Classifarr will be documented in this file.
+All notable changes to this project will be documented in this file.
 
-This project uses [Semantic Versioning](https://semver.org/) for releases.
-Current stage: **Alpha** (v0.x-alpha)
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0-alpha] - 2026-01-04
 
-## [0.35.1-alpha] - 2026-01-02
+### 🚀 Major: Pattern-Driven Classification & Settings Reorganization
 
-### Fixed
-- **Build Fix:** Fixed corrupted HTML tags in Sidebar.vue that caused CI/CD build failures
-- **Cleanup:** Removed duplicate files with malformed names (`RELEASE_NOTES. md`, `server/package. json`)
-
-## [0.35.0-alpha] - 2026-01-02
-
-### 🚀 Major: RAG Enhancements
-
-This release introduces significant improvements to the RAG (Retrieval-Augmented Generation) system with advanced hybrid search, richer embeddings, and automatic pattern discovery.
+This release activates pattern-based classification, introduces hybrid pattern management UI, reorganizes the Settings experience, and adds cost controls for API users.
 
 ### Added
-- **RRF (Reciprocal Rank Fusion) Hybrid Search:** Industry-standard algorithm replaces weighted-average fusion
-  - Configurable k parameter (default 60) via `rag_rrf_k` column
-  - Items appearing in both semantic and full-text results get boosted scores
-  - Legacy fusion method available for rollback via `rag_fusion_method` setting
-- **Rich Embeddings v2:** Enhanced embedding format with 8+ metadata fields
-  - Studio/production companies (top 3)
-  - Franchise/collection information
-  - Cast members (top 3)
-  - Content certification/rating
-  - Vote average score
-  - Original language
-  - Pipe-separated structured format
-  - Background migration service re-embeds at ~120 items/hour
-- **Pattern Mining Infrastructure:** Automatic discovery of classification patterns (opt-in)
-  - Studio patterns (70%+ confidence, 3+ occurrences)
-  - Franchise patterns (80%+ confidence, 2+ occurrences)
-  - Genre patterns (60%+ confidence, 5+ occurrences)
-  - Certification patterns (65%+ confidence, 5+ occurrences)
-  - Auto-approval at 85%+ confidence
-  - Pattern decay for stale patterns (90 days)
-  - Manual approval/rejection workflow
-- **Enhanced Error Logging:** RAG-specific error categorization and metrics
-  - 12 error types (quota_exceeded, timeout, dimension_mismatch, etc.)
-  - Operation tracking (semantic_search, hybrid_search, embedding_generation, pattern_mining)
-  - Duration metrics and recoverable flag
-  - Health dashboard with 24h/1h operation windows
-- **New API Endpoints:**
-  - `GET /api/rag/health` - Health summary with recent errors
-  - `GET /api/rag/metrics?hours=24` - Detailed metrics by operation
-  - `GET /api/rag/errors` - RAG error log with filtering
-  - `GET /api/rag/migration/status` - Migration progress tracking
-  - `POST /api/rag/migration/start` - Manual migration trigger
-  - `GET /api/rag/patterns` - List discovered patterns
-  - `POST /api/rag/patterns/discover` - Trigger pattern discovery
-  - `PUT /api/rag/patterns/:id/approve` - Approve pattern
-  - `PUT /api/rag/patterns/:id/reject` - Reject pattern
+
+#### Pattern-Based Classification
+- **Pattern Signal Collection:** Use discovered patterns (studio, franchise, genre, certification) as first-pass classification signals
+- **Reinforcement Learning:** Patterns learn from user corrections, auto-adjust confidence (+5% correct, -5% incorrect)
+- **Conflict Resolution:** Auto-resolve conflicting patterns (highest confidence wins), with manual override option
+- **AI Cost Optimization:** High-confidence patterns (≥90%) skip AI calls entirely, saving 60-85% on API costs
+
+#### Hybrid Pattern Management UI
+- **Per-Library Patterns:** "Learned Patterns" section added to each library detail page
+  - Shows only patterns routing TO that specific library
+  - Approve/Reject/Details actions inline
+  - "Discover Patterns for This Library" button
+  - Link to global patterns page
+- **Global Patterns Page:** Moved to top-level navigation (out of Settings)
+  - Full patterns table with all columns
+  - Target Library filter as primary filter
+  - Conflict detection and resolution section
+  - Bulk actions (approve/reject/delete selected)
+  - System-wide discovery and stats
+
+#### Settings Sidebar Reorganization
+- **GENERAL:** General, Scheduler, Queue
+- **CONNECTIONS:** Media Server, Radarr, Sonarr
+- **METADATA:** TMDB, OMDb, Tavily
+- **CLASSIFICATION:** AI, Confidence, Rules
+- **NOTIFICATIONS:** Discord, Webhooks
+- **SYSTEM:** Backup, SSL/HTTPS, Logs
+
+#### AI Settings Page Restructure
+- **🤖 AI Provider:** Classification provider, model, API key, embedding config (always shown)
+- **🔍 Semantic Search (RAG):** Enable toggle, similarity threshold, min history count (always shown)
+- **🧩 Pattern-Based Classification:** Enable, priority, auto-discovery, "Manage Patterns" link (always shown)
+- **💰 API Cost Management:** Skip threshold, budget alert, cost stats (API providers only)
+
+#### New API Endpoints
+- `GET /api/patterns/library/:libraryId` - Get patterns for specific library
+- `POST /api/patterns/discover/:libraryId` - Discover patterns for specific library
+- `GET /api/patterns/cost-summary` - Monthly cost and savings statistics
 
 ### Changed
-- Hybrid search now uses RRF by default (configurable via database)
-- Embedding format version tracked for migration management
-- RAG metrics stored with hourly aggregation
+- Confidence settings moved from GENERAL to CLASSIFICATION section
+- Tavily moved from AI & DATA to METADATA section (metadata enrichment)
+- "Patterns" removed from Settings sidebar (now top-level nav only)
+- AI settings page reorganized into 4 logical sections
+- API cost controls only shown for API-based providers (OpenAI, Anthropic, etc.)
 
 ### Fixed
-- SQL injection vulnerability in pattern decay function (parameterized queries)
-- NaN validation for vote_average parsing
-- Null-safe division in health summary calculations
+- Duplicate "Patterns" navigation (was in both Settings and top-level)
+- AI Skip Threshold was in wrong section (moved to API Cost Management)
 
-### Technical
-- Database migration `039_rag_enhancements.sql`
-- New services: `embeddingMigrationService`, `patternMiningService`
-- New utilities: `ragErrorHandler`, `ragLogger`
-- 50 new tests (8 RRF, 25 rich embeddings, 17 pattern mining)
-- All tests passing (333/333)
+## [0.35.0-alpha] - 2026-01-03
 
-## [0.33.1a-alpha] - 2025-12-29
+### 🚀 Major: Pattern Discovery Engine
 
-### Fixed
-- Removed deprecated `--build-from-source` npm flag from Dockerfile
-
-## [0.33.1-alpha] - 2025-12-29
-
-### Fixed
-- SignalCollector test file now matches actual implementation
-
-### Changed
-- Dependencies updated: supertest 7.1.4, node-cron 4.2.1, testcontainers 11.11.0, jsdom 27.4.0
-
-## [0.33.0-alpha] - 2025-12-29
-
-### 🚀 Major: AI-Centric Classification Refactor
-
-This release fundamentally restructures how Classifarr classifies media. Instead of using AI as the primary decision-maker, AI now serves as a **verification layer** that confirms or adjusts signals collected from multiple sources.
+Introduces automated pattern detection from classification history—identifying studios, franchises, genres, and certifications that consistently route to specific libraries.
 
 ### Added
-- **SignalCollector Service:** Aggregates all classification signals before making decisions
-  - Exact match detection (TMDb ID, learned patterns)
-  - Pattern matching (title rules, genres, keywords)
-  - Franchise/collection detection (Harry Potter → same library)
-  - Related item lookup (other items from same collection)
-- **ConfidenceCalculator Service:** Weighted formula for confidence scoring
-  - Configurable weights via API (`/api/classification/confidence/weights`)
-  - Confidence Settings UI for adjusting weights
-- **Policy Question Generation:** AI generates clarifying questions for edge cases
-  - Questions include library-specific routing options
-  - Stored in `classification_history.policy_question` column
-- **Pending Queue UI:** Wait for human decisions on uncertain items
-  - Queue.vue "Awaiting Decision" tab (always visible)
-  - Dashboard.vue "Awaiting Decision" widget (always visible)
-- **Admin Override (Manual Classification):**
-  - "🏷️ Classify" button in pending queue
-  - Bypass AI and assign to library directly
-  - 100% confidence + `manual_classification` method
-  - Library filtering by media type (movies vs TV)
-- **Discord Integration Enhancement:**
-  - `processClarificationResponse`: policy question + library_id mapping
-  - Resolution via Discord buttons routes to *arr
-- **Unit Tests:** SignalCollector test suite
 
-### Changed
-- AI now **verifies** rather than **decides** classification
-- Classifications with 100% confidence skip AI entirely
-- Classifications below threshold generate policy questions
+#### Pattern Types
+- **Studio Patterns:** "All Pixar Animation Studios → Kids Movies"
+- **Franchise Patterns:** "All Marvel Cinematic Universe → Superhero Movies"
+- **Genre Patterns:** "All Animation + Family → Kids Movies"
+- **Certification Patterns:** "All G-rated → Kids Movies"
 
-### Fixed
-- **OMDb API Timeouts:** 15s timeout, 2 retries with exponential backoff, graceful degradation
-- **MediaServer Test Connection:** Tests selected connection, not saved config
+#### Pattern Discovery UI
+- **Patterns Page:** New top-level navigation item
+  - Discovered patterns table with type, value, target library, confidence, status
+  - Confidence shown as percentage with color coding (green ≥80%, yellow ≥60%, red <60%)
+  - Status badges: Pending (yellow), Approved (green), Rejected (red)
+  - Pattern actions: Approve, Reject, Delete
+  - Filters: Type, Status, Target Library
+  - "Discover Patterns" button to run discovery manually
 
-## [0.32.3a-alpha] - 2025-12-28
+#### Discovery Engine
+- Analyzes classification history for routing patterns
+- Minimum 3 occurrences required for pattern detection
+- Calculates confidence based on consistency (matches / total occurrences)
+- Deduplication: Won't create pattern if identical one exists
 
-### Fixed
-- Root folder dropdown now enforces one-to-one mapping (excludes already-mapped folders)
+#### Database Schema
+- New `patterns` table: id, type, value, targetLibraryId, confidence, status, occurrences, timestamps
+- Indexes on type, status, targetLibraryId for efficient querying
 
-## [0.32.3-alpha] - 2025-12-28
+#### API Endpoints
+- `GET /api/patterns` - List all patterns (with filters)
+- `POST /api/patterns/discover` - Run pattern discovery
+- `PATCH /api/patterns/:id/approve` - Approve a pattern
+- `PATCH /api/patterns/:id/reject` - Reject a pattern
+- `DELETE /api/patterns/:id` - Delete a pattern
 
-### Added
-- Classifarr Path column in library mappings table
-- Edit button for existing library mappings
-- Folder browser for selecting Classifarr container paths (`/api/system/browse-folders`)
-- Regression tests for auto-detect exact match logic
+### Technical Notes
+- Patterns are discovered but NOT yet used for classification (next release)
+- Discovery runs on-demand only (no automatic scheduling yet)
+- Studio/franchise data requires TMDB metadata to be populated
 
-### Changed
-- Auto-detect now uses EXACT folder name matching only (library name must exactly match folder name)
-- Removed separate Path Mapping tab - integrated into Radarr/Sonarr settings
+## [0.34.0-alpha] - 2026-01-02
 
-### Fixed
-- Auto-detect incorrectly mapping libraries to folders with partial name matches
+### 🚀 Major: Manual Classification Overrides & Confidence Threshold Controls
 
-## [0.32.2-alpha] - 2025-12-28
-
-### Fixed
-- **Issue #74:** Library mappings no longer disappear after media server settings resync
-- **Root Cause:** POST /api/media-server was creating new DB row instead of updating existing
-- **Solution:** Media server UPDATE now preserves ID in-place
+Adds the ability for users to manually override AI classifications and control confidence thresholds for auto-processing.
 
 ### Added
-- Regression tests for `mediaServer.js` API endpoints
 
-## [0.32.0-alpha] - 2025-12-26
+#### Manual Override System
+- **Override Modal:** Click any media item to open override dialog
+  - Current classification shown with confidence
+  - Dropdown to select different target library
+  - "Override Reason" text field (optional)
+  - Override badge shown on items that were manually overridden
+- **Override History:** Track who overrode what and when
+  - Stored in classification_history with `isOverride: true`
+  - Original AI suggestion preserved for comparison
 
-### Added
-- **Path Mapping:** Settings tab to configure path translations between *arr containers and Classifarr (e.g. `/movies` -> `/data/movies`)
-- **Path Verification:** Ability to test connectivity and permissions of configured paths
-- **Enhanced Reclassification:** File operations now respect configured path mappings
-- **Database Migration:** Added `path_mappings` table (`026_path_mappings.sql`)
+#### Confidence Threshold Settings
+- **Settings → General → Confidence Thresholds**
+  - Auto-Accept Threshold (default: 85%): Items above this are auto-processed
+  - Review Threshold (default: 60%): Items between review and auto-accept need manual review
+  - Items below review threshold are flagged as "Low Confidence"
+- **Queue Integration:**
+  - High confidence items: Green checkmark, auto-process enabled
+  - Medium confidence items: Yellow warning, manual review suggested
+  - Low confidence items: Red flag, manual classification required
 
-### Fixed
-- **Rollup Build Error:** Fixed missing import in PathMapping component
-
-## [0.31.4-alpha] - 2025-12-26
-
-### Fixed
-- **Statistics SQL Error:** Fixed PostgreSQL GROUP BY error in `getConfidenceDistribution()` using subquery
-- **Statistics Zero Values:** Removed `source_library` exclusion filter showing all classification data
-
-## [0.31.3-alpha] - 2025-12-26
-
-### Fixed
-- **Dropdown Selection:** Event Detection Type dropdown now properly allows selecting "None" after choosing an event type
-- **Duplicate Options:** Removed duplicate placeholder/option in Event Detection Type dropdown
-
-## [0.31.2-alpha] - 2025-12-26
-
-### Added
-- **Event Detection Library Assignment:** Explicit `event_detection_type` dropdown in Library Configuration
-  - 🎄 Holiday, 🏈 Sports, 🥊 PPV/Combat, 🎵 Concert, 🎤 Stand-up Comedy, 🏆 Awards
-- **Smart Rule Builder `event_type` Condition:** Create rules based on detected event types
-- **Keywords Tooltip:** Info (i) icon shows detection keywords for each event type
-- **Database Migration (025):** Added `event_detection_type` column to `libraries` table
+#### Queue Improvements
+- Confidence column with color-coded badges
+- "Needs Review" filter to show only medium/low confidence items
+- Bulk actions respect confidence thresholds
 
 ### Changed
-- **Separated Concert & Stand-up:** Now 6 distinct event types instead of 5 combined
-- **Event Detection Logic:** Uses explicit library assignment instead of name-pattern matching
-- **Custom Rules Integration:** Library rules can override/confirm event detection matches
+- Classification results now include `requiresReview` boolean
+- Queue default sort changed to confidence ascending (lowest first)
 
-## [0.31.0-alpha] - 2025-12-26
+### Fixed
+- Queue pagination resetting when applying filters
+
+## [0.33.0-alpha] - 2025-12-28
+
+### 🚀 Major: AI-Powered Classification with RAG
+
+Introduces the core AI classification engine using Retrieval-Augmented Generation (RAG) for intelligent media categorization.
 
 ### Added
-- **Event Detection Expansion:** Auto-detection now covers 5 content types:
-  - 🎄 **Holiday** (95% confidence): Christmas, Halloween, Thanksgiving, Easter, New Years, Hanukkah, Kwanzaa
-  - 🏈 **Sports** (92% confidence): NFL, NBA, MLB, NHL, MLS, FIFA, Olympics, Super Bowl, World Series, Stanley Cup
-  - 🥊 **PPV/Combat** (93% confidence): UFC, MMA, Boxing, WWE, WrestleMania, Bellator, One Championship
-  - 🎤 **Concert/Comedy** (90% confidence): Live concerts, music festivals, stand-up comedy specials
-  - 🏆 **Awards** (88% confidence): Oscars, Emmys, Grammys, Golden Globes, BAFTA, Tony Awards
-- **Queue Self-Healing:** Stale queue items auto-recover missing data from database:
-  - `tmdb_id` lookup from `media_server_items` table
-  - `source_library_id` and `source_library_name` lookup via library join
-- **Periodic Library Sync:** Automatic Plex library sync every 6 hours to keep metadata fresh
-- **Initial Startup Sync:** Library sync triggered 2 minutes after application startup
-- **Database Migration (020):** Auto-migrates legacy classification method names to standardized names
 
-### Changed
-- **Classification Methods Standardized:** Renamed for consistency and clarity:
-  - `ai_fallback` → `ai_analysis` (AI provider classification)
-  - `library_rule` / `rule_match` → `custom_rule` (user-defined rules)
-  - `holiday_detection` → `event_detection` (expanded to all event types)
-  - `learned_correction` → `manual_correction` (user corrections)
-- **Statistics Dashboard:** "Total Classifications" now correctly excludes `source_library` enrichments
-- **Activity Page:** "Classified Today" now includes ALL methods (including `source_library`)
-- **Frontend Display Mappings:** All Vue components updated with legacy backwards compatibility:
-  - `Activity.vue`: Method icons and display names
-  - `Statistics.vue`: Method colors
-  - `History.vue`: Method badge variants
-- **detectEventContent():** Replaces `detectHolidayContent()` with comprehensive event type detection
-- **Event Detection Return Value:** Now returns full event info (type, confidence, icon, reason, keywords)
+#### AI Classification Engine
+- **Provider Support:** OpenAI (GPT-4, GPT-3.5), Anthropic (Claude), Ollama (local models)
+- **RAG Pipeline:**
+  1. Embed media metadata (title, overview, genres, cast, crew)
+  2. Retrieve similar previously-classified items from vector store
+  3. Generate classification with context from similar items
+  4. Return target library with confidence score
 
-### Fixed
-- **Plex TMDB IDs (#72):** Added `includeGuids=1` parameter to Plex API calls to retrieve TMDB/IMDB/TVDB IDs
-- **SQL Query Error:** Fixed PostgreSQL "column 'level' does not exist" in confidence distribution stats
-- **Queue Processing:** Queue worker now correctly processes `metadata_enrichment` tasks without AI
-- **NOT NULL Constraint:** Fixed potential NOT NULL error when inserting classification history without TMDB ID
+#### Vector Store Integration
+- **ChromaDB** for vector storage (runs as sidecar container)
+- Automatic embedding of classification history
+- Similarity search for RAG context retrieval
+- Configurable similarity threshold (default: 0.7)
 
-### Technical
-- New `detectEventContent()` function in `classification.js` with:
-  - 5 event type configurations with keywords and library patterns
-  - Dynamic confidence levels per event type
-  - Event-specific icons for UI display
-- New `runPeriodicLibrarySync()` function in `scheduler.js`
-- Self-healing logic in `queueService.js` for stale queue items
-- Frontend icon function now accepts optional `eventType` parameter for dynamic icons
+#### Classification History
+- Track all classifications with metadata
+- Store: mediaId, mediaType, title, targetLibrary, confidence, aiProvider, timestamp
+- Used for RAG context and pattern discovery (future)
 
-## [0.30.9-alpha] - 2025-12-26
+#### Settings Pages
+- **Settings → AI & Data → AI Settings**
+  - Provider selection (OpenAI, Anthropic, Ollama)
+  - Model selection per provider
+  - API key input (encrypted storage)
+  - Test connection button
+- **Settings → AI & Data → Classification**
+  - Enable/disable AI classification
+  - RAG enable/disable toggle
+  - Similarity threshold slider
+  - Minimum history count for RAG (default: 10)
 
-### Fixed
-- **Radarr/Sonarr Config Save (#70):** Fixed "null value in column url" database error when adding new instances
-- **Configure Media Server Button (#71):** Button now navigates to correct settings tab
+#### API Endpoints
+- `POST /api/classify` - Classify single media item
+- `POST /api/classify/bulk` - Classify multiple items
+- `GET /api/classification-history` - Get classification history
+- `POST /api/embeddings/rebuild` - Rebuild vector store
 
-## [0.30.8-alpha] - 2025-12-25
+### Technical Notes
+- Ollama requires separate installation and model pull
+- ChromaDB data persisted in Docker volume
+- API keys encrypted at rest using AES-256
+
+## [0.32.0-alpha] - 2025-12-20
 
 ### Added
-- **Plex Library Scanning:** Automatic Plex library scans after reclassification moves
-- **Batch Reclassification:** Multi-select and reclassify items from History page
-- **BatchReclassifyModal:** Multi-step workflow with validation, progress, pause/resume
-- **UID/GID Dry-Run Validation:** Warns when PUID/PGID mismatch detected
-- **Database Migration Docs:** Added `docs/migrations.md` for schema management reference
+- Media server connection (Plex, Jellyfin, Emby)
+- Library discovery and mapping
+- Radarr/Sonarr integration for *arr users
+- Basic queue system for pending classifications
 
 ### Changed
-- **History Page:** Added checkbox column and batch selection toolbar
-- **README:** Added CAUTION block about PUID/PGID container matching
+- Complete UI redesign with new navigation structure
+- Settings reorganized into logical sections
 
-### Technical
-- New `reclassificationBatchService.js` with auto-created batch tables
-- New `/api/reclassification/batch/*` REST endpoints
-- New batch API methods in frontend `api/index.js`
+### Fixed
+- Docker compose health checks timing out
 
-## [0.30.5-alpha] - 2025-12-25
+## [0.31.0-alpha] - 2025-12-15
 
 ### Added
-- **Multi-Instance Arr Support:** Configure multiple Radarr/Sonarr instances for quality tiers (1080p, 4K)
-- **Add Instance Button:** New button to add additional arr instances when config exists
-- **Instance Management:** Edit and delete individual instances with per-instance library mappings
-- **Read-Only Library Summary:** View mode shows library mappings as read-only reference
-
-### Changed
-- **Settings View/Edit Mode:** Clear separation between view and edit modes
-- **Inline Library Mappings:** Mappings now configurable within arr instance edit form
-- **Message Clarity:** Empty state messages differentiate "no mappings" vs "no libraries found"
-
-### Fixed
-- **Library Detection Bug:** Fixed Plex libraries not loading (JavaScript hoisting issue)
-- **Cancel Button:** "Cancel Editing" now correctly exits edit mode
-- **Media Server Dropdown:** Disabled in view mode, editable in edit mode only
-
-## [0.30.4-alpha] - 2025-12-25
-
-### Added
-- **Library Mappings Integration:** Library mappings now embedded in Radarr/Sonarr settings (removed standalone tab)
-- **Path Configuration Guide:** Collapsible Docker path mapping guide in *arr settings
-
-### Changed
-- **SSL Toggle UX:** Disabled and greyed out when protocol is HTTP with explanatory text
-- **Settings Navigation:** Removed standalone "Library Mappings" and "Path Testing" tabs
-
-### Fixed
-- **Media Server Dropdown:** "Associated Media Server" dropdown now populates correctly
-- **API Key Test Connection:** Test connection now works after page refresh (resolves masked tokens from database)
-
-## [0.30.3-alpha] - 2025-12-25
-
-### Changed
-- **Queue Settings UX:** Save Settings button moved to separate row, Clear buttons show counts and are disabled when empty
-
-### Fixed
-- **Queue Settings:** Fixed JSON parsing error when saving queue settings
-- **API Client:** Added category-based settings endpoints for queue, scheduler, classification
-
-## [0.30.2-alpha] - 2025-12-25
-
-### Improvements
-- **Release Process:** GitHub CLI prioritized for creating releases with turbo auto-run
-
-## [0.30.1-alpha] - 2025-12-25
-
-### Improvements
-- **Docker Volumes:** Updated media mounts to read-write for future direct file moves
-- **Release Process:** Updated release.md to not use pre-release for alpha versions
-
-### Fixes
-- **Documentation:** README docker examples now include media volume mount
-
-## [0.30.0-alpha] - 2025-12-25
-
-### New Features
-- **Re-Classification System:** Foundation for moving media between *arr root folders
-  - `reclassificationService.js` with execute, preview, and rollback support
-  - Media type isolation (movies → Radarr only, TV → Sonarr only)
-- **Library Mapping System:** Map Plex libraries to *arr root folders
-  - `libraryMappingService.js` with auto-detection
-  - `LibraryMappings.vue` UI in Settings → Media Sources
-- **Path Testing:** Verify Docker path accessibility
-  - `pathTestService.js` with health checks
-  - `PathTest.vue` UI in Settings → System → Path Testing
-- **Learned Corrections:** User corrections inform future classifications
-  - `checkLearnedCorrections()` in classification chain (100% confidence)
-- **New API Endpoints:**
-  - `POST /api/classification/reclassify` - Execute re-classification
-  - `POST /api/classification/reclassify/preview` - Preview
-  - `POST /api/settings/path-test` - Test path accessibility
-  - `GET /api/settings/path-test/health` - Health check
-
-### Database Changes
-- New tables: `library_arr_mappings`, `learned_corrections`, `app_settings`
-- New columns: `media_server_id` in `radarr_config` and `sonarr_config`
-
-### Notes
-- SetupBanner disabled pending bug fixes in future minor release
-
-## [0.27.9-alpha] - 2025-12-25
-
-### Bug Fixes
-- **AI Suggestions:** Fixed AI suggesting duplicate rules that already exist
-  - AI prompt now includes existing rules so it knows what's already applied
-  - Added server-side fallback filter to remove any duplicates AI might still suggest
-
-## [0.27.8-alpha] - 2025-12-25
-
-### UX Improvements
-- **Pattern Suggestions Widget:** Removed dismiss (X) button from library tiles
-  - Users must now review patterns in Rule Builder and dismiss individually
-  - Prevents accidentally hiding libraries without reviewing available filters
-  - Widget count updates automatically as patterns are dismissed or applied in Rule Builder
-
-## [0.27.7-alpha] - 2025-12-25
-
-### Bug Fixes
-- **Pattern Suggestions Widget:** Fixed "New Pattern Suggestions" widget showing nothing after sync
-  - `clearAndResync()` now calls `runPatternAnalysis()` to populate `library_pattern_suggestions`
-  - Dashboard widget now shows all libraries with available patterns after Clear & Re-Sync
-
-## [0.27.6-alpha] - 2025-12-25
-
-### Bug Fixes
-- **Pattern Suggestions:** Fixed pattern analysis only running for one library
-  - Changed `sync_enabled` to `is_active` - column didn't exist, so only first library was analyzed
-  - All libraries now show in "New Pattern Suggestions" widget on Dashboard
-- **Clear & Re-Sync All:** Now clears `library_pattern_suggestions` table
-  - Available Library Filters are now properly reset during full resync
-
-## [0.27.5-alpha] - 2025-12-25
-
-### Bug Fixes
-- **Health Status:** Fixed Activity page always showing "Partial" instead of "All Systems OK"
-  - Frontend was checking `health.ollama` but backend returns `health.ai`
-  - Added safeguard to merge API response with defaults to prevent silent field name mismatches
-
-## [0.27.4-alpha] - 2025-12-25
-
-### Bug Fixes
-- **Library Sync:** Fixed Plex sync wiping enrichment progress (OMDb/Tavily data)
-  - UPSERT now merges metadata instead of replacing it entirely
-  - Existing `omdb`, `tavily_*` fields preserved during re-sync
-- **Duplicate Classifications:** Fixed same title appearing 81+ times in statistics
-  - Added duplicate check before inserting classification_history entries
-  - Re-sync no longer creates duplicate `source_library` records
-
-## [0.27.3-alpha] - 2025-12-25
-
-### Bug Fixes
-- **Model Persistence:** Fixed cloud provider model selection disappearing after page refresh
-  - Model dropdown now seeds with saved model on load (same pattern as Ollama)
-  - Affects OpenAI, Gemini, OpenRouter, LiteLLM, and Custom providers
-
-## [0.27.2-alpha] - 2025-12-25
-
-### Bug Fixes
-- **OpenAI API Keys:** Fixed authentication errors when switching to OpenAI from other providers ([#68](https://github.com/cloudbyday90/Classifarr/issues/68))
-  - `getEndpoint()` now only uses custom endpoints for LiteLLM/custom providers
-  - OpenAI, Gemini, and OpenRouter always use their official hardcoded endpoints
-  - Prevents stale endpoint configuration when switching between providers
-
-## [0.27.1-alpha] - 2025-12-25
-
-### Bug Fixes
-- **Correction Submission:** Fixed "l.post is not a function" error when submitting corrections in History view ([#67](https://github.com/cloudbyday90/Classifarr/issues/67))
-  - Changed incorrect `api.post()` call to use the existing `api.submitCorrection()` method
-
-## [0.26.2-alpha] - 2025-12-25
-
-### Bug Fixes
-- **Dashboard AI Status:** Fixed "Offline" indicator showing incorrectly when AI provider was configured and working
-- **Consistent AI Naming:** Renamed all Ollama-specific references to generic "AI Provider" throughout the codebase
-
-### Technical Details
-- Fixed `queueService.getStats()` to return `aiAvailable` instead of the renamed `ollamaAvailable`
-- Updated Dashboard, Queue views, system health endpoint to use `ai`/`aiAvailable` field names
-
-## [0.26.1-alpha] - 2025-12-25
-
-### Bug Fixes
-- **Ollama Test Connection:** Test now uses input field values instead of cached DB values (fixes Issue #66)
-- **AI Provider Selection:** Queue now respects configured provider - users can switch to OpenAI without Ollama blocking
-
-### Improvements
-- **Simplified Defaults:** Ollama default is now `localhost` - removed complex gateway detection logic
-- **Cleaner Code:** Removed ~60 lines of platform-specific detection code
-
-
-## [0.25.0-alpha] - 2025-12-24
-
-### Major Features
-- **Smart "Use This" Pattern Builder:** Interactive UI to build rules directly from your library's metadata (Phase 2).
-  - Analyzes Genres, Content Ratings, Studios, Collections, and Tags directly from Plex/Emby/Jellyfin.
-  - Interactive selection modal with operators (equals, is one of, contains).
-  - Shows match confidence and item counts for each pattern.
-- **Continuous Pattern Analysis:** Automated system to detect new metadata trends over time (Phase 3).
-- **Dashboard Widget:** "New Pattern Suggestions" widget notifies you when new potential rules are detected in your libraries.
-- **Scheduler Update:** Added "Pattern Analysis" task type to automatically re-scan libraries for new patterns on a schedule.
-
-### Improvements
-- **UI Logic:** "Use This" now correctly prioritizes direct library metadata over AI suggestions.
-- **Performance:** Optimized metadata queries to only fetch distinct values for pattern generation.
-
-
-## [0.24.0-alpha] - 2025-12-24
-
-### Major Features
-- **Cloud AI Providers:** Support for OpenAI, Gemini, OpenRouter, LiteLLM.
-- **Budget Controls:** Monthly limits and alerts for paid providers.
-- **Hybrid AI Strategy:** Intelligent fallback to free local LLMs.
-- **Database Migration Runner:** Automated SQL migration system running on startup to ensure consistent database schema.
-- **Migration Tracking:** Added `schema_migrations` table to prevent re-running applied migrations.
-
-### Fixes
-- **Ollama Default Host:** Changed default host to `localhost` to better support unconfigured setups.
-- **Model Persistence:** Seeding model dropdown ensures saved model is displayed on page load.
-- **Migration Idempotency:** Fixed legacy migrations (003, 011-015) to use `IF NOT EXISTS` and `DO` blocks.
-
-## [0.17-alpha] - 2025-12-21
-
-### Platform Enhancement Summary
-All 8 planned phases complete! This release consolidates:
-- Manual Request Submission (Phase 3)
-- Enhanced Dashboard (Phase 4)
-- Statistics & Analytics (Phase 5)
-- Scheduled Classifications (Phase 6)
-- Import/Export Rules (Phase 7)
-- Various bug fixes and optimizations
+- Initial project structure
+- Docker containerization
+- Basic Express API server
+- React frontend with Vite
+- SQLite database with Drizzle ORM
+- Authentication system (local users)
 
 ---
 
-## [0.16.1-alpha] - 2025-12-21
-
-### Bug Fix
-- Fixed duplicate `webhookService` import causing startup crash
-
----
-
-## [0.16-alpha] - 2025-12-21
-
-### Phase 7: Import/Export Rules
-- **Backup & Restore** - Settings → Backup tab
-- **Export** - Download rules, patterns, schedules as JSON
-- **Import** - Restore with preview and skip/overwrite modes
-- Fixed webhook_log index referencing non-existent column
-
----
-
-## [0.15-alpha] - 2025-12-21
-
-### Phase 6: Scheduled Classifications
-- **Scheduler** - Settings → Scheduler tab
-- **Auto Scans** - Schedule library scans with intervals
-- **Task Types** - Library Scan, Full Rescan
-- **Intervals** - 30min, 1h, 2h, 6h, 12h, daily presets
-- Run now, pause/enable, delete actions
-
----
-
-## [0.14-alpha] - 2025-12-21
-
-### Phase 5: Statistics & Analytics
-- **Statistics Page** - New sidebar item
-- **Summary Cards** - Total, avg confidence, high/low, 24h/7d
-- **Daily Chart** - 30-day classification bar chart
-- **Breakdowns** - By library, method, media type
-- **Top Titles** - Most classified items
-
----
-
-## [0.13-alpha] - 2025-12-21
-
-### Phase 4: Enhanced Dashboard
-- **System Status Row** - Ollama 🟢/🔴, queue pending, stats
-- **Two-Column Layout** - Classifications + sidebar widgets
-- **Queue Summary** - Pending/processing/completed/failed
-- **Classification Methods** - Exact/learned/rule/AI breakdown
-- **Quick Actions** - New Request, Libraries, Queue buttons
-
----
-
-## [0.12.1-alpha] - 2025-12-21
-
-### CI/CD Fix
-- Updated docker-metadata-action for alpha tag support
-- Changed from strict semver to ref-based tagging
-
----
-
-## [0.12-alpha] - 2025-12-21
-
-### Phase 3: Manual Request Submission
-- **Manual Request Page** - New sidebar item to submit requests directly
-- **TMDB Search** - Search movies and TV shows with poster previews
-- **One-Click Classify** - Queue any TMDB result for classification
-- **Recent Requests** - View status of your manual submissions
-
----
-
-## [0.11-alpha] - 2025-12-21
-
-### New Features
-- **Queue Status UI** - New Settings → Queue tab showing:
-  - Ollama availability indicator (green/red)
-  - Task counts: pending, processing, completed, failed
-  - Pending task list with retry/cancel actions
-  - Auto-refresh every 5 seconds
-
-- **Multi-Source Manager UI** - Settings → Webhooks now shows:
-  - List of all configured webhook sources
-  - Add new source with name and type
-  - Set Primary / Delete actions
-  - Type icons: Overseerr (🎬), Jellyseerr (🍇), Seer (⭐)
-
----
-
-## [0.10-alpha] - 2025-12-21
-
-### 🎉 Initial Public Alpha
-
-This is the first consolidated alpha release of Classifarr, an AI-powered media classification platform for the *arr ecosystem.
-
-### Core Features
-- **AI Classification Engine** - Multi-stage matching: exact → learned → rule → AI fallback
-- **Ollama Integration** - Local LLM for privacy-first classification
-- **Embedded PostgreSQL** - Single-container deployment with built-in database
-- **Vue 3 Frontend** - Modern dark theme matching *arr ecosystem
-
-### Media Server Support
-- Plex (OAuth + manual connection selection)
-- Jellyfin (API key authentication)
-- Emby (API key authentication)
-
-### Request Manager Support
-- Overseerr
-- Jellyseerr
-- Seer (unified successor)
-- Multi-manager support (run multiple simultaneously)
-
-### Queue System
-- Database-backed task queue
-- Ollama offline resilience (tasks persist until Ollama available)
-- Exponential backoff retry: 30s → 1m → 2m → 5m → 10m
-- Max 5 retries before permanent failure
-
-### Discord Integration
-- Real-time classification notifications
-- Interactive correction buttons
-- In-app setup wizard
-
-### Additional Features
-- JWT-based authentication
-- Confidence thresholds with AI clarification
-- Learning system that improves from corrections
-- TMDB/TVDB metadata integration
-- Comprehensive logging with database persistence
-
----
-
-## Version History
-
-Prior to v0.10-alpha, development releases were numbered v1.0.0 - v1.8.0.
-These have been consolidated into this alpha release for clearer versioning.
+[0.36.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.35.0-alpha...v0.36.0-alpha
+[0.35.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.34.0-alpha...v0.35.0-alpha
+[0.34.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.33.0-alpha...v0.34.0-alpha
+[0.33.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.32.0-alpha...v0.33.0-alpha
+[0.32.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.31.0-alpha...v0.32.0-alpha
+[0.31.0-alpha]: https://github.com/cloudbyday90/Classifarr/releases/tag/v0.31.0-alpha
