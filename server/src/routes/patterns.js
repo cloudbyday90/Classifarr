@@ -110,26 +110,28 @@ router.get('/summary', async (req, res) => {
  */
 router.get('/cost-summary', async (req, res) => {
     try {
+        // Count AI calls vs pattern-based classifications
         const result = await db.query(`
             SELECT 
-                COUNT(*) FILTER (WHERE ai_call_avoided = false) as calls_made,
-                COUNT(*) FILTER (WHERE ai_call_avoided = true) as calls_avoided,
-                COALESCE(SUM(embedding_cost), 0) as total_cost
-            FROM rag_metrics
+                COUNT(*) FILTER (WHERE method IN ('ai_fallback', 'ai_classification')) as calls_made,
+                COUNT(*) FILTER (WHERE method IN ('learned_pattern', 'rule_match', 'exact_match')) as calls_avoided
+            FROM classification_history
             WHERE created_at >= DATE_TRUNC('month', NOW())
         `);
         
         const data = result.rows[0];
-        const totalCalls = parseInt(data.calls_made || 0) + parseInt(data.calls_avoided || 0);
+        const callsMade = parseInt(data.calls_made || 0);
+        const callsAvoided = parseInt(data.calls_avoided || 0);
+        const totalCalls = callsMade + callsAvoided;
         const savingsPercent = totalCalls > 0 
-            ? Math.round((parseInt(data.calls_avoided || 0) / totalCalls) * 100) 
+            ? Math.round((callsAvoided / totalCalls) * 100) 
             : 0;
         
         res.json({
-            callsMade: parseInt(data.calls_made || 0),
-            callsAvoided: parseInt(data.calls_avoided || 0),
-            totalCost: parseFloat(data.total_cost || 0),
-            savingsPercent
+            callsMade,
+            callsAvoided,
+            savingsPercent,
+            totalCalls
         });
     } catch (error) {
         logger.error('Failed to get cost summary', { error: error.message });
