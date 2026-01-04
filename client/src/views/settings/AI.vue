@@ -623,6 +623,8 @@ const config = ref({
   rag_backfill_budget_value: 25
 })
 
+// API providers are cloud-based services that charge per API call
+// (as opposed to local providers like Ollama which are free)
 const isApiProvider = computed(() => {
   return ['openai', 'gemini', 'openrouter', 'litellm', 'custom'].includes(config.value.primary_provider)
 })
