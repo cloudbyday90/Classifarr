@@ -486,6 +486,96 @@
       </div>
     </Card>
 
+    <!-- Pattern-Based Classification Settings -->
+    <Card title="🧩 Pattern-Based Classification">
+      <div class="space-y-6">
+        <!-- Enable Pattern Mining -->
+        <div class="flex items-start justify-between">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="font-medium text-gray-200">Enable Pattern Mining</h3>
+              <span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">v0.36.0</span>
+            </div>
+            <div class="text-sm text-gray-400">
+              Learn from classification history to discover patterns (studios, genres, franchises) that predict library routing
+            </div>
+          </div>
+          <Toggle v-model="patternConfig.pattern_mining_enabled" />
+        </div>
+
+        <!-- Pattern Settings (when enabled) -->
+        <div v-if="patternConfig.pattern_mining_enabled" class="space-y-4">
+          <!-- Pattern vs Rules Priority -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Pattern vs Rule Priority</label>
+            <select 
+              v-model="patternConfig.pattern_rule_priority"
+              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="rules_first">Rules First (Default)</option>
+              <option value="patterns_first">Patterns First</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">
+              <template v-if="patternConfig.pattern_rule_priority === 'rules_first'">
+                Custom rules take precedence over discovered patterns
+              </template>
+              <template v-else>
+                Discovered patterns take precedence over custom rules
+              </template>
+            </p>
+          </div>
+
+          <!-- AI Skip Threshold -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              AI Skip Threshold
+            </label>
+            <div class="flex items-center gap-4">
+              <input 
+                type="range"
+                v-model.number="patternConfig.pattern_ai_skip_threshold"
+                min="70"
+                max="100"
+                step="5"
+                class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary"
+              />
+              <span class="text-white w-12 text-right">{{ patternConfig.pattern_ai_skip_threshold }}%</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              Skip AI calls when pattern confidence is at or above this threshold (saves costs)
+            </p>
+          </div>
+
+          <!-- Cost Savings Estimate -->
+          <div class="bg-green-500/10 border border-green-500/50 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+              <span class="text-2xl">💰</span>
+              <div class="flex-1">
+                <h4 class="font-semibold text-green-400 mb-1">Cost Savings</h4>
+                <p class="text-sm text-gray-300">
+                  High-confidence patterns (≥{{ patternConfig.pattern_ai_skip_threshold }}%) skip AI calls entirely, 
+                  reducing API costs by an estimated 60-85% for established libraries.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pattern Management Link -->
+          <div class="flex items-center justify-between bg-gray-800/50 rounded-lg p-4">
+            <div class="flex-1">
+              <h4 class="font-medium text-gray-200 mb-1">Manage Patterns</h4>
+              <p class="text-sm text-gray-400">
+                View and manage discovered patterns, approve suggestions, and resolve conflicts
+              </p>
+            </div>
+            <Button @click="$router.push('/patterns')" variant="secondary" size="sm">
+              View Patterns →
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Card>
+
     <!-- Save Button -->
     <div class="flex justify-end">
       <Button @click="saveConfig" :disabled="saving">
@@ -567,6 +657,14 @@ const effectiveEmbeddingProvider = computed(() => {
 // RAG statistics
 const ragStats = ref(null)
 
+// Pattern configuration
+const patternConfig = ref({
+  pattern_mining_enabled: false,
+  pattern_rule_priority: 'rules_first',
+  pattern_ai_skip_threshold: 90,
+  pattern_notification_dismissed: false
+})
+
 // Helper to parse a URL string and extract host and port
 const parseOllamaHost = (hostValue) => {
   if (!hostValue) return { host: 'localhost', port: 11434 }
@@ -600,9 +698,10 @@ const parseOllamaHost = (hostValue) => {
 
 onMounted(async () => {
   try {
-    const [configResponse, usageResponse] = await Promise.all([
+    const [configResponse, usageResponse, patternConfigResponse] = await Promise.all([
       api.getAIConfig(),
-      api.getAIUsage().catch(() => null)
+      api.getAIUsage().catch(() => null),
+      api.getPatternConfig().catch(() => null)
     ])
     
     if (configResponse.data) {
@@ -630,6 +729,9 @@ onMounted(async () => {
     }
     if (usageResponse?.data) {
       usageStats.value = usageResponse.data
+    }
+    if (patternConfigResponse?.data) {
+      patternConfig.value = { ...patternConfig.value, ...patternConfigResponse.data }
     }
   } catch (error) {
     console.error('Failed to load AI config:', error)
@@ -742,7 +844,10 @@ const fetchOllamaModels = async () => {
 const saveConfig = async () => {
   saving.value = true
   try {
-    await api.updateAIConfig(config.value)
+    await Promise.all([
+      api.updateAIConfig(config.value),
+      api.updatePatternConfig(patternConfig.value)
+    ])
     toast.success('AI configuration saved!')
   } catch (error) {
     toast.error('Failed to save configuration')
