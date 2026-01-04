@@ -1,6 +1,6 @@
 <!--
   Classifarr - AI-powered media classification for the *arr ecosystem
-  Copyright (C) 2025 cloudbyday90
+  Copyright (C) 2026 cloudbyday90
   
   This program is free software: licensed under GPL-3.0
   See LICENSE file for details.
@@ -133,7 +133,7 @@
 
         <div class="text-sm text-gray-400">
           <p>Licensed under GPL-3.0</p>
-          <p class="mt-1">Copyright (C) 2025 cloudbyday90</p>
+          <p class="mt-1">Copyright (C) 2026 cloudbyday90</p>
         </div>
       </div>
     </Card>
