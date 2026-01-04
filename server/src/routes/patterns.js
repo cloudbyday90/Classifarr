@@ -104,6 +104,41 @@ router.get('/summary', async (req, res) => {
 
 /**
  * @swagger
+ * /api/patterns/cost-summary:
+ *   get:
+ *     summary: Get AI cost summary for the current month
+ */
+router.get('/cost-summary', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT 
+                COUNT(*) FILTER (WHERE ai_call_avoided = false) as calls_made,
+                COUNT(*) FILTER (WHERE ai_call_avoided = true) as calls_avoided,
+                COALESCE(SUM(embedding_cost), 0) as total_cost
+            FROM rag_metrics
+            WHERE created_at >= DATE_TRUNC('month', NOW())
+        `);
+        
+        const data = result.rows[0];
+        const totalCalls = parseInt(data.calls_made || 0) + parseInt(data.calls_avoided || 0);
+        const savingsPercent = totalCalls > 0 
+            ? Math.round((parseInt(data.calls_avoided || 0) / totalCalls) * 100) 
+            : 0;
+        
+        res.json({
+            callsMade: parseInt(data.calls_made || 0),
+            callsAvoided: parseInt(data.calls_avoided || 0),
+            totalCost: parseFloat(data.total_cost || 0),
+            savingsPercent
+        });
+    } catch (error) {
+        logger.error('Failed to get cost summary', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
  * /api/patterns/resolve-conflicts:
  *   post:
  *     summary: Resolve all pattern conflicts
