@@ -62,7 +62,6 @@ import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
 import Tavily from './settings/Tavily.vue'
 import OMDb from './settings/OMDb.vue'
-import PatternManagement from './settings/patterns/PatternManagement.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -91,7 +90,6 @@ const settingsGroups = [
     name: 'AI & Data',
     tabs: [
       { id: 'ai', label: 'AI', icon: '🤖', component: AI },
-      { id: 'patterns', label: 'Patterns', icon: '🧩', component: PatternManagement },
       { id: 'tmdb', label: 'TMDB', icon: '🎞️', component: TMDB },
       { id: 'tavily', label: 'Tavily', icon: '🔍', component: Tavily },
       { id: 'omdb', label: 'OMDb', icon: '🎬', component: OMDb },

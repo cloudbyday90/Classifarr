@@ -324,6 +324,9 @@ export default {
   resolveConflicts() {
     return apiClient.post('/patterns/resolve-conflicts')
   },
+  getCostSummary() {
+    return apiClient.get('/patterns/cost-summary')
+  },
 
   // Settings
   getSettings() {

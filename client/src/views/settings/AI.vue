@@ -214,6 +214,28 @@
           v-model="config.pause_on_budget_exhausted" 
           label="Pause AI when budget exhausted (fallback to Ollama if enabled)"
         />
+
+        <!-- Cost Summary Widget -->
+        <div v-if="costSummary?.totalCalls > 0" class="mt-6 pt-6 border-t border-gray-700">
+          <h4 class="text-sm font-medium text-gray-300 mb-4">This Month's Stats</h4>
+          <div class="grid grid-cols-3 gap-4">
+            <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-blue-400">{{ costSummary.callsMade }}</div>
+              <div class="text-xs text-gray-400 mt-1">AI Calls Made</div>
+            </div>
+            <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-green-400">{{ costSummary.callsAvoided }}</div>
+              <div class="text-xs text-gray-400 mt-1">Calls Avoided</div>
+            </div>
+            <div class="bg-gray-800/50 p-4 rounded-lg text-center">
+              <div class="text-2xl font-bold text-green-400">{{ costSummary.savingsPercent }}%</div>
+              <div class="text-xs text-gray-400 mt-1">Savings</div>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="costSummary && costSummary.totalCalls === 0" class="mt-6 pt-6 border-t border-gray-700">
+          <p class="text-sm text-gray-400 text-center">No classifications this month yet</p>
+        </div>
       </div>
     </Card>
 
@@ -657,6 +679,9 @@ const effectiveEmbeddingProvider = computed(() => {
 // RAG statistics
 const ragStats = ref(null)
 
+// Cost summary
+const costSummary = ref(null)
+
 // Pattern configuration
 const patternConfig = ref({
   pattern_mining_enabled: false,
@@ -698,10 +723,11 @@ const parseOllamaHost = (hostValue) => {
 
 onMounted(async () => {
   try {
-    const [configResponse, usageResponse, patternConfigResponse] = await Promise.all([
+    const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse] = await Promise.all([
       api.getAIConfig(),
       api.getAIUsage().catch(() => null),
-      api.getPatternConfig().catch(() => null)
+      api.getPatternConfig().catch(() => null),
+      api.getCostSummary().catch(() => null)
     ])
     
     if (configResponse.data) {
@@ -732,6 +758,9 @@ onMounted(async () => {
     }
     if (patternConfigResponse?.data) {
       patternConfig.value = { ...patternConfig.value, ...patternConfigResponse.data }
+    }
+    if (costSummaryResponse?.data) {
+      costSummary.value = costSummaryResponse.data
     }
   } catch (error) {
     console.error('Failed to load AI config:', error)

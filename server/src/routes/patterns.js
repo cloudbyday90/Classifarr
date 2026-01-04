@@ -104,6 +104,45 @@ router.get('/summary', async (req, res) => {
 
 /**
  * @swagger
+ * /api/patterns/cost-summary:
+ *   get:
+ *     summary: Get AI cost summary for the current month
+ */
+router.get('/cost-summary', async (req, res) => {
+    try {
+        // Count AI calls vs pattern-based classifications
+        // AI methods: ai_verified, ai_analysis
+        // Pattern/rule methods: learned_pattern, rule_match, exact_match, custom_rule
+        const result = await db.query(`
+            SELECT 
+                COUNT(*) FILTER (WHERE method IN ('ai_verified', 'ai_analysis')) as calls_made,
+                COUNT(*) FILTER (WHERE method IN ('learned_pattern', 'rule_match', 'exact_match', 'custom_rule')) as calls_avoided
+            FROM classification_history
+            WHERE created_at >= DATE_TRUNC('month', NOW())
+        `);
+        
+        const data = result.rows[0];
+        const callsMade = parseInt(data.calls_made || 0);
+        const callsAvoided = parseInt(data.calls_avoided || 0);
+        const totalCalls = callsMade + callsAvoided;
+        const savingsPercent = totalCalls > 0 
+            ? Math.round((callsAvoided / totalCalls) * 100) 
+            : 0;
+        
+        res.json({
+            callsMade,
+            callsAvoided,
+            savingsPercent,
+            totalCalls
+        });
+    } catch (error) {
+        logger.error('Failed to get cost summary', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
  * /api/patterns/resolve-conflicts:
  *   post:
  *     summary: Resolve all pattern conflicts
