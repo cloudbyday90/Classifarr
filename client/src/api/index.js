@@ -287,6 +287,44 @@ export default {
     return apiClient.post(`/rule-builder/analyze/${libraryId}`)
   },
 
+  // Patterns
+  getPatterns(params) {
+    return apiClient.get('/patterns', { params })
+  },
+  getPattern(id) {
+    return apiClient.get(`/patterns/${id}`)
+  },
+  getLibraryPatterns(libraryId) {
+    return apiClient.get(`/patterns/library/${libraryId}`)
+  },
+  getPatternSummary() {
+    return apiClient.get('/patterns/summary')
+  },
+  getPatternConfig() {
+    return apiClient.get('/patterns/config')
+  },
+  updatePatternConfig(config) {
+    return apiClient.put('/patterns/config', config)
+  },
+  approvePattern(id, data) {
+    return apiClient.put(`/patterns/${id}/approve`, data)
+  },
+  rejectPattern(id, data) {
+    return apiClient.put(`/patterns/${id}/reject`, data)
+  },
+  deletePattern(id) {
+    return apiClient.delete(`/patterns/${id}`)
+  },
+  discoverPatterns() {
+    return apiClient.post('/patterns/discover')
+  },
+  discoverLibraryPatterns(libraryId) {
+    return apiClient.post(`/patterns/discover/${libraryId}`)
+  },
+  resolveConflicts() {
+    return apiClient.post('/patterns/resolve-conflicts')
+  },
+
   // Settings
   getSettings() {
     return apiClient.get('/settings')
