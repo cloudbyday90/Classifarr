@@ -31,6 +31,7 @@ const confidenceCalculator = require('./confidenceCalculator');
 const ragRetriever = require('./ragRetriever');
 const embeddingService = require('./embeddingService');
 const contextManager = require('./contextManager');
+const patternReinforcementService = require('./patternReinforcementService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -118,6 +119,25 @@ class ClassificationService {
 
       // Log to database
       const classificationId = await this.logClassification(metadata, result);
+
+      // Reinforce patterns (if any were used in classification)
+      if (result.signalContext && result.signalContext.patternSignals) {
+        const patternSignals = result.signalContext.patternSignals;
+        if (patternSignals.length > 0 && result.library) {
+          // Async reinforcement - don't wait
+          setImmediate(async () => {
+            try {
+              await patternReinforcementService.reinforceOnAccept(
+                classificationId,
+                patternSignals,
+                result.library.id
+              );
+            } catch (error) {
+              logger.debug('Pattern reinforcement error', { error: error.message });
+            }
+          });
+        }
+      }
 
       // Check if user requires all confirmations
       const requireAllConfirmations = await clarificationService.isRequireAllConfirmationsEnabled();
@@ -953,6 +973,7 @@ class ClassificationService {
       aiContext,
       ragContext,  // RAG similar items context for AI
       signals: signalCollector.getSignals(),
+      patternSignals: signalCollector.getPatternSignals(),  // For pattern reinforcement
     };
 
     // Step 5: AI verification (receives pre-calculated confidence)

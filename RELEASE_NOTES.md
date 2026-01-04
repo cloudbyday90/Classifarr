@@ -1,3 +1,201 @@
+## v0.36.0-alpha
+**Title: Pattern-Driven Classification - Reinforcement Learning & Management UI**
+
+> [!IMPORTANT]  
+> **Opt-In Feature:** Pattern-based classification is **disabled by default**. Enable in Settings → AI & Data → Patterns.
+> 
+> **No Breaking Changes:** All existing workflows remain unchanged. Patterns can be enabled/disabled without affecting current classification behavior.
+
+### 🚀 Major Features
+
+#### Pattern-Based Signal Collection
+Classifarr now uses discovered patterns (from v0.35.0) as the **primary classification signal**:
+
+**How it works:**
+1. Patterns are collected from your classification history (studio, franchise, genre, certification)
+2. Each pattern has a confidence score based on historical accuracy
+3. High-confidence patterns (≥90%) are used for instant classification without AI calls
+4. Medium-confidence patterns (70-89%) are validated by AI
+5. Low-confidence patterns trigger standard AI classification
+
+**Pattern Types:**
+- **Studio Patterns:** "Warner Bros" → Movies library (85% confidence)
+- **Franchise Patterns:** "Marvel Cinematic Universe" → Action library (92% confidence)
+- **Genre Patterns:** "Action,Sci-Fi" → Movies library (78% confidence)
+- **Certification Patterns:** "PG-13" → Family library (88% confidence)
+
+#### Reinforcement Learning
+Patterns automatically learn from user corrections and adjust their confidence:
+
+**Confidence Adjustment:**
+- **Correct prediction:** +5% confidence boost (capped at 95%)
+- **Incorrect prediction:** -5% confidence decay
+- **Auto-deprecation:** Patterns below 30% confidence are automatically marked as "decayed"
+
+**Conflict Resolution:**
+- When multiple patterns suggest different libraries for the same criteria, the system keeps the highest-confidence pattern
+- Conflicts can be resolved manually or automatically via the UI
+
+**Example Evolution:**
+```
+Day 1:  Studio "Warner Bros" → Movies (70% confidence, 5 samples)
+Day 30: Studio "Warner Bros" → Movies (85% confidence, 20 correct predictions)
+Day 60: Studio "Warner Bros" → Movies (90% confidence, 40 correct, 2 incorrect)
+```
+
+#### Pattern Management UI
+New comprehensive UI in **Settings → AI & Data → Patterns**:
+
+**Dashboard Features:**
+- Summary statistics (total patterns, approved, suggested, conflicts, avg confidence)
+- Pattern list table with:
+  - Filter by status (discovered, approved, rejected, decayed)
+  - Filter by type (studio, franchise, genre, certification)
+  - Filter by minimum confidence
+  - Search by pattern value
+- Pattern approval/rejection/deletion
+- Conflict resolution (one-click to resolve all conflicts)
+- Manual pattern discovery trigger
+
+**Pattern Detail Modal:**
+- Pattern information (type, library, confidence, match count)
+- Accuracy statistics:
+  - Total uses
+  - Correct predictions
+  - Incorrect predictions
+  - Accuracy percentage
+- Recent match history (last 20 classifications)
+
+**Cost Dashboard:**
+- Track AI calls avoided due to high-confidence patterns
+- View estimated monthly cost savings
+- Monitor pattern effectiveness
+
+### 💰 Cost Optimization
+
+**AI API Call Reduction:**
+- High-confidence patterns (≥90%) skip AI calls entirely
+- Expected **60-85% reduction** in monthly AI costs for established users
+- Pattern discovery is pure data analysis (zero AI cost)
+- Only uncertain cases require AI validation
+
+**Configurable Thresholds:**
+- AI skip threshold (default: 90%, configurable 0-100%)
+- Pattern vs rule priority (default: rules first)
+- Enable/disable pattern system entirely
+
+### 🔧 Technical Improvements
+
+**Backend Services:**
+- `patternSignalCollector.js` - Collects and ranks pattern signals by confidence
+- `patternReinforcementService.js` - Implements reinforcement learning and conflict resolution
+- Signal integration - Patterns prioritized early in classification flow
+- Classification hooks - Automatic reinforcement on accept/correction
+
+**API Routes:**
+- `GET /api/patterns` - List patterns with filtering and pagination
+- `GET /api/patterns/:id` - Get pattern details with accuracy stats
+- `PUT /api/patterns/:id/approve` - Approve pattern
+- `PUT /api/patterns/:id/reject` - Reject pattern
+- `DELETE /api/patterns/:id` - Delete pattern
+- `POST /api/patterns/resolve-conflicts` - Auto-resolve conflicts
+- `POST /api/patterns/discover` - Manual pattern discovery
+- `GET /api/patterns/summary` - Statistics summary
+- `GET /api/patterns/config` - Get configuration
+- `PUT /api/patterns/config` - Update configuration
+
+**Performance Optimizations:**
+- Fixed N+1 query problem in studio and franchise pattern collection
+- Batch database queries using PostgreSQL's ANY() operator
+- O(1) pattern lookups using Map data structures
+- Optimized signal collection with early returns
+
+**Input Validation:**
+- All route parameters validated (ID, pagination, confidence ranges)
+- Pattern configuration validated (priority must be 'rules_first' or 'patterns_first')
+- AI skip threshold validated (0-100%)
+- Pagination limits enforced (max 100 per page)
+
+**Error Handling:**
+- Pattern reinforcement errors now logged for debugging
+- Graceful fallback when patterns disabled or unavailable
+- Non-blocking async pattern updates
+
+### 📊 Database Changes
+
+**Migration 040:**
+- `ai_provider_config.pattern_mining_enabled` (BOOLEAN, default false)
+- `ai_provider_config.pattern_rule_priority` (VARCHAR, default 'rules_first')
+- `ai_provider_config.pattern_ai_skip_threshold` (INTEGER, default 90)
+- `ai_provider_config.pattern_notification_dismissed` (BOOLEAN, default false)
+- `pattern_match_log.was_correct` (BOOLEAN) - For accuracy tracking
+
+### 🧪 Testing
+
+**Test Coverage:**
+- 26 unit tests for pattern services
+- Integration tests for signal collection
+- Edge case coverage (disabled patterns, conflicts, validation)
+- All 365 server tests passing
+- All 3 client tests passing
+- CodeQL security scan: 0 vulnerabilities
+
+### 🎯 Migration Guide
+
+**For Existing Users:**
+1. Upgrade to v0.36.0-alpha
+2. Pattern discovery runs automatically in background (if history exists)
+3. Optional: Enable pattern-based classification in Settings → AI & Data → Patterns
+4. Optional: Review and approve discovered patterns
+5. Optional: Adjust AI skip threshold and rule/pattern priority
+
+**Backward Compatibility:**
+- ✅ Pattern system is opt-in (disabled by default)
+- ✅ No changes to existing classification behavior
+- ✅ All custom rules remain functional
+- ✅ Patterns can be disabled without data loss
+- ✅ Zero breaking changes
+
+### 📝 Configuration Example
+
+```sql
+-- Enable pattern-based classification
+UPDATE ai_provider_config 
+SET pattern_mining_enabled = true,
+    pattern_rule_priority = 'patterns_first',  -- Patterns take precedence
+    pattern_ai_skip_threshold = 85             -- Skip AI at 85%+ confidence
+WHERE id = 1;
+```
+
+### 🔍 How to Use
+
+1. **Enable Pattern Mining:**
+   - Go to Settings → AI & Data → Patterns
+   - Toggle "Enable Pattern-Based Classification"
+
+2. **Discover Patterns:**
+   - Click "Discover New Patterns" (or wait for automatic discovery)
+   - Review suggested patterns in the table
+
+3. **Manage Patterns:**
+   - Approve high-quality patterns
+   - Reject incorrect patterns
+   - Delete obsolete patterns
+   - Resolve conflicts with one click
+
+4. **Monitor Performance:**
+   - View accuracy statistics in pattern details
+   - Track AI calls avoided in cost dashboard
+   - Adjust confidence thresholds as needed
+
+### 🐛 Fixes
+- Fixed Vue component import paths (build failure resolved)
+- Fixed N+1 query problem in pattern signal collection
+- Fixed route ordering to prevent routing conflicts
+- Added missing error logging for pattern reinforcement
+
+---
+
 ## v0.35.1-alpha
 **Title: Hotfix - Build Fix**
 

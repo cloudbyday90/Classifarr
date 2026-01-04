@@ -21,6 +21,8 @@ const db = require('../config/database');
 const classificationService = require('../services/classification');
 const reclassificationService = require('../services/reclassificationService');
 const clarificationService = require('../services/clarificationService');
+const patternReinforcementService = require('../services/patternReinforcementService');
+const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector');
 
 const router = express.Router();
 
@@ -228,6 +230,37 @@ router.post('/corrections', async (req, res) => {
        ON CONFLICT DO NOTHING`,
       [tmdb_id, corrected_library_id, 'exact_match', metadata, 100.00]
     );
+
+    // Pattern reinforcement - async, don't wait
+    setImmediate(async () => {
+      try {
+        // Get pattern signals from classification
+        const signalsResult = await db.query(
+          'SELECT signals_json FROM classification_history WHERE id = $1',
+          [classification_id]
+        );
+        
+        if (signalsResult.rows.length > 0 && signalsResult.rows[0].signals_json) {
+          const signals = signalsResult.rows[0].signals_json;
+          // Use shared constant for filtering pattern signals
+          const patternSignals = signals.filter(s => s.type && PATTERN_SIGNAL_TYPES.includes(s.type));
+          
+          if (patternSignals.length > 0) {
+            await patternReinforcementService.reinforceOnCorrection(
+              classification_id,
+              patternSignals,
+              corrected_library_id
+            );
+          }
+        }
+      } catch (error) {
+        // Log error for debugging but don't fail the request
+        logger.error('Pattern reinforcement failed for classification', {
+          classification_id,
+          error: error.message
+        });
+      }
+    });
 
     res.json(correctionResult.rows[0]);
   } catch (error) {

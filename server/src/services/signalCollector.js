@@ -9,6 +9,7 @@
 const db = require('../config/database');
 const tmdbService = require('./tmdb');
 const { createLogger } = require('../utils/logger');
+const patternSignalCollector = require('./patternSignalCollector');
 
 const logger = createLogger('SignalCollector');
 
@@ -16,6 +17,10 @@ const logger = createLogger('SignalCollector');
  * Signal types that can be collected during classification
  */
 const SIGNAL_TYPES = {
+    PATTERN_STUDIO: 'pattern_studio',            // Pattern from studio analysis
+    PATTERN_FRANCHISE: 'pattern_franchise',      // Pattern from franchise analysis
+    PATTERN_GENRE: 'pattern_genre',              // Pattern from genre combination
+    PATTERN_CERTIFICATION: 'pattern_certification', // Pattern from certification
     SOURCE_LIBRARY: 'source_library',        // Item came from known Plex library
     MANUAL_CORRECTION: 'manual_correction',  // User previously corrected this TMDB ID
     EVENT_DETECTION: 'event_detection',      // Holiday/sports/special content detected
@@ -29,6 +34,16 @@ const SIGNAL_TYPES = {
     GENRE_MATCH: 'genre_match',              // Genre-based matching
     SEMANTIC_SIMILARITY: 'semantic_similarity', // RAG-based similar item matching
 };
+
+/**
+ * Pattern signal types for filtering
+ */
+const PATTERN_SIGNAL_TYPES = [
+    SIGNAL_TYPES.PATTERN_STUDIO,
+    SIGNAL_TYPES.PATTERN_FRANCHISE,
+    SIGNAL_TYPES.PATTERN_GENRE,
+    SIGNAL_TYPES.PATTERN_CERTIFICATION
+];
 
 /**
  * SignalCollector - Aggregates all classification signals without early exits
@@ -85,6 +100,13 @@ class SignalCollector {
      */
     getSignalsByType(type) {
         return this.signals.filter(s => s.type === type);
+    }
+
+    /**
+     * Get all pattern signals
+     */
+    getPatternSignals() {
+        return this.signals.filter(s => PATTERN_SIGNAL_TYPES.includes(s.type));
     }
 
     /**
@@ -244,7 +266,29 @@ class SignalCollector {
             }
         }
 
-        // 3. Event Detection Signal (holidays, sports, etc.)
+        // 3. Pattern-Based Signals (from discovered patterns)
+        // Collect pattern signals early in the process for high-confidence matches
+        const patternSignals = await patternSignalCollector.collectSignals(metadata, 50);
+        if (patternSignals && patternSignals.length > 0) {
+            for (const patternSignal of patternSignals) {
+                // Use pattern's confidence as raw score
+                this.addSignal(
+                    patternSignal.type,
+                    {
+                        pattern_id: patternSignal.pattern_id,
+                        pattern_type: patternSignal.pattern_type,
+                        pattern_value: patternSignal.pattern_value,
+                        sample_size: patternSignal.sample_size,
+                        status: patternSignal.status
+                    },
+                    patternSignal.confidence,
+                    patternSignal.library
+                );
+            }
+            logger.debug('Added pattern signals', { count: patternSignals.length });
+        }
+
+        // 4. Event Detection Signal (holidays, sports, etc.)
         if (detectors.detectEventContent) {
             const eventMatch = await detectors.detectEventContent(metadata, libraries);
             if (eventMatch) {
@@ -256,7 +300,7 @@ class SignalCollector {
             }
         }
 
-        // 4. Custom Rule Signals (library rules)
+        // 5. Custom Rule Signals (library rules)
         if (detectors.checkLibraryRules) {
             const ruleMatch = await detectors.checkLibraryRules(metadata, libraries);
             if (ruleMatch) {
@@ -268,7 +312,7 @@ class SignalCollector {
             }
         }
 
-        // 5. Existing Media Signal
+        // 6. Existing Media Signal
         if (detectors.findExistingMedia) {
             const existing = await detectors.findExistingMedia(metadata.tmdb_id, metadata.media_type);
             if (existing) {
@@ -281,7 +325,7 @@ class SignalCollector {
             }
         }
 
-        // 6. Content Analysis Signal
+        // 7. Content Analysis Signal
         if (detectors.analyzeContent) {
             const analysis = await detectors.analyzeContent(metadata);
             if (analysis?.bestMatch) {
@@ -295,7 +339,7 @@ class SignalCollector {
             }
         }
 
-        // 7. Exact Match Signal
+        // 8. Exact Match Signal
         if (detectors.checkExactMatch) {
             const exactMatch = await detectors.checkExactMatch(metadata.tmdb_id);
             if (exactMatch) {
@@ -308,7 +352,7 @@ class SignalCollector {
             }
         }
 
-        // 8. Learned Pattern Signal
+        // 9. Learned Pattern Signal
         if (detectors.checkLearnedPatterns) {
             const pattern = await detectors.checkLearnedPatterns(metadata);
             if (pattern && pattern.confidence >= 50) { // Lower threshold - let AI decide
@@ -322,7 +366,7 @@ class SignalCollector {
             }
         }
 
-        // 9. Collection/Franchise Signal
+        // 10. Collection/Franchise Signal
         const franchise = await this.checkFranchiseMembership(metadata.tmdb_id, metadata.media_type);
         if (franchise) {
             const relatedItems = await this.findRelatedClassifiedItems(franchise.collectionId);
@@ -348,7 +392,7 @@ class SignalCollector {
             }
         }
 
-        // 10. Legacy Rule Matching (matchRules)
+        // 11. Legacy Rule Matching (matchRules)
         if (detectors.matchRules) {
             const legacyMatch = await detectors.matchRules(metadata, libraries);
             if (legacyMatch && legacyMatch.confidence >= 50) { // Lower threshold
@@ -382,6 +426,18 @@ class SignalCollector {
             let line = `• ${signal.type}: `;
 
             switch (signal.type) {
+                case SIGNAL_TYPES.PATTERN_STUDIO:
+                    line += `Studio pattern "${signal.data.pattern_value}" → "${signal.library?.name}" (${signal.rawScore}% confidence)`;
+                    break;
+                case SIGNAL_TYPES.PATTERN_FRANCHISE:
+                    line += `Franchise pattern "${signal.data.pattern_value}" → "${signal.library?.name}" (${signal.rawScore}% confidence)`;
+                    break;
+                case SIGNAL_TYPES.PATTERN_GENRE:
+                    line += `Genre pattern "${signal.data.pattern_value}" → "${signal.library?.name}" (${signal.rawScore}% confidence)`;
+                    break;
+                case SIGNAL_TYPES.PATTERN_CERTIFICATION:
+                    line += `Certification pattern "${signal.data.pattern_value}" → "${signal.library?.name}" (${signal.rawScore}% confidence)`;
+                    break;
                 case SIGNAL_TYPES.SOURCE_LIBRARY:
                     line += `Already in "${signal.data.sourceLibraryName}" library (from Plex)`;
                     break;
@@ -414,4 +470,5 @@ class SignalCollector {
 module.exports = {
     SignalCollector,
     SIGNAL_TYPES,
+    PATTERN_SIGNAL_TYPES,
 };
