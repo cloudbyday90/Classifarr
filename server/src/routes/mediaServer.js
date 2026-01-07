@@ -251,6 +251,11 @@ router.post('/sync', async (req, res) => {
         'DELETE FROM library_pattern_suggestions WHERE library_id = ANY($1)',
         [libraryIds]
       );
+      // Delete classification history (FK to libraries)
+      await client.query(
+        'DELETE FROM classification_history WHERE library_id = ANY($1)',
+        [libraryIds]
+      );
       await client.query(
         'DELETE FROM scheduled_tasks WHERE library_id = ANY($1)',
         [libraryIds]

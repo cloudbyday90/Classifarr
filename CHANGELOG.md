@@ -10,9 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **CI/CD Pipeline:** Fixed 77+ consecutive test failures in `mediaServer.test.js`
 - **Test Mocks:** Updated test mocks to match cascading delete query sequence from v0.36.1 and v0.36.2
-- **Classification History FK Constraint:** Fixed violation when library is deleted during task processing
-  - Queue tasks now verify library exists before inserting into `classification_history`
-  - Prevents error: `violates foreign key constraint "classification_history_library_id_fkey"`
+- **Classification History FK (Insert):** Fixed violation when library is deleted during task processing (Queue tasks verify library exists)
+- **Classification History FK (Delete):** Fixed violation when clearing libraries during sync (Clear history before libraries)
 - All 377 tests now passing (added 1 new regression test)
 
 ## [0.36.2-alpha] - 2026-01-07
@@ -247,6 +246,7 @@ Introduces the core AI classification engine using Retrieval-Augmented Generatio
 
 ---
 
+[0.36.3-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.36.2-alpha...v0.36.3-alpha
 [0.36.2-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.36.1-alpha...v0.36.2-alpha
 [0.36.1-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.36.0-alpha...v0.36.1-alpha
 [0.36.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.35.0-alpha...v0.36.0-alpha

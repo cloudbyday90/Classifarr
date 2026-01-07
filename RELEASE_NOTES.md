@@ -6,11 +6,14 @@
   - Root cause: Test mocks didn't account for cascading delete queries added in v0.36.1 and v0.36.2
   - Updated test mocks to include all 11 cascading delete operations for FK constraint handling
   - Tests `should DELETE existing libraries before inserting new ones` and `should handle sync after Plex database rebuild` now pass
-- **Classification History FK Constraint:** Fixed FK constraint violation when inserting into `classification_history` after library deletion
+- **Classification History FK Constraint (Insert):** Fixed FK constraint violation when inserting into `classification_history` after library deletion
   - Error: `insert or update on table "classification_history" violates foreign key constraint "classification_history_library_id_fkey"`
   - Root cause: Queue tasks attempted to insert with library_id that was deleted during sync
   - Solution: Verify library exists before inserting into classification_history, skip insert if library was deleted
   - Added regression test to prevent reintroduction of this bug
+- **Classification History FK Constraint (Delete):** Fixed FK constraint violation when deleting libraries during sync
+  - Error: `update or delete on table "libraries" violates foreign key constraint "classification_history_library_id_fkey"`
+  - Solution: `classification_history` is now cleared before `libraries` during sync
 - **All Tests Passing:** 377 tests in the test suite now passing (added 1 new regression test)
 
 ---
