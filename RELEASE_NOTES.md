@@ -1,3 +1,15 @@
+## v0.36.3-alpha
+**Title: Hotfix - CI/CD Pipeline Test Failures**
+
+### Fixes
+- **Test Mock Sequence Fix:** Fixed failing tests in `mediaServer.test.js` that were causing 77+ consecutive CI/CD pipeline failures
+  - Root cause: Test mocks didn't account for cascading delete queries added in v0.36.1 and v0.36.2
+  - Updated test mocks to include all 11 cascading delete operations for FK constraint handling
+  - Tests `should DELETE existing libraries before inserting new ones` and `should handle sync after Plex database rebuild` now pass
+  - All 376 tests in the test suite now passing
+
+---
+
 ## v0.36.2-alpha
 **Title: Hotfix - OMDb Log Spam & Task Queue Cleanup**
 

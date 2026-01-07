@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.3-alpha] - 2026-01-07
+
+### Fixed
+- **CI/CD Pipeline:** Fixed 77+ consecutive test failures in `mediaServer.test.js`
+- **Test Mocks:** Updated test mocks to match cascading delete query sequence from v0.36.1 and v0.36.2
+- All 376 tests now passing
+
 ## [0.36.2-alpha] - 2026-01-07
 
 ### Fixed
