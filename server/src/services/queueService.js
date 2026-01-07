@@ -26,6 +26,7 @@ class QueueService {
         this.running = false;
         this.processing = 0;
         this.aiAvailable = true;
+        this.omdbLimitHit = false; // Track if OMDb limit hit to prevent log spam
     }
 
     /**
@@ -291,105 +292,111 @@ class QueueService {
                     // ========== OMDb ENRICHMENT (PRIMARY) ==========
                     // OMDb provides structured data: content rating, genre, IMDB rating
                     // This is the PREFERRED source - runs first
-                    try {
-                        const omdbConfig = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
+                    // Skip if daily limit already hit (flag set from previous 401/limit error)
+                    if (!this.omdbLimitHit) {
+                        try {
+                            const omdbConfig = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
 
-                        if (omdbConfig.rows.length > 0 && omdbConfig.rows[0].api_key) {
-                            const omdbService = require('./omdb');
-                            const omdbApiKey = omdbConfig.rows[0].api_key;
+                            if (omdbConfig.rows.length > 0 && omdbConfig.rows[0].api_key) {
+                                const omdbService = require('./omdb');
+                                const omdbApiKey = omdbConfig.rows[0].api_key;
 
-                            // For TV shows, only query the main show, not episodes
-                            const mediaType = enrichPayload.media?.media_type || 'movie';
+                                // For TV shows, only query the main show, not episodes
+                                const mediaType = enrichPayload.media?.media_type || 'movie';
 
-                            logger.info('OMDb lookup', { title: enrichPayload.title, type: mediaType });
+                                logger.info('OMDb lookup', { title: enrichPayload.title, type: mediaType });
 
-                            const omdbResult = await omdbService.getByTitle(
-                                enrichPayload.title,
-                                enrichPayload.year,
-                                mediaType,
-                                omdbApiKey
-                            );
+                                const omdbResult = await omdbService.getByTitle(
+                                    enrichPayload.title,
+                                    enrichPayload.year,
+                                    mediaType,
+                                    omdbApiKey
+                                );
 
-                            if (omdbResult) {
-                                enrichmentData.omdb = {
-                                    fetched_at: new Date().toISOString(),
-                                    data: omdbResult
-                                };
+                                if (omdbResult) {
+                                    enrichmentData.omdb = {
+                                        fetched_at: new Date().toISOString(),
+                                        data: omdbResult
+                                    };
 
-                                // Extract classification-relevant data for easier access
-                                enrichmentData.content_analysis = {
-                                    ...enrichmentData.content_analysis,
-                                    omdb_rated: omdbResult.rated,
-                                    omdb_genre: omdbResult.genre,
-                                    omdb_imdb_rating: omdbResult.imdbRating,
-                                    is_animation: omdbResult.genre?.toLowerCase().includes('animation'),
-                                    is_documentary: omdbResult.genre?.toLowerCase().includes('documentary'),
-                                    is_family: omdbResult.genre?.toLowerCase().includes('family'),
-                                    is_kids: ['G', 'TV-G', 'TV-Y', 'TV-Y7'].includes(omdbResult.rated),
-                                    is_adult: ['R', 'NC-17', 'TV-MA'].includes(omdbResult.rated)
-                                };
+                                    // Extract classification-relevant data for easier access
+                                    enrichmentData.content_analysis = {
+                                        ...enrichmentData.content_analysis,
+                                        omdb_rated: omdbResult.rated,
+                                        omdb_genre: omdbResult.genre,
+                                        omdb_imdb_rating: omdbResult.imdbRating,
+                                        is_animation: omdbResult.genre?.toLowerCase().includes('animation'),
+                                        is_documentary: omdbResult.genre?.toLowerCase().includes('documentary'),
+                                        is_family: omdbResult.genre?.toLowerCase().includes('family'),
+                                        is_kids: ['G', 'TV-G', 'TV-Y', 'TV-Y7'].includes(omdbResult.rated),
+                                        is_adult: ['R', 'NC-17', 'TV-MA'].includes(omdbResult.rated)
+                                    };
 
-                                logger.info('OMDb enrichment successful', {
-                                    title: enrichPayload.title,
-                                    rated: omdbResult.rated,
-                                    genre: omdbResult.genre
-                                });
-                            } else if (enrichPayload.itemId) {
-                                // OMDb returned no result - queue for Tavily fallback
-                                try {
-                                    const enrichmentRetryService = require('./enrichmentRetryService');
-                                    await enrichmentRetryService.queueForRetry(
-                                        enrichPayload.itemId,
-                                        'tavily',
-                                        'OMDb not found',
-                                        5
-                                    );
-                                    logger.debug('Queued item for Tavily fallback', { title: enrichPayload.title });
-                                } catch (retryErr) {
-                                    logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                    logger.info('OMDb enrichment successful', {
+                                        title: enrichPayload.title,
+                                        rated: omdbResult.rated,
+                                        genre: omdbResult.genre
+                                    });
+                                } else if (enrichPayload.itemId) {
+                                    // OMDb returned no result - queue for Tavily fallback
+                                    try {
+                                        const enrichmentRetryService = require('./enrichmentRetryService');
+                                        await enrichmentRetryService.queueForRetry(
+                                            enrichPayload.itemId,
+                                            'tavily',
+                                            'OMDb not found',
+                                            5
+                                        );
+                                        logger.debug('Queued item for Tavily fallback', { title: enrichPayload.title });
+                                    } catch (retryErr) {
+                                        logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                    }
                                 }
                             }
+                        } catch (omdbError) {
+                            if (omdbError.name === 'OMDbLimitReachedError' ||
+                                (omdbError.message && omdbError.message.includes('Limit Reached'))) {
+
+                                // Only log once per session since limit won't reset until next day
+                                if (!this.omdbLimitHit) {
+                                    logger.warn('OMDb daily limit reached - skipping OMDb enrichment until API resets', { error: omdbError.message });
+                                    this.omdbLimitHit = true;
+                                }
+
+                                // Queue for Tavily fallback when OMDb limit reached
+                                if (enrichPayload.itemId) {
+                                    try {
+                                        const enrichmentRetryService = require('./enrichmentRetryService');
+                                        await enrichmentRetryService.queueForRetry(
+                                            enrichPayload.itemId,
+                                            'tavily',
+                                            'OMDb limit reached',
+                                            3 // Higher priority since it's a quota issue
+                                        );
+                                    } catch (retryErr) {
+                                        logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                    }
+                                }
+                            } else {
+                                logger.warn('OMDb enrichment failed', { error: omdbError.message });
+                                // Queue for Tavily fallback on other errors
+                                if (enrichPayload.itemId) {
+                                    try {
+                                        const enrichmentRetryService = require('./enrichmentRetryService');
+                                        await enrichmentRetryService.queueForRetry(
+                                            enrichPayload.itemId,
+                                            'tavily',
+                                            `OMDb error: ${omdbError.message?.substring(0, 100)}`,
+                                            7
+                                        );
+                                    } catch (retryErr) {
+                                        logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                    }
+                                }
+                            }
+                            // Continue without OMDb data
                         }
-                    } catch (omdbError) {
-                        if (omdbError.name === 'OMDbLimitReachedError' ||
-                            (omdbError.message && omdbError.message.includes('Limit Reached'))) {
-
-                            logger.warn('OMDb daily limit reached - Queue will skip OMDb enrichment', { error: omdbError.message });
-
-                            // Queue for Tavily fallback when OMDb limit reached
-                            if (enrichPayload.itemId) {
-                                try {
-                                    const enrichmentRetryService = require('./enrichmentRetryService');
-                                    await enrichmentRetryService.queueForRetry(
-                                        enrichPayload.itemId,
-                                        'tavily',
-                                        'OMDb limit reached',
-                                        3 // Higher priority since it's a quota issue
-                                    );
-                                } catch (retryErr) {
-                                    logger.debug('Failed to queue for retry', { error: retryErr.message });
-                                }
-                            }
-                        } else {
-                            logger.warn('OMDb enrichment failed', { error: omdbError.message });
-                            // Queue for Tavily fallback on other errors
-                            if (enrichPayload.itemId) {
-                                try {
-                                    const enrichmentRetryService = require('./enrichmentRetryService');
-                                    await enrichmentRetryService.queueForRetry(
-                                        enrichPayload.itemId,
-                                        'tavily',
-                                        `OMDb error: ${omdbError.message?.substring(0, 100)}`,
-                                        7
-                                    );
-                                } catch (retryErr) {
-                                    logger.debug('Failed to queue for retry', { error: retryErr.message });
-                                }
-                            }
-                        }
-                        // Continue without OMDb data
-                    }
-
+                    } // end if (!this.omdbLimitHit)
                     // ========== TAVILY ENRICHMENT (SECONDARY) ==========
                     // Tavily provides: content advisory, reviews, holiday detection, anime info
                     // This supplements OMDb with web-scraped content
