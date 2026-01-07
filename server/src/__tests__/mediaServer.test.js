@@ -213,8 +213,28 @@ describe('Media Server API', () => {
                     api_key: 'test-key'
                 }]
             });
-            // Mock: DELETE existing libraries (3 were cleared)
-            mockClient.query.mockResolvedValueOnce({ rowCount: 3, rows: [{ id: 10 }, { id: 11 }, { id: 12 }] });
+            // Mock: SELECT library IDs to delete
+            mockClient.query.mockResolvedValueOnce({ 
+                rows: [{ id: 10 }, { id: 11 }, { id: 12 }] 
+            });
+            // Mock: DELETE FROM media_server_sync_status
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM enrichment_retry_queue
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM media_server_items
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM media_server_collections
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM library_labels
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM library_pattern_suggestions
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM scheduled_tasks
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM task_queue
+            mockClient.query.mockResolvedValueOnce({ rowCount: 5 });
+            // Mock: DELETE FROM libraries
+            mockClient.query.mockResolvedValueOnce({ rowCount: 3 });
             // Mock: INSERT library 1
             mockClient.query.mockResolvedValueOnce({
                 rows: [{ id: 1, name: 'Movies', media_type: 'movie', external_id: 'lib-1' }]
@@ -272,8 +292,28 @@ describe('Media Server API', () => {
                     api_key: 'test-key'
                 }]
             });
-            // Mock: DELETE existing libraries (1 old library with OLD-lib-uuid-1)
-            mockClient.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 99 }] });
+            // Mock: SELECT library IDs to delete (1 old library with OLD-lib-uuid-1)
+            mockClient.query.mockResolvedValueOnce({ 
+                rows: [{ id: 99 }] 
+            });
+            // Mock: DELETE FROM media_server_sync_status
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM enrichment_retry_queue
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM media_server_items
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM media_server_collections
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM library_labels
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM library_pattern_suggestions
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM scheduled_tasks
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM task_queue
+            mockClient.query.mockResolvedValueOnce({ rowCount: 2 });
+            // Mock: DELETE FROM libraries
+            mockClient.query.mockResolvedValueOnce({ rowCount: 1 });
             // Mock: INSERT with new external_id (this would have failed before the fix!)
             mockClient.query.mockResolvedValueOnce({
                 rows: [{ id: 100, name: 'Movies', media_type: 'movie', external_id: 'NEW-lib-uuid-1' }]
