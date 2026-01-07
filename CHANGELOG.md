@@ -10,7 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **CI/CD Pipeline:** Fixed 77+ consecutive test failures in `mediaServer.test.js`
 - **Test Mocks:** Updated test mocks to match cascading delete query sequence from v0.36.1 and v0.36.2
-- All 376 tests now passing
+- **Classification History FK Constraint:** Fixed violation when library is deleted during task processing
+  - Queue tasks now verify library exists before inserting into `classification_history`
+  - Prevents error: `violates foreign key constraint "classification_history_library_id_fkey"`
+- All 377 tests now passing (added 1 new regression test)
 
 ## [0.36.2-alpha] - 2026-01-07
 

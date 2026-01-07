@@ -1,12 +1,17 @@
 ## v0.36.3-alpha
-**Title: Hotfix - CI/CD Pipeline Test Failures**
+**Title: Hotfix - CI/CD Pipeline Test Failures & FK Constraint Violation**
 
 ### Fixes
 - **Test Mock Sequence Fix:** Fixed failing tests in `mediaServer.test.js` that were causing 77+ consecutive CI/CD pipeline failures
   - Root cause: Test mocks didn't account for cascading delete queries added in v0.36.1 and v0.36.2
   - Updated test mocks to include all 11 cascading delete operations for FK constraint handling
   - Tests `should DELETE existing libraries before inserting new ones` and `should handle sync after Plex database rebuild` now pass
-  - All 376 tests in the test suite now passing
+- **Classification History FK Constraint:** Fixed FK constraint violation when inserting into `classification_history` after library deletion
+  - Error: `insert or update on table "classification_history" violates foreign key constraint "classification_history_library_id_fkey"`
+  - Root cause: Queue tasks attempted to insert with library_id that was deleted during sync
+  - Solution: Verify library exists before inserting into classification_history, skip insert if library was deleted
+  - Added regression test to prevent reintroduction of this bug
+- **All Tests Passing:** 377 tests in the test suite now passing (added 1 new regression test)
 
 ---
 
