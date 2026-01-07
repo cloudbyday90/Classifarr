@@ -272,6 +272,9 @@ describe('Enrichment Pipeline Integration', () => {
                 if (query.includes('SELECT 1 FROM classification_history')) {
                     return Promise.resolve({ rows: [] }); // No existing entry
                 }
+                if (query.includes('SELECT 1 FROM libraries WHERE id')) {
+                    return Promise.resolve({ rows: [{ id: 1 }] }); // Library exists
+                }
                 return Promise.resolve({ rows: [] });
             });
 
@@ -320,6 +323,9 @@ describe('Enrichment Pipeline Integration', () => {
                 if (query.includes('SELECT 1 FROM classification_history')) {
                     return Promise.resolve({ rows: [] });
                 }
+                if (query.includes('SELECT 1 FROM libraries WHERE id')) {
+                    return Promise.resolve({ rows: [{ id: 1 }] }); // Library exists
+                }
                 return Promise.resolve({ rows: [] });
             });
 
@@ -363,6 +369,9 @@ describe('Enrichment Pipeline Integration', () => {
                 if (query.includes('omdb_config') || query.includes('tavily_config')) {
                     return Promise.resolve({ rows: [] });
                 }
+                if (query.includes('SELECT 1 FROM libraries WHERE id')) {
+                    return Promise.resolve({ rows: [{ id: 1 }] }); // Library exists
+                }
                 if (query.includes('SELECT 1 FROM classification_history')) {
                     // Return existing entry
                     return Promise.resolve({ rows: [{ id: 1 }] });
@@ -377,6 +386,53 @@ describe('Enrichment Pipeline Integration', () => {
             await queueService.processTask(task);
 
             // Should NOT insert duplicate
+            expect(classificationInsertCalled).not.toHaveBeenCalled();
+        });
+
+        it('should skip classification_history insert when library was deleted during sync', async () => {
+            // REGRESSION TEST: Prevents FK constraint violation when library is deleted during task processing
+            // This scenario occurs when libraries are re-synced while tasks are queued
+            const taskPayload = {
+                title: 'Movie from Deleted Library',
+                year: 2024,
+                tmdb_id: 99999,
+                source_library_id: 999, // This library will be "deleted"
+                source_library_name: 'Deleted Movies',
+                itemId: 700,
+                media: { media_type: 'movie' }
+            };
+
+            const task = {
+                id: 8,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify(taskPayload),
+                attempts: 0,
+                max_attempts: 3
+            };
+
+            const classificationInsertCalled = jest.fn();
+
+            db.query.mockImplementation((query) => {
+                if (query.includes('omdb_config') || query.includes('tavily_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('SELECT 1 FROM libraries WHERE id')) {
+                    // Library does NOT exist (was deleted during sync)
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('SELECT 1 FROM classification_history')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('INSERT INTO classification_history')) {
+                    classificationInsertCalled();
+                    return Promise.resolve({ rows: [] });
+                }
+                return Promise.resolve({ rows: [] });
+            });
+
+            await queueService.processTask(task);
+
+            // Should NOT attempt to insert when library doesn't exist (prevents FK constraint violation)
             expect(classificationInsertCalled).not.toHaveBeenCalled();
         });
     });

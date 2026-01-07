@@ -593,40 +593,54 @@ class QueueService {
                         // This is 100% confidence from source library - NO AI analysis
                         // Now logs ALL items with a library ID (TMDB optional for visibility)
                         if (enrichSourceLibraryId) {
-                            // Check for duplicates using itemId OR tmdb_id (handle both cases)
-                            const existingEntry = enrichTmdbId
-                                ? await db.query(
-                                    `SELECT 1 FROM classification_history 
-                                     WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
-                                    [enrichTmdbId, enrichSourceLibraryId]
-                                )
-                                : await db.query(
-                                    `SELECT 1 FROM classification_history 
-                                     WHERE title = $1 AND library_id = $2 AND method = 'source_library' AND tmdb_id IS NULL LIMIT 1`,
-                                    [enrichPayload.title, enrichSourceLibraryId]
-                                );
+                            // Verify library still exists before inserting (may have been deleted during sync)
+                            const libraryExists = await db.query(
+                                `SELECT 1 FROM libraries WHERE id = $1 LIMIT 1`,
+                                [enrichSourceLibraryId]
+                            );
 
-                            if (existingEntry.rows.length === 0) {
-                                await db.query(
-                                    `INSERT INTO classification_history (
-                                        tmdb_id, media_type, title, year, library_id, status, 
-                                        confidence, method, reason, metadata
-                                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-                                    [
-                                        enrichTmdbId || null,  // Now allows NULL
-                                        enrichPayload.media?.media_type || 'movie',
-                                        enrichPayload.title,
-                                        enrichPayload.year,
-                                        enrichSourceLibraryId,
-                                        'completed',
-                                        100, // 100% confidence from source
-                                        'source_library', // Method is source_library, not AI
-                                        enrichTmdbId
-                                            ? `Already in library: ${enrichSourceLibraryName}`
-                                            : `Already in library: ${enrichSourceLibraryName} (no TMDB match)`,
-                                        JSON.stringify(enrichPayload)
-                                    ]
-                                );
+                            if (libraryExists.rows.length > 0) {
+                                // Check for duplicates using itemId OR tmdb_id (handle both cases)
+                                const existingEntry = enrichTmdbId
+                                    ? await db.query(
+                                        `SELECT 1 FROM classification_history 
+                                         WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
+                                        [enrichTmdbId, enrichSourceLibraryId]
+                                    )
+                                    : await db.query(
+                                        `SELECT 1 FROM classification_history 
+                                         WHERE title = $1 AND library_id = $2 AND method = 'source_library' AND tmdb_id IS NULL LIMIT 1`,
+                                        [enrichPayload.title, enrichSourceLibraryId]
+                                    );
+
+                                if (existingEntry.rows.length === 0) {
+                                    await db.query(
+                                        `INSERT INTO classification_history (
+                                            tmdb_id, media_type, title, year, library_id, status, 
+                                            confidence, method, reason, metadata
+                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                                        [
+                                            enrichTmdbId || null,  // Now allows NULL
+                                            enrichPayload.media?.media_type || 'movie',
+                                            enrichPayload.title,
+                                            enrichPayload.year,
+                                            enrichSourceLibraryId,
+                                            'completed',
+                                            100, // 100% confidence from source
+                                            'source_library', // Method is source_library, not AI
+                                            enrichTmdbId
+                                                ? `Already in library: ${enrichSourceLibraryName}`
+                                                : `Already in library: ${enrichSourceLibraryName} (no TMDB match)`,
+                                            JSON.stringify(enrichPayload)
+                                        ]
+                                    );
+                                }
+                            } else {
+                                logger.warn('Library deleted during task processing, skipping classification_history insert', {
+                                    libraryId: enrichSourceLibraryId,
+                                    taskId: task.id,
+                                    title: enrichPayload.title
+                                });
                             }
                         }
 
