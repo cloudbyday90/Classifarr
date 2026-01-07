@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.2-alpha] - 2026-01-07
+
+### Fixed
+- **OMDb Log Spam:** Limit warning now logs once per session, skips API calls when limit hit
+- **Task Queue Cleanup:** Pending tasks cleared on library re-sync to prevent failures
+- **Enrichment Retry Queue:** Cleared before media_server_items to prevent FK constraint violations
+
 ## [0.36.1-alpha] - 2026-01-07
 
 ### Fixed
@@ -230,6 +237,7 @@ Introduces the core AI classification engine using Retrieval-Augmented Generatio
 
 ---
 
+[0.36.2-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.36.1-alpha...v0.36.2-alpha
 [0.36.1-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.36.0-alpha...v0.36.1-alpha
 [0.36.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.35.0-alpha...v0.36.0-alpha
 [0.35.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.34.0-alpha...v0.35.0-alpha

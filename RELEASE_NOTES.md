@@ -1,3 +1,14 @@
+## v0.36.2-alpha
+**Title: Hotfix - OMDb Log Spam & Task Queue Cleanup**
+
+### Fixes
+- **OMDb Log Spam Fix:** OMDb daily limit warning now only logs once per session instead of on every queue task (was causing 26k+ duplicate error entries)
+- **Skip OMDb Calls When Limit Hit:** Once OMDb limit is reached, API calls are skipped entirely until service restart
+- **Task Queue Cleanup:** Pending/processing tasks are now cleared when libraries are re-synced, preventing failed task errors from old library IDs
+- **Enrichment Retry Queue Fix:** `enrichment_retry_queue` is now cleared before `media_server_items` to prevent foreign key constraint violations
+
+---
+
 ## v0.36.1-alpha
 **Title: Hotfix - Library Sync After Media Server Rebuild**
 

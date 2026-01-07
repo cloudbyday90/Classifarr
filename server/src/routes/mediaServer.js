@@ -227,6 +227,14 @@ router.post('/sync', async (req, res) => {
         'DELETE FROM media_server_sync_status WHERE library_id = ANY($1)',
         [libraryIds]
       );
+
+      // Delete enrichment_retry_queue entries BEFORE media_server_items (FK constraint)
+      await client.query(
+        `DELETE FROM enrichment_retry_queue 
+         WHERE media_item_id IN (SELECT id FROM media_server_items WHERE library_id = ANY($1))`,
+        [libraryIds]
+      );
+
       await client.query(
         'DELETE FROM media_server_items WHERE library_id = ANY($1)',
         [libraryIds]
