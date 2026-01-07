@@ -248,6 +248,14 @@ router.post('/sync', async (req, res) => {
         [libraryIds]
       );
 
+      // Clear pending queue tasks - they reference old library IDs that no longer exist
+      // This prevents tasks from failing repeatedly after library IDs change
+      const clearedTasks = await client.query(
+        `DELETE FROM task_queue WHERE status IN ('pending', 'processing') RETURNING id`
+      );
+      if (clearedTasks.rowCount > 0) {
+        console.log(`Cleared ${clearedTasks.rowCount} pending queue tasks referencing old libraries`);
+      }
       // Now delete the libraries
       await client.query(
         'DELETE FROM libraries WHERE media_server_id = $1',
