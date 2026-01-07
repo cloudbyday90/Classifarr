@@ -1,4 +1,18 @@
-## v0.36.0-alpha
+## v0.36.1-alpha
+**Title: Hotfix - Library Sync After Media Server Rebuild**
+
+### Fixes
+- **Library Sync Fix:** Fixed "duplicate key value violates unique constraint" error when syncing libraries after a Plex/Emby/Jellyfin database rebuild
+  - Root cause: When media server database is rebuilt, library external IDs change while names stay the same
+  - Solution: Sync now clears existing libraries and related data before inserting fresh records
+  - Affected tables cleaned: `media_server_sync_status`, `media_server_items`, `media_server_collections`, `library_labels`, `library_pattern_suggestions`, `scheduled_tasks`
+
+> [!IMPORTANT]
+> After syncing libraries following a media server rebuild, you will need to **re-map your libraries** to Radarr/Sonarr. This is expected since the old library IDs are no longer valid.
+
+---
+
+
 **Title: Pattern-Driven Classification - Reinforcement Learning & Management UI**
 
 > [!IMPORTANT]  

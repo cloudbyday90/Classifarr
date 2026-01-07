@@ -188,4 +188,121 @@ describe('Media Server API', () => {
             expect(response.body).toBeNull();
         });
     });
+
+    describe('POST /api/media-server/sync - Library Sync', () => {
+        const plexService = require('../services/plex');
+
+        test('should DELETE existing libraries before inserting new ones', async () => {
+            const serverId = 1;
+            const mockLibraries = [
+                { external_id: 'lib-1', name: 'Movies', media_type: 'movie' },
+                { external_id: 'lib-2', name: 'TV Shows', media_type: 'tv' }
+            ];
+
+            // Mock Plex to return libraries
+            plexService.getLibraries.mockResolvedValue(mockLibraries);
+
+            // Mock: BEGIN
+            mockClient.query.mockResolvedValueOnce({});
+            // Mock: Get active server
+            mockClient.query.mockResolvedValueOnce({
+                rows: [{
+                    id: serverId,
+                    type: 'plex',
+                    url: 'http://plex:32400',
+                    api_key: 'test-key'
+                }]
+            });
+            // Mock: DELETE existing libraries (3 were cleared)
+            mockClient.query.mockResolvedValueOnce({ rowCount: 3, rows: [{ id: 10 }, { id: 11 }, { id: 12 }] });
+            // Mock: INSERT library 1
+            mockClient.query.mockResolvedValueOnce({
+                rows: [{ id: 1, name: 'Movies', media_type: 'movie', external_id: 'lib-1' }]
+            });
+            // Mock: INSERT library 2
+            mockClient.query.mockResolvedValueOnce({
+                rows: [{ id: 2, name: 'TV Shows', media_type: 'tv', external_id: 'lib-2' }]
+            });
+            // Mock: UPDATE last_sync
+            mockClient.query.mockResolvedValueOnce({});
+            // Mock: COMMIT
+            mockClient.query.mockResolvedValueOnce({});
+
+            const response = await request(app).post('/api/media-server/sync');
+
+            expect(response.status).toBe(200);
+            expect(response.body.success).toBe(true);
+            expect(response.body.libraries).toHaveLength(2);
+
+            // Verify DELETE was called
+            const deleteCall = mockClient.query.mock.calls.find(call =>
+                call[0] && call[0].includes('DELETE FROM libraries')
+            );
+            expect(deleteCall).toBeDefined();
+            expect(deleteCall[1]).toEqual([serverId]);
+
+            // Verify INSERT was used (not ON CONFLICT upsert)
+            const insertCalls = mockClient.query.mock.calls.filter(call =>
+                call[0] && call[0].includes('INSERT INTO libraries')
+            );
+            expect(insertCalls).toHaveLength(2);
+            // Should NOT have ON CONFLICT clause
+            insertCalls.forEach(call => {
+                expect(call[0]).not.toContain('ON CONFLICT');
+            });
+        });
+
+        test('should handle sync after Plex database rebuild (changed external IDs)', async () => {
+            const serverId = 1;
+            // Simulating Plex rebuild: same library names but different external IDs
+            const newLibraries = [
+                { external_id: 'NEW-lib-uuid-1', name: 'Movies', media_type: 'movie' }
+            ];
+
+            plexService.getLibraries.mockResolvedValue(newLibraries);
+
+            // Mock: BEGIN
+            mockClient.query.mockResolvedValueOnce({});
+            // Mock: Get active server
+            mockClient.query.mockResolvedValueOnce({
+                rows: [{
+                    id: serverId,
+                    type: 'plex',
+                    url: 'http://plex:32400',
+                    api_key: 'test-key'
+                }]
+            });
+            // Mock: DELETE existing libraries (1 old library with OLD-lib-uuid-1)
+            mockClient.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 99 }] });
+            // Mock: INSERT with new external_id (this would have failed before the fix!)
+            mockClient.query.mockResolvedValueOnce({
+                rows: [{ id: 100, name: 'Movies', media_type: 'movie', external_id: 'NEW-lib-uuid-1' }]
+            });
+            // Mock: UPDATE last_sync
+            mockClient.query.mockResolvedValueOnce({});
+            // Mock: COMMIT
+            mockClient.query.mockResolvedValueOnce({});
+
+            const response = await request(app).post('/api/media-server/sync');
+
+            // This should succeed now (before fix it would fail with unique constraint violation)
+            expect(response.status).toBe(200);
+            expect(response.body.success).toBe(true);
+            expect(response.body.libraries[0].external_id).toBe('NEW-lib-uuid-1');
+        });
+
+        test('should return 404 when no active server configured', async () => {
+            // Mock: BEGIN
+            mockClient.query.mockResolvedValueOnce({});
+            // Mock: No active server
+            mockClient.query.mockResolvedValueOnce({ rows: [] });
+            // Mock: ROLLBACK
+            mockClient.query.mockResolvedValueOnce({});
+
+            const response = await request(app).post('/api/media-server/sync');
+
+            expect(response.status).toBe(404);
+            expect(response.body.error).toBe('No active media server configured');
+        });
+    });
 });

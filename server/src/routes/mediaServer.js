@@ -181,10 +181,14 @@ router.post('/test', async (req, res) => {
  *     summary: Sync libraries from media server
  */
 router.post('/sync', async (req, res) => {
+  const client = await db.pool.connect();
   try {
-    const serverResult = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
+    await client.query('BEGIN');
+
+    const serverResult = await client.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
 
     if (serverResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'No active media server configured' });
     }
 
@@ -202,10 +206,58 @@ router.post('/sync', async (req, res) => {
         libraries = await jellyfinService.getLibraries(server.url, server.api_key);
         break;
       default:
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'Invalid media server type' });
     }
 
-    // Insert or update libraries
+    // Clear existing libraries and all related data for this media server before inserting new ones
+    // This handles the case where library external IDs change after a media server database rebuild
+    // Must delete from child tables first due to foreign key constraints
+
+    // Get library IDs that will be deleted
+    const libraryIdsResult = await client.query(
+      'SELECT id FROM libraries WHERE media_server_id = $1',
+      [server.id]
+    );
+    const libraryIds = libraryIdsResult.rows.map(r => r.id);
+
+    if (libraryIds.length > 0) {
+      // Delete from all tables that reference libraries
+      await client.query(
+        'DELETE FROM media_server_sync_status WHERE library_id = ANY($1)',
+        [libraryIds]
+      );
+      await client.query(
+        'DELETE FROM media_server_items WHERE library_id = ANY($1)',
+        [libraryIds]
+      );
+      await client.query(
+        'DELETE FROM media_server_collections WHERE library_id = ANY($1)',
+        [libraryIds]
+      );
+      await client.query(
+        'DELETE FROM library_labels WHERE library_id = ANY($1)',
+        [libraryIds]
+      );
+      await client.query(
+        'DELETE FROM library_pattern_suggestions WHERE library_id = ANY($1)',
+        [libraryIds]
+      );
+      await client.query(
+        'DELETE FROM scheduled_tasks WHERE library_id = ANY($1)',
+        [libraryIds]
+      );
+
+      // Now delete the libraries
+      await client.query(
+        'DELETE FROM libraries WHERE media_server_id = $1',
+        [server.id]
+      );
+
+      console.log(`Cleared ${libraryIds.length} existing libraries and related data before sync`);
+    }
+
+    // Insert libraries fresh
     const insertedLibraries = [];
     for (const lib of libraries) {
       let arrType = null;
@@ -215,15 +267,9 @@ router.post('/sync', async (req, res) => {
         arrType = 'sonarr';
       }
 
-      const result = await db.query(
+      const result = await client.query(
         `INSERT INTO libraries (media_server_id, external_id, name, media_type, arr_type)
          VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (name, media_type) 
-         DO UPDATE SET 
-           external_id = $2,
-           media_server_id = $1,
-           updated_at = NOW(),
-           arr_type = COALESCE(libraries.arr_type, $5)
          RETURNING *`,
         [server.id, lib.external_id, lib.name, lib.media_type, arrType]
       );
@@ -231,10 +277,12 @@ router.post('/sync', async (req, res) => {
     }
 
     // Update last sync time
-    await db.query(
+    await client.query(
       'UPDATE media_server SET last_sync = NOW() WHERE id = $1',
       [server.id]
     );
+
+    await client.query('COMMIT');
 
     // Auto-sync content for each library in the background
     const mediaSyncService = require('../services/mediaSync');
@@ -255,7 +303,10 @@ router.post('/sync', async (req, res) => {
       message: `Found ${insertedLibraries.length} libraries. Content sync started in background.`,
     });
   } catch (error) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.1-alpha] - 2026-01-07
+
+### Fixed
+- **Library Sync:** Fixed unique constraint violation when syncing libraries after media server database rebuild
+- Sync now properly clears all related tables before inserting fresh library records
+
 ## [0.36.0-alpha] - 2026-01-04
 
 ### 🚀 Major: Pattern-Driven Classification & Settings Reorganization
@@ -224,6 +230,7 @@ Introduces the core AI classification engine using Retrieval-Augmented Generatio
 
 ---
 
+[0.36.1-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.36.0-alpha...v0.36.1-alpha
 [0.36.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.35.0-alpha...v0.36.0-alpha
 [0.35.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.34.0-alpha...v0.35.0-alpha
 [0.34.0-alpha]: https://github.com/cloudbyday90/Classifarr/compare/v0.33.0-alpha...v0.34.0-alpha
