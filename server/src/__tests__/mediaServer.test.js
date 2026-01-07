@@ -229,6 +229,8 @@ describe('Media Server API', () => {
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             // Mock: DELETE FROM library_pattern_suggestions
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM classification_history
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             // Mock: DELETE FROM scheduled_tasks
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             // Mock: DELETE FROM task_queue
@@ -307,6 +309,8 @@ describe('Media Server API', () => {
             // Mock: DELETE FROM library_labels
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             // Mock: DELETE FROM library_pattern_suggestions
+            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
+            // Mock: DELETE FROM classification_history
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             // Mock: DELETE FROM scheduled_tasks
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });

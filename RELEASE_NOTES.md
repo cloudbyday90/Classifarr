@@ -1,3 +1,18 @@
+## v0.36.3a-alpha
+**Title: CI/CD Pipeline Fix - Test Mock Alignment**
+
+### Fixes
+- **CI/CD Pipeline:** Fixed test failures caused by missing mock for `DELETE FROM classification_history` query
+  - Root cause: v0.36.3-alpha code included the classification_history deletion (line 254-258 in mediaServer.js) but test mocks were not updated
+  - Updated test mocks in `mediaServer.test.js` to include the classification_history cascading delete
+  - Tests `should DELETE existing libraries before inserting new ones` and `should handle sync after Plex database rebuild` now pass
+- **Version Update:** Updated version to 0.36.3a to indicate this is a CI/CD-specific patch
+
+### Note
+This release does not change any production code—only test mocks to align with the cascading deletes already implemented in v0.36.3-alpha. All FK constraint safety features from v0.36.3 remain intact.
+
+---
+
 ## v0.36.3-alpha
 **Title: Hotfix - CI/CD Pipeline Test Failures & FK Constraint Violation**
 
