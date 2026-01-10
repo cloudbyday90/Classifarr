@@ -2000,6 +2000,11 @@ router.get('/ai', async (req, res) => {
         rag_min_history_count: 50,
         rag_backfill_budget_type: 'percentage',
         rag_backfill_budget_value: 25,
+        // Pattern mining settings
+        pattern_mining_enabled: true,
+        pattern_rule_priority: 'rules_first',
+        pattern_ai_skip_threshold: 90,
+        pattern_notification_dismissed: false,
         // Formula engine weights
         formula_pattern_weight: 0.40,
         formula_rule_weight: 0.30,
