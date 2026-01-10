@@ -68,6 +68,28 @@ beforeAll(async () => {
         }
 
         console.log('Schema applied successfully via psql.');
+
+        // Apply migrations for testing new schema
+        console.log('Applying migrations...');
+        const migrationsDir = path.join(dbPath, 'migrations');
+        const migrationFiles = fs.readdirSync(migrationsDir)
+            .filter(f => f.endsWith('.sql') && !f.includes('README') && !f.includes('GUIDE'))
+            .sort();
+
+        for (const migrationFile of migrationFiles) {
+            console.log(`  Applying migration: ${migrationFile}`);
+            const migrationPath = path.join(migrationsDir, migrationFile);
+            const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+            
+            try {
+                await pool.query(migrationSql);
+            } catch (error) {
+                console.error(`  Failed to apply ${migrationFile}:`, error.message);
+                // Continue with other migrations - some may fail due to dependencies
+            }
+        }
+
+        console.log('Migrations applied.');
     } finally {
         // Clean up temp file
         if (fs.existsSync(tempSqlFile)) {

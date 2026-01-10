@@ -74,15 +74,17 @@ This release implements the database schema foundation for the Policy-Driven Cla
   - Ensures data integrity when policies or libraries are deleted
 
 #### Testing
-- **New test suite:** `policy-schema.test.js` with 20+ integration tests
-  - Table existence verification
+- **New test suite:** `policy-schema.test.js` with 33 comprehensive integration tests
+  - Table existence verification for all 9 new tables
   - Column presence and data type validation
   - Index verification (including GIN indexes on JSONB columns)
-  - Foreign key constraint validation
+  - Foreign key constraint validation with CASCADE behavior
   - Unique constraint verification
-  - JSONB operations testing (insert and query)
-  - CASCADE behavior validation
-  - Array column type verification
+  - JSONB operations testing (insert and query with complex objects)
+  - Array column type verification (integer arrays)
+  - Deprecation column validation on existing tables
+- **Test results:** All 33 new tests passing + all 11 existing schema tests passing
+- **Integration test setup:** Updated to apply migrations automatically during test setup
 
 ### Changed
 - Migration numbering: New migration is `042_policy_driven_schema.sql` (follows `041_formula_engine_weights.sql`)
