@@ -887,8 +887,15 @@ class ClassificationService {
           library: policyResult.library.library_name,
           confidence: policyResult.confidence
         });
+        const matchedLibrary = libraries.find(l => l.id === policyResult.library.library_id);
+        if (!matchedLibrary) {
+          logger.error('PolicyEngine returned library that was not found in libraries list', {
+            policyLibraryId: policyResult.library.library_id,
+          });
+          throw new Error('PolicyEngine selected unknown library');
+        }
         return {
-          library: libraries.find(l => l.id === policyResult.library.library_id),
+          library: matchedLibrary,
           confidence: policyResult.confidence,
           method: policyResult.method,
           reason: `Policy: ${policyResult.library.policy_name}`,

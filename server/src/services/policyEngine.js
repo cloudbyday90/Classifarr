@@ -92,7 +92,7 @@ class PolicyEngine {
             logger.info('Policy evaluation complete', {
                 title: item.title,
                 action: result.action,
-                topLibrary: result.library?.name,
+                topLibrary: result.library?.library_name,
                 topScore: result.confidence
             });
 
@@ -266,8 +266,12 @@ class PolicyEngine {
                 (scores.rag * weights.rag) +
                 (scores.history * weights.history);
 
-            // Normalize to 0-100
-            const totalWeight = weights.preset + weights.pattern + weights.rag + weights.history;
+            // Normalize to 0-100 using only enabled scoring methods' weights
+            const totalWeight =
+                (policy.presets && policy.presets.length > 0 ? weights.preset : 0) +
+                (policy.trust_patterns ? weights.pattern : 0) +
+                (policy.trust_rag ? weights.rag : 0) +
+                (policy.trust_history ? weights.history : 0);
             const finalScore = totalWeight > 0 ? (weightedScore / totalWeight) : 0;
 
             return {
@@ -433,18 +437,18 @@ class PolicyEngine {
             if (!cert) return 0;
 
             if (config.mode === 'include') {
-                const included = config.include || [];
+                const included = (config.include || []).map(c => c.toUpperCase());
                 return included.includes(cert) ? 100 : 0;
             }
 
             if (config.mode === 'exclude') {
-                const excluded = config.exclude || [];
+                const excluded = (config.exclude || []).map(c => c.toUpperCase());
                 return excluded.includes(cert) ? 0 : 100;
             }
 
             if (config.mode === 'max') {
                 const certOrder = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA'];
-                const maxCert = config.max;
+                const maxCert = config.max?.toUpperCase();
                 const maxIndex = certOrder.indexOf(maxCert);
                 const itemIndex = certOrder.indexOf(cert);
                 
@@ -463,7 +467,10 @@ class PolicyEngine {
      */
     scoreGenres(config, item) {
         try {
-            const genres = (item.genres || []).map(g => g.toLowerCase());
+            const genresArray = typeof item.genres === 'string'
+                ? JSON.parse(item.genres)
+                : (item.genres || []);
+            const genres = genresArray.map(g => g.toLowerCase());
             if (genres.length === 0) return 0;
 
             let score = 50; // Base score
@@ -514,7 +521,19 @@ class PolicyEngine {
      */
     scoreKeywords(config, item) {
         try {
-            const keywords = (item.keywords || []).map(k => k.toLowerCase());
+            let keywordsArray;
+            if (typeof item.keywords === 'string') {
+                try {
+                    keywordsArray = JSON.parse(item.keywords);
+                } catch (e) {
+                    keywordsArray = [];
+                }
+            } else {
+                keywordsArray = item.keywords || [];
+            }
+            const keywords = Array.isArray(keywordsArray)
+                ? keywordsArray.map(k => (typeof k === 'string' ? k.toLowerCase() : ''))
+                : [];
             const overview = (item.overview || '').toLowerCase();
             const title = (item.title || '').toLowerCase();
             
@@ -559,8 +578,15 @@ class PolicyEngine {
      */
     scoreStudios(config, item) {
         try {
-            const studios = (item.studios || item.production_companies || [])
-                .map(s => typeof s === 'string' ? s : s.name)
+            const studiosArray =
+                typeof item?.studios === 'string'
+                    ? JSON.parse(item.studios)
+                    : typeof item?.production_companies === 'string'
+                        ? JSON.parse(item.production_companies)
+                        : (item.studios || item.production_companies || []);
+
+            const studios = studiosArray
+                .map(s => (typeof s === 'string' ? s : s && s.name))
                 .filter(Boolean)
                 .map(s => s.toLowerCase());
 
@@ -797,13 +823,13 @@ class PolicyEngine {
             const result = await db.query(`
                 SELECT 
                     library_id,
-                    confidence,
+                    MAX(confidence) AS confidence,
                     COUNT(*) as match_count
                 FROM classification_history
                 WHERE tmdb_id = $1
                 AND status = 'completed'
                 AND library_id IS NOT NULL
-                GROUP BY library_id, confidence
+                GROUP BY library_id
                 ORDER BY match_count DESC, confidence DESC
                 LIMIT 5
             `, [item.tmdb_id]);
