@@ -68,6 +68,51 @@ beforeAll(async () => {
         }
 
         console.log('Schema applied successfully via psql.');
+
+        // Apply migrations for testing new schema
+        console.log('Applying migrations...');
+        const migrationsDir = path.join(dbPath, 'migrations');
+        const migrationFiles = fs.readdirSync(migrationsDir)
+            .filter(f => f.endsWith('.sql') && !f.includes('README') && !f.includes('GUIDE'))
+            .sort();
+
+        const failedMigrations = [];
+        const knownOptionalFailures = [
+            'extension "vector" is not available',  // pgvector extension not in test container
+            'relation "schema_migrations" does not exist'  // Migration tracking table not in fresh db
+        ];
+
+        for (const migrationFile of migrationFiles) {
+            console.log(`  Applying migration: ${migrationFile}`);
+            const migrationPath = path.join(migrationsDir, migrationFile);
+            const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+            
+            try {
+                await pool.query(migrationSql);
+            } catch (error) {
+                const isKnownOptional = knownOptionalFailures.some(msg => error.message.includes(msg));
+                
+                if (isKnownOptional) {
+                    console.warn(`  Skipping ${migrationFile} (expected): ${error.message}`);
+                } else {
+                    console.error(`  Failed to apply ${migrationFile}:`, error.message);
+                    failedMigrations.push({
+                        file: migrationFile,
+                        message: error.message
+                    });
+                }
+            }
+        }
+
+        if (failedMigrations.length > 0) {
+            console.error('One or more critical migrations failed to apply:', failedMigrations);
+            const details = failedMigrations
+                .map(m => `${m.file}: ${m.message}`)
+                .join('; ');
+            throw new Error(`Failed to apply database migrations: ${details}`);
+        }
+
+        console.log('Migrations applied.');
     } finally {
         // Clean up temp file
         if (fs.existsSync(tempSqlFile)) {

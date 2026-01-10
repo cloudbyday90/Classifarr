@@ -5,6 +5,112 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0-alpha] - TBD
+
+### 🚀 Major: Policy-Driven Classification Engine (Schema)
+
+This release implements the database schema foundation for the Policy-Driven Classification Engine, replacing rule-centric design with comprehensive policy-based classification.
+
+### Added
+
+#### Database Schema (Migration 042)
+- **`library_policies` table:** Core policy definition with multi-policy support per library
+  - Policy-level thresholds (auto-classify, prompt, AI validation)
+  - Trust settings for patterns, RAG, and history
+  - Weight overrides (preset, pattern, RAG, history)
+  - Multi-policy combination modes (best_match, weighted_average, consensus)
+  - Source library linking (JSONB array of Plex/Emby/Jellyfin library IDs)
+  - Notification channel configuration (JSONB)
+- **`content_presets` table:** Reusable content signal definitions
+  - System and user-defined presets
+  - JSONB signal configuration for flexible schema
+  - Category-based organization
+  - Usage tracking and display ordering
+  - GIN index on signals for efficient querying
+- **`policy_presets` table:** Junction table linking policies to content presets
+  - Per-preset weight adjustments
+  - Unique constraint ensuring no duplicate preset assignments
+- **`policy_overrides` table:** Advanced per-policy signal tweaks
+  - Signal-type specific override configuration (JSONB)
+  - Reason tracking for audit purposes
+- **`policy_feedback_log` table:** Decision capture for learning
+  - User prompt responses and corrections
+  - Original scores and top suggestions
+  - Pattern creation tracking (JSONB)
+  - Signal analysis storage (JSONB)
+  - Response time metrics
+  - Indexed on TMDB ID, library, policy, date, and correction status
+- **`policy_tuning_suggestions` table:** AI-generated policy improvement recommendations
+  - Supporting feedback IDs (integer array)
+  - Confidence and impact estimates
+  - Status tracking (pending, approved, rejected)
+  - Review metadata
+- **`policy_learning_stats` table:** Aggregate policy performance metrics
+  - Decision counts (total, auto, AI-validated, prompted, corrections)
+  - Accuracy rates (overall, auto-only, 7-day, 30-day)
+  - Trend indicators
+  - Unique constraint on policy_id (one stats record per policy)
+- **`source_library_policy_links` table:** Media server library to policy mapping
+  - Links Plex/Emby/Jellyfin libraries to classification policies
+  - Auto-generation and confidence tracking
+  - Unique constraint on source + policy combination
+- **`policy_change_log` table:** Audit trail for policy modifications
+  - Change type categorization
+  - Before/after metrics (JSONB)
+  - User attribution
+  - Indexed on policy, change type, and date
+
+#### Schema Enhancements
+- **Deprecation support in `library_custom_rules`:**
+  - Added `deprecated` boolean column (default false)
+  - Added `migrated_to_policy_id` foreign key to `library_policies`
+  - Index on `deprecated` column for efficient filtering
+- **Comprehensive indexes:**
+  - Standard B-tree indexes on foreign keys and frequently queried columns
+  - GIN indexes on JSONB columns for efficient JSON querying
+  - Multi-column indexes for common query patterns
+- **Foreign key cascades:**
+  - ON DELETE CASCADE for all policy-related tables
+  - Ensures data integrity when policies or libraries are deleted
+
+#### Testing
+- **New test suite:** `policy-schema.test.js` with 33 comprehensive integration tests
+  - Table existence verification for all 9 new tables
+  - Column presence and data type validation
+  - Index verification (including GIN indexes on JSONB columns)
+  - Foreign key constraint validation with CASCADE behavior
+  - Unique constraint verification
+  - JSONB operations testing (insert and query with complex objects)
+  - Array column type verification (integer arrays)
+  - Deprecation column validation on existing tables
+  - Test data setup in beforeAll hook to ensure test preconditions
+- **Test results:** All 33 new tests passing + all 11 existing schema tests passing
+- **Integration test setup enhancements:**
+  - Migrations automatically applied during test setup
+  - Improved error handling to distinguish between critical and expected failures
+  - Known optional failures (e.g., pgvector extension) gracefully skipped
+  - Critical migration failures now properly abort test suite
+
+### Fixed
+- **SQL syntax error:** Corrected UNIQUE constraint placement in `policy_learning_stats` table (moved before REFERENCES)
+- **Test reliability:** Added explicit assertions to prevent tests from silently passing when preconditions aren't met
+- **Migration error handling:** Enhanced to fail fast on critical errors while allowing expected optional failures
+
+### Changed
+- Migration numbering: New migration is `042_policy_driven_schema.sql` (follows `041_formula_engine_weights.sql`)
+
+### Technical Details
+- All new tables use `TIMESTAMP WITH TIME ZONE` for proper timezone handling
+- JSONB columns for flexible schema evolution
+- Idempotent migration using `IF NOT EXISTS` for all DDL statements
+- Comprehensive inline documentation via SQL comments
+- Follows existing migration patterns and conventions
+
+### Related
+- Closes #91 (Policy-Driven Schema Implementation)
+- Part of #82 (v0.37.0 Formula-Based Classification Engine Epic)
+- Related to #95 (Content Presets), #92 (Policy Engine)
+
 ## [0.36.3a-alpha] - 2026-01-07
 
 ### Fixed
