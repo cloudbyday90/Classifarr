@@ -8,14 +8,14 @@ describe('Content Presets Seed Data Integration Test', () => {
     });
 
     describe('Basic Preset Verification', () => {
-        test('should have inserted at least 40 system presets', async () => {
+        test('should have inserted 168 system presets (46 original + 122 new)', async () => {
             const res = await db.query(`
                 SELECT COUNT(*) as count 
                 FROM content_presets 
                 WHERE is_system = true
             `);
             
-            expect(parseInt(res.rows[0].count)).toBeGreaterThanOrEqual(40);
+            expect(parseInt(res.rows[0].count)).toBe(168);
         });
 
         test('all system presets should have null user_id', async () => {
@@ -48,7 +48,7 @@ describe('Content Presets Seed Data Integration Test', () => {
     });
 
     describe('Category Verification', () => {
-        test('should have audience category presets (4)', async () => {
+        test('should have audience category presets (8: 4 original + 4 new)', async () => {
             const res = await db.query(`
                 SELECT key, name 
                 FROM content_presets 
@@ -56,26 +56,28 @@ describe('Content Presets Seed Data Integration Test', () => {
                 ORDER BY display_order
             `);
             
-            expect(res.rows.length).toBe(4);
-            expect(res.rows.map(r => r.key)).toEqual([
-                'family_friendly',
-                'kids_only',
-                'teen',
-                'adult_only'
-            ]);
+            expect(res.rows.length).toBe(8);
+            expect(res.rows.map(r => r.key)).toContain('family_friendly');
+            expect(res.rows.map(r => r.key)).toContain('kids_only');
+            expect(res.rows.map(r => r.key)).toContain('teen');
+            expect(res.rows.map(r => r.key)).toContain('adult_only');
+            expect(res.rows.map(r => r.key)).toContain('kids_older');
+            expect(res.rows.map(r => r.key)).toContain('young_adult');
+            expect(res.rows.map(r => r.key)).toContain('date_night');
+            expect(res.rows.map(r => r.key)).toContain('background');
         });
 
-        test('should have genre category presets (15)', async () => {
+        test('should have genre category presets (60: 15 original + 45 new)', async () => {
             const res = await db.query(`
                 SELECT COUNT(*) as count 
                 FROM content_presets 
                 WHERE category = 'genre' AND is_system = true
             `);
             
-            expect(parseInt(res.rows[0].count)).toBe(15);
+            expect(parseInt(res.rows[0].count)).toBe(60);
         });
 
-        test('should have temporal category presets (5)', async () => {
+        test('should have temporal category presets (12: 5 original + 7 new)', async () => {
             const res = await db.query(`
                 SELECT key 
                 FROM content_presets 
@@ -83,17 +85,20 @@ describe('Content Presets Seed Data Integration Test', () => {
                 ORDER BY display_order
             `);
             
-            expect(res.rows.length).toBe(5);
-            expect(res.rows.map(r => r.key)).toEqual([
-                'classic_films',
-                'golden_age',
-                '80s',
-                '90s',
-                'recent_releases'
-            ]);
+            expect(res.rows.length).toBe(12);
+            expect(res.rows.map(r => r.key)).toContain('classic_films');
+            expect(res.rows.map(r => r.key)).toContain('golden_age');
+            expect(res.rows.map(r => r.key)).toContain('80s');
+            expect(res.rows.map(r => r.key)).toContain('90s');
+            expect(res.rows.map(r => r.key)).toContain('recent_releases');
+            expect(res.rows.map(r => r.key)).toContain('silent_era');
+            expect(res.rows.map(r => r.key)).toContain('new_hollywood');
+            expect(res.rows.map(r => r.key)).toContain('2000s');
+            expect(res.rows.map(r => r.key)).toContain('2010s');
+            expect(res.rows.map(r => r.key)).toContain('2020s');
         });
 
-        test('should have quality category presets (2)', async () => {
+        test('should have quality category presets (10: 2 original + 8 new)', async () => {
             const res = await db.query(`
                 SELECT key 
                 FROM content_presets 
@@ -101,34 +106,35 @@ describe('Content Presets Seed Data Integration Test', () => {
                 ORDER BY display_order
             `);
             
-            expect(res.rows.length).toBe(2);
-            expect(res.rows.map(r => r.key)).toEqual([
-                'highly_rated',
-                'hidden_gems'
-            ]);
+            expect(res.rows.length).toBe(10);
+            expect(res.rows.map(r => r.key)).toContain('highly_rated');
+            expect(res.rows.map(r => r.key)).toContain('hidden_gems');
+            expect(res.rows.map(r => r.key)).toContain('critically_acclaimed');
+            expect(res.rows.map(r => r.key)).toContain('indie');
+            expect(res.rows.map(r => r.key)).toContain('blockbuster');
         });
 
-        test('should have franchise category presets (7)', async () => {
+        test('should have franchise category presets (25: 7 original + 18 new)', async () => {
             const res = await db.query(`
                 SELECT COUNT(*) as count 
                 FROM content_presets 
                 WHERE category = 'franchise' AND is_system = true
             `);
             
-            expect(parseInt(res.rows[0].count)).toBe(7);
+            expect(parseInt(res.rows[0].count)).toBe(25);
         });
 
-        test('should have regional category presets (5)', async () => {
+        test('should have regional category presets (25: 5 original + 20 new)', async () => {
             const res = await db.query(`
                 SELECT COUNT(*) as count 
                 FROM content_presets 
                 WHERE category = 'regional' AND is_system = true
             `);
             
-            expect(parseInt(res.rows[0].count)).toBe(5);
+            expect(parseInt(res.rows[0].count)).toBe(25);
         });
 
-        test('should have seasonal category presets (2)', async () => {
+        test('should have seasonal category presets (8: 2 original + 6 new)', async () => {
             const res = await db.query(`
                 SELECT key 
                 FROM content_presets 
@@ -136,21 +142,22 @@ describe('Content Presets Seed Data Integration Test', () => {
                 ORDER BY display_order
             `);
             
-            expect(res.rows.length).toBe(2);
-            expect(res.rows.map(r => r.key)).toEqual([
-                'christmas_holiday',
-                'halloween'
-            ]);
+            expect(res.rows.length).toBe(8);
+            expect(res.rows.map(r => r.key)).toContain('christmas_holiday');
+            expect(res.rows.map(r => r.key)).toContain('halloween');
+            expect(res.rows.map(r => r.key)).toContain('thanksgiving');
+            expect(res.rows.map(r => r.key)).toContain('valentines');
+            expect(res.rows.map(r => r.key)).toContain('easter');
         });
 
-        test('should have tv category presets (6)', async () => {
+        test('should have tv category presets (20: 6 original + 14 new)', async () => {
             const res = await db.query(`
                 SELECT COUNT(*) as count 
                 FROM content_presets 
                 WHERE category = 'tv' AND is_system = true
             `);
             
-            expect(parseInt(res.rows[0].count)).toBe(6);
+            expect(parseInt(res.rows[0].count)).toBe(20);
         });
     });
 
