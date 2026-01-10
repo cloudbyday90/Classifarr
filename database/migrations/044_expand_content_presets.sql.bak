@@ -228,7 +228,7 @@ VALUES
  true, 69),
 
 -- ============================================================================
--- CATEGORY: FRANCHISE - 18 new presets (display_order 70-88)
+-- CATEGORY: FRANCHISE - 18 new presets (display_order 70-87)
 -- ============================================================================
 ('illumination', 'Illumination', 'Illumination Entertainment animated films.', '🍌', 'franchise',
  '{"studios": {"require_any": ["Illumination Entertainment", "Illumination"], "weight": 2.0}}',
@@ -292,53 +292,53 @@ VALUES
 
 ('neon', 'Neon', 'Neon independent films.', '💡', 'franchise',
  '{"studios": {"require_any": ["Neon"], "weight": 2.0}}',
- true, 86),
+ true, 85),
 
 ('searchlight', 'Searchlight', 'Searchlight Pictures films.', '🔦', 'franchise',
  '{"studios": {"require_any": ["Searchlight Pictures", "Fox Searchlight"], "weight": 2.0}}',
- true, 87),
+ true, 86),
 
 ('focus', 'Focus Features', 'Focus Features films.', '🎯', 'franchise',
  '{"studios": {"require_any": ["Focus Features"], "weight": 2.0}}',
- true, 88),
+ true, 87),
 
 -- ============================================================================
--- CATEGORY: TEMPORAL - 7 new presets (display_order 89-95)
+-- CATEGORY: TEMPORAL - 7 new presets (display_order 88-94)
 -- ============================================================================
 ('silent_era', 'Silent Era', 'Silent films from before 1930.', '🎬', 'temporal',
  '{"release_year": {"max": 1929, "weight": 2.0}, "media_type": {"include": ["movie"]}}',
- true, 89),
+ true, 88),
 
 ('new_hollywood', 'New Hollywood', 'New Hollywood era films (1967-1980).', '🎥', 'temporal',
  '{"release_year": {"min": 1967, "max": 1980, "weight": 2.0}, "media_type": {"include": ["movie"]}}',
- true, 90),
+ true, 89),
 
 ('2000s', '2000s', 'Content from the 2000s decade.', '📀', 'temporal',
  '{"release_year": {"min": 2000, "max": 2009, "weight": 2.0}}',
- true, 91),
+ true, 90),
 
 ('2010s', '2010s', 'Content from the 2010s decade.', '📱', 'temporal',
  '{"release_year": {"min": 2010, "max": 2019, "weight": 2.0}}',
- true, 92),
+ true, 91),
 
 ('2020s', '2020s', 'Content from the 2020s decade.', '🦠', 'temporal',
  '{"release_year": {"min": 2020, "max": 2029, "weight": 2.0}}',
- true, 93),
+ true, 92),
 
 ('retro', 'Retro', 'Retro content from before 2000.', '📺', 'temporal',
  '{"release_year": {"max": 1999, "weight": 2.0}}',
- true, 94),
+ true, 93),
 
 ('modern', 'Modern', 'Modern content from 2000 onwards.', '🎬', 'temporal',
  '{"release_year": {"min": 2000, "weight": 2.0}}',
- true, 95),
+ true, 94),
 
 -- ============================================================================
--- CATEGORY: QUALITY - 8 new presets (display_order 96-103)
+-- CATEGORY: QUALITY - 8 new presets (display_order 95-103)
 -- ============================================================================
 ('critically_acclaimed', 'Critically Acclaimed', 'Critically acclaimed with high review scores.', '🏆', 'quality',
  '{"vote_average": {"min": 8.0, "weight": 2.0}}',
- true, 96),
+ true, 95),
 
 ('popular', 'Popular', 'Popular and widely watched content.', '📈', 'quality',
  '{"keywords": {"prefer": ["popular", "trending", "blockbuster"], "weight": 1.5}}',
@@ -362,180 +362,180 @@ VALUES
 
 ('underrated', 'Underrated', 'Underrated and overlooked gems.', '🤫', 'quality',
  '{"keywords": {"require_any": ["underrated", "overlooked", "hidden"], "weight": 2.0}}',
- true, 102),
+ true, 101),
 
 ('so_bad_good', 'So Bad It''s Good', 'So bad they''re good, guilty pleasure films.', '🧀', 'quality',
  '{"keywords": {"require_any": ["so bad", "guilty pleasure", "campy"], "weight": 2.0}}',
- true, 103),
+ true, 102),
 
 -- ============================================================================
--- CATEGORY: SEASONAL - 6 new presets (display_order 104-109)
+-- CATEGORY: SEASONAL - 6 new presets (display_order 102-107)
 -- ============================================================================
 ('thanksgiving', 'Thanksgiving', 'Thanksgiving-themed content.', '🦃', 'seasonal',
  '{"keywords": {"require_any": ["thanksgiving", "turkey day"], "weight": 2.0}, "genres": {"prefer": ["Family", "Comedy", "Drama"], "weight": 0.5}}',
- true, 104),
+ true, 102),
 
 ('valentines', 'Valentine''s Day', 'Valentine''s Day romantic content.', '💘', 'seasonal',
  '{"keywords": {"require_any": ["valentine", "valentines day"], "weight": 2.0}, "genres": {"prefer": ["Romance", "Comedy"], "weight": 1.0}}',
- true, 105),
+ true, 104),
 
 ('easter', 'Easter', 'Easter-themed family content.', '🐰', 'seasonal',
  '{"keywords": {"require_any": ["easter", "bunny", "egg"], "weight": 2.0}, "genres": {"prefer": ["Family", "Animation"], "weight": 0.5}}',
- true, 106),
+ true, 105),
 
 ('new_years', 'New Year''s', 'New Year''s celebration content.', '🎆', 'seasonal',
  '{"keywords": {"require_any": ["new year", "new years eve"], "weight": 2.0}, "genres": {"prefer": ["Comedy", "Romance", "Drama"], "weight": 0.5}}',
- true, 107),
+ true, 106),
 
 ('summer', 'Summer Vibes', 'Summer-themed light content.', '☀️', 'seasonal',
  '{"keywords": {"require_any": ["summer", "beach", "vacation"], "weight": 2.0}, "genres": {"prefer": ["Comedy", "Romance", "Adventure"], "weight": 0.5}}',
- true, 108),
+ true, 107),
 
 ('winter', 'Winter/Cozy', 'Winter and cozy content.', '❄️', 'seasonal',
  '{"keywords": {"require_any": ["winter", "snow", "cozy"], "weight": 2.0}, "genres": {"prefer": ["Drama", "Romance", "Family"], "weight": 0.5}}',
- true, 109),
+ true, 108),
 
 -- ============================================================================
--- CATEGORY: REGIONAL - 20 new presets (display_order 110-129)
+-- CATEGORY: REGIONAL - 20 new presets (display_order 108-127)
 -- ============================================================================
 ('english', 'English', 'English-language content.', '🇺🇸', 'regional',
  '{"language": {"require_any": ["en"], "weight": 2.0}}',
- true, 110),
+ true, 109),
 
 ('australian', 'Australian', 'Australian productions.', '🇦🇺', 'regional',
  '{"language": {"require_any": ["en"], "weight": 1.0}, "keywords": {"prefer": ["australian", "australia", "aussie"], "weight": 1.5}}',
- true, 111),
+ true, 110),
 
 ('canadian', 'Canadian', 'Canadian productions.', '🇨🇦', 'regional',
  '{"language": {"require_any": ["en", "fr"], "weight": 1.0}, "keywords": {"prefer": ["canadian", "canada"], "weight": 1.5}}',
- true, 112),
+ true, 111),
 
 ('japanese', 'Japanese', 'Japanese films (non-anime).', '🇯🇵', 'regional',
  '{"language": {"require_any": ["ja"], "weight": 2.0}, "keywords": {"exclude": ["anime"], "weight": 1.0}}',
- true, 113),
+ true, 112),
 
 ('chinese', 'Chinese', 'Chinese-language films.', '🇨🇳', 'regional',
  '{"language": {"require_any": ["zh"], "weight": 2.0}}',
- true, 114),
+ true, 113),
 
 ('hong_kong', 'Hong Kong', 'Hong Kong cinema.', '🇭🇰', 'regional',
  '{"language": {"require_any": ["zh", "yue"], "weight": 2.0}, "keywords": {"prefer": ["hong kong"], "weight": 1.0}}',
- true, 115),
+ true, 114),
 
 ('taiwanese', 'Taiwanese', 'Taiwanese films.', '🇹🇼', 'regional',
  '{"language": {"require_any": ["zh"], "weight": 2.0}, "keywords": {"prefer": ["taiwanese", "taiwan"], "weight": 1.0}}',
- true, 116),
+ true, 115),
 
 ('indian', 'Indian', 'Indian films (Bollywood, Tollywood, etc).', '🇮🇳', 'regional',
  '{"language": {"require_any": ["hi", "ta", "te", "ml"], "weight": 2.0}}',
- true, 117),
+ true, 116),
 
 ('spanish', 'Spanish', 'Spanish-language films from Spain.', '🇪🇸', 'regional',
  '{"language": {"require_any": ["es"], "weight": 2.0}, "keywords": {"prefer": ["spanish", "spain"], "weight": 0.5}}',
- true, 118),
+ true, 117),
 
 ('latin_american', 'Latin American', 'Latin American films and series.', '🌎', 'regional',
  '{"language": {"require_any": ["es", "pt"], "weight": 2.0}, "keywords": {"prefer": ["latin", "latinoamérica"], "weight": 0.5}}',
- true, 119),
+ true, 118),
 
 ('mexican', 'Mexican', 'Mexican films and series.', '🇲🇽', 'regional',
  '{"language": {"require_any": ["es"], "weight": 2.0}, "keywords": {"prefer": ["mexican", "mexico"], "weight": 1.0}}',
- true, 120),
+ true, 119),
 
 ('brazilian', 'Brazilian', 'Brazilian films and series.', '🇧🇷', 'regional',
  '{"language": {"require_any": ["pt"], "weight": 2.0}, "keywords": {"prefer": ["brazilian", "brazil"], "weight": 1.0}}',
- true, 121),
+ true, 120),
 
 ('french', 'French', 'French-language films.', '🇫🇷', 'regional',
  '{"language": {"require_any": ["fr"], "weight": 2.0}}',
- true, 122),
+ true, 121),
 
 ('german', 'German', 'German-language films.', '🇩🇪', 'regional',
  '{"language": {"require_any": ["de"], "weight": 2.0}}',
- true, 123),
+ true, 122),
 
 ('italian', 'Italian', 'Italian-language films.', '🇮🇹', 'regional',
  '{"language": {"require_any": ["it"], "weight": 2.0}}',
- true, 124),
+ true, 123),
 
 ('scandinavian', 'Scandinavian', 'Scandinavian films and series.', '🇸🇪', 'regional',
  '{"language": {"require_any": ["sv", "no", "da", "fi"], "weight": 2.0}}',
- true, 125),
+ true, 124),
 
 ('russian', 'Russian', 'Russian-language films.', '🇷🇺', 'regional',
  '{"language": {"require_any": ["ru"], "weight": 2.0}}',
- true, 126),
+ true, 125),
 
 ('turkish', 'Turkish', 'Turkish-language films and series.', '🇹🇷', 'regional',
  '{"language": {"require_any": ["tr"], "weight": 2.0}}',
- true, 127),
+ true, 125),
 
 ('thai', 'Thai', 'Thai-language films and series.', '🇹🇭', 'regional',
  '{"language": {"require_any": ["th"], "weight": 2.0}}',
- true, 128),
+ true, 126),
 
 ('arabic', 'Arabic', 'Arabic-language films and series.', '🇸🇦', 'regional',
  '{"language": {"require_any": ["ar"], "weight": 2.0}}',
- true, 129),
+ true, 127),
 
 -- ============================================================================
--- CATEGORY: TV - 14 new presets (display_order 130-143)
+-- CATEGORY: TV - 14 new presets (display_order 128-141)
 -- ============================================================================
 ('tv_procedural', 'Procedural', 'TV procedural dramas.', '🚔', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["procedural", "case of the week"], "weight": 2.0}, "genres": {"prefer": ["Crime", "Drama"], "weight": 1.0}}',
- true, 130),
+ true, 128),
 
 ('tv_soap', 'Soap Opera', 'Soap operas and melodramas.', '💔', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["soap opera", "telenovela"], "weight": 2.0}, "genres": {"prefer": ["Drama"], "weight": 1.0}}',
- true, 131),
+ true, 129),
 
 ('tv_anthology', 'Anthology', 'Anthology series.', '📚', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["anthology", "anthology series"], "weight": 2.0}}',
- true, 132),
+ true, 130),
 
 ('tv_variety', 'Variety Show', 'Variety and sketch shows.', '🎪', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["variety", "sketch"], "weight": 2.0}, "genres": {"prefer": ["Comedy"], "weight": 1.0}}',
- true, 133),
+ true, 131),
 
 ('tv_talk', 'Talk Show', 'Talk shows and interviews.', '🎙️', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["talk show", "interview show"], "weight": 2.0}}',
- true, 134),
+ true, 132),
 
 ('tv_game', 'Game Show', 'Game shows and competitions.', '🎲', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["game show", "quiz"], "weight": 2.0}}',
- true, 135),
+ true, 133),
 
 ('tv_news', 'News', 'News programs.', '📰', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["news", "newscast"], "weight": 2.0}}',
- true, 136),
+ true, 134),
 
 ('tv_kids', 'Kids TV', 'Children''s television programs.', '🧒', 'tv',
  '{"media_type": {"include": ["tv"]}, "certifications": {"mode": "include", "include": ["TV-Y", "TV-Y7", "TV-G"], "weight": 2.0}, "genres": {"prefer": ["Family", "Animation"], "weight": 1.0}}',
- true, 137),
+ true, 135),
 
 ('tv_dating', 'Dating Shows', 'Dating and relationship reality shows.', '💕', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["dating", "dating show", "bachelor"], "weight": 2.0}, "genres": {"prefer": ["Reality"], "weight": 1.0}}',
- true, 138),
+ true, 136),
 
 ('tv_cooking', 'Cooking Shows', 'Cooking and food competition shows.', '👨‍🍳', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["cooking show", "chef", "baking"], "weight": 2.0}}',
- true, 139),
+ true, 137),
 
 ('tv_true_crime', 'True Crime Series', 'True crime TV series.', '🔎', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["true crime"], "weight": 2.0}, "genres": {"prefer": ["Documentary", "Crime"], "weight": 1.0}}',
- true, 140),
+ true, 138),
 
 ('tv_late_night', 'Late Night', 'Late night talk and variety shows.', '🌙', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["late night", "tonight show"], "weight": 2.0}}',
- true, 141),
+ true, 139),
 
 ('tv_daytime', 'Daytime', 'Daytime television programming.', '☀️', 'tv',
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["daytime"], "weight": 2.0}}',
- true, 142),
+ true, 140),
 
 ('tv_documentary', 'Doc Series', 'Documentary television series.', '📚', 'tv',
  '{"media_type": {"include": ["tv"]}, "genres": {"require_any": ["Documentary"], "weight": 2.0}}',
- true, 143)
+ true, 142)
 
 ON CONFLICT (key, user_id) DO UPDATE SET
     name = EXCLUDED.name,
