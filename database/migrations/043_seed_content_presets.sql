@@ -1,6 +1,6 @@
 -- v0.37.0: Content Presets Seed Data
 -- ═══════════════════════════════════════════════════════════════════════════
--- This migration seeds the content_presets table with 40+ comprehensive
+-- This migration seeds the content_presets table with 46 comprehensive
 -- presets covering all categories for real-world Plex/Emby/Jellyfin library
 -- classification.
 -- 
@@ -59,6 +59,7 @@ BEGIN;
 --     language?: {
 --         prefer?: string[];
 --         require_any?: string[];
+--         exclude?: string[];
 --         weight?: number;
 --     };
 --     media_type?: {
@@ -178,7 +179,7 @@ VALUES
  true, 43),
 
 ('recent_releases', 'Recent Releases', 'Content from the last 2 years.', '🆕', 'temporal',
- '{"release_year": {"min": 2024, "weight": 2.0}}',
+ '{"release_year": {"min": 2025, "weight": 2.0}}',
  true, 44),
 
 -- ============================================================================
@@ -203,7 +204,7 @@ VALUES
  '{"studios": {"require_any": ["DC Entertainment", "DC Films", "DC Studios"], "weight": 2.0}, "keywords": {"prefer": ["dc", "batman", "superman", "justice league", "superhero"], "weight": 1.0}}',
  true, 56),
 
-('star_wars', 'Star Wars', 'Star Wars films and series.', '⭐', 'franchise',
+('star_wars', 'Star Wars', 'Star Wars films and series.', '🌌', 'franchise',
  '{"studios": {"require_any": ["Lucasfilm"], "weight": 1.5}, "keywords": {"require_any": ["star wars"], "prefer": ["jedi", "sith", "force", "skywalker"], "weight": 2.0}}',
  true, 57),
 

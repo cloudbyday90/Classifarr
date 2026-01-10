@@ -8,7 +8,7 @@ describe('Content Presets Seed Data Integration Test', () => {
     });
 
     describe('Basic Preset Verification', () => {
-        test('should have inserted 40+ system presets', async () => {
+        test('should have inserted at least 40 system presets', async () => {
             const res = await db.query(`
                 SELECT COUNT(*) as count 
                 FROM content_presets 

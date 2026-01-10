@@ -124,14 +124,14 @@ This release implements the database schema foundation for the Policy-Driven Cla
   - Release year ranges: min/max year filtering with weights
   - Vote average (TMDB ratings): min/max rating thresholds
   - Runtime: episode/movie length filtering (min/max minutes)
-  - Language: ISO 639-1 codes (en, ja, ko, hi, etc.) with prefer/require
+  - Language: ISO 639-1 codes (en, ja, ko, hi, etc.) with prefer/require/exclude
   - Media type: movie vs TV filtering
 - **Idempotent migration** using `ON CONFLICT (key, user_id) DO UPDATE` for safe re-runs
 - **GIN index optimization** for efficient JSONB queries on signals column
 - **Display ordering** by category with logical grouping (1-4, 10-24, 40-44, etc.)
 
 #### Testing
-- **New test suite:** `content-presets.test.js` with 25+ comprehensive integration tests
+- **New test suite:** `content-presets.test.js` with 30 comprehensive integration tests
   - Verification of 46 system presets inserted
   - Category-wise preset count validation (audience: 4, genre: 15, temporal: 5, etc.)
   - JSONB signal schema validation for all signal types
