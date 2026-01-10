@@ -116,6 +116,19 @@ This release implements the database schema foundation for the Policy-Driven Cla
   - **Regional (5 presets):** hollywood, british, bollywood, korean, foreign
   - **Seasonal (2 presets):** christmas_holiday, halloween
   - **TV-Specific (6 presets):** tv_sitcom, tv_drama, tv_reality, tv_animated, tv_anime, tv_miniseries
+
+#### Content Presets Expansion (Migration 044)
+- **Expanded from 46 to 168 system content presets** covering all real-world classification scenarios:
+  - **Audience (+4 new, 8 total):** kids_older, young_adult, date_night, background
+  - **Genre Core (+5 new):** action, thriller, mystery, history, biographical
+  - **Genre Subgenres (+25 new):** action_comedy, romantic_comedy, dark_comedy, standup, horror_comedy, slasher, psychological_horror, supernatural, monster, zombie, vampire, psychological_thriller, spy, heist, disaster, martial_arts, noir, cyberpunk, space_opera, post_apocalyptic, dystopian, superhero, courtroom, medical, political
+  - **Genre Special Interest (+15 new):** true_crime, nature, science, travel, food, music_doc, art_culture, faith_spiritual, educational, conspiracy, sports_doc, concert, behind_scenes, interview, essay
+  - **Franchise (+18 new, 25 total):** illumination, sony_animation, laika, blue_sky, marvel_other, star_trek, harry_potter, lotr, james_bond, fast_furious, jurassic, monsterverse, conjuring, a24, blumhouse, neon, searchlight, focus
+  - **Temporal (+7 new, 12 total):** silent_era, new_hollywood, 2000s, 2010s, 2020s, retro, modern
+  - **Quality (+8 new, 10 total):** critically_acclaimed, popular, cult_classic, award_winners, indie, blockbuster, underrated, so_bad_good
+  - **Seasonal (+6 new, 8 total):** thanksgiving, valentines, easter, new_years, summer, winter
+  - **Regional (+20 new, 25 total):** english, australian, canadian, japanese, chinese, hong_kong, taiwanese, indian, spanish, latin_american, mexican, brazilian, french, german, italian, scandinavian, russian, turkish, thai, arabic
+  - **TV-Specific (+14 new, 20 total):** tv_procedural, tv_soap, tv_anthology, tv_variety, tv_talk, tv_game, tv_news, tv_kids, tv_dating, tv_cooking, tv_true_crime, tv_late_night, tv_daytime, tv_documentary
 - **Rich JSONB signal configuration** for each preset:
   - Certifications (ratings): mode-based filtering (include/exclude/max) with G, PG, R, TV-MA, etc.
   - Genres: prefer, require_any, require_all, exclude with configurable weights
@@ -131,16 +144,20 @@ This release implements the database schema foundation for the Policy-Driven Cla
 - **Display ordering** by category with logical grouping (1-4, 10-24, 40-44, etc.)
 
 #### Testing
-- **New test suite:** `content-presets.test.js` with 30 comprehensive integration tests
-  - Verification of 46 system presets inserted
-  - Category-wise preset count validation (audience: 4, genre: 15, temporal: 5, etc.)
-  - JSONB signal schema validation for all signal types
-  - JSONB query operations using PostgreSQL operators (@>)
-  - GIN index verification for JSONB queries
-  - Unique constraint testing on (key, user_id)
-  - Idempotency verification (safe to run migration multiple times)
-  - Display order validation within categories
-  - Specific preset verification for all expected keys
+- **Updated test suite:** `content-presets.test.js` now validates 168 system presets
+  - All 74 tests passing (30 original + 2 updated for new display_order ranges)
+  - Verification of 168 total system presets (46 original + 122 new)
+  - Category-wise preset count validation updated:
+    - Audience: 8 (4 original + 4 new)
+    - Genre: 60 (15 original + 45 new across core, subgenres, and special interest)
+    - Temporal: 12 (5 original + 7 new)
+    - Quality: 10 (2 original + 8 new)
+    - Franchise: 25 (7 original + 18 new)
+    - Regional: 25 (5 original + 20 new)
+    - Seasonal: 8 (2 original + 6 new)
+    - TV: 20 (6 original + 14 new)
+  - Display order range validation updated (1-8 for audience, 10-70 for genre)
+  - All JSONB signal validation, query operations, and idempotency tests continue to pass
 
 ### Related
 - Closes #91 (Policy-Driven Schema Implementation)

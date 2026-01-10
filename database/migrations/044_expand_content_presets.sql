@@ -364,7 +364,7 @@ VALUES
  '{"keywords": {"require_any": ["underrated", "overlooked", "hidden"], "weight": 2.0}}',
  true, 101),
 
-('so_bad_good', 'So Bad It\'s Good', 'So bad they\'re good, guilty pleasure films.', '🧀', 'quality',
+('so_bad_good', 'So Bad It''s Good', 'So bad they''re good, guilty pleasure films.', '🧀', 'quality',
  '{"keywords": {"require_any": ["so bad", "guilty pleasure", "campy"], "weight": 2.0}}',
  true, 102),
 
@@ -375,7 +375,7 @@ VALUES
  '{"keywords": {"require_any": ["thanksgiving", "turkey day"], "weight": 2.0}, "genres": {"prefer": ["Family", "Comedy", "Drama"], "weight": 0.5}}',
  true, 104),
 
-('valentines', 'Valentine\'s Day', 'Valentine\'s Day romantic content.', '💘', 'seasonal',
+('valentines', 'Valentine''s Day', 'Valentine''s Day romantic content.', '💘', 'seasonal',
  '{"keywords": {"require_any": ["valentine", "valentines day"], "weight": 2.0}, "genres": {"prefer": ["Romance", "Comedy"], "weight": 1.0}}',
  true, 105),
 
@@ -383,7 +383,7 @@ VALUES
  '{"keywords": {"require_any": ["easter", "bunny", "egg"], "weight": 2.0}, "genres": {"prefer": ["Family", "Animation"], "weight": 0.5}}',
  true, 106),
 
-('new_years', 'New Year\'s', 'New Year\'s celebration content.', '🎆', 'seasonal',
+('new_years', 'New Year''s', 'New Year''s celebration content.', '🎆', 'seasonal',
  '{"keywords": {"require_any": ["new year", "new years eve"], "weight": 2.0}, "genres": {"prefer": ["Comedy", "Romance", "Drama"], "weight": 0.5}}',
  true, 107),
 
@@ -509,7 +509,7 @@ VALUES
  '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["news", "newscast"], "weight": 2.0}}',
  true, 135),
 
-('tv_kids', 'Kids TV', 'Children\'s television programs.', '🧒', 'tv',
+('tv_kids', 'Kids TV', 'Children''s television programs.', '🧒', 'tv',
  '{"media_type": {"include": ["tv"]}, "certifications": {"mode": "include", "include": ["TV-Y", "TV-Y7", "TV-G"], "weight": 2.0}, "genres": {"prefer": ["Family", "Animation"], "weight": 1.0}}',
  true, 136),
 

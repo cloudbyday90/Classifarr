@@ -398,7 +398,7 @@ describe('Content Presets Seed Data Integration Test', () => {
             }
         });
 
-        test('audience category should have display_order 1-4', async () => {
+        test('audience category should have display_order 1-8', async () => {
             const res = await db.query(`
                 SELECT MIN(display_order) as min, MAX(display_order) as max
                 FROM content_presets 
@@ -406,10 +406,10 @@ describe('Content Presets Seed Data Integration Test', () => {
             `);
             
             expect(res.rows[0].min).toBe(1);
-            expect(res.rows[0].max).toBe(4);
+            expect(res.rows[0].max).toBe(8);
         });
 
-        test('genre category should have display_order 10-24', async () => {
+        test('genre category should have display_order 10-70', async () => {
             const res = await db.query(`
                 SELECT MIN(display_order) as min, MAX(display_order) as max
                 FROM content_presets 
@@ -417,7 +417,7 @@ describe('Content Presets Seed Data Integration Test', () => {
             `);
             
             expect(res.rows[0].min).toBe(10);
-            expect(res.rows[0].max).toBe(24);
+            expect(res.rows[0].max).toBe(70);
         });
     });
 
