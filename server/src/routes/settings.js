@@ -1999,7 +1999,17 @@ router.get('/ai', async (req, res) => {
         rag_similarity_threshold: 0.70,
         rag_min_history_count: 50,
         rag_backfill_budget_type: 'percentage',
-        rag_backfill_budget_value: 25
+        rag_backfill_budget_value: 25,
+        // Pattern mining settings
+        pattern_mining_enabled: true,
+        pattern_rule_priority: 'rules_first',
+        pattern_ai_skip_threshold: 90,
+        pattern_notification_dismissed: false,
+        // Formula engine weights
+        formula_pattern_weight: 0.40,
+        formula_rule_weight: 0.30,
+        formula_rag_weight: 0.20,
+        formula_history_weight: 0.10
       });
     }
 
@@ -2047,7 +2057,12 @@ router.put('/ai', async (req, res) => {
       rag_similarity_threshold,
       rag_min_history_count,
       rag_backfill_budget_type,
-      rag_backfill_budget_value
+      rag_backfill_budget_value,
+      // Formula engine weights
+      formula_pattern_weight,
+      formula_rule_weight,
+      formula_rag_weight,
+      formula_history_weight
     } = req.body;
 
     // Handle API key - don't update if masked
@@ -2055,6 +2070,30 @@ router.put('/ai', async (req, res) => {
     if (isMaskedToken(api_key)) {
       const existing = await db.query('SELECT api_key FROM ai_provider_config WHERE id = 1');
       finalApiKey = existing.rows[0]?.api_key || '';
+    }
+
+    // Validate formula weights sum to approximately 1.0 if any are provided
+    const providedWeights = [formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight];
+    const hasWeights = providedWeights.some(w => w !== undefined);
+    
+    if (hasWeights) {
+      // Get current weights from database for any not provided
+      const current = await db.query('SELECT formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight FROM ai_provider_config WHERE id = 1');
+      const currentWeights = current.rows[0] || {};
+      
+      const finalPatternWeight = formula_pattern_weight ?? currentWeights.formula_pattern_weight ?? 0.40;
+      const finalRuleWeight = formula_rule_weight ?? currentWeights.formula_rule_weight ?? 0.30;
+      const finalRagWeight = formula_rag_weight ?? currentWeights.formula_rag_weight ?? 0.20;
+      const finalHistoryWeight = formula_history_weight ?? currentWeights.formula_history_weight ?? 0.10;
+      
+      const sum = finalPatternWeight + finalRuleWeight + finalRagWeight + finalHistoryWeight;
+      
+      if (sum < 0.99 || sum > 1.01) {
+        return res.status(400).json({ 
+          error: `Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`,
+          currentSum: sum
+        });
+      }
     }
 
     const result = await db.query(`
@@ -2066,10 +2105,11 @@ router.put('/ai', async (req, res) => {
                 rag_enabled, embedding_provider, embedding_model,
                 rag_similarity_threshold, rag_min_history_count,
                 rag_backfill_budget_type, rag_backfill_budget_value,
+                formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight,
                 updated_at
             ) VALUES (
                 1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                $16, $17, $18, $19, $20, $21, $22, NOW()
+                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW()
             )
             ON CONFLICT (id) DO UPDATE SET
                 primary_provider = EXCLUDED.primary_provider,
@@ -2094,6 +2134,10 @@ router.put('/ai', async (req, res) => {
                 rag_min_history_count = EXCLUDED.rag_min_history_count,
                 rag_backfill_budget_type = EXCLUDED.rag_backfill_budget_type,
                 rag_backfill_budget_value = EXCLUDED.rag_backfill_budget_value,
+                formula_pattern_weight = EXCLUDED.formula_pattern_weight,
+                formula_rule_weight = EXCLUDED.formula_rule_weight,
+                formula_rag_weight = EXCLUDED.formula_rag_weight,
+                formula_history_weight = EXCLUDED.formula_history_weight,
                 updated_at = NOW()
             RETURNING *
         `, [
@@ -2118,7 +2162,11 @@ router.put('/ai', async (req, res) => {
       rag_similarity_threshold || 0.70,
       rag_min_history_count || 50,
       rag_backfill_budget_type || 'percentage',
-      rag_backfill_budget_value || 25
+      rag_backfill_budget_value || 25,
+      formula_pattern_weight ?? 0.40,
+      formula_rule_weight ?? 0.30,
+      formula_rag_weight ?? 0.20,
+      formula_history_weight ?? 0.10
     ]);
 
     // Clear config cache
