@@ -7,11 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.37.0-alpha] - TBD
 
-### 🚀 Major: Policy-Driven Classification Engine (Schema)
+### 🚀 Major: Policy-Driven Classification Engine
 
-This release implements the database schema foundation for the Policy-Driven Classification Engine, replacing rule-centric design with comprehensive policy-based classification.
+This release implements the complete Policy-Driven Classification Engine, replacing rule-centric design with comprehensive policy-based classification using rich content signals.
 
 ### Added
+
+#### PolicyEngine Service
+- **New service:** `server/src/services/policyEngine.js` - Core classification engine with comprehensive signal evaluation
+  - **Main entry point:** `evaluateItem(item)` - Evaluates media items against all active policies
+  - **Authoritative signals:** `checkAuthoritativeSignals(item)` - 100% confidence source library matching
+  - **Policy management:** `getActivePolicies()` - Fetches active policies with linked presets
+  - **Policy evaluation:** `evaluatePolicy(policy, item)` - Scores single policy with weighted components
+  - **Preset scoring:** `scorePresets(presets, item)` - Evaluates items against content preset signals
+  - **Signal evaluation:** `evaluatePresetSignals(signals, item)` - Processes all signal types with weights
+  - **Signal type scorers:**
+    - `scoreCertification()` - Rating/certification filtering (include/exclude/max modes)
+    - `scoreGenres()` - Genre matching (require_any/require_all/prefer/exclude)
+    - `scoreKeywords()` - Keyword detection in title/overview/keywords
+    - `scoreStudios()` - Production company matching
+    - `scoreReleaseYear()` - Year range filtering
+    - `scoreVoteAverage()` - TMDB rating thresholds
+    - `scoreRuntime()` - Length filtering in minutes
+    - `scoreLanguage()` - Language preference (require/prefer/exclude)
+    - `scoreMediaType()` - Movie vs TV filtering (binary)
+  - **Pattern scoring:** `scorePatterns(libraryId, item)` - Matches discovered patterns (caps at 95%)
+  - **RAG scoring:** `scoreRAG(libraryId, item)` - Semantic similarity via embeddings (caps at 95%, graceful fallback)
+  - **History scoring:** `scoreHistory(libraryId, item)` - Historical classification accuracy (caps at 95%)
+  - **Result processing:**
+    - `rankResults(evaluations)` - Sorts policies by weighted score
+    - `determineAction(ranked)` - Decides auto-classify/prompt-confirm/prompt-select/manual
+  - **Weighted scoring system:**
+    - Preset weight (default 40%): Matches against 168 content presets
+    - Pattern weight (default 30%): Discovered patterns from user feedback
+    - RAG weight (default 20%): Semantic similarity from embeddings
+    - History weight (default 10%): Past classification accuracy
+    - All weights configurable per-policy or use global defaults
+
+#### Classification Integration
+- **Updated:** `server/src/services/classification.js` to integrate PolicyEngine
+  - Added as Step 3.5 in decision tree (after high-confidence matches, before legacy signals)
+  - Auto-classifies when policy confidence meets threshold (default 85%)
+  - Stores policy results for AI verification when confidence is medium (60-84%)
+  - Falls back gracefully to legacy signal-based classification if policy evaluation fails
+  - Logs policy decisions for observability
+
+#### Testing
+- **New test suite:** `server/src/__tests__/integration/policyEngine.test.js` with 27 comprehensive tests
+  - **Core functionality:** Policy retrieval, authoritative signals, policy evaluation
+  - **Signal scoring:** All 9 signal types tested (certifications, genres, keywords, studios, year, rating, runtime, language, media_type)
+  - **Preset evaluation:** Weight handling, signal combination, media type filtering
+  - **End-to-end:** Full pipeline evaluation, authoritative matching, action determination
+  - **Result processing:** Ranking by score, filtering zero scores, action thresholds
+  - All 27 tests passing with PostgreSQL testcontainer integration
+
+### Database Schema (from PRs #105, #106, #107)
 
 #### Database Schema (Migration 042)
 - **`library_policies` table:** Core policy definition with multi-policy support per library

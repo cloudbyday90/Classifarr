@@ -32,6 +32,7 @@ const ragRetriever = require('./ragRetriever');
 const embeddingService = require('./embeddingService');
 const contextManager = require('./contextManager');
 const patternReinforcementService = require('./patternReinforcementService');
+const policyEngine = require('./policyEngine');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -874,8 +875,60 @@ class ClassificationService {
       };
     }
 
+    // Step 3.5: Policy Engine evaluation (v0.37.0)
+    // Modern policy-based classification with comprehensive signal scoring
+    try {
+      logger.info('Evaluating with PolicyEngine', { title: metadata.title });
+      const policyResult = await policyEngine.evaluateItem(metadata);
+      
+      if (policyResult.action === 'auto_classify' && policyResult.library) {
+        logger.info('PolicyEngine auto-classified', {
+          title: metadata.title,
+          library: policyResult.library.library_name,
+          confidence: policyResult.confidence
+        });
+        const matchedLibrary = libraries.find(l => l.id === policyResult.library.library_id);
+        if (!matchedLibrary) {
+          logger.error('PolicyEngine returned library that was not found in libraries list', {
+            policyLibraryId: policyResult.library.library_id,
+          });
+          throw new Error('PolicyEngine selected unknown library');
+        }
+        return {
+          library: matchedLibrary,
+          confidence: policyResult.confidence,
+          method: policyResult.method,
+          reason: `Policy: ${policyResult.library.policy_name}`,
+          libraries: libraries,
+          policyResult: policyResult, // Include for logging/debugging
+        };
+      } else if (policyResult.action === 'prompt_confirm' && policyResult.library) {
+        // Policy suggests a library with medium confidence - continue to verify with AI
+        logger.info('PolicyEngine suggests confirmation needed', {
+          title: metadata.title,
+          library: policyResult.library.library_name,
+          confidence: policyResult.confidence
+        });
+        // Store policy result for later use in AI context
+        metadata.policyResult = policyResult;
+      } else if (policyResult.action === 'prompt_select' && policyResult.ranked.length > 0) {
+        // Policy has suggestions but needs user selection
+        logger.info('PolicyEngine suggests user selection', {
+          title: metadata.title,
+          topLibrary: policyResult.ranked[0]?.library_name,
+          confidence: policyResult.confidence
+        });
+        metadata.policyResult = policyResult;
+      }
+    } catch (policyError) {
+      logger.warn('PolicyEngine evaluation failed, falling back to legacy signals', {
+        error: policyError.message,
+        title: metadata.title
+      });
+    }
+
     // Step 4: Collect signals and calculate confidence for AI verification
-    // v0.33 Signal Aggregation Model
+    // v0.33 Signal Aggregation Model (Legacy fallback)
     const signalCollector = new SignalCollector(metadata.tmdb_id, metadata.media_type);
 
     // Add detected signals
