@@ -4,7 +4,7 @@
 -- classification engine and changes pattern mining to be enabled by default
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Add formula weight columns (must sum to 1.0)
+-- Add formula weight columns (recommended to sum to 1.0 for normalized scoring)
 -- Pattern weight: contribution from historical pattern matches
 ALTER TABLE ai_provider_config
 ADD COLUMN IF NOT EXISTS formula_pattern_weight REAL DEFAULT 0.40;
@@ -30,6 +30,16 @@ ALTER COLUMN pattern_mining_enabled SET DEFAULT true;
 UPDATE ai_provider_config 
 SET pattern_mining_enabled = true 
 WHERE pattern_mining_enabled IS NOT TRUE;
+
+-- Add CHECK constraint to ensure formula weights sum to approximately 1.0
+-- Using 0.99 to 1.01 range to allow for floating point precision
+ALTER TABLE ai_provider_config
+ADD CONSTRAINT formula_weights_sum_check
+CHECK (
+    formula_pattern_weight + formula_rule_weight + 
+    formula_rag_weight + formula_history_weight 
+    BETWEEN 0.99 AND 1.01
+);
 
 -- Add comments for documentation
 COMMENT ON COLUMN ai_provider_config.formula_pattern_weight IS 'Formula weight for pattern matching (0.0-1.0, default 0.40)';

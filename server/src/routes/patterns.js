@@ -364,6 +364,32 @@ router.put('/config', async (req, res) => {
             paramIndex++;
         }
 
+        // Validate formula weights sum to approximately 1.0 if any are being updated
+        const weightUpdates = [formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight];
+        const hasWeightUpdates = weightUpdates.some(w => typeof w === 'number');
+        
+        if (hasWeightUpdates) {
+            // Get current weights from database for any not being updated
+            const current = await db.query(
+                'SELECT formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight FROM ai_provider_config WHERE id = 1'
+            );
+            const currentWeights = current.rows[0] || {};
+            
+            const finalPatternWeight = typeof formula_pattern_weight === 'number' ? formula_pattern_weight : (currentWeights.formula_pattern_weight ?? 0.40);
+            const finalRuleWeight = typeof formula_rule_weight === 'number' ? formula_rule_weight : (currentWeights.formula_rule_weight ?? 0.30);
+            const finalRagWeight = typeof formula_rag_weight === 'number' ? formula_rag_weight : (currentWeights.formula_rag_weight ?? 0.20);
+            const finalHistoryWeight = typeof formula_history_weight === 'number' ? formula_history_weight : (currentWeights.formula_history_weight ?? 0.10);
+            
+            const sum = finalPatternWeight + finalRuleWeight + finalRagWeight + finalHistoryWeight;
+            
+            if (sum < 0.99 || sum > 1.01) {
+                return res.status(400).json({ 
+                    error: `Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`,
+                    currentSum: sum
+                });
+            }
+        }
+
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No valid updates provided' });
         }

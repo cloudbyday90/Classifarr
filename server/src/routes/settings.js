@@ -2072,6 +2072,30 @@ router.put('/ai', async (req, res) => {
       finalApiKey = existing.rows[0]?.api_key || '';
     }
 
+    // Validate formula weights sum to approximately 1.0 if any are provided
+    const providedWeights = [formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight];
+    const hasWeights = providedWeights.some(w => w !== undefined);
+    
+    if (hasWeights) {
+      // Get current weights from database for any not provided
+      const current = await db.query('SELECT formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight FROM ai_provider_config WHERE id = 1');
+      const currentWeights = current.rows[0] || {};
+      
+      const finalPatternWeight = formula_pattern_weight ?? currentWeights.formula_pattern_weight ?? 0.40;
+      const finalRuleWeight = formula_rule_weight ?? currentWeights.formula_rule_weight ?? 0.30;
+      const finalRagWeight = formula_rag_weight ?? currentWeights.formula_rag_weight ?? 0.20;
+      const finalHistoryWeight = formula_history_weight ?? currentWeights.formula_history_weight ?? 0.10;
+      
+      const sum = finalPatternWeight + finalRuleWeight + finalRagWeight + finalHistoryWeight;
+      
+      if (sum < 0.99 || sum > 1.01) {
+        return res.status(400).json({ 
+          error: `Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`,
+          currentSum: sum
+        });
+      }
+    }
+
     const result = await db.query(`
             INSERT INTO ai_provider_config (
                 id, primary_provider, api_endpoint, api_key, model, temperature, max_tokens,
