@@ -44,6 +44,59 @@ This release implements the complete Policy-Driven Classification Engine, replac
     - History weight (default 10%): Past classification accuracy
     - All weights configurable per-policy or use global defaults
 
+#### FeedbackAnalysis Service
+- **New service:** `server/src/services/feedbackAnalysis.js` - Feedback analysis & pattern learning loop service
+  - **Feedback recording:** `recordFeedback(feedbackData)` - Records user classification decisions into policy_feedback_log
+  - **Policy analysis:** `analyzePolicy(policyId, options)` - Analyzes feedback to detect patterns and generate suggestions
+  - **Failure pattern detection:** `detectFailurePatterns(policyId, feedback)` - Identifies systematic misclassifications
+    - False positives: Recurring corrections away from policy (by genre, studio, keyword)
+    - Missed positives: Recurring corrections toward policy
+    - Threshold issues: High correction rates indicating threshold problems
+  - **Signal effectiveness analysis:** `analyzeSignalEffectiveness(policyId, feedback)` - Evaluates signal performance
+    - Calculates accuracy rates for preset, pattern, RAG, and history signals
+    - Identifies underperforming and high-performing signals
+  - **New pattern detection:** `detectNewPatterns(policyId, feedback)` - Discovers recurring patterns in corrections
+    - Studios, keywords, genres, collections that appear frequently in user corrections
+  - **Threshold analysis:** `analyzeThresholds(policyId, feedback)` - Analyzes score distributions
+    - Auto-classification vs prompted decisions
+    - Accuracy rates by action type
+  - **Suggestion generation:** `generateSuggestions(policyId, analysis)` - Creates actionable tuning recommendations
+    - `adjust_weight`: Increase/decrease signal weights based on performance
+    - `add_preset`: Add presets for recurring patterns
+    - `remove_preset`: Remove underperforming presets
+    - `adjust_threshold`: Modify auto_classify_threshold or prompt_threshold
+    - `create_pattern`: Add discovered patterns to discovered_patterns table
+    - `modify_signal`: Adjust preset signal configurations
+  - **Suggestion storage:** `storeSuggestions(policyId, suggestions)` - Persists suggestions to policy_tuning_suggestions
+    - Fills in current policy values
+    - Calculates recommended values
+    - Prevents duplicate suggestions
+  - **Learning stats:** `updateLearningStats(policyId)` - Updates policy_learning_stats table
+    - Total decisions, auto-classified, AI validated, user prompted, corrections
+    - Overall accuracy rate, auto-classification accuracy rate
+    - 7-day and 30-day accuracy trends
+    - Trend detection (improving/declining/stable)
+  - **Suggestion management:**
+    - `getPendingSuggestions(policyId)` - Retrieves pending suggestions
+    - `applySuggestion(suggestionId, userId)` - Applies suggestion and logs to policy_change_log
+    - `rejectSuggestion(suggestionId, userId, reason)` - Marks suggestion as rejected
+  - **Full analysis:** `runFullAnalysis()` - Analyzes all active policies
+  - **Helper methods:**
+    - `groupByMetadataField(feedback, field)` - Groups feedback by metadata attributes
+    - `extractSignificantPatterns(groups, type, minCount)` - Filters patterns by significance threshold
+
+#### FeedbackAnalysis API Routes
+- **New routes:** `server/src/routes/feedback.js` - API endpoints for feedback and policy learning
+  - `POST /api/feedback` - Record a feedback event (requires authenticated user with valid userId)
+  - `GET /api/feedback/policies/:id/suggestions` - Get pending suggestions for a policy (requires authentication)
+  - `POST /api/feedback/policies/:id/analyze` - Trigger policy analysis (requires authentication; validates input bounds)
+  - `GET /api/feedback/policies/:id/stats` - Get learning statistics for a policy (requires authentication)
+  - `POST /api/feedback/suggestions/:id/apply` - Apply a tuning suggestion (requires authentication; userId must be provided and valid; acting user is derived from authenticated context)
+  - `POST /api/feedback/suggestions/:id/reject` - Reject a tuning suggestion (requires authentication; userId must be provided and valid; acting user is derived from authenticated context)
+  - `POST /api/feedback/analyze-all` - Run analysis for all active policies (requires authentication)
+- **Integration:** Registered feedback router in `server/src/routes/api.js`
+  - **Note:** These endpoints should be protected with JWT auth middleware and admin-level authorization where appropriate in production deployments
+
 #### Classification Integration
 - **Updated:** `server/src/services/classification.js` to integrate PolicyEngine
   - Added as Step 3.5 in decision tree (after high-confidence matches, before legacy signals)
@@ -124,6 +177,19 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Ensures data integrity when policies or libraries are deleted
 
 #### Testing
+- **New test suite:** `feedback-analysis.test.js` with comprehensive integration tests
+  - **recordFeedback:** Validates feedback recording with all metadata fields
+  - **updateLearningStats:** Tests accuracy calculations, trend detection, and stats aggregation
+  - **detectFailurePatterns:** Tests false positive detection, threshold issue identification
+  - **analyzeSignalEffectiveness:** Validates signal accuracy calculations
+  - **detectNewPatterns:** Tests pattern discovery from user corrections
+  - **generateSuggestions:** Validates suggestion generation for all types
+  - **storeSuggestions:** Tests database persistence and duplicate prevention
+  - **getPendingSuggestions:** Validates suggestion retrieval
+  - **applySuggestion:** Tests threshold adjustments, weight adjustments, and change logging
+  - **rejectSuggestion:** Validates suggestion rejection workflow
+  - **analyzePolicy:** Tests full policy analysis pipeline
+  - **runFullAnalysis:** Tests multi-policy batch analysis
 - **New test suite:** `policy-schema.test.js` with 33 comprehensive integration tests
   - Table existence verification for all 9 new tables
   - Column presence and data type validation

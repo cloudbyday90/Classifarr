@@ -40,6 +40,7 @@ const pathMappingsRouter = require('./pathMappings');
 const confidenceRouter = require('./confidence');
 const ragRouter = require('./rag');
 const patternsRouter = require('./patterns');
+const feedbackRouter = require('./feedback');
 
 const router = express.Router();
 
@@ -67,6 +68,7 @@ router.use('/settings/path-mappings', pathMappingsRouter);
 router.use('/confidence', confidenceRouter);
 router.use('/rag', ragRouter);
 router.use('/patterns', patternsRouter);
+router.use('/feedback', feedbackRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
@@ -85,6 +87,7 @@ router.get('/', (req, res) => {
       mediaSync: '/api/media-sync',
       clarifications: '/api/clarifications',
       plex: '/api/plex',
+      feedback: '/api/feedback',
       docs: '/api/docs',
     },
   });
