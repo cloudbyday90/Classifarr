@@ -66,7 +66,11 @@ class EmbeddingRouter {
                     pattern_mining_enabled,
                     pattern_rule_priority,
                     pattern_ai_skip_threshold,
-                    pattern_notification_dismissed
+                    pattern_notification_dismissed,
+                    formula_pattern_weight,
+                    formula_rule_weight,
+                    formula_rag_weight,
+                    formula_history_weight
                 FROM ai_provider_config 
                 WHERE id = 1
             `);

@@ -247,10 +247,14 @@ router.get('/config', async (req, res) => {
     try {
         const config = await embeddingRouter.getConfig();
         res.json({
-            pattern_mining_enabled: config?.pattern_mining_enabled || false,
+            pattern_mining_enabled: config?.pattern_mining_enabled !== false, // default true
             pattern_rule_priority: config?.pattern_rule_priority || 'rules_first',
             pattern_ai_skip_threshold: config?.pattern_ai_skip_threshold || 90,
-            pattern_notification_dismissed: config?.pattern_notification_dismissed || false
+            pattern_notification_dismissed: config?.pattern_notification_dismissed || false,
+            formula_pattern_weight: config?.formula_pattern_weight ?? 0.40,
+            formula_rule_weight: config?.formula_rule_weight ?? 0.30,
+            formula_rag_weight: config?.formula_rag_weight ?? 0.20,
+            formula_history_weight: config?.formula_history_weight ?? 0.10
         });
     } catch (error) {
         logger.error('Error getting pattern config', { error: error.message });
@@ -270,7 +274,11 @@ router.put('/config', async (req, res) => {
             pattern_mining_enabled,
             pattern_rule_priority,
             pattern_ai_skip_threshold,
-            pattern_notification_dismissed
+            pattern_notification_dismissed,
+            formula_pattern_weight,
+            formula_rule_weight,
+            formula_rag_weight,
+            formula_history_weight
         } = req.body;
 
         const updates = [];
@@ -311,6 +319,51 @@ router.put('/config', async (req, res) => {
             paramIndex++;
         }
 
+        // Formula weights validation and updates
+        if (typeof formula_pattern_weight === 'number') {
+            if (formula_pattern_weight < 0 || formula_pattern_weight > 1) {
+                return res.status(400).json({ 
+                    error: 'formula_pattern_weight must be between 0 and 1' 
+                });
+            }
+            updates.push(`formula_pattern_weight = $${paramIndex}`);
+            params.push(formula_pattern_weight);
+            paramIndex++;
+        }
+
+        if (typeof formula_rule_weight === 'number') {
+            if (formula_rule_weight < 0 || formula_rule_weight > 1) {
+                return res.status(400).json({ 
+                    error: 'formula_rule_weight must be between 0 and 1' 
+                });
+            }
+            updates.push(`formula_rule_weight = $${paramIndex}`);
+            params.push(formula_rule_weight);
+            paramIndex++;
+        }
+
+        if (typeof formula_rag_weight === 'number') {
+            if (formula_rag_weight < 0 || formula_rag_weight > 1) {
+                return res.status(400).json({ 
+                    error: 'formula_rag_weight must be between 0 and 1' 
+                });
+            }
+            updates.push(`formula_rag_weight = $${paramIndex}`);
+            params.push(formula_rag_weight);
+            paramIndex++;
+        }
+
+        if (typeof formula_history_weight === 'number') {
+            if (formula_history_weight < 0 || formula_history_weight > 1) {
+                return res.status(400).json({ 
+                    error: 'formula_history_weight must be between 0 and 1' 
+                });
+            }
+            updates.push(`formula_history_weight = $${paramIndex}`);
+            params.push(formula_history_weight);
+            paramIndex++;
+        }
+
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No valid updates provided' });
         }
@@ -323,7 +376,11 @@ router.put('/config', async (req, res) => {
                 pattern_mining_enabled,
                 pattern_rule_priority,
                 pattern_ai_skip_threshold,
-                pattern_notification_dismissed
+                pattern_notification_dismissed,
+                formula_pattern_weight,
+                formula_rule_weight,
+                formula_rag_weight,
+                formula_history_weight
         `;
 
         const result = await db.query(query, params);
