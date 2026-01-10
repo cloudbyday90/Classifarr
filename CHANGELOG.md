@@ -106,10 +106,47 @@ This release implements the database schema foundation for the Policy-Driven Cla
 - Comprehensive inline documentation via SQL comments
 - Follows existing migration patterns and conventions
 
+#### Content Presets Seed Data (Migration 043)
+- **46 system content presets** covering all major classification categories:
+  - **Audience (4 presets):** family_friendly, kids_only, teen, adult_only
+  - **Genre (15 presets):** animated, anime, action_adventure, comedy, horror_scary, drama, romance, scifi, fantasy, documentary, crime_mystery, western, musical, sports, war
+  - **Temporal (5 presets):** classic_films, golden_age, 80s, 90s, recent_releases
+  - **Quality (2 presets):** highly_rated, hidden_gems
+  - **Franchise (7 presets):** marvel_mcu, dc_universe, star_wars, disney, pixar, ghibli, dreamworks
+  - **Regional (5 presets):** hollywood, british, bollywood, korean, foreign
+  - **Seasonal (2 presets):** christmas_holiday, halloween
+  - **TV-Specific (6 presets):** tv_sitcom, tv_drama, tv_reality, tv_animated, tv_anime, tv_miniseries
+- **Rich JSONB signal configuration** for each preset:
+  - Certifications (ratings): mode-based filtering (include/exclude/max) with G, PG, R, TV-MA, etc.
+  - Genres: prefer, require_any, require_all, exclude with configurable weights
+  - Keywords: prefer, require_any, exclude for content matching
+  - Studios: studio-based filtering (Marvel Studios, Pixar, BBC, etc.)
+  - Release year ranges: min/max year filtering with weights
+  - Vote average (TMDB ratings): min/max rating thresholds
+  - Runtime: episode/movie length filtering (min/max minutes)
+  - Language: ISO 639-1 codes (en, ja, ko, hi, etc.) with prefer/require/exclude
+  - Media type: movie vs TV filtering
+- **Idempotent migration** using `ON CONFLICT (key, user_id) DO UPDATE` for safe re-runs
+- **GIN index optimization** for efficient JSONB queries on signals column
+- **Display ordering** by category with logical grouping (1-4, 10-24, 40-44, etc.)
+
+#### Testing
+- **New test suite:** `content-presets.test.js` with 30 comprehensive integration tests
+  - Verification of 46 system presets inserted
+  - Category-wise preset count validation (audience: 4, genre: 15, temporal: 5, etc.)
+  - JSONB signal schema validation for all signal types
+  - JSONB query operations using PostgreSQL operators (@>)
+  - GIN index verification for JSONB queries
+  - Unique constraint testing on (key, user_id)
+  - Idempotency verification (safe to run migration multiple times)
+  - Display order validation within categories
+  - Specific preset verification for all expected keys
+
 ### Related
 - Closes #91 (Policy-Driven Schema Implementation)
+- Closes #95 (Content Presets Seed Data)
 - Part of #82 (v0.37.0 Formula-Based Classification Engine Epic)
-- Related to #95 (Content Presets), #92 (Policy Engine)
+- Related to #92 (Policy Engine will consume these presets)
 
 ## [0.36.3a-alpha] - 2026-01-07
 
