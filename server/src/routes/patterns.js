@@ -247,7 +247,7 @@ router.get('/config', async (req, res) => {
     try {
         const config = await embeddingRouter.getConfig();
         res.json({
-            pattern_mining_enabled: config?.pattern_mining_enabled !== false, // default true
+            pattern_mining_enabled: config?.pattern_mining_enabled ?? true, // default true
             pattern_rule_priority: config?.pattern_rule_priority || 'rules_first',
             pattern_ai_skip_threshold: config?.pattern_ai_skip_threshold || 90,
             pattern_notification_dismissed: config?.pattern_notification_dismissed || false,

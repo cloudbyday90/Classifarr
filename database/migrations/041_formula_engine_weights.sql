@@ -29,7 +29,7 @@ ALTER COLUMN pattern_mining_enabled SET DEFAULT true;
 -- This allows existing users to benefit from the new formula engine
 UPDATE ai_provider_config 
 SET pattern_mining_enabled = true 
-WHERE pattern_mining_enabled = false;
+WHERE pattern_mining_enabled IS NOT TRUE;
 
 -- Add comments for documentation
 COMMENT ON COLUMN ai_provider_config.formula_pattern_weight IS 'Formula weight for pattern matching (0.0-1.0, default 0.40)';
