@@ -35,9 +35,9 @@ router.post('/', async (req, res) => {
         const feedbackData = req.body;
 
         // Validate required fields
-        if (!feedbackData.tmdb_id || !feedbackData.selected_library_id) {
+        if (!feedbackData.tmdb_id || !feedbackData.selected_library_id || !feedbackData.selected_policy_id) {
             return res.status(400).json({
-                error: 'Missing required fields: tmdb_id and selected_library_id are required'
+                error: 'Missing required fields: tmdb_id, selected_library_id, and selected_policy_id are required'
             });
         }
 
@@ -99,13 +99,39 @@ router.get('/policies/:id/suggestions', async (req, res) => {
 router.post('/policies/:id/analyze', async (req, res) => {
     try {
         const policyId = parseInt(req.params.id);
-        const options = {
-            days: parseInt(req.body.days) || 30,
-            minFeedback: parseInt(req.body.minFeedback) || 5
-        };
 
         if (isNaN(policyId)) {
             return res.status(400).json({ error: 'Invalid policy ID' });
+        }
+
+        // Parse and apply defaults
+        const days = parseInt(req.body.days);
+        const minFeedback = parseInt(req.body.minFeedback);
+
+        const options = {
+            days: isNaN(days) ? 30 : days,
+            minFeedback: isNaN(minFeedback) ? 5 : minFeedback
+        };
+
+        // Validate option bounds to prevent excessive load
+        if (
+            !Number.isInteger(options.days) ||
+            options.days < 1 ||
+            options.days > 365
+        ) {
+            return res.status(400).json({
+                error: 'Invalid days parameter. Must be an integer between 1 and 365.'
+            });
+        }
+
+        if (
+            !Number.isInteger(options.minFeedback) ||
+            options.minFeedback < 1 ||
+            options.minFeedback > 1000
+        ) {
+            return res.status(400).json({
+                error: 'Invalid minFeedback parameter. Must be an integer between 1 and 1000.'
+            });
         }
 
         const analysis = await feedbackAnalysis.analyzePolicy(policyId, options);
@@ -184,10 +210,19 @@ router.get('/policies/:id/stats', async (req, res) => {
 router.post('/suggestions/:id/apply', async (req, res) => {
     try {
         const suggestionId = parseInt(req.params.id);
-        const userId = req.body.userId || 1; // Default to admin user if not provided
+        const rawUserId = req.body.userId;
 
         if (isNaN(suggestionId)) {
             return res.status(400).json({ error: 'Invalid suggestion ID' });
+        }
+
+        if (rawUserId === undefined || rawUserId === null) {
+            return res.status(401).json({ error: 'Authentication required: userId is missing' });
+        }
+
+        const userId = parseInt(rawUserId);
+        if (isNaN(userId)) {
+            return res.status(400).json({ error: 'Invalid user ID' });
         }
 
         const result = await feedbackAnalysis.applySuggestion(suggestionId, userId);
@@ -216,11 +251,20 @@ router.post('/suggestions/:id/apply', async (req, res) => {
 router.post('/suggestions/:id/reject', async (req, res) => {
     try {
         const suggestionId = parseInt(req.params.id);
-        const userId = req.body.userId || 1;
+        const rawUserId = req.body.userId;
         const reason = req.body.reason || 'Not applicable';
 
         if (isNaN(suggestionId)) {
             return res.status(400).json({ error: 'Invalid suggestion ID' });
+        }
+
+        if (rawUserId === undefined || rawUserId === null) {
+            return res.status(401).json({ error: 'Authentication required: userId is missing' });
+        }
+
+        const userId = parseInt(rawUserId);
+        if (isNaN(userId)) {
+            return res.status(400).json({ error: 'Invalid user ID' });
         }
 
         const result = await feedbackAnalysis.rejectSuggestion(suggestionId, userId, reason);

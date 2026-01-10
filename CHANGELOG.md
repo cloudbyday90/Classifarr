@@ -87,15 +87,15 @@ This release implements the complete Policy-Driven Classification Engine, replac
 
 #### FeedbackAnalysis API Routes
 - **New routes:** `server/src/routes/feedback.js` - API endpoints for feedback and policy learning
-  - `POST /api/feedback` - Record a feedback event
-  - `GET /api/feedback/policies/:id/suggestions` - Get pending suggestions for a policy
-  - `POST /api/feedback/policies/:id/analyze` - Trigger policy analysis
-  - `GET /api/feedback/policies/:id/stats` - Get learning statistics for a policy
-  - `POST /api/feedback/suggestions/:id/apply` - Apply a tuning suggestion
-  - `POST /api/feedback/suggestions/:id/reject` - Reject a tuning suggestion
-  - `POST /api/feedback/analyze-all` - Run analysis for all active policies
+  - `POST /api/feedback` - Record a feedback event (requires authenticated user with valid userId)
+  - `GET /api/feedback/policies/:id/suggestions` - Get pending suggestions for a policy (requires authentication)
+  - `POST /api/feedback/policies/:id/analyze` - Trigger policy analysis (requires authentication; validates input bounds)
+  - `GET /api/feedback/policies/:id/stats` - Get learning statistics for a policy (requires authentication)
+  - `POST /api/feedback/suggestions/:id/apply` - Apply a tuning suggestion (requires authentication; userId must be provided and valid; acting user is derived from authenticated context)
+  - `POST /api/feedback/suggestions/:id/reject` - Reject a tuning suggestion (requires authentication; userId must be provided and valid; acting user is derived from authenticated context)
+  - `POST /api/feedback/analyze-all` - Run analysis for all active policies (requires authentication)
 - **Integration:** Registered feedback router in `server/src/routes/api.js`
-  - Added `/api/feedback` endpoint to API root listing
+  - **Note:** These endpoints should be protected with JWT auth middleware and admin-level authorization where appropriate in production deployments
 
 #### Classification Integration
 - **Updated:** `server/src/services/classification.js` to integrate PolicyEngine

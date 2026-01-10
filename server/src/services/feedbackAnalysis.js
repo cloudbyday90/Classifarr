@@ -21,6 +21,17 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('FeedbackAnalysis');
 
+// Configuration constants for tuning suggestions
+const TUNING_CONSTANTS = {
+    THRESHOLD_ADJUSTMENT: 5,           // ±5 points for threshold adjustments
+    WEIGHT_ADJUSTMENT: 0.1,            // ±0.1 for weight adjustments
+    MIN_AUTO_CLASSIFY_THRESHOLD: 60,  // Minimum auto-classify threshold
+    MAX_AUTO_CLASSIFY_THRESHOLD: 95,  // Maximum auto-classify threshold
+    MIN_PROMPT_THRESHOLD: 50,          // Minimum prompt threshold
+    MIN_WEIGHT: 0.05,                  // Minimum weight value
+    MAX_WEIGHT: 0.60                   // Maximum weight value
+};
+
 /**
  * Feedback Analysis & Pattern Learning Loop Service
  * Analyzes feedback logs to detect systematic misclassifications,
@@ -60,7 +71,24 @@ class FeedbackAnalysis {
             if (prompted_at && responded_at) {
                 const promptTime = new Date(prompted_at);
                 const responseTime = new Date(responded_at);
-                response_time_seconds = Math.floor((responseTime - promptTime) / 1000);
+                
+                if (!Number.isNaN(promptTime.getTime()) && !Number.isNaN(responseTime.getTime())) {
+                    const diffSeconds = (responseTime.getTime() - promptTime.getTime()) / 1000;
+                    
+                    if (diffSeconds >= 0) {
+                        response_time_seconds = Math.floor(diffSeconds);
+                    } else {
+                        logger.warn('Feedback response time is negative; possible clock skew or data error', {
+                            prompted_at,
+                            responded_at
+                        });
+                    }
+                } else {
+                    logger.warn('Invalid timestamps provided for feedback response time', {
+                        prompted_at,
+                        responded_at
+                    });
+                }
             }
 
             const result = await db.query(`
@@ -148,9 +176,9 @@ class FeedbackAnalysis {
             const feedbackResult = await db.query(`
                 SELECT * FROM policy_feedback_log
                 WHERE selected_policy_id = $1
-                AND prompted_at >= NOW() - INTERVAL '${days} days'
+                AND prompted_at >= NOW() - INTERVAL '1 day' * $2
                 ORDER BY prompted_at DESC
-            `, [policyId]);
+            `, [policyId, days]);
 
             const feedback = feedbackResult.rows;
 
@@ -242,17 +270,22 @@ class FeedbackAnalysis {
             }
 
             // 2. Find missed positives (corrections toward this policy)
+            // First, determine the library associated with this policy
+            const policyLibraryResult = await db.query(
+                `SELECT library_id FROM library_policies WHERE id = $1`,
+                [policyId]
+            );
+            const policyLibraryId = policyLibraryResult.rows[0]?.library_id || null;
+
             // Get feedback where user selected this policy but it wasn't the top suggestion
             const correctionsTowardPolicy = await db.query(`
                 SELECT * FROM policy_feedback_log
                 WHERE selected_policy_id = $1
                 AND was_correction = true
                 AND (top_suggestion_library_id IS NULL 
-                    OR top_suggestion_library_id != (
-                        SELECT library_id FROM library_policies WHERE id = $1
-                    ))
+                    OR top_suggestion_library_id != $2)
                 AND prompted_at >= NOW() - INTERVAL '30 days'
-            `, [policyId]);
+            `, [policyId, policyLibraryId]);
 
             if (correctionsTowardPolicy.rows.length > 0) {
                 const byGenre = this.groupByMetadataField(correctionsTowardPolicy.rows, 'genres');
@@ -612,15 +645,24 @@ class FeedbackAnalysis {
                     const thresholdType = suggestion.config.threshold_type;
                     if (thresholdType === 'auto_classify') {
                         suggestion.config.current = policy.auto_classify_threshold;
-                        // Adjust by ±5 based on recommendation reason
+                        // Adjust by configured amount based on recommendation reason
                         if (suggestion.config.reason.includes('High false positive')) {
-                            suggestion.config.recommended = Math.min(policy.auto_classify_threshold + 5, 95);
+                            suggestion.config.recommended = Math.min(
+                                policy.auto_classify_threshold + TUNING_CONSTANTS.THRESHOLD_ADJUSTMENT,
+                                TUNING_CONSTANTS.MAX_AUTO_CLASSIFY_THRESHOLD
+                            );
                         } else {
-                            suggestion.config.recommended = Math.max(policy.auto_classify_threshold - 5, 60);
+                            suggestion.config.recommended = Math.max(
+                                policy.auto_classify_threshold - TUNING_CONSTANTS.THRESHOLD_ADJUSTMENT,
+                                TUNING_CONSTANTS.MIN_AUTO_CLASSIFY_THRESHOLD
+                            );
                         }
                     } else if (thresholdType === 'prompt') {
                         suggestion.config.current = policy.prompt_threshold;
-                        suggestion.config.recommended = Math.max(policy.prompt_threshold - 5, 50);
+                        suggestion.config.recommended = Math.max(
+                            policy.prompt_threshold - TUNING_CONSTANTS.THRESHOLD_ADJUSTMENT,
+                            TUNING_CONSTANTS.MIN_PROMPT_THRESHOLD
+                        );
                     }
                 } else if (suggestion.type === 'adjust_weight') {
                     const signal = suggestion.config.signal;
@@ -632,11 +674,17 @@ class FeedbackAnalysis {
                     };
                     suggestion.config.current = weightMap[signal];
                     
-                    // Adjust by ±0.1 based on performance
+                    // Adjust by configured amount based on performance
                     if (suggestion.config.reason.includes('Low accuracy')) {
-                        suggestion.config.recommended = Math.max(suggestion.config.current - 0.1, 0.05);
+                        suggestion.config.recommended = Math.max(
+                            suggestion.config.current - TUNING_CONSTANTS.WEIGHT_ADJUSTMENT,
+                            TUNING_CONSTANTS.MIN_WEIGHT
+                        );
                     } else {
-                        suggestion.config.recommended = Math.min(suggestion.config.current + 0.1, 0.60);
+                        suggestion.config.recommended = Math.min(
+                            suggestion.config.current + TUNING_CONSTANTS.WEIGHT_ADJUSTMENT,
+                            TUNING_CONSTANTS.MAX_WEIGHT
+                        );
                     }
                 }
 
@@ -867,9 +915,13 @@ class FeedbackAnalysis {
      * @returns {Promise<object>} Result of application
      */
     async applySuggestion(suggestionId, userId) {
+        const client = await db.pool.connect();
         try {
+            // Begin transaction for atomicity
+            await client.query('BEGIN');
+
             // Get suggestion details
-            const suggestionResult = await db.query(`
+            const suggestionResult = await client.query(`
                 SELECT * FROM policy_tuning_suggestions
                 WHERE id = $1
             `, [suggestionId]);
@@ -881,9 +933,16 @@ class FeedbackAnalysis {
             const suggestion = suggestionResult.rows[0];
             const config = suggestion.suggestion_config;
 
-            // Get current policy state for before_metrics
-            const beforeResult = await db.query(`
-                SELECT * FROM library_policies WHERE id = $1
+            // Get current policy state for before_metrics (only relevant fields)
+            const beforeResult = await client.query(`
+                SELECT 
+                    auto_classify_threshold,
+                    prompt_threshold,
+                    preset_weight,
+                    pattern_weight,
+                    rag_weight,
+                    history_weight
+                FROM library_policies WHERE id = $1
             `, [suggestion.policy_id]);
 
             const before_metrics = beforeResult.rows[0];
@@ -894,14 +953,14 @@ class FeedbackAnalysis {
 
             if (suggestion.suggestion_type === 'adjust_threshold') {
                 if (config.threshold_type === 'auto_classify') {
-                    await db.query(`
+                    await client.query(`
                         UPDATE library_policies
                         SET auto_classify_threshold = $1, updated_at = NOW()
                         WHERE id = $2
                     `, [config.recommended, suggestion.policy_id]);
                     applied = true;
                 } else if (config.threshold_type === 'prompt') {
-                    await db.query(`
+                    await client.query(`
                         UPDATE library_policies
                         SET prompt_threshold = $1, updated_at = NOW()
                         WHERE id = $2
@@ -909,8 +968,14 @@ class FeedbackAnalysis {
                     applied = true;
                 }
             } else if (suggestion.suggestion_type === 'adjust_weight') {
+                // Validate signal name to prevent SQL injection
+                const validSignals = ['preset', 'pattern', 'rag', 'history'];
+                if (!validSignals.includes(config.signal)) {
+                    throw new Error(`Invalid signal type: ${config.signal}`);
+                }
+                
                 const weightField = `${config.signal}_weight`;
-                await db.query(`
+                await client.query(`
                     UPDATE library_policies
                     SET ${weightField} = $1, updated_at = NOW()
                     WHERE id = $2
@@ -918,14 +983,14 @@ class FeedbackAnalysis {
                 applied = true;
             } else if (suggestion.suggestion_type === 'create_pattern') {
                 // Insert into discovered_patterns
-                const libraryResult = await db.query(`
+                const libraryResult = await client.query(`
                     SELECT library_id FROM library_policies WHERE id = $1
                 `, [suggestion.policy_id]);
 
                 if (libraryResult.rows.length > 0) {
                     const library_id = libraryResult.rows[0].library_id;
                     
-                    await db.query(`
+                    await client.query(`
                         INSERT INTO discovered_patterns (
                             pattern_type,
                             pattern_value,
@@ -954,7 +1019,7 @@ class FeedbackAnalysis {
             }
 
             // Update suggestion status
-            await db.query(`
+            await client.query(`
                 UPDATE policy_tuning_suggestions
                 SET status = 'applied',
                     reviewed_at = NOW(),
@@ -962,15 +1027,22 @@ class FeedbackAnalysis {
                 WHERE id = $2
             `, [userId, suggestionId]);
 
-            // Get after state
-            const afterResult = await db.query(`
-                SELECT * FROM library_policies WHERE id = $1
+            // Get after state (only relevant fields)
+            const afterResult = await client.query(`
+                SELECT 
+                    auto_classify_threshold,
+                    prompt_threshold,
+                    preset_weight,
+                    pattern_weight,
+                    rag_weight,
+                    history_weight
+                FROM library_policies WHERE id = $1
             `, [suggestion.policy_id]);
 
             const after_metrics = afterResult.rows[0];
 
-            // Log to policy_change_log
-            await db.query(`
+            // Log to policy_change_log (only changed fields)
+            await client.query(`
                 INSERT INTO policy_change_log (
                     policy_id,
                     change_type,
@@ -990,6 +1062,9 @@ class FeedbackAnalysis {
                 userId
             ]);
 
+            // Commit transaction
+            await client.query('COMMIT');
+
             logger.info('Suggestion applied', {
                 suggestionId,
                 policyId: suggestion.policy_id,
@@ -1005,8 +1080,12 @@ class FeedbackAnalysis {
             };
 
         } catch (error) {
+            // Rollback transaction on error
+            await client.query('ROLLBACK');
             logger.error('Failed to apply suggestion', { error: error.message, suggestionId });
             throw error;
+        } finally {
+            client.release();
         }
     }
 
@@ -1145,6 +1224,12 @@ class FeedbackAnalysis {
                     groups[value].feedbackIds.push(f.id);
                 }
             } catch (error) {
+                logger.warn('Skipping feedback due to invalid item_metadata in groupByMetadataField', {
+                    feedbackId: f.id,
+                    field,
+                    error: error && error.message ? error.message : String(error),
+                    rawMetadata: f.item_metadata
+                });
                 // Skip invalid metadata
                 continue;
             }
