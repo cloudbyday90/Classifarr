@@ -83,8 +83,18 @@ This release implements the database schema foundation for the Policy-Driven Cla
   - JSONB operations testing (insert and query with complex objects)
   - Array column type verification (integer arrays)
   - Deprecation column validation on existing tables
+  - Test data setup in beforeAll hook to ensure test preconditions
 - **Test results:** All 33 new tests passing + all 11 existing schema tests passing
-- **Integration test setup:** Updated to apply migrations automatically during test setup
+- **Integration test setup enhancements:**
+  - Migrations automatically applied during test setup
+  - Improved error handling to distinguish between critical and expected failures
+  - Known optional failures (e.g., pgvector extension) gracefully skipped
+  - Critical migration failures now properly abort test suite
+
+### Fixed
+- **SQL syntax error:** Corrected UNIQUE constraint placement in `policy_learning_stats` table (moved before REFERENCES)
+- **Test reliability:** Added explicit assertions to prevent tests from silently passing when preconditions aren't met
+- **Migration error handling:** Enhanced to fail fast on critical errors while allowing expected optional failures
 
 ### Changed
 - Migration numbering: New migration is `042_policy_driven_schema.sql` (follows `041_formula_engine_weights.sql`)

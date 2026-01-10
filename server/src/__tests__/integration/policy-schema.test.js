@@ -2,6 +2,15 @@ const db = require('../../config/database');
 
 describe('Policy-Driven Schema Integration Test', () => {
 
+    // Ensure test media server exists for tests that require libraries
+    beforeAll(async () => {
+        await db.query(`
+            INSERT INTO media_server (type, name, url, api_key)
+            VALUES ('plex', 'Test Media Server', 'http://localhost:32400', 'test-api-key')
+            ON CONFLICT DO NOTHING
+        `);
+    });
+
     describe('Core Policy Tables', () => {
         test('should have library_policies table', async () => {
             const res = await db.query("SELECT to_regclass('library_policies')");
@@ -458,28 +467,29 @@ describe('Policy-Driven Schema Integration Test', () => {
                 RETURNING id
             `);
 
-            if (libRes.rows.length > 0) {
-                const libraryId = libRes.rows[0].id;
+            // Ensure test data exists
+            expect(libRes.rows.length).toBeGreaterThan(0);
+            
+            const libraryId = libRes.rows[0].id;
 
-                // Insert a policy with JSONB data
-                const insertRes = await db.query(`
-                    INSERT INTO library_policies (
-                        library_id,
-                        name,
-                        notify_channels,
-                        source_library_ids
-                    ) VALUES ($1, $2, $3, $4)
-                    RETURNING id, notify_channels, source_library_ids
-                `, [libraryId, 'Test Policy', '["app", "discord"]', '["lib1", "lib2"]']);
+            // Insert a policy with JSONB data
+            const insertRes = await db.query(`
+                INSERT INTO library_policies (
+                    library_id,
+                    name,
+                    notify_channels,
+                    source_library_ids
+                ) VALUES ($1, $2, $3, $4)
+                RETURNING id, notify_channels, source_library_ids
+            `, [libraryId, 'Test Policy', '["app", "discord"]', '["lib1", "lib2"]']);
 
-                expect(insertRes.rows.length).toBe(1);
-                expect(insertRes.rows[0].notify_channels).toEqual(["app", "discord"]);
-                expect(insertRes.rows[0].source_library_ids).toEqual(["lib1", "lib2"]);
+            expect(insertRes.rows.length).toBe(1);
+            expect(insertRes.rows[0].notify_channels).toEqual(["app", "discord"]);
+            expect(insertRes.rows[0].source_library_ids).toEqual(["lib1", "lib2"]);
 
-                // Clean up
-                await db.query('DELETE FROM library_policies WHERE id = $1', [insertRes.rows[0].id]);
-                await db.query('DELETE FROM libraries WHERE id = $1', [libraryId]);
-            }
+            // Clean up
+            await db.query('DELETE FROM library_policies WHERE id = $1', [insertRes.rows[0].id]);
+            await db.query('DELETE FROM libraries WHERE id = $1', [libraryId]);
         });
 
         test('should be able to insert and query JSONB data in content_presets', async () => {
@@ -521,29 +531,30 @@ describe('Policy-Driven Schema Integration Test', () => {
                 RETURNING id
             `);
 
-            if (libRes.rows.length > 0) {
-                const libraryId = libRes.rows[0].id;
+            // Ensure test data exists
+            expect(libRes.rows.length).toBeGreaterThan(0);
+            
+            const libraryId = libRes.rows[0].id;
 
-                // Create a policy for this library
-                const policyRes = await db.query(`
-                    INSERT INTO library_policies (library_id, name)
-                    VALUES ($1, $2)
-                    RETURNING id
-                `, [libraryId, 'Test Cascade Policy']);
+            // Create a policy for this library
+            const policyRes = await db.query(`
+                INSERT INTO library_policies (library_id, name)
+                VALUES ($1, $2)
+                RETURNING id
+            `, [libraryId, 'Test Cascade Policy']);
 
-                const policyId = policyRes.rows[0].id;
+            const policyId = policyRes.rows[0].id;
 
-                // Verify policy exists
-                const checkPolicy = await db.query('SELECT id FROM library_policies WHERE id = $1', [policyId]);
-                expect(checkPolicy.rows.length).toBe(1);
+            // Verify policy exists
+            const checkPolicy = await db.query('SELECT id FROM library_policies WHERE id = $1', [policyId]);
+            expect(checkPolicy.rows.length).toBe(1);
 
-                // Delete the library
-                await db.query('DELETE FROM libraries WHERE id = $1', [libraryId]);
+            // Delete the library
+            await db.query('DELETE FROM libraries WHERE id = $1', [libraryId]);
 
-                // Verify policy was cascaded (deleted)
-                const checkPolicyAfter = await db.query('SELECT id FROM library_policies WHERE id = $1', [policyId]);
-                expect(checkPolicyAfter.rows.length).toBe(0);
-            }
+            // Verify policy was cascaded (deleted)
+            const checkPolicyAfter = await db.query('SELECT id FROM library_policies WHERE id = $1', [policyId]);
+            expect(checkPolicyAfter.rows.length).toBe(0);
         });
     });
 

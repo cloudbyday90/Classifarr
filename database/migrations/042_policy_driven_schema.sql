@@ -230,7 +230,7 @@ COMMENT ON TABLE policy_tuning_suggestions IS 'AI-generated suggestions for impr
 
 CREATE TABLE IF NOT EXISTS policy_learning_stats (
     id SERIAL PRIMARY KEY,
-    policy_id INTEGER REFERENCES library_policies(id) ON DELETE CASCADE UNIQUE,
+    policy_id INTEGER UNIQUE REFERENCES library_policies(id) ON DELETE CASCADE,
     
     total_decisions INTEGER DEFAULT 0,
     auto_classified INTEGER DEFAULT 0,
