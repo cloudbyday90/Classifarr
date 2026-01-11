@@ -18,6 +18,24 @@
     </div>
 
     <div v-else-if="library" class="space-y-6">
+      <!-- Event Detection Deprecation Notice -->
+      <div v-if="library.event_detection_type" class="event-deprecation-notice">
+        <div class="icon">⚠️</div>
+        <div class="content">
+          <h3>Event Detection - Deprecated</h3>
+          <p>
+            Event detection is being replaced by <strong>Event Presets</strong> in the Policy Engine.
+            This feature will be removed in <strong>v0.39.0</strong>.
+          </p>
+          <p class="migration-info">
+            Your library will automatically get the <code>event_{{ library.event_detection_type }}</code> preset attached.
+            <router-link :to="`/policies?library=${library.id}`" class="link-policies">
+              View/Edit Policy →
+            </router-link>
+          </p>
+        </div>
+      </div>
+
       <Card title="Library Configuration">
         <div class="grid grid-cols-2 gap-4">
           <Input v-model="library.name" label="Name" disabled />
@@ -33,7 +51,7 @@
           />
           <Select
             v-model="library.event_detection_type"
-            label="Event Detection Type"
+            label="Event Detection Type (Deprecated)"
             :options="eventDetectionOptions"
           />
           
@@ -83,8 +101,8 @@
                     </span>
                   </div>
                   <div class="mt-3 pt-2 border-t border-gray-700">
-                    <p class="text-xs text-blue-400">
-                      💡 <strong>Tip:</strong> Use the Smart Rule Builder to route specific keywords (e.g., "halloween") to a different library.
+                    <p class="text-xs text-orange-400">
+                      ⚠️ <strong>Deprecated:</strong> Event detection is being replaced by Event Presets. Use the Policy Engine instead.
                     </p>
                   </div>
                 </div>
@@ -778,3 +796,95 @@ onMounted(() => {
 })
 
 </script>
+
+<style scoped>
+.event-deprecation-notice {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffe6a3 100%);
+  border-left: 5px solid #ff9800;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(255, 152, 0, 0.15);
+}
+
+.event-deprecation-notice .icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.event-deprecation-notice .content {
+  flex: 1;
+}
+
+.event-deprecation-notice h3 {
+  margin: 0 0 0.5rem 0;
+  color: #856404;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.event-deprecation-notice p {
+  margin: 0.4rem 0;
+  color: #856404;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.event-deprecation-notice code {
+  background: rgba(133, 100, 4, 0.15);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+.migration-info {
+  margin-top: 0.75rem !important;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(133, 100, 4, 0.2);
+}
+
+.link-policies {
+  color: #ff6f00;
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 0.5rem;
+  transition: color 0.2s ease;
+}
+
+.link-policies:hover {
+  color: #e65100;
+  text-decoration: underline;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .event-deprecation-notice {
+    background: linear-gradient(135deg, #4a3800 0%, #5a4200 100%);
+    border-left-color: #ff9800;
+  }
+
+  .event-deprecation-notice h3,
+  .event-deprecation-notice p {
+    color: #ffd54f;
+  }
+
+  .event-deprecation-notice code {
+    background: rgba(255, 213, 79, 0.15);
+  }
+
+  .migration-info {
+    border-top-color: rgba(255, 213, 79, 0.2);
+  }
+
+  .link-policies {
+    color: #ffb74d;
+  }
+
+  .link-policies:hover {
+    color: #ffa726;
+  }
+}
+</style>
