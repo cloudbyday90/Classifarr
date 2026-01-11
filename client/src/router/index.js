@@ -101,6 +101,11 @@ const router = createRouter({
           name: 'Patterns',
           component: () => import('@/views/patterns/PatternManagement.vue'),
         },
+        {
+          path: '/policies',
+          name: 'Policies',
+          component: () => import('@/views/PolicyList.vue'),
+        },
       ],
     },
   ],

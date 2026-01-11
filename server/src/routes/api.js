@@ -42,6 +42,7 @@ const ragRouter = require('./rag');
 const patternsRouter = require('./patterns');
 const feedbackRouter = require('./feedback');
 const promptsRouter = require('./prompts');
+const policiesRouter = require('./policies');
 
 const router = express.Router();
 
@@ -71,6 +72,7 @@ router.use('/rag', ragRouter);
 router.use('/patterns', patternsRouter);
 router.use('/feedback', feedbackRouter);
 router.use('/prompts', promptsRouter);
+router.use('/policies', policiesRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
@@ -91,6 +93,7 @@ router.get('/', (req, res) => {
       plex: '/api/plex',
       feedback: '/api/feedback',
       prompts: '/api/prompts',
+      policies: '/api/policies',
       docs: '/api/docs',
     },
   });
