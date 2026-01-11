@@ -306,19 +306,11 @@ class LegacyMigration {
                 // Attach preset to library's policy
                 const policy = await this.getOrCreatePolicy(ruleData.library_id);
                 
-                // Get the max sort_order for this policy
-                const sortOrderResult = await db.query(`
-                    SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order
-                    FROM policy_presets WHERE policy_id = $1
-                `, [policy.id]);
-                
-                const nextOrder = sortOrderResult.rows[0].next_order;
-                
                 await db.query(`
-                    INSERT INTO policy_presets (policy_id, preset_id, weight, sort_order)
-                    VALUES ($1, $2, $3, $4)
+                    INSERT INTO policy_presets (policy_id, preset_id, weight)
+                    VALUES ($1, $2, $3)
                     ON CONFLICT (policy_id, preset_id) DO NOTHING
-                `, [policy.id, migrationChoice.preset_id, 1.0, nextOrder]);
+                `, [policy.id, migrationChoice.preset_id, 1.0]);
                 
             } else if (migrationChoice.type === 'override') {
                 // Create policy override
@@ -341,7 +333,7 @@ class LegacyMigration {
                 UPDATE library_custom_rules 
                 SET migrated_at = NOW(), migrated_by = $2, migration_type = $3
                 WHERE id = $1
-            `, [ruleId, userId, migrationChoice.type]);
+            `, [ruleId, userId || null, migrationChoice.type]);
             
             await db.query('COMMIT');
             
