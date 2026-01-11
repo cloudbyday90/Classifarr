@@ -303,7 +303,12 @@
         </div>
       </Card>
 
-      <Card title="Classification Rules">
+      <!-- Learned Patterns Section -->
+      <Card title="🧩 Learned Patterns">
+        <LibraryPatterns :library-id="library.id" />
+      </Card>
+
+      <Card title="Classification Rules (Deprecated)">
         <div class="space-y-6">
           <div class="flex justify-between items-start">
             <div>
@@ -373,11 +378,6 @@
             No rules configured yet. Click "🧠 Smart Rule Builder" to create AI-powered classification rules.
           </div>
         </div>
-      </Card>
-
-      <!-- Learned Patterns Section -->
-      <Card title="🧩 Learned Patterns">
-        <LibraryPatterns :library-id="library.id" />
       </Card>
     </div>
   </div>
