@@ -70,6 +70,23 @@
       @close="wizardLibrary = null"
       @migrated="onRuleMigrated"
     />
+
+    <!-- Confirmation modal -->
+    <div v-if="confirmationModal" class="modal-overlay" @click.self="confirmationModal.onCancel">
+      <div class="confirmation-modal">
+        <div class="modal-header">
+          <h3>{{ confirmationModal.title }}</h3>
+          <button @click="confirmationModal.onCancel" class="btn-close">×</button>
+        </div>
+        <div class="modal-body">
+          <p>{{ confirmationModal.message }}</p>
+        </div>
+        <div class="modal-footer">
+          <button @click="confirmationModal.onCancel" class="btn btn-secondary">Cancel</button>
+          <button @click="confirmationModal.onConfirm" class="btn btn-primary">Confirm</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -91,6 +108,7 @@ export default {
       loading: true,
       notification: null, // For displaying notifications
       notificationTimeout: null, // Store timeout ID to prevent race conditions
+      confirmationModal: null, // For confirmation dialogs
     };
   },
   computed: {
@@ -142,10 +160,20 @@ export default {
       this.wizardLibrary = library;
     },
     async migrateAllRules(library) {
-      if (!confirm(`Auto-migrate all ${library.rule_count} rules in "${library.library_name}"? This will use the top suggestion for each rule.`)) {
-        return;
-      }
-
+      // Show confirmation modal instead of browser confirm
+      this.confirmationModal = {
+        title: 'Confirm Auto-Migration',
+        message: `Auto-migrate all ${library.rule_count} rules in "${library.library_name}"? This will use the top suggestion for each rule.`,
+        onConfirm: async () => {
+          this.confirmationModal = null;
+          await this.performMigration(library);
+        },
+        onCancel: () => {
+          this.confirmationModal = null;
+        }
+      };
+    },
+    async performMigration(library) {
       try {
         const token = localStorage.getItem('auth_token');
         const headers = {
@@ -414,5 +442,148 @@ export default {
   .progress-bar {
     background-color: #2d3748;
   }
+
+  .confirmation-modal {
+    background: var(--color-background, #1e1e1e);
+    border: 1px solid var(--color-border, #3a3a3a);
+  }
+
+  .btn-secondary {
+    background-color: #3a3a3a;
+  }
+
+  .btn-secondary:hover {
+    background-color: #4a4a4a;
+  }
+}
+
+/* Confirmation Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.confirmation-modal {
+  background: var(--color-background, #ffffff);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.confirmation-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+}
+
+.confirmation-modal .modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.confirmation-modal .btn-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.confirmation-modal .btn-close:hover {
+  background-color: var(--color-background-hover, #f5f5f5);
+}
+
+.confirmation-modal .modal-body {
+  padding: 1.5rem;
+}
+
+.confirmation-modal .modal-body p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.confirmation-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--color-border, #e0e0e0);
+}
+
+.confirmation-modal .btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirmation-modal .btn-secondary {
+  background-color: var(--color-background-hover, #f5f5f5);
+  color: var(--color-text);
+}
+
+.confirmation-modal .btn-secondary:hover {
+  background-color: var(--color-border, #e0e0e0);
+}
+
+.confirmation-modal .btn-primary {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  color: white;
+}
+
+.confirmation-modal .btn-primary:hover {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.confirmation-modal .btn:active {
+  transform: translateY(1px);
 }
 </style>
