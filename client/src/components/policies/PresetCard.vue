@@ -48,12 +48,13 @@
           type="checkbox" 
           :checked="selected" 
           @click.stop
+          @change="$emit('toggle')"
           class="w-4 h-4"
         />
       </div>
     </div>
     
-    <!-- Expandable signal details -->
+    <!-- Expandable signal details (read-only) -->
     <div v-if="expanded && preset.signals" class="mt-3 pt-3 border-t border-gray-800 text-xs" @click.stop>
       <h5 class="font-semibold mb-2 text-gray-300">Matching Criteria:</h5>
       <div class="space-y-1 text-gray-400">
@@ -95,10 +96,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Badge from '@/components/common/Badge.vue'
 
-defineProps({
+const props = defineProps({
   preset: {
     type: Object,
     required: true,
@@ -111,16 +112,105 @@ defineProps({
     type: Number,
     default: 1.0,
   },
+  customSignals: {
+    type: Object,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['toggle', 'update-weight'])
+const emit = defineEmits(['toggle', 'update-weight', 'update-signals'])
 
 const expanded = ref(false)
+const newKeyword = ref('')
+
+// Available options for dropdowns
+const availableRatings = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR']
+const availableGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']
+
+// Merge preset signals with custom overrides
+const signalConfig = computed(() => {
+  const base = JSON.parse(JSON.stringify(props.preset.signals || {}))
+  const custom = props.customSignals || {}
+  
+  // Merge certifications
+  if (custom.certifications) {
+    base.certifications = { ...base.certifications, ...custom.certifications }
+  }
+  // Merge genres
+  if (custom.genres) {
+    base.genres = { ...base.genres, ...custom.genres }
+  }
+  // Merge keywords
+  if (custom.keywords) {
+    base.keywords = { ...base.keywords, ...custom.keywords }
+  }
+  
+  return base
+})
+
+// Helper to emit updated signals
+const emitSignalUpdate = (signalType, key, value) => {
+  const currentCustom = JSON.parse(JSON.stringify(props.customSignals || {}))
+  if (!currentCustom[signalType]) {
+    currentCustom[signalType] = {}
+  }
+  currentCustom[signalType][key] = value
+  emit('update-signals', currentCustom)
+}
+
+const addCertification = (event) => {
+  const value = event.target.value
+  if (!value) return
+  event.target.value = ''
+  
+  const [action, rating] = value.split(':')
+  const current = signalConfig.value.certifications || {}
+  const list = [...(current[action] || [])]
+  
+  if (!list.includes(rating)) {
+    list.push(rating)
+    emitSignalUpdate('certifications', action, list)
+  }
+}
+
+const addGenre = (event) => {
+  const value = event.target.value
+  if (!value) return
+  event.target.value = ''
+  
+  const [action, genre] = value.split(':')
+  const current = signalConfig.value.genres || {}
+  const list = [...(current[action] || [])]
+  
+  if (!list.includes(genre)) {
+    list.push(genre)
+    emitSignalUpdate('genres', action, list)
+  }
+}
+
+const addKeyword = (action) => {
+  const keyword = newKeyword.value.trim().toLowerCase()
+  if (!keyword) return
+  newKeyword.value = ''
+  
+  const current = signalConfig.value.keywords || {}
+  const list = [...(current[action] || [])]
+  
+  if (!list.includes(keyword)) {
+    list.push(keyword)
+    emitSignalUpdate('keywords', action, list)
+  }
+}
+
+const removeSignalItem = (signalType, key, value) => {
+  const current = signalConfig.value[signalType] || {}
+  const list = (current[key] || []).filter(item => item !== value)
+  emitSignalUpdate(signalType, key, list)
+}
 
 const handleWeightInput = (event) => {
   const value = parseFloat(event.target.value)
   if (!isNaN(value)) {
-    // Clamp value between 0.1 and 2
     const clampedValue = Math.min(2, Math.max(0.1, value))
     emit('update-weight', clampedValue)
   }

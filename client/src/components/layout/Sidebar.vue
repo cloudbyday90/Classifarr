@@ -109,7 +109,7 @@
     </nav>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.37.1-alpha</div>
+      <div>v0.37.2-alpha</div>
     </div>
   </aside>
 </template>

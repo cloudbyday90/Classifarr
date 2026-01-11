@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.2-alpha] - 2026-01-11
+
+### Added
+- **Inline Preset Customization:** Customize preset signals directly in the Policy Builder without leaving the modal
+  - "Customize" button expands each selected preset to show editable signals
+  - Remove base preset signals with ✕ button (crossed-out with ↩ to restore)
+  - Add custom signals (content ratings, genres, keywords) with + dropdowns
+  - Multiple presets can be expanded and edited simultaneously
+- **Combined Signals Summary:** See the merged result of all selected presets
+  - Appears when 2+ presets are selected
+  - Shows union of: Content Ratings, Preferred Genres, Excluded Genres, Preferred Keywords, Excluded Keywords, Required Keywords
+  - Respects signal removals and custom additions
+- **Library Dropdown Grouping:** Libraries now grouped by media type in Policy Builder
+  - 🎬 Movies section
+  - 📺 TV Shows section
+  - 📁 Other section
+- **Database Support for Custom Signals:** Migration `047_policy_preset_custom_signals.sql`
+  - Adds `custom_signals` JSONB column to `policy_presets` table
+  - Stores signal customizations including additions and removals
+
+### Fixed
+- **PresetCard Checkbox:** Fixed checkbox not triggering toggle when clicked directly (was only working on card click)
+- **Pattern Mining Library Name Bug:** Fixed `library_name` null error when upserting discovered patterns
+  - Now looks up library name from `libraries` table if missing from classification history
+  - Prevents "null value in column library_name violates not-null constraint" errors
+
 ## [0.37.1-alpha] - 2026-01-11
 
 ### Fixed

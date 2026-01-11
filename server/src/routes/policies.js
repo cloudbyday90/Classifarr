@@ -146,11 +146,12 @@ router.get('/:id', async (req, res) => {
         const presetsResult = await db.query(`
             SELECT 
                 cp.*,
-                pp.weight
+                pp.weight,
+                pp.custom_signals
             FROM policy_presets pp
             JOIN content_presets cp ON pp.preset_id = cp.id
             WHERE pp.policy_id = $1
-            ORDER BY cp.display_order, cp.name
+            ORDER BY pp.sort_order, cp.display_order, cp.name
         `, [id]);
 
         policy.presets = presetsResult.rows;
@@ -220,8 +221,8 @@ router.post('/', async (req, res) => {
         // Validate weights sum to 1.0 (with tolerance for floating-point precision)
         const totalWeight = preset_weight + pattern_weight + rag_weight + history_weight;
         if (Math.abs(totalWeight - 1.0) > 0.001) {
-            return res.status(400).json({ 
-                error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})` 
+            return res.status(400).json({
+                error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`
             });
         }
 
@@ -253,9 +254,9 @@ router.post('/', async (req, res) => {
             if (presets && presets.length > 0) {
                 for (const preset of presets) {
                     await db.query(`
-                        INSERT INTO policy_presets (policy_id, preset_id, weight)
-                        VALUES ($1, $2, $3)
-                    `, [policy.id, preset.preset_id, preset.weight || 1.0]);
+                        INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
+                        VALUES ($1, $2, $3, $4)
+                    `, [policy.id, preset.preset_id, preset.weight || 1.0, preset.customSignals || null]);
                 }
             }
 
@@ -275,7 +276,8 @@ router.post('/', async (req, res) => {
             const presetsResult = await db.query(`
                 SELECT 
                     cp.*,
-                    pp.weight
+                    pp.weight,
+                    pp.custom_signals
                 FROM policy_presets pp
                 JOIN content_presets cp ON pp.preset_id = cp.id
                 WHERE pp.policy_id = $1
@@ -357,13 +359,13 @@ router.put('/:id', async (req, res) => {
             }
 
             // If all weights are provided, validate they sum to 1.0
-            if (preset_weight !== undefined && pattern_weight !== undefined && 
+            if (preset_weight !== undefined && pattern_weight !== undefined &&
                 rag_weight !== undefined && history_weight !== undefined) {
                 const totalWeight = preset_weight + pattern_weight + rag_weight + history_weight;
                 if (Math.abs(totalWeight - 1.0) > 0.001) {
                     await db.query('ROLLBACK');
-                    return res.status(400).json({ 
-                        error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})` 
+                    return res.status(400).json({
+                        error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`
                     });
                 }
             }
@@ -406,9 +408,9 @@ router.put('/:id', async (req, res) => {
                 if (presets.length > 0) {
                     for (const preset of presets) {
                         await db.query(`
-                            INSERT INTO policy_presets (policy_id, preset_id, weight)
-                            VALUES ($1, $2, $3)
-                        `, [id, preset.preset_id, preset.weight || 1.0]);
+                            INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
+                            VALUES ($1, $2, $3, $4)
+                        `, [id, preset.preset_id, preset.weight || 1.0, preset.customSignals || null]);
                     }
                 }
             }
@@ -433,7 +435,8 @@ router.put('/:id', async (req, res) => {
             const presetsResult = await db.query(`
                 SELECT 
                     cp.*,
-                    pp.weight
+                    pp.weight,
+                    pp.custom_signals
                 FROM policy_presets pp
                 JOIN content_presets cp ON pp.preset_id = cp.id
                 WHERE pp.policy_id = $1
@@ -489,11 +492,12 @@ router.get('/:id/presets', async (req, res) => {
         const result = await db.query(`
             SELECT 
                 cp.*,
-                pp.weight
+                pp.weight,
+                pp.custom_signals
             FROM policy_presets pp
             JOIN content_presets cp ON pp.preset_id = cp.id
             WHERE pp.policy_id = $1
-            ORDER BY cp.display_order, cp.name
+            ORDER BY pp.sort_order, cp.display_order, cp.name
         `, [id]);
 
         res.json(result.rows);
@@ -528,11 +532,12 @@ router.post('/:id/presets', async (req, res) => {
             return res.status(400).json({ error: 'Preset already attached to this policy' });
         }
 
+        const customSignals = req.body.customSignals || null;
         const result = await db.query(`
-            INSERT INTO policy_presets (policy_id, preset_id, weight)
-            VALUES ($1, $2, $3)
+            INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
+            VALUES ($1, $2, $3, $4)
             RETURNING *
-        `, [id, preset_id, weight]);
+        `, [id, preset_id, weight, customSignals]);
 
         res.status(201).json(result.rows[0]);
     } catch (error) {

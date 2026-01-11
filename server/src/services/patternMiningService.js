@@ -37,7 +37,7 @@ class PatternMiningService {
      */
     async discoverPatterns() {
         const startTime = Date.now();
-        
+
         try {
             const enabled = await this.isEnabled();
             if (!enabled) {
@@ -330,6 +330,18 @@ class PatternMiningService {
      */
     async upsertPattern(patternType, patternValue, libraryId, libraryName, confidence, supportCount) {
         try {
+            // Skip if library_name is null (required field)
+            if (!libraryName) {
+                // Try to lookup library name from libraries table
+                const libResult = await db.query('SELECT name FROM libraries WHERE id = $1', [libraryId]);
+                if (libResult.rows.length > 0) {
+                    libraryName = libResult.rows[0].name;
+                } else {
+                    logger.debug('Skipping pattern - library name not found', { patternType, patternValue, libraryId });
+                    return null;
+                }
+            }
+
             const result = await db.query(`
                 INSERT INTO discovered_patterns 
                 (pattern_type, pattern_value, library_id, library_name, confidence, support_count, sample_size, last_seen_at)

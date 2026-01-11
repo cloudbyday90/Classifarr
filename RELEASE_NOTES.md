@@ -1,4 +1,37 @@
-# Classifarr v0.37.0 Release Notes
+# Classifarr Release Notes
+
+## v0.37.2-alpha
+**Title: Inline Preset Customization & Combined Signals**
+
+### New Features
+
+#### Inline Preset Customization
+Customize preset signals directly in the Policy Builder without leaving the modal:
+- **Customize Button**: Click to expand any selected preset
+- **Editable Signals**: Remove base signals (✕), restore removed (↩), add new (+)
+- **Multi-Preset Editing**: Expand and edit multiple presets simultaneously
+- **Signal Types**: Content Ratings, Genres, Keywords
+
+#### Combined Signals Summary
+When you select 2+ presets, see the merged result:
+- **Content Ratings** (included): Union of all preset ratings
+- **Preferred/Excluded Genres**: Combined genre preferences
+- **Preferred/Excluded Keywords**: Combined keyword signals
+- Respects signal removals and custom additions per-preset
+
+#### Library Dropdown Grouping
+Libraries in Policy Builder now organized by media type:
+- 🎬 Movies
+- 📺 TV Shows
+- 📁 Other
+
+### Fixes
+- **PresetCard Checkbox**: Fixed checkbox toggle when clicked directly
+- **Pattern Mining**: Fixed null library_name error during pattern discovery
+
+---
+
+## v0.37.0-alpha
 
 ## 🎯 Overview
 
