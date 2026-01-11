@@ -81,7 +81,8 @@ import {
   QueueListIcon,
   PuzzlePieceIcon,
   XMarkIcon,
-  LightBulbIcon
+  LightBulbIcon,
+  PresentationChartLineIcon
 } from '@heroicons/vue/24/outline'
 
 defineProps({
@@ -103,6 +104,7 @@ const mainMenuItems = [
   { path: '/request', label: 'Request', icon: PlusCircleIcon },
   { path: '/statistics', label: 'Statistics', icon: ChartBarIcon },
   { path: '/patterns', label: 'Patterns', icon: PuzzlePieceIcon },
+  { path: '/policy-stats', label: 'Policy Stats', icon: PresentationChartLineIcon },
   { path: '/tuning-suggestions', label: 'Tuning', icon: LightBulbIcon },
   { path: '/settings', label: 'Settings', icon: CogIcon },
 ]

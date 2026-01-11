@@ -13,6 +13,31 @@ This release implements the complete Policy-Driven Classification Engine, replac
 
 ### Added
 
+#### Policy Stats Dashboard (#113)
+- **New view:** `client/src/views/PolicyStatsDashboard.vue` - Live policy statistics dashboard
+  - **Overview cards:** Display global metrics (total decisions, average accuracy, auto-classify rate, improving policies)
+  - **Policy performance grid:** Individual policy cards with trend indicators and key metrics
+  - **Live activity feed:** Real-time stream of decisions, discovered patterns, and tuning suggestions
+  - **Alerts system:** Automatic detection and display of abnormal metrics
+  - **Time range filtering:** View stats for 7 days, 30 days, or all time
+  - **Auto-refresh:** Updates every 30 seconds for real-time monitoring
+- **New components:**
+  - `client/src/components/stats/StatCard.vue` - Reusable metric display card with trend indicators
+  - `client/src/components/stats/PolicyStatsCard.vue` - Policy-specific stats card with click-to-expand
+  - `client/src/components/stats/LiveFeed.vue` - Activity feed with decision, pattern, and suggestion events
+  - `client/src/components/stats/AlertsBanner.vue` - Dismissible alerts for declining accuracy and pending suggestions
+  - `client/src/components/stats/PolicyStatsModal.vue` - Detailed policy stats modal with charts and comparisons
+  - `client/src/components/stats/AccuracyChart.vue` - SVG-based accuracy trend chart
+- **Extended API routes:** `server/src/routes/stats.js`
+  - `GET /api/stats/overview` - Global stats overview (total policies, decisions, accuracy, trends)
+  - `GET /api/stats/policies` - List all policies with their learning stats
+  - `GET /api/stats/policies/:id` - Detailed stats for specific policy with time-series and breakdowns
+  - `GET /api/stats/live-feed` - Recent activity feed across all policies
+  - `GET /api/stats/alerts` - Abnormal metrics alerts (declining accuracy, high corrections, pending suggestions)
+  - `GET /api/stats/policies/:id/compare` - Period comparison (this week vs last week)
+- **Navigation integration:** Added "Policy Stats" link to sidebar with chart icon
+- **Integration tests:** `server/src/__tests__/integration/stats-api.test.js` - Comprehensive API endpoint testing
+
 #### PolicyEngine Service
 - **New service:** `server/src/services/policyEngine.js` - Core classification engine with comprehensive signal evaluation
   - **Main entry point:** `evaluateItem(item)` - Evaluates media items against all active policies
