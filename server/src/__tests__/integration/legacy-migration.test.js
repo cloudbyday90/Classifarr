@@ -206,7 +206,7 @@ describe('Legacy Migration Integration Tests', () => {
                 preset_id: presetId
             };
 
-            await legacyMigration.migrateRule(ruleId, migrationChoice, 1);
+            await legacyMigration.migrateRule(ruleId, migrationChoice, null);
 
             // Verify rule is marked as migrated
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);
@@ -237,7 +237,7 @@ describe('Legacy Migration Integration Tests', () => {
                 }
             };
 
-            await legacyMigration.migrateRule(ruleId, migrationChoice, 1);
+            await legacyMigration.migrateRule(ruleId, migrationChoice, null);
 
             // Verify rule is marked as migrated
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);
@@ -264,7 +264,7 @@ describe('Legacy Migration Integration Tests', () => {
             };
 
             await expect(
-                legacyMigration.migrateRule(ruleId, migrationChoice, 1)
+                legacyMigration.migrateRule(ruleId, migrationChoice, null)
             ).rejects.toThrow();
 
             // Verify rule is NOT marked as migrated
@@ -288,7 +288,7 @@ describe('Legacy Migration Integration Tests', () => {
                     ($1, 'Rule 2', 'Test', '{"field": "genres", "value": "Action"}', true)
             `, [testLibraryId]);
 
-            const results = await legacyMigration.migrateLibrary(testLibraryId, 1, true);
+            const results = await legacyMigration.migrateLibrary(testLibraryId, null, true);
 
             expect(results).toHaveLength(2);
             expect(results.filter(r => r.migrated).length).toBe(2);

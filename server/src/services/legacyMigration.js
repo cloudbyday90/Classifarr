@@ -419,9 +419,9 @@ class LegacyMigration {
     async getMigrationStatus() {
         const result = await db.query(`
             SELECT 
-                COUNT(*) FILTER (WHERE migrated_at IS NULL) as pending,
-                COUNT(*) FILTER (WHERE migrated_at IS NOT NULL) as migrated,
-                COUNT(*) as total
+                COUNT(*) FILTER (WHERE migrated_at IS NULL)::int as pending,
+                COUNT(*) FILTER (WHERE migrated_at IS NOT NULL)::int as migrated,
+                COUNT(*)::int as total
             FROM library_custom_rules
         `);
         return result.rows[0];
