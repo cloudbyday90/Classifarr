@@ -85,6 +85,37 @@ This release implements the complete Policy-Driven Classification Engine, replac
     - `groupByMetadataField(feedback, field)` - Groups feedback by metadata attributes
     - `extractSignificantPatterns(groups, type, minCount)` - Filters patterns by significance threshold
 
+#### Policy Builder UI
+- **New Vue components:**
+  - `client/src/views/PolicyList.vue` - Main policy management page showing all policies grouped by library
+  - `client/src/components/policies/PolicyCard.vue` - Individual policy card with threshold and weight display
+  - `client/src/components/policies/PolicyBuilderModal.vue` - Complete policy creation/editing modal with preset selection
+  - `client/src/components/policies/PresetCard.vue` - Preset selection card with expandable signal details
+- **New API routes:** `server/src/routes/policies.js`
+  - `GET /api/policies` - List all policies with preset counts
+  - `GET /api/policies/:id` - Get policy with attached presets
+  - `POST /api/policies` - Create new policy with presets
+  - `PUT /api/policies/:id` - Update policy and presets
+  - `DELETE /api/policies/:id` - Delete policy
+  - `GET /api/policies/:id/presets` - Get policy's presets
+  - `POST /api/policies/:id/presets` - Attach preset to policy
+  - `DELETE /api/policies/:id/presets/:presetId` - Remove preset from policy
+  - `GET /api/policies/presets/all` - List all 168 available presets with category/search filtering
+  - `GET /api/policies/presets/categories` - List preset categories with counts
+- **Features:**
+  - Select from 168 comprehensive content presets across 8 categories
+  - Configure policy thresholds (auto-classify, prompt)
+  - Adjust scoring weights (presets, patterns, RAG, history)
+  - Choose combination modes (best_match, average, weighted_average, require_all)
+  - Search and filter presets by category
+  - Per-preset weight adjustment
+  - Real-time weight validation (ensures 100% total)
+  - Expandable preset details showing signal configurations
+- **Integration tests:** `server/src/__tests__/integration/policies-api.test.js`
+  - Full CRUD operation coverage
+  - Preset attachment/removal testing
+  - Category filtering and search validation
+
 #### PromptBuilder Service
 - **New service:** `server/src/services/promptBuilder.js` - Context-rich prompt generation for Discord and web UI
   - **Main entry point:** `buildPrompt(item, evaluationResult)` - Generates intelligent prompts with explanations
