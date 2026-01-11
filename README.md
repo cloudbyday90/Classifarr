@@ -562,27 +562,37 @@ For cloud providers, set monthly spending limits:
 |------|-------|-------|----------|-------|
 | **4GB** | `phi3:3.8b` | ⚡ Fastest | Good | Best for low-end GPUs |
 | **6GB** | `mistral:7b` | ⚡ Very Fast | Good | Popular, well-tested |
-| **8GB** | `llama3.3:8b` | ⚡ Very Fast | High | **Recommended** - Meta's latest, excellent quality |
-| **8GB** | `qwen2.5:7b` | ⚡ Very Fast | High | Strong multilingual, STEM tasks |
+#### Local (Ollama) - Best by VRAM
+
+| VRAM | Model | Speed | Accuracy | Notes |
+|------|-------|-------|----------|-------|
+| **4GB** | `phi3:3.8b` | ⚡ Fastest | Good | Best for low-end GPUs |
+| **6GB** | `mistral:7b` | ⚡ Very Fast | Good | Popular, well-tested |
+| **8GB** | `llama3.3:8b` | ⚡ Very Fast | High | **Recommended** - latest Llama on Ollama |
+| **8GB** | `qwen2.5:7b` | ⚡ Very Fast | High | Strong multilingual, STEM tasks, 128k context |
 | **12GB** | `qwen2.5:14b` | Fast | Very High | Excellent reasoning, 128k context |
 | **16GB** | `deepseek-r1:14b` | Fast | Very High | Advanced reasoning, distilled from 671B |
 | **24GB+** | `qwen2.5:32b` | Medium | Highest | Top open source performance |
-| **48GB+** | `llama3.3:70b` | Slower | Highest | Near GPT-4 quality, 256k context |
+| **48GB+** | `llama3.3:70b` | Slower | Highest | Near GPT-4 quality, large context |
 
 > **Tip:** With the Policy Engine, smaller models work great since they're only validating formula decisions. `llama3.3:8b` or `qwen2.5:7b` are excellent choices.
+> **Note:** Llama 4 (Scout/Maverick) released April 2025 but not yet available on Ollama as of Jan 2026. Llama 3.3 is the latest Ollama version.
 
 ---
 
-#### OpenAI - Best for Accuracy
+#### OpenAI - Premium Accuracy
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `gpt-4o-mini` | $0.60 in / $2.40 out | ⚡ Fast | **Best Value** - excellent quality at low cost |
-| `gpt-4o` | $5.00 in / $20.00 out | Fast | High-quality classification, multimodal |
-| `o1-mini` | $0.15–$0.60 in / $0.60–$2.40 out | Medium | Cost-efficient deep reasoning |
-| `o1` | $5–7 in / $20–25 out | Slower | **Most Accurate** - advanced logic and math |
+| `gpt-5-mini` | $0.25 in / $2.00 out | ⚡ Fastest | **Best Value** - cost-effective GPT-5 |
+| `gpt-5-nano` | $0.05 in / $0.40 out | ⚡ Ultra Fast | Ultra low-cost, high-volume tasks |
+| `gpt-5` | $1.25 in / $10.00 out | Fast | Standard GPT-5, excellent quality |
+| `gpt-5.1` | $1.25 in / $10.00 out | Fast | Enhanced GPT-5, improved reasoning |
+| `gpt-5.2` | $1.75 in / $14.00 out | Fast | **Latest** (Dec 2025) - best accuracy, 400K context |
+| `gpt-5.2-pro` | $21.00 in / $168.00 out | Medium | Maximum reasoning, research, advanced coding |
 
-> **OpenAI Recommendation:** Start with `gpt-4o-mini` - handles 95% of classification tasks accurately at minimal cost.
+> **OpenAI Recommendation:** Start with `gpt-5-mini` for most tasks. Use `gpt-5.2` for complex edge cases.
+> **Note:** GPT-5.2 released December 11, 2025. All GPT-5 models support 400K token context windows.
 
 ---
 
@@ -590,25 +600,26 @@ For cloud providers, set monthly spending limits:
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `gemini-2.0-flash-exp` | FREE (limited) | ⚡ Fastest | **Free Tier** - experimental, excellent quality |
-| `gemini-2.0-flash` | $0.10 in / $0.40 out | ⚡ Very Fast | **Budget Pick** - best price/performance ratio |
-| `gemini-2.0-flash-lite` | $0.075 in / $0.30 out | ⚡ Fastest | Ultra low-cost, high-volume tasks |
-| `gemini-1.5-flash` | $0.075 in / $0.30 out | ⚡ Fast | Proven quality, 1M token context |
+| `gemini-3-flash` | $0.10 in / $0.40 out | ⚡ Fastest | **Latest** (Dec 2025) - 3x faster, best value |
+| `gemini-3-pro` | $1.25 in / $5.00 out | Fast | Latest flagship, advanced reasoning |
+| `gemini-1.5-flash` | $0.075 in / $0.30 out | ⚡ Fast | Stable, 1M token context |
 | `gemini-1.5-pro` | $1.25 in / $5.00 out | Fast | 2M token context, complex analysis |
 
-> **Gemini Recommendation:** `gemini-2.0-flash` for best value, or try `gemini-2.0-flash-exp` free tier first.
+> **Gemini Recommendation:** `gemini-3-flash` for best performance/cost ratio.
+> **Note:** Gemini 3 series released December 2025 as Google's latest flagship models.
 
 ---
 
-#### Anthropic Claude - Best for Nuanced Understanding
+#### Anthropic Claude - Best for Safety
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `claude-3-5-haiku` | $1.00 in / $5.00 out | ⚡ Very Fast | Fast, outperforms older Opus |
-| `claude-3-5-sonnet` | $3.00 in / $15.00 out | Fast | **Recommended** - excellent reasoning and safety |
-| `claude-3-opus` | $15.00 in / $75.00 out | Medium | Highest quality, complex edge cases |
+| `claude-haiku-4.5` | $0.80 in / $4.00 out | ⚡ Very Fast | **Best Value** - fastest Claude, high-throughput |
+| `claude-sonnet-4.5` | $3.00 in / $15.00 out | Fast | **Recommended** - balanced speed/accuracy |
+| `claude-opus-4.5` | $15.00 in / $75.00 out | Medium | Maximum intelligence, complex reasoning |
 
-> **Claude Recommendation:** `claude-3-5-sonnet` offers exceptional understanding of nuanced content classification.
+> **Claude Recommendation:** `claude-sonnet-4.5` for balanced performance. All models support 200K context.
+> **Note:** Claude 4.5 series current as of Jan 2026. Claude 3 Opus retired Jan 2026.
 
 ---
 
@@ -618,16 +629,16 @@ OpenRouter provides unified access to 200+ models. Best picks for classification
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `meta-llama/llama-4-maverick:free` | FREE | ⚡ Fast | **Best Free Option** - MoE, 256k context |
-| `google/gemini-2.0-flash-exp:free` | FREE | ⚡ Fastest | Free Gemini experimental |
-| `meta-llama/llama-3.3-70b-instruct` | $0.35 in / $0.40 out | Fast | High quality, low cost |
-| `anthropic/claude-3-5-sonnet` | $3.00 in / $15.00 out | Fast | Premium understanding |
-| `google/gemini-2.0-flash` | $0.10 in / $0.40 out | ⚡ Fast | Same as direct Gemini |
-| `openai/gpt-4o-mini` | $0.60 in / $2.40 out | ⚡ Fast | Same as direct OpenAI |
-| `qwen/qwen-2.5-72b-instruct` | $0.35 in / $0.40 out | Fast | Strong multilingual, excellent quality |
-| `deepseek/deepseek-r1` | $0.55 in / $2.19 out | Medium | Advanced reasoning at low cost |
+| `meta-llama/llama-4-maverick:free` | FREE | ⚡ Fast | **Best Free Option** - MoE, 1M context |
+| `google/gemini-3-flash:free` | FREE (limited) | ⚡ Fastest | Free Gemini 3 latest |
+| `openai/gpt-5-mini` | $0.25 in / $2.00 out | ⚡ Fast | Latest GPT, cost-effective |
+| `google/gemini-3-flash` | $0.10 in / $0.40 out | ⚡ Fastest | Latest Gemini, best value |
+| `anthropic/claude-sonnet-4.5` | $3.00 in / $15.00 out | Fast | Latest Claude, premium quality |
+| `openai/gpt-5.2` | $1.75 in / $14.00 out | Fast | Latest GPT flagship |
+| `qwen/qwen-2.5-72b-instruct` | $0.35 in / $0.40 out | Fast | Strong multilingual |
+| `deepseek/deepseek-r1` | $0.55 in / $2.19 out | Medium | Advanced reasoning, low cost |
 
-> **OpenRouter Recommendation:** Start with free `llama-4-maverick:free` or `gemini-2.0-flash-exp:free`. Great for testing different models before committing.
+> **OpenRouter Recommendation:** Start with free `llama-4-maverick:free` or `gemini-3-flash:free` for testing.
 
 ---
 
@@ -635,8 +646,16 @@ OpenRouter provides unified access to 200+ models. Best picks for classification
 
 | Your Situation | Recommended Setup |
 |----------------|-------------------|
-| Your Situation | Recommended Setup |
-|----------------|-------------------|
+| **No budget / Privacy-focused** | Ollama with `llama3.3:8b` or `qwen2.5:7b` |
+| **Free tier / Testing** | OpenRouter `llama-4-maverick:free` or `gemini-3-flash:free` |
+| **$1-10/month** | Gemini `gemini-3-flash` or OpenAI `gpt-5-mini` |
+| **$10-30/month** | OpenAI `gpt-5.2` or Anthropic `claude-sonnet-4.5` |
+| **Best accuracy regardless of cost** | OpenAI `gpt-5.2-pro` or Anthropic `claude-opus-4.5` |
+| **Want to try different providers** | OpenRouter with budget controls |
+
+> **Ollama Fallback:** Enable Ollama as a fallback for basic tasks or when cloud budget is exhausted.
+
+---
 | **No budget / Privacy-focused** | Ollama with `llama3.3:8b` or `qwen2.5:7b` |
 | **Free tier / Testing** | OpenRouter `llama-4-maverick:free` or `gemini-2.0-flash-exp:free` |
 | **$1-5/month** | Gemini `gemini-2.0-flash` or OpenAI `gpt-4o-mini` |
