@@ -126,6 +126,8 @@ Create a new policy.
 }
 ```
 
+**Note:** `preset_ids` is an array of numeric preset IDs, while `preset_weights` is an object keyed by those IDs. In JSON, object keys are always strings, so the IDs appear as `"1"`, `"2"`, `"3"` in `preset_weights` even though they correspond to the numeric IDs in `preset_ids`.
+
 **Response:**
 
 ```json
@@ -258,7 +260,7 @@ Remove a preset from a policy.
 - `auto_classify_threshold`: 0-100
 - `prompt_threshold`: 0-100
 - `ai_validation_threshold`: 0-100
-- Weights must sum to 1.0 (preset + pattern + rag + history)
+- Weights are configurable per policy; for `weighted_average` mode it is recommended (but not required) that `preset_weight + pattern_weight + rag_weight + history_weight` is approximately 1.0
 - `combination_mode`: One of `best_match`, `average`, `weighted_average`, `require_all`
 
 ### Preset Attachment

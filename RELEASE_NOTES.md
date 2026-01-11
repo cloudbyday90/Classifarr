@@ -215,3 +215,12 @@ Maximum: 95% (100% reserved for authoritative signals)
 Thanks to everyone who contributed to this major release!
 
 ---
+
+## 🕰 Historical Release Notes
+
+Release notes for versions prior to **v0.37.0** have been moved out of this file to keep it focused on the latest major changes.
+
+- For the full historical release notes, see **`RELEASE_NOTES.md.backup`** in this repository.
+- You can also browse all past release notes and changes through the project's version control history (e.g., Git log or tags).
+
+---

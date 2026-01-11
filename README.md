@@ -22,7 +22,7 @@ Classifarr is an intelligent media classification platform that automatically ro
 ### 🔐 Core Features
 - **Secure Authentication** - JWT-based login with first-run setup wizard
 - **Multi-Server Support** - Plex, Emby, and Jellyfin with OAuth flows
-- **Multi-Provider AI** - OpenAI, Gemini, OpenRouter, Ollama with budget controls
+- **Multi-provider AI** - OpenAI, Gemini, OpenRouter, Ollama with budget controls
 - **RAG Semantic Search** - Learns from history using Reciprocal Rank Fusion algorithm
 - **Pattern Discovery** - Auto-detect studio, keyword, and genre associations
 - **Embedded PostgreSQL** - All data in a single volume, auto-initialized
@@ -446,10 +446,10 @@ Patterns are automatically discovered from your decisions:
 - Auto-approves patterns above 85% confidence
 - Prompts you to review patterns 60-84% confidence
 
-**Managing Patterns:**
-- View all patterns in **Settings** → **Patterns** (deprecated UI, use policies instead)
-- Patterns automatically integrate into policy scoring
-- Low-performing patterns (<30%) auto-deprecate
+**Managing Patterns (v0.37.0+):**
+- Manual pattern management via **Settings** → **Patterns** is **deprecated** and will be removed in a future release
+- Use the **Visual Policy Builder** to control how discovered patterns influence classification (via presets and weighting)
+- Patterns continue to automatically integrate into policy scoring, and low-performing patterns (<30%) are auto-deprecated by the system
 
 ## 🔄 Migration from v0.36.x
 
@@ -570,7 +570,7 @@ For cloud providers, set monthly spending limits:
 | **48GB+** | `llama3.3:70b` | Slower | Highest | Near GPT-4 quality, large context |
 
 > **Tip:** With the Policy Engine, smaller models work great since they're only validating formula decisions. `llama3.3:8b` or `qwen2.5:7b` are excellent choices.
-> **Note:** Llama 4 (Scout/Maverick) released April 2025 but not yet available on Ollama as of Jan 2026. Llama 3.3 is the latest Ollama version.
+> **Note:** At the time of writing, `llama3.3` is the latest Llama model available on Ollama. For the most current Llama releases and Ollama availability, refer to the official Ollama model catalog.
 
 ---
 
@@ -613,7 +613,7 @@ For cloud providers, set monthly spending limits:
 | `claude-opus-4.5` | $15.00 in / $75.00 out | Medium | Maximum intelligence, complex reasoning |
 
 > **Claude Recommendation:** `claude-sonnet-4.5` for balanced performance. All models support 200K context.
-> **Note:** Claude 4.5 series current as of Jan 2026. Claude 3 Opus retired Jan 2026.
+> **Note:** Claude 4.5 series is current as of Jan 2026 and supersedes the Claude 3 series; check Anthropic's latest documentation for up-to-date model availability.
 
 ---
 
@@ -633,6 +633,7 @@ OpenRouter provides unified access to 200+ models. Best picks for classification
 | `deepseek/deepseek-r1` | $0.55 in / $2.19 out | Medium | Advanced reasoning, low cost |
 
 > **OpenRouter Recommendation:** Start with free `llama-4-maverick:free` or `gemini-3-flash:free` for testing.
+> **Note:** OpenRouter provides access to Llama 4 models (not yet available on Ollama), and the `:free` suffix indicates OpenRouter's free tier which may have rate limits.
 
 ---
 

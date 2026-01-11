@@ -191,7 +191,7 @@ Content rated by target age group and maturity level.
 | `bollywood` | Bollywood | hi | Indian studios |
 | `korean` | Korean | ko | Korean studios |
 | `japanese` | Japanese | ja | Japanese studios |
-| `anime` | Anime | ja | Animation |
+| `anime_japanese` | Anime | ja | Animation |
 | `chinese` | Chinese | zh | Chinese studios |
 | `hong_kong` | Hong Kong | zh | HK studios |
 | `taiwanese` | Taiwanese | zh | Taiwan studios |

@@ -18,6 +18,8 @@ The Classifarr API provides RESTful endpoints for managing policies, presets, tu
 - [Stats API](./stats.md) - Policy statistics and analytics
 - [Migration API](./migration.md) - Legacy rule migration tools
 
+> **Note:** Additional APIs for presets, suggestions, statistics, and legacy rule migration are available in the service, but their detailed documentation is not yet included in this reference and will be added in a future revision.
+
 ---
 
 ## Common Response Formats
