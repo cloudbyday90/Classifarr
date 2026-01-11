@@ -475,6 +475,9 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Edge cases and boundary conditions
 
 ### Fixed
+- **Migration 046 ON CONFLICT fix:** Fixed `046_event_detection_presets.sql` migration failing with "no unique or exclusion constraint matching the ON CONFLICT specification"
+  - Changed `ON CONFLICT (key)` to `ON CONFLICT (key, user_id)` to match the unique constraint on `content_presets` table
+  - Added `updated_at = NOW()` to the UPDATE clause for consistency with other preset migrations
 - **SQL syntax error:** Corrected UNIQUE constraint placement in `policy_learning_stats` table (moved before REFERENCES)
 - **Test reliability:** Added explicit assertions to prevent tests from silently passing when preconditions aren't met
 - **Migration error handling:** Enhanced to fail fast on critical errors while allowing expected optional failures
@@ -492,19 +495,19 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Both features follow v0.37.0 deprecation timeline (functional in v0.37, removed in v0.39)
   - Classification Rules section reordered below Learned Patterns to prioritize modern features
   - Classification Rules title updated to include "(Deprecated)" marker
-- **Policy Stats UI theme fixes:** Corrected Policy Stats Dashboard to use dark theme (#117)
-  - Fixed PolicyStatsCard component light theme colors (was white background, now dark)
-  - Fixed PolicyStatsDashboard light theme colors to match application theme
-  - Updated text colors, borders, and hover states for consistency
-  - Improved visual hierarchy with proper dark theme contrast
-- **Navigation reorganization:** Improved left sidebar menu structure (#117)
-  - Added missing "Policies" navigation link (critical for v0.37.0)
-  - Added missing "Migration" navigation link for legacy rule migration
-  - Reorganized menu items into logical groups:
-    - Core Setup: Dashboard, Libraries, Policies, Request
-    - Monitoring: Activity, History, Statistics, Policy Stats
-    - Learning & Tuning: Patterns, Tuning, Migration
-    - Configuration: Settings
+- **Policy Stats UI theme fixes:** Corrected Policy Stats Dashboard to use dark theme
+  - Fixed `StatCard.vue` - changed white background to dark (`#1f2937`), updated text colors
+  - Fixed `LiveFeed.vue` - changed white background to dark, updated borders and text colors
+  - Updated hover states and correction badge colors for dark theme consistency
+- **Sidebar reorganization:** Restructured sidebar into 5 logical sections with headers
+  - **Dashboard** - Home/Dashboard link
+  - **Media** - Libraries, Request, Activity
+  - **Classification** - Policies, Patterns, Tuning
+  - **Analytics** - History, Statistics, Policy Stats
+  - **Admin** - Migration, Queue, Settings, System
+  - Added uppercase section headers with muted styling
+  - Reduced nav item padding for more compact layout
+  - Added scroll support for overflow on smaller screens
   - Improved workflow by grouping related features together
 
 ### Changed

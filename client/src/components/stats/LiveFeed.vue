@@ -61,9 +61,9 @@ export default {
 
 <style scoped>
 .live-feed {
-  background: white;
+  background: #1f2937;
+  border: 1px solid #374151;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
@@ -78,7 +78,7 @@ export default {
   align-items: center;
   gap: 12px;
   padding: 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #374151;
   transition: background 0.2s;
 }
 
@@ -87,7 +87,7 @@ export default {
 }
 
 .feed-item:hover {
-  background: #f9fafb;
+  background: #374151;
 }
 
 .feed-icon {
@@ -105,7 +105,7 @@ export default {
 
 .feed-title {
   font-weight: 500;
-  color: #1f2937;
+  color: #f9fafb;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -113,15 +113,15 @@ export default {
 
 .feed-meta {
   font-size: 14px;
-  color: #6b7280;
+  color: #9ca3af;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .correction-badge {
-  background: #fef3c7;
-  color: #92400e;
+  background: #78350f;
+  color: #fef3c7;
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 12px;
@@ -130,7 +130,7 @@ export default {
 
 .feed-time {
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
   flex-shrink: 0;
 }
 </style>

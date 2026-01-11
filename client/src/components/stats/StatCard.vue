@@ -51,19 +51,19 @@ export default {
 
 <style scoped>
 .stat-card {
-  background: white;
+  background: #1f2937;
+  border: 1px solid #374151;
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   gap: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, border-color 0.2s;
 }
 
 .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-color: #4b5563;
 }
 
 .stat-card.success {
@@ -93,12 +93,12 @@ export default {
 .stat-value {
   font-size: 24px;
   font-weight: 600;
-  color: #1f2937;
+  color: #f9fafb;
 }
 
 .stat-title {
   font-size: 14px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .stat-trend {

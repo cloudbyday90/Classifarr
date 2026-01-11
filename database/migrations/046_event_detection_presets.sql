@@ -2,7 +2,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- This migration migrates event detection from hardcoded detectEventContent()
 -- to PolicyEngine presets, enabling policy-based event classification.
--- 
+--
 -- Related Issue: #98 (AI Optimization & Event Detection Migration)
 -- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -16,42 +16,95 @@ BEGIN;
 -- Event types: holiday, sports, ppv, concert, standup, awards
 -- ============================================================================
 
-INSERT INTO content_presets (key, name, description, icon, category, signals, is_system, display_order)
+INSERT INTO
+    content_presets (
+        key,
+        name,
+        description,
+        icon,
+        category,
+        signals,
+        is_system,
+        display_order
+    )
 VALUES
--- Holiday Content
-('event_holiday', 'Holiday & Seasonal', 'Christmas, Halloween, and seasonal content', '🎄', 'events',
- '{"keywords": {"require_any": ["christmas", "xmas", "santa", "santa claus", "north pole", "reindeer", "rudolph", "frosty", "snowman", "christmas eve", "yuletide", "noel", "nativity", "scrooge", "grinch", "krampus", "nutcracker", "polar express", "mistletoe", "candy cane", "gingerbread", "halloween", "trick or treat", "haunted", "hanukkah", "chanukah", "kwanzaa", "thanksgiving", "easter", "valentines day", "new years eve"], "weight": 2.0}, "base_confidence": 95}',
- true, 200),
+    -- Holiday Content
+    (
+        'event_holiday',
+        'Holiday & Seasonal',
+        'Christmas, Halloween, and seasonal content',
+        '🎄',
+        'events',
+        '{"keywords": {"require_any": ["christmas", "xmas", "santa", "santa claus", "north pole", "reindeer", "rudolph", "frosty", "snowman", "christmas eve", "yuletide", "noel", "nativity", "scrooge", "grinch", "krampus", "nutcracker", "polar express", "mistletoe", "candy cane", "gingerbread", "halloween", "trick or treat", "haunted", "hanukkah", "chanukah", "kwanzaa", "thanksgiving", "easter", "valentines day", "new years eve"], "weight": 2.0}, "base_confidence": 95}',
+        true,
+        200
+    ),
 
 -- Sports Content
-('event_sports', 'Sports & Athletics', 'Sports events, documentaries, and athletics', '🏈', 'events',
- '{"keywords": {"require_any": ["nfl", "nba", "mlb", "nhl", "mls", "fifa", "uefa", "premier league", "super bowl", "world series", "stanley cup", "world cup", "championship", "playoffs", "tournament", "olympics", "olympic games", "espn", "sports documentary", "football game", "basketball game", "baseball game", "hockey game", "soccer match", "tennis match", "golf tournament", "motorsports", "nascar", "formula 1", "f1", "grand prix", "marathon", "30 for 30"], "weight": 2.0}, "genres": {"prefer": ["Sport", "Documentary"], "weight": 0.5}, "base_confidence": 92}',
- true, 201),
+(
+    'event_sports',
+    'Sports & Athletics',
+    'Sports events, documentaries, and athletics',
+    '🏈',
+    'events',
+    '{"keywords": {"require_any": ["nfl", "nba", "mlb", "nhl", "mls", "fifa", "uefa", "premier league", "super bowl", "world series", "stanley cup", "world cup", "championship", "playoffs", "tournament", "olympics", "olympic games", "espn", "sports documentary", "football game", "basketball game", "baseball game", "hockey game", "soccer match", "tennis match", "golf tournament", "motorsports", "nascar", "formula 1", "f1", "grand prix", "marathon", "30 for 30"], "weight": 2.0}, "genres": {"prefer": ["Sport", "Documentary"], "weight": 0.5}, "base_confidence": 92}',
+    true,
+    201
+),
 
 -- PPV/Combat Sports
-('event_ppv', 'PPV & Combat Sports', 'UFC, MMA, boxing, wrestling events', '🥊', 'events',
- '{"keywords": {"require_any": ["ufc", "mma", "ultimate fighting", "bellator", "pride fc", "one championship", "mixed martial arts", "cage fight", "octagon", "boxing", "heavyweight", "middleweight", "welterweight", "title fight", "championship bout", "knockout", "wwe", "wrestling", "wrestlemania", "royal rumble", "summerslam", "aew", "pro wrestling", "smackdown", "pay per view", "ppv", "fight night", "main event"], "weight": 2.0}, "base_confidence": 93}',
- true, 202),
+(
+    'event_ppv',
+    'PPV & Combat Sports',
+    'UFC, MMA, boxing, wrestling events',
+    '🥊',
+    'events',
+    '{"keywords": {"require_any": ["ufc", "mma", "ultimate fighting", "bellator", "pride fc", "one championship", "mixed martial arts", "cage fight", "octagon", "boxing", "heavyweight", "middleweight", "welterweight", "title fight", "championship bout", "knockout", "wwe", "wrestling", "wrestlemania", "royal rumble", "summerslam", "aew", "pro wrestling", "smackdown", "pay per view", "ppv", "fight night", "main event"], "weight": 2.0}, "base_confidence": 93}',
+    true,
+    202
+),
 
 -- Concert/Live Music
-('event_concert', 'Concert & Live Music', 'Live concerts, music festivals, performances', '🎵', 'events',
- '{"keywords": {"require_any": ["concert", "live performance", "live tour", "world tour", "music festival", "coachella", "lollapalooza", "glastonbury", "rock concert", "pop concert", "symphony", "orchestra", "unplugged", "acoustic session", "mtv unplugged", "live album", "concert film", "tour documentary"], "weight": 2.0}, "genres": {"prefer": ["Music", "Documentary"], "weight": 0.5}, "base_confidence": 90}',
- true, 203),
+(
+    'event_concert',
+    'Concert & Live Music',
+    'Live concerts, music festivals, performances',
+    '🎵',
+    'events',
+    '{"keywords": {"require_any": ["concert", "live performance", "live tour", "world tour", "music festival", "coachella", "lollapalooza", "glastonbury", "rock concert", "pop concert", "symphony", "orchestra", "unplugged", "acoustic session", "mtv unplugged", "live album", "concert film", "tour documentary"], "weight": 2.0}, "genres": {"prefer": ["Music", "Documentary"], "weight": 0.5}, "base_confidence": 90}',
+    true,
+    203
+),
 
 -- Stand-up Comedy
-('event_standup', 'Stand-up Comedy', 'Comedy specials and stand-up performances', '🎤', 'events',
- '{"keywords": {"require_any": ["stand-up", "standup", "comedy special", "netflix special", "hbo special", "live at the apollo", "def comedy jam", "comedian", "comedy tour", "comedy central", "roast", "just for laughs", "improv", "one-man show", "one-woman show"], "weight": 2.0}, "genres": {"prefer": ["Comedy"], "weight": 0.8}, "base_confidence": 90}',
- true, 204),
+(
+    'event_standup',
+    'Stand-up Comedy',
+    'Comedy specials and stand-up performances',
+    '🎤',
+    'events',
+    '{"keywords": {"require_any": ["stand-up", "standup", "comedy special", "netflix special", "hbo special", "live at the apollo", "def comedy jam", "comedian", "comedy tour", "comedy central", "roast", "just for laughs", "improv", "one-man show", "one-woman show"], "weight": 2.0}, "genres": {"prefer": ["Comedy"], "weight": 0.8}, "base_confidence": 90}',
+    true,
+    204
+),
 
 -- Awards Shows
-('event_awards', 'Awards & Ceremonies', 'Award shows, galas, red carpet events', '🏆', 'events',
- '{"keywords": {"require_any": ["oscars", "academy awards", "emmys", "golden globes", "grammys", "tony awards", "bafta", "mtv awards", "vma", "ama", "billboard awards", "peoples choice", "critics choice", "sag awards", "bet awards", "award ceremony", "award show", "red carpet"], "weight": 2.0}, "base_confidence": 88}',
- true, 205)
-
-ON CONFLICT (key) DO UPDATE SET
+(
+    'event_awards',
+    'Awards & Ceremonies',
+    'Award shows, galas, red carpet events',
+    '🏆',
+    'events',
+    '{"keywords": {"require_any": ["oscars", "academy awards", "emmys", "golden globes", "grammys", "tony awards", "bafta", "mtv awards", "vma", "ama", "billboard awards", "peoples choice", "critics choice", "sag awards", "bet awards", "award ceremony", "award show", "red carpet"], "weight": 2.0}, "base_confidence": 88}',
+    true,
+    205
+) ON CONFLICT (key, user_id) DO
+UPDATE
+SET
     signals = EXCLUDED.signals,
     description = EXCLUDED.description,
-    display_order = EXCLUDED.display_order;
+    display_order = EXCLUDED.display_order,
+    updated_at = NOW();
 
 -- ============================================================================
 -- MIGRATION HELPER: Auto-attach event presets to libraries with event_detection_type
