@@ -17,7 +17,6 @@
  */
 
 const db = require('../../config/database');
-const classificationService = require('../../services/classification');
 const policyEngine = require('../../services/policyEngine');
 
 describe('AI Skip Logic Integration Tests (v0.37.0)', () => {

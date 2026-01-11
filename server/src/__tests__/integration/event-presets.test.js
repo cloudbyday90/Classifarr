@@ -294,7 +294,7 @@ describe('Event Detection Migration Tests (v0.37.0)', () => {
             const libraries = [];
             
             // Should not throw an error
-            const result = await classificationService.detectEventContent(metadata, libraries);
+            await classificationService.detectEventContent(metadata, libraries);
             // Result might be null since we're passing empty libraries
         });
     });
