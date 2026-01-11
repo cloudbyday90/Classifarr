@@ -563,11 +563,11 @@ For cloud providers, set monthly spending limits:
 | **4GB** | `phi3:3.8b` | ⚡ Fastest | Good | Best for low-end GPUs |
 | **6GB** | `mistral:7b` | ⚡ Very Fast | Good | Popular, well-tested |
 | **8GB** | `llama3.3:8b` | ⚡ Very Fast | High | **Recommended** - Meta's latest, excellent quality |
-| **8GB** | `qwen2.5:7b` | ⚡ Very Fast | High | Strong multilingual support |
-| **12GB** | `qwen2.5:14b` | Fast | Very High | Excellent reasoning capabilities |
-| **16GB** | `deepseek-r1:14b` | Fast | Very High | Advanced reasoning, latest model |
-| **24GB+** | `qwen2.5:32b` | Medium | Highest | Top-tier open model performance |
-| **48GB+** | `qwen2.5:72b` | Slower | Highest | Best open source model available |
+| **8GB** | `qwen2.5:7b` | ⚡ Very Fast | High | Strong multilingual, STEM tasks |
+| **12GB** | `qwen2.5:14b` | Fast | Very High | Excellent reasoning, 128k context |
+| **16GB** | `deepseek-r1:14b` | Fast | Very High | Advanced reasoning, distilled from 671B |
+| **24GB+** | `qwen2.5:32b` | Medium | Highest | Top open source performance |
+| **48GB+** | `llama3.3:70b` | Slower | Highest | Near GPT-4 quality, 256k context |
 
 > **Tip:** With the Policy Engine, smaller models work great since they're only validating formula decisions. `llama3.3:8b` or `qwen2.5:7b` are excellent choices.
 
@@ -577,11 +577,10 @@ For cloud providers, set monthly spending limits:
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `gpt-4o-mini` | $0.15 in / $0.60 out | ⚡ Fast | **Best Value** - excellent quality at low cost |
-| `gpt-4o` | $2.50 in / $10.00 out | Fast | High-quality classification, complex cases |
-| `o1-mini` | $3.00 in / $12.00 out | Medium | Advanced reasoning for edge cases |
-| `o1` | $15.00 in / $60.00 out | Slower | **Most Accurate** - highest quality reasoning |
-| `chatgpt-4o-latest` | $5.00 in / $15.00 out | Fast | Latest GPT-4o improvements |
+| `gpt-4o-mini` | $0.60 in / $2.40 out | ⚡ Fast | **Best Value** - excellent quality at low cost |
+| `gpt-4o` | $5.00 in / $20.00 out | Fast | High-quality classification, multimodal |
+| `o1-mini` | $0.15–$0.60 in / $0.60–$2.40 out | Medium | Cost-efficient deep reasoning |
+| `o1` | $5–7 in / $20–25 out | Slower | **Most Accurate** - advanced logic and math |
 
 > **OpenAI Recommendation:** Start with `gpt-4o-mini` - handles 95% of classification tasks accurately at minimal cost.
 
@@ -591,11 +590,11 @@ For cloud providers, set monthly spending limits:
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `gemini-2.0-flash-exp` | FREE (limited) | ⚡ Fastest | **Free Tier** - experimental, high quality |
-| `gemini-2.0-flash` | $0.075 in / $0.30 out | ⚡ Very Fast | **Budget Pick** - best price/performance |
-| `gemini-1.5-flash` | $0.075 in / $0.30 out | ⚡ Fast | Fast processing, proven quality |
+| `gemini-2.0-flash-exp` | FREE (limited) | ⚡ Fastest | **Free Tier** - experimental, excellent quality |
+| `gemini-2.0-flash` | $0.10 in / $0.40 out | ⚡ Very Fast | **Budget Pick** - best price/performance ratio |
+| `gemini-2.0-flash-lite` | $0.075 in / $0.30 out | ⚡ Fastest | Ultra low-cost, high-volume tasks |
+| `gemini-1.5-flash` | $0.075 in / $0.30 out | ⚡ Fast | Proven quality, 1M token context |
 | `gemini-1.5-pro` | $1.25 in / $5.00 out | Fast | 2M token context, complex analysis |
-| `gemini-exp-1206` | FREE (limited) | Fast | **Experimental** - cutting-edge features |
 
 > **Gemini Recommendation:** `gemini-2.0-flash` for best value, or try `gemini-2.0-flash-exp` free tier first.
 
@@ -605,11 +604,11 @@ For cloud providers, set monthly spending limits:
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `claude-3-5-haiku` | $0.80 in / $4.00 out | ⚡ Very Fast | Fast, cost-effective classification |
-| `claude-3-5-sonnet` | $3.00 in / $15.00 out | Fast | **Recommended** - excellent reasoning |
+| `claude-3-5-haiku` | $1.00 in / $5.00 out | ⚡ Very Fast | Fast, outperforms older Opus |
+| `claude-3-5-sonnet` | $3.00 in / $15.00 out | Fast | **Recommended** - excellent reasoning and safety |
 | `claude-3-opus` | $15.00 in / $75.00 out | Medium | Highest quality, complex edge cases |
 
-> **Claude Recommendation:** `claude-3-5-sonnet` offers exceptional understanding of nuanced content.
+> **Claude Recommendation:** `claude-3-5-sonnet` offers exceptional understanding of nuanced content classification.
 
 ---
 
@@ -619,15 +618,16 @@ OpenRouter provides unified access to 200+ models. Best picks for classification
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `google/gemini-2.0-flash-exp:free` | FREE | ⚡ Fastest | **Best Free Option** - no cost! |
+| `meta-llama/llama-4-maverick:free` | FREE | ⚡ Fast | **Best Free Option** - MoE, 256k context |
+| `google/gemini-2.0-flash-exp:free` | FREE | ⚡ Fastest | Free Gemini experimental |
 | `meta-llama/llama-3.3-70b-instruct` | $0.35 in / $0.40 out | Fast | High quality, low cost |
-| `anthropic/claude-3.5-sonnet` | $3.00 in / $15.00 out | Fast | Premium understanding |
-| `google/gemini-2.0-flash-001` | $0.075 in / $0.30 out | ⚡ Fast | Same as direct Gemini |
-| `openai/gpt-4o-mini` | $0.15 in / $0.60 out | ⚡ Fast | Same as direct OpenAI |
+| `anthropic/claude-3-5-sonnet` | $3.00 in / $15.00 out | Fast | Premium understanding |
+| `google/gemini-2.0-flash` | $0.10 in / $0.40 out | ⚡ Fast | Same as direct Gemini |
+| `openai/gpt-4o-mini` | $0.60 in / $2.40 out | ⚡ Fast | Same as direct OpenAI |
 | `qwen/qwen-2.5-72b-instruct` | $0.35 in / $0.40 out | Fast | Strong multilingual, excellent quality |
 | `deepseek/deepseek-r1` | $0.55 in / $2.19 out | Medium | Advanced reasoning at low cost |
 
-> **OpenRouter Recommendation:** Start with free `gemini-2.0-flash-exp` or low-cost `llama-3.3-70b`. Great for testing different models.
+> **OpenRouter Recommendation:** Start with free `llama-4-maverick:free` or `gemini-2.0-flash-exp:free`. Great for testing different models before committing.
 
 ---
 
@@ -635,8 +635,10 @@ OpenRouter provides unified access to 200+ models. Best picks for classification
 
 | Your Situation | Recommended Setup |
 |----------------|-------------------|
+| Your Situation | Recommended Setup |
+|----------------|-------------------|
 | **No budget / Privacy-focused** | Ollama with `llama3.3:8b` or `qwen2.5:7b` |
-| **Free tier / Testing** | OpenRouter `gemini-2.0-flash-exp:free` or Gemini free tier |
+| **Free tier / Testing** | OpenRouter `llama-4-maverick:free` or `gemini-2.0-flash-exp:free` |
 | **$1-5/month** | Gemini `gemini-2.0-flash` or OpenAI `gpt-4o-mini` |
 | **$5-20/month** | OpenAI `gpt-4o` or Anthropic `claude-3-5-sonnet` |
 | **Best accuracy regardless of cost** | OpenAI `o1` or Anthropic `claude-3-opus` |
@@ -724,12 +726,11 @@ RAG confidence dynamically adjusts based on match quality:
 
 | Model | Dims | Size | Best For |
 |-------|------|------|----------|
-| `nomic-embed-text` ⭐ | 768 | 274MB | **Recommended** - High-quality, large context (8192 tokens) |
-| `mxbai-embed-large` ⭐ | 1024 | 670MB | State-of-the-art quality for semantic search |
+| `nomic-embed-text` ⭐ | 768 | 274MB | **Recommended** - High-quality, 8192 token context, open source |
+| `mxbai-embed-large` ⭐ | 1024 | 670MB | State-of-the-art retrieval performance |
 | `snowflake-arctic-embed2` | 1024 | 1.1GB | Latest Snowflake model, multilingual |
 | `bge-m3` | 1024 | 1.1GB | Multi-lingual, multi-granularity embeddings |
 | `all-minilm` | 384 | 46MB | **Fastest** - Low resource usage, good quality |
-| `bge-large` | 1024 | 670MB | BAAI flagship embedding model |
 
 To install an Ollama embedding model:
 ```bash
@@ -743,21 +744,26 @@ ollama pull mxbai-embed-large
 **OpenAI:**
 | Model | Dims | Cost (per 1M tokens) | Notes |
 |-------|------|---------------------|-------|
-| `text-embedding-3-small` ⭐ | 1536 | $0.02 | **Best value** for most use cases |
-| `text-embedding-3-large` | 3072 | $0.13 | Highest quality, superior performance |
+| `text-embedding-3-small` ⭐ | 1536 | $0.02 | **Best value** - excellent quality |
+| `text-embedding-3-large` | 3072 | $0.13 | Highest quality, top leaderboard performance |
+
+**Voyage AI:**
+| Model | Dims | Cost (per 1M tokens) | Notes |
+|-------|------|---------------------|-------|
+| `voyage-3` | 1024 | $0.06 | Cutting-edge retrieval, often tops leaderboards |
+| `voyage-3-lite` | 512 | $0.02 | Fast, cost-effective |
 
 **Google Gemini:**
 | Model | Dims | Cost | Notes |
 |-------|------|------|-------|
-| `text-embedding-004` ⭐ | 768 | FREE (limited) | Latest Gemini embedding, excellent quality |
+| `text-embedding-004` | 768 | FREE (limited) | Latest Gemini embedding, excellent quality |
 
-**Voyage AI (via OpenRouter):**
+**Cohere:**
 | Model | Dims | Cost (per 1M tokens) | Notes |
 |-------|------|---------------------|-------|
-| `voyage-3` | 1024 | $0.06 | Cutting-edge retrieval performance |
-| `voyage-3-lite` | 512 | $0.02 | Fast, cost-effective |
+| `embed-v3-multilingual` | 1024 | $0.10 | Excellent multilingual support |
 
-> **Recommendation:** Use `nomic-embed-text` with Ollama (free) or `text-embedding-3-small` with OpenAI for best results.
+> **Recommendation:** Use `nomic-embed-text` with Ollama (free, self-hosted) or `text-embedding-3-small` with OpenAI for best results.
 
 #### Backfilling
 
