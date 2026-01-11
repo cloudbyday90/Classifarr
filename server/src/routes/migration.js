@@ -107,7 +107,8 @@ router.get('/rules/:id/analyze', async (req, res) => {
 router.post('/rules/:id/migrate', async (req, res) => {
     try {
         const { migrationChoice } = req.body;
-        const userId = req.user?.id || 1; // Default to user 1 if not authenticated
+        // Use authenticated user ID if available, otherwise null (system migration)
+        const userId = req.user?.id || null;
         
         if (!migrationChoice) {
             return res.status(400).json({ error: 'Migration choice is required' });
@@ -131,7 +132,8 @@ router.post('/rules/:id/migrate', async (req, res) => {
 router.post('/libraries/:id/migrate-all', async (req, res) => {
     try {
         const { autoSuggest = true } = req.body;
-        const userId = req.user?.id || 1;
+        // Use authenticated user ID if available, otherwise null (system migration)
+        const userId = req.user?.id || null;
         
         const results = await legacyMigration.migrateLibrary(req.params.id, userId, autoSuggest);
         res.json(results);

@@ -11,6 +11,12 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal migration-wizard">
+      <!-- Notification toast -->
+      <div v-if="notification" class="notification-toast" :class="notification.type">
+        <span class="notification-message">{{ notification.message }}</span>
+        <button @click="dismissNotification" class="notification-close">×</button>
+      </div>
+
       <div class="modal-header">
         <h2>Migration Wizard - {{ library.library_name }}</h2>
         <button @click="$emit('close')" class="btn-close">×</button>
@@ -111,6 +117,7 @@ export default {
       analyzing: null,
       migrating: null,
       loading: true,
+      notification: null, // For displaying notifications
     };
   },
   computed: {
@@ -195,7 +202,7 @@ export default {
         }
       } catch (error) {
         console.error('Failed to migrate rule:', error);
-        alert('Migration failed. Please try again.');
+        this.showNotification('error', 'Migration failed. Please try again.');
       } finally {
         this.migrating = null;
       }
@@ -214,6 +221,16 @@ export default {
       if (confidence >= 80) return 'high';
       if (confidence >= 50) return 'medium';
       return 'low';
+    },
+    showNotification(type, message) {
+      this.notification = { type, message };
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        this.notification = null;
+      }, 5000);
+    },
+    dismissNotification() {
+      this.notification = null;
     },
   },
 };
@@ -242,6 +259,68 @@ export default {
   display: flex;
   flex-direction: column;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.notification-toast {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 1001;
+  animation: slideIn 0.3s ease;
+  min-width: 250px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.notification-toast.success {
+  background-color: #4caf50;
+  color: white;
+}
+
+.notification-toast.error {
+  background-color: #f44336;
+  color: white;
+}
+
+.notification-message {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.notification-close:hover {
+  opacity: 1;
 }
 
 .modal-header {

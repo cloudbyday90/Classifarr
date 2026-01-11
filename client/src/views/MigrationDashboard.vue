@@ -10,6 +10,12 @@
 
 <template>
   <div class="migration-dashboard">
+    <!-- Notification toast -->
+    <div v-if="notification" class="notification-toast" :class="notification.type">
+      <span class="notification-message">{{ notification.message }}</span>
+      <button @click="dismissNotification" class="notification-close">×</button>
+    </div>
+
     <div class="header">
       <h1>Legacy Rule Migration</h1>
       <div v-if="migrationStatus" class="status-badge" :class="statusClass">
@@ -83,6 +89,7 @@ export default {
       librariesWithRules: [],
       wizardLibrary: null,
       loading: true,
+      notification: null, // For displaying notifications
     };
   },
   computed: {
@@ -145,15 +152,26 @@ export default {
         const results = await response.json();
         const successCount = results.filter(r => r.migrated).length;
         
-        alert(`Migration complete! ${successCount} of ${results.length} rules migrated successfully.`);
+        // Show success notification
+        this.showNotification('success', `Migration complete! ${successCount} of ${results.length} rules migrated successfully.`);
         await this.loadData();
       } catch (error) {
         console.error('Failed to migrate library:', error);
-        alert('Migration failed. Please try again.');
+        this.showNotification('error', 'Migration failed. Please try again.');
       }
     },
     async onRuleMigrated() {
       await this.loadData();
+    },
+    showNotification(type, message) {
+      this.notification = { type, message };
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        this.notification = null;
+      }, 5000);
+    },
+    dismissNotification() {
+      this.notification = null;
     },
   },
 };
@@ -164,6 +182,68 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+  position: relative;
+}
+
+.notification-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+  min-width: 300px;
+  max-width: 500px;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notification-toast.success {
+  background-color: #4caf50;
+  color: white;
+}
+
+.notification-toast.error {
+  background-color: #f44336;
+  color: white;
+}
+
+.notification-message {
+  flex: 1;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.notification-close:hover {
+  opacity: 1;
 }
 
 .header {

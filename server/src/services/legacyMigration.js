@@ -55,6 +55,15 @@ class LegacyMigration {
     }
     
     /**
+     * Check if rule items match preset items (case-insensitive exact match)
+     */
+    matchItems(ruleItems, presetItems) {
+        const ruleItemsLower = ruleItems.map(item => item.toLowerCase());
+        const presetItemsLower = presetItems.map(item => item.toLowerCase());
+        return ruleItemsLower.filter(item => presetItemsLower.includes(item)).length;
+    }
+    
+    /**
      * Analyze a legacy rule and suggest equivalent preset(s)
      */
     async analyzeRule(rule) {
@@ -83,9 +92,7 @@ class LegacyMigration {
                         ...(preset.signals.genres?.prefer || [])
                     ];
                     
-                    const matchCount = genres.filter(g => 
-                        presetGenres.some(pg => pg.toLowerCase().includes(g.toLowerCase()))
-                    ).length;
+                    const matchCount = this.matchItems(genres, presetGenres);
                     
                     if (matchCount > 0) {
                         suggestions.push({
@@ -115,7 +122,7 @@ class LegacyMigration {
             
             for (const preset of matchingPresets.rows) {
                 const certIncludes = preset.signals.certifications?.include || [];
-                const matches = certifications.filter(c => certIncludes.includes(c)).length;
+                const matches = this.matchItems(certifications, certIncludes);
                 
                 if (matches > 0) {
                     suggestions.push({
@@ -149,9 +156,7 @@ class LegacyMigration {
                     ...(preset.signals.keywords?.prefer || [])
                 ];
                 
-                const matchCount = keywords.filter(k => 
-                    keywordReqs.some(kr => kr.toLowerCase().includes(k.toLowerCase()))
-                ).length;
+                const matchCount = this.matchItems(keywords, keywordReqs);
                 
                 if (matchCount > 0) {
                     suggestions.push({
@@ -198,14 +203,14 @@ class LegacyMigration {
         const genreValue = conditions.genres || (conditions.field === 'genres' ? conditions.value : null);
         if (genreValue && signals.genres) {
             totalConditions++;
-            const ruleGenres = (Array.isArray(genreValue) ? genreValue : [genreValue]).map(g => g.toLowerCase());
+            const ruleGenres = Array.isArray(genreValue) ? genreValue : [genreValue];
             const presetGenres = [
                 ...(signals.genres.require_any || []),
                 ...(signals.genres.require_all || []),
                 ...(signals.genres.prefer || [])
-            ].map(g => g.toLowerCase());
+            ];
             
-            const matches = ruleGenres.filter(g => presetGenres.includes(g)).length;
+            const matches = this.matchItems(ruleGenres, presetGenres);
             matchScore += matches / ruleGenres.length;
         }
         
@@ -216,7 +221,7 @@ class LegacyMigration {
             const ruleCerts = Array.isArray(certValue) ? certValue : [certValue];
             const presetCerts = signals.certifications.include || [];
             
-            const matches = ruleCerts.filter(c => presetCerts.includes(c)).length;
+            const matches = this.matchItems(ruleCerts, presetCerts);
             matchScore += matches / ruleCerts.length;
         }
         
@@ -224,14 +229,14 @@ class LegacyMigration {
         const keywordValue = conditions.keywords || (conditions.field === 'keywords' && conditions.value);
         if (keywordValue && signals.keywords) {
             totalConditions++;
-            const ruleKeywords = (Array.isArray(keywordValue) ? keywordValue : [keywordValue]).map(k => k.toLowerCase());
+            const ruleKeywords = Array.isArray(keywordValue) ? keywordValue : [keywordValue];
             const presetKeywords = [
                 ...(signals.keywords.require_any || []),
                 ...(signals.keywords.require_all || []),
                 ...(signals.keywords.prefer || [])
-            ].map(k => k.toLowerCase());
+            ];
             
-            const matches = ruleKeywords.filter(k => presetKeywords.some(pk => pk.includes(k))).length;
+            const matches = this.matchItems(ruleKeywords, presetKeywords);
             matchScore += matches / ruleKeywords.length;
         }
         
@@ -272,16 +277,36 @@ class LegacyMigration {
     
     /**
      * Determine the match value for an override
+     * Note: When multiple values exist, they are joined with '|' for use in override matching
      */
     determineMatchValue(conditions) {
-        if (conditions.value) return Array.isArray(conditions.value) ? conditions.value[0] : conditions.value;
+        // Handle explicit value field
+        if (conditions.value) {
+            return Array.isArray(conditions.value) 
+                ? conditions.value.join('|') 
+                : conditions.value;
+        }
+        
+        // Handle specific condition types
         if (conditions.studio) return conditions.studio;
         if (conditions.collection) return conditions.collection;
         if (conditions.network) return conditions.network;
-        if (conditions.genres) return Array.isArray(conditions.genres) ? conditions.genres[0] : conditions.genres;
-        if (conditions.keywords) return Array.isArray(conditions.keywords) ? conditions.keywords[0] : conditions.keywords;
+        
+        // Handle array values - preserve all values
+        if (conditions.genres) {
+            return Array.isArray(conditions.genres) 
+                ? conditions.genres.join('|') 
+                : conditions.genres;
+        }
+        if (conditions.keywords) {
+            return Array.isArray(conditions.keywords) 
+                ? conditions.keywords.join('|') 
+                : conditions.keywords;
+        }
         if (conditions.certification) return conditions.certification;
         if (conditions.tmdb_id) return conditions.tmdb_id.toString();
+        
+        // Fallback to JSON for complex conditions
         return JSON.stringify(conditions);
     }
     
