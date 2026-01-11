@@ -416,9 +416,9 @@ describe('PromptBuilder Integration Tests', () => {
             const options = promptBuilder.buildPatternOptions(item, evaluation);
             
             expect(options.length).toBeGreaterThan(0);
-            expect(options.some(o => o.type === 'remember_studio')).toBe(true);
-            expect(options.some(o => o.type === 'remember_collection')).toBe(true);
-            expect(options.some(o => o.type === 'remember_keyword')).toBe(true);
+            expect(options.some(o => o.type === 'studio')).toBe(true);
+            expect(options.some(o => o.type === 'collection')).toBe(true);
+            expect(options.some(o => o.type === 'keyword')).toBe(true);
         });
     });
 });

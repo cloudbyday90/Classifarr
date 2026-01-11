@@ -25,6 +25,29 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('PromptsAPI');
 
+// Constants for validation
+const MAX_LIMIT = 100;
+const DEFAULT_LIMIT = 10;
+const DEFAULT_BATCH_LIMIT = 50;
+const DEFAULT_OFFSET = 0;
+const DEFAULT_PATTERN_CONFIDENCE = 75;
+
+/**
+ * Validate and parse integer parameter
+ * @param {*} value - Value to parse
+ * @param {number} defaultValue - Default value if parsing fails
+ * @param {number} min - Minimum allowed value
+ * @param {number} max - Maximum allowed value
+ * @returns {number} Validated integer
+ */
+function parseIntParam(value, defaultValue, min = 0, max = Infinity) {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed) || parsed < min || parsed > max) {
+        return defaultValue;
+    }
+    return parsed;
+}
+
 /**
  * Prompts API Routes
  * API endpoints for prompt queue and response handling
@@ -33,12 +56,75 @@ const logger = createLogger('PromptsAPI');
  */
 
 /**
+ * GET /api/prompts/batch
+ * Get batch summary of pending prompts
+ * Note: This route is placed before /:id to avoid 'batch' being interpreted as an id
+ */
+router.get('/batch', async (req, res) => {
+    try {
+        const limit = parseIntParam(req.query.limit, DEFAULT_BATCH_LIMIT, 1, MAX_LIMIT);
+        
+        // Get pending classifications
+        const result = await db.query(`
+            SELECT 
+                ch.id,
+                ch.tmdb_id,
+                ch.media_type,
+                ch.title,
+                ch.year,
+                ch.metadata,
+                ch.confidence,
+                ch.classification_result,
+                ch.created_at
+            FROM classification_history ch
+            WHERE ch.status = 'pending'
+            ORDER BY ch.created_at DESC
+            LIMIT $1
+        `, [limit]);
+        
+        const items = result.rows.map(item => {
+            const metadata = typeof item.metadata === 'string'
+                ? JSON.parse(item.metadata)
+                : item.metadata;
+            const evaluationResult = typeof item.classification_result === 'string'
+                ? JSON.parse(item.classification_result)
+                : item.classification_result || {};
+            
+            return {
+                id: item.id,
+                title: item.title,
+                year: item.year,
+                media_type: item.media_type,
+                metadata,
+                evaluation: evaluationResult
+            };
+        });
+        
+        // Build batch summary
+        const batchSummary = promptBuilder.buildBatchSummary(items);
+        
+        res.json({
+            success: true,
+            data: batchSummary
+        });
+        
+    } catch (error) {
+        logger.error('Failed to get batch summary', { error: error.message });
+        res.status(500).json({
+            success: false,
+            error: 'Failed to retrieve batch summary'
+        });
+    }
+});
+
+/**
  * GET /api/prompts/pending
  * Get pending classification prompts queue
  */
 router.get('/pending', async (req, res) => {
     try {
-        const { limit = 10, offset = 0 } = req.query;
+        const limit = parseIntParam(req.query.limit, DEFAULT_LIMIT, 1, MAX_LIMIT);
+        const offset = parseIntParam(req.query.offset, DEFAULT_OFFSET, 0);
         
         // Get pending classifications from classification_history
         const result = await db.query(`
@@ -57,7 +143,7 @@ router.get('/pending', async (req, res) => {
             WHERE ch.status = 'pending'
             ORDER BY ch.created_at DESC
             LIMIT $1 OFFSET $2
-        `, [parseInt(limit), parseInt(offset)]);
+        `, [limit, offset]);
         
         const items = result.rows;
         
@@ -68,7 +154,7 @@ router.get('/pending', async (req, res) => {
             WHERE status = 'pending'
         `);
         
-        const total = parseInt(countResult.rows[0].total);
+        const total = parseInt(countResult.rows[0].total, 10);
         
         res.json({
             success: true,
@@ -76,8 +162,8 @@ router.get('/pending', async (req, res) => {
                 items,
                 pagination: {
                     total,
-                    limit: parseInt(limit),
-                    offset: parseInt(offset),
+                    limit,
+                    offset,
                     hasMore: offset + items.length < total
                 }
             }
@@ -98,7 +184,14 @@ router.get('/pending', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = parseIntParam(req.params.id, null, 1);
+        
+        if (id === null) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid prompt ID'
+            });
+        }
         
         // Get classification from history
         const result = await db.query(`
@@ -174,14 +267,21 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/:id/respond', async (req, res) => {
     try {
-        const { id } = req.params;
+        const id = parseIntParam(req.params.id, null, 1);
+        
+        if (id === null) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid prompt ID'
+            });
+        }
+        
         const {
             selectedLibraryId,
             selectedPolicyId,
             reasons = [],
             customReason,
-            patternActions = [],
-            responseTime
+            patternActions = []
         } = req.body;
         
         if (!selectedLibraryId) {
@@ -261,9 +361,22 @@ router.post('/:id/respond', async (req, res) => {
             WHERE id = $3
         `, [selectedLibraryId, evaluationResult.confidence || 0, id]);
         
-        // Create any requested patterns
+        // Create any requested patterns with validation
         if (patternActions.length > 0) {
             for (const action of patternActions) {
+                // Validate required fields
+                if (!action.type || !action.value) {
+                    logger.warn('Skipping invalid pattern action', { action });
+                    continue;
+                }
+                
+                const targetLibraryId = action.targetLibraryId || selectedLibraryId;
+                
+                if (!targetLibraryId) {
+                    logger.warn('Skipping pattern action with missing targetLibraryId', { action });
+                    continue;
+                }
+                
                 try {
                     await db.query(`
                         INSERT INTO discovered_patterns (
@@ -274,12 +387,12 @@ router.post('/:id/respond', async (req, res) => {
                             status,
                             source
                         )
-                        VALUES ($1, $2, $3, 75, 'approved', 'user_feedback')
+                        VALUES ($1, $2, $3, $4, 'approved', 'user_feedback')
                         ON CONFLICT (pattern_type, pattern_value, library_id) DO UPDATE
-                        SET confidence = GREATEST(discovered_patterns.confidence, 75),
+                        SET confidence = GREATEST(discovered_patterns.confidence, $4),
                             status = 'approved',
                             updated_at = NOW()
-                    `, [action.type, action.value, action.targetLibraryId || selectedLibraryId]);
+                    `, [action.type, action.value, targetLibraryId, DEFAULT_PATTERN_CONFIDENCE]);
                 } catch (error) {
                     logger.warn('Failed to create pattern', {
                         error: error.message,
@@ -306,67 +419,6 @@ router.post('/:id/respond', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to submit response'
-        });
-    }
-});
-
-/**
- * GET /api/prompts/batch
- * Get batch summary of pending prompts
- */
-router.get('/batch', async (req, res) => {
-    try {
-        const { limit = 50 } = req.query;
-        
-        // Get pending classifications
-        const result = await db.query(`
-            SELECT 
-                ch.id,
-                ch.tmdb_id,
-                ch.media_type,
-                ch.title,
-                ch.year,
-                ch.metadata,
-                ch.confidence,
-                ch.classification_result,
-                ch.created_at
-            FROM classification_history ch
-            WHERE ch.status = 'pending'
-            ORDER BY ch.created_at DESC
-            LIMIT $1
-        `, [parseInt(limit)]);
-        
-        const items = result.rows.map(item => {
-            const metadata = typeof item.metadata === 'string'
-                ? JSON.parse(item.metadata)
-                : item.metadata;
-            const evaluationResult = typeof item.classification_result === 'string'
-                ? JSON.parse(item.classification_result)
-                : item.classification_result || {};
-            
-            return {
-                id: item.id,
-                title: item.title,
-                year: item.year,
-                media_type: item.media_type,
-                metadata,
-                evaluation: evaluationResult
-            };
-        });
-        
-        // Build batch summary
-        const batchSummary = promptBuilder.buildBatchSummary(items);
-        
-        res.json({
-            success: true,
-            data: batchSummary
-        });
-        
-    } catch (error) {
-        logger.error('Failed to get batch summary', { error: error.message });
-        res.status(500).json({
-            success: false,
-            error: 'Failed to retrieve batch summary'
         });
     }
 });

@@ -20,6 +20,32 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('PromptBuilder');
 
+// Constants for thresholds and limits
+const LOW_CONFIDENCE_THRESHOLD = 70;
+const CLOSE_RACE_SCORE_DELTA = 15;
+const STRONG_SCORE_THRESHOLD = 70;
+const PATTERN_REINFORCEMENT_THRESHOLD = 50;
+const MAX_SUGGESTIONS = 3;
+const DARK_KEYWORDS = ['horror', 'dark', 'scary', 'violent'];
+
+/**
+ * Safe JSON parse helper
+ * @param {string|object} value - Value to parse
+ * @param {*} defaultValue - Default value if parse fails
+ * @returns {*} Parsed value or default
+ */
+function safeJSONParse(value, defaultValue = null) {
+    if (typeof value !== 'string') {
+        return value || defaultValue;
+    }
+    try {
+        return JSON.parse(value);
+    } catch (error) {
+        logger.warn('Failed to parse JSON', { value, error: error.message });
+        return defaultValue;
+    }
+}
+
 /**
  * PromptBuilder Service
  * Generates context-rich prompts for Discord and web UI that explain uncertainty,
@@ -82,7 +108,7 @@ class PromptBuilder {
      * @returns {string} Prompt type
      */
     determinePromptType(evaluationResult) {
-        const { action, confidence, ranked, method, aiRejection, newStudio, newCollection } = evaluationResult;
+        const { action, confidence, ranked, aiRejection, newStudio, newCollection } = evaluationResult;
         
         // Check for AI validation rejection
         if (aiRejection) {
@@ -98,13 +124,13 @@ class PromptBuilder {
         if (ranked && ranked.length >= 2) {
             const topScore = ranked[0].score;
             const secondScore = ranked[1].score;
-            if (topScore - secondScore < 15) {
+            if (topScore - secondScore < CLOSE_RACE_SCORE_DELTA) {
                 return 'close_race';
             }
         }
         
         // Check for low confidence
-        if (confidence < 70) {
+        if (confidence < LOW_CONFIDENCE_THRESHOLD) {
             return 'low_confidence';
         }
         
@@ -140,7 +166,7 @@ class PromptBuilder {
             matchingSignals: signals.matching,
             conflictingSignals: signals.conflicting,
             missingSignals: signals.missing,
-            suggestions: ranked ? ranked.slice(0, 3).map(r => ({
+            suggestions: ranked ? ranked.slice(0, MAX_SUGGESTIONS).map(r => ({
                 libraryId: r.library_id,
                 libraryName: r.library_name,
                 score: r.score,
@@ -189,7 +215,7 @@ class PromptBuilder {
      */
     buildCloseRacePrompt(item, evaluation) {
         const { ranked } = evaluation;
-        const topCandidates = ranked ? ranked.slice(0, 3) : [];
+        const topCandidates = ranked ? ranked.slice(0, MAX_SUGGESTIONS) : [];
         
         return {
             type: 'close_race',
@@ -232,7 +258,7 @@ class PromptBuilder {
                 score: bestGuess.score,
                 policyId: bestGuess.policy_id
             } : null,
-            suggestions: ranked ? ranked.slice(0, 3).map(r => ({
+            suggestions: ranked ? ranked.slice(0, MAX_SUGGESTIONS).map(r => ({
                 libraryId: r.library_id,
                 libraryName: r.library_name,
                 score: r.score,
@@ -297,7 +323,7 @@ class PromptBuilder {
                 score: suggestion.score || confidence,
                 policyId: suggestion.policy_id
             } : null,
-            suggestions: ranked ? ranked.slice(0, 3).map(r => ({
+            suggestions: ranked ? ranked.slice(0, MAX_SUGGESTIONS).map(r => ({
                 libraryId: r.library_id,
                 libraryName: r.library_name,
                 score: r.score,
@@ -418,7 +444,7 @@ class PromptBuilder {
         
         // Genre-based reasons
         if (item.genres) {
-            const genres = typeof item.genres === 'string' ? JSON.parse(item.genres) : item.genres;
+            const genres = safeJSONParse(item.genres, []);
             if (Array.isArray(genres) && genres.length > 0) {
                 options.push({
                     category: 'genre',
@@ -431,7 +457,7 @@ class PromptBuilder {
         // Studio-based reasons
         if (item.studios || item.production_companies) {
             const studios = item.studios || item.production_companies;
-            const studiosList = typeof studios === 'string' ? JSON.parse(studios) : studios;
+            const studiosList = safeJSONParse(studios, []);
             if (Array.isArray(studiosList) && studiosList.length > 0) {
                 const studioName = typeof studiosList[0] === 'string' ? studiosList[0] : studiosList[0]?.name;
                 if (studioName) {
@@ -493,12 +519,12 @@ class PromptBuilder {
         // Studio pattern
         if (item.studios || item.production_companies) {
             const studios = item.studios || item.production_companies;
-            const studiosList = typeof studios === 'string' ? JSON.parse(studios) : studios;
+            const studiosList = safeJSONParse(studios, []);
             if (Array.isArray(studiosList) && studiosList.length > 0) {
                 const studioName = typeof studiosList[0] === 'string' ? studiosList[0] : studiosList[0]?.name;
                 if (studioName) {
                     options.push({
-                        type: 'remember_studio',
+                        type: 'studio',
                         label: `Remember: ${studioName} → [Selected Library]`,
                         value: studioName
                     });
@@ -508,13 +534,11 @@ class PromptBuilder {
         
         // Collection pattern
         if (item.belongs_to_collection) {
-            const collection = typeof item.belongs_to_collection === 'string' 
-                ? JSON.parse(item.belongs_to_collection) 
-                : item.belongs_to_collection;
+            const collection = safeJSONParse(item.belongs_to_collection, null);
             const collectionName = typeof collection === 'string' ? collection : collection?.name;
             if (collectionName) {
                 options.push({
-                    type: 'remember_collection',
+                    type: 'collection',
                     label: `Always classify ${collectionName} as [Selected Library]`,
                     value: collectionName
                 });
@@ -523,12 +547,12 @@ class PromptBuilder {
         
         // Keyword pattern (for prominent keywords)
         if (item.keywords) {
-            const keywords = typeof item.keywords === 'string' ? JSON.parse(item.keywords) : item.keywords;
+            const keywords = safeJSONParse(item.keywords, []);
             if (Array.isArray(keywords) && keywords.length > 0) {
                 const prominentKeyword = keywords[0];
                 if (prominentKeyword) {
                     options.push({
-                        type: 'remember_keyword',
+                        type: 'keyword',
                         label: `Remember: "${prominentKeyword}" → [Selected Library]`,
                         value: prominentKeyword
                     });
@@ -561,7 +585,7 @@ class PromptBuilder {
         
         // Analyze genre signals
         if (item.genres) {
-            const genres = typeof item.genres === 'string' ? JSON.parse(item.genres) : item.genres;
+            const genres = safeJSONParse(item.genres, []);
             if (Array.isArray(genres) && genres.length > 0) {
                 signals.matching.push(`${genres.slice(0, 2).join(', ')} genre${genres.length > 1 ? 's' : ''}`);
             }
@@ -572,14 +596,15 @@ class PromptBuilder {
             signals.matching.push(`${item.certification} rating`);
         }
         
-        // Check for conflicting keywords
-        if (item.keywords || item.overview) {
-            const text = (item.overview || '').toLowerCase();
-            const darkKeywords = ['horror', 'dark', 'scary', 'violent'];
-            const hasDarkContent = darkKeywords.some(k => text.includes(k));
-            if (hasDarkContent) {
-                signals.conflicting.push('Dark/mature themes detected');
-            }
+        // Check for conflicting keywords in overview and keywords field
+        const keywords = safeJSONParse(item.keywords, []);
+        const keywordText = Array.isArray(keywords) ? keywords.join(' ').toLowerCase() : '';
+        const overviewText = (item.overview || '').toLowerCase();
+        const allText = `${keywordText} ${overviewText}`;
+        
+        const hasDarkContent = DARK_KEYWORDS.some(k => allText.includes(k));
+        if (hasDarkContent) {
+            signals.conflicting.push('Dark/mature themes detected');
         }
         
         // Check for missing studio data
@@ -601,17 +626,17 @@ class PromptBuilder {
         
         if (topCandidates.length < 2) return differences;
         
-        for (let i = 0; i < Math.min(topCandidates.length, 3); i++) {
+        for (let i = 0; i < Math.min(topCandidates.length, MAX_SUGGESTIONS); i++) {
             const candidate = topCandidates[i];
             const strengths = [];
             
-            if (candidate.scores?.preset > 70) {
+            if (candidate.scores?.preset > STRONG_SCORE_THRESHOLD) {
                 strengths.push('Strong preset match');
             }
-            if (candidate.scores?.pattern > 70) {
+            if (candidate.scores?.pattern > STRONG_SCORE_THRESHOLD) {
                 strengths.push('Known pattern');
             }
-            if (candidate.scores?.rag > 70) {
+            if (candidate.scores?.rag > STRONG_SCORE_THRESHOLD) {
                 strengths.push('Similar to past items');
             }
             
@@ -640,10 +665,10 @@ class PromptBuilder {
         // Check if user confirmed the top suggestion
         const topRanked = evaluation.ranked && evaluation.ranked[0];
         if (topRanked && userChoice.libraryId === topRanked.library_id) {
-            if (topRanked.scores?.pattern > 50) {
+            if (topRanked.scores?.pattern > PATTERN_REINFORCEMENT_THRESHOLD) {
                 patterns.push('Existing pattern confirmed');
             }
-            if (topRanked.scores?.rag > 50) {
+            if (topRanked.scores?.rag > PATTERN_REINFORCEMENT_THRESHOLD) {
                 patterns.push('Semantic similarity validated');
             }
         }
