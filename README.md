@@ -562,12 +562,6 @@ For cloud providers, set monthly spending limits:
 |------|-------|-------|----------|-------|
 | **4GB** | `phi3:3.8b` | ⚡ Fastest | Good | Best for low-end GPUs |
 | **6GB** | `mistral:7b` | ⚡ Very Fast | Good | Popular, well-tested |
-#### Local (Ollama) - Best by VRAM
-
-| VRAM | Model | Speed | Accuracy | Notes |
-|------|-------|-------|----------|-------|
-| **4GB** | `phi3:3.8b` | ⚡ Fastest | Good | Best for low-end GPUs |
-| **6GB** | `mistral:7b` | ⚡ Very Fast | Good | Popular, well-tested |
 | **8GB** | `llama3.3:8b` | ⚡ Very Fast | High | **Recommended** - latest Llama on Ollama |
 | **8GB** | `qwen2.5:7b` | ⚡ Very Fast | High | Strong multilingual, STEM tasks, 128k context |
 | **12GB** | `qwen2.5:14b` | Fast | Very High | Excellent reasoning, 128k context |
@@ -651,16 +645,6 @@ OpenRouter provides unified access to 200+ models. Best picks for classification
 | **$1-10/month** | Gemini `gemini-3-flash` or OpenAI `gpt-5-mini` |
 | **$10-30/month** | OpenAI `gpt-5.2` or Anthropic `claude-sonnet-4.5` |
 | **Best accuracy regardless of cost** | OpenAI `gpt-5.2-pro` or Anthropic `claude-opus-4.5` |
-| **Want to try different providers** | OpenRouter with budget controls |
-
-> **Ollama Fallback:** Enable Ollama as a fallback for basic tasks or when cloud budget is exhausted.
-
----
-| **No budget / Privacy-focused** | Ollama with `llama3.3:8b` or `qwen2.5:7b` |
-| **Free tier / Testing** | OpenRouter `llama-4-maverick:free` or `gemini-2.0-flash-exp:free` |
-| **$1-5/month** | Gemini `gemini-2.0-flash` or OpenAI `gpt-4o-mini` |
-| **$5-20/month** | OpenAI `gpt-4o` or Anthropic `claude-3-5-sonnet` |
-| **Best accuracy regardless of cost** | OpenAI `o1` or Anthropic `claude-3-opus` |
 | **Want to try different providers** | OpenRouter with budget controls |
 
 > **Ollama Fallback:** Enable Ollama as a fallback for basic tasks or when cloud budget is exhausted.
