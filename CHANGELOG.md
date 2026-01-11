@@ -465,11 +465,31 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Improved error handling to distinguish between critical and expected failures
   - Known optional failures (e.g., pgvector extension) gracefully skipped
   - Critical migration failures now properly abort test suite
+- **PolicyEngine verification tests:** Added comprehensive test coverage for v0.37.0 (#117)
+  - `FORMULA_CONFIDENCE_CAP` constant verification (must equal 95)
+  - Default weight validation: preset (0.40), pattern (0.25), rag (0.20), history (0.15)
+  - Weight sum validation (must equal 1.0)
+  - Confidence cap enforcement across all scoring methods (scorePresets, scorePatterns, scoreRAG, scoreHistory)
+  - Authoritative signal handling (must return exactly 100%, not capped)
+  - Formula score boundary testing (must never exceed 95%)
+  - Edge cases and boundary conditions
 
 ### Fixed
 - **SQL syntax error:** Corrected UNIQUE constraint placement in `policy_learning_stats` table (moved before REFERENCES)
 - **Test reliability:** Added explicit assertions to prevent tests from silently passing when preconditions aren't met
 - **Migration error handling:** Enhanced to fail fast on critical errors while allowing expected optional failures
+- **PolicyEngine default weights:** Fixed default weights to match v0.37.0 specification (#117)
+  - `pattern_weight`: Corrected from 0.30 to 0.25 (25%)
+  - `history_weight`: Corrected from 0.10 to 0.15 (15%)
+  - Ensures weights sum to 1.0: Preset (40%) + Pattern (25%) + RAG (20%) + History (15%)
+- **Formula confidence cap:** Added missing confidence cap to `scorePresets()` method (#117)
+  - All formula-based scores now properly capped at 95%
+  - Only authoritative signals (source_library, manual_correction, existing_media, exact_match) return 100%
+  - Introduced `FORMULA_CONFIDENCE_CAP` constant for consistency
+- **Legacy feature deprecation warnings:** Added UI warnings for deprecated features (#117)
+  - Rule Builder now displays prominent deprecation notice guiding users to Migration Wizard or Policy Builder
+  - Library Detail view shows deprecation warning for Event Detection, guiding users to Event Presets
+  - Both features follow v0.37.0 deprecation timeline (functional in v0.37, removed in v0.39)
 
 ### Changed
 - Migration numbering: New migration is `042_policy_driven_schema.sql` (follows `041_formula_engine_weights.sql`)
