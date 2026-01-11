@@ -25,7 +25,7 @@ const logger = createLogger('PoliciesRoute');
 
 /**
  * @swagger
- * /api/presets/all:
+ * /api/policies/presets/all:
  *   get:
  *     summary: List all available presets
  */
@@ -66,7 +66,7 @@ router.get('/presets/all', async (req, res) => {
 
 /**
  * @swagger
- * /api/presets/categories:
+ * /api/policies/presets/categories:
  *   get:
  *     summary: List preset categories with counts
  */
@@ -195,6 +195,36 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'library_id and name are required' });
         }
 
+        // Validate thresholds
+        if (auto_classify_threshold < 0 || auto_classify_threshold > 100) {
+            return res.status(400).json({ error: 'auto_classify_threshold must be between 0 and 100' });
+        }
+        if (prompt_threshold < 0 || prompt_threshold > 100) {
+            return res.status(400).json({ error: 'prompt_threshold must be between 0 and 100' });
+        }
+
+        // Validate weights
+        if (preset_weight < 0 || preset_weight > 1) {
+            return res.status(400).json({ error: 'preset_weight must be between 0 and 1' });
+        }
+        if (pattern_weight < 0 || pattern_weight > 1) {
+            return res.status(400).json({ error: 'pattern_weight must be between 0 and 1' });
+        }
+        if (rag_weight < 0 || rag_weight > 1) {
+            return res.status(400).json({ error: 'rag_weight must be between 0 and 1' });
+        }
+        if (history_weight < 0 || history_weight > 1) {
+            return res.status(400).json({ error: 'history_weight must be between 0 and 1' });
+        }
+
+        // Validate weights sum to 1.0 (with tolerance for floating-point precision)
+        const totalWeight = preset_weight + pattern_weight + rag_weight + history_weight;
+        if (Math.abs(totalWeight - 1.0) > 0.001) {
+            return res.status(400).json({ 
+                error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})` 
+            });
+        }
+
         // Begin transaction
         await db.query('BEGIN');
 
@@ -298,6 +328,46 @@ router.put('/:id', async (req, res) => {
         await db.query('BEGIN');
 
         try {
+            // Validate thresholds if provided
+            if (auto_classify_threshold !== undefined && (auto_classify_threshold < 0 || auto_classify_threshold > 100)) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ error: 'auto_classify_threshold must be between 0 and 100' });
+            }
+            if (prompt_threshold !== undefined && (prompt_threshold < 0 || prompt_threshold > 100)) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ error: 'prompt_threshold must be between 0 and 100' });
+            }
+
+            // Validate weights if provided
+            if (preset_weight !== undefined && (preset_weight < 0 || preset_weight > 1)) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ error: 'preset_weight must be between 0 and 1' });
+            }
+            if (pattern_weight !== undefined && (pattern_weight < 0 || pattern_weight > 1)) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ error: 'pattern_weight must be between 0 and 1' });
+            }
+            if (rag_weight !== undefined && (rag_weight < 0 || rag_weight > 1)) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ error: 'rag_weight must be between 0 and 1' });
+            }
+            if (history_weight !== undefined && (history_weight < 0 || history_weight > 1)) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ error: 'history_weight must be between 0 and 1' });
+            }
+
+            // If all weights are provided, validate they sum to 1.0
+            if (preset_weight !== undefined && pattern_weight !== undefined && 
+                rag_weight !== undefined && history_weight !== undefined) {
+                const totalWeight = preset_weight + pattern_weight + rag_weight + history_weight;
+                if (Math.abs(totalWeight - 1.0) > 0.001) {
+                    await db.query('ROLLBACK');
+                    return res.status(400).json({ 
+                        error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})` 
+                    });
+                }
+            }
+
             // Update policy
             await db.query(`
                 UPDATE library_policies SET

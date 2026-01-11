@@ -34,7 +34,7 @@
           <input 
             type="number" 
             :value="weight"
-            @input="$emit('update-weight', parseFloat($event.target.value))"
+            @input="handleWeightInput($event)"
             min="0.1" 
             max="2" 
             step="0.1"
@@ -113,9 +113,18 @@ defineProps({
   },
 })
 
-defineEmits(['toggle', 'update-weight'])
+const emit = defineEmits(['toggle', 'update-weight'])
 
 const expanded = ref(false)
+
+const handleWeightInput = (event) => {
+  const value = parseFloat(event.target.value)
+  if (!isNaN(value)) {
+    // Clamp value between 0.1 and 2
+    const clampedValue = Math.min(2, Math.max(0.1, value))
+    emit('update-weight', clampedValue)
+  }
+}
 
 const formatCertifications = (config) => {
   if (!config) return ''

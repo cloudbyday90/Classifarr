@@ -100,8 +100,8 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - `GET /api/policies/:id/presets` - Get policy's presets
   - `POST /api/policies/:id/presets` - Attach preset to policy
   - `DELETE /api/policies/:id/presets/:presetId` - Remove preset from policy
-  - `GET /api/presets/all` - List all 168 available presets with category/search filtering
-  - `GET /api/presets/categories` - List preset categories with counts
+  - `GET /api/policies/presets/all` - List all 168 available presets with category/search filtering
+  - `GET /api/policies/presets/categories` - List preset categories with counts
 - **Features:**
   - Select from 168 comprehensive content presets across 8 categories
   - Configure policy thresholds (auto-classify, prompt)

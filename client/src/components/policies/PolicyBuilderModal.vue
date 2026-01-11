@@ -215,10 +215,10 @@
         
         <div 
           class="text-sm p-3 rounded-lg"
-          :class="totalWeight !== 1 ? 'bg-yellow-900 bg-opacity-20 text-yellow-400' : 'bg-green-900 bg-opacity-20 text-green-400'"
+          :class="Math.abs(totalWeight - 1) > 0.001 ? 'bg-yellow-900 bg-opacity-20 text-yellow-400' : 'bg-green-900 bg-opacity-20 text-green-400'"
         >
           Total: {{ Math.round(totalWeight * 100) }}% 
-          <span v-if="totalWeight !== 1">(should equal 100%)</span>
+          <span v-if="Math.abs(totalWeight - 1) > 0.001">(should equal 100%)</span>
           <span v-else>✓</span>
         </div>
       </div>
@@ -373,7 +373,9 @@ const filteredPresets = computed(() => {
 })
 
 const isValid = computed(() => {
-  return form.value.library_id && form.value.name && selectedPresets.value.length > 0
+  const hasBasicInfo = form.value.library_id && form.value.name && selectedPresets.value.length > 0
+  const weightsValid = Math.abs(totalWeight.value - 1) <= 0.001
+  return hasBasicInfo && weightsValid
 })
 
 watch(() => props.policy, (newPolicy) => {
@@ -439,7 +441,7 @@ const fetchLibraries = async () => {
 
 const fetchPresets = async () => {
   try {
-    const response = await api.get('/presets/all')
+    const response = await api.get('/policies/presets/all')
     allPresets.value = response.data
   } catch (error) {
     console.error('Failed to fetch presets:', error)
@@ -448,7 +450,7 @@ const fetchPresets = async () => {
 
 const fetchPresetCategories = async () => {
   try {
-    const response = await api.get('/presets/categories')
+    const response = await api.get('/policies/presets/categories')
     presetCategories.value = response.data
   } catch (error) {
     console.error('Failed to fetch preset categories:', error)
