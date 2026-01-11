@@ -677,4 +677,27 @@ export default {
   listReclassificationBatches(limit = 20) {
     return apiClient.get(`/reclassification/batches?limit=${limit}`)
   },
+
+  // Tuning Suggestions
+  getSuggestions(status = 'pending', policyId = null) {
+    const params = {}
+    if (status) params.status = status
+    if (policyId) params.policyId = policyId
+    return apiClient.get('/suggestions', { params })
+  },
+  getSuggestion(id) {
+    return apiClient.get(`/suggestions/${id}`)
+  },
+  applySuggestion(id) {
+    return apiClient.post(`/suggestions/${id}/apply`)
+  },
+  rejectSuggestion(id, reason) {
+    return apiClient.post(`/suggestions/${id}/reject`, { reason })
+  },
+  getSuggestionImpact(id) {
+    return apiClient.get(`/suggestions/${id}/impact`)
+  },
+  getPolicySuggestionsSummary(policyId) {
+    return apiClient.get(`/suggestions/policy/${policyId}/summary`)
+  },
 }

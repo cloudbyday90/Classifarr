@@ -43,6 +43,7 @@ const patternsRouter = require('./patterns');
 const feedbackRouter = require('./feedback');
 const promptsRouter = require('./prompts');
 const policiesRouter = require('./policies');
+const suggestionsRouter = require('./suggestions');
 
 const router = express.Router();
 
@@ -73,6 +74,7 @@ router.use('/patterns', patternsRouter);
 router.use('/feedback', feedbackRouter);
 router.use('/prompts', promptsRouter);
 router.use('/policies', policiesRouter);
+router.use('/suggestions', suggestionsRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
@@ -94,6 +96,7 @@ router.get('/', (req, res) => {
       feedback: '/api/feedback',
       prompts: '/api/prompts',
       policies: '/api/policies',
+      suggestions: '/api/suggestions',
       docs: '/api/docs',
     },
   });

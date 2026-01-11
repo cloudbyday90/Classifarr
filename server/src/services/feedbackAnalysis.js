@@ -1262,6 +1262,31 @@ class FeedbackAnalysis {
         // Sort by count descending
         return patterns.sort((a, b) => b.count - a.count);
     }
+
+    /**
+     * Get impact metrics for an applied suggestion
+     * @param {number} suggestionId - Suggestion ID
+     * @returns {Promise<object>} Impact metrics (before/after accuracy, improvement)
+     */
+    async getImpactMetrics(suggestionId) {
+        try {
+            const result = await db.query(`
+                SELECT 
+                    pts.before_accuracy,
+                    pls.accuracy_rate as after_accuracy,
+                    (pls.accuracy_rate - pts.before_accuracy) as improvement,
+                    pts.applied_at
+                FROM policy_tuning_suggestions pts
+                LEFT JOIN policy_learning_stats pls ON pts.policy_id = pls.policy_id
+                WHERE pts.id = $1 AND pts.status = 'applied'
+            `, [suggestionId]);
+            
+            return result.rows[0] || null;
+        } catch (error) {
+            logger.error('Failed to get impact metrics', { error: error.message, suggestionId });
+            throw error;
+        }
+    }
 }
 
 module.exports = new FeedbackAnalysis();

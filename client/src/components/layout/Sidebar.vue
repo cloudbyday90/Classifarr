@@ -80,7 +80,8 @@ import {
   ChartBarIcon,
   QueueListIcon,
   PuzzlePieceIcon,
-  XMarkIcon
+  XMarkIcon,
+  LightBulbIcon
 } from '@heroicons/vue/24/outline'
 
 defineProps({
@@ -102,6 +103,7 @@ const mainMenuItems = [
   { path: '/request', label: 'Request', icon: PlusCircleIcon },
   { path: '/statistics', label: 'Statistics', icon: ChartBarIcon },
   { path: '/patterns', label: 'Patterns', icon: PuzzlePieceIcon },
+  { path: '/tuning-suggestions', label: 'Tuning', icon: LightBulbIcon },
   { path: '/settings', label: 'Settings', icon: CogIcon },
 ]
 
