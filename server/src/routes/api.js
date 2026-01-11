@@ -44,6 +44,7 @@ const feedbackRouter = require('./feedback');
 const promptsRouter = require('./prompts');
 const policiesRouter = require('./policies');
 const suggestionsRouter = require('./suggestions');
+const migrationRouter = require('./migration');
 
 const router = express.Router();
 
@@ -75,6 +76,7 @@ router.use('/feedback', feedbackRouter);
 router.use('/prompts', promptsRouter);
 router.use('/policies', policiesRouter);
 router.use('/suggestions', suggestionsRouter);
+router.use('/migration', migrationRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
@@ -97,6 +99,7 @@ router.get('/', (req, res) => {
       prompts: '/api/prompts',
       policies: '/api/policies',
       suggestions: '/api/suggestions',
+      migration: '/api/migration',
       docs: '/api/docs',
     },
   });
