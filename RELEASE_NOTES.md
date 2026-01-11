@@ -141,6 +141,13 @@ Context-rich prompts that explain uncertainty:
 - Use Migration Wizard to convert to policies
 - Legacy rules will be removed in v0.39.0
 
+### Deprecated: Event Detection
+- `event_detection_type` column in `libraries` table is deprecated
+- Replaced by seasonal and genre content presets
+- Event detection will be removed in v0.39.0
+- **Migration:** Use seasonal presets (`christmas_holiday`, `halloween`, etc.) or genre presets (`sports_doc`, `concert`)
+- See [Migration Guide](docs/migration/v037.md#example-4-event-detection-migration) for details
+
 ### Configuration Changes
 - New config options for policy weights
 - Default thresholds: auto=85%, prompt=60%
@@ -175,13 +182,15 @@ Maximum: 95% (100% reserved for authoritative signals)
 2. Content presets auto-seed on first start
 3. Existing libraries get default policies
 4. Use Migration Wizard for custom rules
-5. Review and tune policy thresholds
+5. Migrate event detection to seasonal/genre presets
+6. Review and tune policy thresholds
 
 ### Recommended Steps
 1. Start with default presets
 2. Monitor Stats Dashboard for accuracy
 3. Apply suggested tunings
 4. Migrate legacy rules gradually
+5. Convert event detection libraries to seasonal presets
 
 ---
 
