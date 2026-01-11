@@ -490,6 +490,8 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Rule Builder now displays prominent deprecation notice guiding users to Migration Wizard or Policy Builder
   - Library Detail view shows deprecation warning for Event Detection, guiding users to Event Presets
   - Both features follow v0.37.0 deprecation timeline (functional in v0.37, removed in v0.39)
+  - Classification Rules section reordered below Learned Patterns to prioritize modern features
+  - Classification Rules title updated to include "(Deprecated)" marker
 
 ### Changed
 - Migration numbering: New migration is `042_policy_driven_schema.sql` (follows `041_formula_engine_weights.sql`)
