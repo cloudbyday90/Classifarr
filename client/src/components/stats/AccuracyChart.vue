@@ -100,7 +100,14 @@ export default {
       if (!props.data || props.data.length === 0) return [];
       
       const points = props.data.map((d, idx) => {
-        const x = padding + (chartWidth.value / (props.data.length - 1 || 1)) * idx;
+        // Handle single data point case - center it
+        let x;
+        if (props.data.length === 1) {
+          x = padding + chartWidth.value / 2;
+        } else {
+          x = padding + (chartWidth.value / (props.data.length - 1)) * idx;
+        }
+        
         const decisionsY = padding + chartHeight.value - 
           ((d.decisions || 0) / maxValue.value) * chartHeight.value;
         const correctionsY = padding + chartHeight.value - 

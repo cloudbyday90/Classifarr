@@ -76,7 +76,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import AlertsBanner from '@/components/stats/AlertsBanner.vue';
 import StatCard from '@/components/stats/StatCard.vue';
 import PolicyStatsCard from '@/components/stats/PolicyStatsCard.vue';
@@ -99,6 +99,7 @@ export default {
     const liveFeed = ref([]);
     const alerts = ref([]);
     const selectedPolicy = ref(null);
+    let refreshInterval = null;
 
     const accuracyTrend = computed(() => {
       if (!overview.value.avg_accuracy) return null;
@@ -188,16 +189,19 @@ export default {
       loadAllData();
       
       // Auto-refresh every 30 seconds
-      const interval = setInterval(loadAllData, 30000);
-      
-      // Cleanup on unmount
-      return () => clearInterval(interval);
+      refreshInterval = setInterval(loadAllData, 30000);
     });
 
-    watch(timeRange, () => {
-      // Time range filter would affect queries if implemented
-      loadAllData();
+    onUnmounted(() => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
     });
+
+    // Watch is not used in this implementation but keeping the import for potential future use
+    // watch(timeRange, () => {
+    //   loadAllData();
+    // });
 
     return {
       timeRange,

@@ -12,6 +12,12 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('StatsRoutes');
 
+// Alert thresholds configuration
+const ALERT_THRESHOLDS = {
+  HIGH_CORRECTION_RATE_PERCENT: 20,  // Alert if correction rate exceeds this percentage
+  PENDING_SUGGESTIONS_MIN: 5          // Alert if pending suggestions exceed this count
+};
+
 /**
  * @swagger
  * /api/stats:
@@ -98,16 +104,15 @@ router.get('/overview', async (req, res) => {
         AVG(accuracy_rate) as avg_accuracy,
         SUM(CASE WHEN trend = 'improving' THEN 1 ELSE 0 END) as improving_count,
         SUM(CASE WHEN trend = 'declining' THEN 1 ELSE 0 END) as declining_count,
-        SUM(auto_classified) as total_auto_classified,
-        SUM(total_decisions) as grand_total_decisions
+        SUM(auto_classified) as total_auto_classified
       FROM policy_learning_stats
     `);
 
     const overview = result.rows[0] || {};
     
     // Calculate auto rate
-    if (overview.grand_total_decisions && overview.total_auto_classified) {
-      overview.auto_rate = overview.total_auto_classified / overview.grand_total_decisions;
+    if (overview.total_decisions && overview.total_auto_classified) {
+      overview.auto_rate = overview.total_auto_classified / overview.total_decisions;
     } else {
       overview.auto_rate = 0;
     }
@@ -283,8 +288,8 @@ router.get('/alerts', async (req, res) => {
       JOIN library_policies lp ON pfl.selected_policy_id = lp.id
       WHERE pfl.prompted_at >= NOW() - INTERVAL '7 days'
       GROUP BY lp.id, lp.name
-      HAVING COUNT(*) FILTER (WHERE was_correction) * 100.0 / COUNT(*) > 20
-    `);
+      HAVING COUNT(*) FILTER (WHERE was_correction) * 100.0 / COUNT(*) > $1
+    `, [ALERT_THRESHOLDS.HIGH_CORRECTION_RATE_PERCENT]);
 
     for (const policy of highCorrections.rows) {
       const correctionRate = parseFloat(policy.correction_rate) || 0;
@@ -304,8 +309,8 @@ router.get('/alerts', async (req, res) => {
       JOIN library_policies lp ON pts.policy_id = lp.id
       WHERE pts.status = 'pending'
       GROUP BY lp.id, lp.name
-      HAVING COUNT(*) >= 5
-    `);
+      HAVING COUNT(*) >= $1
+    `, [ALERT_THRESHOLDS.PENDING_SUGGESTIONS_MIN]);
 
     for (const policy of pendingSuggestions.rows) {
       alerts.push({
