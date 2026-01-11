@@ -116,6 +116,11 @@ const router = createRouter({
           name: 'PolicyStats',
           component: () => import('@/views/PolicyStatsDashboard.vue'),
         },
+        {
+          path: '/migration',
+          name: 'Migration',
+          component: () => import('@/views/MigrationDashboard.vue'),
+        },
       ],
     },
   ],
