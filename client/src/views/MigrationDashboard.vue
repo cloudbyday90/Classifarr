@@ -90,6 +90,7 @@ export default {
       wizardLibrary: null,
       loading: true,
       notification: null, // For displaying notifications
+      notificationTimeout: null, // Store timeout ID to prevent race conditions
     };
   },
   computed: {
@@ -120,10 +121,19 @@ export default {
           fetch('/api/migration/libraries', { headers }),
         ]);
 
+        if (!statusRes.ok) {
+          throw new Error(`Failed to fetch migration status: ${statusRes.status} ${statusRes.statusText}`);
+        }
+
+        if (!librariesRes.ok) {
+          throw new Error(`Failed to fetch migration libraries: ${librariesRes.status} ${librariesRes.statusText}`);
+        }
+
         this.migrationStatus = await statusRes.json();
         this.librariesWithRules = await librariesRes.json();
       } catch (error) {
         console.error('Failed to load migration data:', error);
+        this.showNotification('error', 'Failed to load migration data. Please try again.');
       } finally {
         this.loading = false;
       }
@@ -149,6 +159,19 @@ export default {
           body: JSON.stringify({ autoSuggest: true }),
         });
 
+        if (!response.ok) {
+          let errorMessage = 'Migration request failed.';
+          try {
+            const errorBody = await response.json();
+            if (errorBody && errorBody.error) {
+              errorMessage = errorBody.error;
+            }
+          } catch (_) {
+            // Ignore JSON parse errors
+          }
+          throw new Error(errorMessage);
+        }
+
         const results = await response.json();
         const successCount = results.filter(r => r.migrated).length;
         
@@ -157,20 +180,31 @@ export default {
         await this.loadData();
       } catch (error) {
         console.error('Failed to migrate library:', error);
-        this.showNotification('error', 'Migration failed. Please try again.');
+        this.showNotification('error', error.message || 'Migration failed. Please try again.');
       }
     },
     async onRuleMigrated() {
       await this.loadData();
     },
     showNotification(type, message) {
+      // Clear any existing timeout to prevent race conditions
+      if (this.notificationTimeout) {
+        clearTimeout(this.notificationTimeout);
+      }
+      
       this.notification = { type, message };
+      
       // Auto-dismiss after 5 seconds
-      setTimeout(() => {
+      this.notificationTimeout = setTimeout(() => {
         this.notification = null;
+        this.notificationTimeout = null;
       }, 5000);
     },
     dismissNotification() {
+      if (this.notificationTimeout) {
+        clearTimeout(this.notificationTimeout);
+        this.notificationTimeout = null;
+      }
       this.notification = null;
     },
   },

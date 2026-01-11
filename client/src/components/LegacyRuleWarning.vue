@@ -47,10 +47,18 @@ export default {
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
         const response = await fetch(`/api/migration/libraries/${this.libraryId}/rules`, { headers });
+        
+        if (!response.ok) {
+          console.error('Failed to check legacy rules: HTTP', response.status, response.statusText);
+          this.ruleCount = 0;
+          return;
+        }
+        
         const rules = await response.json();
-        this.ruleCount = rules.length;
+        this.ruleCount = Array.isArray(rules) ? rules.length : 0;
       } catch (error) {
         console.error('Failed to check legacy rules:', error);
+        this.ruleCount = 0;
       }
     },
   },

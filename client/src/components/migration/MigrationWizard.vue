@@ -118,6 +118,7 @@ export default {
       migrating: null,
       loading: true,
       notification: null, // For displaying notifications
+      notificationTimeout: null, // Store timeout ID to prevent race conditions
     };
   },
   computed: {
@@ -139,9 +140,15 @@ export default {
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
         const response = await fetch(`/api/migration/libraries/${this.library.library_id}/rules`, { headers });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load rules: ${response.status} ${response.statusText}`);
+        }
+        
         this.rules = await response.json();
       } catch (error) {
         console.error('Failed to load rules:', error);
+        this.showNotification('error', 'Failed to load rules. Please try again.');
       } finally {
         this.loading = false;
       }
@@ -153,6 +160,11 @@ export default {
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
         const response = await fetch(`/api/migration/rules/${rule.id}/analyze`, { headers });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to analyze rule: ${response.status} ${response.statusText}`);
+        }
+        
         const analysis = await response.json();
         
         this.analyses = { ...this.analyses, [rule.id]: analysis };
@@ -163,6 +175,7 @@ export default {
         }
       } catch (error) {
         console.error('Failed to analyze rule:', error);
+        this.showNotification('error', 'Failed to analyze rule. Please try again.');
       } finally {
         this.analyzing = null;
       }
@@ -209,11 +222,30 @@ export default {
     },
     async migrateSelected() {
       const rulesToMigrate = Object.entries(this.selectedSuggestions);
+      let successCount = 0;
+      let failCount = 0;
       
       for (const [ruleId, suggestionIndex] of rulesToMigrate) {
         const analysis = this.analyses[ruleId];
         if (analysis && analysis.suggestions[suggestionIndex]) {
-          await this.migrateRule(parseInt(ruleId), analysis.suggestions[suggestionIndex]);
+          try {
+            await this.migrateRule(parseInt(ruleId, 10), analysis.suggestions[suggestionIndex]);
+            successCount++;
+          } catch (error) {
+            failCount++;
+          }
+        }
+      }
+      
+      // Show summary notification after all migrations complete
+      const total = rulesToMigrate.length;
+      if (total > 0) {
+        if (failCount === 0) {
+          this.showNotification('success', `Successfully migrated ${successCount} rule${successCount === 1 ? '' : 's'}.`);
+        } else if (successCount === 0) {
+          this.showNotification('error', `Failed to migrate ${failCount} rule${failCount === 1 ? '' : 's'}.`);
+        } else {
+          this.showNotification('warning', `Migrated ${successCount} rule${successCount === 1 ? '' : 's'}, ${failCount} failed.`);
         }
       }
     },
@@ -223,13 +255,24 @@ export default {
       return 'low';
     },
     showNotification(type, message) {
+      // Clear any existing timeout to prevent race conditions
+      if (this.notificationTimeout) {
+        clearTimeout(this.notificationTimeout);
+      }
+      
       this.notification = { type, message };
+      
       // Auto-dismiss after 5 seconds
-      setTimeout(() => {
+      this.notificationTimeout = setTimeout(() => {
         this.notification = null;
+        this.notificationTimeout = null;
       }, 5000);
     },
     dismissNotification() {
+      if (this.notificationTimeout) {
+        clearTimeout(this.notificationTimeout);
+        this.notificationTimeout = null;
+      }
       this.notification = null;
     },
   },
@@ -295,6 +338,11 @@ export default {
 
 .notification-toast.error {
   background-color: #f44336;
+  color: white;
+}
+
+.notification-toast.warning {
+  background-color: #ff9800;
   color: white;
 }
 

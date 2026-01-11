@@ -164,14 +164,18 @@ class LegacyMigration {
                         preset_id: preset.id,
                         preset_key: preset.key,
                         preset_name: preset.name,
-                        confidence: (matchCount / keywords.length) * 100,
+                        confidence: this.calculateMatchConfidence(conditions, preset.signals),
                         reason: `Matches keywords: ${keywords.slice(0, 3).join(', ')}${keywords.length > 3 ? '...' : ''}`
                     });
                 }
             }
         }
         
-        // If no preset matches, suggest creating an override
+        // Sort by confidence
+        suggestions.sort((a, b) => b.confidence - a.confidence);
+        
+        // If no preset matches, add override suggestion at the end (not sorted)
+        // This ensures preset suggestions with lower confidence are still visible
         if (suggestions.length === 0) {
             suggestions.push({
                 type: 'override',
@@ -180,9 +184,6 @@ class LegacyMigration {
                 reason: 'No matching preset found - convert to policy override'
             });
         }
-        
-        // Sort by confidence
-        suggestions.sort((a, b) => b.confidence - a.confidence);
         
         return {
             rule_id: rule.id,
@@ -202,42 +203,48 @@ class LegacyMigration {
         // Check genre match
         const genreValue = conditions.genres || (conditions.field === 'genres' ? conditions.value : null);
         if (genreValue && signals.genres) {
-            totalConditions++;
             const ruleGenres = Array.isArray(genreValue) ? genreValue : [genreValue];
-            const presetGenres = [
-                ...(signals.genres.require_any || []),
-                ...(signals.genres.require_all || []),
-                ...(signals.genres.prefer || [])
-            ];
-            
-            const matches = this.matchItems(ruleGenres, presetGenres);
-            matchScore += matches / ruleGenres.length;
+            if (ruleGenres.length > 0) {
+                totalConditions++;
+                const presetGenres = [
+                    ...(signals.genres.require_any || []),
+                    ...(signals.genres.require_all || []),
+                    ...(signals.genres.prefer || [])
+                ];
+                
+                const matches = this.matchItems(ruleGenres, presetGenres);
+                matchScore += matches / ruleGenres.length;
+            }
         }
         
         // Check certification match
         const certValue = conditions.certification || (conditions.field === 'certification' ? conditions.value : null);
         if (certValue && signals.certifications) {
-            totalConditions++;
             const ruleCerts = Array.isArray(certValue) ? certValue : [certValue];
-            const presetCerts = signals.certifications.include || [];
-            
-            const matches = this.matchItems(ruleCerts, presetCerts);
-            matchScore += matches / ruleCerts.length;
+            if (ruleCerts.length > 0) {
+                totalConditions++;
+                const presetCerts = signals.certifications.include || [];
+                
+                const matches = this.matchItems(ruleCerts, presetCerts);
+                matchScore += matches / ruleCerts.length;
+            }
         }
         
         // Check keyword match
         const keywordValue = conditions.keywords || (conditions.field === 'keywords' && conditions.value);
         if (keywordValue && signals.keywords) {
-            totalConditions++;
             const ruleKeywords = Array.isArray(keywordValue) ? keywordValue : [keywordValue];
-            const presetKeywords = [
-                ...(signals.keywords.require_any || []),
-                ...(signals.keywords.require_all || []),
-                ...(signals.keywords.prefer || [])
-            ];
-            
-            const matches = this.matchItems(ruleKeywords, presetKeywords);
-            matchScore += matches / ruleKeywords.length;
+            if (ruleKeywords.length > 0) {
+                totalConditions++;
+                const presetKeywords = [
+                    ...(signals.keywords.require_any || []),
+                    ...(signals.keywords.require_all || []),
+                    ...(signals.keywords.prefer || [])
+                ];
+                
+                const matches = this.matchItems(ruleKeywords, presetKeywords);
+                matchScore += matches / ruleKeywords.length;
+            }
         }
         
         return totalConditions > 0 ? (matchScore / totalConditions) * 100 : 0;
@@ -268,8 +275,8 @@ class LegacyMigration {
         if (conditions.studio) return 'studio';
         if (conditions.collection) return 'collection';
         if (conditions.network) return 'network';
-        if (conditions.genres) return 'genre';
-        if (conditions.keywords) return 'keyword';
+        if (conditions.genres) return 'genres';
+        if (conditions.keywords) return 'keywords';
         if (conditions.certification) return 'certification';
         if (conditions.tmdb_id) return 'tmdb_id';
         return 'custom';

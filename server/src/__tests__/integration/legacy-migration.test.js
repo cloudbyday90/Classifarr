@@ -178,10 +178,10 @@ describe('Legacy Migration Integration Tests', () => {
 
     describe('Rule Migration', () => {
         beforeEach(async () => {
-            await db.query('DELETE FROM policy_presets');
-            await db.query('DELETE FROM policy_overrides');
-            await db.query('DELETE FROM library_policies WHERE library_id = $1', [testLibraryId]);
             await db.query('DELETE FROM library_custom_rules WHERE library_id = $1', [testLibraryId]);
+            await db.query('DELETE FROM policy_overrides');
+            await db.query('DELETE FROM policy_presets');
+            await db.query('DELETE FROM library_policies WHERE library_id = $1', [testLibraryId]);
         });
 
         test('should migrate rule to preset', async () => {
@@ -275,9 +275,9 @@ describe('Legacy Migration Integration Tests', () => {
 
     describe('Bulk Migration', () => {
         beforeEach(async () => {
+            await db.query('DELETE FROM library_custom_rules WHERE library_id = $1', [testLibraryId]);
             await db.query('DELETE FROM policy_presets');
             await db.query('DELETE FROM library_policies WHERE library_id = $1', [testLibraryId]);
-            await db.query('DELETE FROM library_custom_rules WHERE library_id = $1', [testLibraryId]);
         });
 
         test('should bulk migrate all rules in a library', async () => {
