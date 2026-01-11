@@ -89,17 +89,18 @@ export default {
 
 <style scoped>
 .policy-stats-card {
-  background: white;
+  background: #1f2937;
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #374151;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
 
 .policy-stats-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-color: #4b5563;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .card-header {
@@ -112,7 +113,7 @@ export default {
 .card-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #1f2937;
+  color: #f9fafb;
   font-weight: 600;
 }
 
@@ -125,23 +126,23 @@ export default {
 }
 
 .trend-badge.improving {
-  background: #d1fae5;
-  color: #065f46;
+  background: #064e3b;
+  color: #6ee7b7;
 }
 
 .trend-badge.declining {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #7f1d1d;
+  color: #fca5a5;
 }
 
 .trend-badge.stable {
-  background: #e5e7eb;
-  color: #374151;
+  background: #374151;
+  color: #d1d5db;
 }
 
 .library-name {
   font-size: 14px;
-  color: #6b7280;
+  color: #9ca3af;
   margin-bottom: 16px;
 }
 
@@ -160,7 +161,7 @@ export default {
 
 .stat .label {
   font-size: 12px;
-  color: #6b7280;
+  color: #9ca3af;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -168,25 +169,25 @@ export default {
 .stat .value {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: #f9fafb;
 }
 
 .stat .value.high {
-  color: #10b981;
+  color: #34d399;
 }
 
 .stat .value.medium {
-  color: #f59e0b;
+  color: #fbbf24;
 }
 
 .stat .value.low {
-  color: #ef4444;
+  color: #f87171;
 }
 
 .last-activity {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
   padding-top: 12px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid #374151;
 }
 </style>

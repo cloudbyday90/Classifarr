@@ -82,7 +82,9 @@ import {
   PuzzlePieceIcon,
   XMarkIcon,
   LightBulbIcon,
-  PresentationChartLineIcon
+  PresentationChartLineIcon,
+  DocumentDuplicateIcon,
+  ArrowPathIcon
 } from '@heroicons/vue/24/outline'
 
 defineProps({
@@ -98,14 +100,20 @@ const route = useRoute()
 
 const mainMenuItems = [
   { path: '/', label: 'Dashboard', icon: HomeIcon },
+  // Core Setup
   { path: '/libraries', label: 'Libraries', icon: FolderIcon },
+  { path: '/policies', label: 'Policies', icon: DocumentDuplicateIcon },
+  { path: '/request', label: 'Request', icon: PlusCircleIcon },
+  // Monitoring
   { path: '/activity', label: 'Activity', icon: ClockIcon },
   { path: '/history', label: 'History', icon: DocumentTextIcon },
-  { path: '/request', label: 'Request', icon: PlusCircleIcon },
   { path: '/statistics', label: 'Statistics', icon: ChartBarIcon },
-  { path: '/patterns', label: 'Patterns', icon: PuzzlePieceIcon },
   { path: '/policy-stats', label: 'Policy Stats', icon: PresentationChartLineIcon },
+  // Learning & Tuning
+  { path: '/patterns', label: 'Patterns', icon: PuzzlePieceIcon },
   { path: '/tuning-suggestions', label: 'Tuning', icon: LightBulbIcon },
+  { path: '/migration', label: 'Migration', icon: ArrowPathIcon },
+  // Configuration
   { path: '/settings', label: 'Settings', icon: CogIcon },
 ]
 
