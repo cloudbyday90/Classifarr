@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.1-alpha] - 2026-01-11
+
+### Fixed
+- **Media Sync FK constraint fix:** Fixed `upsertMediaItem` and `upsertCollection` failing when library was deleted during re-sync
+  - Added library existence check before insert to prevent FK violation on `media_server_items.library_id`
+  - Gracefully skips items/collections if library no longer exists (logs warning instead of error)
+- **Scheduler import fix:** Fixed `schedulerService.runPatternAnalysis is not a function` error in queue clear
+  - `runGapAnalysis` is in `scheduler.js`, `runPatternAnalysis` is in `schedulerService.js`
+  - Now imports both modules and calls correct methods on each
+- **Tavily result parsing fix:** Fixed enrichment retry service not extracting IMDb data correctly
+  - Tavily API returns `{ results: [...] }` object, not an array
+  - Now correctly accesses `searchResult.results` before passing to `extractImdbData`
+
+### Added
+- **Regression tests:** `v037.1-regression.test.js` - Tests for all v0.37.1 fixes
+  - Scheduler module import verification (runGapAnalysis vs runPatternAnalysis)
+  - Tavily result parsing with extractImdbData
+  - Media sync library existence method verification
+
 ## [0.37.0-alpha] - TBD
 
 ### 🚀 Major: Policy-Driven Classification Engine
@@ -478,6 +497,12 @@ This release implements the complete Policy-Driven Classification Engine, replac
 - **Migration 046 ON CONFLICT fix:** Fixed `046_event_detection_presets.sql` migration failing with "no unique or exclusion constraint matching the ON CONFLICT specification"
   - Changed `ON CONFLICT (key)` to `ON CONFLICT (key, user_id)` to match the unique constraint on `content_presets` table
   - Added `updated_at = NOW()` to the UPDATE clause for consistency with other preset migrations
+- **Media Sync FK constraint fix:** Fixed `upsertMediaItem` and `upsertCollection` failing when library was deleted during re-sync
+  - Added library existence check before insert to prevent FK violation on `media_server_items.library_id`
+  - Gracefully skips items/collections if library no longer exists (logs warning instead of error)
+- **Scheduler import fix:** Fixed `schedulerService.runPatternAnalysis is not a function` error in queue clear
+  - `runGapAnalysis` is in `scheduler.js`, `runPatternAnalysis` is in `schedulerService.js`
+  - Now imports both modules and calls correct methods on each
 - **SQL syntax error:** Corrected UNIQUE constraint placement in `policy_learning_stats` table (moved before REFERENCES)
 - **Test reliability:** Added explicit assertions to prevent tests from silently passing when preconditions aren't met
 - **Migration error handling:** Enhanced to fail fast on critical errors while allowing expected optional failures

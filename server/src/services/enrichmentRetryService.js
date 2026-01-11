@@ -202,12 +202,14 @@ class EnrichmentRetryService {
                 maxResults: 3
             });
 
-            if (!searchResult || searchResult.length === 0) {
+            // Tavily returns { results: [...], answer: ... } - extract results array
+            const results = searchResult?.results || [];
+            if (!results || results.length === 0) {
                 return { success: false, error: 'No results found' };
             }
 
             // Extract IMDb data from search results
-            const imdbData = this.extractImdbData(searchResult, item.title);
+            const imdbData = this.extractImdbData(results, item.title);
 
             if (imdbData) {
                 // Update media_server_items metadata with Tavily results

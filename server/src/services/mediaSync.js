@@ -212,6 +212,18 @@ class MediaSyncService {
    */
   async upsertMediaItem(mediaServerId, libraryId, item) {
     try {
+      // Verify library still exists (may have been deleted during re-sync)
+      const libraryCheck = await db.query(
+        'SELECT id FROM libraries WHERE id = $1',
+        [libraryId]
+      );
+      if (libraryCheck.rows.length === 0) {
+        logger.warn(`Skipping media item - library ${libraryId} no longer exists (likely deleted during re-sync)`, {
+          item: item.external_id
+        });
+        return;
+      }
+
       // Run content analysis if not already present or force re-analysis
       const analysis = await contentTypeAnalyzer.analyze({
         title: item.title,
@@ -290,6 +302,18 @@ class MediaSyncService {
    */
   async upsertCollection(mediaServerId, libraryId, collection) {
     try {
+      // Verify library still exists (may have been deleted during re-sync)
+      const libraryCheck = await db.query(
+        'SELECT id FROM libraries WHERE id = $1',
+        [libraryId]
+      );
+      if (libraryCheck.rows.length === 0) {
+        logger.warn(`Skipping collection - library ${libraryId} no longer exists`, {
+          collection: collection.name
+        });
+        return;
+      }
+
       await db.query(
         `INSERT INTO media_server_collections 
          (media_server_id, library_id, external_id, name, item_count, last_synced)
