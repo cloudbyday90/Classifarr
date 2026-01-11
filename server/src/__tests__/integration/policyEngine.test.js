@@ -544,4 +544,258 @@ describe('PolicyEngine Integration Tests', () => {
             expect(ranked.find(r => r.score === 0)).toBeUndefined();
         });
     });
+
+    describe('v0.37.0 Verification - Confidence Caps and Default Weights', () => {
+        test('FORMULA_CONFIDENCE_CAP should be 95', () => {
+            const { FORMULA_CONFIDENCE_CAP } = require('../../services/policyEngine');
+            expect(FORMULA_CONFIDENCE_CAP).toBe(95);
+        });
+
+        test('Default weights should match v0.37.0 specification', async () => {
+            // Create policy without explicit weights to test defaults
+            const libRes = await db.query(`
+                INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)
+                VALUES ($1, 'test-default-weights-' || gen_random_uuid()::text, 'Default Weights Test Library', 'movie', true)
+                RETURNING id
+            `, [testMediaServerId]);
+            const defaultWeightsLibId = libRes.rows[0].id;
+
+            const policyRes = await db.query(`
+                INSERT INTO library_policies (
+                    library_id,
+                    name,
+                    enabled,
+                    auto_classify_threshold,
+                    prompt_threshold,
+                    trust_patterns,
+                    trust_rag,
+                    trust_history
+                )
+                VALUES ($1, 'Default Weights Policy', true, 85, 60, true, true, true)
+                RETURNING id
+            `, [defaultWeightsLibId]);
+            const defaultWeightsPolicyId = policyRes.rows[0].id;
+
+            try {
+                const policies = await policyEngine.getActivePolicies();
+                const defaultPolicy = policies.find(p => p.id === defaultWeightsPolicyId);
+                
+                expect(defaultPolicy).toBeDefined();
+                
+                // Test item
+                const item = {
+                    title: 'Test Movie',
+                    genres: ['Action'],
+                    media_type: 'movie'
+                };
+
+                const evaluation = await policyEngine.evaluatePolicy(defaultPolicy, item);
+                
+                // Verify default weights are applied correctly
+                expect(evaluation.weights.preset).toBe(0.40);
+                expect(evaluation.weights.pattern).toBe(0.25);
+                expect(evaluation.weights.rag).toBe(0.20);
+                expect(evaluation.weights.history).toBe(0.15);
+                
+                // Verify weights sum to 1.0
+                const weightSum = evaluation.weights.preset + evaluation.weights.pattern + 
+                                 evaluation.weights.rag + evaluation.weights.history;
+                expect(weightSum).toBeCloseTo(1.0, 5);
+            } finally {
+                // Cleanup
+                await db.query('DELETE FROM library_policies WHERE id = $1', [defaultWeightsPolicyId]);
+                await db.query('DELETE FROM libraries WHERE id = $1', [defaultWeightsLibId]);
+            }
+        });
+
+        test('scorePresets should cap at FORMULA_CONFIDENCE_CAP (95)', async () => {
+            // Create a preset with perfect match signals
+            const perfectPresetRes = await db.query(`
+                INSERT INTO content_presets (key, name, signals, is_system)
+                VALUES (
+                    'test_perfect_match',
+                    'Test Perfect Match',
+                    '{"genres": {"require_any": ["Action"], "weight": 2.0}, "vote_average": {"min": 1.0, "weight": 2.0}}'::jsonb,
+                    false
+                )
+                RETURNING id
+            `);
+            const perfectPresetId = perfectPresetRes.rows[0].id;
+
+            try {
+                const presets = [
+                    {
+                        id: perfectPresetId,
+                        signals: {
+                            genres: { require_any: ['Action'], weight: 2.0 },
+                            vote_average: { min: 1.0, weight: 2.0 }
+                        },
+                        weight: 2.0
+                    }
+                ];
+
+                const item = {
+                    genres: ['Action'],
+                    rating: 10.0,
+                    media_type: 'movie'
+                };
+
+                const score = await policyEngine.scorePresets(presets, item);
+                
+                // Should be capped at 95, not 100
+                expect(score).toBeLessThanOrEqual(95);
+                expect(score).toBeGreaterThan(0);
+            } finally {
+                await db.query('DELETE FROM content_presets WHERE id = $1', [perfectPresetId]);
+            }
+        });
+
+        test('scorePatterns should cap at FORMULA_CONFIDENCE_CAP (95)', async () => {
+            // Mock pattern signal collector to return high confidence
+            const originalCollect = patternSignalCollector.collectSignals;
+            patternSignalCollector.collectSignals = jest.fn().mockResolvedValue([
+                { 
+                    library: { id: testLibraryId }, 
+                    confidence: 100, // Try to exceed cap
+                    pattern: 'test'
+                }
+            ]);
+
+            try {
+                const item = {
+                    title: 'Test Movie',
+                    genres: ['Action']
+                };
+
+                const score = await policyEngine.scorePatterns(testLibraryId, item);
+                
+                // Should be capped at 95
+                expect(score).toBe(95);
+            } finally {
+                patternSignalCollector.collectSignals = originalCollect;
+            }
+        });
+
+        test('scoreHistory should cap at FORMULA_CONFIDENCE_CAP (95)', async () => {
+            // Insert high confidence history record
+            const historyRes = await db.query(`
+                INSERT INTO policy_learning_stats (
+                    library_id,
+                    studio,
+                    match_count,
+                    confidence,
+                    accuracy_pct
+                )
+                VALUES ($1, 'Test Studio', 100, 80.0, 95.0)
+                RETURNING id
+            `, [testLibraryId]);
+
+            try {
+                const item = {
+                    title: 'Test Movie',
+                    studios: ['Test Studio']
+                };
+
+                const score = await policyEngine.scoreHistory(testLibraryId, item);
+                
+                // Should be capped at 95 even with high count boost
+                expect(score).toBeLessThanOrEqual(95);
+            } finally {
+                await db.query('DELETE FROM policy_learning_stats WHERE id = $1', [historyRes.rows[0].id]);
+            }
+        });
+
+        test('Authoritative signals should return 100% confidence (not capped)', async () => {
+            // Create library with source_library_id mapping
+            const authLibRes = await db.query(`
+                INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)
+                VALUES ($1, 'test-auth-lib-' || gen_random_uuid()::text, 'Auth Test Library', 'movie', true)
+                RETURNING id
+            `, [testMediaServerId]);
+            const authLibId = authLibRes.rows[0].id;
+
+            const authPolicyRes = await db.query(`
+                INSERT INTO library_policies (
+                    library_id,
+                    name,
+                    enabled,
+                    source_library_ids
+                )
+                VALUES ($1, 'Auth Policy', true, '["source-123"]'::jsonb)
+                RETURNING id
+            `, [authLibId]);
+
+            try {
+                const item = {
+                    title: 'Test Movie',
+                    source_library_id: 'source-123',
+                    source_library_name: 'Plex Movies'
+                };
+
+                const result = await policyEngine.evaluateItem(item);
+                
+                // Authoritative signal should return exactly 100%
+                expect(result.confidence).toBe(100);
+                expect(result.action).toBe('auto_classify');
+                expect(result.method).toBe('authoritative_source_library');
+            } finally {
+                await db.query('DELETE FROM library_policies WHERE id = $1', [authPolicyRes.rows[0].id]);
+                await db.query('DELETE FROM libraries WHERE id = $1', [authLibId]);
+            }
+        });
+
+        test('Formula-based scores should never exceed 95%', async () => {
+            // Create multiple high-scoring presets
+            const highPresetRes = await db.query(`
+                INSERT INTO content_presets (key, name, signals, is_system)
+                VALUES (
+                    'test_high_score',
+                    'Test High Score',
+                    '{"genres": {"require_any": ["Action", "Adventure"], "weight": 1.5}}'::jsonb,
+                    false
+                )
+                RETURNING id
+            `);
+            const highPresetId = highPresetRes.rows[0].id;
+
+            const highPolicyRes = await db.query(`
+                INSERT INTO library_policies (
+                    library_id,
+                    name,
+                    enabled,
+                    auto_classify_threshold,
+                    prompt_threshold
+                )
+                VALUES ($1, 'High Score Policy', true, 85, 60)
+                RETURNING id
+            `, [testLibraryId]);
+            const highPolicyId = highPolicyRes.rows[0].id;
+
+            await db.query(`
+                INSERT INTO policy_presets (policy_id, preset_id, weight)
+                VALUES ($1, $2, 2.0)
+            `, [highPolicyId, highPresetId]);
+
+            try {
+                const item = {
+                    title: 'Perfect Match Movie',
+                    genres: ['Action', 'Adventure'],
+                    keywords: ['superhero', 'marvel'],
+                    rating: 9.5,
+                    media_type: 'movie'
+                };
+
+                const result = await policyEngine.evaluateItem(item);
+                
+                // Even with perfect matches, formula score should not exceed 95%
+                if (result.confidence > 0 && result.method !== 'authoritative_source_library') {
+                    expect(result.confidence).toBeLessThanOrEqual(95);
+                }
+            } finally {
+                await db.query('DELETE FROM policy_presets WHERE policy_id = $1', [highPolicyId]);
+                await db.query('DELETE FROM library_policies WHERE id = $1', [highPolicyId]);
+                await db.query('DELETE FROM content_presets WHERE id = $1', [highPresetId]);
+            }
+        });
+    });
 });

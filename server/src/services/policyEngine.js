@@ -23,6 +23,10 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('PolicyEngine');
 
+// CRITICAL: 100% confidence is RESERVED for authoritative signals ONLY
+// Formula scores are CAPPED at 95% maximum
+const FORMULA_CONFIDENCE_CAP = 95;
+
 /**
  * Policy-Driven Classification Engine
  * Evaluates media items against library policies with comprehensive signal scoring
@@ -252,11 +256,16 @@ class PolicyEngine {
             }
 
             // Get weights (policy-specific or defaults)
+            // Default weights as per v0.37.0 specification:
+            // - Preset: 40% (primary signal source)
+            // - Pattern: 25% (discovered associations)
+            // - RAG: 20% (semantic similarity)
+            // - History: 15% (learning from past decisions)
             const weights = {
                 preset: policy.preset_weight ?? 0.40,
-                pattern: policy.pattern_weight ?? 0.30,
+                pattern: policy.pattern_weight ?? 0.25,
                 rag: policy.rag_weight ?? 0.20,
-                history: policy.history_weight ?? 0.10
+                history: policy.history_weight ?? 0.15
             };
 
             // Calculate weighted score
@@ -326,7 +335,10 @@ class PolicyEngine {
                 totalWeight += presetWeight;
             }
 
-            return totalWeight > 0 ? (totalScore / totalWeight) : 0;
+            const finalScore = totalWeight > 0 ? (totalScore / totalWeight) : 0;
+            
+            // Cap at FORMULA_CONFIDENCE_CAP (95) - 100% reserved for authoritative signals
+            return Math.min(finalScore, FORMULA_CONFIDENCE_CAP);
 
         } catch (error) {
             logger.error('Failed to score presets', { error: error.message });
@@ -776,9 +788,9 @@ class PolicyEngine {
                 return 0;
             }
 
-            // Return highest confidence, capped at 95
+            // Return highest confidence, capped at FORMULA_CONFIDENCE_CAP
             const topSignal = librarySignals[0];
-            return Math.min(topSignal.confidence, 95);
+            return Math.min(topSignal.confidence, FORMULA_CONFIDENCE_CAP);
 
         } catch (error) {
             logger.debug('Failed to score patterns', { error: error.message });
@@ -804,9 +816,9 @@ class PolicyEngine {
                 return 0;
             }
 
-            // Return top similarity as percentage, capped at 95
+            // Return top similarity as percentage, capped at FORMULA_CONFIDENCE_CAP
             const topMatch = libraryMatches[0];
-            return Math.min(topMatch.similarity * 100, 95);
+            return Math.min(topMatch.similarity * 100, FORMULA_CONFIDENCE_CAP);
 
         } catch (error) {
             logger.debug('Failed to score RAG', { error: error.message });
@@ -853,7 +865,7 @@ class PolicyEngine {
             const countBoost = Math.min(matchCount * 10, 40);
             const baseScore = Math.min(historicalConfidence, 60);
             
-            return Math.min(baseScore + countBoost, 95);
+            return Math.min(baseScore + countBoost, FORMULA_CONFIDENCE_CAP);
 
         } catch (error) {
             logger.debug('Failed to score history', { error: error.message });
@@ -950,3 +962,4 @@ class PolicyEngine {
 }
 
 module.exports = new PolicyEngine();
+module.exports.FORMULA_CONFIDENCE_CAP = FORMULA_CONFIDENCE_CAP;
