@@ -13,6 +13,63 @@ This release implements the complete Policy-Driven Classification Engine, replac
 
 ### Added
 
+#### Legacy Rule Migration Service (#103)
+- **New service:** `server/src/services/legacyMigration.js` - Migrates legacy `library_custom_rules` to policy system
+  - **Migration status:** `getMigrationStatus()` - Returns counts of pending/migrated rules
+  - **Library listing:** `getLibrariesWithLegacyRules()` - Lists libraries with unmigrated rules
+  - **Rule retrieval:** `getLegacyRules(libraryId)` - Fetches legacy rules for a library
+  - **Rule analysis:** `analyzeRule(rule)` - Analyzes rules and suggests equivalent presets or overrides
+    - Genre-based matching: Searches content_presets for matching genre signals
+    - Certification matching: Matches rating/certification requirements
+    - Keyword matching: Detects keyword-based rules
+    - Confidence scoring: Calculates match confidence (0-100%)
+    - Fallback to override: Suggests policy override when no preset matches
+  - **Rule conversion:** `ruleToOverride(rule)` - Converts legacy rule to policy override format
+  - **Single migration:** `migrateRule(ruleId, migrationChoice, userId)` - Migrates individual rule
+    - Supports preset attachment or override creation
+    - Auto-creates policy if none exists
+    - Marks rule as migrated with timestamp and user tracking
+    - Transactional with rollback on error
+  - **Bulk migration:** `migrateLibrary(libraryId, userId, autoSuggest)` - Migrates all library rules
+    - Auto-suggest mode: Automatically applies top suggestion for each rule
+    - Manual mode: Returns suggestions for user review
+- **New API routes:** `server/src/routes/migration.js`
+  - `GET /api/migration/status` - Migration status summary (pending/migrated counts)
+  - `GET /api/migration/libraries` - Libraries with legacy rules (sorted by rule count)
+  - `GET /api/migration/libraries/:id/rules` - Legacy rules for specific library
+  - `GET /api/migration/rules/:id/analyze` - Analyze rule and get migration suggestions
+  - `POST /api/migration/rules/:id/migrate` - Migrate single rule with selected suggestion
+  - `POST /api/migration/libraries/:id/migrate-all` - Bulk migrate all library rules
+- **New views:**
+  - `client/src/views/MigrationDashboard.vue` - Main migration interface
+    - Migration status overview with progress bar
+    - Deprecation notice with timeline (v0.37 → v0.38 → v0.39 removal)
+    - Library cards showing rule counts
+    - Wizard and auto-migrate options
+- **New components:**
+  - `client/src/components/migration/MigrationLibraryCard.vue` - Library card with migration actions
+  - `client/src/components/migration/MigrationWizard.vue` - Step-by-step migration wizard
+    - Rule-by-rule analysis
+    - Suggestion selection with confidence indicators
+    - Preview migration options (preset vs override)
+    - Batch migration support
+  - `client/src/components/LegacyRuleWarning.vue` - Warning banner for libraries with legacy rules
+- **Database migration:** `database/migrations/045_legacy_migration_tracking.sql`
+  - Added `migrated_at`, `migrated_by`, `migration_type` columns to `library_custom_rules`
+  - Indexes for efficient querying of unmigrated rules
+- **Integration tests:** `server/src/__tests__/integration/legacy-migration.test.js`
+  - Migration status tracking
+  - Library listing and filtering
+  - Rule analysis and preset matching
+  - Preset and override migration
+  - Bulk migration
+  - Transaction rollback on errors
+- **Navigation integration:** Added "Migration" route to router
+- **Deprecation timeline:**
+  - **v0.37 (current):** Legacy rules functional, migration tools available
+  - **v0.38:** UI warnings for libraries with unmigrated rules
+  - **v0.39+:** Legacy rule system removed, policies required
+
 #### Policy Stats Dashboard (#113)
 - **New view:** `client/src/views/PolicyStatsDashboard.vue` - Live policy statistics dashboard
   - **Overview cards:** Display global metrics (total decisions, average accuracy, auto-classify rate, improving policies)
