@@ -1,488 +1,239 @@
-# API Documentation
+# Classifarr API Reference
 
-## PolicyEngine API
+## Overview
 
-### Overview
+The Classifarr API provides RESTful endpoints for managing policies, presets, tuning suggestions, statistics, and legacy rule migration.
 
-The PolicyEngine API provides endpoints for managing policies, presets, and analyzing classification results.
+**Base URL:** `http://localhost:21324/api`
 
-## Core Classification
+**Authentication:** Most endpoints require JWT authentication via the `Authorization: Bearer <token>` header.
 
-### Classify Media Item
+---
 
-Classify a media item using the PolicyEngine.
+## API Categories
 
-**Endpoint:** `POST /api/classify`
+- [Policies API](./policies.md) - Policy CRUD and preset management
+- [Presets API](./presets.md) - Content preset discovery and filtering
+- [Suggestions API](./suggestions.md) - Tuning suggestion management
+- [Stats API](./stats.md) - Policy statistics and analytics
+- [Migration API](./migration.md) - Legacy rule migration tools
 
-**Request Body:**
-```json
-{
-  "title": "Elf",
-  "year": 2003,
-  "media_type": "movie",
-  "tmdb_id": 10719,
-  "overview": "When young Buddy falls into Santa's gift sack...",
-  "genres": ["Comedy", "Family", "Fantasy"],
-  "keywords": ["christmas", "santa", "elf", "holiday"]
-}
-```
+> **Note:** Additional APIs for presets, suggestions, statistics, and legacy rule migration are available in the service, but their detailed documentation is not yet included in this reference and will be added in a future revision.
 
-**Response (High Confidence - AI Skipped):**
-```json
-{
-  "library": {
-    "id": 5,
-    "name": "Christmas Movies",
-    "media_type": "movie"
-  },
-  "confidence": 95,
-  "method": "policy_auto",
-  "reason": "Policy: Christmas Policy",
-  "policyResult": {
-    "action": "auto_classify",
-    "library": {
-      "library_id": 5,
-      "library_name": "Christmas Movies",
-      "policy_id": 12,
-      "policy_name": "Christmas Policy"
-    },
-    "confidence": 95,
-    "scores": {
-      "preset": 95,
-      "pattern": 0,
-      "rag": 0,
-      "history": 0
-    },
-    "weights": {
-      "preset": 1.0,
-      "pattern": 0.0,
-      "rag": 0.0,
-      "history": 0.0
-    }
-  }
-}
-```
+---
 
-**Response (Medium Confidence - User Prompt):**
-```json
-{
-  "library": {
-    "id": 5,
-    "name": "Christmas Movies"
-  },
-  "confidence": 72,
-  "method": "policy_prompt",
-  "reason": "Policy suggests: Christmas Policy",
-  "needs_clarification": true,
-  "clarification": {
-    "problem_summary": "Confirm: Christmas Policy",
-    "why_uncertain": "Confidence 72% - below auto-classify threshold",
-    "question": "Should \"Elf\" go to Christmas Movies?",
-    "options": [
-      {
-        "label": "Yes, Christmas Movies",
-        "value": "confirm",
-        "library_id": 5
-      },
-      {
-        "label": "Family Movies",
-        "value": "alt_3",
-        "library_id": 3
-      }
-    ],
-    "signal_breakdown": {
-      "preset": 72,
-      "pattern": 0,
-      "rag": 0,
-      "history": 0
-    },
-    "calculated_confidence": 72
-  }
-}
-```
+## Common Response Formats
 
-**Response (Low Confidence - AI Used):**
-```json
-{
-  "library": {
-    "id": 8,
-    "name": "General Movies"
-  },
-  "confidence": 65,
-  "method": "ai_verified",
-  "reason": "AI analysis - uncertain match",
-  "needs_clarification": false
-}
-```
+### Success Response
 
-## Policy Management
-
-### List Policies
-
-Get all active policies.
-
-**Endpoint:** `GET /api/policies`
-
-**Response:**
-```json
-{
-  "policies": [
-    {
-      "id": 12,
-      "library_id": 5,
-      "library_name": "Christmas Movies",
-      "name": "Christmas Policy",
-      "enabled": true,
-      "auto_classify_threshold": 85,
-      "prompt_threshold": 60,
-      "preset_weight": 0.40,
-      "pattern_weight": 0.30,
-      "rag_weight": 0.20,
-      "history_weight": 0.10,
-      "presets": [
-        {
-          "id": 145,
-          "key": "event_holiday",
-          "name": "Holiday & Seasonal",
-          "weight": 1.5
-        }
-      ]
-    }
-  ]
-}
-```
-
-### Get Policy Details
-
-Get details for a specific policy.
-
-**Endpoint:** `GET /api/policies/:id`
-
-**Response:**
-```json
-{
-  "id": 12,
-  "library_id": 5,
-  "name": "Christmas Policy",
-  "enabled": true,
-  "auto_classify_threshold": 85,
-  "prompt_threshold": 60,
-  "trust_patterns": true,
-  "trust_rag": true,
-  "trust_history": true,
-  "preset_weight": 0.40,
-  "pattern_weight": 0.30,
-  "rag_weight": 0.20,
-  "history_weight": 0.10,
-  "presets": [
-    {
-      "id": 145,
-      "key": "event_holiday",
-      "name": "Holiday & Seasonal",
-      "category": "events",
-      "weight": 1.5,
-      "signals": {
-        "keywords": {
-          "require_any": ["christmas", "santa", "holiday"],
-          "weight": 2.0
-        }
-      }
-    }
-  ],
-  "stats": {
-    "total_decisions": 523,
-    "accuracy": 94.5,
-    "auto_classify_rate": 78.2
-  }
-}
-```
-
-### Update Policy
-
-Update policy configuration.
-
-**Endpoint:** `PUT /api/policies/:id`
-
-**Request Body:**
-```json
-{
-  "auto_classify_threshold": 90,
-  "prompt_threshold": 70,
-  "preset_weight": 0.50,
-  "pattern_weight": 0.25,
-  "rag_weight": 0.15,
-  "history_weight": 0.10
-}
-```
-
-**Response:**
 ```json
 {
   "success": true,
-  "policy": {
-    "id": 12,
-    "auto_classify_threshold": 90,
-    "prompt_threshold": 70
-  }
+  "data": { ... }
 }
 ```
 
-## Content Presets
+### Error Response
 
-### List Presets
-
-Get all content presets, optionally filtered by category.
-
-**Endpoint:** `GET /api/presets?category=events`
-
-**Response:**
 ```json
 {
-  "presets": [
-    {
-      "id": 145,
-      "key": "event_holiday",
-      "name": "Holiday & Seasonal",
-      "category": "events",
-      "icon": "🎄",
-      "description": "Christmas, Halloween, and seasonal content",
-      "is_system": true,
-      "signals": {
-        "keywords": {
-          "require_any": ["christmas", "santa", "holiday"],
-          "weight": 2.0
-        },
-        "base_confidence": 95
-      }
-    },
-    {
-      "id": 146,
-      "key": "event_sports",
-      "name": "Sports & Athletics",
-      "category": "events",
-      "icon": "🏈",
-      "description": "Sports events, documentaries, and athletics",
-      "is_system": true,
-      "signals": {
-        "keywords": {
-          "require_any": ["nfl", "nba", "super bowl"],
-          "weight": 2.0
-        },
-        "genres": {
-          "prefer": ["Sport", "Documentary"],
-          "weight": 0.5
-        },
-        "base_confidence": 92
-      }
-    }
-  ]
+  "success": false,
+  "error": "Error message",
+  "code": "ERROR_CODE"
 }
 ```
 
-### Attach Preset to Policy
+---
 
-Add a preset to a policy.
+## Authentication
 
-**Endpoint:** `POST /api/policies/:policyId/presets`
+### Login
 
-**Request Body:**
+**POST** `/api/auth/login`
+
 ```json
 {
-  "preset_id": 145,
-  "weight": 1.5
+  "username": "admin",
+  "password": "password"
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
-  "policy_preset": {
-    "id": 89,
-    "policy_id": 12,
-    "preset_id": 145,
-    "weight": 1.5
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "admin"
   }
 }
 ```
 
-### Remove Preset from Policy
+---
 
-Remove a preset from a policy.
+## Pagination
 
-**Endpoint:** `DELETE /api/policies/:policyId/presets/:presetId`
-
-**Response:**
-```json
-{
-  "success": true
-}
-```
-
-## Statistics
-
-### Policy Statistics
-
-Get statistics for a policy.
-
-**Endpoint:** `GET /api/stats/policies/:id`
+Endpoints that return lists support pagination:
 
 **Query Parameters:**
-- `days` - Number of days to analyze (default: 30)
+- `page` - Page number (default: 1)
+- `limit` - Items per page (default: 50, max: 100)
 
 **Response:**
+
 ```json
 {
-  "policy_id": 12,
-  "policy_name": "Christmas Policy",
-  "stats": {
-    "total_decisions": 523,
-    "auto_classify_count": 409,
-    "prompt_confirm_count": 87,
-    "prompt_select_count": 27,
-    "auto_classify_rate": 78.2,
-    "accuracy": 94.5,
-    "avg_confidence": 87.3,
-    "avg_response_time_ms": 310
-  },
-  "signal_breakdown": {
-    "preset": {
-      "decisions": 409,
-      "accuracy": 96.1,
-      "avg_score": 92.3
-    },
-    "pattern": {
-      "decisions": 87,
-      "accuracy": 89.7,
-      "avg_score": 71.2
-    },
-    "rag": {
-      "decisions": 45,
-      "accuracy": 84.4,
-      "avg_score": 68.9
-    },
-    "history": {
-      "decisions": 31,
-      "accuracy": 80.6,
-      "avg_score": 65.1
-    }
-  },
-  "trend": {
-    "direction": "improving",
-    "accuracy_change": 2.3
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 168,
+    "totalPages": 4
   }
 }
 ```
 
-### Global Statistics
+---
 
-Get overall classification statistics.
+## Filtering
 
-**Endpoint:** `GET /api/stats/overview`
+Many endpoints support filtering via query parameters:
 
-**Response:**
-```json
-{
-  "total_policies": 15,
-  "total_decisions": 8947,
-  "avg_accuracy": 91.2,
-  "auto_classify_rate": 74.8,
-  "ai_skip_rate": 79.3,
-  "avg_response_time_ms": 425,
-  "stats_by_method": {
-    "policy_auto": {
-      "count": 6694,
-      "percentage": 74.8,
-      "avg_confidence": 91.5
-    },
-    "policy_prompt": {
-      "count": 1341,
-      "percentage": 15.0,
-      "avg_confidence": 72.3
-    },
-    "ai_verified": {
-      "count": 912,
-      "percentage": 10.2,
-      "avg_confidence": 68.7
-    }
-  }
-}
+**Example:**
+
+```
+GET /api/policies?library_id=123&active=true
+GET /api/presets?category=genre&search=action
 ```
 
-## Feedback
-
-### Submit Feedback
-
-Submit user correction/confirmation feedback.
-
-**Endpoint:** `POST /api/feedback`
-
-**Request Body:**
-```json
-{
-  "tmdb_id": 10719,
-  "media_type": "movie",
-  "suggested_library_id": 5,
-  "actual_library_id": 5,
-  "was_correct": true,
-  "confidence": 95,
-  "method": "policy_auto",
-  "policy_id": 12
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "feedback_id": 1523
-}
-```
-
-## Error Responses
-
-All endpoints may return error responses in the following format:
-
-**400 Bad Request:**
-```json
-{
-  "error": "Invalid request",
-  "message": "Missing required field: title"
-}
-```
-
-**404 Not Found:**
-```json
-{
-  "error": "Not found",
-  "message": "Policy with id 999 not found"
-}
-```
-
-**500 Internal Server Error:**
-```json
-{
-  "error": "Internal server error",
-  "message": "Database connection failed"
-}
-```
+---
 
 ## Rate Limiting
 
-API endpoints are rate-limited to prevent abuse:
-
-- **Classification endpoint:** 60 requests per minute per IP
-- **Other endpoints:** 120 requests per minute per IP
+- **Default:** 100 requests per 15 minutes per IP
+- **Authentication endpoints:** 5 requests per 15 minutes per IP
 
 Rate limit headers:
+- `X-RateLimit-Limit` - Request limit
+- `X-RateLimit-Remaining` - Remaining requests
+- `X-RateLimit-Reset` - Reset time (Unix timestamp)
+
+---
+
+## Versioning
+
+Current API version: **v1**
+
+The API version is included in the response headers:
+
 ```
-X-RateLimit-Limit: 60
-X-RateLimit-Remaining: 45
-X-RateLimit-Reset: 1640995200
+X-API-Version: 1.0.0
 ```
 
-## See Also
+---
 
-- [PolicyEngine Architecture](../architecture/policy-engine.md)
-- [Preset Reference](../presets/README.md)
-- [Migration Guide](../migration/v037.md)
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| `UNAUTHORIZED` | Missing or invalid authentication token |
+| `FORBIDDEN` | Insufficient permissions |
+| `NOT_FOUND` | Resource not found |
+| `VALIDATION_ERROR` | Invalid request parameters |
+| `CONFLICT` | Resource conflict (e.g., duplicate) |
+| `INTERNAL_ERROR` | Server error |
+
+---
+
+## OpenAPI Specification
+
+Full OpenAPI 3.0 specification available at:
+
+```
+GET /api/docs
+```
+
+Interactive Swagger UI:
+
+```
+http://localhost:21324/api/docs
+```
+
+---
+
+## Examples
+
+### Creating a Policy
+
+```bash
+curl -X POST http://localhost:21324/api/policies \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "library_id": 123,
+    "name": "Kids Movies Policy",
+    "auto_classify_threshold": 85,
+    "prompt_threshold": 60,
+    "preset_ids": [1, 2, 3]
+  }'
+```
+
+### Getting Statistics
+
+```bash
+curl -X GET http://localhost:21324/api/stats/overview \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Applying a Suggestion
+
+```bash
+curl -X POST http://localhost:21324/api/suggestions/456/apply \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## WebSocket Events
+
+Real-time events are available via WebSocket:
+
+**Endpoint:** `ws://localhost:21324/ws`
+
+**Events:**
+- `policy:decision` - New classification decision
+- `pattern:discovered` - New pattern detected
+- `suggestion:created` - New tuning suggestion
+- `stats:updated` - Statistics updated
+
+**Example:**
+
+```javascript
+const ws = new WebSocket('ws://localhost:21324/ws');
+
+ws.on('message', (data) => {
+  const event = JSON.parse(data);
+  console.log(event.type, event.payload);
+});
+```
+
+---
+
+## Best Practices
+
+1. **Always use HTTPS in production**
+2. **Store tokens securely** (e.g., httpOnly cookies)
+3. **Implement retry logic** for transient errors
+4. **Cache frequently accessed data** (presets, policies)
+5. **Use pagination** for large datasets
+6. **Handle rate limits** gracefully
+
+---
+
+## Support
+
+- [GitHub Issues](https://github.com/cloudbyday90/Classifarr/issues)
+- [Discord Community](https://discord.gg/classifarr)
+- [Documentation](https://github.com/cloudbyday90/Classifarr/tree/main/docs)

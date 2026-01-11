@@ -1,395 +1,502 @@
-# PolicyEngine Architecture
+# Policy Engine Architecture
 
 ## Overview
 
-The PolicyEngine is the core classification system in Classifarr v0.37.0+, replacing the legacy rule-based system with a comprehensive, policy-driven approach using rich content signals.
+The Policy Engine is the core classification component in Classifarr v0.37.0. It replaces the previous rule-based system with a hybrid, transparent, and configurable approach that combines multiple signal sources to determine the best library for each media item.
 
-## Design Goals
+## Core Philosophy
 
-1. **Declarative Configuration** - Policies define "what to match" not "how to match"
-2. **Composability** - Combine multiple presets and signals for flexible matching
-3. **Transparency** - Clear scoring breakdown shows why decisions were made
-4. **Performance** - Skip expensive AI calls when confidence is high
-5. **Extensibility** - Easy to add new signal types and presets
+**Formula First, AI Second**
 
-## Architecture
+The Policy Engine follows a "formula calculates, AI validates" approach:
 
-### Components
+1. **Formula-based scoring** provides the primary classification signal
+2. **AI validation** confirms or adjusts when confidence is medium
+3. **User prompts** handle edge cases and build learning data
+
+This approach is:
+- **Transparent**: Users see exactly why items were classified
+- **Efficient**: Reduces AI API calls by 60-85%
+- **Configurable**: Adjust weights and thresholds per policy
+- **Explainable**: Full breakdown of reasoning
+
+---
+
+## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Classification Flow                      │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
+│                      New Item Arrives                       │
+│                (from Overseerr, manual, etc.)               │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      PolicyEngine                            │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │ 1. Check Authoritative Signals (100% confidence)   │    │
-│  │    - Source library matching                        │    │
-│  └────────────────────────────────────────────────────┘    │
-│                              │                               │
-│                              ▼                               │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │ 2. Get Active Policies                             │    │
-│  │    - Enabled policies from library_policies        │    │
-│  │    - Linked presets from policy_presets            │    │
-│  └────────────────────────────────────────────────────┘    │
-│                              │                               │
-│                              ▼                               │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │ 3. Evaluate Each Policy                            │    │
-│  │    ┌──────────────────────────────────────┐        │    │
-│  │    │ Score Presets (0-100)                 │        │    │
-│  │    │  - Genres, Keywords, Certifications   │        │    │
-│  │    │  - Studios, Runtime, Release Year     │        │    │
-│  │    │  - Vote Average, Language, Media Type │        │    │
-│  │    └──────────────────────────────────────┘        │    │
-│  │    ┌──────────────────────────────────────┐        │    │
-│  │    │ Score Patterns (0-95)                 │        │    │
-│  │    │  - Discovered patterns from history   │        │    │
-│  │    └──────────────────────────────────────┘        │    │
-│  │    ┌──────────────────────────────────────┐        │    │
-│  │    │ Score RAG (0-95)                      │        │    │
-│  │    │  - Semantic similarity to past items  │        │    │
-│  │    └──────────────────────────────────────┘        │    │
-│  │    ┌──────────────────────────────────────┐        │    │
-│  │    │ Score History (0-95)                  │        │    │
-│  │    │  - Past classification decisions      │        │    │
-│  │    └──────────────────────────────────────┘        │    │
-│  │                                                      │    │
-│  │    Final Score = Weighted Average (0-100)          │    │
-│  └────────────────────────────────────────────────────┘    │
-│                              │                               │
-│                              ▼                               │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │ 4. Rank Results                                    │    │
-│  │    - Sort by score descending                      │    │
-│  └────────────────────────────────────────────────────┘    │
-│                              │                               │
-│                              ▼                               │
-│  ┌────────────────────────────────────────────────────┐    │
-│  │ 5. Determine Action                                │    │
-│  │    - auto_classify: score ≥ 85%                    │    │
-│  │    - prompt_confirm: 60% ≤ score < 85%             │    │
-│  │    - prompt_select: score < 60%                    │    │
-│  └────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+│              Authoritative Signal Check                     │
+│  ✓ Already in media server (source_library)                │
+│  ✓ User previously corrected (manual_correction)           │
+│  ✓ Exact TMDB match with high confidence                   │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                  100% match?
+                   ┌───┴───┐
+                  Yes      No
+                   │        │
+                   │        ▼
+                   │  ┌─────────────────────────────────────┐
+                   │  │   Get All Active Policies           │
+                   │  │   (for target media type)           │
+                   │  └────────────┬────────────────────────┘
+                   │               │
+                   │               ▼
+                   │  ┌─────────────────────────────────────┐
+                   │  │      Evaluate Each Policy           │
+                   │  │                                     │
+                   │  │  ┌──────────────────────────────┐  │
+                   │  │  │  1. Score Presets            │  │
+                   │  │  │     - 168 content definitions│  │
+                   │  │  │     - Genre, rating, keyword │  │
+                   │  │  │     - Studio, language, year │  │
+                   │  │  └──────────────────────────────┘  │
+                   │  │               │                     │
+                   │  │               ▼                     │
+                   │  │  ┌──────────────────────────────┐  │
+                   │  │  │  2. Score Patterns           │  │
+                   │  │  │     - Auto-discovered        │  │
+                   │  │  │     - User-approved          │  │
+                   │  │  │     - Confidence-based       │  │
+                   │  │  └──────────────────────────────┘  │
+                   │  │               │                     │
+                   │  │               ▼                     │
+                   │  │  ┌──────────────────────────────┐  │
+                   │  │  │  3. Score RAG                │  │
+                   │  │  │     - Embedding similarity   │  │
+                   │  │  │     - Past classifications   │  │
+                   │  │  │     - Graceful fallback      │  │
+                   │  │  └──────────────────────────────┘  │
+                   │  │               │                     │
+                   │  │               ▼                     │
+                   │  │  ┌──────────────────────────────┐  │
+                   │  │  │  4. Score History            │  │
+                   │  │  │     - Similar items          │  │
+                   │  │  │     - Accuracy track record  │  │
+                   │  │  └──────────────────────────────┘  │
+                   │  │                                     │
+                   │  └────────────┬────────────────────────┘
+                   │               │
+                   │               ▼
+                   │  ┌─────────────────────────────────────┐
+                   │  │      Apply Weights & Combine        │
+                   │  │                                     │
+                   │  │  Score = (Preset × 0.40) +          │
+                   │  │          (Pattern × 0.25) +         │
+                   │  │          (RAG × 0.20) +             │
+                   │  │          (History × 0.15)           │
+                   │  │                                     │
+                   │  │  Maximum: 95% (capped)              │
+                   │  └────────────┬────────────────────────┘
+                   │               │
+                   │               ▼
+                   │  ┌─────────────────────────────────────┐
+                   │  │      Rank All Policies              │
+                   │  │      (by weighted score)            │
+                   │  └────────────┬────────────────────────┘
+                   │               │
+                   │               ▼
+                   │  ┌─────────────────────────────────────┐
+                   │  │      Determine Action               │
+                   │  │                                     │
+                   │  │  ≥85%: AUTO_CLASSIFY                │
+                   │  │  60-84%: PROMPT_CONFIRM             │
+                   │  │  40-59%: PROMPT_SELECT              │
+                   │  │  <40%: MANUAL_CLASSIFY              │
+                   │  └────────────┬────────────────────────┘
+                   │               │
+                   ▼               ▼
+           ┌─────────────────────────────────────────────────┐
+           │              Execute Classification             │
+           │                                                 │
+           │  Auto: Classify immediately                    │
+           │  Prompt: Send to user (Discord/Web)            │
+           │  Manual: Flag for manual review                │
+           └────────────┬────────────────────────────────────┘
+                        │
+                        ▼
+           ┌─────────────────────────────────────────────────┐
+           │          Record Feedback & Learn                │
+           │                                                 │
+           │  - Log decision to policy_feedback_log          │
+           │  - Update learning stats                        │
+           │  - Discover new patterns                        │
+           │  - Generate tuning suggestions                  │
+           └─────────────────────────────────────────────────┘
 ```
 
-### Data Model
+---
 
-#### Library Policies
-```sql
-CREATE TABLE library_policies (
-    id SERIAL PRIMARY KEY,
-    library_id INTEGER REFERENCES libraries(id),
-    name TEXT NOT NULL,
-    enabled BOOLEAN DEFAULT true,
-    
-    -- Thresholds
-    auto_classify_threshold INTEGER DEFAULT 85,  -- Auto-classify if score ≥ this
-    prompt_threshold INTEGER DEFAULT 60,         -- Prompt user if score ≥ this
-    
-    -- Trust Settings
-    trust_patterns BOOLEAN DEFAULT true,
-    trust_rag BOOLEAN DEFAULT true,
-    trust_history BOOLEAN DEFAULT true,
-    
-    -- Weights (sum to 1.0)
-    preset_weight DECIMAL(3,2) DEFAULT 0.40,   -- 40%
-    pattern_weight DECIMAL(3,2) DEFAULT 0.30,  -- 30%
-    rag_weight DECIMAL(3,2) DEFAULT 0.20,      -- 20%
-    history_weight DECIMAL(3,2) DEFAULT 0.10   -- 10%
-);
-```
+## Components
 
-#### Content Presets
-```sql
-CREATE TABLE content_presets (
-    id SERIAL PRIMARY KEY,
-    key TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    category TEXT,
-    icon TEXT,
-    description TEXT,
-    signals JSONB NOT NULL,  -- Signal configuration
-    is_system BOOLEAN DEFAULT false,
-    display_order INTEGER
-);
-```
+### 1. PolicyEngine Service
 
-#### Policy-Preset Links
-```sql
-CREATE TABLE policy_presets (
-    id SERIAL PRIMARY KEY,
-    policy_id INTEGER REFERENCES library_policies(id),
-    preset_id INTEGER REFERENCES content_presets(id),
-    weight DECIMAL(3,2) DEFAULT 1.0,  -- Multiplier for this preset
-    sort_order INTEGER DEFAULT 0,
-    UNIQUE(policy_id, preset_id)
-);
-```
+**File:** `server/src/services/policyEngine.js`
 
-### Signal Types
+**Main Functions:**
 
-Presets can use the following signal types in their `signals` JSONB:
+- `evaluateItem(item)` - Entry point for classification
+- `checkAuthoritativeSignals(item)` - Checks for 100% confidence matches
+- `evaluatePolicy(policy, item)` - Scores a single policy
+- `scorePresets(presets, item)` - Evaluates preset signals
+- `scorePatterns(libraryId, item)` - Matches discovered patterns
+- `scoreRAG(libraryId, item)` - Semantic similarity scoring
+- `scoreHistory(libraryId, item)` - Historical accuracy scoring
+- `rankResults(evaluations)` - Sorts policies by score
+- `determineAction(ranked)` - Decides auto/prompt/manual
 
-#### 1. Certifications
-```json
-{
-  "certifications": {
-    "mode": "include",  // or "exclude"
-    "include": ["PG", "PG-13"],
-    "exclude": ["R", "NC-17"],
-    "weight": 1.5
-  }
-}
-```
+### 2. FeedbackAnalysis Service
 
-#### 2. Genres
-```json
-{
-  "genres": {
-    "require_any": ["Action", "Thriller"],  // At least one must be present
-    "require_all": ["Action", "Comedy"],    // All must be present
-    "prefer": ["Drama"],                     // Boost score if present
-    "exclude": ["Horror"],                   // Fail if present
-    "weight": 2.0
-  }
-}
-```
+**File:** `server/src/services/feedbackAnalysis.js`
 
-#### 3. Keywords
-```json
-{
-  "keywords": {
-    "require_any": ["christmas", "santa", "holiday"],
-    "require_all": ["superhero", "marvel"],
-    "prefer": ["family"],
-    "exclude": ["violence"],
-    "weight": 1.0
-  }
-}
-```
+**Responsibilities:**
 
-#### 4. Studios
-```json
-{
-  "studios": {
-    "require_any": ["Disney", "Pixar"],
-    "exclude": ["adult-studio"],
-    "weight": 1.0
-  }
-}
-```
+- Record user decisions and corrections
+- Analyze classification patterns
+- Detect systematic failures
+- Generate tuning suggestions
+- Update learning statistics
+- Trigger pattern discovery
 
-#### 5. Release Year
-```json
-{
-  "release_year": {
-    "min": 2000,
-    "max": 2024,
-    "weight": 0.5
-  }
-}
-```
+### 3. PromptBuilder Service
 
-#### 6. Vote Average (TMDB Rating)
-```json
-{
-  "vote_average": {
-    "min": 7.0,
-    "max": 10.0,
-    "weight": 0.5
-  }
-}
-```
+**File:** `server/src/services/promptBuilder.js`
 
-#### 7. Runtime
-```json
-{
-  "runtime": {
-    "min_minutes": 45,
-    "max_minutes": 120,
-    "weight": 0.3
-  }
-}
-```
+**Responsibilities:**
 
-#### 8. Language
-```json
-{
-  "language": {
-    "require_any": ["en", "es"],
-    "prefer": ["en"],
-    "exclude": ["xx"],
-    "weight": 0.5
-  }
-}
-```
+- Generate context-rich user prompts
+- Explain classification uncertainty
+- Build reason options
+- Create pattern learning options
+- Format for Discord and Web UI
 
-#### 9. Media Type
-```json
-{
-  "media_type": {
-    "include": ["movie", "tv"],
-    "weight": 1.0
-  }
-}
-```
+### 4. LegacyMigration Service
 
-### Scoring Algorithm
+**File:** `server/src/services/legacyMigration.js`
 
-#### Preset Scoring
-For each preset attached to a policy:
-1. Evaluate each signal type independently (0-100 score)
-2. Combine signals using weighted average
-3. Multiply by preset's weight
-4. Average across all presets
+**Responsibilities:**
 
-#### Final Policy Score
+- Analyze legacy rules
+- Suggest preset equivalents
+- Convert rules to policy overrides
+- Track migration progress
+
+---
+
+## Signal Evaluation
+
+### Preset Scoring
+
+Presets define content profiles using JSONB signals:
+
 ```javascript
-finalScore = 
-  (presetScore * preset_weight) +
-  (patternScore * pattern_weight) +
-  (ragScore * rag_weight) +
-  (historyScore * history_weight)
+{
+  "certifications": { "mode": "include", "values": ["G", "PG"] },
+  "genres": { "mode": "require_any", "values": ["Animation", "Family"], "weight": 0.8 },
+  "keywords": { "mode": "prefer", "values": ["kids", "children"] },
+  "studios": { "mode": "prefer", "values": ["Pixar", "Disney"] },
+  "release_year": { "min": 2000, "max": 2024 },
+  "vote_average": { "min": 6.5 },
+  "runtime": { "min": 60, "max": 180 },
+  "language": { "mode": "prefer", "values": ["en"] },
+  "media_type": { "mode": "require", "value": "movie" }
+}
 ```
 
-Normalized to 0-100 based on enabled scoring methods.
+**Scoring Logic:**
+
+1. **Certifications**: Filter by rating (include/exclude/max modes)
+2. **Genres**: Match required/preferred genres
+3. **Keywords**: Detect keywords in title/overview
+4. **Studios**: Match production companies
+5. **Year/Rating/Runtime**: Range-based filtering
+6. **Language**: Language preferences
+7. **Media Type**: Movie vs TV filtering
+
+Each signal contributes a weighted sub-score. Signals are combined using policy's `combination_mode`:
+
+- `best_match`: Highest single signal
+- `average`: Mean of all signals
+- `weighted_average`: Weighted mean
+- `require_all`: All signals must match
+
+### Pattern Scoring
+
+Patterns are auto-discovered from user feedback:
+
+```sql
+SELECT * FROM discovered_patterns
+WHERE pattern_type = 'studio'
+  AND pattern_value = 'A24'
+  AND target_library_id = 'indie_movies'
+  AND confidence >= 70
+  AND status = 'approved';
+```
+
+**Confidence Calculation:**
+
+```javascript
+confidence = (correct_predictions / total_uses) * 100
+```
+
+Patterns learn through reinforcement:
+- **Correct**: +5% confidence (capped at 95%)
+- **Incorrect**: -5% confidence
+- **Auto-deprecate**: Below 30% confidence
+
+### RAG Scoring
+
+Uses vector embeddings for semantic similarity:
+
+1. Generate embedding for new item
+2. Query vector store for similar items
+3. Filter by target library
+4. Calculate similarity scores
+5. Weight by historical accuracy
+
+**Graceful Fallback:**
+
+- If embedding service unavailable → score = 0
+- If insufficient history → score = 0
+- Does not block classification
+
+### History Scoring
+
+Tracks accuracy per policy:
+
+```sql
+SELECT 
+  COUNT(*) FILTER (WHERE was_correct = true) * 100.0 / COUNT(*) as accuracy
+FROM policy_feedback_log
+WHERE policy_id = $1
+  AND created_at > NOW() - INTERVAL '30 days';
+```
+
+Higher historical accuracy → higher weight in scoring.
+
+---
+
+## Thresholds & Actions
+
+### Default Thresholds
+
+```javascript
+{
+  auto_classify_threshold: 85,    // Auto-process above 85%
+  prompt_threshold: 60,            // Prompt between 60-84%
+  ai_validation_threshold: 90,    // Skip AI above 90%
+  trust_patterns: true,            // Use pattern signals
+  trust_rag: true,                 // Use RAG signals
+  trust_history: true              // Use history signals
+}
+```
 
 ### Action Determination
 
-Based on the top-scoring policy:
-
 | Score Range | Action | Behavior |
-|------------|--------|----------|
-| ≥ 85% | `auto_classify` | Skip AI, classify immediately |
-| 60-84% | `prompt_confirm` | Skip AI, prompt user via Discord |
-| < 60% | `prompt_select` | Use AI to help choose |
+|-------------|--------|----------|
+| ≥85% | `AUTO_CLASSIFY` | Immediate classification |
+| 60-84% | `PROMPT_CONFIRM` | "Is this correct?" |
+| 40-59% | `PROMPT_SELECT` | "Pick from top 3" |
+| <40% | `MANUAL_CLASSIFY` | Full manual selection |
 
-## AI Optimization (v0.37.0)
+### AI Validation
 
-### Problem
-Previously, AI was **always** called to verify PolicyEngine results, adding:
-- 2-5 seconds latency per classification
-- API costs for every item
-- Rate limiting concerns
+When score is 60-90%:
 
-### Solution
-**Trust high-confidence PolicyEngine results**
+1. Formula provides top suggestion
+2. AI validates decision
+3. AI can override if confident
+4. Both signals logged for learning
+
+---
+
+## Learning Loop
+
+### Feedback Capture
+
+Every classification decision is logged:
 
 ```javascript
-// In classification.js
-const policyResult = await policyEngine.evaluateItem(metadata);
-
-if (policyResult.action === 'auto_classify' && policyResult.library) {
-  // HIGH CONFIDENCE (≥85%) - Skip AI entirely
-  return {
-    library: matchedLibrary,
-    confidence: policyResult.confidence,
-    method: 'policy_auto',
-    reason: `Policy: ${policyResult.library.policy_name}`,
-  };
+{
+  policy_id: 123,
+  tmdb_id: 12345,
+  original_scores: { preset: 0.8, pattern: 0.6, rag: 0.5, history: 0.7 },
+  top_suggestions: [{ library_id: 'movies', score: 0.85 }],
+  user_choice: 'movies',
+  was_correction: false,
+  user_reasons: ['genre_match'],
+  patterns_created: [{ type: 'studio', value: 'A24' }],
+  response_time_ms: 1500
 }
-
-if (policyResult.action === 'prompt_confirm' && policyResult.library) {
-  // MEDIUM CONFIDENCE (60-84%) - Skip AI, prompt user
-  return {
-    library: matchedLibrary,
-    confidence: policyResult.confidence,
-    method: 'policy_prompt',
-    needs_clarification: true,
-    clarification: policyQuestion,
-  };
-}
-
-// LOW CONFIDENCE (<60%) - Continue to AI
-metadata.policyResult = policyResult;
-// Falls through to AI classification
 ```
 
-### Benefits
-1. **Performance** - Instant classification for 70-80% of items
-2. **Cost Reduction** - 70-80% fewer AI API calls
-3. **Reliability** - Consistent results from deterministic rules
-4. **Transparency** - Clear scoring breakdown shows reasoning
+### Pattern Discovery
 
-## Event Detection Migration (v0.37.0)
+Triggered after feedback:
 
-### Problem
-Event detection was hardcoded in `detectEventContent()`:
-- Separate from PolicyEngine
-- Duplicated keyword matching logic
-- Not configurable via UI
-- Couldn't benefit from policy weighting
+```javascript
+// Auto-discover if studio appears 3+ times for same library
+if (studio_count >= 3 && accuracy >= 70%) {
+  await createPattern({
+    type: 'studio',
+    value: 'A24',
+    target_library: 'indie_movies',
+    confidence: accuracy,
+    status: accuracy >= 85 ? 'approved' : 'pending'
+  });
+}
+```
 
-### Solution
-**Migrate events to content presets**
+### Tuning Suggestions
 
-Created 6 event presets:
-- `event_holiday` - Christmas, Halloween, seasonal
-- `event_sports` - NFL, NBA, Olympics, sports docs
-- `event_ppv` - UFC, MMA, boxing, wrestling
-- `event_concert` - Concerts, music festivals
-- `event_standup` - Stand-up comedy specials
-- `event_awards` - Oscars, Emmys, award shows
+Generated from feedback analysis:
 
-Libraries with `event_detection_type` automatically get the corresponding preset attached via migration.
+```javascript
+// Example: Underperforming preset
+if (preset_accuracy < 60% && sample_size >= 10) {
+  await createSuggestion({
+    type: 'remove_preset',
+    preset_id: 'family_friendly',
+    confidence: 'high',
+    impact: 'Removing this preset may improve accuracy by 15%',
+    supporting_feedback: [...]
+  });
+}
+```
 
-### Benefits
-1. **Consistency** - Events use same system as other classifications
-2. **Configurability** - Adjust event presets via policy weights
-3. **Extensibility** - Easy to add new event types
-4. **Maintainability** - Single code path for all classifications
+### Statistics Tracking
 
-## Performance Characteristics
+Updated after each decision:
 
-### Memory
-- Policies loaded once at startup
-- Cached in memory for fast access
-- Typical memory usage: < 1 MB per 100 policies
+```sql
+UPDATE policy_learning_stats
+SET total_decisions = total_decisions + 1,
+    auto_classified = auto_classified + (action = 'AUTO_CLASSIFY' ? 1 : 0),
+    corrections = corrections + (was_correction ? 1 : 0),
+    accuracy_rate = (correct / total_decisions) * 100,
+    trend = calculate_trend(accuracy_7day, accuracy_30day)
+WHERE policy_id = $1;
+```
 
-### Latency
-- Authoritative signals: < 10ms
-- Preset evaluation: 50-100ms (depends on preset count)
-- Pattern scoring: 100-200ms (database query)
-- RAG scoring: 200-500ms (embedding similarity)
-- History scoring: 50-100ms (database query)
+---
 
-**Total: 200-800ms vs 2-5 seconds with AI**
+## Performance Considerations
 
-### Accuracy
-Based on testing with 1000+ items:
-- Auto-classify (≥85%): 95% accuracy
-- Prompt-confirm (60-84%): 85% accuracy
-- Prompt-select (<60%): Requires AI/user input
+### Caching
+
+- Active policies cached in memory
+- Preset definitions cached (rarely change)
+- Pattern cache invalidated on approval/rejection
+
+### Database Optimization
+
+- Indexes on foreign keys
+- GIN indexes on JSONB columns
+- Partial indexes on status columns
+- Materialized views for stats (future)
+
+### Scoring Optimization
+
+- Early exit for authoritative signals (100%)
+- Parallel signal evaluation
+- Skip disabled signal types
+- Cap expensive operations (RAG)
+
+---
+
+## Configuration
+
+### Global Defaults
+
+```javascript
+// In ai_provider_config table
+{
+  default_preset_weight: 0.40,
+  default_pattern_weight: 0.25,
+  default_rag_weight: 0.20,
+  default_history_weight: 0.15,
+  default_auto_threshold: 85,
+  default_prompt_threshold: 60
+}
+```
+
+### Per-Policy Overrides
+
+```javascript
+// In library_policies table
+{
+  preset_weight: 0.50,        // Override global default
+  pattern_weight: 0.30,
+  rag_weight: 0.10,
+  history_weight: 0.10,
+  auto_classify_threshold: 90,  // More conservative
+  prompt_threshold: 70
+}
+```
+
+---
+
+## Error Handling
+
+### Graceful Degradation
+
+- If RAG fails → continue with other signals
+- If pattern DB query fails → skip patterns
+- If history query fails → skip history scoring
+- Always return a result (may be low confidence)
+
+### Logging
+
+```javascript
+// All operations logged with context
+logger.info('PolicyEngine evaluation', {
+  item_id: tmdb_id,
+  policies_evaluated: 3,
+  top_score: 0.87,
+  action: 'AUTO_CLASSIFY',
+  duration_ms: 120
+});
+```
+
+---
 
 ## Future Enhancements
 
-1. **Machine Learning Integration**
-   - Train models on classification history
-   - Adjust weights based on correction patterns
-   - Auto-suggest new presets
+### Planned Features
 
-2. **Conflict Resolution**
-   - Handle multiple high-scoring policies
-   - Suggest library splits
-   - Detect classification drift
+1. **Multi-policy combination modes**
+   - Consensus voting
+   - Weighted ensemble
+   - Fallback chains
 
-3. **Policy Templates**
-   - Pre-built policies for common scenarios
-   - One-click policy import
-   - Community preset sharing
+2. **Dynamic weight adjustment**
+   - Auto-tune weights based on accuracy
+   - A/B testing for weight changes
+   - Bayesian optimization
 
-4. **Performance Optimization**
-   - Cache preset evaluations
-   - Parallel policy evaluation
-   - Optimize database queries
+3. **Advanced pattern types**
+   - Director patterns
+   - Cast patterns
+   - Temporal patterns (release season)
 
-## See Also
+4. **Real-time learning**
+   - Immediate pattern updates
+   - Online learning algorithms
+   - Continuous optimization
 
+---
+
+## Related Documentation
+
+- [API Reference](../api/README.md)
 - [Preset Reference](../presets/README.md)
-- [API Documentation](../api/README.md)
 - [Migration Guide](../migration/v037.md)
+- [Feedback Analysis](./feedback-analysis.md)

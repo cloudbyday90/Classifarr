@@ -2,376 +2,443 @@
 
 ## Overview
 
-Content presets are reusable signal definitions that describe what type of content should go into a library. They are the building blocks of the PolicyEngine classification system.
+Content presets are pre-built signal definitions that describe specific types of content. Classifarr ships with **168 system presets** covering genres, ratings, themes, studios, eras, languages, and special content types.
+
+---
 
 ## Preset Categories
 
-Presets are organized into categories for easy browsing:
+### Audience (8 presets)
 
-- **Audience** - Target demographic (family, kids, mature, date night)
-- **Genre** - Genre-based matching (action, comedy, horror, sci-fi)
-- **Events** - Special event content (holidays, sports, concerts)
-- **Quality** - Content quality filters (acclaimed, cult classics, popular)
-- **Era** - Time-period based (classic, modern, golden age)
-- **Format** - Content format (anthology, miniseries, standalone)
+Content rated by target age group and maturity level.
 
-## Event Presets (v0.37.0)
+| Key | Name | Certifications | Description |
+|-----|------|----------------|-------------|
+| `family_friendly` | Family Friendly | G, PG | Safe for all ages |
+| `kids_only` | Kids Only | G, TV-Y, TV-Y7 | Specifically for children |
+| `kids_older` | Kids (Older) | PG, TV-Y7-FV | Ages 7+ |
+| `young_adult` | Young Adult | PG-13, TV-14 | Teens and young adults |
+| `teen` | Teen | PG-13, TV-14 | Teenage audience |
+| `adult_only` | Adult Only | R, NC-17, TV-MA | Mature content |
+| `date_night` | Date Night | PG-13, R | Romantic/entertaining |
+| `background` | Background Viewing | - | Low-attention content |
 
-Event presets replace the legacy `detectEventContent()` system, integrating event detection into the PolicyEngine.
+---
 
-### event_holiday
-**Holiday & Seasonal Content**
+### Genres (60 presets)
 
-Matches Christmas, Halloween, and other seasonal content.
+#### Core Genres (20)
+
+| Key | Name | Genres |
+|-----|------|--------|
+| `action` | Action | Action |
+| `adventure` | Adventure | Adventure |
+| `comedy` | Comedy | Comedy |
+| `drama` | Drama | Drama |
+| `horror` | Horror | Horror |
+| `scifi` | Science Fiction | Science Fiction |
+| `fantasy` | Fantasy | Fantasy |
+| `thriller` | Thriller | Thriller |
+| `mystery` | Mystery | Mystery |
+| `romance` | Romance | Romance |
+| `crime` | Crime | Crime |
+| `animated` | Animated | Animation |
+| `anime` | Anime | Animation + Japanese |
+| `documentary` | Documentary | Documentary |
+| `western` | Western | Western |
+| `musical` | Musical | Music |
+| `war` | War | War |
+| `history` | History | History |
+| `biographical` | Biographical | Biography |
+| `sports` | Sports | Sport |
+
+#### Subgenres (25)
+
+| Key | Name | Description |
+|-----|------|-------------|
+| `action_comedy` | Action Comedy | Action + Comedy blend |
+| `romantic_comedy` | Romantic Comedy | Romance + Comedy |
+| `dark_comedy` | Dark Comedy | Dark humor |
+| `standup` | Stand-up Comedy | Comedy specials |
+| `horror_comedy` | Horror Comedy | Horror + Comedy |
+| `slasher` | Slasher | Slasher horror |
+| `psychological_horror` | Psychological Horror | Mind-bending horror |
+| `supernatural` | Supernatural | Ghosts, demons |
+| `monster` | Monster Movies | Creature features |
+| `zombie` | Zombie | Undead horror |
+| `vampire` | Vampire | Vampire content |
+| `psychological_thriller` | Psychological Thriller | Mind games |
+| `spy` | Spy/Espionage | Secret agents |
+| `heist` | Heist | Robbery plots |
+| `disaster` | Disaster | Natural disasters |
+| `martial_arts` | Martial Arts | Combat action |
+| `noir` | Film Noir | Dark detective |
+| `cyberpunk` | Cyberpunk | Futuristic tech |
+| `space_opera` | Space Opera | Epic space adventure |
+| `post_apocalyptic` | Post-Apocalyptic | After the end |
+| `dystopian` | Dystopian | Oppressive future |
+| `superhero` | Superhero | Comic book heroes |
+| `courtroom` | Courtroom Drama | Legal drama |
+| `medical` | Medical | Hospital drama |
+| `political` | Political | Politics |
+
+#### Special Interest (15)
+
+| Key | Name | Description |
+|-----|------|-------------|
+| `true_crime` | True Crime | Real crime stories |
+| `nature` | Nature | Wildlife, outdoors |
+| `science` | Science | Scientific docs |
+| `travel` | Travel | Travel shows |
+| `food` | Food & Cooking | Culinary |
+| `music_doc` | Music Documentary | Music history |
+| `art_culture` | Art & Culture | Arts, culture |
+| `faith_spiritual` | Faith & Spiritual | Religious |
+| `educational` | Educational | Learning content |
+| `conspiracy` | Conspiracy | Conspiracy theories |
+| `sports_doc` | Sports Documentary | Sports history |
+| `concert` | Concert | Live performances |
+| `behind_scenes` | Behind the Scenes | Making-of |
+| `interview` | Interview | Talk/interview |
+| `essay` | Video Essay | Analysis |
+
+---
+
+### Quality (10 presets)
+
+| Key | Name | Criteria |
+|-----|------|----------|
+| `highly_rated` | Highly Rated | Vote average ≥ 7.5 |
+| `critically_acclaimed` | Critically Acclaimed | Vote average ≥ 8.0 |
+| `popular` | Popular | High vote count |
+| `cult_classic` | Cult Classic | Niche following |
+| `award_winners` | Award Winners | Major awards |
+| `indie` | Independent Films | Indie studios |
+| `blockbuster` | Blockbuster | High budget |
+| `underrated` | Underrated Gems | Low-key quality |
+| `so_bad_good` | So Bad It's Good | Campy fun |
+| `hidden_gems` | Hidden Gems | Vote avg 7.0-8.0, low votes |
+
+---
+
+### Franchise (25 presets)
+
+#### Animation Studios (11)
+
+| Key | Name | Studio |
+|-----|------|--------|
+| `pixar` | Pixar | Pixar Animation Studios |
+| `disney` | Disney Animation | Walt Disney Animation Studios |
+| `ghibli` | Studio Ghibli | Studio Ghibli |
+| `dreamworks` | DreamWorks | DreamWorks Animation |
+| `illumination` | Illumination | Illumination Entertainment |
+| `sony_animation` | Sony Animation | Sony Pictures Animation |
+| `laika` | Laika | Laika |
+| `blue_sky` | Blue Sky | Blue Sky Studios |
+| `marvel_animated` | Marvel Animated | Marvel Animation |
+| `dc_animated` | DC Animated | DC Animation |
+| `nickelodeon` | Nickelodeon | Nickelodeon Movies |
+
+#### Live Action Franchises (14)
+
+| Key | Name | Keywords |
+|-----|------|----------|
+| `marvel_mcu` | Marvel Cinematic Universe | MCU, Avengers |
+| `marvel_other` | Marvel (Non-MCU) | X-Men, Spider-Man |
+| `dc_universe` | DC Universe | Batman, Superman |
+| `star_wars` | Star Wars | Star Wars |
+| `star_trek` | Star Trek | Star Trek |
+| `harry_potter` | Harry Potter | Harry Potter, Wizarding World |
+| `lotr` | Lord of the Rings | LOTR, Middle-earth |
+| `james_bond` | James Bond | 007, Bond |
+| `fast_furious` | Fast & Furious | Fast, Furious |
+| `jurassic` | Jurassic Park/World | Jurassic |
+| `monsterverse` | MonsterVerse | Godzilla, Kong |
+| `conjuring` | The Conjuring Universe | Conjuring, Annabelle |
+| `a24` | A24 Films | A24 studio |
+| `blumhouse` | Blumhouse | Blumhouse Productions |
+
+---
+
+### Temporal (12 presets)
+
+| Key | Name | Year Range |
+|-----|------|------------|
+| `silent_era` | Silent Era | Pre-1930 |
+| `classic_films` | Classic Films | 1930-1960 |
+| `golden_age` | Golden Age | 1960-1979 |
+| `new_hollywood` | New Hollywood | 1970-1989 |
+| `80s` | 80s Classics | 1980-1989 |
+| `90s` | 90s Classics | 1990-1999 |
+| `2000s` | 2000s | 2000-2009 |
+| `2010s` | 2010s | 2010-2019 |
+| `2020s` | 2020s | 2020+ |
+| `retro` | Retro | Pre-2000 |
+| `modern` | Modern | 2000+ |
+| `recent_releases` | Recent Releases | Last 2 years |
+
+---
+
+### Regional (25 presets)
+
+| Key | Name | Language | Studios |
+|-----|------|----------|---------|
+| `hollywood` | Hollywood | en | Major US studios |
+| `british` | British | en | BBC, ITV |
+| `australian` | Australian | en | Australian studios |
+| `canadian` | Canadian | en, fr | CBC, NFB |
+| `english` | English Language | en | - |
+| `bollywood` | Bollywood | hi | Indian studios |
+| `korean` | Korean | ko | Korean studios |
+| `japanese` | Japanese | ja | Japanese studios |
+| `anime_japanese` | Anime | ja | Animation |
+| `chinese` | Chinese | zh | Chinese studios |
+| `hong_kong` | Hong Kong | zh | HK studios |
+| `taiwanese` | Taiwanese | zh | Taiwan studios |
+| `indian` | Indian | hi, ta, te | Indian studios |
+| `spanish` | Spanish | es | Spanish studios |
+| `latin_american` | Latin American | es | Latin studios |
+| `mexican` | Mexican | es | Mexican studios |
+| `brazilian` | Brazilian | pt | Brazilian studios |
+| `french` | French | fr | French studios |
+| `german` | German | de | German studios |
+| `italian` | Italian | it | Italian studios |
+| `scandinavian` | Scandinavian | sv, no, da | Nordic studios |
+| `russian` | Russian | ru | Russian studios |
+| `turkish` | Turkish | tr | Turkish studios |
+| `thai` | Thai | th | Thai studios |
+| `arabic` | Arabic | ar | Middle Eastern studios |
+
+---
+
+### Seasonal (8 presets)
+
+| Key | Name | Keywords |
+|-----|------|----------|
+| `christmas_holiday` | Christmas/Holiday | christmas, holiday, santa |
+| `halloween` | Halloween | halloween, spooky |
+| `thanksgiving` | Thanksgiving | thanksgiving, turkey |
+| `valentines` | Valentine's Day | valentine, love |
+| `easter` | Easter | easter, bunny |
+| `new_years` | New Year's | new year, resolution |
+| `summer` | Summer | summer, beach |
+| `winter` | Winter | winter, snow |
+
+---
+
+### TV-Specific (20 presets)
+
+| Key | Name | Genres | Description |
+|-----|------|--------|-------------|
+| `tv_sitcom` | TV Sitcom | Comedy | Situational comedy |
+| `tv_drama` | TV Drama | Drama | Serialized drama |
+| `tv_procedural` | TV Procedural | Crime, Mystery | Case-of-week |
+| `tv_soap` | TV Soap Opera | Drama, Romance | Daytime soap |
+| `tv_anthology` | TV Anthology | Various | Different stories |
+| `tv_reality` | TV Reality | Reality | Reality shows |
+| `tv_animated` | TV Animated | Animation | Animated series |
+| `tv_anime` | TV Anime | Animation | Japanese anime |
+| `tv_miniseries` | TV Miniseries | Various | Limited series |
+| `tv_variety` | TV Variety | Entertainment | Variety shows |
+| `tv_talk` | TV Talk Show | Talk | Talk shows |
+| `tv_game` | TV Game Show | Game Show | Game shows |
+| `tv_news` | TV News | News | News programs |
+| `tv_kids` | TV Kids | Children | Kids shows |
+| `tv_dating` | TV Dating | Reality, Romance | Dating shows |
+| `tv_cooking` | TV Cooking | Food | Cooking shows |
+| `tv_true_crime` | TV True Crime | Crime, Documentary | True crime |
+| `tv_late_night` | TV Late Night | Comedy, Talk | Late night |
+| `tv_daytime` | TV Daytime | Various | Daytime TV |
+| `tv_documentary` | TV Documentary | Documentary | Doc series |
+
+---
+
+## Signal Types
+
+Each preset defines signals using JSONB:
+
+### Certifications
 
 ```json
 {
-  "keywords": {
-    "require_any": [
-      "christmas", "xmas", "santa", "santa claus", "north pole",
-      "reindeer", "rudolph", "frosty", "snowman", "christmas eve",
-      "yuletide", "noel", "nativity", "scrooge", "grinch", "krampus",
-      "nutcracker", "polar express", "mistletoe", "candy cane",
-      "gingerbread", "halloween", "trick or treat", "haunted",
-      "hanukkah", "chanukah", "kwanzaa", "thanksgiving", "easter",
-      "valentines day", "new years eve"
-    ],
-    "weight": 2.0
-  },
-  "base_confidence": 95
+  "mode": "include",  // or "exclude", "max"
+  "values": ["G", "PG", "PG-13"]
 }
 ```
 
-**Examples:**
-- "Elf" (2003)
-- "A Christmas Story" (1983)
-- "The Nightmare Before Christmas" (1993)
-- "Hocus Pocus" (1993)
+**Modes:**
+- `include`: Must have one of these ratings
+- `exclude`: Must NOT have these ratings
+- `max`: Rating must be at most this level
 
-### event_sports
-**Sports & Athletics**
+---
 
-Matches sports events, documentaries, and athletic competitions.
+### Genres
 
 ```json
 {
-  "keywords": {
-    "require_any": [
-      "nfl", "nba", "mlb", "nhl", "mls", "fifa", "uefa",
-      "premier league", "super bowl", "world series", "stanley cup",
-      "world cup", "championship", "playoffs", "tournament",
-      "olympics", "olympic games", "espn", "sports documentary",
-      "football game", "basketball game", "baseball game",
-      "hockey game", "soccer match", "tennis match",
-      "golf tournament", "motorsports", "nascar", "formula 1",
-      "f1", "grand prix", "marathon", "30 for 30"
-    ],
-    "weight": 2.0
-  },
-  "genres": {
-    "prefer": ["Sport", "Documentary"],
-    "weight": 0.5
-  },
-  "base_confidence": 92
+  "mode": "require_any",  // or "require_all", "prefer", "exclude"
+  "values": ["Action", "Adventure"],
+  "weight": 0.8
 }
 ```
 
-**Examples:**
-- "The Last Dance" (2020)
-- "30 for 30" series
-- "Icarus" (2017)
-- "Drive to Survive" (2019-)
+**Modes:**
+- `require_any`: At least one genre must match
+- `require_all`: All genres must match
+- `prefer`: Boost score if matches
+- `exclude`: Penalty if matches
 
-### event_ppv
-**PPV & Combat Sports**
+---
 
-Matches UFC, MMA, boxing, and wrestling events.
+### Keywords
 
 ```json
 {
-  "keywords": {
-    "require_any": [
-      "ufc", "mma", "ultimate fighting", "bellator", "pride fc",
-      "one championship", "mixed martial arts", "cage fight", "octagon",
-      "boxing", "heavyweight", "middleweight", "welterweight",
-      "title fight", "championship bout", "knockout",
-      "wwe", "wrestling", "wrestlemania", "royal rumble", "summerslam",
-      "aew", "pro wrestling", "smackdown", "pay per view", "ppv",
-      "fight night", "main event"
-    ],
-    "weight": 2.0
-  },
-  "base_confidence": 93
+  "mode": "require_any",  // or "prefer", "exclude"
+  "values": ["superhero", "marvel", "comic"]
 }
 ```
 
-**Examples:**
-- "UFC 300: Pereira vs. Hill"
-- "Tyson vs. Jones Jr."
-- "WrestleMania 39"
+Searches in title, overview, and TMDB keywords.
 
-### event_concert
-**Concert & Live Music**
+---
 
-Matches live concerts, music festivals, and performances.
+### Studios
 
 ```json
 {
-  "keywords": {
-    "require_any": [
-      "concert", "live performance", "live tour", "world tour",
-      "music festival", "coachella", "lollapalooza", "glastonbury",
-      "rock concert", "pop concert", "symphony", "orchestra",
-      "unplugged", "acoustic session", "mtv unplugged",
-      "live album", "concert film", "tour documentary"
-    ],
-    "weight": 2.0
-  },
-  "genres": {
-    "prefer": ["Music", "Documentary"],
-    "weight": 0.5
-  },
-  "base_confidence": 90
+  "mode": "prefer",  // or "require", "exclude"
+  "values": ["Pixar Animation Studios", "Walt Disney Animation Studios"]
 }
 ```
 
-**Examples:**
-- "Taylor Swift: The Eras Tour" (2023)
-- "Metallica: Some Kind of Monster" (2004)
-- "Homecoming: A Film by Beyoncé" (2019)
+Matches production companies.
 
-### event_standup
-**Stand-up Comedy**
+---
 
-Matches comedy specials and stand-up performances.
+### Release Year
 
 ```json
 {
-  "keywords": {
-    "require_any": [
-      "stand-up", "standup", "comedy special", "netflix special",
-      "hbo special", "live at the apollo", "def comedy jam",
-      "comedian", "comedy tour", "comedy central", "roast",
-      "just for laughs", "improv", "one-man show", "one-woman show"
-    ],
-    "weight": 2.0
-  },
-  "genres": {
-    "prefer": ["Comedy"],
-    "weight": 0.8
-  },
-  "base_confidence": 90
+  "min": 2000,
+  "max": 2024,
+  "weight": 0.5
 }
 ```
 
-**Examples:**
-- "Dave Chappelle: Sticks & Stones" (2019)
-- "Bo Burnham: Inside" (2021)
-- "John Mulaney: Kid Gorgeous" (2018)
+---
 
-### event_awards
-**Awards & Ceremonies**
-
-Matches award shows, galas, and red carpet events.
+### Vote Average
 
 ```json
 {
-  "keywords": {
-    "require_any": [
-      "oscars", "academy awards", "emmys", "golden globes", "grammys",
-      "tony awards", "bafta", "mtv awards", "vma", "ama",
-      "billboard awards", "peoples choice", "critics choice",
-      "sag awards", "bet awards", "award ceremony", "award show",
-      "red carpet"
-    ],
-    "weight": 2.0
-  },
-  "base_confidence": 88
+  "min": 7.0,
+  "max": 10.0
 }
 ```
 
-**Examples:**
-- "The 96th Academy Awards" (2024)
-- "The Oscars Red Carpet Show"
-- "Grammy Awards 2024"
+TMDB rating (0-10 scale).
 
-## Using Event Presets
+---
 
-### Automatic Migration
+### Runtime
 
-If your library has `event_detection_type` set (from v0.36.x), the migration will automatically:
-
-1. Create a policy for your library (if none exists)
-2. Attach the corresponding event preset
-3. Set a high weight (1.5) to prioritize event matching
-
-```sql
--- Example: Library with event_detection_type='holiday'
--- Automatically gets event_holiday preset attached
-```
-
-### Manual Configuration
-
-To add event presets to a library:
-
-1. Go to **Libraries** → Select your library → **Edit**
-2. Click **Policy** tab
-3. Under **Content Presets**, click **Add Preset**
-4. Search for "event_" to see all event presets
-5. Select the preset and set weight (recommended: 1.5-2.0)
-6. Click **Save**
-
-### Combining Event Presets
-
-You can attach multiple event presets to the same library:
-
-**Example: Sports & Holiday Library**
-```
-Policy: "Sports & Specials"
-├─ event_sports (weight: 1.5)
-├─ event_holiday (weight: 1.5)
-└─ event_awards (weight: 1.0)
-```
-
-The policy will match any content that triggers **any** of these presets.
-
-### Adjusting Confidence
-
-Event presets have a `base_confidence` that represents their typical confidence level. You can adjust the final confidence by:
-
-1. **Preset Weight** - Multiply the preset score
-   - 2.0 = Very important, strongly prioritize
-   - 1.5 = Important, prioritize
-   - 1.0 = Normal priority
-   - 0.5 = Low priority, only as tiebreaker
-
-2. **Policy Thresholds**
-   - `auto_classify_threshold` (default: 85) - Auto-classify if score ≥ this
-   - `prompt_threshold` (default: 60) - Prompt user if score ≥ this
-
-## Preset Signal Configuration
-
-All event presets use keyword-based matching with the `require_any` mode, which means:
-
-- **require_any**: At least one keyword must match
-- Keywords are matched case-insensitively
-- Searches in: title, overview, keywords, genres
-
-### Scoring Logic
-
-```javascript
-// Pseudo-code for keyword scoring
-const itemText = [title, overview, ...keywords, ...genres].join(' ').toLowerCase();
-const matchingKeywords = preset.keywords.require_any.filter(keyword =>
-  itemText.includes(keyword.toLowerCase())
-);
-
-if (matchingKeywords.length > 0) {
-  score = base_confidence;  // 88-95% depending on preset
-} else {
-  score = 0;  // No match
-}
-```
-
-## Migration from detectEventContent()
-
-### Before (v0.36.x)
-```javascript
-// Hardcoded in classification.js
-const eventMatch = await this.detectEventContent(metadata, libraries);
-if (eventMatch) {
-  return {
-    library: eventMatch.library,
-    confidence: eventMatch.confidence,
-    method: 'event_detection',
-    eventType: eventMatch.eventType
-  };
-}
-```
-
-### After (v0.37.0)
-```javascript
-// Evaluated via PolicyEngine
-const policyResult = await policyEngine.evaluateItem(metadata);
-if (policyResult.action === 'auto_classify') {
-  return {
-    library: matchedLibrary,
-    confidence: policyResult.confidence,
-    method: 'policy_auto',
-    reason: `Policy: ${policyResult.library.policy_name}`
-  };
-}
-```
-
-### Benefits
-
-1. **Unified System** - Events use same flow as all other classifications
-2. **Configurable** - Adjust keywords, weights, thresholds via UI
-3. **Extensible** - Easy to add new event types or modify existing
-4. **Transparent** - See full scoring breakdown in logs
-
-## Creating Custom Event Presets
-
-You can create your own event presets via the UI:
-
-1. Go to **Settings** → **Content Presets**
-2. Click **Create Preset**
-3. Set:
-   - **Name**: "Custom Event"
-   - **Category**: "events"
-   - **Icon**: Choose an emoji
-   - **Description**: What it matches
-4. Configure signals:
 ```json
 {
-  "keywords": {
-    "require_any": ["keyword1", "keyword2", "keyword3"],
-    "weight": 2.0
-  },
-  "genres": {
-    "prefer": ["Documentary"],
-    "weight": 0.5
-  },
-  "base_confidence": 90
+  "min": 60,
+  "max": 180
 }
 ```
-5. Click **Save**
-6. Attach to your library's policy
 
-## Troubleshooting
+Length in minutes.
 
-### Event not being detected
+---
 
-**Check:**
-1. Is the preset attached to the library's policy?
-2. Is the preset weight high enough? (Try 1.5-2.0)
-3. Are the keywords in the title, overview, or metadata keywords?
-4. Is the policy enabled and active?
+### Language
 
-**Debug:**
-```sql
--- Check if preset is attached
-SELECT lp.name, cp.name, pp.weight
-FROM library_policies lp
-JOIN policy_presets pp ON pp.policy_id = lp.id
-JOIN content_presets cp ON cp.id = pp.preset_id
-WHERE lp.library_id = YOUR_LIBRARY_ID
-  AND cp.category = 'events';
+```json
+{
+  "mode": "require",  // or "prefer", "exclude"
+  "values": ["en", "ja"]
+}
 ```
 
-### Multiple events matching
+ISO 639-1 language codes.
 
-If multiple event presets match (e.g., "Super Bowl Christmas Special"), the PolicyEngine will:
-1. Evaluate all policies
-2. Rank by final score
-3. Return the highest-scoring library
+---
 
-You can control priority via:
-- Preset weights (higher weight = higher priority)
-- Policy priority (libraries table)
+### Media Type
 
-## See Also
+```json
+{
+  "mode": "require",
+  "value": "movie"  // or "tv"
+}
+```
 
-- [PolicyEngine Architecture](../architecture/policy-engine.md)
+---
+
+## Using Presets
+
+### In Policy Builder
+
+1. Select presets from categorized picker
+2. Adjust per-preset weight (0.0-2.0)
+3. Presets combine based on policy's `combination_mode`
+
+### Combination Modes
+
+- **best_match**: Use highest-scoring preset
+- **average**: Average all preset scores
+- **weighted_average**: Weighted average by preset weight
+- **require_all**: All presets must score >0
+
+---
+
+## Creating Custom Presets
+
+Users can create custom presets via the UI or API:
+
+```bash
+POST /api/presets
+{
+  "key": "my_custom_preset",
+  "name": "My Custom Preset",
+  "category": "custom",
+  "user_id": 1,
+  "signals": {
+    "genres": {
+      "mode": "require_any",
+      "values": ["Sci-Fi", "Thriller"]
+    }
+  }
+}
+```
+
+---
+
+## Preset Weight Tuning
+
+Adjust individual preset weights to boost/reduce their influence:
+
+- **1.0**: Normal weight (default)
+- **0.5**: Half influence
+- **1.5**: 50% boost
+- **0.0**: Disabled (ignore this preset)
+
+**Example:**
+
+If `family_friendly` preset scores 80% and has weight 1.5:
+
+```
+Final contribution = 80% × 1.5 = 120% (capped at 100%)
+```
+
+---
+
+## Related Documentation
+
+- [Policy Engine Architecture](../architecture/policy-engine.md)
+- [Policies API](../api/policies.md)
 - [Migration Guide](../migration/v037.md)
-- [API Documentation](../api/README.md)
