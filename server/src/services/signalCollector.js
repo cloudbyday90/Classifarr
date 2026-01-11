@@ -288,17 +288,10 @@ class SignalCollector {
             logger.debug('Added pattern signals', { count: patternSignals.length });
         }
 
-        // 4. Event Detection Signal (holidays, sports, etc.)
-        if (detectors.detectEventContent) {
-            const eventMatch = await detectors.detectEventContent(metadata, libraries);
-            if (eventMatch) {
-                this.addSignal(SIGNAL_TYPES.EVENT_DETECTION, {
-                    eventType: eventMatch.eventType,
-                    icon: eventMatch.icon,
-                    reason: eventMatch.reason,
-                }, eventMatch.confidence, eventMatch.library);
-            }
-        }
+        // 4. Event Detection Signal - DEPRECATED in v0.37.0
+        // Event detection now handled by PolicyEngine via content_presets in 'events' category
+        // Keeping this code for backward compatibility but skipping execution
+        // if (detectors.detectEventContent) { ... }
 
         // 5. Custom Rule Signals (library rules)
         if (detectors.checkLibraryRules) {
