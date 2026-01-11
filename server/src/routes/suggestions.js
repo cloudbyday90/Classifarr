@@ -1,6 +1,6 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2025 cloudbyday90
+ * Copyright (C) 2026 cloudbyday90
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
