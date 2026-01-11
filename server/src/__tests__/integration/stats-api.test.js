@@ -50,12 +50,12 @@ describe('Stats API Integration Tests', () => {
         await db.query(`
             INSERT INTO policy_feedback_log (
                 tmdb_id, media_type, title, item_metadata, prompt_type,
-                selected_library_id, selected_policy_id, was_correction
+                selected_library_id, selected_policy_id, was_correction, prompted_at
             ) VALUES
-            (12345, 'movie', 'Test Movie 1', '{}', 'auto_classify', $1, $2, false),
-            (12346, 'movie', 'Test Movie 2', '{}', 'auto_classify', $1, $2, false),
-            (12347, 'movie', 'Test Movie 3', '{}', 'prompt_confirm', $1, $2, true),
-            (12348, 'movie', 'Test Movie 4', '{}', 'auto_classify', $1, $2, false)
+            (12345, 'movie', 'Test Movie 1', '{}', 'auto_classify', $1, $2, false, NOW() - INTERVAL '1 day'),
+            (12346, 'movie', 'Test Movie 2', '{}', 'auto_classify', $1, $2, false, NOW() - INTERVAL '2 days'),
+            (12347, 'movie', 'Test Movie 3', '{}', 'prompt_confirm', $1, $2, true, NOW() - INTERVAL '3 days'),
+            (12348, 'movie', 'Test Movie 4', '{}', 'auto_classify', $1, $2, false, NOW() - INTERVAL '4 days')
         `, [testLibraryId, testPolicyId]);
 
         // Create initial stats

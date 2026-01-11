@@ -9,9 +9,9 @@
     <div class="header">
       <h1>Policy Statistics</h1>
       <div class="time-filter">
-        <button :class="{ active: timeRange === '7d' }" @click="timeRange = '7d'">7 Days</button>
-        <button :class="{ active: timeRange === '30d' }" @click="timeRange = '30d'">30 Days</button>
-        <button :class="{ active: timeRange === 'all' }" @click="timeRange = 'all'">All Time</button>
+        <button :class="{ active: timeRange === '7d' }" :aria-pressed="timeRange === '7d'" @click="timeRange = '7d'">7 Days</button>
+        <button :class="{ active: timeRange === '30d' }" :aria-pressed="timeRange === '30d'" @click="timeRange = '30d'">30 Days</button>
+        <button :class="{ active: timeRange === 'all' }" :aria-pressed="timeRange === 'all'" @click="timeRange = 'all'">All Time</button>
       </div>
     </div>
 
@@ -95,11 +95,13 @@ export default {
   setup() {
     const timeRange = ref('7d');
     const overview = ref({});
-    const policiesWithStats = ref([]);
+    const policiesWithStats = ref({});
     const liveFeed = ref([]);
     const alerts = ref([]);
     const selectedPolicy = ref(null);
     let refreshInterval = null;
+    const MAX_CONSECUTIVE_ERRORS = 3;
+    let consecutiveErrors = 0;
 
     const accuracyTrend = computed(() => {
       if (!overview.value.avg_accuracy) return null;
@@ -114,55 +116,59 @@ export default {
     };
 
     const loadOverview = async () => {
-      try {
-        const response = await fetch('/api/stats/overview', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        });
-        if (response.ok) {
-          overview.value = await response.json();
+      const response = await fetch('/api/stats/overview', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          console.error('Authentication failed. Please log in again.');
+          return;
         }
-      } catch (error) {
-        console.error('Failed to load overview:', error);
+        throw new Error(`HTTP ${response.status}`);
       }
+      overview.value = await response.json();
     };
 
     const loadPolicies = async () => {
-      try {
-        const response = await fetch('/api/stats/policies', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        });
-        if (response.ok) {
-          policiesWithStats.value = await response.json();
+      const response = await fetch('/api/stats/policies', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          console.error('Authentication failed. Please log in again.');
+          return;
         }
-      } catch (error) {
-        console.error('Failed to load policies:', error);
+        throw new Error(`HTTP ${response.status}`);
       }
+      policiesWithStats.value = await response.json();
     };
 
     const loadLiveFeed = async () => {
-      try {
-        const response = await fetch('/api/stats/live-feed?limit=20', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        });
-        if (response.ok) {
-          liveFeed.value = await response.json();
+      const response = await fetch('/api/stats/live-feed?limit=20', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          console.error('Authentication failed. Please log in again.');
+          return;
         }
-      } catch (error) {
-        console.error('Failed to load live feed:', error);
+        throw new Error(`HTTP ${response.status}`);
       }
+      liveFeed.value = await response.json();
     };
 
     const loadAlerts = async () => {
-      try {
-        const response = await fetch('/api/stats/alerts', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        });
-        if (response.ok) {
-          alerts.value = await response.json();
+      const response = await fetch('/api/stats/alerts', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      });
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          console.error('Authentication failed. Please log in again.');
+          return;
         }
-      } catch (error) {
-        console.error('Failed to load alerts:', error);
+        throw new Error(`HTTP ${response.status}`);
       }
+      alerts.value = await response.json();
     };
 
     const showPolicyDetails = (policy) => {
@@ -178,30 +184,54 @@ export default {
       }
     };
 
-    const loadAllData = () => {
-      loadOverview();
-      loadPolicies();
-      loadLiveFeed();
-      loadAlerts();
+    const loadAllData = async () => {
+      try {
+        await Promise.all([
+          loadOverview(),
+          loadPolicies(),
+          loadLiveFeed(),
+          loadAlerts()
+        ]);
+        consecutiveErrors = 0;
+      } catch (error) {
+        consecutiveErrors += 1;
+        console.error('Failed to load policy stats dashboard data', error);
+
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS && refreshInterval) {
+          console.warn('Too many consecutive errors. Stopping auto-refresh.');
+          clearInterval(refreshInterval);
+          refreshInterval = null;
+        }
+      }
     };
 
     onMounted(() => {
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+          }
+        } else if (document.visibilityState === 'visible' && !refreshInterval) {
+          loadAllData();
+          refreshInterval = setInterval(loadAllData, 30000);
+        }
+      };
+
       loadAllData();
       
       // Auto-refresh every 30 seconds
       refreshInterval = setInterval(loadAllData, 30000);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
     });
 
     onUnmounted(() => {
       if (refreshInterval) {
         clearInterval(refreshInterval);
+        refreshInterval = null;
       }
+      document.removeEventListener('visibilitychange', () => {});
     });
-
-    // Watch is not used in this implementation but keeping the import for potential future use
-    // watch(timeRange, () => {
-    //   loadAllData();
-    // });
 
     return {
       timeRange,

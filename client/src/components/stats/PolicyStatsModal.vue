@@ -9,7 +9,7 @@
     <div class="modal stats-modal">
       <div class="modal-header">
         <h2>{{ policy.name }} - Statistics</h2>
-        <button @click="$emit('close')" class="btn-close">×</button>
+        <button @click="$emit('close')" class="btn-close" aria-label="Close modal">×</button>
       </div>
 
       <div class="modal-body">
@@ -115,8 +115,8 @@ export default {
     const stats = ref({});
     const comparison = ref([]);
 
-    const current = computed(() => comparison.value.find(c => c.period === 'last_7_days') || {});
-    const previous = computed(() => comparison.value.find(c => c.period === 'previous_7_days') || {});
+    const lastWeek = computed(() => comparison.value.find(c => c.period === 'last_7_days') || {});
+    const previousWeek = computed(() => comparison.value.find(c => c.period === 'previous_7_days') || {});
 
     const formatPercent = (value) => {
       if (value === null || value === undefined) return 'N/A';
@@ -138,16 +138,16 @@ export default {
       return `${(count / maxCount) * 100}%`;
     };
 
-    const getChangeClass = (current, previous) => {
-      if (!current || !previous) return '';
-      if (current > previous) return 'positive';
-      if (current < previous) return 'negative';
+    const getChangeClass = (currentVal, previousVal) => {
+      if (currentVal == null || previousVal == null) return '';
+      if (currentVal > previousVal) return 'positive';
+      if (currentVal < previousVal) return 'negative';
       return '';
     };
 
-    const formatChange = (current, previous, isPercent = false) => {
-      if (!current || !previous) return '-';
-      const diff = current - previous;
+    const formatChange = (currentVal, previousVal, isPercent = false) => {
+      if (currentVal == null || previousVal == null) return '-';
+      const diff = currentVal - previousVal;
       const sign = diff > 0 ? '+' : '';
       if (isPercent) {
         return `${sign}${diff.toFixed(1)}%`;
@@ -189,8 +189,8 @@ export default {
     return {
       stats,
       comparison,
-      current,
-      previous,
+      current: lastWeek,
+      previous: previousWeek,
       formatPercent,
       formatPromptType,
       getBarWidth,

@@ -12,7 +12,7 @@
         {{ alert.severity === 'warning' ? '⚠️' : 'ℹ️' }}
       </span>
       <span class="alert-message">{{ alert.message }}</span>
-      <button @click="$emit('dismiss', alert)" class="alert-dismiss">×</button>
+      <button @click="$emit('dismiss', alert)" class="alert-dismiss" aria-label="Dismiss alert">×</button>
     </div>
   </div>
 </template>

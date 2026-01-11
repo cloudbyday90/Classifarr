@@ -94,6 +94,30 @@ router.get('/daily', async (req, res) => {
  * /api/stats/overview:
  *   get:
  *     summary: Get global policy stats overview
+ *     responses:
+ *       200:
+ *         description: Global policy statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total_policies:
+ *                   type: integer
+ *                 total_decisions:
+ *                   type: integer
+ *                 avg_accuracy:
+ *                   type: number
+ *                   format: float
+ *                 improving_count:
+ *                   type: integer
+ *                 declining_count:
+ *                   type: integer
+ *                 total_auto_classified:
+ *                   type: integer
+ *                 auto_rate:
+ *                   type: number
+ *                   format: float
  */
 router.get('/overview', async (req, res) => {
   try {
@@ -110,9 +134,15 @@ router.get('/overview', async (req, res) => {
 
     const overview = result.rows[0] || {};
     
-    // Calculate auto rate
-    if (overview.total_decisions && overview.total_auto_classified) {
-      overview.auto_rate = overview.total_auto_classified / overview.total_decisions;
+    // Normalize numeric fields
+    const totalDecisions = Number(overview.total_decisions) || 0;
+    const totalAutoClassified = Number(overview.total_auto_classified) || 0;
+    overview.total_decisions = totalDecisions;
+    overview.total_auto_classified = totalAutoClassified;
+
+    // Calculate auto rate safely, avoiding division by zero
+    if (totalDecisions > 0 && totalAutoClassified > 0) {
+      overview.auto_rate = totalAutoClassified / totalDecisions;
     } else {
       overview.auto_rate = 0;
     }
@@ -126,18 +156,65 @@ router.get('/overview', async (req, res) => {
 
 /**
  * @swagger
- * /api/stats/policies/:id:
+ * /api/stats/policies/{id}:
  *   get:
  *     summary: Get detailed stats for a policy
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Policy identifier
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Detailed policy statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 policy_id:
+ *                   type: integer
+ *                 total_decisions:
+ *                   type: integer
+ *                 accuracy_rate:
+ *                   type: number
+ *                   format: float
+ *                 time_series:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 prompt_breakdown:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       prompt_type:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ *                       accuracy:
+ *                         type: number
+ *       404:
+ *         description: Policy stats not found
+ *       500:
+ *         description: Server error
  */
 router.get('/policies/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Validate policy ID
+    const policyId = parseInt(id, 10);
+    if (!Number.isFinite(policyId) || !Number.isInteger(policyId) || policyId <= 0) {
+      return res.status(400).json({ error: 'Invalid policy ID' });
+    }
+
     // Get learning stats
     const stats = await db.query(`
       SELECT * FROM policy_learning_stats WHERE policy_id = $1
-    `, [id]);
+    `, [policyId]);
 
     if (stats.rows.length === 0) {
       return res.status(404).json({ error: 'Policy stats not found' });
@@ -157,7 +234,7 @@ router.get('/policies/:id', async (req, res) => {
       AND prompted_at >= NOW() - INTERVAL '30 days'
       GROUP BY DATE(prompted_at)
       ORDER BY date
-    `, [id]);
+    `, [policyId]);
 
     // Get breakdown by prompt type
     const promptBreakdown = await db.query(`
@@ -169,7 +246,7 @@ router.get('/policies/:id', async (req, res) => {
       WHERE selected_policy_id = $1
       AND prompted_at >= NOW() - INTERVAL '30 days'
       GROUP BY prompt_type
-    `, [id]);
+    `, [policyId]);
 
     res.json({
       ...stats.rows[0],
@@ -187,13 +264,60 @@ router.get('/policies/:id', async (req, res) => {
  * /api/stats/live-feed:
  *   get:
  *     summary: Get recent activity feed
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Maximum number of items to return
+ *     responses:
+ *       200:
+ *         description: Recent activity feed items
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   type:
+ *                     type: string
+ *                     enum: [decision, pattern, suggestion]
+ *                   id:
+ *                     type: integer
+ *                   title:
+ *                     type: string
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
+ *                   was_correction:
+ *                     type: boolean
+ *                   policy_name:
+ *                     type: string
+ *                   library_name:
+ *                     type: string
  */
 router.get('/live-feed', async (req, res) => {
   try {
-    const { limit = 20 } = req.query;
+    // Validate and sanitize limit parameter
+    const DEFAULT_LIMIT = 20;
+    const MAX_LIMIT = 100;
+    const rawLimit = req.query.limit;
 
+    let limit = DEFAULT_LIMIT;
+    if (rawLimit !== undefined) {
+      const parsed = parseInt(rawLimit, 10);
+      if (Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 1) {
+        limit = Math.min(parsed, MAX_LIMIT);
+      }
+    }
+
+    // Use CTE for better query optimization
     const feed = await db.query(`
-      (
+      WITH recent_decisions AS (
         SELECT 
           'decision' as type,
           pfl.id,
@@ -207,9 +331,8 @@ router.get('/live-feed', async (req, res) => {
         JOIN libraries l ON pfl.selected_library_id = l.id
         ORDER BY pfl.prompted_at DESC
         LIMIT $1
-      )
-      UNION ALL
-      (
+      ),
+      recent_patterns AS (
         SELECT 
           'pattern' as type,
           dp.id,
@@ -223,9 +346,8 @@ router.get('/live-feed', async (req, res) => {
         WHERE dp.created_at >= NOW() - INTERVAL '7 days'
         ORDER BY dp.created_at DESC
         LIMIT $1
-      )
-      UNION ALL
-      (
+      ),
+      recent_suggestions AS (
         SELECT 
           'suggestion' as type,
           pts.id,
@@ -240,6 +362,11 @@ router.get('/live-feed', async (req, res) => {
         ORDER BY pts.created_at DESC
         LIMIT $1
       )
+      SELECT * FROM recent_decisions
+      UNION ALL
+      SELECT * FROM recent_patterns
+      UNION ALL
+      SELECT * FROM recent_suggestions
       ORDER BY created_at DESC
       LIMIT $1
     `, [limit]);
@@ -256,6 +383,28 @@ router.get('/live-feed', async (req, res) => {
  * /api/stats/alerts:
  *   get:
  *     summary: Get abnormal metrics alerts
+ *     responses:
+ *       200:
+ *         description: List of active alerts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   type:
+ *                     type: string
+ *                     enum: [declining_accuracy, high_corrections, pending_suggestions]
+ *                   severity:
+ *                     type: string
+ *                     enum: [warning, info]
+ *                   policy_id:
+ *                     type: integer
+ *                   policy_name:
+ *                     type: string
+ *                   message:
+ *                     type: string
  */
 router.get('/alerts', async (req, res) => {
   try {
@@ -292,7 +441,7 @@ router.get('/alerts', async (req, res) => {
     `, [ALERT_THRESHOLDS.HIGH_CORRECTION_RATE_PERCENT]);
 
     for (const policy of highCorrections.rows) {
-      const correctionRate = parseFloat(policy.correction_rate) || 0;
+      const correctionRate = policy.correction_rate || 0;
       alerts.push({
         type: 'high_corrections',
         severity: 'warning',
@@ -331,13 +480,47 @@ router.get('/alerts', async (req, res) => {
 
 /**
  * @swagger
- * /api/stats/policies/:id/compare:
+ * /api/stats/policies/{id}/compare:
  *   get:
  *     summary: Compare policy performance across time periods
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Policy identifier
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Period comparison data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   period:
+ *                     type: string
+ *                     enum: [last_7_days, previous_7_days]
+ *                   decisions:
+ *                     type: integer
+ *                   accuracy:
+ *                     type: number
+ *                     format: float
+ *                   auto_rate:
+ *                     type: number
+ *                     format: float
  */
 router.get('/policies/:id/compare', async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Validate policy ID
+    const policyId = parseInt(id, 10);
+    if (!Number.isFinite(policyId) || !Number.isInteger(policyId) || policyId <= 0) {
+      return res.status(400).json({ error: 'Invalid policy ID' });
+    }
 
     // Last 7 days vs previous 7 days
     const comparison = await db.query(`
@@ -361,7 +544,7 @@ router.get('/policies/:id/compare', async (req, res) => {
       WHERE selected_policy_id = $1
       AND prompted_at >= NOW() - INTERVAL '14 days'
       AND prompted_at < NOW() - INTERVAL '7 days'
-    `, [id]);
+    `, [policyId]);
 
     res.json(comparison.rows);
   } catch (error) {
