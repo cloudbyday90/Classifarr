@@ -41,6 +41,7 @@ const confidenceRouter = require('./confidence');
 const ragRouter = require('./rag');
 const patternsRouter = require('./patterns');
 const feedbackRouter = require('./feedback');
+const promptsRouter = require('./prompts');
 
 const router = express.Router();
 
@@ -69,6 +70,7 @@ router.use('/confidence', confidenceRouter);
 router.use('/rag', ragRouter);
 router.use('/patterns', patternsRouter);
 router.use('/feedback', feedbackRouter);
+router.use('/prompts', promptsRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
@@ -88,6 +90,7 @@ router.get('/', (req, res) => {
       clarifications: '/api/clarifications',
       plex: '/api/plex',
       feedback: '/api/feedback',
+      prompts: '/api/prompts',
       docs: '/api/docs',
     },
   });

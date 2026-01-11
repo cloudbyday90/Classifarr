@@ -85,6 +85,41 @@ This release implements the complete Policy-Driven Classification Engine, replac
     - `groupByMetadataField(feedback, field)` - Groups feedback by metadata attributes
     - `extractSignificantPatterns(groups, type, minCount)` - Filters patterns by significance threshold
 
+#### PromptBuilder Service
+- **New service:** `server/src/services/promptBuilder.js` - Context-rich prompt generation for Discord and web UI
+  - **Main entry point:** `buildPrompt(item, evaluationResult)` - Generates intelligent prompts with explanations
+  - **Prompt type determination:** `determinePromptType(evaluationResult)` - Selects appropriate prompt type based on context
+  - **Prompt types:**
+    - `buildLowConfidencePrompt()` - Explains uncertainty with matching/conflicting/missing signals
+    - `buildAIRejectionPrompt()` - Shows AI validation reasoning and alternative suggestions
+    - `buildCloseRacePrompt()` - Compares multiple similar candidates with key differences
+    - `buildNewDiscoveryPrompt()` - Handles unknown studios/collections with best guesses
+    - `buildConfirmationPrompt()` - Explains learned patterns and future impact
+    - `buildStandardPrompt()` - Default prompt for general cases
+  - **Batch operations:** `buildBatchSummary(items)` - Groups multiple pending items by confidence level
+  - **Tuning suggestions:** `buildTuningSuggestionPrompt(suggestion)` - Formats policy tuning recommendations
+  - **Output formatting:**
+    - `formatForDiscord(prompt)` - Discord embed format with action buttons and select menus
+    - `formatForWeb(prompt)` - Web UI format with interactive elements
+  - **User interaction:**
+    - `buildReasonOptions(item, evaluation)` - Generates contextual reason checkboxes (genre, studio, rating, keywords, collection, custom)
+    - `buildPatternOptions(item, evaluation)` - Creates pattern learning options (remember studio, keyword, collection)
+  - **Signal analysis:** Analyzes and categorizes signals as matching, conflicting, or missing
+  - **Key differences:** Identifies differentiating factors between close candidates
+  - **Impact description:** Explains how user choices affect future classifications
+
+#### PromptBuilder API Routes
+- **New routes:** `server/src/routes/prompts.js` - API endpoints for prompt queue and response handling
+  - `GET /api/prompts/pending` - Get pending classification prompts queue with pagination
+  - `GET /api/prompts/:id` - Get specific prompt details with rich context and explanations
+  - `POST /api/prompts/:id/respond` - Submit prompt response with reasons and pattern actions
+    - Records feedback to policy_feedback_log
+    - Updates classification_history status
+    - Creates discovered_patterns from user pattern actions
+    - Determines if response was a correction
+  - `GET /api/prompts/batch` - Get batch summary grouped by confidence level and prompt type
+- **Integration:** Registered prompts router in `server/src/routes/api.js`
+
 #### FeedbackAnalysis API Routes
 - **New routes:** `server/src/routes/feedback.js` - API endpoints for feedback and policy learning
   - `POST /api/feedback` - Record a feedback event (requires authenticated user with valid userId)
@@ -106,6 +141,13 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Logs policy decisions for observability
 
 #### Testing
+- **New test suite:** `server/src/__tests__/integration/prompt-builder.test.js` - Comprehensive tests for prompt generation
+  - **Prompt type determination:** Tests for all 6 prompt types (low_confidence, ai_rejection, close_race, new_discovery, confirmation, standard)
+  - **Prompt building:** Tests for each prompt type with realistic data
+  - **Batch operations:** Tests batch summary grouping by prompt type
+  - **Formatting:** Tests Discord and web UI formatting
+  - **User interaction:** Tests reason options and pattern options generation
+  - Validates contextual option generation based on item metadata
 - **New test suite:** `server/src/__tests__/integration/policyEngine.test.js` with 27 comprehensive tests
   - **Core functionality:** Policy retrieval, authoritative signals, policy evaluation
   - **Signal scoring:** All 9 signal types tested (certifications, genres, keywords, studios, year, rating, runtime, language, media_type)
