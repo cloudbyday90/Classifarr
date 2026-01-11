@@ -342,8 +342,14 @@ class ClassificationService {
    * Detect event/special content from metadata
    * Covers: holidays, sports, PPV/combat, concerts, awards shows
    * Returns matched library and event type for detailed classification
+   * 
+   * @deprecated since v0.37.0 - Event detection migrated to PolicyEngine presets
+   * This method is kept for backward compatibility but is no longer called in the classification flow.
+   * Event types are now handled via content_presets in the 'events' category.
+   * See migration 046_event_detection_presets.sql
    */
   async detectEventContent(metadata, libraries) {
+    logger.warn('detectEventContent is deprecated - event detection now handled by PolicyEngine presets');
     const textToSearch = [
       metadata.title || '',
       metadata.overview || '',
@@ -778,24 +784,8 @@ class ClassificationService {
       }
     }
 
-    // Step -0.5: Detect event/special content (holidays, sports, PPV, concerts, awards)
-    const eventMatch = await this.detectEventContent(metadata, libraries);
-    if (eventMatch) {
-      logger.info('Event content detected', {
-        title: metadata.title,
-        eventType: eventMatch.eventType,
-        library: eventMatch.library.name
-      });
-      return {
-        library: eventMatch.library,
-        confidence: eventMatch.confidence,
-        method: 'event_detection',
-        reason: `${eventMatch.reason} (${eventMatch.eventType})`,
-        eventType: eventMatch.eventType,
-        eventIcon: eventMatch.icon,
-        libraries: libraries,
-      };
-    }
+    // Step -0.5: Event detection now handled by PolicyEngine via event presets (v0.37.0)
+    // Legacy detectEventContent() removed - event types are now content_presets in the 'events' category
 
     // Step -0.25: Check library rules (user-defined rating/genre/keyword rules)
     const ruleMatch = await this.checkLibraryRules(metadata, libraries);
@@ -882,7 +872,8 @@ class ClassificationService {
       const policyResult = await policyEngine.evaluateItem(metadata);
       
       if (policyResult.action === 'auto_classify' && policyResult.library) {
-        logger.info('PolicyEngine auto-classified', {
+        // HIGH CONFIDENCE (≥85%) - Skip AI entirely, trust PolicyEngine
+        logger.info('PolicyEngine auto-classified (AI skipped)', {
           title: metadata.title,
           library: policyResult.library.library_name,
           confidence: policyResult.confidence
@@ -897,28 +888,58 @@ class ClassificationService {
         return {
           library: matchedLibrary,
           confidence: policyResult.confidence,
-          method: policyResult.method,
+          method: 'policy_auto',
           reason: `Policy: ${policyResult.library.policy_name}`,
           libraries: libraries,
           policyResult: policyResult, // Include for logging/debugging
         };
       } else if (policyResult.action === 'prompt_confirm' && policyResult.library) {
-        // Policy suggests a library with medium confidence - continue to verify with AI
-        logger.info('PolicyEngine suggests confirmation needed', {
+        // MEDIUM CONFIDENCE (60-84%) - Skip AI, prompt user with PolicyEngine context
+        logger.info('PolicyEngine suggests confirmation (AI skipped)', {
           title: metadata.title,
           library: policyResult.library.library_name,
           confidence: policyResult.confidence
         });
-        // Store policy result for later use in AI context
-        metadata.policyResult = policyResult;
+        const matchedLibrary = libraries.find(l => l.id === policyResult.library.library_id);
+        
+        // Build clarification from policy breakdown
+        const policyQuestion = {
+          problem_summary: `Confirm: ${policyResult.library.policy_name}`,
+          why_uncertain: `Confidence ${policyResult.confidence}% - below auto-classify threshold`,
+          question: `Should "${metadata.title}" go to ${matchedLibrary?.name}?`,
+          options: [
+            { label: `Yes, ${matchedLibrary?.name}`, value: 'confirm', library_id: matchedLibrary?.id },
+            ...policyResult.ranked.slice(1, 3).map(r => ({
+              label: r.library_name,
+              value: `alt_${r.library_id}`,
+              library_id: r.library_id
+            }))
+          ],
+          signal_breakdown: policyResult.breakdown,
+          calculated_confidence: policyResult.confidence,
+        };
+        
+        return {
+          library: matchedLibrary,
+          confidence: policyResult.confidence,
+          method: 'policy_prompt',
+          reason: `Policy suggests: ${policyResult.library.policy_name}`,
+          needs_clarification: true,
+          clarification: policyQuestion,
+          pending_reason: policyQuestion.problem_summary,
+          policy_question: policyQuestion,
+          libraries: libraries,
+          policyResult: policyResult,
+        };
       } else if (policyResult.action === 'prompt_select' && policyResult.ranked.length > 0) {
-        // Policy has suggestions but needs user selection
-        logger.info('PolicyEngine suggests user selection', {
+        // LOW CONFIDENCE (<60%) - Continue to AI for help
+        logger.info('PolicyEngine needs AI assistance', {
           title: metadata.title,
           topLibrary: policyResult.ranked[0]?.library_name,
           confidence: policyResult.confidence
         });
         metadata.policyResult = policyResult;
+        // Falls through to legacy signal collection and AI
       }
     } catch (policyError) {
       logger.warn('PolicyEngine evaluation failed, falling back to legacy signals', {
@@ -932,13 +953,7 @@ class ClassificationService {
     const signalCollector = new SignalCollector(metadata.tmdb_id, metadata.media_type);
 
     // Add detected signals
-    if (eventMatch) {
-      signalCollector.addSignal(SIGNAL_TYPES.EVENT_DETECTION,
-        eventMatch.library,
-        eventMatch.confidence,
-        { eventType: eventMatch.eventType }
-      );
-    }
+    // Note: eventMatch removed in v0.37.0 - event detection now handled by PolicyEngine presets
 
     if (ruleMatch) {
       signalCollector.addSignal(SIGNAL_TYPES.CUSTOM_RULE,
