@@ -116,6 +116,42 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Preset attachment/removal testing
   - Category filtering and search validation
 
+#### Policy Tuning Dashboard UI
+- **New Vue components:**
+  - `client/src/views/TuningSuggestionsDashboard.vue` - Main tuning suggestions dashboard with filtering and summary stats
+  - `client/src/components/suggestions/SuggestionCard.vue` - Individual suggestion card displaying type, confidence, and impact estimate
+  - `client/src/components/suggestions/RejectModal.vue` - Modal for rejecting suggestions with reason
+- **New API routes:** `server/src/routes/suggestions.js`
+  - `GET /api/suggestions` - List all tuning suggestions with status and policy filtering
+  - `GET /api/suggestions/:id` - Get suggestion details with supporting feedback evidence
+  - `POST /api/suggestions/:id/apply` - Apply suggestion and track before/after accuracy
+  - `POST /api/suggestions/:id/reject` - Reject suggestion with reason
+  - `GET /api/suggestions/:id/impact` - Get impact metrics (before/after accuracy, improvement)
+  - `GET /api/suggestions/policy/:policyId/summary` - Get summary statistics for policy suggestions
+- **Enhanced FeedbackAnalysis service:**
+  - `getImpactMetrics(suggestionId)` - Retrieves before/after accuracy and improvement for applied suggestions
+- **Database migration:** `database/migrations/044_add_tuning_suggestion_tracking.sql`
+  - Added `applied_at`, `applied_by`, `before_accuracy` columns to `policy_tuning_suggestions` table
+  - Enables tracking when suggestions are applied and measuring their impact on policy accuracy
+- **Features:**
+  - View pending, applied, and rejected suggestions
+  - Filter by status (pending/applied/rejected) and policy
+  - Summary cards showing counts by status
+  - Detailed view with supporting feedback evidence showing which classifications led to the suggestion
+  - Apply suggestions with confirmation
+  - Reject suggestions with optional reason
+  - Impact tracking showing accuracy improvement after applying suggestions
+  - Confidence scoring (high/medium/low) with color coding
+  - Supporting evidence display showing user corrections and feedback
+- **Navigation:**
+  - Added "Tuning" menu item to sidebar with LightBulb icon
+  - Route: `/tuning-suggestions`
+- **Integration tests:** `server/src/__tests__/integration/suggestions-api.test.js`
+  - Full API endpoint coverage
+  - Apply/reject suggestion testing
+  - Impact metrics validation
+  - Summary statistics testing
+
 #### PromptBuilder Service
 - **New service:** `server/src/services/promptBuilder.js` - Context-rich prompt generation for Discord and web UI
   - **Main entry point:** `buildPrompt(item, evaluationResult)` - Generates intelligent prompts with explanations
