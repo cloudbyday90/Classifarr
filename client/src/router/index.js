@@ -111,6 +111,11 @@ const router = createRouter({
           name: 'TuningSuggestions',
           component: () => import('@/views/TuningSuggestionsDashboard.vue'),
         },
+        {
+          path: '/policy-stats',
+          name: 'PolicyStats',
+          component: () => import('@/views/PolicyStatsDashboard.vue'),
+        },
       ],
     },
   ],
