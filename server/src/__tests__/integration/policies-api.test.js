@@ -15,12 +15,20 @@ describe('Policies API Integration Tests', () => {
 
     // Setup test data before all tests
     beforeAll(async () => {
-        // Create a test library
-        const libraryResult = await db.query(`
-            INSERT INTO libraries (name, media_type, is_active, priority)
-            VALUES ('Test Library', 'movie', true, 5)
+        // Create a test media server first
+        const mediaServerResult = await db.query(`
+            INSERT INTO media_server (name, type, url, api_key, is_active)
+            VALUES ('Test Server', 'plex', 'http://localhost:32400', 'test-key', true)
             RETURNING id
         `);
+        const mediaServerId = mediaServerResult.rows[0].id;
+
+        // Create a test library
+        const libraryResult = await db.query(`
+            INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active, priority)
+            VALUES ($1, 'test-lib-1', 'Test Library', 'movie', true, 5)
+            RETURNING id
+        `, [mediaServerId]);
         testLibraryId = libraryResult.rows[0].id;
 
         // Get some test presets
@@ -36,10 +44,8 @@ describe('Policies API Integration Tests', () => {
         if (testPolicyId) {
             await db.query('DELETE FROM library_policies WHERE id = $1', [testPolicyId]);
         }
-        // Delete test library
-        if (testLibraryId) {
-            await db.query('DELETE FROM libraries WHERE id = $1', [testLibraryId]);
-        }
+        // Delete test library and media server (cascade will handle libraries)
+        await db.query('DELETE FROM media_server WHERE name = $1', ['Test Server']);
     });
 
     describe('GET /api/policies', () => {
@@ -185,10 +191,10 @@ describe('Policies API Integration Tests', () => {
         });
     });
 
-    describe('GET /api/presets/all', () => {
+    describe('GET /api/policies/presets/all', () => {
         test('should return all presets', async () => {
             const response = await request(app)
-                .get('/api/presets/all')
+                .get('/api/policies/presets/all')
                 .expect(200);
 
             expect(Array.isArray(response.body)).toBe(true);
@@ -197,7 +203,7 @@ describe('Policies API Integration Tests', () => {
 
         test('should filter by category', async () => {
             const response = await request(app)
-                .get('/api/presets/all?category=audience')
+                .get('/api/policies/presets/all?category=audience')
                 .expect(200);
 
             expect(Array.isArray(response.body)).toBe(true);
@@ -208,7 +214,7 @@ describe('Policies API Integration Tests', () => {
 
         test('should search presets', async () => {
             const response = await request(app)
-                .get('/api/presets/all?search=family')
+                .get('/api/policies/presets/all?search=family')
                 .expect(200);
 
             expect(Array.isArray(response.body)).toBe(true);
@@ -219,10 +225,10 @@ describe('Policies API Integration Tests', () => {
         });
     });
 
-    describe('GET /api/presets/categories', () => {
+    describe('GET /api/policies/presets/categories', () => {
         test('should return preset categories with counts', async () => {
             const response = await request(app)
-                .get('/api/presets/categories')
+                .get('/api/policies/presets/categories')
                 .expect(200);
 
             expect(Array.isArray(response.body)).toBe(true);

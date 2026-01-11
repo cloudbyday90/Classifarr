@@ -25,6 +25,72 @@ const logger = createLogger('PoliciesRoute');
 
 /**
  * @swagger
+ * /api/presets/all:
+ *   get:
+ *     summary: List all available presets
+ */
+router.get('/presets/all', async (req, res) => {
+    try {
+        const { category, search } = req.query;
+
+        let query = `
+            SELECT *
+            FROM content_presets
+            WHERE 1=1
+        `;
+        const params = [];
+        let paramCount = 1;
+
+        if (category) {
+            query += ` AND category = $${paramCount}`;
+            params.push(category);
+            paramCount++;
+        }
+
+        if (search) {
+            query += ` AND (name ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
+            params.push(`%${search}%`);
+            paramCount++;
+        }
+
+        query += ` ORDER BY category, display_order, name`;
+
+        const result = await db.query(query, params);
+
+        res.json(result.rows);
+    } catch (error) {
+        logger.error('Failed to list presets', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/presets/categories:
+ *   get:
+ *     summary: List preset categories with counts
+ */
+router.get('/presets/categories', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT 
+                category,
+                COUNT(*) as count
+            FROM content_presets
+            WHERE category IS NOT NULL
+            GROUP BY category
+            ORDER BY category
+        `);
+
+        res.json(result.rows);
+    } catch (error) {
+        logger.error('Failed to list preset categories', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
  * /api/policies:
  *   get:
  *     summary: List all policies with preset counts
@@ -427,72 +493,6 @@ router.delete('/:id/presets/:presetId', async (req, res) => {
         res.json({ message: 'Preset removed successfully' });
     } catch (error) {
         logger.error('Failed to remove preset', { error: error.message, id: req.params.id });
-        res.status(500).json({ error: error.message });
-    }
-});
-
-/**
- * @swagger
- * /api/presets/all:
- *   get:
- *     summary: List all available presets
- */
-router.get('/presets/all', async (req, res) => {
-    try {
-        const { category, search } = req.query;
-
-        let query = `
-            SELECT *
-            FROM content_presets
-            WHERE 1=1
-        `;
-        const params = [];
-        let paramCount = 1;
-
-        if (category) {
-            query += ` AND category = $${paramCount}`;
-            params.push(category);
-            paramCount++;
-        }
-
-        if (search) {
-            query += ` AND (name ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
-            params.push(`%${search}%`);
-            paramCount++;
-        }
-
-        query += ` ORDER BY category, display_order, name`;
-
-        const result = await db.query(query, params);
-
-        res.json(result.rows);
-    } catch (error) {
-        logger.error('Failed to list presets', { error: error.message });
-        res.status(500).json({ error: error.message });
-    }
-});
-
-/**
- * @swagger
- * /api/presets/categories:
- *   get:
- *     summary: List preset categories with counts
- */
-router.get('/presets/categories', async (req, res) => {
-    try {
-        const result = await db.query(`
-            SELECT 
-                category,
-                COUNT(*) as count
-            FROM content_presets
-            WHERE category IS NOT NULL
-            GROUP BY category
-            ORDER BY category
-        `);
-
-        res.json(result.rows);
-    } catch (error) {
-        logger.error('Failed to list preset categories', { error: error.message });
         res.status(500).json({ error: error.message });
     }
 });
