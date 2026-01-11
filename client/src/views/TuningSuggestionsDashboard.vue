@@ -162,6 +162,8 @@ const policyFilter = ref('');
 const selectedSuggestion = ref(null);
 const rejectingSuggestion = ref(null);
 
+// Note: Filtering is done server-side via loadSuggestions()
+// This computed property is kept for potential client-side filtering in the future
 const filteredSuggestions = computed(() => {
   return suggestions.value;
 });

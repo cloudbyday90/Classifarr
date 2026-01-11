@@ -32,7 +32,14 @@ const logger = createLogger('SuggestionsRoute');
  */
 router.get('/', async (req, res) => {
     try {
-        const { status = 'pending', policyId } = req.query;
+        let { status, policyId } = req.query;
+        
+        // Convert empty strings to null for proper SQL handling
+        if (status === '') status = null;
+        if (policyId === '') policyId = null;
+        
+        // Default to 'pending' only if status was not provided at all
+        if (status === undefined) status = 'pending';
         
         const result = await db.query(`
             SELECT 
@@ -46,7 +53,7 @@ router.get('/', async (req, res) => {
             WHERE ($1::text IS NULL OR pts.status = $1)
             AND ($2::int IS NULL OR pts.policy_id = $2)
             ORDER BY pts.confidence DESC, pts.created_at DESC
-        `, [status || null, policyId || null]);
+        `, [status, policyId]);
         
         res.json(result.rows);
     } catch (error) {
