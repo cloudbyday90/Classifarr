@@ -421,4 +421,49 @@ describe('PromptBuilder Integration Tests', () => {
             expect(options.some(o => o.type === 'keyword')).toBe(true);
         });
     });
+    
+    describe('buildTuningSuggestionPrompt', () => {
+        test('should build tuning suggestion prompt with all fields', () => {
+            const suggestion = {
+                suggestion_type: 'adjust_weight',
+                suggestion_config: {
+                    signal_type: 'preset',
+                    current_value: 0.4,
+                    recommended_value: 0.5
+                },
+                confidence: 85,
+                impact_estimate: 'medium',
+                supporting_feedback_ids: [1, 2, 3],
+                policy_id: 10,
+                policy_name: 'Action Movies Policy',
+                created_at: '2023-12-01T10:00:00Z'
+            };
+            
+            const prompt = promptBuilder.buildTuningSuggestionPrompt(suggestion);
+            
+            expect(prompt.type).toBe('tuning_suggestion');
+            expect(prompt.suggestionType).toBe('adjust_weight');
+            expect(prompt.config).toEqual(suggestion.suggestion_config);
+            expect(prompt.confidence).toBe(85);
+            expect(prompt.impactEstimate).toBe('medium');
+            expect(prompt.supportingEvidence).toEqual([1, 2, 3]);
+            expect(prompt.policyId).toBe(10);
+            expect(prompt.policyName).toBe('Action Movies Policy');
+            expect(prompt.createdAt).toBe('2023-12-01T10:00:00Z');
+        });
+        
+        test('should handle suggestion with minimal fields', () => {
+            const suggestion = {
+                suggestion_type: 'add_preset',
+                suggestion_config: { preset_id: 5 },
+                policy_id: 10
+            };
+            
+            const prompt = promptBuilder.buildTuningSuggestionPrompt(suggestion);
+            
+            expect(prompt.type).toBe('tuning_suggestion');
+            expect(prompt.suggestionType).toBe('add_preset');
+            expect(prompt.supportingEvidence).toEqual([]);
+        });
+    });
 });
