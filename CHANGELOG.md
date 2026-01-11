@@ -492,6 +492,20 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Both features follow v0.37.0 deprecation timeline (functional in v0.37, removed in v0.39)
   - Classification Rules section reordered below Learned Patterns to prioritize modern features
   - Classification Rules title updated to include "(Deprecated)" marker
+- **Policy Stats UI theme fixes:** Corrected Policy Stats Dashboard to use dark theme (#117)
+  - Fixed PolicyStatsCard component light theme colors (was white background, now dark)
+  - Fixed PolicyStatsDashboard light theme colors to match application theme
+  - Updated text colors, borders, and hover states for consistency
+  - Improved visual hierarchy with proper dark theme contrast
+- **Navigation reorganization:** Improved left sidebar menu structure (#117)
+  - Added missing "Policies" navigation link (critical for v0.37.0)
+  - Added missing "Migration" navigation link for legacy rule migration
+  - Reorganized menu items into logical groups:
+    - Core Setup: Dashboard, Libraries, Policies, Request
+    - Monitoring: Activity, History, Statistics, Policy Stats
+    - Learning & Tuning: Patterns, Tuning, Migration
+    - Configuration: Settings
+  - Improved workflow by grouping related features together
 
 ### Changed
 - Migration numbering: New migration is `042_policy_driven_schema.sql` (follows `041_formula_engine_weights.sql`)

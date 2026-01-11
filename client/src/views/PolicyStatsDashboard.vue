@@ -266,7 +266,8 @@ export default {
 .header h1 {
   margin: 0;
   font-size: 28px;
-  color: #1f2937;
+  color: #f9fafb;
+  font-weight: 700;
 }
 
 .time-filter {
@@ -276,8 +277,9 @@ export default {
 
 .time-filter button {
   padding: 8px 16px;
-  border: 1px solid #d1d5db;
-  background: white;
+  border: 1px solid #374151;
+  background: #1f2937;
+  color: #d1d5db;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -285,7 +287,8 @@ export default {
 }
 
 .time-filter button:hover {
-  background: #f3f4f6;
+  background: #374151;
+  border-color: #4b5563;
 }
 
 .time-filter button.active {
@@ -307,8 +310,9 @@ export default {
 
 .policies-section h2 {
   font-size: 20px;
-  color: #1f2937;
+  color: #f9fafb;
   margin-bottom: 16px;
+  font-weight: 600;
 }
 
 .policies-grid {
@@ -320,8 +324,9 @@ export default {
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #6b7280;
-  background: #f9fafb;
+  color: #9ca3af;
+  background: #1f2937;
+  border: 1px solid #374151;
   border-radius: 8px;
 }
 
@@ -331,7 +336,8 @@ export default {
 
 .live-feed-section h2 {
   font-size: 20px;
-  color: #1f2937;
+  color: #f9fafb;
   margin-bottom: 16px;
+  font-weight: 600;
 }
 </style>
