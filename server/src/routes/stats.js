@@ -287,12 +287,13 @@ router.get('/alerts', async (req, res) => {
     `);
 
     for (const policy of highCorrections.rows) {
+      const correctionRate = parseFloat(policy.correction_rate) || 0;
       alerts.push({
         type: 'high_corrections',
         severity: 'warning',
         policy_id: policy.id,
         policy_name: policy.name,
-        message: `${policy.name} has ${policy.correction_rate.toFixed(1)}% correction rate`
+        message: `${policy.name} has ${correctionRate.toFixed(1)}% correction rate`
       });
     }
 

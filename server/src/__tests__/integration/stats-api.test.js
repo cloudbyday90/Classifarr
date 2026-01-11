@@ -69,8 +69,8 @@ describe('Stats API Integration Tests', () => {
         // Create a discovered pattern
         await db.query(`
             INSERT INTO discovered_patterns (
-                pattern_type, pattern_value, library_id, confidence, status
-            ) VALUES ('genre', 'Action', $1, 85, 'approved')
+                pattern_type, pattern_value, library_id, library_name, confidence, status
+            ) VALUES ('genre', 'Action', $1, 'Test Stats Library', 85, 'approved')
         `, [testLibraryId]);
 
         // Create a tuning suggestion
