@@ -24,6 +24,8 @@ const logger = createLogger('PromptBuilder');
  * PromptBuilder Service
  * Generates context-rich prompts for Discord and web UI that explain uncertainty,
  * show best guesses, capture user reasons, and make learning actionable.
+ * 
+ * @see https://github.com/cloudbyday90/Classifarr/issues/100
  */
 class PromptBuilder {
     /**

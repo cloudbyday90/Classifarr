@@ -26,6 +26,13 @@ const { createLogger } = require('../utils/logger');
 const logger = createLogger('PromptsAPI');
 
 /**
+ * Prompts API Routes
+ * API endpoints for prompt queue and response handling
+ * 
+ * @see https://github.com/cloudbyday90/Classifarr/issues/100
+ */
+
+/**
  * GET /api/prompts/pending
  * Get pending classification prompts queue
  */
