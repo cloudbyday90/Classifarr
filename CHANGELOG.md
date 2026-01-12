@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.5a-alpha] - 2026-01-12
+
+### Changed
+- **Dependencies**: Upgraded supertest from 7.1.4 to 7.2.2 in server
+
 ## [0.37.5-alpha] - 2026-01-11
 
 ### Added

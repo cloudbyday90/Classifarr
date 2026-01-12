@@ -1,5 +1,13 @@
 # Classifarr Release Notes
 
+## v0.37.5a-alpha
+**Title: Dependency Update**
+
+### Changed
+- Upgraded supertest from 7.1.4 to 7.2.2
+
+---
+
 ## v0.37.5-alpha
 **Title: Library Profiles & API Health Monitoring**
 
