@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const db = require('../config/database');
 const clarificationService = require('./clarificationService');
 
@@ -44,7 +44,7 @@ class DiscordBotService {
     return this.config;
   }
 
-  async testConnection(botToken = null) {
+  async testConnection(botToken = null, channelId = null) {
     let testClient = null;
     try {
       const token = botToken || (await this.loadConfig()).bot_token;
@@ -54,7 +54,7 @@ class DiscordBotService {
 
       // Create temporary client to test
       testClient = new Client({
-        intents: [GatewayIntentBits.Guilds],
+        intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
       });
 
       await testClient.login(token);
@@ -62,7 +62,7 @@ class DiscordBotService {
       const user = testClient.user;
       const guilds = testClient.guilds.cache.size;
 
-      return {
+      const response = {
         success: true,
         message: 'Bot connected successfully',
         botUser: {
@@ -72,6 +72,82 @@ class DiscordBotService {
         },
         guildsCount: guilds,
       };
+
+      // If channel_id is provided, test sending notification and check permissions
+      if (channelId) {
+        try {
+          const channel = await testClient.channels.fetch(channelId);
+          if (!channel) {
+            return { success: false, error: 'Channel not found' };
+          }
+
+          // Ensure bot member is in cache for permission checking
+          const guild = channel.guild;
+          if (guild) {
+            try {
+              await guild.members.fetch(testClient.user.id);
+            } catch (fetchError) {
+              console.warn('Could not fetch bot member for permission check:', fetchError.message);
+            }
+          }
+
+          // Check permissions
+          const permissions = this.checkChannelPermissions(channel, testClient.user.id);
+          response.permissions = permissions;
+
+          // Check for critical missing permissions
+          const missingCritical = permissions.missing.filter(p => 
+            ['SendMessages', 'EmbedLinks'].includes(p)
+          );
+
+          if (missingCritical.length > 0) {
+            return {
+              success: false,
+              error: `Missing critical permissions: ${missingCritical.join(', ')}`,
+              permissions,
+              botUser: response.botUser,
+              guildsCount: response.guildsCount
+            };
+          }
+
+          // Send test notification
+          const testEmbed = new EmbedBuilder()
+            .setTitle('✅ Classifarr Test Notification')
+            .setDescription('Your Discord bot is configured correctly and can send notifications!')
+            .setColor(0x00ff00)
+            .addFields(
+              { name: 'Bot', value: user.username, inline: true },
+              { name: 'Channel', value: `#${channel.name}`, inline: true },
+              { name: 'Server', value: channel.guild?.name || 'Unknown', inline: true }
+            )
+            .setTimestamp()
+            .setFooter({ text: 'This is a test message from Classifarr' });
+
+          const sentMessage = await channel.send({ embeds: [testEmbed] });
+
+          response.notification = {
+            sent: true,
+            messageId: sentMessage.id,
+            channelName: channel.name,
+            serverName: channel.guild?.name || 'Unknown'
+          };
+          response.message = 'Test notification sent successfully! Check your Discord channel.';
+
+          // Warn about non-critical missing permissions
+          if (permissions.missing.length > 0) {
+            response.warning = `Some optional permissions are missing: ${permissions.missing.join(', ')}. This may limit functionality.`;
+          }
+        } catch (channelError) {
+          return {
+            success: false,
+            error: `Failed to send test notification: ${channelError.message}`,
+            botUser: response.botUser,
+            permissions: response.permissions
+          };
+        }
+      }
+
+      return response;
     } catch (error) {
       return {
         success: false,
@@ -84,6 +160,70 @@ class DiscordBotService {
         await testClient.destroy();
       }
     }
+  }
+
+  /**
+   * Check if the bot has all required permissions in a channel
+   * @param {Channel} channel - Discord channel object
+   * @param {string} botUserId - Bot user ID
+   * @returns {Object} Permissions status
+   */
+  checkChannelPermissions(channel, botUserId) {
+    const requiredPermissions = [
+      'SendMessages',
+      'EmbedLinks',
+      'AttachFiles',
+      'ReadMessageHistory',
+      'UseExternalEmojis',
+      'AddReactions'
+    ];
+
+    // Mapping for permission names to PermissionFlagsBits
+    const permissionMap = {
+      'SendMessages': PermissionFlagsBits.SendMessages,
+      'EmbedLinks': PermissionFlagsBits.EmbedLinks,
+      'AttachFiles': PermissionFlagsBits.AttachFiles,
+      'ReadMessageHistory': PermissionFlagsBits.ReadMessageHistory,
+      'UseExternalEmojis': PermissionFlagsBits.UseExternalEmojis,
+      'AddReactions': PermissionFlagsBits.AddReactions
+    };
+
+    const botMember = channel.guild.members.cache.get(botUserId);
+    if (!botMember) {
+      return {
+        granted: [],
+        missing: requiredPermissions,
+        all: false
+      };
+    }
+
+    const channelPermissions = channel.permissionsFor(botMember);
+    if (!channelPermissions) {
+      // Edge case: permissionsFor can return null in certain scenarios
+      return {
+        granted: [],
+        missing: requiredPermissions,
+        all: false
+      };
+    }
+
+    const granted = [];
+    const missing = [];
+
+    requiredPermissions.forEach(perm => {
+      const permBit = permissionMap[perm];
+      if (permBit && channelPermissions.has(permBit)) {
+        granted.push(perm);
+      } else {
+        missing.push(perm);
+      }
+    });
+
+    return {
+      granted,
+      missing,
+      all: missing.length === 0
+    };
   }
 
   async getServers(botToken = null) {
@@ -194,11 +334,14 @@ class DiscordBotService {
           throw new Error('Channel not found');
         }
 
-        // Ensure guild is available
+        // Ensure guild is available and fetched
         let guildName = 'Unknown Server';
         if (channel.guild) {
-          if (!channel.guild.name) await channel.guild.fetch();
-          guildName = channel.guild.name;
+          // Fetch full guild object if not cached
+          if (!channel.guild.name) {
+            await channel.guild.fetch();
+          }
+          guildName = channel.guild.name || 'Unknown Server';
         }
 
         const result = {

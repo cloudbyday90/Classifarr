@@ -183,14 +183,49 @@ The Channel ID is a long number like: `1234567890123456789`
 To verify everything is working:
 
 1. In Classifarr, go to **Settings** → **Discord**
-2. Click **"Test Connection"** or **"Send Test Notification"**
-3. Check your Discord channel for the test message
+2. Make sure you have:
+   - Entered your Bot Token
+   - Selected a Server
+   - Selected a Channel
+3. Click **"Test Connection"**
+4. **Check your Discord channel** for a green test notification
 
-If successful, you should see a message like:
-> 🎬 **Test Notification**
-> Classifarr is connected and working!
+### Expected Test Notification
+
+If successful, you should see a message in your Discord channel like:
+
+> **✅ Classifarr Test Notification**
+> 
+> Your Discord bot is configured correctly and can send notifications!
+> 
+> **Bot:** YourBotName | **Channel:** #your-channel | **Server:** Your Server Name
+> 
+> _This is a test message from Classifarr_
+
+### What the Test Validates
+
+The test connection will:
+- ✅ Verify bot token is valid
+- ✅ Check bot can access the specified channel  
+- ✅ Validate all required permissions
+- ✅ Send an actual notification to confirm delivery
+- ✅ Display server and channel names
+
+### Permission Validation
+
+The test will check for these required permissions:
+- **Send Messages** - Critical, required to send any notifications
+- **Embed Links** - Critical, required for rich embeds
+- **Attach Files** - For poster images
+- **Read Message History** - For context in interactions
+- **Use External Emojis** - For status indicators
+- **Add Reactions** - For interactive confirmations
+
+**Critical permissions** (Send Messages, Embed Links) must be present or the test will fail. Other permissions will generate warnings if missing but won't block the test.
 
 ### Test with a Real Request
+
+After test passes:
 
 1. Make a media request in Overseerr/Jellyseerr
 2. Wait for Classifarr to process it
@@ -200,44 +235,119 @@ If successful, you should see a message like:
 
 ## Troubleshooting
 
-### Bot is offline
+### Test Connection Fails - "Invalid bot token"
 
-- Verify the bot token is correct
-- Check if the bot was kicked from the server
-- Ensure Classifarr container is running
+**Solution:**
+1. Go to Discord Developer Portal → Your Application → Bot
+2. Click **"Reset Token"**
+3. Copy the new token
+4. Paste it in Classifarr settings
+5. Try testing again
 
-### No notifications appearing
+### Test Connection Fails - "Channel not found"
 
-1. Verify the Channel ID is correct
-2. Check the bot has permissions in that channel
-3. Ensure "Enable Notifications" is turned on
-4. Check Classifarr logs for errors:
+**Causes:**
+- Bot is not in the selected server
+- Channel ID is incorrect
+- Bot was removed from server
+
+**Solution:**
+1. Verify the bot is in your Discord server (you should see it in the member list)
+2. If not, re-invite using the URL from Step 5
+3. Double-check the Channel ID (Right-click channel → Copy Channel ID)
+4. Try selecting the server and channel again from dropdowns
+
+### Test Connection Fails - "Missing critical permissions"
+
+**What it means:**  
+Your bot lacks essential permissions (Send Messages or Embed Links) in the selected channel.
+
+**Solution Option 1 - Re-invite with correct permissions:**
+1. Remove bot from server (Server Settings → Members → Right-click bot → Kick)
+2. Use invite URL from Step 5 with correct permissions
+3. Authorize bot again
+4. Test connection
+
+**Solution Option 2 - Grant permissions manually:**
+1. Right-click the channel → **Edit Channel**
+2. Go to **Permissions** tab
+3. Click **+ Add members or roles**
+4. Find and select your bot
+5. Enable these permissions:
+   - ✅ Send Messages
+   - ✅ Embed Links
+   - ✅ Attach Files
+   - ✅ Read Message History
+   - ✅ Use External Emojis
+   - ✅ Add Reactions
+6. Click **Save Changes**
+7. Test connection again
+
+### Test Connection Shows Warning - "Some optional permissions are missing"
+
+**What it means:**  
+Bot can send notifications but is missing non-critical permissions (like Add Reactions, Attach Files).
+
+**Impact:**
+- Notifications will work
+- Some features may be limited (e.g., no poster images if Attach Files is missing)
+
+**Solution:**
+Follow the same steps as "Missing critical permissions" above to grant all recommended permissions for full functionality.
+
+### No Test Notification in Discord
+
+**Check:**
+1. You selected the correct channel in Classifarr settings
+2. Bot is actually in that Discord server (check member list)
+3. No firewall/network blocking Discord API access from Classifarr
+4. Check Classifarr logs for detailed error:
    ```bash
    docker logs classifarr
    ```
 
-### "Missing Permissions" error
+### Bot is offline in Discord
 
-The bot lacks required permissions. Either:
-1. Re-invite the bot with correct permissions (see Step 5)
-2. Manually grant permissions in Discord:
-   - Right-click the channel → **Edit Channel**
-   - Go to **Permissions**
-   - Add your bot and enable required permissions
+**Causes:**
+- Classifarr container is not running
+- Bot token is invalid or reset
+- Network connectivity issues
 
-### "Invalid Token" error
+**Solution:**
+1. Verify Classifarr is running: `docker ps | grep classifarr`
+2. Check bot token is still valid (not reset in Discord portal)
+3. Restart Classifarr: `docker restart classifarr`
+4. Check logs: `docker logs classifarr`
 
-1. Go to Discord Developer Portal
-2. Navigate to your application → **Bot**
-3. Click **"Reset Token"**
-4. Copy the new token
-5. Update it in Classifarr settings
+### No notifications appearing (after test passed)
 
-### Buttons not working
+**Check in Classifarr settings:**
+1. ✅ "Enable Discord Notifications" is ON
+2. ✅ "Notify on Classification" is ON
+3. Channel ID is correct
 
-1. Ensure **Message Content Intent** is enabled (Step 2)
-2. Verify the bot has permissions to manage reactions/components
-3. Restart Classifarr after changing settings
+**Check Discord settings:**
+1. Channel notifications aren't muted
+2. Bot has permission to send messages in the channel
+3. No Discord server-wide role restrictions
+
+**Check Classifarr is processing requests:**
+1. Go to Classifarr → Queue or History
+2. Verify media is being processed
+3. Check logs for Discord-related errors
+
+### Buttons not working in notifications
+
+**Causes:**
+- Message Content Intent not enabled
+- Bot lacks permission to add components
+
+**Solution:**
+1. Discord Developer Portal → Your App → Bot
+2. Enable **"Message Content Intent"** under Privileged Gateway Intents
+3. Save changes
+4. Restart Classifarr: `docker restart classifarr`
+5. Verify "Add Reactions" permission is granted
 
 ### Rate limiting
 

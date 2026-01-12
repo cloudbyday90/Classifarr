@@ -9,12 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Startup Profile Generation**: Library profiles auto-generate on server startup for all libraries with items
+- **Discord Integration Enhancements**:
+  - Test connection now sends actual notification to verify bot setup
+  - Permission validation for all required Discord bot permissions (Send Messages, Embed Links, Attach Files, Read Message History, Use External Emojis, Add Reactions)
+  - Comprehensive integration test suite (`discord-integration.test.js`) with 19 test cases
+  - Enhanced API endpoint `/api/settings/discord/test` to accept `channel_id` parameter
 
 ### Fixed
 - **Discord Health Status**: Now shows 'not configured' instead of 'error' when Discord is not set up
+- **Discord Channel/Server Display**: Fixed issue where server and channel names displayed as "unknown" after saving configuration
+- **Discord Test Connection**: Now sends actual test notification embed to Discord channel for verification
 
 ### Changed
 - **Test Coverage**: Enhanced tests documenting startup and 404 fallback profile generation behaviors
+- **Discord Bot Service**: `testConnection()` method enhanced with permission checking and test notification sending
+- **Discord Settings UI**: Improved error messaging to display specific permission issues and notification delivery status
 
 ## [0.37.6-alpha] - 2026-01-12
 

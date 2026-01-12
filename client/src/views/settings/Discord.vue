@@ -444,14 +444,48 @@ const testConnection = async () => {
   loading.value = true
   connectionStatus.value = { status: 'testing' }
   try {
-    const response = await axios.post('/api/settings/discord/test', {
+    const requestBody = {
       bot_token: config.value.bot_token,
-    })
+    };
+    
+    // Only include channel_id if it has a valid value
+    if (config.value.channel_id) {
+      requestBody.channel_id = config.value.channel_id;
+    }
+    
+    const response = await axios.post('/api/settings/discord/test', requestBody)
     
     if (response.data.success) {
+      // Build details object for ConnectionStatus component
+      const detailsObj = {
+        serverName: response.data.botUser?.username,
+        additionalInfo: {}
+      };
+      
+      // Add notification delivery status
+      if (response.data.notification?.sent) {
+        detailsObj.additionalInfo['Notification'] = `✅ Sent to #${response.data.notification.channelName}`;
+      }
+      
+      // Add permission status
+      if (response.data.permissions) {
+        const { granted, missing } = response.data.permissions;
+        if (granted.length > 0) {
+          detailsObj.additionalInfo['Granted Permissions'] = granted.join(', ');
+        }
+        if (missing.length > 0) {
+          detailsObj.additionalInfo['Missing Permissions'] = `⚠️ ${missing.join(', ')}`;
+        }
+      }
+      
+      // Add warning if present
+      if (response.data.warning) {
+        detailsObj.additionalInfo['Warning'] = response.data.warning;
+      }
+      
       connectionStatus.value = {
         status: 'success',
-        details: `Connected as ${response.data.botUser?.username}`,
+        details: detailsObj,
         lastChecked: new Date()
       }
       // If editing, try to load servers to help user setup
