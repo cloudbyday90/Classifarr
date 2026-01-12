@@ -378,9 +378,9 @@ class DiscordBotService {
         await testClient.destroy();
       }
     } catch (error) {
-      // Instead of throwing, log and return a graceful fallback
+      // Log the error with context, then re-throw for route handler
       console.error(`Failed to fetch channel details for ${channelId}:`, error.message);
-      throw error; // Still throw so the route handler can return appropriate status
+      throw error; // Re-throw so the route handler can return appropriate status
     }
   }
 
