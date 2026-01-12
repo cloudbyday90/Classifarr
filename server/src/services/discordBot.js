@@ -28,8 +28,11 @@ class DiscordBotService {
     this.config = null;
   }
 
-  async loadConfig() {
-    const result = await db.query('SELECT * FROM notification_config WHERE type = $1 AND enabled = true LIMIT 1', ['discord']);
+  async loadConfig(ignoreEnabledStatus = false) {
+    // For API calls (getServers, getChannels, getChannelDetails), we need the token
+    // regardless of enabled status. Only for initialization should we check enabled.
+    const enabledFilter = ignoreEnabledStatus ? '' : 'AND enabled = true';
+    const result = await db.query(`SELECT * FROM notification_config WHERE type = $1 ${enabledFilter} LIMIT 1`, ['discord']);
     if (result.rows.length > 0) {
       this.config = result.rows[0];
       return this.config;
@@ -47,7 +50,8 @@ class DiscordBotService {
   async testConnection(botToken = null, channelId = null) {
     let testClient = null;
     try {
-      const token = botToken || (await this.loadConfig()).bot_token;
+      // Use ignoreEnabledStatus=true to allow testing even when bot is disabled
+      const token = botToken || (await this.loadConfig(true)).bot_token;
       if (!token) {
         return { success: false, error: 'No bot token provided' };
       }
@@ -229,7 +233,8 @@ class DiscordBotService {
   async getServers(botToken = null) {
     try {
       // Always prefer stored token (the passed botToken might be masked from frontend)
-      const storedConfig = await this.loadConfig();
+      // Use ignoreEnabledStatus=true to get token even when bot is disabled
+      const storedConfig = await this.loadConfig(true);
       const token = storedConfig?.bot_token || botToken;
       if (!token) {
         throw new Error('No bot token configured');
@@ -278,7 +283,8 @@ class DiscordBotService {
   async getChannels(serverId, botToken = null) {
     try {
       // Always prefer stored token (the passed botToken might be masked from frontend)
-      const storedConfig = await this.loadConfig();
+      // Use ignoreEnabledStatus=true to get token even when bot is disabled
+      const storedConfig = await this.loadConfig(true);
       const token = storedConfig?.bot_token || botToken;
       if (!token) {
         throw new Error('No bot token configured');
@@ -340,7 +346,8 @@ class DiscordBotService {
       console.log(`[Discord] Fetching channel details for channel ID: ${channelId}`);
       
       // Always prefer stored token
-      const storedConfig = await this.loadConfig();
+      // Use ignoreEnabledStatus=true to get token even when bot is disabled
+      const storedConfig = await this.loadConfig(true);
       const token = storedConfig?.bot_token || botToken;
       
       if (!token) {

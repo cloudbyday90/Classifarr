@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.8b-alpha] - 2026-01-12
+
+### Fixed
+- **Discord Configuration Persistence Issue**:
+  - Backend: Modified `loadConfig()` method in `discordBot.js` to accept `ignoreEnabledStatus` parameter
+  - Backend: Updated `getChannelDetails()`, `getServers()`, `getChannels()`, and `testConnection()` to fetch config regardless of enabled status
+  - Frontend: Improved save sequencing to wait for database commit before fetching channel details
+  - Frontend: Added better success feedback showing configuration saved status
+  - Frontend: Enhanced test connection to display success message in edit mode
+  - Resolves issue where Discord configuration would revert to "Unknown" and show "Connection Failed" after saving
+  - Server and channel names now display correctly after save
+
+### Changed
+- **Discord API Configuration Loading**: `loadConfig()` now supports fetching bot token for API authentication even when bot is disabled
+- **Frontend Discord Settings**: Save now shows success status with channel and server information
+- **Test Connection Feedback**: Now displays clear success message with test notification delivery status in edit mode
+
+### Added
+- **ConnectionStatus Component**: Added support for 'warning' status to display non-critical issues
+
 ## [0.37.8a-alpha] - 2026-01-12
 
 ### Fixed
