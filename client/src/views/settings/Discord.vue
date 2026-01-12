@@ -393,41 +393,31 @@ const fetchChannelDetails = async (channelId) => {
   try {
     const response = await axios.get(`/api/settings/discord/channel/${channelId}`);
     if (response.data) {
-      // Check if we got an error with fallback data
-      if (response.data.error && response.data.fallback) {
-        console.warn('Channel details fetch returned error, using fallback:', response.data.error);
-        configuredChannel.value = response.data.fallback;
-        // Show a warning to the user
+      configuredChannel.value = response.data;
+      
+      // Check if we got partial data (backend couldn't fetch full details)
+      if (response.data.partial) {
         connectionStatus.value = {
           status: 'warning',
-          error: `Could not fetch current channel details: ${response.data.error}. Please test connection to verify.`
+          error: `Could not fetch current channel details: ${response.data.error || 'Discord client not ready'}. Please test connection to verify.`
         };
       } else {
-        configuredChannel.value = response.data;
         selectedServer.value = response.data.guildId;
       }
     }
   } catch (error) {
     console.error('Failed to fetch channel details:', error);
     
-    // Better error handling
-    if (error.response?.data?.fallback) {
-      configuredChannel.value = error.response.data.fallback;
-      connectionStatus.value = {
-        status: 'error',
-        error: `Could not verify Discord configuration: ${error.response.data.error || error.message}`
-      };
-    } else {
-      configuredChannel.value = { 
-        name: 'Unknown', 
-        guildName: 'Unknown',
-        id: channelId
-      };
-      connectionStatus.value = {
-        status: 'error',
-        error: 'Failed to load channel details. Please test your connection.'
-      };
-    }
+    // Network or other error - show fallback
+    configuredChannel.value = { 
+      name: 'Unknown', 
+      guildName: 'Unknown',
+      id: channelId
+    };
+    connectionStatus.value = {
+      status: 'error',
+      error: 'Failed to load channel details. Please test your connection.'
+    };
   }
 }
 

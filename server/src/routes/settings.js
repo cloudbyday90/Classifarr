@@ -1479,17 +1479,16 @@ router.get('/discord/channel/:channelId', async (req, res) => {
     res.json(details);
   } catch (error) {
     console.error('Error fetching Discord channel details:', error.message);
-    
-    // Return a proper error response instead of 500
-    res.status(400).json({ 
-      error: error.message,
-      // Provide fallback data so frontend doesn't show "Unknown"
-      fallback: {
-        id: req.params.channelId,
-        name: 'Unable to fetch',
-        guildId: null,
-        guildName: 'Unable to fetch'
-      }
+
+    // Return 200 with fallback data so frontend doesn't show "Connection Failed"
+    // The "partial" flag indicates this is incomplete data
+    res.json({
+      id: req.params.channelId,
+      name: 'Channel details unavailable',
+      guildId: null,
+      guildName: 'Server details unavailable',
+      partial: true,
+      error: error.message
     });
   }
 });
