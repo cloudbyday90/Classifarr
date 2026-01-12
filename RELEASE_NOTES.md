@@ -1,12 +1,9 @@
 # Classifarr Release Notes
 
-## v0.37.7-alpha
-**Title: Discord Integration Improvements & Profile Generation**
+## v0.37.8-alpha
+**Title: Discord Integration Improvements & Status Fix**
 
 ### Added
-- **Library Profile Auto-Generation**: Library profiles now auto-generate on server startup for all libraries with items
-  - No more waiting or manual refresh needed when viewing library details
-  
 - **Enhanced Discord Test Connection**: Test your Discord bot setup more thoroughly
   - 🎯 **Sends actual test notification** to your Discord channel to verify setup
   - ✅ **Permission validation** - shows which permissions are granted or missing
@@ -17,6 +14,15 @@
 - **Discord Service Status**: System tab now shows "not configured" instead of "error" when Discord is not set up
 - **Discord Channel Names**: Fixed issue where server and channel names would display as "unknown" after saving configuration
   - Channel and server names now correctly appear in the Discord settings UI
+
+---
+
+## v0.37.7-alpha
+**Title: Startup Profile Generation**
+
+### Added
+- **Library Profile Auto-Generation**: Library profiles now auto-generate on server startup for all libraries with items
+  - No more waiting or manual refresh needed when viewing library details
 
 ### Improved
 - **Discord Error Messages**: More helpful error messages when bot lacks required permissions

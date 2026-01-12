@@ -5,10 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.37.7-alpha] - 2026-01-12
+## [0.37.8-alpha] - 2026-01-12
 
 ### Added
-- **Startup Profile Generation**: Library profiles auto-generate on server startup for all libraries with items
 - **Discord Integration Enhancements**:
   - Test connection now sends actual notification to verify bot setup
   - Permission validation for all required Discord bot permissions (Send Messages, Embed Links, Attach Files, Read Message History, Use External Emojis, Add Reactions)
@@ -21,8 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Discord Test Connection**: Now sends actual test notification embed to Discord channel for verification
 
 ### Changed
-- **Test Coverage**: Enhanced tests documenting startup and 404 fallback profile generation behaviors
 - **Discord Bot Service**: `testConnection()` method enhanced with permission checking and test notification sending
+
+## [0.37.7-alpha] - 2026-01-12
+
+### Added
+- **Startup Profile Generation**: Library profiles auto-generate on server startup for all libraries with items
+
+### Changed
+- **Test Coverage**: Enhanced tests documenting startup and 404 fallback profile generation behaviors
 - **Discord Settings UI**: Improved error messaging to display specific permission issues and notification delivery status
 
 ## [0.37.6-alpha] - 2026-01-12
