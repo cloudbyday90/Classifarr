@@ -127,6 +127,13 @@ const loadProfile = async () => {
   } catch (err) {
     console.error('Failed to load profile:', err)
     profile.value = null
+    
+    // Auto-generate profile if it doesn't exist yet (404 = not found)
+    if (err.response?.status === 404 && !refreshing.value) {
+      console.log('Profile not found, auto-generating...')
+      await refreshProfile()
+      return // refreshProfile will call loadProfile again
+    }
   } finally {
     loading.value = false
   }

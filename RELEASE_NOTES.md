@@ -1,5 +1,18 @@
 # Classifarr Release Notes
 
+## v0.37.6-alpha
+**Title: Library Profile Auto-Generation Fix**
+
+### Fixed
+- Library profiles now auto-generate on first page load
+- No longer requires clicking Refresh button when viewing a library for the first time
+
+### Technical Details
+- Catch block in `LibraryProfile.vue` now properly handles 404 response to trigger profile generation
+- Added regression test to prevent future breakage
+
+---
+
 ## v0.37.5a-alpha
 **Title: Dependency Update**
 

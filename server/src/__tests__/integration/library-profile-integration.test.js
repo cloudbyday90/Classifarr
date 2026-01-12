@@ -57,7 +57,15 @@ describe('Library Profile API', () => {
             expect(libraryProfileService.getProfile).toHaveBeenCalledWith(1);
         });
 
-        it('should return 404 when profile does not exist', async () => {
+        /**
+         * 404 Response is Critical for Frontend Auto-Generation
+         * 
+         * The frontend LibraryProfile.vue component relies on receiving a 404 status
+         * when no profile exists to trigger automatic profile generation.
+         * If this test fails or the behavior changes, frontend auto-generation will break.
+         * See: client/src/components/library/LibraryProfile.vue - loadProfile() catch block
+         */
+        it('should return 404 when profile does not exist (required for frontend auto-generation)', async () => {
             libraryProfileService.getProfile.mockResolvedValue(null);
 
             const res = await request(app)
@@ -65,6 +73,7 @@ describe('Library Profile API', () => {
                 .expect(404);
 
             expect(res.body.error).toBe('Profile not found');
+            expect(res.body.message).toBe('Profile will be generated after library sync and enrichment');
         });
     });
 
