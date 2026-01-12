@@ -456,32 +456,36 @@ const testConnection = async () => {
     const response = await axios.post('/api/settings/discord/test', requestBody)
     
     if (response.data.success) {
-      const details = [`Connected as ${response.data.botUser?.username}`];
+      // Build details object for ConnectionStatus component
+      const detailsObj = {
+        serverName: response.data.botUser?.username,
+        additionalInfo: {}
+      };
       
-      // Check if notification was sent
+      // Add notification delivery status
       if (response.data.notification?.sent) {
-        details.push(`✅ Test notification sent to #${response.data.notification.channelName}`);
+        detailsObj.additionalInfo['Notification'] = `✅ Sent to #${response.data.notification.channelName}`;
       }
       
-      // Show permission warnings if any
-      if (response.data.warning) {
-        details.push(`⚠️ ${response.data.warning}`);
-      }
-      
-      // Show permission status
+      // Add permission status
       if (response.data.permissions) {
         const { granted, missing } = response.data.permissions;
         if (granted.length > 0) {
-          details.push(`✅ Permissions: ${granted.join(', ')}`);
+          detailsObj.additionalInfo['Granted Permissions'] = granted.join(', ');
         }
         if (missing.length > 0) {
-          details.push(`❌ Missing: ${missing.join(', ')}`);
+          detailsObj.additionalInfo['Missing Permissions'] = `⚠️ ${missing.join(', ')}`;
         }
+      }
+      
+      // Add warning if present
+      if (response.data.warning) {
+        detailsObj.additionalInfo['Warning'] = response.data.warning;
       }
       
       connectionStatus.value = {
         status: 'success',
-        details: details.join('\n'),
+        details: detailsObj,
         lastChecked: new Date()
       }
       // If editing, try to load servers to help user setup

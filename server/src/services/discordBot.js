@@ -104,7 +104,9 @@ class DiscordBotService {
             return {
               success: false,
               error: `Missing critical permissions: ${missingCritical.join(', ')}`,
-              permissions
+              permissions,
+              botUser: response.botUser,
+              guildsCount: response.guildsCount
             };
           }
 
@@ -196,6 +198,15 @@ class DiscordBotService {
     }
 
     const channelPermissions = channel.permissionsFor(botMember);
+    if (!channelPermissions) {
+      // Edge case: permissionsFor can return null in certain scenarios
+      return {
+        granted: [],
+        missing: requiredPermissions,
+        all: false
+      };
+    }
+
     const granted = [];
     const missing = [];
 

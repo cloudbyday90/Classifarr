@@ -23,8 +23,18 @@ const { getPool } = require('./setup');
  * 
  * Tests the Discord bot service integration with the database and API endpoints.
  * 
- * Note: These tests mock Discord.js Client as we cannot connect to actual Discord
- * in a test environment. The focus is on:
+ * SCOPE & LIMITATIONS:
+ * These tests focus on database interactions, configuration storage, and response structure validation.
+ * They do NOT mock Discord.js Client to test actual service methods (testConnection, checkChannelPermissions, etc.)
+ * because:
+ * 1. Discord.js Client requires complex mocking of event emitters, caches, and async patterns
+ * 2. The actual Discord API integration is validated through manual testing and real bot connections
+ * 3. The critical business logic (permission validation, response formatting) is tested via unit-style tests
+ * 
+ * For actual Discord service method testing with mocked clients, consider adding dedicated unit tests
+ * in a separate test file using jest.mock() for Discord.js.
+ * 
+ * COVERAGE:
  * 1. Database interactions for Discord configuration
  * 2. API endpoint contract validation
  * 3. Error handling for various failure scenarios
@@ -220,8 +230,12 @@ describe('Discord Integration Tests', () => {
 
         test('should validate bot token format has three parts', () => {
             // Discord bot tokens have three base64-encoded parts separated by dots
-            // This test validates the basic structure, not the actual token validity
             // Format: userId.timestamp.hmac (all base64 encoded)
+            // 
+            // NOTE: This test validates ONLY the basic structure (three dot-separated parts),
+            // not actual Discord token validity. Real Discord tokens use specific base64 encoding,
+            // but we use an intentionally simplified fake token to avoid triggering secret scanners.
+            // Actual token validation happens in the Discord.js client during login.
             const hasThreePartsPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
             const testToken = 'FAKE12345TOKEN67890.XXXXXX.fake-test-token-not-real-abcdefg';
             
