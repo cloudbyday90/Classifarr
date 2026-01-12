@@ -1478,7 +1478,19 @@ router.get('/discord/channel/:channelId', async (req, res) => {
     const details = await discordBotService.getChannelDetails(channelId);
     res.json(details);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching Discord channel details:', error.message);
+    
+    // Return a proper error response instead of 500
+    res.status(400).json({ 
+      error: error.message,
+      // Provide fallback data so frontend doesn't show "Unknown"
+      fallback: {
+        id: req.params.channelId,
+        name: 'Unable to fetch',
+        guildId: null,
+        guildName: 'Unable to fetch'
+      }
+    });
   }
 });
 

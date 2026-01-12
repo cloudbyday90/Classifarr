@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.8a-alpha] - 2026-01-12
+
+### Fixed
+- **Discord Channel Details Error Handling**:
+  - Backend: Added 10-second timeout to Discord client login to prevent indefinite hangs
+  - Backend: Changed `/api/settings/discord/channel/:channelId` route from returning 500 errors to 400 with fallback data
+  - Backend: Added detailed logging at key points in `getChannelDetails()` for debugging
+  - Frontend: Improved error handling in `Discord.vue` to use fallback data and show warning status
+  - Frontend: Display clear error messages when channel details cannot be fetched
+  - Prevents "Unknown" from appearing for server and channel names after saving configuration
+
+### Changed
+- **Discord Error Responses**: API now returns structured error response with fallback data instead of generic 500 errors
+- **Discord Logging**: Added debug logging for channel fetch operations (`[Discord]` prefix)
+
 ## [0.37.8-alpha] - 2026-01-12
 
 ### Added
