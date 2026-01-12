@@ -1387,11 +1387,11 @@ router.put('/notifications', async (req, res) => {
  * @swagger
  * /api/settings/discord/test:
  *   post:
- *     summary: Test Discord bot connection
+ *     summary: Test Discord bot connection and send test notification
  */
 router.post('/discord/test', async (req, res) => {
   try {
-    const { bot_token } = req.body;
+    const { bot_token, channel_id } = req.body;
     let token = bot_token;
 
     if (isMaskedToken(bot_token)) {
@@ -1403,7 +1403,7 @@ router.post('/discord/test', async (req, res) => {
       return res.status(400).json({ error: 'No Discord token found' });
     }
 
-    const result = await discordBotService.testConnection(token);
+    const result = await discordBotService.testConnection(token, channel_id);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });

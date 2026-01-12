@@ -446,12 +446,36 @@ const testConnection = async () => {
   try {
     const response = await axios.post('/api/settings/discord/test', {
       bot_token: config.value.bot_token,
+      channel_id: config.value.channel_id, // Pass channel_id for full test
     })
     
     if (response.data.success) {
+      const details = [`Connected as ${response.data.botUser?.username}`];
+      
+      // Check if notification was sent
+      if (response.data.notification?.sent) {
+        details.push(`✅ Test notification sent to #${response.data.notification.channelName}`);
+      }
+      
+      // Show permission warnings if any
+      if (response.data.warning) {
+        details.push(`⚠️ ${response.data.warning}`);
+      }
+      
+      // Show permission status
+      if (response.data.permissions) {
+        const { granted, missing } = response.data.permissions;
+        if (granted.length > 0) {
+          details.push(`✅ Permissions: ${granted.join(', ')}`);
+        }
+        if (missing.length > 0) {
+          details.push(`❌ Missing: ${missing.join(', ')}`);
+        }
+      }
+      
       connectionStatus.value = {
         status: 'success',
-        details: `Connected as ${response.data.botUser?.username}`,
+        details: details.join('\n'),
         lastChecked: new Date()
       }
       // If editing, try to load servers to help user setup
