@@ -1,5 +1,30 @@
 # Classifarr Release Notes
 
+## v0.37.8a-alpha
+**Title: Discord Channel Details Error Handling Fix**
+
+### Fixed
+- **Discord "Unknown" Display Issue**: Fixed issue where Discord settings page would show "Unknown" for server and channel names after saving configuration
+  - ✅ **No more 500 errors** when fetching channel details
+  - 🔄 **Graceful fallback** with clear error messages when Discord API is unavailable
+  - ⏱️ **10-second timeout** prevents indefinite waiting on Discord client login
+  - 📝 **Better error messages** help identify configuration problems
+  - 🛡️ **Warning status** shows when fallback data is being used
+
+### What This Fixes
+- Previously, saving Discord configuration would result in browser console errors (`HTTP 500 Internal Server Error`)
+- Server and channel names would display as "Unknown" even when properly configured
+- Backend exceptions were unhandled, causing server errors
+- Users couldn't tell what was wrong with their configuration
+
+### What's Improved
+- Backend now has detailed logging to help troubleshoot Discord connectivity issues
+- Frontend displays helpful warning messages when channel details can't be fetched
+- API returns structured error responses with fallback data instead of generic 500 errors
+- Users can now see exactly what error occurred and take appropriate action
+
+---
+
 ## v0.37.8-alpha
 **Title: Discord Integration Improvements & Status Fix**
 

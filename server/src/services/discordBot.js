@@ -242,9 +242,22 @@ class DiscordBotService {
 
       // Wait for client to be fully ready before accessing guilds
       await new Promise((resolve, reject) => {
-        testClient.once('ready', resolve);
-        testClient.once('error', reject);
-        testClient.login(token).catch(reject);
+        const timeout = setTimeout(() => {
+          reject(new Error('Discord client login timeout'));
+        }, 10000); // 10 second timeout
+
+        testClient.once('ready', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        testClient.once('error', (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+        testClient.login(token).catch((err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
       });
 
       const guilds = testClient.guilds.cache.map(guild => ({
@@ -278,9 +291,22 @@ class DiscordBotService {
 
       // Wait for client to be fully ready before accessing guilds
       await new Promise((resolve, reject) => {
-        testClient.once('ready', resolve);
-        testClient.once('error', reject);
-        testClient.login(token).catch(reject);
+        const timeout = setTimeout(() => {
+          reject(new Error('Discord client login timeout'));
+        }, 10000); // 10 second timeout
+
+        testClient.once('ready', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        testClient.once('error', (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+        testClient.login(token).catch((err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
       });
 
       const guild = testClient.guilds.cache.get(serverId);
@@ -311,10 +337,17 @@ class DiscordBotService {
 
   async getChannelDetails(channelId, botToken = null) {
     try {
+      console.log(`[Discord] Fetching channel details for channel ID: ${channelId}`);
+      
       // Always prefer stored token
       const storedConfig = await this.loadConfig();
       const token = storedConfig?.bot_token || botToken;
-      if (!token) throw new Error('No bot token configured');
+      
+      if (!token) {
+        throw new Error('No bot token configured');
+      }
+
+      console.log(`[Discord] Using ${storedConfig?.bot_token ? 'stored' : 'provided'} bot token`);
 
       // Create temporary client
       const testClient = new Client({
@@ -323,9 +356,22 @@ class DiscordBotService {
 
       // Wait for client to be fully ready
       await new Promise((resolve, reject) => {
-        testClient.once('ready', resolve);
-        testClient.once('error', reject);
-        testClient.login(token).catch(reject);
+        const timeout = setTimeout(() => {
+          reject(new Error('Discord client login timeout'));
+        }, 10000); // 10 second timeout
+
+        testClient.once('ready', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        testClient.once('error', (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+        testClient.login(token).catch((err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
       });
 
       try {
@@ -351,12 +397,16 @@ class DiscordBotService {
           guildName: guildName
         };
 
+        console.log(`[Discord] Successfully fetched channel: ${channel.name} in guild: ${channel.guild?.name || 'Unknown'}`);
+
         return result;
       } finally {
         await testClient.destroy();
       }
     } catch (error) {
-      throw new Error(`Failed to fetch channel details: ${error.message}`);
+      // Log the error with context, then re-throw for route handler
+      console.error(`Failed to fetch channel details for ${channelId}:`, error.message);
+      throw error; // Re-throw so the route handler can return appropriate status
     }
   }
 

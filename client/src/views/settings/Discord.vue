@@ -393,15 +393,41 @@ const fetchChannelDetails = async (channelId) => {
   try {
     const response = await axios.get(`/api/settings/discord/channel/${channelId}`);
     if (response.data) {
+      // Check if we got an error with fallback data
+      if (response.data.error && response.data.fallback) {
+        console.warn('Channel details fetch returned error, using fallback:', response.data.error);
+        configuredChannel.value = response.data.fallback;
+        // Show a warning to the user
+        connectionStatus.value = {
+          status: 'warning',
+          error: `Could not fetch current channel details: ${response.data.error}. Please test connection to verify.`
+        };
+      } else {
         configuredChannel.value = response.data;
-        // Pre-populate server selection for edit mode
         selectedServer.value = response.data.guildId;
-        // Don't auto-load servers/channels lists unless user clicks edit (to save API calls/time)
+      }
     }
   } catch (error) {
-      console.error('Failed to fetch channel details:', error);
-      // Status remains unknown or error
-      configuredChannel.value = { name: 'Unknown', guildName: 'Unknown' };
+    console.error('Failed to fetch channel details:', error);
+    
+    // Better error handling
+    if (error.response?.data?.fallback) {
+      configuredChannel.value = error.response.data.fallback;
+      connectionStatus.value = {
+        status: 'error',
+        error: `Could not verify Discord configuration: ${error.response.data.error || error.message}`
+      };
+    } else {
+      configuredChannel.value = { 
+        name: 'Unknown', 
+        guildName: 'Unknown',
+        id: channelId
+      };
+      connectionStatus.value = {
+        status: 'error',
+        error: 'Failed to load channel details. Please test your connection.'
+      };
+    }
   }
 }
 
