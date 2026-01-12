@@ -242,9 +242,22 @@ class DiscordBotService {
 
       // Wait for client to be fully ready before accessing guilds
       await new Promise((resolve, reject) => {
-        testClient.once('ready', resolve);
-        testClient.once('error', reject);
-        testClient.login(token).catch(reject);
+        const timeout = setTimeout(() => {
+          reject(new Error('Discord client login timeout'));
+        }, 10000); // 10 second timeout
+
+        testClient.once('ready', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        testClient.once('error', (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+        testClient.login(token).catch((err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
       });
 
       const guilds = testClient.guilds.cache.map(guild => ({
@@ -278,9 +291,22 @@ class DiscordBotService {
 
       // Wait for client to be fully ready before accessing guilds
       await new Promise((resolve, reject) => {
-        testClient.once('ready', resolve);
-        testClient.once('error', reject);
-        testClient.login(token).catch(reject);
+        const timeout = setTimeout(() => {
+          reject(new Error('Discord client login timeout'));
+        }, 10000); // 10 second timeout
+
+        testClient.once('ready', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        testClient.once('error', (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+        testClient.login(token).catch((err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
       });
 
       const guild = testClient.guilds.cache.get(serverId);
