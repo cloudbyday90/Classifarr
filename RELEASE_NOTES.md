@@ -1,5 +1,17 @@
 # Classifarr Release Notes
 
+## v0.37.7-alpha
+**Title: Startup Profile Generation & Discord Status Fix**
+
+### Added
+- Library profiles now auto-generate on server startup for all libraries with items
+- No more waiting or manual refresh needed when viewing library details
+
+### Fixed
+- Discord service in System tab now shows "not configured" instead of "error"
+
+---
+
 ## v0.37.6-alpha
 **Title: Library Profile Auto-Generation Fix**
 

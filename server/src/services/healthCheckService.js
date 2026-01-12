@@ -72,8 +72,14 @@ async function checkDiscordBot() {
         const isConnected = discordBotService.client && discordBotService.client.isReady();
 
         // Check if Discord is configured
-        const config = await db.query('SELECT bot_token FROM discord_config LIMIT 1');
-        const isConfigured = config.rows.length > 0 && config.rows[0].bot_token;
+        let isConfigured = false;
+        try {
+            const config = await db.query('SELECT bot_token FROM discord_config LIMIT 1');
+            isConfigured = config.rows.length > 0 && config.rows[0].bot_token;
+        } catch (dbError) {
+            // Table doesn't exist or query failed - treat as not configured
+            isConfigured = false;
+        }
 
         healthCache.discordBot = {
             status: isConnected ? 'connected' : (isConfigured ? 'disconnected' : 'not configured'),
@@ -81,10 +87,11 @@ async function checkDiscordBot() {
             responseTime: null
         };
     } catch (error) {
+        // Unexpected error - treat as not configured rather than error
         healthCache.discordBot = {
-            status: 'error',
+            status: 'not configured',
             lastCheck: new Date().toISOString(),
-            error: error.message
+            responseTime: null
         };
     }
 

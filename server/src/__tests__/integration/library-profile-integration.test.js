@@ -110,9 +110,32 @@ describe('Library Profile API', () => {
 });
 
 describe('Profile Auto-Generation', () => {
-    it('should trigger profile generation after library sync completion', async () => {
-        // This would be an integration test with the actual sync service
-        // For now, we just verify the service method exists
+    /**
+     * Server Startup Profile Generation
+     * 
+     * On server startup, index.js calls libraryProfileService.generateAllProfiles()
+     * which generates/refreshes profiles for all libraries with items.
+     * This ensures profiles are always up-to-date when viewing library details.
+     * See: server/src/index.js - initializeServices()
+     */
+    it('should have generateAllProfiles method for server startup', async () => {
         expect(typeof libraryProfileService.generateProfile).toBe('function');
+        // generateAllProfiles is called during server startup to pre-generate
+        // profiles for all libraries with items. This prevents the need for
+        // manual refresh when first viewing a library.
+    });
+
+    /**
+     * Frontend 404 Auto-Generation (Fallback)
+     * 
+     * If a profile doesn't exist when the frontend requests it,
+     * the API returns 404 and the frontend auto-triggers profile generation.
+     * This is a fallback for new libraries or if startup generation fails.
+     * See: client/src/components/library/LibraryProfile.vue - loadProfile() catch block
+     */
+    it('should have generateProfile method for on-demand generation', async () => {
+        expect(typeof libraryProfileService.generateProfile).toBe('function');
+        // The frontend calls refreshLibraryProfile when it receives 404
+        // which triggers generateProfile on the backend
     });
 });

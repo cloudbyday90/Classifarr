@@ -161,6 +161,21 @@ async function initializeServices() {
   } catch (error) {
     console.warn('Embedding migration check failed:', error.message);
   }
+
+  // Generate library profiles for all libraries with items (async, don't wait)
+  try {
+    const libraryProfileService = require('./services/libraryProfileService');
+    // Run in background - don't block startup
+    libraryProfileService.generateAllProfiles().then(results => {
+      const success = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+      console.log(`Startup library profile generation complete: ${success} success, ${failed} failed`);
+    }).catch(error => {
+      console.warn('Startup library profile generation failed:', error.message);
+    });
+  } catch (error) {
+    console.warn('Library profile service not available:', error.message);
+  }
 }
 
 // Start server
