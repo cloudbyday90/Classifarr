@@ -444,10 +444,16 @@ const testConnection = async () => {
   loading.value = true
   connectionStatus.value = { status: 'testing' }
   try {
-    const response = await axios.post('/api/settings/discord/test', {
+    const requestBody = {
       bot_token: config.value.bot_token,
-      channel_id: config.value.channel_id, // Pass channel_id for full test
-    })
+    };
+    
+    // Only include channel_id if it has a valid value
+    if (config.value.channel_id) {
+      requestBody.channel_id = config.value.channel_id;
+    }
+    
+    const response = await axios.post('/api/settings/discord/test', requestBody)
     
     if (response.data.success) {
       const details = [`Connected as ${response.data.botUser?.username}`];

@@ -81,6 +81,16 @@ class DiscordBotService {
             return { success: false, error: 'Channel not found' };
           }
 
+          // Ensure bot member is in cache for permission checking
+          const guild = channel.guild;
+          if (guild) {
+            try {
+              await guild.members.fetch(testClient.user.id);
+            } catch (fetchError) {
+              console.warn('Could not fetch bot member for permission check:', fetchError.message);
+            }
+          }
+
           // Check permissions
           const permissions = this.checkChannelPermissions(channel, testClient.user.id);
           response.permissions = permissions;
@@ -166,6 +176,16 @@ class DiscordBotService {
       'AddReactions'
     ];
 
+    // Mapping for permission names to PermissionFlagsBits
+    const permissionMap = {
+      'SendMessages': PermissionFlagsBits.SendMessages,
+      'EmbedLinks': PermissionFlagsBits.EmbedLinks,
+      'AttachFiles': PermissionFlagsBits.AttachFiles,
+      'ReadMessageHistory': PermissionFlagsBits.ReadMessageHistory,
+      'UseExternalEmojis': PermissionFlagsBits.UseExternalEmojis,
+      'AddReactions': PermissionFlagsBits.AddReactions
+    };
+
     const botMember = channel.guild.members.cache.get(botUserId);
     if (!botMember) {
       return {
@@ -180,7 +200,8 @@ class DiscordBotService {
     const missing = [];
 
     requiredPermissions.forEach(perm => {
-      if (channelPermissions.has(PermissionFlagsBits[perm])) {
+      const permBit = permissionMap[perm];
+      if (permBit && channelPermissions.has(permBit)) {
         granted.push(perm);
       } else {
         missing.push(perm);

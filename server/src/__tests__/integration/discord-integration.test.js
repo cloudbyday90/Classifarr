@@ -218,13 +218,15 @@ describe('Discord Integration Tests', () => {
             expect(invalidChannelId).not.toMatch(/^\d{17,19}$/);
         });
 
-        test('should validate bot token format', () => {
-            // Discord bot tokens typically have a base64 pattern with dots
+        test('should validate bot token format has three parts', () => {
+            // Discord bot tokens have three base64-encoded parts separated by dots
+            // This test validates the basic structure, not the actual token validity
             // Format: userId.timestamp.hmac (all base64 encoded)
-            const validTokenPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+            const hasThreePartsPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
             const testToken = 'FAKE12345TOKEN67890.XXXXXX.fake-test-token-not-real-abcdefg';
             
-            expect(testToken).toMatch(validTokenPattern);
+            // Test passes if token has correct number of dot-separated parts
+            expect(testToken).toMatch(hasThreePartsPattern);
         });
     });
 
