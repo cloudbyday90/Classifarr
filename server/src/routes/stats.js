@@ -133,7 +133,7 @@ router.get('/overview', async (req, res) => {
     `);
 
     const overview = result.rows[0] || {};
-    
+
     // Normalize numeric fields
     const totalDecisions = Number(overview.total_decisions) || 0;
     const totalAutoClassified = Number(overview.total_auto_classified) || 0;
@@ -410,65 +410,77 @@ router.get('/alerts', async (req, res) => {
   try {
     const alerts = [];
 
-    // Check for declining accuracy
-    const declining = await db.query(`
-      SELECT lp.id, lp.name, pls.accuracy_rate, pls.last_7_days_accuracy
-      FROM policy_learning_stats pls
-      JOIN library_policies lp ON pls.policy_id = lp.id
-      WHERE pls.trend = 'declining'
-      AND pls.accuracy_rate < 0.8
-    `);
+    // Check for declining accuracy - wrapped in try-catch for resilience
+    try {
+      const declining = await db.query(`
+        SELECT lp.id, lp.name, pls.accuracy_rate, pls.last_7_days_accuracy
+        FROM policy_learning_stats pls
+        JOIN library_policies lp ON pls.policy_id = lp.id
+        WHERE pls.trend = 'declining'
+        AND pls.accuracy_rate < 0.8
+      `);
 
-    for (const policy of declining.rows) {
-      alerts.push({
-        type: 'declining_accuracy',
-        severity: 'warning',
-        policy_id: policy.id,
-        policy_name: policy.name,
-        message: `${policy.name} accuracy dropped to ${(policy.accuracy_rate * 100).toFixed(1)}%`
-      });
+      for (const policy of declining.rows) {
+        alerts.push({
+          type: 'declining_accuracy',
+          severity: 'warning',
+          policy_id: policy.id,
+          policy_name: policy.name,
+          message: `${policy.name} accuracy dropped to ${(policy.accuracy_rate * 100).toFixed(1)}%`
+        });
+      }
+    } catch (err) {
+      logger.debug('Could not check declining accuracy alerts', { error: err.message });
     }
 
-    // Check for high correction rate
-    const highCorrections = await db.query(`
-      SELECT lp.id, lp.name, 
-        COUNT(*) FILTER (WHERE was_correction) * 100.0 / COUNT(*) as correction_rate
-      FROM policy_feedback_log pfl
-      JOIN library_policies lp ON pfl.selected_policy_id = lp.id
-      WHERE pfl.prompted_at >= NOW() - INTERVAL '7 days'
-      GROUP BY lp.id, lp.name
-      HAVING COUNT(*) FILTER (WHERE was_correction) * 100.0 / COUNT(*) > $1
-    `, [ALERT_THRESHOLDS.HIGH_CORRECTION_RATE_PERCENT]);
+    // Check for high correction rate - wrapped in try-catch for resilience
+    try {
+      const highCorrections = await db.query(`
+        SELECT lp.id, lp.name, 
+          COUNT(*) FILTER (WHERE was_correction) * 100.0 / NULLIF(COUNT(*), 0) as correction_rate
+        FROM policy_feedback_log pfl
+        JOIN library_policies lp ON pfl.selected_policy_id = lp.id
+        WHERE pfl.prompted_at >= NOW() - INTERVAL '7 days'
+        GROUP BY lp.id, lp.name
+        HAVING COUNT(*) FILTER (WHERE was_correction) * 100.0 / NULLIF(COUNT(*), 0) > $1
+      `, [ALERT_THRESHOLDS.HIGH_CORRECTION_RATE_PERCENT]);
 
-    for (const policy of highCorrections.rows) {
-      const correctionRate = policy.correction_rate || 0;
-      alerts.push({
-        type: 'high_corrections',
-        severity: 'warning',
-        policy_id: policy.id,
-        policy_name: policy.name,
-        message: `${policy.name} has ${correctionRate.toFixed(1)}% correction rate`
-      });
+      for (const policy of highCorrections.rows) {
+        const correctionRate = policy.correction_rate || 0;
+        alerts.push({
+          type: 'high_corrections',
+          severity: 'warning',
+          policy_id: policy.id,
+          policy_name: policy.name,
+          message: `${policy.name} has ${correctionRate.toFixed(1)}% correction rate`
+        });
+      }
+    } catch (err) {
+      logger.debug('Could not check high correction rate alerts', { error: err.message });
     }
 
-    // Check for pending suggestions
-    const pendingSuggestions = await db.query(`
-      SELECT lp.id, lp.name, COUNT(*) as pending_count
-      FROM policy_tuning_suggestions pts
-      JOIN library_policies lp ON pts.policy_id = lp.id
-      WHERE pts.status = 'pending'
-      GROUP BY lp.id, lp.name
-      HAVING COUNT(*) >= $1
-    `, [ALERT_THRESHOLDS.PENDING_SUGGESTIONS_MIN]);
+    // Check for pending suggestions - wrapped in try-catch for resilience
+    try {
+      const pendingSuggestions = await db.query(`
+        SELECT lp.id, lp.name, COUNT(*) as pending_count
+        FROM policy_tuning_suggestions pts
+        JOIN library_policies lp ON pts.policy_id = lp.id
+        WHERE pts.status = 'pending'
+        GROUP BY lp.id, lp.name
+        HAVING COUNT(*) >= $1
+      `, [ALERT_THRESHOLDS.PENDING_SUGGESTIONS_MIN]);
 
-    for (const policy of pendingSuggestions.rows) {
-      alerts.push({
-        type: 'pending_suggestions',
-        severity: 'info',
-        policy_id: policy.id,
-        policy_name: policy.name,
-        message: `${policy.name} has ${policy.pending_count} pending tuning suggestions`
-      });
+      for (const policy of pendingSuggestions.rows) {
+        alerts.push({
+          type: 'pending_suggestions',
+          severity: 'info',
+          policy_id: policy.id,
+          policy_name: policy.name,
+          message: `${policy.name} has ${policy.pending_count} pending tuning suggestions`
+        });
+      }
+    } catch (err) {
+      logger.debug('Could not check pending suggestion alerts', { error: err.message });
     }
 
     res.json(alerts);

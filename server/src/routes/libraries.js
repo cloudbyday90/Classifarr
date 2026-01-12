@@ -24,6 +24,7 @@ const mediaSyncService = require('../services/mediaSync');
 const classificationService = require('../services/classification');
 const ollamaService = require('../services/ollama');
 const mediaPatternAnalyzer = require('../services/mediaPatternAnalyzer');
+const libraryProfileService = require('../services/libraryProfileService');
 const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
@@ -1719,6 +1720,65 @@ router.post('/:id/restore-pattern', async (req, res) => {
     res.json({ success: true, message: 'Pattern restored' });
   } catch (error) {
     logger.error('Failed to restore pattern', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// Library Profiles (v0.38.0+)
+// ==========================================
+
+/**
+ * @swagger
+ * /api/libraries/{id}/profile:
+ *   get:
+ *     summary: Get library profile (statistical distribution of content)
+ *     description: Returns the auto-generated profile showing what content types exist in this library
+ */
+router.get('/:id/profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const profile = await libraryProfileService.getProfile(parseInt(id));
+    if (!profile) {
+      return res.status(404).json({
+        error: 'Profile not found',
+        message: 'Profile will be generated after library sync and enrichment'
+      });
+    }
+
+    res.json(profile);
+  } catch (error) {
+    logger.error('Failed to get library profile', { libraryId: req.params.id, error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/profile/refresh:
+ *   post:
+ *     summary: Regenerate library profile
+ *     description: Force regeneration of the library profile from current synced items
+ */
+router.post('/:id/profile/refresh', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    logger.info('Refreshing library profile', { libraryId: id });
+
+    const profile = await libraryProfileService.generateProfile(parseInt(id));
+
+    if (!profile) {
+      return res.status(400).json({
+        error: 'Cannot generate profile',
+        message: 'Library has no synced items'
+      });
+    }
+
+    res.json({ success: true, profile });
+  } catch (error) {
+    logger.error('Failed to refresh library profile', { libraryId: req.params.id, error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

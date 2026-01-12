@@ -1,11 +1,11 @@
 const formulaEngine = require('../services/formulaEngine');
 const { FORMULA_CONFIDENCE_CAP } = require('../services/formulaEngine');
 const db = require('../config/database');
-const patternSignalCollector = require('../services/patternSignalCollector');
+const libraryProfileService = require('../services/libraryProfileService');
 const ragRetriever = require('../services/ragRetriever');
 
 jest.mock('../config/database');
-jest.mock('../services/patternSignalCollector');
+jest.mock('../services/libraryProfileService');
 jest.mock('../services/ragRetriever');
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
@@ -41,7 +41,7 @@ describe('FormulaEngine', () => {
             const weights = await formulaEngine.getWeights();
 
             expect(weights).toEqual({
-                pattern: 0.40,
+                profile: 0.40, // v0.38.0: pattern -> profile
                 rule: 0.30,
                 rag: 0.20,
                 history: 0.10
@@ -56,7 +56,7 @@ describe('FormulaEngine', () => {
             const weights = await formulaEngine.getWeights();
 
             expect(weights).toEqual({
-                pattern: 0.40,
+                profile: 0.40,
                 rule: 0.30,
                 rag: 0.20,
                 history: 0.10
@@ -71,7 +71,7 @@ describe('FormulaEngine', () => {
             const weights = await formulaEngine.getWeights();
 
             expect(weights).toEqual({
-                pattern: 0.40,
+                profile: 0.40,
                 rule: 0.30,
                 rag: 0.20,
                 history: 0.10
@@ -84,7 +84,7 @@ describe('FormulaEngine', () => {
             const weights = await formulaEngine.getWeights();
 
             expect(weights).toEqual({
-                pattern: 0.40,
+                profile: 0.40,
                 rule: 0.30,
                 rag: 0.20,
                 history: 0.10
@@ -104,7 +104,7 @@ describe('FormulaEngine', () => {
             const weights = await formulaEngine.getWeights();
 
             expect(weights).toEqual({
-                pattern: 0.50,
+                profile: 0.50,
                 rule: 0.25,
                 rag: 0.15,
                 history: 0.10
@@ -147,53 +147,50 @@ describe('FormulaEngine', () => {
         });
     });
 
-    describe('scorePatterns', () => {
+    describe('scoreProfile (formerly scorePatterns)', () => {
         const library = { id: 1, name: 'Movies' };
         const metadata = { title: 'Test Movie', studios: ['Marvel'] };
 
-        it('should return highest confidence pattern for matching library', async () => {
-            patternSignalCollector.collectSignals.mockResolvedValue([
-                { confidence: 85, library: { id: 1, name: 'Movies' } },
-                { confidence: 70, library: { id: 1, name: 'Movies' } }
-            ]);
+        it('should return high score for strong profile match', async () => {
+            // Profile score 100 -> (50/50)*95 = 95
+            libraryProfileService.getProfileScore.mockResolvedValue(100);
 
-            const score = await formulaEngine.scorePatterns(metadata, library);
-
-            expect(score).toBe(85);
-        });
-
-        it('should return 0 when no patterns match', async () => {
-            patternSignalCollector.collectSignals.mockResolvedValue([]);
-
-            const score = await formulaEngine.scorePatterns(metadata, library);
-
-            expect(score).toBe(0);
-        });
-
-        it('should return 0 when patterns match different library', async () => {
-            patternSignalCollector.collectSignals.mockResolvedValue([
-                { confidence: 85, library: { id: 2, name: 'TV Shows' } }
-            ]);
-
-            const score = await formulaEngine.scorePatterns(metadata, library);
-
-            expect(score).toBe(0);
-        });
-
-        it('should cap score at 95', async () => {
-            patternSignalCollector.collectSignals.mockResolvedValue([
-                { confidence: 98, library: { id: 1, name: 'Movies' } }
-            ]);
-
-            const score = await formulaEngine.scorePatterns(metadata, library);
+            const score = await formulaEngine.scoreProfile(metadata, library);
 
             expect(score).toBe(95);
         });
 
-        it('should return 0 on error', async () => {
-            patternSignalCollector.collectSignals.mockRejectedValue(new Error('Pattern error'));
+        it('should return scaled score for moderate profile match', async () => {
+            // Profile score 75 -> (25/50)*95 = 47.5
+            libraryProfileService.getProfileScore.mockResolvedValue(75);
 
-            const score = await formulaEngine.scorePatterns(metadata, library);
+            const score = await formulaEngine.scoreProfile(metadata, library);
+
+            expect(score).toBe(47.5);
+        });
+
+        it('should return 0 for neutral profile match', async () => {
+            // Profile score 50 (neutral) -> 0
+            libraryProfileService.getProfileScore.mockResolvedValue(50);
+
+            const score = await formulaEngine.scoreProfile(metadata, library);
+
+            expect(score).toBe(0);
+        });
+
+        it('should return 0 for negative profile match', async () => {
+            // Profile score 25 (mismatch) -> 0
+            libraryProfileService.getProfileScore.mockResolvedValue(25);
+
+            const score = await formulaEngine.scoreProfile(metadata, library);
+
+            expect(score).toBe(0);
+        });
+
+        it('should return 0 on error', async () => {
+            libraryProfileService.getProfileScore.mockRejectedValue(new Error('Profile error'));
+
+            const score = await formulaEngine.scoreProfile(metadata, library);
 
             expect(score).toBe(0);
         });
@@ -388,7 +385,7 @@ describe('FormulaEngine', () => {
 
         it('should return 50 when no history exists', async () => {
             const metadata = { tmdb_id: 12345 };
-            
+
             db.query.mockResolvedValue({
                 rows: []
             });
@@ -400,7 +397,7 @@ describe('FormulaEngine', () => {
 
         it('should return high score when always classified to this library', async () => {
             const metadata = { tmdb_id: 12345 };
-            
+
             db.query.mockResolvedValue({
                 rows: [
                     { library_id: 1, count: '5' }
@@ -414,7 +411,7 @@ describe('FormulaEngine', () => {
 
         it('should return low score when never classified to this library', async () => {
             const metadata = { tmdb_id: 12345 };
-            
+
             db.query.mockResolvedValue({
                 rows: [
                     { library_id: 2, count: '5' }
@@ -428,7 +425,7 @@ describe('FormulaEngine', () => {
 
         it('should calculate score based on success rate', async () => {
             const metadata = { tmdb_id: 12345 };
-            
+
             db.query.mockResolvedValue({
                 rows: [
                     { library_id: 1, count: '3' }, // 3 times to this library
@@ -444,7 +441,7 @@ describe('FormulaEngine', () => {
 
         it('should return 50 on error', async () => {
             const metadata = { tmdb_id: 12345 };
-            
+
             db.query.mockRejectedValue(new Error('Database error'));
 
             const score = await formulaEngine.scoreHistory(metadata, library);
@@ -454,8 +451,8 @@ describe('FormulaEngine', () => {
     });
 
     describe('calculateLibraryScores', () => {
-        const metadata = { 
-            title: 'Test Movie', 
+        const metadata = {
+            title: 'Test Movie',
             tmdb_id: 12345,
             genres: ['Action'],
             studios: ['Marvel']
@@ -494,10 +491,11 @@ describe('FormulaEngine', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            // Mock pattern scoring
-            patternSignalCollector.collectSignals.mockResolvedValue([
-                { confidence: 80, library: { id: 1, name: 'Movies' } }
-            ]);
+            // Mock profile scoring (simulating pattern weight use)
+            libraryProfileService.getProfileScore.mockImplementation(async (libId, meta) => {
+                if (libId === 1) return 90; // High match for Movies (score ~80%)
+                return 50; // Neutral
+            });
 
             // Mock RAG scoring
             ragRetriever.semanticSearch.mockResolvedValue([
@@ -519,7 +517,7 @@ describe('FormulaEngine', () => {
             const results = await formulaEngine.calculateLibraryScores(metadata);
 
             const topResult = results[0];
-            expect(topResult.breakdown).toHaveProperty('pattern');
+            expect(topResult.breakdown).toHaveProperty('profile'); // renamed from pattern
             expect(topResult.breakdown).toHaveProperty('rule');
             expect(topResult.breakdown).toHaveProperty('rag');
             expect(topResult.breakdown).toHaveProperty('history');
@@ -527,9 +525,7 @@ describe('FormulaEngine', () => {
 
         it('should cap total score at 95', async () => {
             // Mock very high scores for all components
-            patternSignalCollector.collectSignals.mockResolvedValue([
-                { confidence: 95, library: { id: 1, name: 'Movies' } }
-            ]);
+            libraryProfileService.getProfileScore.mockResolvedValue(100); // 95
             ragRetriever.semanticSearch.mockResolvedValue([
                 { libraryId: 1, similarity: 0.95 }
             ]);
@@ -568,10 +564,11 @@ describe('FormulaEngine', () => {
         });
 
         it('should sort results by score descending', async () => {
-            patternSignalCollector.collectSignals.mockResolvedValue([
-                { confidence: 80, library: { id: 1, name: 'Movies' } },
-                { confidence: 60, library: { id: 2, name: 'TV Shows' } }
-            ]);
+            libraryProfileService.getProfileScore.mockImplementation(async (libId) => {
+                if (libId === 1) return 90;
+                if (libId === 2) return 70;
+                return 50;
+            });
 
             const results = await formulaEngine.calculateLibraryScores(metadata);
 
@@ -609,16 +606,14 @@ describe('FormulaEngine', () => {
         });
 
         it('should cap individual component scores at 95', async () => {
-            patternSignalCollector.collectSignals.mockResolvedValue([
-                { confidence: 100, library: { id: 1, name: 'Movies' } }
-            ]);
+            libraryProfileService.getProfileScore.mockResolvedValue(100);
             ragRetriever.semanticSearch.mockResolvedValue([
                 { libraryId: 1, similarity: 1.0 }
             ]);
 
             const results = await formulaEngine.calculateLibraryScores(metadata);
 
-            expect(results[0].breakdown.pattern).toBeLessThanOrEqual(95);
+            expect(results[0].breakdown.profile).toBeLessThanOrEqual(95);
             expect(results[0].breakdown.rag).toBeLessThanOrEqual(95);
         });
     });

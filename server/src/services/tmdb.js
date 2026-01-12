@@ -69,6 +69,90 @@ class TMDBService {
   }
 
   /**
+   * Check API health including SSL certificate status
+   * @param {string} apiKey - TMDB API key (optional, uses stored key if not provided)
+   * @returns {object} Health status with ssl_error boolean, api_reachable, and message
+   */
+  async checkHealth(apiKey = null) {
+    try {
+      const key = apiKey || await this.getApiKey();
+      if (!key) {
+        return {
+          healthy: false,
+          ssl_error: false,
+          api_reachable: false,
+          message: 'TMDB API key not configured'
+        };
+      }
+
+      const response = await axios.get(`${this.baseUrl}/configuration`, {
+        params: { api_key: key },
+        timeout: 10000
+      });
+
+      if (response.status === 200) {
+        return {
+          healthy: true,
+          ssl_error: false,
+          api_reachable: true,
+          message: 'TMDB API is healthy'
+        };
+      }
+
+      return {
+        healthy: false,
+        ssl_error: false,
+        api_reachable: true,
+        message: 'Unexpected API response'
+      };
+    } catch (error) {
+      const isCertError = error.code === 'CERT_HAS_EXPIRED' ||
+        error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
+        error.code === 'CERT_NOT_YET_VALID' ||
+        (error.message && error.message.includes('certificate'));
+
+      if (isCertError) {
+        return {
+          healthy: false,
+          ssl_error: true,
+          api_reachable: false,
+          message: `SSL certificate issue: ${error.message}`
+        };
+      }
+
+      const isNetworkError = error.code === 'ECONNREFUSED' ||
+        error.code === 'ENOTFOUND' ||
+        error.code === 'ETIMEDOUT';
+
+      if (isNetworkError) {
+        return {
+          healthy: false,
+          ssl_error: false,
+          api_reachable: false,
+          message: `Network error: ${error.message}`
+        };
+      }
+
+      // Check for API errors (401 = invalid key, etc.)
+      if (error.response) {
+        return {
+          healthy: false,
+          ssl_error: false,
+          api_reachable: true,
+          message: error.response.data?.status_message || `API error: ${error.response.status}`
+        };
+      }
+
+      return {
+        healthy: false,
+        ssl_error: false,
+        api_reachable: false,
+        message: error.message
+      };
+    }
+  }
+
+  /**
    * Find TMDB entry by external ID (TVDB, IMDB)
    * Used for TVDB→TMDB and IMDB→TMDB conversion
    * @param {string|number} externalId - External ID to look up

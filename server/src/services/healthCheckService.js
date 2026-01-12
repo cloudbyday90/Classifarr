@@ -12,6 +12,7 @@ const sonarrService = require('./sonarr');
 const ollamaService = require('./ollama');
 const tmdbService = require('./tmdb');
 const tavilyService = require('./tavily');
+const omdbService = require('./omdb');
 const discordBotService = require('./discordBot');
 
 // Cache for health status
@@ -24,6 +25,7 @@ let healthCache = {
     sonarr: { status: 'unknown', lastCheck: null, responseTime: null, instances: [] },
     mediaServer: { status: 'unknown', lastCheck: null, responseTime: null, type: null },
     tmdb: { status: 'unknown', lastCheck: null, responseTime: null },
+    omdb: { status: 'unknown', lastCheck: null, responseTime: null },
     tavily: { status: 'unknown', lastCheck: null, responseTime: null }
 };
 
@@ -383,6 +385,42 @@ async function checkTMDB() {
 }
 
 /**
+ * Check OMDb API
+ */
+async function checkOMDb() {
+    try {
+        const config = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
+
+        if (config.rows.length === 0 || !config.rows[0].api_key) {
+            healthCache.omdb = {
+                status: 'not configured',
+                lastCheck: new Date().toISOString()
+            };
+            return healthCache.omdb;
+        }
+
+        const result = await measureTime(async () => {
+            await omdbService.testConnection(config.rows[0].api_key);
+        });
+
+        healthCache.omdb = {
+            status: result.success ? 'connected' : 'disconnected',
+            lastCheck: new Date().toISOString(),
+            responseTime: result.time,
+            error: result.error
+        };
+    } catch (error) {
+        healthCache.omdb = {
+            status: 'error',
+            lastCheck: new Date().toISOString(),
+            error: error.message
+        };
+    }
+
+    return healthCache.omdb;
+}
+
+/**
  * Check Tavily API (optional)
  */
 async function checkTavily() {
@@ -493,6 +531,7 @@ async function runAllHealthChecks() {
         checkSonarr(),
         checkMediaServer(),
         checkTMDB(),
+        checkOMDb(),
         checkTavily()
     ]);
 
@@ -553,6 +592,7 @@ module.exports = {
     checkSonarr,
     checkMediaServer,
     checkTMDB,
+    checkOMDb,
     checkTavily,
     runAllHealthChecks,
     getHealthCache,

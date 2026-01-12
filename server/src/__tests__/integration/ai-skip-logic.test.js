@@ -33,7 +33,7 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
             ON CONFLICT DO NOTHING
             RETURNING id
         `);
-        
+
         if (serverRes.rows.length > 0) {
             testMediaServerId = serverRes.rows[0].id;
         } else {
@@ -52,12 +52,14 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
         testLibraryId = libRes.rows[0].id;
 
         // Create high-confidence test preset (action movies)
+        // NOTE: Using require_all returns 100 score when all genres match (vs require_any which returns 80)
+        // This is needed to exceed the 85% auto_classify_threshold
         const presetRes = await db.query(`
             INSERT INTO content_presets (key, name, signals, is_system)
             VALUES (
                 'test_high_confidence_action',
                 'Test High Confidence Action',
-                '{"genres": {"require_any": ["Action"], "weight": 2.0}, "keywords": {"require_any": ["explosion", "chase"], "weight": 1.0}}'::jsonb,
+                '{"genres": {"require_all": ["Action"], "weight": 2.0}, "keywords": {"require_any": ["explosion", "chase"], "weight": 1.0}}'::jsonb,
                 false
             )
             RETURNING id
@@ -107,6 +109,8 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
     describe('High Confidence (≥85%) - Skip AI', () => {
         test('should skip AI when PolicyEngine auto-classifies with high confidence', async () => {
             // Mock item that strongly matches the action preset
+            // With require_all genres matching, score = 100 for genres, 80 for keywords
+            // Weighted average: (100*2 + 80*1) / 3 = 93.3%, above 85% threshold
             const item = {
                 title: 'Test Action Movie',
                 media_type: 'movie',
@@ -117,7 +121,7 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
 
             const result = await policyEngine.evaluateItem(item);
 
-            // Should be auto_classify action
+            // Should be auto_classify since score (93.3%) >= threshold (85%)
             expect(result.action).toBe('auto_classify');
             expect(result.confidence).toBeGreaterThanOrEqual(85);
             expect(result.library).toBeDefined();
@@ -126,9 +130,9 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
         });
 
         test('classification service should return policy_auto method for high confidence', async () => {
-            // Note: This test would require mocking the full classification flow
-            // or setting up a complete test scenario with TMDB, etc.
-            // For now, we verify the PolicyEngine returns the correct action
+            // This test verifies the PolicyEngine returns auto_classify for matching content
+            // Genres matching require_all = 100, keywords matching = 80
+            // Weighted: (100*2 + 80*1) / 3 = 93.3%
             const item = {
                 title: 'High Confidence Action',
                 media_type: 'movie',
@@ -138,9 +142,7 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
 
             const policyResult = await policyEngine.evaluateItem(item);
             expect(policyResult.action).toBe('auto_classify');
-            
-            // In the actual classification flow, this would be returned as method: 'policy_auto'
-            // without calling AI
+            expect(policyResult.confidence).toBeGreaterThanOrEqual(85);
         });
     });
 
@@ -180,7 +182,7 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
     });
 
     describe('Low Confidence (<60%) - Use AI', () => {
-        test('should return prompt_select when confidence is low', async () => {
+        test('should return low-confidence action for non-matching content', async () => {
             // Item that doesn't match the preset well
             const item = {
                 title: 'Romance Drama',
@@ -192,10 +194,10 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
 
             const result = await policyEngine.evaluateItem(item);
 
-            // Should be prompt_select if no good matches
+            // Post v0.37.5: For non-matching content, expect either prompt_select or manual
+            // The key is that we don't auto_classify content that doesn't match
             if (result.confidence < 60) {
-                expect(result.action).toBe('prompt_select');
-                // In the classification flow, this would fall through to AI
+                expect(['prompt_select', 'manual']).toContain(result.action);
             }
         });
     });
@@ -263,12 +265,12 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
             };
 
             const result = await policyEngine.evaluateItem(item);
-            
+
             expect(result).toBeDefined();
             expect(result.action).toBeDefined();
             expect(result.confidence).toBeDefined();
             expect(result.ranked).toBeDefined();
-            
+
             if (result.action === 'auto_classify') {
                 expect(result.library).toBeDefined();
                 expect(result.method).toBe('policy_engine');

@@ -1,5 +1,36 @@
 # Classifarr Release Notes
 
+## v0.37.5-alpha
+**Title: Library Profiles & API Health Monitoring**
+
+### New Features
+
+#### Library Profile System
+A new statistical system replacing Pattern Discovery:
+- **Profile Generation**: Generates profiles based on rating, genre, and studio distributions
+- **Automatic Exclusions**: Identifies what's *not* in your library
+- **Policy Integration**: `PROFILE_SCORE` signal type for better classification accuracy
+- **Profile Visualization**: New `LibraryProfile` component in Library Detail view
+
+#### API Health Monitoring
+New health check endpoints for external API services:
+- `GET /api/settings/omdb/health` - OMDb status with SSL and rate limit info
+- `GET /api/settings/tmdb/health` - TMDB status with SSL check
+- `GET /api/settings/tavily/health` - Tavily status with SSL check
+- **System Tab Integration**: OMDb now appears in System Health Status
+
+### Fixes
+- **Stats Alerts 500 Error**: Added defensive error handling to `/api/stats/alerts`
+- **OMDb SSL Errors**: Graceful handling of SSL certificate expiration
+- **Integration Tests**: Fixed preset scoring tests to match actual implementation
+
+### Deprecated
+- **Pattern Discovery**: Replaced by Library Profiles
+- **Routes**: Removed `/patterns` and `/rule-builder` routes
+- **Database**: `discovered_patterns` table is now legacy
+
+---
+
 ## v0.37.2-alpha
 **Title: Inline Preset Customization & Combined Signals**
 

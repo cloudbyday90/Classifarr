@@ -867,6 +867,49 @@ router.post('/tmdb/test', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/settings/tmdb/health:
+ *   get:
+ *     summary: Check TMDB API health and SSL certificate status
+ */
+router.get('/tmdb/health', async (req, res) => {
+  try {
+    // Get config status
+    const configResult = await db.query('SELECT * FROM tmdb_config WHERE is_active = true LIMIT 1');
+    const config = configResult.rows[0];
+
+    if (!config?.api_key) {
+      return res.json({
+        status: 'unavailable',
+        configured: false,
+        ssl_valid: null,
+        api_reachable: null,
+        message: 'TMDB API not configured'
+      });
+    }
+
+    // Check API health
+    const healthResult = await tmdbService.checkHealth(config.api_key);
+
+    res.json({
+      status: healthResult.healthy ? 'healthy' : (healthResult.ssl_error ? 'degraded' : 'unavailable'),
+      configured: true,
+      ssl_valid: !healthResult.ssl_error,
+      api_reachable: healthResult.api_reachable,
+      message: healthResult.message
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'unavailable',
+      configured: null,
+      ssl_valid: null,
+      api_reachable: false,
+      message: error.message
+    });
+  }
+});
+
 // ============================================
 // TAVILY CONFIGURATION
 // ============================================
@@ -965,6 +1008,49 @@ router.post('/tavily/test', async (req, res) => {
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/tavily/health:
+ *   get:
+ *     summary: Check Tavily API health and SSL certificate status
+ */
+router.get('/tavily/health', async (req, res) => {
+  try {
+    // Get config status
+    const configResult = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
+    const config = configResult.rows[0];
+
+    if (!config?.api_key) {
+      return res.json({
+        status: 'unavailable',
+        configured: false,
+        ssl_valid: null,
+        api_reachable: null,
+        message: 'Tavily API not configured'
+      });
+    }
+
+    // Check API health
+    const healthResult = await tavilyService.checkHealth(config.api_key);
+
+    res.json({
+      status: healthResult.healthy ? 'healthy' : (healthResult.ssl_error ? 'degraded' : 'unavailable'),
+      configured: true,
+      ssl_valid: !healthResult.ssl_error,
+      api_reachable: healthResult.api_reachable,
+      message: healthResult.message
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'unavailable',
+      configured: null,
+      ssl_valid: null,
+      api_reachable: false,
+      message: error.message
+    });
   }
 });
 
@@ -1098,6 +1184,75 @@ router.post('/omdb/search', async (req, res) => {
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/omdb/health:
+ *   get:
+ *     summary: Check OMDb API health and SSL certificate status
+ *     responses:
+ *       200:
+ *         description: OMDb health status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [healthy, degraded, unavailable]
+ *                 configured:
+ *                   type: boolean
+ *                 ssl_valid:
+ *                   type: boolean
+ *                 api_reachable:
+ *                   type: boolean
+ *                 requests_today:
+ *                   type: integer
+ *                 daily_limit:
+ *                   type: integer
+ *                 message:
+ *                   type: string
+ */
+router.get('/omdb/health', async (req, res) => {
+  try {
+    // Get config status
+    const configResult = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
+    const config = configResult.rows[0];
+
+    if (!config?.api_key) {
+      return res.json({
+        status: 'unavailable',
+        configured: false,
+        ssl_valid: null,
+        api_reachable: null,
+        message: 'OMDb API not configured'
+      });
+    }
+
+    // Check API health with a simple test request
+    const healthResult = await omdbService.checkHealth(config.api_key);
+
+    res.json({
+      status: healthResult.healthy ? 'healthy' : (healthResult.ssl_error ? 'degraded' : 'unavailable'),
+      configured: true,
+      ssl_valid: !healthResult.ssl_error,
+      api_reachable: healthResult.api_reachable,
+      requests_today: config.requests_today || 0,
+      daily_limit: config.daily_limit || 1000,
+      remaining_requests: Math.max(0, (config.daily_limit || 1000) - (config.requests_today || 0)),
+      message: healthResult.message
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'unavailable',
+      configured: null,
+      ssl_valid: null,
+      api_reachable: false,
+      message: error.message
+    });
   }
 });
 
@@ -2075,21 +2230,21 @@ router.put('/ai', async (req, res) => {
     // Validate formula weights sum to approximately 1.0 if any are provided
     const providedWeights = [formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight];
     const hasWeights = providedWeights.some(w => w !== undefined);
-    
+
     if (hasWeights) {
       // Get current weights from database for any not provided
       const current = await db.query('SELECT formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight FROM ai_provider_config WHERE id = 1');
       const currentWeights = current.rows[0] || {};
-      
+
       const finalPatternWeight = formula_pattern_weight ?? currentWeights.formula_pattern_weight ?? 0.40;
       const finalRuleWeight = formula_rule_weight ?? currentWeights.formula_rule_weight ?? 0.30;
       const finalRagWeight = formula_rag_weight ?? currentWeights.formula_rag_weight ?? 0.20;
       const finalHistoryWeight = formula_history_weight ?? currentWeights.formula_history_weight ?? 0.10;
-      
+
       const sum = finalPatternWeight + finalRuleWeight + finalRagWeight + finalHistoryWeight;
-      
+
       if (sum < 0.99 || sum > 1.01) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: `Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`,
           currentSum: sum
         });

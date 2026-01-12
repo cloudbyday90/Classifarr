@@ -109,7 +109,7 @@
     </nav>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.37.2-alpha</div>
+      <div>v0.37.5-alpha</div>
     </div>
   </aside>
 </template>
@@ -155,7 +155,6 @@ const mediaMenuItems = [
 // Classification section
 const classificationMenuItems = [
   { path: '/policies', label: 'Policies', icon: DocumentDuplicateIcon },
-  { path: '/patterns', label: 'Patterns', icon: PuzzlePieceIcon },
   { path: '/tuning-suggestions', label: 'Tuning', icon: LightBulbIcon },
 ]
 

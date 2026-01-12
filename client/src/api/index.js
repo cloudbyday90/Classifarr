@@ -246,6 +246,14 @@ export default {
     return apiClient.post('/libraries/sync-arr-profiles')
   },
 
+  // Library Profiles (v0.38.0+)
+  getLibraryProfile(libraryId) {
+    return apiClient.get(`/libraries/${libraryId}/profile`)
+  },
+  refreshLibraryProfile(libraryId) {
+    return apiClient.post(`/libraries/${libraryId}/profile/refresh`)
+  },
+
   // Classification
   classify(data) {
     return apiClient.post('/classification/classify', data)

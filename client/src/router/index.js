@@ -56,11 +56,8 @@ const router = createRouter({
           name: 'LibraryDetail',
           component: () => import('@/views/LibraryDetail.vue'),
         },
-        {
-          path: '/rule-builder/:libraryId',
-          name: 'RuleBuilder',
-          component: () => import('@/views/RuleBuilder.vue'),
-        },
+        // REMOVED v0.38.0 - Rule Builder deprecated, using Policy Engine instead
+        // Route removed: /rule-builder/:libraryId
         {
           path: '/activity',
           name: 'Activity',
@@ -96,11 +93,8 @@ const router = createRouter({
           name: 'Queue',
           component: () => import('@/views/Queue.vue'),
         },
-        {
-          path: '/patterns',
-          name: 'Patterns',
-          component: () => import('@/views/patterns/PatternManagement.vue'),
-        },
+        // REMOVED v0.38.0 - Patterns replaced by Library Profiles
+        // Route removed: /patterns
         {
           path: '/policies',
           name: 'Policies',

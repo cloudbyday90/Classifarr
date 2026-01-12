@@ -10,6 +10,7 @@ const db = require('../config/database');
 const tmdbService = require('./tmdb');
 const { createLogger } = require('../utils/logger');
 const patternSignalCollector = require('./patternSignalCollector');
+const libraryProfileService = require('./libraryProfileService');
 
 const logger = createLogger('SignalCollector');
 
@@ -33,6 +34,7 @@ const SIGNAL_TYPES = {
     KEYWORD_MATCH: 'keyword_match',          // Keyword-based matching
     GENRE_MATCH: 'genre_match',              // Genre-based matching
     SEMANTIC_SIMILARITY: 'semantic_similarity', // RAG-based similar item matching
+    PROFILE_SCORE: 'profile_score',          // v0.38.0+ Library profile match
 };
 
 /**
@@ -266,27 +268,29 @@ class SignalCollector {
             }
         }
 
-        // 3. Pattern-Based Signals (from discovered patterns)
-        // Collect pattern signals early in the process for high-confidence matches
-        const patternSignals = await patternSignalCollector.collectSignals(metadata, 50);
-        if (patternSignals && patternSignals.length > 0) {
-            for (const patternSignal of patternSignals) {
-                // Use pattern's confidence as raw score
-                this.addSignal(
-                    patternSignal.type,
-                    {
-                        pattern_id: patternSignal.pattern_id,
-                        pattern_type: patternSignal.pattern_type,
-                        pattern_value: patternSignal.pattern_value,
-                        sample_size: patternSignal.sample_size,
-                        status: patternSignal.status
-                    },
-                    patternSignal.confidence,
-                    patternSignal.library
-                );
+        // 3. Library Profile Signals (v0.38.0+ - replaces pattern signals)
+        // Score item against each library's statistical profile
+        for (const library of libraries) {
+            try {
+                const profileScore = await libraryProfileService.getProfileScore(library.id, metadata);
+                // Only add signal if score deviates from neutral (50)
+                if (profileScore !== 50) {
+                    this.addSignal(SIGNAL_TYPES.PROFILE_SCORE, {
+                        library_id: library.id,
+                        library_name: library.name,
+                        profile_score: profileScore,
+                        description: profileScore > 70 ? 'Strong match' :
+                            profileScore > 55 ? 'Moderate match' :
+                                profileScore < 30 ? 'Strong mismatch' :
+                                    profileScore < 45 ? 'Moderate mismatch' : 'Weak signal'
+                    }, profileScore, library);
+                }
+            } catch (err) {
+                // Profile may not exist yet - that's ok
+                logger.debug('Could not get profile score', { libraryId: library.id, error: err.message });
             }
-            logger.debug('Added pattern signals', { count: patternSignals.length });
         }
+        logger.debug('Profile scoring complete', { libraryCount: libraries.length });
 
         // 4. Event Detection Signal - DEPRECATED in v0.37.0
         // Event detection now handled by PolicyEngine via content_presets in 'events' category
@@ -448,6 +452,9 @@ class SignalCollector {
                     break;
                 case SIGNAL_TYPES.CONTENT_ANALYSIS:
                     line += `Content type: ${signal.data.contentType} (${signal.rawScore}% confidence)`;
+                    break;
+                case SIGNAL_TYPES.PROFILE_SCORE:
+                    line += `Library profile "${signal.data.library_name}": ${signal.data.description} (score: ${signal.rawScore})`;
                     break;
                 default:
                     line += `Score: ${signal.rawScore}% → ${signal.library?.name || 'N/A'}`;

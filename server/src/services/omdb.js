@@ -109,6 +109,74 @@ class OMDbService {
     }
 
     /**
+     * Check API health including SSL certificate status
+     * @param {string} apiKey - OMDb API key
+     * @returns {object} Health status with ssl_error boolean, api_reachable, and message
+     */
+    async checkHealth(apiKey) {
+        try {
+            const response = await axios.get(this.baseUrl, {
+                params: {
+                    apikey: apiKey,
+                    t: 'Test'
+                },
+                timeout: 10000
+            });
+
+            // Check for API response errors
+            if (response.data.Response === 'True' || response.data.Response === 'False') {
+                return {
+                    healthy: true,
+                    ssl_error: false,
+                    api_reachable: true,
+                    message: 'OMDb API is healthy'
+                };
+            }
+
+            return {
+                healthy: false,
+                ssl_error: false,
+                api_reachable: true,
+                message: 'Unexpected API response format'
+            };
+        } catch (error) {
+            const isCertError = error.code === 'CERT_HAS_EXPIRED' ||
+                error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
+                error.code === 'CERT_NOT_YET_VALID' ||
+                (error.message && error.message.includes('certificate'));
+
+            if (isCertError) {
+                return {
+                    healthy: false,
+                    ssl_error: true,
+                    api_reachable: false,
+                    message: `SSL certificate issue: ${error.message}. OMDb enrichment will be skipped until the certificate is renewed.`
+                };
+            }
+
+            const isNetworkError = error.code === 'ECONNREFUSED' ||
+                error.code === 'ENOTFOUND' ||
+                error.code === 'ETIMEDOUT';
+
+            if (isNetworkError) {
+                return {
+                    healthy: false,
+                    ssl_error: false,
+                    api_reachable: false,
+                    message: `Network error: ${error.message}`
+                };
+            }
+
+            return {
+                healthy: false,
+                ssl_error: false,
+                api_reachable: false,
+                message: error.message
+            };
+        }
+    }
+
+    /**
      * Get movie/show by title and year
      * @param {string} title - Movie or TV show title
      * @param {number} year - Release year (optional but recommended)
@@ -181,6 +249,18 @@ class OMDbService {
                         status,
                         code: error.code,
                         message: error.message
+                    });
+                    return null; // Graceful degradation
+                }
+
+                // Handle SSL/certificate errors gracefully
+                const isCertError = error.code === 'CERT_HAS_EXPIRED' ||
+                    error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
+                    error.message?.includes('certificate');
+                if (isCertError) {
+                    logger.warn('OMDb SSL certificate issue, skipping enrichment', {
+                        title,
+                        error: error.message
                     });
                     return null; // Graceful degradation
                 }

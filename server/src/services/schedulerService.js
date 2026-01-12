@@ -63,8 +63,7 @@ class SchedulerService {
                 await this.executeTask(task);
             }
 
-            // Checks for global recurring tasks (like pattern analysis)
-            await this.checkPatternAnalysisSchedule();
+
 
             // Check for RAG embedding backfill
             await this.checkRagBackfillSchedule();
@@ -84,53 +83,7 @@ class SchedulerService {
         return result.rows;
     }
 
-    async checkPatternAnalysisSchedule() {
-        try {
-            // Get frequency setting
-            const settingResult = await db.query("SELECT value FROM settings WHERE key = 'pattern_sync_frequency'");
-            const frequency = settingResult.rows[0]?.value || 'daily';
-
-            if (frequency === 'never') return;
-
-            // Get last analysis time (from any library)
-            const lastRunResult = await db.query("SELECT MAX(last_analyzed) as last_run FROM library_pattern_suggestions");
-            const lastRun = lastRunResult.rows[0]?.last_run ? new Date(lastRunResult.rows[0].last_run) : null;
-
-            if (!lastRun) {
-                // Never ran, run now (unless successfully ran recently via startup trigger)
-                // Actually startup trigger runs it, so we should be good. If this returns null, it means startup hasn't finished or failed.
-                // We'll trust the startup trigger or let it run here if it missed.
-                logger.info('No previous pattern analysis found, running initial analysis');
-                await this.runPatternAnalysis();
-                return;
-            }
-
-            const now = new Date();
-            let shouldRun = false;
-
-            switch (frequency) {
-                case 'hourly':
-                    // Run if > 1 hour ago
-                    shouldRun = (now - lastRun) > 60 * 60 * 1000;
-                    break;
-                case 'daily':
-                    // Run if > 24 hours ago
-                    shouldRun = (now - lastRun) > 24 * 60 * 60 * 1000;
-                    break;
-                case 'weekly':
-                    // Run if > 7 days ago
-                    shouldRun = (now - lastRun) > 7 * 24 * 60 * 60 * 1000;
-                    break;
-            }
-
-            if (shouldRun) {
-                logger.info(`Pattern analysis due (Frequency: ${frequency}). Last run: ${lastRun.toISOString()}`);
-                await this.runPatternAnalysis();
-            }
-        } catch (error) {
-            logger.error('Error checking pattern analysis schedule', { error: error.message });
-        }
-    }
+    // checkPatternAnalysisSchedule removed (Legacy Pattern Discovery Deprecated v0.38.0)
 
     /**
      * Check if RAG backfill should run
@@ -234,7 +187,8 @@ class SchedulerService {
                     result = await this.runFullRescan(task.library_id);
                     break;
                 case 'pattern_analysis':
-                    result = await this.runPatternAnalysis(task.library_id);
+                    // Deprecated v0.38.0
+                    result = { message: 'Pattern analysis is deprecated' };
                     break;
                 default:
                     result = { error: 'Unknown task type' };
@@ -269,60 +223,7 @@ class SchedulerService {
         }
     }
 
-    async runPatternAnalysis(libraryId) {
-        const mediaPatternAnalyzer = require('./mediaPatternAnalyzer');
-
-        // If specific library, analyze just that one
-        if (libraryId) {
-            const result = await mediaPatternAnalyzer.analyzeLibrary(libraryId);
-
-            // Update library_pattern_suggestions with new patterns
-            await db.query(
-                `INSERT INTO library_pattern_suggestions (library_id, detected_patterns, pending_count, last_analyzed, notification_dismissed, updated_at)
-                 VALUES ($1, $2, $3, NOW(), false, NOW())
-                 ON CONFLICT (library_id) 
-                 DO UPDATE SET 
-                   detected_patterns = $2, 
-                   pending_count = $3, 
-                   last_analyzed = NOW(),
-                   notification_dismissed = false,
-                   updated_at = NOW()`,
-                [libraryId, JSON.stringify(result.patterns), result.patterns.length]
-            );
-
-            return { libraryId, patternsDetected: result.patterns.length };
-        } else {
-            // Analyze all libraries
-            const libraries = await db.query('SELECT id FROM libraries WHERE is_active = true');
-            const results = [];
-
-            for (const lib of libraries.rows) {
-                try {
-                    const result = await mediaPatternAnalyzer.analyzeLibrary(lib.id);
-
-                    await db.query(
-                        `INSERT INTO library_pattern_suggestions (library_id, detected_patterns, pending_count, last_analyzed, notification_dismissed, updated_at)
-                         VALUES ($1, $2, $3, NOW(), false, NOW())
-                         ON CONFLICT (library_id) 
-                         DO UPDATE SET 
-                           detected_patterns = $2, 
-                           pending_count = $3, 
-                           last_analyzed = NOW(),
-                           notification_dismissed = false,
-                           updated_at = NOW()`,
-                        [lib.id, JSON.stringify(result.patterns), result.patterns.length]
-                    );
-
-                    results.push({ libraryId: lib.id, patternsDetected: result.patterns.length });
-                } catch (error) {
-                    logger.error('Pattern analysis failed for library', { libraryId: lib.id, error: error.message });
-                }
-            }
-
-            logger.info('Pattern analysis complete for all libraries', { analyzed: results.length });
-            return { libraries: results };
-        }
-    }
+    // runPatternAnalysis removed (Legacy Pattern Discovery Deprecated v0.38.0)
 
     async updateTaskAfterRun(taskId, status, result) {
         const intervalMinutes = await this.getTaskInterval(taskId);

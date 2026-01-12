@@ -40,6 +40,83 @@ class TavilyService {
   }
 
   /**
+   * Check API health including SSL certificate status
+   * @param {string} apiKey - Tavily API key
+   * @returns {object} Health status with ssl_error boolean, api_reachable, and message
+   */
+  async checkHealth(apiKey) {
+    try {
+      if (!apiKey) {
+        return {
+          healthy: false,
+          ssl_error: false,
+          api_reachable: false,
+          message: 'Tavily API key not configured'
+        };
+      }
+
+      const response = await axios.post(`${this.baseUrl}/search`, {
+        api_key: apiKey,
+        query: 'health check',
+        max_results: 1
+      }, {
+        timeout: 10000
+      });
+
+      return {
+        healthy: true,
+        ssl_error: false,
+        api_reachable: true,
+        message: 'Tavily API is healthy'
+      };
+    } catch (error) {
+      const isCertError = error.code === 'CERT_HAS_EXPIRED' ||
+        error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
+        error.code === 'CERT_NOT_YET_VALID' ||
+        (error.message && error.message.includes('certificate'));
+
+      if (isCertError) {
+        return {
+          healthy: false,
+          ssl_error: true,
+          api_reachable: false,
+          message: `SSL certificate issue: ${error.message}`
+        };
+      }
+
+      const isNetworkError = error.code === 'ECONNREFUSED' ||
+        error.code === 'ENOTFOUND' ||
+        error.code === 'ETIMEDOUT';
+
+      if (isNetworkError) {
+        return {
+          healthy: false,
+          ssl_error: false,
+          api_reachable: false,
+          message: `Network error: ${error.message}`
+        };
+      }
+
+      // Check for API errors (401 = invalid key, etc.)
+      if (error.response) {
+        return {
+          healthy: false,
+          ssl_error: false,
+          api_reachable: true,
+          message: error.response.data?.error || `API error: ${error.response.status}`
+        };
+      }
+
+      return {
+        healthy: false,
+        ssl_error: false,
+        api_reachable: false,
+        message: error.message
+      };
+    }
+  }
+
+  /**
    * Search for media information
    * @param {string} query - Search query (e.g., "Squid Game IMDB parents guide")
    * @param {object} options - Search options
@@ -133,7 +210,7 @@ class TavilyService {
     }
 
     let formatted = 'Web Search Results:\n\n';
-    
+
     for (const result of tavilyResults.results) {
       formatted += `Source: ${result.url}\n`;
       formatted += `Title: ${result.title}\n`;

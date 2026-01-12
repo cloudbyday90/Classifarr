@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.5-alpha] - 2026-01-11
+
+### Added
+- **Library Profiles**: New statistical system replacing Pattern Discovery.
+  - Generates profiles based on rating, genre, and studio distributions.
+  - Automatically identifies exclusions (what's *not* in your library).
+  - New API endpoints for profile generation and retrieval.
+- **Profile Visualization**: Added `LibraryProfile` component to view library statistics.
+- **Policy Engine**: Integrated `PROFILE_SCORE` signal type for better accuracy.
+- **API Health Monitoring**: Added health check endpoints for external API services.
+  - `GET /api/settings/omdb/health` - OMDb API health with SSL status and rate limit info.
+  - `GET /api/settings/tmdb/health` - TMDB API health with SSL status.
+  - `GET /api/settings/tavily/health` - Tavily API health with SSL status.
+
+### Changed
+- **Scoring**: `FormulaEngine` now uses library profiles instead of patterns.
+- **Frontend**: Replaced "Learned Patterns" widget with "Library Profile" in Library Detail view.
+
+### Fixed
+- **Stats Alerts 500 Error**: Added defensive error handling to `/api/stats/alerts` endpoint.
+- **OMDb SSL Errors**: OMDb service now gracefully handles SSL certificate expiration.
+- **Integration Tests**: Fixed preset scoring tests to match actual scoring implementation.
+
+### Deprecated
+- **Pattern Experience**: The "Pattern Discovery" system is deprecated and replaced by Library Profiles.
+- **Routes**: Removed `/patterns` and `/rule-builder` routes.
+- **Database**: `discovered_patterns` table is now considered legacy.
+
 ## [0.37.2-alpha] - 2026-01-11
 
 ### Added

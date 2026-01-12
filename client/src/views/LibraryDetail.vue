@@ -303,10 +303,8 @@
         </div>
       </Card>
 
-      <!-- Learned Patterns Section -->
-      <Card title="🧩 Learned Patterns">
-        <LibraryPatterns :library-id="library.id" />
-      </Card>
+      <!-- Library Profile Section -->
+      <LibraryProfile :library-id="library.id" />
 
       <Card title="Classification Rules (Deprecated)">
         <div class="space-y-6">
@@ -314,12 +312,12 @@
             <div>
               <h4 class="font-medium mb-1">Smart Rules</h4>
               <p class="text-sm text-gray-400">
-                AI-powered rules to classify content into this library.
+                Managed via Policy Engine
               </p>
             </div>
-            <Button @click="$router.push(`/rule-builder/${library.id}`)">
+            <!-- <Button @click="$router.push(`/rule-builder/${library.id}`)">
               🧠 Smart Rule Builder
-            </Button>
+            </Button> -->
           </div>
 
           <!-- AI Suggestions Panel -->
@@ -391,7 +389,7 @@ import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
-import LibraryPatterns from '@/components/library/LibraryPatterns.vue'
+import LibraryProfile from '@/components/library/LibraryProfile.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 

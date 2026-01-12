@@ -161,6 +161,7 @@ const healthServices = ref([
   { name: 'Sonarr', key: 'sonarr', status: 'unknown', description: 'TV show management', responseTime: null, lastCheck: null },
   { name: 'AI Provider', key: 'ollama', status: 'unknown', description: 'Ollama/OpenAI/Anthropic', responseTime: null, lastCheck: null },
   { name: 'TMDB', key: 'tmdb', status: 'unknown', description: 'Movie/TV metadata', responseTime: null, lastCheck: null },
+  { name: 'OMDb', key: 'omdb', status: 'unknown', description: 'Movie/TV enrichment', responseTime: null, lastCheck: null },
   { name: 'Discord Bot', key: 'discordBot', status: 'unknown', description: 'Notifications', responseTime: null, lastCheck: null },
   { name: 'Tavily', key: 'tavily', status: 'unknown', description: 'Web search (optional)', responseTime: null, lastCheck: null },
 ])
@@ -230,6 +231,14 @@ const loadHealth = async () => {
           description: 'Movie/TV metadata',
           responseTime: healthDetails.value.tmdb?.responseTime,
           lastCheck: healthDetails.value.tmdb?.lastCheck
+        },
+        { 
+          name: 'OMDb', 
+          key: 'omdb',
+          status: statusMap.omdb || 'unknown', 
+          description: 'Movie/TV enrichment',
+          responseTime: healthDetails.value.omdb?.responseTime,
+          lastCheck: healthDetails.value.omdb?.lastCheck
         },
         { 
           name: 'Discord Bot', 

@@ -24,6 +24,7 @@
 
 const db = require('../config/database');
 const patternSignalCollector = require('./patternSignalCollector');
+const libraryProfileService = require('./libraryProfileService');
 const ragRetriever = require('./ragRetriever');
 const { createLogger } = require('../utils/logger');
 
@@ -47,11 +48,11 @@ class FormulaEngine {
                 FROM ai_provider_config
                 WHERE id = 1
             `);
-            
+
             const config = result.rows[0] || {};
-            
+
             return {
-                pattern: config.formula_pattern_weight || 0.40,
+                profile: config.formula_pattern_weight || 0.40, // v0.38.0: renamed from pattern to profile
                 rule: config.formula_rule_weight || 0.30,
                 rag: config.formula_rag_weight || 0.20,
                 history: config.formula_history_weight || 0.10
@@ -60,7 +61,7 @@ class FormulaEngine {
             logger.error('Failed to get formula weights', { error: error.message });
             // Return defaults on error
             return {
-                pattern: 0.40,
+                profile: 0.40, // v0.38.0: renamed from pattern to profile
                 rule: 0.30,
                 rag: 0.20,
                 history: 0.10
@@ -79,7 +80,7 @@ class FormulaEngine {
                 WHERE is_active = true
                 ORDER BY name
             `);
-            
+
             return result.rows;
         } catch (error) {
             logger.error('Failed to get active libraries', { error: error.message });
@@ -89,31 +90,38 @@ class FormulaEngine {
 
     /**
      * Score patterns for a library (0-95)
-     * Uses patternSignalCollector to get matching patterns
-     * Returns highest confidence pattern match
+     * DEPRECATED in v0.38.0 - Use scoreProfile instead
+     * @deprecated
      */
     async scorePatterns(metadata, library) {
+        // Delegate to profile scoring in v0.38.0
+        return this.scoreProfile(metadata, library);
+    }
+
+    /**
+     * Score library profile match (0-95)
+     * v0.38.0+: Uses library profiles instead of patterns
+     * Returns profile match score from libraryProfileService
+     */
+    async scoreProfile(metadata, library) {
         try {
-            const signals = await patternSignalCollector.collectSignals(metadata, 0);
-            
-            if (!signals || signals.length === 0) {
+            const profileScore = await libraryProfileService.getProfileScore(library.id, metadata);
+
+            // Profile score is 0-100 with 50 as neutral
+            // Convert to formula score: (score - 50) * 2 for positive, 0 for negative
+            if (profileScore > 50) {
+                // Positive match: scale 50-100 to 0-95
+                const scaled = ((profileScore - 50) / 50) * FORMULA_CONFIDENCE_CAP;
+                return Math.min(scaled, FORMULA_CONFIDENCE_CAP);
+            } else if (profileScore < 50) {
+                // Negative match: return 0 (no contribution)
                 return 0;
             }
-
-            // Find the highest confidence pattern that matches this library
-            const librarySignals = signals.filter(s => s.library?.id === library.id);
-            
-            if (librarySignals.length === 0) {
-                return 0;
-            }
-
-            // Return the highest confidence
-            const topSignal = librarySignals[0]; // Already sorted by confidence descending
-            return Math.min(topSignal.confidence, FORMULA_CONFIDENCE_CAP);
+            return 0; // Neutral (50) = no contribution
         } catch (error) {
-            logger.error('Failed to score patterns', { 
+            logger.debug('Failed to score profile', {
                 error: error.message,
-                library: library.name 
+                library: library.name
             });
             return 0;
         }
@@ -157,9 +165,9 @@ class FormulaEngine {
             const avgConfidence = totalConfidence / matchCount;
             return Math.min(avgConfidence, FORMULA_CONFIDENCE_CAP);
         } catch (error) {
-            logger.error('Failed to score rules', { 
+            logger.error('Failed to score rules', {
                 error: error.message,
-                library: library.name 
+                library: library.name
             });
             return 0;
         }
@@ -193,16 +201,16 @@ class FormulaEngine {
                         );
                     }
                     return String(fieldValue).toLowerCase().includes(String(value).toLowerCase());
-                
+
                 case 'equals':
                     return String(fieldValue).toLowerCase() === String(value).toLowerCase();
-                
+
                 case 'greater_than':
                     return parseFloat(fieldValue) > parseFloat(value);
-                
+
                 case 'less_than':
                     return parseFloat(fieldValue) < parseFloat(value);
-                
+
                 case 'is_one_of':
                     const values = Array.isArray(value) ? value : [value];
                     if (Array.isArray(fieldValue)) {
@@ -212,7 +220,7 @@ class FormulaEngine {
                         );
                     }
                     return values.some(v => String(fieldValue).toLowerCase() === String(v).toLowerCase());
-                
+
                 case 'not_contains':
                     if (Array.isArray(fieldValue)) {
                         return !fieldValue.some(v =>
@@ -220,7 +228,7 @@ class FormulaEngine {
                         );
                     }
                     return !String(fieldValue).toLowerCase().includes(String(value).toLowerCase());
-                
+
                 default:
                     return false;
             }
@@ -238,14 +246,14 @@ class FormulaEngine {
     async scoreRAG(metadata, library) {
         try {
             const matches = await ragRetriever.semanticSearch(metadata, 5);
-            
+
             if (!matches || matches.length === 0) {
                 return 0;
             }
 
             // Find matches that point to this library
             const libraryMatches = matches.filter(m => m.libraryId === library.id);
-            
+
             if (libraryMatches.length === 0) {
                 return 0;
             }
@@ -255,9 +263,9 @@ class FormulaEngine {
             const score = topMatch.similarity * 100;
             return Math.min(score, FORMULA_CONFIDENCE_CAP);
         } catch (error) {
-            logger.error('Failed to score RAG', { 
+            logger.error('Failed to score RAG', {
                 error: error.message,
-                library: library.name 
+                library: library.name
             });
             return 0;
         }
@@ -307,16 +315,16 @@ class FormulaEngine {
 
             // Calculate success rate: percentage of times it was classified to this library
             const successRate = thisLibraryCount / totalCount;
-            
+
             // Convert to score (0-100)
             // 100% success = 95 score, 0% success = 0 score
             const score = successRate * FORMULA_CONFIDENCE_CAP;
-            
+
             return Math.min(score, FORMULA_CONFIDENCE_CAP);
         } catch (error) {
-            logger.error('Failed to score history', { 
+            logger.error('Failed to score history', {
                 error: error.message,
-                library: library.name 
+                library: library.name
             });
             return 50; // Neutral score on error
         }
@@ -342,15 +350,15 @@ class FormulaEngine {
             for (const library of libraries) {
                 // Calculate individual component scores (all capped at 95%)
                 const breakdown = {
-                    pattern: Math.min(await this.scorePatterns(metadata, library), FORMULA_CONFIDENCE_CAP),
+                    profile: Math.min(await this.scoreProfile(metadata, library), FORMULA_CONFIDENCE_CAP),
                     rule: Math.min(await this.scoreRules(metadata, library), FORMULA_CONFIDENCE_CAP),
                     rag: Math.min(await this.scoreRAG(metadata, library), FORMULA_CONFIDENCE_CAP),
                     history: Math.min(await this.scoreHistory(metadata, library), FORMULA_CONFIDENCE_CAP)
                 };
 
                 // Calculate weighted total score
-                let totalScore = 
-                    (breakdown.pattern * weights.pattern) +
+                let totalScore =
+                    (breakdown.profile * weights.profile) +
                     (breakdown.rule * weights.rule) +
                     (breakdown.rag * weights.rag) +
                     (breakdown.history * weights.history);
@@ -367,7 +375,7 @@ class FormulaEngine {
                     },
                     score: Math.round(totalScore * 100) / 100, // Round to 2 decimals
                     breakdown: {
-                        pattern: Math.round(breakdown.pattern * 100) / 100,
+                        profile: Math.round(breakdown.profile * 100) / 100,
                         rule: Math.round(breakdown.rule * 100) / 100,
                         rag: Math.round(breakdown.rag * 100) / 100,
                         history: Math.round(breakdown.history * 100) / 100

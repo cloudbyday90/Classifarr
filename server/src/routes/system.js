@@ -70,6 +70,7 @@ router.get('/health', async (req, res) => {
       sonarr: health.sonarr.status,
       mediaServer: health.mediaServer.status,
       tmdb: health.tmdb.status,
+      omdb: health.omdb?.status || 'unknown',
       tavily: health.tavily.status,
       // Include detailed info
       details: health,
