@@ -17,8 +17,22 @@
  */
 
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
+const zlib = require('zlib');
 
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
+
+// Log file configuration
+const LOG_CONFIG = {
+  maxFileSize: parseInt(process.env.LOG_MAX_FILE_SIZE) || 10 * 1024 * 1024, // 10MB
+  maxFiles: parseInt(process.env.LOG_MAX_FILES) || 5, // Keep 5 rotated files
+  maxAge: parseInt(process.env.LOG_MAX_AGE_DAYS) || 7, // 7 days
+  maxTotalSize: parseInt(process.env.LOG_MAX_TOTAL_SIZE) || 100 * 1024 * 1024, // 100MB
+  compress: process.env.LOG_COMPRESS !== 'false', // Default true
+  logDir: process.env.LOG_DIR || '/app/data/logs',
+  enabled: process.env.FILE_LOGGING_ENABLED !== 'false' // Default true
+};
 
 // Sensitive fields to redact
 const SENSITIVE_FIELDS = [
@@ -81,6 +95,172 @@ function getRequestContext(req) {
   });
 }
 
+// File logging utilities
+class FileLogger {
+  constructor() {
+    this.mainLogPath = path.join(LOG_CONFIG.logDir, 'classifarr.log');
+    this.errorLogPath = path.join(LOG_CONFIG.logDir, 'error.log');
+    this.initialized = false;
+  }
+
+  initialize() {
+    if (!LOG_CONFIG.enabled || this.initialized) return;
+    
+    try {
+      // Create log directory if it doesn't exist
+      if (!fs.existsSync(LOG_CONFIG.logDir)) {
+        fs.mkdirSync(LOG_CONFIG.logDir, { recursive: true });
+      }
+      this.initialized = true;
+    } catch (err) {
+      console.error('Failed to initialize file logging:', err.message);
+    }
+  }
+
+  shouldRotate(logPath) {
+    try {
+      if (!fs.existsSync(logPath)) return false;
+      const stats = fs.statSync(logPath);
+      return stats.size >= LOG_CONFIG.maxFileSize;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  rotateLog(logPath) {
+    try {
+      if (!fs.existsSync(logPath)) return;
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const rotatedPath = `${logPath}.${timestamp}`;
+      
+      // Rename current log file
+      fs.renameSync(logPath, rotatedPath);
+
+      // Compress rotated file if enabled
+      if (LOG_CONFIG.compress) {
+        const gzip = zlib.createGzip();
+        const input = fs.createReadStream(rotatedPath);
+        const output = fs.createWriteStream(`${rotatedPath}.gz`);
+        
+        input.pipe(gzip).pipe(output);
+        
+        output.on('finish', () => {
+          // Delete uncompressed file after compression
+          fs.unlinkSync(rotatedPath);
+        });
+      }
+
+      // Clean up old rotated files
+      this.cleanupRotatedFiles(logPath);
+    } catch (err) {
+      console.error('Failed to rotate log file:', err.message);
+    }
+  }
+
+  cleanupRotatedFiles(logPath) {
+    try {
+      const logDir = path.dirname(logPath);
+      const logBasename = path.basename(logPath);
+      const files = fs.readdirSync(logDir);
+
+      // Find all rotated files for this log
+      const rotatedFiles = files
+        .filter(f => f.startsWith(logBasename + '.'))
+        .map(f => ({
+          name: f,
+          path: path.join(logDir, f),
+          stats: fs.statSync(path.join(logDir, f))
+        }))
+        .sort((a, b) => b.stats.mtime - a.stats.mtime); // Sort by modification time, newest first
+
+      // Remove files exceeding max count
+      if (rotatedFiles.length > LOG_CONFIG.maxFiles) {
+        rotatedFiles.slice(LOG_CONFIG.maxFiles).forEach(file => {
+          fs.unlinkSync(file.path);
+        });
+      }
+    } catch (err) {
+      console.error('Failed to cleanup rotated files:', err.message);
+    }
+  }
+
+  writeLog(logPath, message) {
+    if (!LOG_CONFIG.enabled || !this.initialized) return;
+
+    try {
+      // Check if rotation is needed
+      if (this.shouldRotate(logPath)) {
+        this.rotateLog(logPath);
+      }
+
+      // Append log message
+      fs.appendFileSync(logPath, message + '\n', 'utf8');
+    } catch (err) {
+      console.error('Failed to write to log file:', err.message);
+    }
+  }
+
+  writeMainLog(message) {
+    this.writeLog(this.mainLogPath, message);
+  }
+
+  writeErrorLog(message) {
+    this.writeLog(this.errorLogPath, message);
+  }
+}
+
+// Singleton file logger instance
+const fileLogger = new FileLogger();
+
+// Cleanup old logs function
+function cleanupOldLogs() {
+  if (!LOG_CONFIG.enabled) return;
+
+  try {
+    if (!fs.existsSync(LOG_CONFIG.logDir)) return;
+
+    const now = Date.now();
+    const maxAge = LOG_CONFIG.maxAge * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+    const files = fs.readdirSync(LOG_CONFIG.logDir);
+    
+    let totalSize = 0;
+    const fileStats = [];
+
+    // Collect file stats
+    files.forEach(file => {
+      const filePath = path.join(LOG_CONFIG.logDir, file);
+      const stats = fs.statSync(filePath);
+      
+      // Delete files older than maxAge
+      if (now - stats.mtime.getTime() > maxAge) {
+        fs.unlinkSync(filePath);
+        console.log(`Deleted old log file: ${file}`);
+      } else {
+        totalSize += stats.size;
+        fileStats.push({ path: filePath, size: stats.size, mtime: stats.mtime });
+      }
+    });
+
+    // If total size exceeds limit, delete oldest files
+    if (totalSize > LOG_CONFIG.maxTotalSize) {
+      fileStats.sort((a, b) => a.mtime - b.mtime); // Sort oldest first
+      
+      for (const file of fileStats) {
+        if (totalSize <= LOG_CONFIG.maxTotalSize) break;
+        
+        fs.unlinkSync(file.path);
+        totalSize -= file.size;
+        console.log(`Deleted old log file to free space: ${path.basename(file.path)}`);
+      }
+    }
+
+    console.log(`Log cleanup complete. Total size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+  } catch (err) {
+    console.error('Failed to cleanup old logs:', err.message);
+  }
+}
+
 class Logger {
   constructor(module) {
     this.module = module;
@@ -137,7 +317,10 @@ class Logger {
 
   async error(message, data, options = {}) {
     if (this.level >= LOG_LEVELS.ERROR) {
-      console.error(this.formatMessage('ERROR', message, data));
+      const formattedMsg = this.formatMessage('ERROR', message, data);
+      console.error(formattedMsg);
+      fileLogger.writeMainLog(formattedMsg);
+      fileLogger.writeErrorLog(formattedMsg);
       const errorId = await this.persistToDb('ERROR', message, data, options);
       return errorId;
     }
@@ -146,7 +329,10 @@ class Logger {
 
   async warn(message, data, options = {}) {
     if (this.level >= LOG_LEVELS.WARN) {
-      console.warn(this.formatMessage('WARN', message, data));
+      const formattedMsg = this.formatMessage('WARN', message, data);
+      console.warn(formattedMsg);
+      fileLogger.writeMainLog(formattedMsg);
+      fileLogger.writeErrorLog(formattedMsg);
       const errorId = await this.persistToDb('WARN', message, data, options);
       return errorId;
     }
@@ -155,16 +341,32 @@ class Logger {
 
   info(message, data) {
     if (this.level >= LOG_LEVELS.INFO) {
-      console.log(this.formatMessage('INFO', message, data));
+      const formattedMsg = this.formatMessage('INFO', message, data);
+      console.log(formattedMsg);
+      fileLogger.writeMainLog(formattedMsg);
     }
   }
 
   debug(message, data) {
     if (this.level >= LOG_LEVELS.DEBUG) {
-      console.log(this.formatMessage('DEBUG', message, data));
+      const formattedMsg = this.formatMessage('DEBUG', message, data);
+      console.log(formattedMsg);
+      fileLogger.writeMainLog(formattedMsg);
     }
   }
 }
 
 const createLogger = (module) => new Logger(module);
-module.exports = { createLogger, Logger, sanitizeData, getSystemContext, getRequestContext };
+
+// Initialize file logging on module load
+fileLogger.initialize();
+
+module.exports = { 
+  createLogger, 
+  Logger, 
+  sanitizeData, 
+  getSystemContext, 
+  getRequestContext,
+  cleanupOldLogs,
+  initializeFileLogging: () => fileLogger.initialize()
+};
