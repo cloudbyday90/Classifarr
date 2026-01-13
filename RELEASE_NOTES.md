@@ -1,5 +1,47 @@
 # Classifarr Release Notes
 
+## v0.37.8c-alpha
+**Title: Enhanced Overseerr/Jellyseerr Webhook Payload**
+
+### What Changed
+The webhook JSON payload template has been enhanced to include explicit TMDb and TVDB IDs for better metadata enrichment.
+
+### New Payload Format
+```json
+{
+  "notification_type": "{{notification_type}}",
+  "event": "{{event}}",
+  "subject": "{{subject}}",
+  "message": "{{message}}",
+  "image": "{{image}}",
+  "media": {
+    "media_type": "{{media_type}}",
+    "tmdbId": "{{media_tmdbid}}",
+    "tvdbId": "{{media_tvdbid}}",
+    "status": "{{media_status}}",
+    "status4k": "{{media_status4k}}"
+  },
+  "request": {
+    "request_id": "{{request_id}}",
+    "requestedBy_email": "{{requestedBy_email}}",
+    "requestedBy_username": "{{requestedBy_username}}",
+    "requestedBy_avatar": "{{requestedBy_avatar}}"
+  },
+  "extra": []
+}
+```
+
+### Benefits
+- **Direct ID Lookup**: TMDb/TVDB IDs enable precise metadata lookup instead of title search
+- **Faster Classification**: No need to search by title - direct API lookup
+- **Better Accuracy**: Correct movie/show identification every time
+- **Media Status**: Know if content is already available before processing
+
+### Upgrade Notes
+Existing Overseerr configurations will continue to work. For improved accuracy, update your webhook JSON payload in Overseerr to use the new template from Settings → Webhooks.
+
+---
+
 ## v0.37.8b-alpha
 **Title: Discord Configuration Save & Display Fix**
 

@@ -578,11 +578,19 @@ const jsonPayload = `{
   "subject": "{{subject}}",
   "message": "{{message}}",
   "image": "{{image}}",
-  "email": "{{email}}",
-  "username": "{{username}}",
-  "avatar": "{{avatar}}",
-  "media": {{media}},
-  "request": {{request}},
+  "media": {
+    "media_type": "{{media_type}}",
+    "tmdbId": "{{media_tmdbid}}",
+    "tvdbId": "{{media_tvdbid}}",
+    "status": "{{media_status}}",
+    "status4k": "{{media_status4k}}"
+  },
+  "request": {
+    "request_id": "{{request_id}}",
+    "requestedBy_email": "{{requestedBy_email}}",
+    "requestedBy_username": "{{requestedBy_username}}",
+    "requestedBy_avatar": "{{requestedBy_avatar}}"
+  },
   "extra": []
 }`
 

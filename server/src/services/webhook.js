@@ -118,6 +118,7 @@ class WebhookService {
     // Extract media information
     const media = body.media || {};
     const request = body.request || {};
+    // Support both old format (nested requestedBy) and new format (requestedBy_* prefixed fields)
     const requestedBy = request.requestedBy || body.requestedBy || {};
 
     // Determine media type
@@ -131,18 +132,24 @@ class WebhookService {
       notification_type,
       event_name: body.event || notification_type,
       media_type,
+      // Handle both old format (media.tmdbId) and new explicit format
       tmdb_id: media.tmdbId || media.tmdb_id,
       tvdb_id: media.tvdbId || media.tvdb_id,
-      request_id: request.id || body.request_id,
+      // Handle both old (request.id) and new (request.request_id) formats
+      request_id: request.request_id || request.id || body.request_id,
       title: subject || media.title || media.name,
       year: media.releaseDate ? new Date(media.releaseDate).getFullYear() : null,
-      poster_path: media.posterPath || media.poster_path,
+      poster_path: media.posterPath || media.poster_path || body.image,
       is_4k: request.is4k || body.is_4k || false,
-      requested_by_username: requestedBy.username || requestedBy.displayName,
-      requested_by_email: requestedBy.email,
-      requested_by_avatar: requestedBy.avatar,
+      // Handle both old (nested requestedBy) and new (requestedBy_* prefixed) formats
+      requested_by_username: request.requestedBy_username || requestedBy.username || requestedBy.displayName,
+      requested_by_email: request.requestedBy_email || requestedBy.email,
+      requested_by_avatar: request.requestedBy_avatar || requestedBy.avatar,
       requested_seasons: request.seasons ? JSON.stringify(request.seasons) : null,
-      requested_at: request.createdAt || body.createdAt
+      requested_at: request.createdAt || body.createdAt,
+      // New fields from enhanced payload
+      media_status: media.status,
+      media_status_4k: media.status4k
     };
 
     logger.debug('Parsed webhook payload', { parsed });

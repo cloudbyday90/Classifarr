@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.8c-alpha] - 2026-01-12
+
+### Changed
+- **Overseerr/Jellyseerr Webhook Payload**: Enhanced JSON payload template with explicit TMDb ID, TVDB ID, media status, and request details
+- **Webhook Parser**: Updated `parsePayload()` to handle new explicit field format while maintaining backward compatibility
+
+### Improved
+- **Metadata Enrichment**: Direct TMDb/TVDB ID lookup for faster, more accurate classification
+- **Request Tracking**: Better user information capture from request payload
+
 ## [0.37.8b-alpha] - 2026-01-12
 
 ### Fixed
