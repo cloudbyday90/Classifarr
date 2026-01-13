@@ -5,6 +5,21 @@
 
 ### What's New
 
+#### Improved Preset Viewing
+- **Cleaner System Preset Display**: When viewing system preset details, you'll now see a clean summary view with badges and chips instead of disabled form fields
+  - Content ratings shown as badge pills
+  - Genres displayed as preferred/excluded chips  
+  - Keywords shown as tags
+  - No more confusing "looks editable but isn't" interfaces
+
+- **Customize System Presets**: Found a system preset that's almost what you need? Click "Customize" to create your own version
+  - Creates a copy in your Custom Presets
+  - Pre-populates all settings from the original
+  - Modify anything you want and save as your own
+  - Original system preset remains unchanged
+
+- **Usage Indicator**: Each system preset now shows "Used in X policies" so you can see how popular it is
+
 #### New Presets Page
 - **Browse All Presets**: New dedicated page to browse all 168 system presets and manage your custom presets
   - Access via Classification → Presets in the sidebar

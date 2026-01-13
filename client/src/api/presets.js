@@ -91,5 +91,14 @@ export default {
       system: systemResponse.data,
       custom: customResponse.data
     }
+  },
+
+  /**
+   * Get usage count for a preset (how many policies use it)
+   * @param {number|string} id - Preset ID
+   * @returns {Promise}
+   */
+  getPresetUsageCount(id) {
+    return api.get(`/policies/presets/${id}/usage`)
   }
 }

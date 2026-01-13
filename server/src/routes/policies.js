@@ -91,6 +91,36 @@ router.get('/presets/categories', async (req, res) => {
 
 /**
  * @swagger
+ * /api/policies/presets/{presetId}/usage:
+ *   get:
+ *     summary: Get usage count for a preset (how many policies use it)
+ *     parameters:
+ *       - in: path
+ *         name: presetId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Preset ID
+ */
+router.get('/presets/:presetId/usage', async (req, res) => {
+    try {
+        const { presetId } = req.params;
+
+        const result = await db.query(`
+            SELECT COUNT(*) as count
+            FROM policy_presets
+            WHERE preset_id = $1
+        `, [presetId]);
+
+        res.json({ count: parseInt(result.rows[0].count, 10) });
+    } catch (error) {
+        logger.error('Failed to get preset usage count', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
  * /api/policies/presets/suggest/{libraryId}:
  *   get:
  *     summary: Get suggested presets for a library based on name matching
