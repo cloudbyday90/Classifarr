@@ -81,7 +81,7 @@
           v-model="searchQuery"
           type="search"
           placeholder="Search presets..."
-          class="w-full px-3 py-2 bg-background-light border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white placeholder-gray-500"
+          class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white placeholder-gray-500"
         />
       </div>
 
@@ -245,13 +245,17 @@ function isSelected(presetId) {
   return selectedPresets.value.some(p => p.id === presetId);
 }
 
+function canSelectPreset(preset) {
+  return !isSelected(preset.id) && !props.existingPresetIds.includes(preset.id);
+}
+
 function togglePreset(preset) {
   const idx = selectedPresets.value.findIndex(p => p.id === preset.id);
   if (idx >= 0) {
     selectedPresets.value.splice(idx, 1);
   } else {
     // Don't add if already in policy
-    if (!props.existingPresetIds.includes(preset.id)) {
+    if (canSelectPreset(preset)) {
       selectedPresets.value.push(preset);
     }
   }
@@ -259,7 +263,7 @@ function togglePreset(preset) {
 
 function addAllSuggested() {
   suggestedPresets.value.forEach(preset => {
-    if (!isSelected(preset.id) && !props.existingPresetIds.includes(preset.id)) {
+    if (canSelectPreset(preset)) {
       selectedPresets.value.push(preset);
     }
   });
