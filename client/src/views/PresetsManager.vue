@@ -128,6 +128,7 @@ import Spinner from '@/components/common/Spinner.vue'
 import Modal from '@/components/common/Modal.vue'
 import CustomPresetForm from '@/components/presets/CustomPresetForm.vue'
 import PresetCard from '@/components/presets/PresetCard.vue'
+import presetsApi from '@/api/presets'
 
 const activeTab = ref('system')
 const searchQuery = ref('')
@@ -155,9 +156,9 @@ const showDeleteConfirm = ref(false)
 const deleteTarget = ref(null)
 const deleting = ref(false)
 
-// Categories
+// Categories - combined from both system and custom presets
 const categories = computed(() => {
-  const allPresets = activeTab.value === 'system' ? systemPresets.value : customPresets.value
+  const allPresets = [...systemPresets.value, ...customPresets.value]
   const cats = new Set(allPresets.map(p => p.category).filter(Boolean))
   return Array.from(cats).sort()
 })
@@ -202,12 +203,11 @@ async function fetchSystemPresets() {
   loadingSystem.value = true
   errorSystem.value = ''
   try {
-    const response = await fetch('/api/policies/presets/all')
-    if (!response.ok) throw new Error('Failed to fetch system presets')
-    systemPresets.value = await response.json()
+    const response = await presetsApi.getSystemPresets()
+    systemPresets.value = response.data
   } catch (error) {
     console.error('Error fetching system presets:', error)
-    errorSystem.value = error.message
+    errorSystem.value = error.response?.data?.error || error.message
   } finally {
     loadingSystem.value = false
   }
@@ -218,17 +218,11 @@ async function fetchCustomPresets() {
   loadingCustom.value = true
   errorCustom.value = ''
   try {
-    const token = localStorage.getItem('auth_token')
-    const response = await fetch('/api/presets/custom', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    if (!response.ok) throw new Error('Failed to fetch custom presets')
-    customPresets.value = await response.json()
+    const response = await presetsApi.getCustomPresets()
+    customPresets.value = response.data
   } catch (error) {
     console.error('Error fetching custom presets:', error)
-    errorCustom.value = error.message
+    errorCustom.value = error.response?.data?.error || error.message
   } finally {
     loadingCustom.value = false
   }
@@ -252,27 +246,12 @@ function confirmDelete(preset) {
 
 async function handleSavePreset(presetData) {
   try {
-    const token = localStorage.getItem('auth_token')
     const isEditing = !!editingPreset.value?.id
     
-    const url = isEditing 
-      ? `/api/presets/custom/${editingPreset.value.id}`
-      : '/api/presets/custom'
-    
-    const method = isEditing ? 'PUT' : 'POST'
-    
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(presetData)
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Failed to save preset')
+    if (isEditing) {
+      await presetsApi.updateCustomPreset(editingPreset.value.id, presetData)
+    } else {
+      await presetsApi.createCustomPreset(presetData)
     }
 
     // Refresh custom presets list
@@ -292,18 +271,7 @@ async function handleDelete() {
   
   deleting.value = true
   try {
-    const token = localStorage.getItem('auth_token')
-    const response = await fetch(`/api/presets/custom/${deleteTarget.value.id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error || 'Failed to delete preset')
-    }
+    await presetsApi.deleteCustomPreset(deleteTarget.value.id)
 
     // Refresh custom presets list
     await fetchCustomPresets()
@@ -313,7 +281,7 @@ async function handleDelete() {
     deleteTarget.value = null
   } catch (error) {
     console.error('Error deleting preset:', error)
-    errorCustom.value = error.message
+    errorCustom.value = error.response?.data?.error || error.message
   } finally {
     deleting.value = false
   }

@@ -40,71 +40,10 @@
             v-model="form.icon"
             class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-lg"
           >
-            <optgroup label="Movies">
-              <option value="🎬">🎬 Clapperboard</option>
-              <option value="🎞️">🎞️ Film Frames</option>
-              <option value="🎥">🎥 Movie Camera</option>
-              <option value="📽️">📽️ Film Projector</option>
-            </optgroup>
-            <optgroup label="TV Shows">
-              <option value="📺">📺 Television</option>
-              <option value="📡">📡 Satellite</option>
-            </optgroup>
-            <optgroup label="Genres">
-              <option value="🎭">🎭 Theater Masks</option>
-              <option value="💥">💥 Action</option>
-              <option value="😰">😰 Thriller</option>
-              <option value="🔍">🔍 Mystery</option>
-              <option value="💕">💕 Romance</option>
-              <option value="👻">👻 Horror</option>
-              <option value="🤣">🤣 Comedy</option>
-              <option value="🧠">🧠 Psychological</option>
-              <option value="🦸">🦸 Superhero</option>
-              <option value="🌌">🌌 Sci-Fi</option>
-              <option value="🧟">🧟 Zombie</option>
-              <option value="🧛">🧛 Vampire</option>
-              <option value="🕵️">🕵️ Spy</option>
-              <option value="💰">💰 Heist</option>
-              <option value="🥋">🥋 Martial Arts</option>
-            </optgroup>
-            <optgroup label="Themes/Seasonal">
-              <option value="🎄">🎄 Christmas/Holiday</option>
-              <option value="🎃">🎃 Halloween</option>
-              <option value="🦃">🦃 Thanksgiving</option>
-              <option value="💘">💘 Valentine's</option>
-              <option value="🐰">🐰 Easter</option>
-              <option value="☀️">☀️ Summer</option>
-              <option value="❄️">❄️ Winter</option>
-            </optgroup>
-            <optgroup label="Quality/Awards">
-              <option value="⭐">⭐ Star</option>
-              <option value="🏆">🏆 Trophy</option>
-              <option value="🏅">🏅 Award</option>
-              <option value="💎">💎 Gem</option>
-            </optgroup>
-            <optgroup label="General">
-              <option value="📁">📁 Folder</option>
-              <option value="🎯">🎯 Target</option>
-              <option value="🔖">🔖 Bookmark</option>
-              <option value="📦">📦 Package</option>
-            </optgroup>
-            <optgroup label="Regional (Flags)">
-              <option value="🇺🇸">🇺🇸 USA</option>
-              <option value="🇬🇧">🇬🇧 UK</option>
-              <option value="🇯🇵">🇯🇵 Japan</option>
-              <option value="🇰🇷">🇰🇷 Korea</option>
-              <option value="🇮🇳">🇮🇳 India</option>
-              <option value="🇫🇷">🇫🇷 France</option>
-              <option value="🌍">🌍 International</option>
-            </optgroup>
-            <optgroup label="Special Interest">
-              <option value="🎤">🎤 Stand-up/Music</option>
-              <option value="🎸">🎸 Music</option>
-              <option value="🍳">🍳 Food/Cooking</option>
-              <option value="🔬">🔬 Science</option>
-              <option value="📚">📚 Documentary/Educational</option>
-              <option value="🙏">🙏 Faith/Spiritual</option>
-              <option value="👽">👽 Conspiracy/UFO</option>
+            <optgroup v-for="group in EMOJI_OPTIONS" :key="group.label" :label="group.label">
+              <option v-for="emoji in group.emojis" :key="emoji.value" :value="emoji.value">
+                {{ emoji.value }} {{ emoji.label }}
+              </option>
             </optgroup>
           </select>
         </div>
@@ -262,6 +201,7 @@ import { ref, computed, watch } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import TagInput from '@/components/common/TagInput.vue'
+import { EMOJI_OPTIONS, DEFAULT_EMOJI } from '@/constants/emojis'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -289,7 +229,7 @@ const availableGenres = [
 const defaultForm = () => ({
   name: '',
   description: '',
-  icon: '🎬',
+  icon: DEFAULT_EMOJI,
   category: 'custom',
   signals: {
     certifications: {
@@ -319,7 +259,7 @@ watch(() => props.modelValue, (newVal) => {
       form.value = {
         name: props.preset.name || '',
         description: props.preset.description || '',
-        icon: props.preset.icon || '🎬',
+        icon: props.preset.icon || DEFAULT_EMOJI,
         category: props.preset.category || 'custom',
         signals: {
           certifications: {
@@ -359,7 +299,7 @@ async function handleSubmit() {
     const presetData = {
       name: form.value.name.trim(),
       description: form.value.description.trim(),
-      icon: form.value.icon || '🎬',
+      icon: form.value.icon || DEFAULT_EMOJI,
       category: form.value.category,
       signals: form.value.signals
     }
