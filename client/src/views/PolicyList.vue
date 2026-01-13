@@ -8,11 +8,16 @@
 
 <template>
   <div class="space-y-6">
-    <div>
-      <h1 class="text-2xl font-bold">Library Policies</h1>
-      <p class="text-gray-400 text-sm mt-1">
-        Configure policies with presets to classify your media
-      </p>
+    <div class="flex items-start justify-between">
+      <div>
+        <h1 class="text-2xl font-bold">Library Policies</h1>
+        <p class="text-gray-400 text-sm mt-1">
+          Configure policies with presets to classify your media
+        </p>
+      </div>
+      <Button variant="primary" @click="openCreatePreset">
+        Create Preset
+      </Button>
     </div>
 
     <div v-if="loading" class="text-center py-12 text-gray-400">
@@ -60,6 +65,13 @@
       :existing-preset-ids="existingPresetSelectorIds"
       @confirm="addPresetsToPolicy"
     />
+
+    <!-- Custom Preset Form Modal -->
+    <CustomPresetForm
+      v-model="showPresetForm"
+      :preset="editingPreset"
+      @save="savePreset"
+    />
   </div>
 </template>
 
@@ -70,6 +82,7 @@ import Button from '@/components/common/Button.vue'
 import PolicyCard from '@/components/policies/PolicyCard.vue'
 import PolicyBuilderModal from '@/components/policies/PolicyBuilderModal.vue'
 import PresetSelectionModal from '@/components/policies/PresetSelectionModal.vue'
+import CustomPresetForm from '@/components/presets/CustomPresetForm.vue'
 
 const loading = ref(false)
 const policies = ref([])
@@ -86,6 +99,10 @@ const existingPresetSelectorIds = computed(() => {
   if (!selectorPolicy.value?.presets) return []
   return selectorPolicy.value.presets.map(p => p.id || p.preset_id)
 })
+
+// Custom Preset Form State
+const showPresetForm = ref(false)
+const editingPreset = ref(null)
 
 const showModal = computed({
   get: () => showCreateModal.value || !!editingPolicy.value,
@@ -240,5 +257,30 @@ const closeModal = () => {
   showCreateModal.value = false
   editingPolicy.value = null
   selectedLibraryId.value = null
+}
+
+const openCreatePreset = () => {
+  editingPreset.value = null
+  showPresetForm.value = true
+}
+
+const savePreset = async (presetData) => {
+  try {
+    if (editingPreset.value?.id) {
+      // Update existing preset
+      await api.put(`/presets/custom/${editingPreset.value.id}`, presetData)
+    } else {
+      // Create new preset
+      await api.post('/presets/custom', presetData)
+    }
+    
+    showPresetForm.value = false
+    editingPreset.value = null
+    // Show success message
+    alert('Preset saved successfully! You can now use it in your policies.')
+  } catch (error) {
+    console.error('Failed to save preset:', error)
+    throw error
+  }
 }
 </script>
