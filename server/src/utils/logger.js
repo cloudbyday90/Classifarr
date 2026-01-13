@@ -101,6 +101,7 @@ class FileLogger {
     this.mainLogPath = path.join(LOG_CONFIG.logDir, 'classifarr.log');
     this.errorLogPath = path.join(LOG_CONFIG.logDir, 'error.log');
     this.initialized = false;
+    this.rotating = false; // Lock to prevent concurrent rotations
   }
 
   initialize() {
@@ -128,9 +129,13 @@ class FileLogger {
   }
 
   rotateLog(logPath) {
+    // Prevent concurrent rotations
+    if (this.rotating) return;
+    
     try {
       if (!fs.existsSync(logPath)) return;
-
+      
+      this.rotating = true;
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const rotatedPath = `${logPath}.${timestamp}`;
       
@@ -147,14 +152,32 @@ class FileLogger {
         
         output.on('finish', () => {
           // Delete uncompressed file after compression
-          fs.unlinkSync(rotatedPath);
+          try {
+            fs.unlinkSync(rotatedPath);
+          } catch (unlinkErr) {
+            console.error('Failed to delete uncompressed log file:', unlinkErr.message);
+          }
+          this.rotating = false;
         });
+        
+        output.on('error', (err) => {
+          console.error('Failed to compress log file:', err.message);
+          this.rotating = false;
+        });
+        
+        input.on('error', (err) => {
+          console.error('Failed to read log file for compression:', err.message);
+          this.rotating = false;
+        });
+      } else {
+        this.rotating = false;
       }
 
       // Clean up old rotated files
       this.cleanupRotatedFiles(logPath);
     } catch (err) {
       console.error('Failed to rotate log file:', err.message);
+      this.rotating = false;
     }
   }
 
@@ -227,8 +250,13 @@ function cleanupOldLogs() {
     let totalSize = 0;
     const fileStats = [];
 
-    // Collect file stats
+    // Collect file stats (only process log files)
     files.forEach(file => {
+      // Filter to only process .log files and compressed log files
+      if (!file.match(/\.(log|gz)$/) && !file.includes('.log.')) {
+        return;
+      }
+      
       const filePath = path.join(LOG_CONFIG.logDir, file);
       const stats = fs.statSync(filePath);
       

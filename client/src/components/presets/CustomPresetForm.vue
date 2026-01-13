@@ -42,6 +42,8 @@
               type="text"
               placeholder="📦 (emoji or icon)"
               maxlength="2"
+              pattern="[\u00A9-\u1FAFF]{1,2}"
+              title="Please enter 1–2 emoji or icon characters."
               class="w-24 px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-center text-2xl"
             />
             <span class="text-sm text-gray-400">Enter an emoji to represent this preset</span>
@@ -303,8 +305,8 @@ async function handleSubmit() {
       signals: form.value.signals
     }
 
+    // Emit save event - parent will handle closing on success
     emit('save', presetData)
-    close()
   } catch (err) {
     error.value = err.message || 'Failed to save preset'
   } finally {

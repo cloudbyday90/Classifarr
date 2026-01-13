@@ -276,11 +276,10 @@ const savePreset = async (presetData) => {
     
     showPresetForm.value = false
     editingPreset.value = null
-    // Show success message
-    alert('Preset saved successfully! You can now use it in your policies.')
   } catch (error) {
     console.error('Failed to save preset:', error)
-    throw error
+    const errorMessage = error.response?.data?.error || error.message || 'An unexpected error occurred'
+    alert(`Failed to save preset: ${errorMessage}`)
   }
 }
 </script>
