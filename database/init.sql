@@ -323,7 +323,7 @@ metadata JSONB,
 -- Status
 
 
-status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'failed', 'corrected')),
+status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'failed', 'corrected', 'awaiting_decision', 'pending')),
     error_message TEXT,
     
     created_at TIMESTAMP DEFAULT NOW()

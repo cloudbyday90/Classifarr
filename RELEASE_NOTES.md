@@ -1,5 +1,15 @@
 # Classifarr Release Notes
 
+## v0.37.8e-alpha
+**Title: Classification Status Constraint Fix**
+
+### Bug Fixed
+Fixed `classification_history_status_check` constraint violation. Added missing status values:
+- `awaiting_decision` - Item pending user clarification
+- `pending` - In queue, not yet processed
+
+---
+
 ## v0.37.8d-alpha
 **Title: Bug Fixes & Deprecated Code Cleanup**
 

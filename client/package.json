@@ -1,6 +1,6 @@
 {
   "name": "classifarr-client",
-  "version": "0.37.8d",
+  "version": "0.37.8e",
   "description": "Classifarr frontend application",
   "type": "module",
   "scripts": {
