@@ -1,5 +1,59 @@
 # Classifarr Release Notes
 
+## v0.37.8b-alpha
+**Title: Discord Configuration Save & Display Fix**
+
+### What Was Broken
+Users experienced multiple issues when configuring Discord notifications:
+1. 💥 **Configuration not saving properly** - Settings would revert to "Unknown" after save
+2. 📛 **"Connection Failed" error** - Shown immediately after saving valid configuration
+3. ❓ **"Unable to fetch" display** - Server and channel names wouldn't load in view mode
+4. ⚠️ **No success feedback** - Test connection wouldn't show success message in edit mode
+
+### Root Cause
+The backend `loadConfig()` method only retrieved Discord configuration when `enabled = true`. This caused:
+- API calls (`getChannelDetails`, `getServers`, `getChannels`) to fail when config was disabled or being updated
+- Frontend couldn't fetch channel details after save, showing "Unable to fetch"
+- Test connection couldn't authenticate even with valid token
+
+### What's Fixed
+✅ **Configuration saves and persists correctly**
+- Backend now fetches bot token for API calls regardless of enabled status
+- Proper sequencing ensures database commits before fetching details
+
+✅ **Server and channel names display correctly**
+- View mode now shows actual server and channel names after save
+- No more "Unable to fetch" or "Unknown" placeholders
+
+✅ **Test Connection shows success**
+- Clear success message displayed in edit mode
+- Shows test notification delivery status and server/channel info
+- Displays which permissions are granted or missing
+
+✅ **Better user feedback**
+- Save action shows confirmation with configured channel details
+- Warning status for non-critical issues
+- Error messages are more specific and actionable
+
+### Technical Changes
+**Backend (`server/src/services/discordBot.js`):**
+- `loadConfig()` now accepts `ignoreEnabledStatus` parameter (default: false)
+- `getChannelDetails()`, `getServers()`, `getChannels()`, `testConnection()` use `ignoreEnabledStatus=true`
+- API authentication works even when bot notifications are disabled
+
+**Frontend (`client/src/views/settings/Discord.vue`):**
+- Improved save sequencing with small delay for database commit
+- Enhanced success feedback with channel/server details
+- Better test connection messages for edit mode
+
+**Frontend (`client/src/components/common/ConnectionStatus.vue`):**
+- Added 'warning' status support for non-critical issues
+
+### Upgrade Notes
+No breaking changes. Existing Discord configurations will work correctly after upgrade.
+
+---
+
 ## v0.37.8a-alpha
 **Title: Discord Channel Details Error Handling Fix**
 

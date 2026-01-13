@@ -481,6 +481,7 @@ const testConnection = async () => {
       // Add notification delivery status
       if (response.data.notification?.sent) {
         detailsObj.additionalInfo['Notification'] = `✅ Sent to #${response.data.notification.channelName}`;
+        detailsObj.additionalInfo['Server'] = response.data.notification.serverName;
       }
       
       // Add permission status
@@ -497,6 +498,11 @@ const testConnection = async () => {
       // Add warning if present
       if (response.data.warning) {
         detailsObj.additionalInfo['Warning'] = response.data.warning;
+      }
+      
+      // Show success message specific to edit mode
+      if (isEditing.value && response.data.notification?.sent) {
+        detailsObj.additionalInfo['Test Result'] = `✅ Test notification sent successfully! Check Discord channel.`;
       }
       
       connectionStatus.value = {
@@ -528,14 +534,36 @@ const saveConfig = async () => {
   saving.value = true
   connectionStatus.value = { status: 'idle' } // Clear previous status when saving
   try {
+    // Save configuration - server commits to database before returning
     await axios.put('/api/settings/notifications', config.value)
+    
     // If successfully saved, re-fetch channel details to update the "Connected" card
     if (config.value.channel_id) {
         await fetchChannelDetails(config.value.channel_id);
         isEditing.value = false;
-        connectionStatus.value.status = 'unknown'; // Saved
+        connectionStatus.value = {
+          status: 'success',
+          details: {
+            serverName: configuredChannel.value?.guildName || 'Unknown',
+            additionalInfo: {
+              'Channel': `#${configuredChannel.value?.name || 'Unknown'}`,
+              'Status': '✅ Configuration saved successfully'
+            }
+          },
+          lastChecked: new Date()
+        };
+    } else {
+      // Just bot token saved, no channel selected yet
+      connectionStatus.value = {
+        status: 'success',
+        details: {
+          additionalInfo: {
+            'Status': '✅ Bot token saved successfully'
+          }
+        },
+        lastChecked: new Date()
+      };
     }
-    // Briefly show specific success message or notification could be added here
   } catch (error) {
     console.error('Failed to save config:', error);
     connectionStatus.value = {

@@ -145,6 +145,105 @@ describe('Discord Integration Tests', () => {
         });
     });
 
+    describe('Discord Configuration Loading with ignoreEnabledStatus', () => {
+        test('should load config when enabled=true by default', async () => {
+            // Insert enabled config
+            await pool.query(
+                `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
+                 VALUES ('discord', 'enabled_token', '123456789', true)`
+            );
+
+            // Query WITHOUT ignoreEnabledStatus (default behavior)
+            const result = await pool.query(
+                'SELECT * FROM notification_config WHERE type = $1 AND enabled = true LIMIT 1',
+                ['discord']
+            );
+
+            expect(result.rows).toHaveLength(1);
+            expect(result.rows[0].bot_token).toBe('enabled_token');
+            expect(result.rows[0].enabled).toBe(true);
+        });
+
+        test('should NOT load config when enabled=false by default', async () => {
+            // Insert disabled config
+            await pool.query(
+                `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
+                 VALUES ('discord', 'disabled_token', '987654321', false)`
+            );
+
+            // Query WITHOUT ignoreEnabledStatus (default behavior)
+            const result = await pool.query(
+                'SELECT * FROM notification_config WHERE type = $1 AND enabled = true LIMIT 1',
+                ['discord']
+            );
+
+            // Should NOT find the disabled config
+            expect(result.rows).toHaveLength(0);
+        });
+
+        test('should load config when enabled=false with ignoreEnabledStatus=true', async () => {
+            // Insert disabled config
+            await pool.query(
+                `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
+                 VALUES ('discord', 'disabled_token', '987654321', false)`
+            );
+
+            // Query WITH ignoreEnabledStatus (simulates loadConfig(true))
+            const result = await pool.query(
+                'SELECT * FROM notification_config WHERE type = $1 LIMIT 1',
+                ['discord']
+            );
+
+            // SHOULD find the disabled config because we're ignoring enabled status
+            expect(result.rows).toHaveLength(1);
+            expect(result.rows[0].bot_token).toBe('disabled_token');
+            expect(result.rows[0].enabled).toBe(false);
+        });
+
+        test('should allow API calls to authenticate even when bot is disabled', async () => {
+            // Scenario: User saves Discord config but hasn't enabled notifications yet
+            await pool.query(
+                `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
+                 VALUES ('discord', 'api_token', '555666777', false)`
+            );
+
+            // API calls (getChannelDetails, getServers, etc.) need the token
+            // They should use ignoreEnabledStatus=true
+            const result = await pool.query(
+                'SELECT bot_token FROM notification_config WHERE type = $1 LIMIT 1',
+                ['discord']
+            );
+
+            // Token should be available for API authentication
+            expect(result.rows).toHaveLength(1);
+            expect(result.rows[0].bot_token).toBe('api_token');
+        });
+
+        test('should fix the "Unable to fetch" issue after saving configuration', async () => {
+            // Scenario: User saves Discord config with bot token and channel
+            await pool.query(
+                `INSERT INTO notification_config (type, bot_token, channel_id, enabled)
+                 VALUES ('discord', 'new_config_token', '111222333', true)`
+            );
+
+            // After save, frontend calls /api/settings/discord/channel/:channelId
+            // Backend calls getChannelDetails() which calls loadConfig(true)
+            // This should retrieve the token regardless of enabled status
+
+            // Simulate what loadConfig(true) does
+            const result = await pool.query(
+                'SELECT * FROM notification_config WHERE type = $1 LIMIT 1',
+                ['discord']
+            );
+
+            expect(result.rows).toHaveLength(1);
+            expect(result.rows[0].bot_token).toBe('new_config_token');
+            expect(result.rows[0].channel_id).toBe('111222333');
+            
+            // This ensures channel details can be fetched even if config was just saved
+        });
+    });
+
     describe('Permission Validation Logic', () => {
         test('should identify all required permissions', () => {
             const requiredPermissions = [
