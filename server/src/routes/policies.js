@@ -238,7 +238,7 @@ router.get('/', async (req, res) => {
                 lp.*,
                 l.name as library_name,
                 l.media_type as library_media_type,
-                (SELECT COUNT(*) FROM policy_presets WHERE policy_id = lp.id) as preset_count
+                (SELECT COUNT(*)::int FROM policy_presets WHERE policy_id = lp.id) as preset_count
             FROM library_policies lp
             JOIN libraries l ON lp.library_id = l.id
             ORDER BY l.name, lp.priority DESC, lp.sort_order ASC

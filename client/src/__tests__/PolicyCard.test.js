@@ -135,7 +135,8 @@ describe('PolicyCard.vue', () => {
       const wrapper = mount(PolicyCard, {
         props: { policy: mockPolicyEmpty }
       });
-      expect(wrapper.text()).toContain('No presets configured. Add Presets.');
+      expect(wrapper.text()).toContain('No presets configured');
+      // Button text is checked in a separate test
     });
 
     it('displays dashed border container in empty state', () => {
@@ -145,13 +146,15 @@ describe('PolicyCard.vue', () => {
       const emptyState = wrapper.find('.border-dashed');
       expect(emptyState.exists()).toBe(true);
       expect(emptyState.classes()).toContain('border-2');
+      // Also check for the specific failure case or ensure color matches if needed, but basic existence is fine
     });
 
     it('displays centered plus icon in empty state', () => {
       const wrapper = mount(PolicyCard, {
         props: { policy: mockPolicyEmpty }
       });
-      const plusIcon = wrapper.find('.text-2xl.text-gray-400');
+      // The icon is now inside a circle bg-primary/20
+      const plusIcon = wrapper.find('.text-2xl.text-primary');
       expect(plusIcon.exists()).toBe(true);
       expect(plusIcon.text()).toBe('+');
     });
@@ -214,7 +217,7 @@ describe('PolicyCard.vue', () => {
       });
       const showWeightsButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Show Weights');
       await showWeightsButton.trigger('click');
-      
+
       expect(wrapper.text()).toContain('Presets:');
       expect(wrapper.text()).toContain('40%');
       expect(wrapper.text()).toContain('Patterns:');
@@ -230,11 +233,11 @@ describe('PolicyCard.vue', () => {
         props: { policy: mockPolicyWithPresets }
       });
       const showWeightsButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Show Weights');
-      
+
       // Show weights
       await showWeightsButton.trigger('click');
       expect(wrapper.text()).toContain('Presets:');
-      
+
       // Hide weights
       const hideWeightsButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Hide Weights');
       await hideWeightsButton.trigger('click');
@@ -265,7 +268,7 @@ describe('PolicyCard.vue', () => {
       });
       const editButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Edit');
       await editButton.trigger('click');
-      
+
       expect(wrapper.emitted('edit')).toBeTruthy();
       expect(wrapper.emitted('edit')[0]).toEqual([mockPolicyWithPresets]);
     });
@@ -276,7 +279,7 @@ describe('PolicyCard.vue', () => {
       });
       const resetButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Reset');
       await resetButton.trigger('click');
-      
+
       expect(wrapper.emitted('delete')).toBeTruthy();
       expect(wrapper.emitted('delete')[0]).toEqual([mockPolicyWithPresets]);
     });
@@ -287,7 +290,7 @@ describe('PolicyCard.vue', () => {
       });
       const addButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Add Presets');
       await addButton.trigger('click');
-      
+
       expect(wrapper.emitted('add-presets')).toBeTruthy();
       expect(wrapper.emitted('add-presets')[0]).toEqual([mockPolicyEmpty]);
     });
@@ -299,7 +302,7 @@ describe('PolicyCard.vue', () => {
       const wrapperEmpty = mount(PolicyCard, {
         props: { policy: mockPolicyEmpty }
       });
-      
+
       expect(wrapperWithPresets.findAllComponents(Button).find(b => b.text() === 'Show Weights')).toBeDefined();
       expect(wrapperEmpty.findAllComponents(Button).find(b => b.text() === 'Show Weights')).toBeUndefined();
     });
@@ -309,7 +312,7 @@ describe('PolicyCard.vue', () => {
     it('handles missing preset_count gracefully', () => {
       const policyNoCount = { ...mockPolicyWithPresets };
       delete policyNoCount.preset_count;
-      
+
       const wrapper = mount(PolicyCard, {
         props: { policy: policyNoCount }
       });
@@ -323,7 +326,7 @@ describe('PolicyCard.vue', () => {
         auto_classify_threshold: undefined,
         prompt_threshold: undefined
       };
-      
+
       const wrapper = mount(PolicyCard, {
         props: { policy: policyNoThresholds }
       });

@@ -32,13 +32,13 @@
       </div>
 
       <!-- Empty State / Thresholds -->
-      <div v-if="(!policy.preset_count || policy.preset_count === 0)" class="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center">
+      <div v-if="(!policy.preset_count || policy.preset_count == 0)" class="border-2 border-dashed border-primary/30 bg-primary/5 rounded-lg p-8 text-center">
         <div class="flex flex-col items-center gap-3">
-          <div class="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center">
-            <span class="text-2xl text-gray-400">+</span>
+          <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+            <span class="text-2xl text-primary">+</span>
           </div>
-          <p class="text-sm text-gray-400">No presets configured. Add Presets.</p>
-          <Button @click="$emit('add-presets', policy)" variant="primary" size="sm">
+          <p class="text-secondary-foreground font-medium">No presets configured. <span class="text-primary cursor-pointer" @click="$emit('add-presets', policy)">Add Presets</span>.</p>
+          <Button @click="$emit('add-presets', policy)" variant="primary" size="default">
             Add Presets
           </Button>
         </div>
@@ -59,7 +59,7 @@
       </div>
 
       <!-- Weights -->
-      <div v-if="showWeights && policy.preset_count > 0" class="grid grid-cols-4 gap-2 text-xs">
+      <div v-if="showWeights && policy.preset_count > 0" class="grid grid-cols-4 gap-2 text-xs pt-2">
         <div>
           <span class="text-gray-400">Presets:</span>
           <span class="ml-1">{{ Math.round((policy.preset_weight || 0.4) * 100) }}%</span>
@@ -78,23 +78,28 @@
         </div>
       </div>
 
-      <!-- Footer with Thresholds (shown for empty state) -->
-      <div v-if="(!policy.preset_count || policy.preset_count === 0)" class="flex gap-4 text-xs text-gray-400 pt-2 border-t border-gray-800">
-        <span>Auto-classify: ≥{{ policy.auto_classify_threshold || 85 }}%</span>
-        <span>Prompt: ≥{{ policy.prompt_threshold || 60 }}%</span>
-      </div>
+      <!-- Combined Footer -->
+      <div class="flex items-center justify-between pt-4 mt-2 border-t border-gray-800">
+        <!-- Left: Stats (visible if empty) -->
+        <div class="flex gap-3 text-xs text-gray-400">
+          <template v-if="(!policy.preset_count || policy.preset_count == 0)">
+            <span>Auto-classify: ≥{{ policy.auto_classify_threshold || 85 }}%</span>
+            <span>Prompt: ≥{{ policy.prompt_threshold || 60 }}%</span>
+          </template>
+        </div>
 
-      <!-- Actions -->
-      <div class="flex items-center gap-2 pt-2 border-t border-gray-800">
-        <Button @click="$emit('edit', policy)" variant="ghost" size="sm">
-          Edit
-        </Button>
-        <Button @click="$emit('delete', policy)" variant="ghost" size="sm" class="text-red-400 hover:text-red-300">
-          Reset
-        </Button>
-        <Button v-if="policy.preset_count > 0" @click="showWeights = !showWeights" variant="ghost" size="sm" class="ml-auto">
-          {{ showWeights ? 'Hide' : 'Show' }} Weights
-        </Button>
+        <!-- Right: Actions -->
+        <div class="flex items-center gap-2">
+          <Button v-if="policy.preset_count > 0" @click="$emit('delete', policy)" variant="ghost" size="sm" class="text-red-400 hover:text-red-300">
+            Reset
+          </Button>
+          <Button @click="$emit('edit', policy)" variant="primary" size="sm">
+            Edit
+          </Button>
+           <Button v-if="policy.preset_count > 0" @click="showWeights = !showWeights" variant="ghost" size="sm">
+            {{ showWeights ? 'Hide' : 'Show' }} Weights
+          </Button>
+        </div>
       </div>
     </div>
   </Card>

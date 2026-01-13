@@ -40,7 +40,7 @@
             class="flex items-center gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
             :class="isSelected(preset.id) 
               ? 'bg-success bg-opacity-10 border-success' 
-              : 'bg-background-light border-primary'"
+              : 'bg-primary bg-opacity-10 border-primary'"
           >
             <div v-if="isSelected(preset.id)" class="flex-shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
               <span class="text-white text-xs font-bold">✓</span>
