@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { PostgreSqlContainer } = require('@testcontainers/postgresql');
 const { Pool } = require('pg');
 
@@ -27,8 +28,10 @@ beforeAll(async () => {
         .join('\n');
 
     // Write preprocessed SQL to temp file for copying to container
-    const tempSqlFile = path.join(__dirname, 'temp_schema.sql');
+    // Use os.tmpdir() for cross-platform compatibility (Windows/Linux)
+    const tempSqlFile = path.resolve(os.tmpdir(), `classifarr_schema_${Date.now()}.sql`);
     fs.writeFileSync(tempSqlFile, initSql, 'utf8');
+    console.log(`Created temp SQL file at: ${tempSqlFile}`);
 
     try {
         // Start PostgreSQL container and copy the SQL file
@@ -86,12 +89,12 @@ beforeAll(async () => {
             console.log(`  Applying migration: ${migrationFile}`);
             const migrationPath = path.join(migrationsDir, migrationFile);
             const migrationSql = fs.readFileSync(migrationPath, 'utf8');
-            
+
             try {
                 await pool.query(migrationSql);
             } catch (error) {
                 const isKnownOptional = knownOptionalFailures.some(msg => error.message.includes(msg));
-                
+
                 if (isKnownOptional) {
                     console.warn(`  Skipping ${migrationFile} (expected): ${error.message}`);
                 } else {
