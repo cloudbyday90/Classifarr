@@ -49,6 +49,11 @@ The backend `loadConfig()` method only retrieved Discord configuration when `ena
 **Frontend (`client/src/components/common/ConnectionStatus.vue`):**
 - Added 'warning' status support for non-critical issues
 
+### Build & Test Improvements
+- **Vite Upgrade**: Upgraded from v5.0.8 to v7.3.1 for improved build performance and latest features
+- **Vue Plugin**: Upgraded @vitejs/plugin-vue from v4.5.2 to v6.0.3
+- **Windows Test Compatibility**: Integration tests now work on Windows with cross-platform temp file paths
+
 ### Upgrade Notes
 No breaking changes. Existing Discord configurations will work correctly after upgrade.
 

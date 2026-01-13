@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **ConnectionStatus Component**: Added support for 'warning' status to display non-critical issues
 
+### Changed
+- **Build Tooling**: Upgraded Vite from v5.0.8 to v7.3.1
+- **Vue Plugin**: Upgraded @vitejs/plugin-vue from v4.5.2 to v6.0.3
+- **Test Infrastructure**: Integration tests now use cross-platform temp file paths for Windows compatibility
+
 ## [0.37.8a-alpha] - 2026-01-12
 
 ### Fixed
