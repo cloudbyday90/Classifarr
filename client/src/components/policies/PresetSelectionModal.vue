@@ -188,11 +188,13 @@ const categoryTabs = computed(() => {
     { value: 'all', label: 'All', count: allPresets.value.length }
   ];
   
-  // Get unique categories from presets
+  // Get unique categories from presets (exclude 'custom' as it's handled separately)
   const categoryCounts = {};
   allPresets.value.forEach(p => {
     const cat = p.category || 'uncategorized';
-    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    if (cat !== 'custom') {  // Skip custom category, handled separately by source field
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
   });
   
   Object.entries(categoryCounts).forEach(([cat, count]) => {
@@ -299,6 +301,13 @@ function confirm() {
   emit('confirm', selectedPresets.value);
   close();
 }
+
+// Load presets on mount if modal is already open
+onMounted(() => {
+  if (props.modelValue) {
+    loadPresets();
+  }
+});
 
 // Reload when modal opens
 watch(() => props.modelValue, (newVal) => {
