@@ -253,6 +253,10 @@ describe('Media Server API', () => {
             mockClient.query.mockResolvedValueOnce({});
             // Mock: COMMIT
             mockClient.query.mockResolvedValueOnce({});
+            
+            // Mock error_log INSERTs from background sync failures (auto-sync tries to sync non-existent libraries)
+            // The syncLibrary calls will fail and log errors, which try to INSERT into error_log
+            mockClient.query.mockResolvedValue({ rows: [{ error_id: 1 }] });
 
             const response = await request(app).post('/api/media-server/sync');
 
