@@ -1,5 +1,26 @@
 # Classifarr Release Notes
 
+## v0.38.0-alpha
+**Title: Enhanced Policy Setup Experience**
+
+### What's New
+
+#### Improved Policy Setup Experience
+- **Clearer Empty States**: When a library has no presets configured, you'll now see a clean, intuitive interface with a dashed border container and centered plus icon guiding you to add presets
+- **Library Header Display**: Each policy card now shows the associated library name with an icon at the top for better context
+- **Smart Preset Suggestions**: The preset selection modal now shows AI-suggested presets based on your library name, with match percentages (e.g., "90% match") to help you choose the best presets
+- **Better Visual Feedback**: Selected presets now show green checkmarks (✓) instead of blue highlights, making it easier to see what you've chosen at a glance
+- **Quick Actions**: Added "Add All" button to quickly select all suggested presets at once
+
+#### UI Polish
+- **Consistent Color Scheme**: Updated throughout the policy configuration flow with standardized blue (#3b82f6) for primary actions and green (#22c55e) for success states
+- **Improved Readability**: Enhanced contrast and spacing in preset selection cards
+- **Lock Icon Indicator**: Read-only library field now shows a lock icon (🔒) to clearly indicate it cannot be changed
+- **Category Filter Enhancement**: Selected category pills now display in blue, while unselected ones show in gray for better visual distinction
+- **Modal Close Button**: Updated with blue accent for improved visual hierarchy
+
+---
+
 ## v0.37.8e-alpha
 **Title: Classification Status Constraint Fix**
 

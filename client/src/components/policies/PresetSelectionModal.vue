@@ -9,77 +9,50 @@
 <template>
   <Modal v-model="isOpen" title="Add Presets" class="max-w-4xl">
     <div class="space-y-5">
-      <!-- Library Context (read-only) with Info Tooltip -->
+      <!-- Library Context (read-only) with Lock Icon -->
       <div class="flex items-center gap-3 p-3 bg-background-light rounded-lg border border-gray-700">
-        <span class="text-2xl">📚</span>
+        <span class="text-2xl">🔒</span>
         <div class="flex-1">
+          <div class="text-sm text-gray-400">Library</div>
           <div class="font-medium">{{ library?.name || 'Unknown Library' }}</div>
-          <div class="text-sm text-gray-400">Select presets to define what content belongs here</div>
-        </div>
-        <!-- Info Tooltip -->
-        <div class="relative group">
-          <button 
-            class="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm font-bold transition-colors"
-            @click.stop="showInfoTooltip = !showInfoTooltip"
-          >
-            i
-          </button>
-          <div 
-            v-if="showInfoTooltip"
-            class="absolute right-0 top-8 w-72 p-4 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 text-sm"
-          >
-            <button 
-              @click="showInfoTooltip = false" 
-              class="absolute top-2 right-2 text-gray-400 hover:text-white"
-            >×</button>
-            <h4 class="font-semibold text-primary mb-2">💡 Tips</h4>
-            <ul class="space-y-2 text-gray-300">
-              <li class="flex gap-2">
-                <span class="text-primary">✓</span>
-                <span>Select <strong>multiple presets</strong> to combine their signals</span>
-              </li>
-              <li class="flex gap-2">
-                <span class="text-primary">✓</span>
-                <span>Suggested presets are based on your library name</span>
-              </li>
-              <li class="flex gap-2">
-                <span class="text-primary">✓</span>
-                <span>Custom presets can be created in the Presets manager</span>
-              </li>
-              <li class="flex gap-2">
-                <span class="text-primary">✓</span>
-                <span>After adding, you can adjust weights in the policy editor</span>
-              </li>
-            </ul>
-          </div>
         </div>
       </div>
 
       <!-- Suggested Presets Section -->
       <div v-if="suggestedPresets.length > 0" class="space-y-3">
-        <h3 class="text-sm font-semibold text-primary flex items-center gap-2">
-          <span>✨</span> Suggested for {{ library?.name }}
-        </h3>
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-primary flex items-center gap-2">
+            <span>✨</span> Suggested
+          </h3>
+          <button
+            v-if="suggestedPresets.length > 0"
+            @click="addAllSuggested"
+            class="text-xs px-2 py-1 bg-primary bg-opacity-20 text-primary rounded hover:bg-opacity-30 transition-colors"
+          >
+            + Add All
+          </button>
+        </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div
             v-for="preset in suggestedPresets"
             :key="'suggested-' + preset.id"
             @click="togglePreset(preset)"
-            class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:border-primary"
-            :class="isSelected(preset.id) ? 'bg-primary bg-opacity-10 border-primary' : 'bg-background-light border-gray-700'"
+            class="flex items-center gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
+            :class="isSelected(preset.id) 
+              ? 'bg-success bg-opacity-10 border-success' 
+              : 'bg-background-light border-primary'"
           >
-            <input 
-              type="checkbox" 
-              :checked="isSelected(preset.id)"
-              class="h-4 w-4 rounded border-gray-600 bg-background text-primary focus:ring-primary"
-              @click.stop
-              @change="togglePreset(preset)"
-            />
+            <div v-if="isSelected(preset.id)" class="flex-shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+              <span class="text-white text-xs font-bold">✓</span>
+            </div>
+            <div v-else class="flex-shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+              <span class="text-gray-500 text-xs">+</span>
+            </div>
             <span class="text-lg">{{ preset.icon || '📦' }}</span>
             <div class="flex-1 min-w-0">
               <div class="font-medium truncate">{{ preset.name }}</div>
-              <div class="text-xs text-gray-400 truncate">
-                Score: {{ preset.match_score }} • {{ preset.match_reasons?.join(', ') }}
+              <div class="text-xs text-gray-400">
+                {{ preset.match_score }}% match
               </div>
             </div>
           </div>
@@ -96,7 +69,7 @@
             class="px-3 py-1.5 text-sm rounded-lg transition-colors"
             :class="selectedCategory === cat.value 
               ? 'bg-primary text-white' 
-              : 'bg-background-light text-gray-300 hover:bg-gray-700'"
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
           >
             {{ cat.label }} 
             <span v-if="cat.count" class="text-xs opacity-70">({{ cat.count }})</span>
@@ -108,7 +81,7 @@
           v-model="searchQuery"
           type="search"
           placeholder="Search presets..."
-          class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none"
+          class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white placeholder-gray-500"
         />
       </div>
 
@@ -118,16 +91,17 @@
           v-for="preset in filteredPresets"
           :key="preset.id"
           @click="togglePreset(preset)"
-          class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:border-primary"
-          :class="isSelected(preset.id) ? 'bg-primary bg-opacity-10 border-primary' : 'bg-background-light border-gray-700'"
+          class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-800"
+          :class="isSelected(preset.id) 
+            ? 'bg-success bg-opacity-10 border-success' 
+            : 'bg-background-light border-gray-700'"
         >
-          <input 
-            type="checkbox" 
-            :checked="isSelected(preset.id)"
-            class="h-4 w-4 rounded border-gray-600 bg-background text-primary focus:ring-primary"
-            @click.stop
-            @change="togglePreset(preset)"
-          />
+          <div v-if="isSelected(preset.id)" class="flex-shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+            <span class="text-white text-xs font-bold">✓</span>
+          </div>
+          <div v-else class="flex-shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+            <span class="text-gray-500 text-xs">+</span>
+          </div>
           <span class="text-lg">{{ preset.icon || '📦' }}</span>
           <div class="flex-1 min-w-0">
             <div class="font-medium truncate">{{ preset.name }}</div>
@@ -152,7 +126,7 @@
         <span 
           v-for="preset in selectedPresets" 
           :key="'sel-' + preset.id"
-          class="inline-flex items-center gap-1 px-2 py-1 bg-primary bg-opacity-20 text-primary rounded text-sm"
+          class="inline-flex items-center gap-1 px-2 py-1 bg-success bg-opacity-20 text-success rounded text-sm"
         >
           {{ preset.icon }} {{ preset.name }}
           <button @click="togglePreset(preset)" class="hover:text-white">×</button>
@@ -167,7 +141,7 @@
           {{ selectedPresets.length }} preset{{ selectedPresets.length !== 1 ? 's' : '' }} selected
         </span>
         <div class="flex gap-3">
-          <Button variant="ghost" @click="close">Cancel</Button>
+          <Button variant="secondary" @click="close">Cancel</Button>
           <Button 
             variant="primary" 
             @click="confirm"
@@ -207,7 +181,6 @@ const selectedPresets = ref([]);
 const searchQuery = ref('');
 const selectedCategory = ref('all');
 const loading = ref(false);
-const showInfoTooltip = ref(false);
 
 // Category tabs
 const categoryTabs = computed(() => {
@@ -215,11 +188,13 @@ const categoryTabs = computed(() => {
     { value: 'all', label: 'All', count: allPresets.value.length }
   ];
   
-  // Get unique categories from presets
+  // Get unique categories from presets (exclude 'custom' as it's handled separately)
   const categoryCounts = {};
   allPresets.value.forEach(p => {
     const cat = p.category || 'uncategorized';
-    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    if (cat !== 'custom') {  // Skip custom category, handled separately by source field
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
   });
   
   Object.entries(categoryCounts).forEach(([cat, count]) => {
@@ -272,16 +247,28 @@ function isSelected(presetId) {
   return selectedPresets.value.some(p => p.id === presetId);
 }
 
+function canSelectPreset(preset) {
+  return !isSelected(preset.id) && !props.existingPresetIds.includes(preset.id);
+}
+
 function togglePreset(preset) {
   const idx = selectedPresets.value.findIndex(p => p.id === preset.id);
   if (idx >= 0) {
     selectedPresets.value.splice(idx, 1);
   } else {
     // Don't add if already in policy
-    if (!props.existingPresetIds.includes(preset.id)) {
+    if (canSelectPreset(preset)) {
       selectedPresets.value.push(preset);
     }
   }
+}
+
+function addAllSuggested() {
+  suggestedPresets.value.forEach(preset => {
+    if (canSelectPreset(preset)) {
+      selectedPresets.value.push(preset);
+    }
+  });
 }
 
 async function loadPresets() {
@@ -314,6 +301,13 @@ function confirm() {
   emit('confirm', selectedPresets.value);
   close();
 }
+
+// Load presets on mount if modal is already open
+onMounted(() => {
+  if (props.modelValue) {
+    loadPresets();
+  }
+});
 
 // Reload when modal opens
 watch(() => props.modelValue, (newVal) => {

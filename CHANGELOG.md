@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.0-alpha] - 2026-01-13
+
+### Added
+- **Policy Card Empty State Redesign**: New visual design for policies without presets
+  - Dashed border container with centered plus icon
+  - "No presets configured" messaging
+  - Library header with icon display
+  - Auto-generated policy naming from library name
+  - Footer showing thresholds even in empty state
+
+- **Preset Selection Modal Enhancements**: Improved UX for adding presets to policies
+  - Read-only library field with lock icon (🔒) indicator
+  - Suggested presets section with match percentages and blue left border
+  - Green checkmark (✓) selection indicators replacing blue highlight
+  - Plus (+) icon for unselected preset cards
+  - Updated category filter pills with blue selected state, gray unselected
+  - "Add All" button for suggested presets
+  - Enhanced selected preset summary with green styling
+
+### Changed
+- **Color Consistency**: Standardized on primary blue (#3b82f6) and success green (#22c55e)
+- **Modal Styling**: Updated close button with blue accent for better visual hierarchy
+- **Category Pills**: Updated from background-light to gray-700 for unselected state
+- **Search Input**: Enhanced with explicit text color and placeholder styling
+
 ## [0.37.8e-alpha] - 2026-01-13
 
 ### Fixed
