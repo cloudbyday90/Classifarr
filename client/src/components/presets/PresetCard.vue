@@ -1,6 +1,6 @@
 <!--
   Classifarr - AI-powered media classification for the *arr ecosystem
-  Copyright (C) 2026 cloudbyday90
+  Copyright (C) 2025 cloudbyday90
   
   This program is free software: licensed under GPL-3.0
   See LICENSE file for details.
@@ -11,7 +11,7 @@
     <div class="flex items-start gap-4">
       <!-- Icon -->
       <div class="text-4xl flex-shrink-0">
-        {{ preset.icon || '📦' }}
+        {{ preset.icon || '🎬' }}
       </div>
 
       <!-- Content -->
@@ -50,7 +50,7 @@
         <PencilIcon class="w-4 h-4 mr-1" />
         Edit
       </Button>
-      <Button variant="ghost" size="sm" @click="$emit('delete', preset)">
+      <Button variant="ghost" size="sm" @click="$emit('delete', preset)" aria-label="Delete preset">
         <TrashIcon class="w-4 h-4 text-red-400" />
       </Button>
     </div>

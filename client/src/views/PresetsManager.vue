@@ -1,6 +1,6 @@
 <!--
   Classifarr - AI-powered media classification for the *arr ecosystem
-  Copyright (C) 2026 cloudbyday90
+  Copyright (C) 2025 cloudbyday90
   
   This program is free software: licensed under GPL-3.0
   See LICENSE file for details.
@@ -19,22 +19,28 @@
     <!-- Search and Filter Bar -->
     <div class="flex gap-4">
       <div class="flex-1">
+        <label for="preset-search" class="sr-only">Search presets</label>
         <input
+          id="preset-search"
           v-model="searchQuery"
           type="text"
           placeholder="Search presets..."
           class="w-full px-4 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white placeholder-gray-500"
         />
       </div>
-      <select
-        v-model="categoryFilter"
-        class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white"
-      >
-        <option value="">All Categories</option>
-        <option v-for="category in categories" :key="category" :value="category">
-          {{ formatCategory(category) }}
-        </option>
-      </select>
+      <div>
+        <label for="category-filter" class="sr-only">Filter by category</label>
+        <select
+          id="category-filter"
+          v-model="categoryFilter"
+          class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white"
+        >
+          <option value="">All Categories</option>
+          <option v-for="category in categories" :key="category" :value="category">
+            {{ formatCategory(category) }}
+          </option>
+        </select>
+      </div>
     </div>
 
     <!-- Tabs -->
@@ -191,7 +197,7 @@ function filterPresets(presets) {
 }
 
 function formatCategory(category) {
-  if (!category) return 'Unknown'
+  if (!category) return 'General'
   return category
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
