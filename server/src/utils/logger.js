@@ -358,8 +358,10 @@ class Logger {
 
 const createLogger = (module) => new Logger(module);
 
-// Initialize file logging on module load
-fileLogger.initialize();
+// Initialize file logging on module load (skip in test environment)
+if (process.env.NODE_ENV !== 'test') {
+  fileLogger.initialize();
+}
 
 module.exports = { 
   createLogger, 
