@@ -36,18 +36,16 @@
 
         <div>
           <label class="block text-sm font-medium mb-2">Icon</label>
-          <div class="flex gap-2 items-center">
-            <input
-              v-model="form.icon"
-              type="text"
-              placeholder="📦 (emoji or icon)"
-              maxlength="2"
-              pattern="[\u00A9-\u1FAFF]{1,2}"
-              title="Please enter 1–2 emoji or icon characters."
-              class="w-24 px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-center text-2xl"
-            />
-            <span class="text-sm text-gray-400">Enter an emoji to represent this preset</span>
-          </div>
+          <select
+            v-model="form.icon"
+            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-lg"
+          >
+            <optgroup v-for="group in EMOJI_OPTIONS" :key="group.label" :label="group.label">
+              <option v-for="emoji in group.emojis" :key="emoji.value" :value="emoji.value">
+                {{ emoji.value }} {{ emoji.label }}
+              </option>
+            </optgroup>
+          </select>
         </div>
 
         <div>
@@ -203,6 +201,7 @@ import { ref, computed, watch } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import TagInput from '@/components/common/TagInput.vue'
+import { EMOJI_OPTIONS, DEFAULT_EMOJI } from '@/constants/emojis'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -230,7 +229,7 @@ const availableGenres = [
 const defaultForm = () => ({
   name: '',
   description: '',
-  icon: '📦',
+  icon: DEFAULT_EMOJI,
   category: 'custom',
   signals: {
     certifications: {
@@ -260,7 +259,7 @@ watch(() => props.modelValue, (newVal) => {
       form.value = {
         name: props.preset.name || '',
         description: props.preset.description || '',
-        icon: props.preset.icon || '📦',
+        icon: props.preset.icon || DEFAULT_EMOJI,
         category: props.preset.category || 'custom',
         signals: {
           certifications: {
@@ -300,7 +299,7 @@ async function handleSubmit() {
     const presetData = {
       name: form.value.name.trim(),
       description: form.value.description.trim(),
-      icon: form.value.icon || '📦',
+      icon: form.value.icon || DEFAULT_EMOJI,
       category: form.value.category,
       signals: form.value.signals
     }

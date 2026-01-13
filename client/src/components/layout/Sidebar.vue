@@ -131,7 +131,8 @@ import {
   LightBulbIcon,
   PresentationChartLineIcon,
   DocumentDuplicateIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  SwatchIcon
 } from '@heroicons/vue/24/outline'
 
 defineProps({
@@ -155,6 +156,7 @@ const mediaMenuItems = [
 // Classification section
 const classificationMenuItems = [
   { path: '/policies', label: 'Policies', icon: DocumentDuplicateIcon },
+  { path: '/presets', label: 'Presets', icon: SwatchIcon },
   { path: '/tuning-suggestions', label: 'Tuning', icon: LightBulbIcon },
 ]
 

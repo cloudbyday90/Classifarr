@@ -24,6 +24,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - "Add All" button for suggested presets
   - Enhanced selected preset summary with green styling
 
+- **Custom Presets Manager UI**: New dedicated view for managing presets
+  - Tabbed interface for System Presets (read-only) and Custom Presets (editable)
+  - Grid view with preset cards showing icon, name, category, and signal summary
+  - Search and category filtering
+  - Create, edit, and delete custom presets
+  - New route: `/presets`
+  - Navigation: Added "Presets" to Classification section in sidebar
+  - New components: `PresetsManager.vue`, `PresetCard.vue`
+
+- **Emoji Dropdown Selector**: Replaced free-text emoji input with curated dropdown
+  - 60+ curated emojis organized into 8 categories
+  - Categories: Movies, TV Shows, Genres, Themes/Seasonal, Quality/Awards, General, Regional, Special Interest
+  - Consistent with emojis used in system presets
+  - Better UX: one-click selection vs manual emoji input
+  - Updated default emoji from 📦 (package) to 🎬 (clapperboard)
+
 ### Changed
 - **Color Consistency**: Standardized on primary blue (#3b82f6) and success green (#22c55e)
 - **Modal Styling**: Updated close button with blue accent for better visual hierarchy
