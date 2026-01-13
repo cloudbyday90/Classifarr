@@ -183,9 +183,9 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import Modal from '@/components/ui/Modal.vue';
-import Button from '@/components/ui/Button.vue';
-import api from '@/services/api';
+import Modal from '@/components/common/Modal.vue';
+import Button from '@/components/common/Button.vue';
+import api from '@/api';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
