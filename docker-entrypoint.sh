@@ -80,7 +80,7 @@ else
 fi
 
 # Ensure directories exist
-mkdir -p "$PG_DATA" "$PG_RUN"
+mkdir -p "$PG_DATA" "$PG_RUN" "$DATA_DIR/logs"
 
 # Fix ownership of data directories
 echo "Setting ownership of $DATA_DIR to $PUID:$PGID..."

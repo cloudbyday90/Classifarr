@@ -62,10 +62,10 @@
   - [x] Verify "Reset" flow matches backend `DELETE` logic (auto-recreate)
 
 ## Phase 9: Frontend - Custom Presets Manager
-  - [ ] Create `PresetsManager.vue` (list view for custom presets)
-  - [ ] Create `CustomPresetForm.vue` (create/edit custom preset)
-  - [ ] Add "Presets" to Sidebar navigation
-  - [ ] Integrate with `PresetSelectionModal` (allow creating new preset from selector?)
+  - [x] Create `PresetsManager.vue` (list view for custom presets)
+  - [x] Create `CustomPresetForm.vue` (create/edit custom preset)
+  - [x] Add "Presets" to Sidebar navigation
+  - [x] Integrate with `PresetSelectionModal` (allow creating new preset from selector?)
 
 - [x] Phase 9.5: Pre-Release Testing (Completed)
   - [x] Run full integration test suite (Verified relevant tests: policies, presets, suggestions)

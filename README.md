@@ -939,6 +939,41 @@ See deployment guides:
 4. Check budget hasn't been exhausted (see Usage Statistics)
 5. View container logs: `docker logs classifarr | grep -i ai`
 
+### PostgreSQL Version Mismatch
+
+If you see an error about PostgreSQL version mismatch on startup:
+
+```
+ERROR: PostgreSQL version mismatch detected!
+Data directory version: 18
+Installed PostgreSQL:   17
+```
+
+**Cause:** Your data directory was created with a different PostgreSQL version.
+
+**Solutions:**
+1. **Use compatible image** - Switch to a Classifarr image with the matching PostgreSQL version
+2. **Backup and migrate** - Export data from old version, initialize new database, restore data
+3. **Start fresh** - Remove data directory if you don't need to preserve data
+
+See [PostgreSQL Version Guide](docs/POSTGRESQL.md) for detailed migration instructions.
+
+### Container Won't Start
+
+1. Check logs: `docker logs classifarr`
+2. Verify permissions on data directory
+3. Ensure PostgreSQL version compatibility (see above)
+4. Check disk space: `df -h`
+
+### Logs Not Appearing
+
+Classifarr writes logs to multiple locations:
+- **Console/Docker logs**: `docker logs classifarr`
+- **File logs**: `/app/data/logs/classifarr.log` and `/app/data/logs/error.log`
+- **Database**: Errors and warnings are also stored in the error_log table
+
+File logging can be disabled by setting `FILE_LOGGING_ENABLED=false`.
+
 ## 🤝 Contributing
 
 1. Fork the repository
