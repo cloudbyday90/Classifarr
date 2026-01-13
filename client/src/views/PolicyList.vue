@@ -8,16 +8,12 @@
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold">Library Policies</h1>
         <p class="text-gray-400 text-sm mt-1">
           Configure policies with presets to classify your media
         </p>
       </div>
-      <Button @click="showCreateModal = true" variant="primary">
-        + Create Policy
-      </Button>
     </div>
 
     <div v-if="loading" class="text-center py-12 text-gray-400">
@@ -32,9 +28,6 @@
       <div v-for="(library, libraryId) in librariesWithPolicies" :key="libraryId" class="space-y-4">
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-semibold">{{ library.name }}</h2>
-          <Button @click="createPolicyForLibrary(parseInt(libraryId))" variant="ghost" size="sm">
-            + Add Policy
-          </Button>
         </div>
         
         <div class="grid grid-cols-1 gap-4">
@@ -43,7 +36,8 @@
             :key="policy.id"
             :policy="policy"
             @edit="editPolicy"
-            @delete="confirmDelete"
+            @delete="confirmReset"
+            @add-presets="openPresetSelector"
           />
         </div>
       </div>
@@ -58,6 +52,15 @@
       @save="savePolicy"
       @close="closeModal"
     />
+
+    <!-- Preset Selection Modal -->
+    <PresetSelectionModal
+      v-if="showPresetSelector"
+      v-model="showPresetSelector"
+      :library="selectorLibrary"
+      :existing-preset-ids="existingPresetSelectorIds"
+      @confirm="addPresetsToPolicy"
+    />
   </div>
 </template>
 
@@ -67,6 +70,7 @@ import api from '@/api'
 import Button from '@/components/common/Button.vue'
 import PolicyCard from '@/components/policies/PolicyCard.vue'
 import PolicyBuilderModal from '@/components/policies/PolicyBuilderModal.vue'
+import PresetSelectionModal from '@/components/policies/PresetSelectionModal.vue'
 
 const loading = ref(false)
 const policies = ref([])
@@ -74,6 +78,15 @@ const libraries = ref([])
 const showCreateModal = ref(false)
 const editingPolicy = ref(null)
 const selectedLibraryId = ref(null)
+
+// Preset Selector State
+const showPresetSelector = ref(false)
+const selectorPolicy = ref(null)
+const selectorLibrary = ref(null)
+const existingPresetSelectorIds = computed(() => {
+  if (!selectorPolicy.value?.presets) return []
+  return selectorPolicy.value.presets.map(p => p.id || p.preset_id)
+})
 
 const showModal = computed({
   get: () => showCreateModal.value || !!editingPolicy.value,
@@ -88,9 +101,11 @@ const librariesWithPolicies = computed(() => {
   const grouped = {}
   
   policies.value.forEach(policy => {
+    const library = libraries.value.find(l => l.id === policy.library_id) || { name: policy.library_name || 'Unknown' }
+    
     if (!grouped[policy.library_id]) {
       grouped[policy.library_id] = {
-        name: policy.library_name,
+        name: library.name,
         policies: []
       }
     }
@@ -102,8 +117,8 @@ const librariesWithPolicies = computed(() => {
 
 onMounted(async () => {
   await Promise.all([
-    fetchPolicies(),
-    fetchLibraries()
+    fetchLibraries(),
+    fetchPolicies()
   ])
 })
 
@@ -166,17 +181,59 @@ const savePolicy = async (policyData) => {
   }
 }
 
-const confirmDelete = async (policy) => {
-  if (!confirm(`Are you sure you want to delete the policy "${policy.name}"?`)) {
+const confirmReset = async (policy) => {
+  if (!confirm(`Are you sure you want to RESET the policy for "${policy.library_name || 'this library'}"?\n\nThis will remove all presets and restore default configuration.`)) {
     return
   }
   
   try {
+    // Delete effectively resets it now due to backend logic
     await api.delete(`/policies/${policy.id}`)
     await fetchPolicies()
   } catch (error) {
-    console.error('Failed to delete policy:', error)
-    alert('Failed to delete policy: ' + error.message)
+    console.error('Failed to reset policy:', error)
+    alert('Failed to reset policy: ' + error.message)
+  }
+}
+
+const openPresetSelector = async (policy) => {
+  try {
+    // Fetch full policy to get current presets list for exclusion/checking
+    const response = await api.get(`/policies/${policy.id}`)
+    selectorPolicy.value = response.data
+    selectorLibrary.value = libraries.value.find(l => l.id === policy.library_id) || { id: policy.library_id, name: policy.library_name }
+    showPresetSelector.value = true
+  } catch (error) {
+    console.error('Failed to open preset selector:', error)
+    alert('Failed to load policy details: ' + error.message)
+  }
+}
+
+const addPresetsToPolicy = async (selectedPresets) => {
+  if (!selectorPolicy.value || !selectedPresets.length) return
+  
+  try {
+    // We need to add these presets to the policy. 
+    // Since we don't have a direct "add presets" endpoint for bulk add without fetching full policy,
+    // we should iterate and add them, OR reuse the update policy logic.
+    // The cleanest way is to use POST /api/policies/:id/presets for each.
+    
+    // However, sending multiple requests might be slow.
+    // But typically user selects < 10.
+    
+    const promises = selectedPresets.map(preset => 
+      api.post(`/policies/${selectorPolicy.value.id}/presets`, {
+        preset_id: preset.id,
+        weight: 1.0 // Default weight
+      })
+    )
+    
+    await Promise.all(promises)
+    await fetchPolicies()
+    showPresetSelector.value = false
+  } catch (error) {
+    console.error('Failed to add presets:', error)
+    alert('Failed to add presets: ' + error.message)
   }
 }
 

@@ -1103,7 +1103,6 @@ class QueueService {
             // This runs in background so we don't block the response
             const mediaSyncService = require('./mediaSync');
             const scheduler = require('./scheduler'); // For gap analysis
-            const schedulerService = require('./schedulerService'); // For pattern analysis
 
             (async () => {
                 try {
@@ -1120,9 +1119,7 @@ class QueueService {
                     // Then run gap analysis with fresh library_id associations
                     await scheduler.runGapAnalysis();
 
-                    // Run pattern analysis to populate library_pattern_suggestions for Dashboard widget
-                    await schedulerService.runPatternAnalysis();
-                    logger.info('Pattern analysis completed after clear');
+                    logger.info('Gap analysis triggered after clear');
                 } catch (err) {
                     logger.error('Failed to run library sync after clear', { error: err.message });
                 }

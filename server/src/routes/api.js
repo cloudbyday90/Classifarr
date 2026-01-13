@@ -43,6 +43,7 @@ const patternsRouter = require('./patterns');
 const feedbackRouter = require('./feedback');
 const promptsRouter = require('./prompts');
 const policiesRouter = require('./policies');
+const presetsRouter = require('./presets');
 const suggestionsRouter = require('./suggestions');
 const migrationRouter = require('./migration');
 
@@ -75,6 +76,7 @@ router.use('/patterns', patternsRouter);
 router.use('/feedback', feedbackRouter);
 router.use('/prompts', promptsRouter);
 router.use('/policies', policiesRouter);
+router.use('/presets', presetsRouter);
 router.use('/suggestions', suggestionsRouter);
 router.use('/migration', migrationRouter);
 
@@ -98,6 +100,7 @@ router.get('/', (req, res) => {
       feedback: '/api/feedback',
       prompts: '/api/prompts',
       policies: '/api/policies',
+      presets: '/api/presets',
       suggestions: '/api/suggestions',
       migration: '/api/migration',
       docs: '/api/docs',

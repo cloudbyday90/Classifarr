@@ -290,6 +290,13 @@ class MediaSyncService {
         ]
       );
     } catch (error) {
+      // Handle race condition where library is deleted during sync
+      if (error.code === '23503') {
+        logger.warn(`Skipping media item - library ${libraryId} no longer exists (race condition)`, {
+          item: item.external_id
+        });
+        return;
+      }
       logger.error(`Error upserting media item`, { item: item.external_id, error: error.message });
     }
   }
@@ -326,6 +333,12 @@ class MediaSyncService {
         [mediaServerId, libraryId, collection.external_id, collection.name, collection.item_count || 0]
       );
     } catch (error) {
+      if (error.code === '23503') {
+        logger.warn(`Skipping collection - library ${libraryId} no longer exists (race condition)`, {
+          collection: collection.name
+        });
+        return;
+      }
       logger.error(`Error upserting collection`, { collection: collection.name, error: error.message });
     }
   }

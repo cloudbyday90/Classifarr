@@ -241,21 +241,114 @@ describe('Policies API Integration Tests', () => {
         });
     });
 
-    describe('DELETE /api/policies/:id', () => {
-        test('should delete policy', async () => {
+    describe('GET /api/policies/presets/suggest/:libraryId', () => {
+        let animeLibraryId;
+        let comedyLibraryId;
+
+        beforeAll(async () => {
+            // Create libraries with names that should match presets
+            const animeResult = await db.query(`
+                INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)
+                SELECT id, 'test-anime-lib', 'Anime Movies', 'movie', true
+                FROM media_server WHERE name = 'Test Server'
+                RETURNING id
+            `);
+            animeLibraryId = animeResult.rows[0].id;
+
+            const comedyResult = await db.query(`
+                INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)
+                SELECT id, 'test-comedy-lib', 'Comedy and Standup', 'movie', true
+                FROM media_server WHERE name = 'Test Server'
+                RETURNING id
+            `);
+            comedyLibraryId = comedyResult.rows[0].id;
+        });
+
+        afterAll(async () => {
+            // Clean up test libraries
+            await db.query("DELETE FROM libraries WHERE external_id IN ('test-anime-lib', 'test-comedy-lib')");
+        });
+
+        test('should return suggestions for anime library', async () => {
+            const response = await request(app)
+                .get(`/api/policies/presets/suggest/${animeLibraryId}`)
+                .expect(200);
+
+            expect(response.body).toHaveProperty('library_id', animeLibraryId);
+            expect(response.body).toHaveProperty('library_name', 'Anime Movies');
+            expect(response.body).toHaveProperty('suggestions');
+            expect(Array.isArray(response.body.suggestions)).toBe(true);
+
+            // Should suggest anime preset with high score
+            const animeSuggestion = response.body.suggestions.find(s => s.key === 'anime');
+            expect(animeSuggestion).toBeDefined();
+            expect(animeSuggestion.match_score).toBeGreaterThan(0);
+        });
+
+        test('should return suggestions for comedy library', async () => {
+            const response = await request(app)
+                .get(`/api/policies/presets/suggest/${comedyLibraryId}`)
+                .expect(200);
+
+            expect(response.body.suggestions.length).toBeGreaterThan(0);
+
+            // Should suggest comedy preset
+            const comedySuggestion = response.body.suggestions.find(s => s.key === 'comedy');
+            expect(comedySuggestion).toBeDefined();
+        });
+
+        test('should return 404 for non-existent library', async () => {
+            await request(app)
+                .get('/api/policies/presets/suggest/999999')
+                .expect(404);
+        });
+
+        test('suggestions should have match_score and match_reasons', async () => {
+            const response = await request(app)
+                .get(`/api/policies/presets/suggest/${animeLibraryId}`)
+                .expect(200);
+
+            response.body.suggestions.forEach(suggestion => {
+                expect(suggestion).toHaveProperty('match_score');
+                expect(suggestion).toHaveProperty('match_reasons');
+                expect(suggestion.match_score).toBeGreaterThan(0);
+                expect(Array.isArray(suggestion.match_reasons)).toBe(true);
+            });
+        });
+    });
+
+    describe('DELETE /api/policies/:id (Reset)', () => {
+        test('should reset policy (delete and create new blank)', async () => {
             const response = await request(app)
                 .delete(`/api/policies/${testPolicyId}`)
                 .expect(200);
 
-            expect(response.body.message).toContain('deleted');
+            expect(response.body.message).toContain('reset');
+            expect(response.body).toHaveProperty('oldPolicy');
+            expect(response.body).toHaveProperty('newPolicy');
 
-            // Verify it's really deleted
+            // Verify new policy was created for the same library
+            expect(response.body.newPolicy.library_id).toBe(testLibraryId);
+            expect(response.body.newPolicy.id).not.toBe(testPolicyId);
+
+            // Verify old policy ID no longer exists
             await request(app)
                 .get(`/api/policies/${testPolicyId}`)
                 .expect(404);
 
-            // Clear testPolicyId so afterAll doesn't try to delete it again
-            testPolicyId = null;
+            // Update testPolicyId to the new policy for cleanup
+            testPolicyId = response.body.newPolicy.id;
+        });
+
+        test('reset policy should have default thresholds', async () => {
+            // Verify the reset policy has default values
+            const response = await request(app)
+                .get(`/api/policies/${testPolicyId}`)
+                .expect(200);
+
+            expect(response.body.auto_classify_threshold).toBe(85);
+            expect(response.body.prompt_threshold).toBe(60);
+            expect(response.body.enabled).toBe(true);
         });
     });
 });

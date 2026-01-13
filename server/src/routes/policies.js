@@ -91,6 +91,142 @@ router.get('/presets/categories', async (req, res) => {
 
 /**
  * @swagger
+ * /api/policies/presets/suggest/{libraryId}:
+ *   get:
+ *     summary: Get suggested presets for a library based on name matching
+ *     parameters:
+ *       - in: path
+ *         name: libraryId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Library ID to get suggestions for
+ */
+router.get('/presets/suggest/:libraryId', async (req, res) => {
+    try {
+        const { libraryId } = req.params;
+
+        // Get library info
+        const libraryResult = await db.query(
+            'SELECT id, name, media_type FROM libraries WHERE id = $1',
+            [libraryId]
+        );
+
+        if (libraryResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Library not found' });
+        }
+
+        const library = libraryResult.rows[0];
+        const libraryName = library.name.toLowerCase();
+
+        // Tokenize library name into words for matching
+        const tokens = libraryName
+            .replace(/[^a-z0-9\s]/g, ' ')  // Replace special chars with space
+            .split(/\s+/)                   // Split by whitespace
+            .filter(t => t.length > 2);     // Only tokens 3+ chars
+
+        logger.debug('Library name tokens for matching', { libraryId, libraryName, tokens });
+
+        // Get all system presets with their signals
+        const presetsResult = await db.query(`
+            SELECT 
+                id, key, name, description, icon, category, signals,
+                is_system, display_order
+            FROM content_presets
+            WHERE is_system = true
+            ORDER BY display_order, name
+        `);
+
+        // Calculate match score for each preset
+        const suggestions = presetsResult.rows.map(preset => {
+            let score = 0;
+            const matchReasons = [];
+
+            const presetKey = preset.key.toLowerCase();
+            const presetName = preset.name.toLowerCase();
+            const presetDesc = (preset.description || '').toLowerCase();
+
+            // 1. Exact key match (highest score)
+            if (tokens.some(t => presetKey.includes(t) || t.includes(presetKey))) {
+                score += 50;
+                matchReasons.push('key_match');
+            }
+
+            // 2. Name contains token (high score)
+            const nameMatchCount = tokens.filter(t => presetName.includes(t)).length;
+            if (nameMatchCount > 0) {
+                score += nameMatchCount * 30;
+                matchReasons.push('name_match');
+            }
+
+            // 3. Library name contains preset name/key
+            if (libraryName.includes(presetKey) || libraryName.includes(presetName.replace(/[^a-z0-9]/g, ''))) {
+                score += 40;
+                matchReasons.push('library_contains_preset');
+            }
+
+            // 4. Genre signal matching
+            const signals = preset.signals || {};
+            const genreSignals = signals.genres || {};
+            const requireGenres = genreSignals.require_any || [];
+            const preferGenres = genreSignals.prefer || [];
+
+            const allGenres = [...requireGenres, ...preferGenres].map(g => g.toLowerCase());
+            const genreMatchCount = tokens.filter(t =>
+                allGenres.some(g => g.includes(t) || t.includes(g))
+            ).length;
+            if (genreMatchCount > 0) {
+                score += genreMatchCount * 20;
+                matchReasons.push('genre_match');
+            }
+
+            // 5. Description contains token (lower score)
+            const descMatchCount = tokens.filter(t => presetDesc.includes(t)).length;
+            if (descMatchCount > 0) {
+                score += descMatchCount * 10;
+                matchReasons.push('description_match');
+            }
+
+            // 6. Category keyword bonus
+            const categoryMatch = tokens.some(t => (preset.category || '').toLowerCase().includes(t));
+            if (categoryMatch) {
+                score += 15;
+                matchReasons.push('category_match');
+            }
+
+            return {
+                ...preset,
+                match_score: score,
+                match_reasons: matchReasons
+            };
+        });
+
+        // Filter to only suggestions with score > 0, sort by score desc, top 8
+        const topSuggestions = suggestions
+            .filter(s => s.match_score > 0)
+            .sort((a, b) => b.match_score - a.match_score)
+            .slice(0, 8);
+
+        logger.info('Preset suggestions generated', {
+            libraryId,
+            libraryName: library.name,
+            suggestionCount: topSuggestions.length,
+            topMatch: topSuggestions[0]?.name
+        });
+
+        res.json({
+            library_id: library.id,
+            library_name: library.name,
+            suggestions: topSuggestions
+        });
+    } catch (error) {
+        logger.error('Failed to get preset suggestions', { error: error.message, libraryId: req.params.libraryId });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
  * /api/policies:
  *   get:
  *     summary: List all policies with preset counts
@@ -460,21 +596,54 @@ router.put('/:id', async (req, res) => {
  * @swagger
  * /api/policies/{id}:
  *   delete:
- *     summary: Delete policy
+ *     summary: Reset policy (delete and recreate blank)
  */
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await db.query('DELETE FROM library_policies WHERE id = $1 RETURNING *', [id]);
+        // Get the policy details before deleting
+        const policyResult = await db.query(
+            `SELECT lp.*, l.name as library_name 
+             FROM library_policies lp 
+             JOIN libraries l ON lp.library_id = l.id 
+             WHERE lp.id = $1`,
+            [id]
+        );
 
-        if (result.rows.length === 0) {
+        if (policyResult.rows.length === 0) {
             return res.status(404).json({ error: 'Policy not found' });
         }
 
-        res.json({ message: 'Policy deleted successfully', policy: result.rows[0] });
+        const oldPolicy = policyResult.rows[0];
+        const libraryId = oldPolicy.library_id;
+        const libraryName = oldPolicy.library_name;
+
+        // Delete the old policy (cascades to policy_presets)
+        await db.query('DELETE FROM library_policies WHERE id = $1', [id]);
+
+        // Auto-create a fresh blank policy for the library
+        const newPolicyResult = await db.query(
+            `INSERT INTO library_policies (library_id, name, description, enabled, priority, auto_classify_threshold, prompt_threshold)
+             VALUES ($1, $2, $3, true, 5, 85, 60)
+             RETURNING *`,
+            [libraryId, `${libraryName} Policy`, `Reset policy for ${libraryName}`]
+        );
+
+        logger.info('Policy reset (delete + recreate)', {
+            oldPolicyId: id,
+            newPolicyId: newPolicyResult.rows[0].id,
+            libraryId,
+            libraryName
+        });
+
+        res.json({
+            message: 'Policy reset successfully',
+            oldPolicy: oldPolicy,
+            newPolicy: newPolicyResult.rows[0]
+        });
     } catch (error) {
-        logger.error('Failed to delete policy', { error: error.message, id: req.params.id });
+        logger.error('Failed to reset policy', { error: error.message, id: req.params.id });
         res.status(500).json({ error: error.message });
     }
 });

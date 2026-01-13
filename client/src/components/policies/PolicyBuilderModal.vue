@@ -65,40 +65,14 @@
         <h3 class="text-lg font-semibold">Select Presets</h3>
         <p class="text-sm text-gray-400">Choose presets that define what content belongs in this library</p>
         
-        <!-- Category filter -->
-        <div class="flex flex-wrap gap-2">
-          <Button 
-            v-for="cat in presetCategories" 
-            :key="cat.category"
-            @click="filterCategory = filterCategory === cat.category ? null : cat.category"
-            :variant="filterCategory === cat.category ? 'primary' : 'ghost'"
-            size="sm"
-          >
-            {{ cat.category }} ({{ cat.count }})
+        <div class="flex items-center justify-between bg-background-light p-4 rounded-lg border border-gray-700">
+          <div>
+            <div class="font-medium text-gray-200">Manually Add Presets.</div>
+            <div class="text-sm text-gray-400">Search for presets or see AI suggestions based on library name.</div>
+          </div>
+          <Button @click="showPresetSelector = true" variant="primary" :disabled="!form.library_id">
+            + Add Presets
           </Button>
-        </div>
-        
-        <!-- Search -->
-        <input 
-          v-model="presetSearch" 
-          type="search" 
-          placeholder="Search presets..."
-          class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none"
-        />
-        
-        <!-- Preset grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto p-1">
-          <PresetCard
-            v-for="preset in filteredPresets"
-            :key="preset.id"
-            :preset="preset"
-            :selected="isPresetSelected(preset.id)"
-            :weight="getPresetWeight(preset.id)"
-            :customSignals="getPresetCustomSignals(preset.id)"
-            @toggle="togglePreset(preset)"
-            @update-weight="updatePresetWeight(preset.id, $event)"
-            @update-signals="updatePresetSignals(preset.id, $event)"
-          />
         </div>
         
         <!-- Selected presets summary -->
@@ -150,7 +124,7 @@
                       class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900 bg-opacity-30 text-green-400 rounded"
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'certifications', 'include', cert)}"
                     >
-                      {{ cert }}
+                      {{ cert }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
                       <button v-if="!isSignalRemoved(sp, 'certifications', 'include', cert)" @click="markSignalRemoved(sp, 'certifications', 'include', cert)" class="hover:text-red-400" title="Remove">×</button>
                       <button v-else @click="unmarkSignalRemoved(sp, 'certifications', 'include', cert)" class="hover:text-green-400" title="Restore">↩</button>
                     </span>
@@ -183,7 +157,7 @@
                       class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900 bg-opacity-30 text-blue-400 rounded"
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'genres', 'prefer', g)}"
                     >
-                      {{ g }}
+                      {{ g }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
                       <button v-if="!isSignalRemoved(sp, 'genres', 'prefer', g)" @click="markSignalRemoved(sp, 'genres', 'prefer', g)" class="hover:text-red-400" title="Remove">×</button>
                       <button v-else @click="unmarkSignalRemoved(sp, 'genres', 'prefer', g)" class="hover:text-green-400" title="Restore">↩</button>
                     </span>
@@ -194,7 +168,7 @@
                       class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900 bg-opacity-30 text-red-400 rounded"
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'genres', 'exclude', g)}"
                     >
-                      ✕ {{ g }}
+                      ✕ {{ g }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
                       <button v-if="!isSignalRemoved(sp, 'genres', 'exclude', g)" @click="markSignalRemoved(sp, 'genres', 'exclude', g)" class="hover:text-white" title="Remove">×</button>
                       <button v-else @click="unmarkSignalRemoved(sp, 'genres', 'exclude', g)" class="hover:text-green-400" title="Restore">↩</button>
                     </span>
@@ -230,7 +204,7 @@
                       class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900 bg-opacity-30 text-red-400 rounded"
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'keywords', 'exclude', k)}"
                     >
-                      ✕ {{ k }}
+                      ✕ {{ k }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
                       <button v-if="!isSignalRemoved(sp, 'keywords', 'exclude', k)" @click="markSignalRemoved(sp, 'keywords', 'exclude', k)" class="hover:text-white" title="Remove">×</button>
                       <button v-else @click="unmarkSignalRemoved(sp, 'keywords', 'exclude', k)" class="hover:text-green-400" title="Restore">↩</button>
                     </span>
@@ -269,11 +243,12 @@
               <label class="font-medium text-gray-300 block mb-1">Content Ratings (included):</label>
               <div class="flex flex-wrap gap-1">
                 <span 
-                  v-for="cert in combinedSignals.certifications.include" 
-                  :key="'comb-cert-'+cert"
+                  v-for="item in combinedSignals.certifications.include" 
+                  :key="'comb-cert-'+item.value"
                   class="px-2 py-0.5 bg-green-900 bg-opacity-30 text-green-400 rounded text-xs"
+                  :title="'From: ' + item.sources.join(', ')"
                 >
-                  {{ cert }}
+                  {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
                 </span>
               </div>
             </div>
@@ -283,11 +258,12 @@
               <label class="font-medium text-gray-300 block mb-1">Preferred Genres:</label>
               <div class="flex flex-wrap gap-1">
                 <span 
-                  v-for="g in combinedSignals.genres.prefer" 
-                  :key="'comb-genre-'+g"
+                  v-for="item in combinedSignals.genres.prefer" 
+                  :key="'comb-genre-'+item.value"
                   class="px-2 py-0.5 bg-blue-900 bg-opacity-30 text-blue-400 rounded text-xs"
+                  :title="'From: ' + item.sources.join(', ')"
                 >
-                  {{ g }}
+                  {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
                 </span>
               </div>
             </div>
@@ -297,11 +273,12 @@
               <label class="font-medium text-gray-300 block mb-1">Excluded Genres:</label>
               <div class="flex flex-wrap gap-1">
                 <span 
-                  v-for="g in combinedSignals.genres.exclude" 
-                  :key="'comb-exc-'+g"
+                  v-for="item in combinedSignals.genres.exclude" 
+                  :key="'comb-exc-'+item.value"
                   class="px-2 py-0.5 bg-red-900 bg-opacity-30 text-red-400 rounded text-xs"
+                  :title="'From: ' + item.sources.join(', ')"
                 >
-                  ✕ {{ g }}
+                  ✕ {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
                 </span>
               </div>
             </div>
@@ -312,11 +289,12 @@
               <label class="font-medium text-gray-300 block mb-1">Preferred Keywords:</label>
               <div class="flex flex-wrap gap-1">
                 <span 
-                  v-for="k in combinedSignals.keywords.prefer" 
-                  :key="'comb-pref-'+k"
+                  v-for="item in combinedSignals.keywords.prefer" 
+                  :key="'comb-pref-'+item.value"
                   class="px-2 py-0.5 bg-blue-900 bg-opacity-30 text-blue-400 rounded text-xs"
+                  :title="'From: ' + item.sources.join(', ')"
                 >
-                  {{ k }}
+                  {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
                 </span>
               </div>
             </div>
@@ -326,11 +304,12 @@
               <label class="font-medium text-gray-300 block mb-1">Excluded Keywords:</label>
               <div class="flex flex-wrap gap-1">
                 <span 
-                  v-for="k in combinedSignals.keywords.exclude" 
-                  :key="'comb-kw-'+k"
+                  v-for="item in combinedSignals.keywords.exclude" 
+                  :key="'comb-kw-'+item.value"
                   class="px-2 py-0.5 bg-red-900 bg-opacity-30 text-red-400 rounded text-xs"
+                  :title="'From: ' + item.sources.join(', ')"
                 >
-                  ✕ {{ k }}
+                  ✕ {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
                 </span>
               </div>
             </div>
@@ -340,11 +319,12 @@
               <label class="font-medium text-gray-300 block mb-1">Required Keywords (any match):</label>
               <div class="flex flex-wrap gap-1">
                 <span 
-                  v-for="k in combinedSignals.keywords.require_any" 
-                  :key="'comb-req-'+k"
+                  v-for="item in combinedSignals.keywords.require_any" 
+                  :key="'comb-req-'+item.value"
                   class="px-2 py-0.5 bg-green-900 bg-opacity-30 text-green-400 rounded text-xs"
+                  :title="'From: ' + item.sources.join(', ')"
                 >
-                  {{ k }}
+                  {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
                 </span>
               </div>
             </div>
@@ -523,6 +503,15 @@
         {{ isEditing ? 'Update Policy' : 'Create Policy' }}
       </Button>
     </template>
+    
+    <!-- Preset Selection Modal -->
+    <PresetSelectionModal
+      v-if="showPresetSelector"
+      v-model="showPresetSelector"
+      :library="currentLibrary"
+      :existing-preset-ids="existingPresetIds"
+      @confirm="addPresets"
+    />
   </Modal>
 </template>
 
@@ -531,7 +520,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/api'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
-import PresetCard from '@/components/policies/PresetCard.vue'
+import PresetSelectionModal from '@/components/policies/PresetSelectionModal.vue'
 
 const props = defineProps({
   modelValue: {
@@ -579,12 +568,10 @@ const form = ref({
 
 const libraries = ref([])
 const allPresets = ref([])
-const presetCategories = ref([])
 const selectedPresets = ref([])
-const filterCategory = ref(null)
-const presetSearch = ref('')
 const expandedPresetIds = ref(new Set())
 const newKeyword = ref('')
+const showPresetSelector = ref(false)
 
 // Available options for signal customization
 const availableRatings = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR']
@@ -593,6 +580,16 @@ const availableGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 
 const totalWeight = computed(() => {
   return form.value.preset_weight + form.value.pattern_weight + 
          form.value.rag_weight + form.value.history_weight
+})
+
+// Current library object for suggestions
+const currentLibrary = computed(() => {
+  if (!form.value.library_id) return null
+  return libraries.value.find(l => l.id === form.value.library_id) || { id: form.value.library_id, name: 'Unknown' }
+})
+
+const existingPresetIds = computed(() => {
+  return selectedPresets.value.map(p => p.preset_id || p.id)
 })
 
 // Group libraries by media type
@@ -607,6 +604,7 @@ const otherLibraries = computed(() =>
 )
 
 // Combined signals from all selected presets (union of all signals)
+// Combined signals from all selected presets (union of all signals with source attribution)
 const combinedSignals = computed(() => {
   // Early return if no presets selected
   if (!selectedPresets.value || selectedPresets.value.length === 0) {
@@ -617,10 +615,11 @@ const combinedSignals = computed(() => {
     }
   }
   
-  const combined = {
-    certifications: { include: new Set(), exclude: new Set() },
-    genres: { prefer: new Set(), exclude: new Set(), require_any: new Set() },
-    keywords: { prefer: new Set(), require_any: new Set(), exclude: new Set() }
+  // Storage for signals: { [value]: Set(sourceNames) }
+  const trackers = {
+    certifications: { include: {}, exclude: {} },
+    genres: { prefer: {}, exclude: {}, require_any: {} },
+    keywords: { prefer: {}, require_any: {}, exclude: {} }
   }
   
   for (const sp of selectedPresets.value) {
@@ -639,12 +638,14 @@ const combinedSignals = computed(() => {
       // Add base items that aren't removed
       for (const item of baseItems) {
         if (!removedItems.includes(item)) {
-          combined[signalType][key].add(item)
+          if (!trackers[signalType][key][item]) trackers[signalType][key][item] = new Set()
+          trackers[signalType][key][item].add(sp.name)
         }
       }
       // Add custom items
       for (const item of customItems) {
-        combined[signalType][key].add(item)
+        if (!trackers[signalType][key][item]) trackers[signalType][key][item] = new Set()
+        trackers[signalType][key][item].add(sp.name)
       }
     }
     
@@ -663,42 +664,35 @@ const combinedSignals = computed(() => {
     addSignals('keywords', 'exclude')
   }
   
-  // Convert Sets to sorted arrays
+  // Convert trackers to sorted arrays of objects { value, sources: [] }
+  const formatResults = (categoryMap) => {
+    return Object.entries(categoryMap)
+      .map(([value, sourcesSet]) => ({
+        value,
+        sources: Array.from(sourcesSet).sort()
+      }))
+      .sort((a, b) => a.value.localeCompare(b.value))
+  }
+
   return {
     certifications: {
-      include: [...combined.certifications.include].sort(),
-      exclude: [...combined.certifications.exclude].sort()
+      include: formatResults(trackers.certifications.include),
+      exclude: formatResults(trackers.certifications.exclude)
     },
     genres: {
-      prefer: [...combined.genres.prefer].sort(),
-      exclude: [...combined.genres.exclude].sort(),
-      require_any: [...combined.genres.require_any].sort()
+      prefer: formatResults(trackers.genres.prefer),
+      exclude: formatResults(trackers.genres.exclude),
+      require_any: formatResults(trackers.genres.require_any)
     },
     keywords: {
-      prefer: [...combined.keywords.prefer].sort(),
-      require_any: [...combined.keywords.require_any].sort(),
-      exclude: [...combined.keywords.exclude].sort()
+      prefer: formatResults(trackers.keywords.prefer),
+      require_any: formatResults(trackers.keywords.require_any),
+      exclude: formatResults(trackers.keywords.exclude)
     }
   }
 })
 
-const filteredPresets = computed(() => {
-  let presets = allPresets.value
 
-  if (filterCategory.value) {
-    presets = presets.filter(p => p.category === filterCategory.value)
-  }
-
-  if (presetSearch.value) {
-    const search = presetSearch.value.toLowerCase()
-    presets = presets.filter(p => 
-      p.name.toLowerCase().includes(search) || 
-      p.description?.toLowerCase().includes(search)
-    )
-  }
-
-  return presets
-})
 
 const isValid = computed(() => {
   const hasBasicInfo = form.value.library_id && form.value.name && selectedPresets.value.length > 0
@@ -753,8 +747,7 @@ watch(() => props.libraryId, (newLibraryId) => {
 onMounted(async () => {
   await Promise.all([
     fetchLibraries(),
-    fetchPresets(),
-    fetchPresetCategories()
+    fetchPresets()
   ])
 })
 
@@ -776,49 +769,35 @@ const fetchPresets = async () => {
   }
 }
 
-const fetchPresetCategories = async () => {
-  try {
-    const response = await api.get('/policies/presets/categories')
-    presetCategories.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch preset categories:', error)
-  }
-}
-
-const isPresetSelected = (presetId) => {
-  return selectedPresets.value.some(p => p.preset_id === presetId || p.id === presetId)
-}
-
-const getPresetWeight = (presetId) => {
-  const preset = selectedPresets.value.find(p => p.preset_id === presetId || p.id === presetId)
-  return preset?.weight || 1.0
-}
-
-const togglePreset = (preset) => {
-  const index = selectedPresets.value.findIndex(p => p.preset_id === preset.id || p.id === preset.id)
+const addPresets = (presets) => {
+  if (!presets || !presets.length) return
   
-  if (index >= 0) {
-    selectedPresets.value.splice(index, 1)
-  } else {
-    // Auto-fill policy name and description from first selected preset (if empty)
-    if (selectedPresets.value.length === 0) {
+  // Auto-fill policy name/desc if first presets
+  if (selectedPresets.value.length === 0) {
       if (!form.value.name) {
-        form.value.name = `${preset.name} Policy`
+        form.value.name = `${presets[0].name} Policy`
       }
       if (!form.value.description) {
-        form.value.description = preset.description || ''
+        form.value.description = presets[0].description || ''
       }
-    }
-    
-    selectedPresets.value.push({
-      id: preset.id,
-      preset_id: preset.id,
-      name: preset.name,
-      icon: preset.icon,
-      weight: 1.0,
-    })
   }
+
+  for (const preset of presets) {
+    const id = preset.id || preset.preset_id
+    if (!selectedPresets.value.some(p => (p.id === id || p.preset_id === id))) {
+      selectedPresets.value.push({
+        id: id,
+        preset_id: id,
+        name: preset.name,
+        icon: preset.icon,
+        weight: 1.0,
+      })
+    }
+  }
+  showPresetSelector.value = false
 }
+
+
 
 const updatePresetWeight = (presetId, weight) => {
   const preset = selectedPresets.value.find(p => p.preset_id === presetId || p.id === presetId)
@@ -961,8 +940,6 @@ const resetForm = () => {
     combination_mode: 'best_match',
   }
   selectedPresets.value = []
-  filterCategory.value = null
-  presetSearch.value = ''
 }
 
 const save = async () => {

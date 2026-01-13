@@ -22,8 +22,14 @@
         </div>
       </div>
 
-      <!-- Thresholds -->
-      <div class="flex gap-4 text-sm">
+      <!-- Empty State / Thresholds -->
+      <div v-if="(!policy.preset_count || policy.preset_count === 0)" class="bg-blue-900 bg-opacity-20 border border-blue-800 rounded p-3 text-center">
+        <p class="text-sm text-blue-200 mb-2">No presets selected. Connect signals to this library.</p>
+        <Button @click="$emit('add-presets', policy)" variant="primary" size="sm">
+          + Add Presets
+        </Button>
+      </div>
+      <div v-else class="flex gap-4 text-sm">
         <div class="flex items-center gap-2">
           <span class="text-gray-400">Auto-classify:</span>
           <span class="font-medium">≥{{ policy.auto_classify_threshold }}%</span>
@@ -39,7 +45,7 @@
       </div>
 
       <!-- Weights -->
-      <div v-if="showWeights" class="grid grid-cols-4 gap-2 text-xs">
+      <div v-if="showWeights && policy.preset_count > 0" class="grid grid-cols-4 gap-2 text-xs">
         <div>
           <span class="text-gray-400">Presets:</span>
           <span class="ml-1">{{ Math.round((policy.preset_weight || 0.4) * 100) }}%</span>
@@ -64,9 +70,9 @@
           Edit
         </Button>
         <Button @click="$emit('delete', policy)" variant="ghost" size="sm" class="text-red-400 hover:text-red-300">
-          Delete
+          Reset
         </Button>
-        <Button @click="showWeights = !showWeights" variant="ghost" size="sm" class="ml-auto">
+        <Button v-if="policy.preset_count > 0" @click="showWeights = !showWeights" variant="ghost" size="sm" class="ml-auto">
           {{ showWeights ? 'Hide' : 'Show' }} Weights
         </Button>
       </div>
@@ -87,7 +93,7 @@ defineProps({
   },
 })
 
-defineEmits(['edit', 'delete'])
+defineEmits(['edit', 'delete', 'add-presets'])
 
 const showWeights = ref(false)
 </script>

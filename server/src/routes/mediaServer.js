@@ -294,7 +294,17 @@ router.post('/sync', async (req, res) => {
          RETURNING *`,
         [server.id, lib.external_id, lib.name, lib.media_type, arrType]
       );
-      insertedLibraries.push(result.rows[0]);
+      const newLibrary = result.rows[0];
+
+      // Auto-create blank policy for the new library
+      await client.query(
+        `INSERT INTO library_policies (library_id, name, description, enabled, priority, auto_classify_threshold, prompt_threshold)
+         VALUES ($1, $2, $3, true, 5, 85, 60)
+         ON CONFLICT (library_id) DO NOTHING`,
+        [newLibrary.id, `${newLibrary.name} Policy`, `Auto-generated policy for ${newLibrary.name}`]
+      );
+
+      insertedLibraries.push(newLibrary);
     }
 
     // Update last sync time

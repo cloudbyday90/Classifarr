@@ -131,18 +131,7 @@ async function initializeServices() {
     console.warn('Scheduler service start failed:', error.message);
   }
 
-  // Run pattern analysis for all libraries on startup (async, don't wait)
-  try {
-    const schedulerService = require('./services/schedulerService');
-    // Run in background - don't block startup
-    schedulerService.runPatternAnalysis().then(result => {
-      console.log('Startup pattern analysis complete:', result);
-    }).catch(error => {
-      console.warn('Startup pattern analysis failed:', error.message);
-    });
-  } catch (error) {
-    console.warn('Pattern analysis service not available:', error.message);
-  }
+
 
   // Start health check heartbeat (every 15 minutes)
   try {
@@ -175,6 +164,31 @@ async function initializeServices() {
     });
   } catch (error) {
     console.warn('Library profile service not available:', error.message);
+  }
+
+  // Auto-create policies for libraries without one (handles Docker restart scenario)
+  try {
+    const result = await db.query(`
+      INSERT INTO library_policies (library_id, name, description, enabled, priority, auto_classify_threshold, prompt_threshold)
+      SELECT 
+        l.id,
+        l.name || ' Policy',
+        'Auto-generated policy for ' || l.name,
+        true,
+        5,
+        85,
+        60
+      FROM libraries l
+      WHERE NOT EXISTS (
+        SELECT 1 FROM library_policies lp WHERE lp.library_id = l.id
+      )
+      RETURNING library_id
+    `);
+    if (result.rows.length > 0) {
+      console.log(`Startup policy generation: Created ${result.rows.length} policies for libraries without one`);
+    }
+  } catch (error) {
+    console.warn('Startup policy generation failed:', error.message);
   }
 }
 
