@@ -14,7 +14,7 @@
         <div class="relative bg-background-light rounded-lg border border-gray-800 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           <div class="flex items-center justify-between p-6 border-b border-gray-800">
             <h3 class="text-xl font-semibold">{{ title }}</h3>
-            <button @click="close" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+            <button @click="close" class="text-primary hover:text-primary-light text-2xl leading-none transition-colors">&times;</button>
           </div>
           <div class="p-6">
             <slot />
