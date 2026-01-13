@@ -101,6 +101,11 @@ const router = createRouter({
           component: () => import('@/views/PolicyList.vue'),
         },
         {
+          path: '/presets',
+          name: 'Presets',
+          component: () => import('@/views/PresetsManager.vue'),
+        },
+        {
           path: '/tuning-suggestions',
           name: 'TuningSuggestions',
           component: () => import('@/views/TuningSuggestionsDashboard.vue'),

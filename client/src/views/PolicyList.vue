@@ -8,12 +8,11 @@
 
 <template>
   <div class="space-y-6">
-      <div>
-        <h1 class="text-2xl font-bold">Library Policies</h1>
-        <p class="text-gray-400 text-sm mt-1">
-          Configure policies with presets to classify your media
-        </p>
-      </div>
+    <div>
+      <h1 class="text-2xl font-bold">Library Policies</h1>
+      <p class="text-gray-400 text-sm mt-1">
+        Configure policies with presets to classify your media
+      </p>
     </div>
 
     <div v-if="loading" class="text-center py-12 text-gray-400">
