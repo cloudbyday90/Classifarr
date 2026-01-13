@@ -44,22 +44,30 @@
       </div>
     </div>
 
-    <!-- Actions (only for custom presets) -->
-    <div v-if="!readonly" class="mt-4 pt-4 border-t border-gray-700 flex gap-2">
-      <Button variant="secondary" size="sm" @click="$emit('edit', preset)" class="flex-1">
-        <PencilIcon class="w-4 h-4 mr-1" />
-        Edit
-      </Button>
-      <Button variant="ghost" size="sm" @click="$emit('delete', preset)" :aria-label="'Delete preset ' + preset.name">
-        <TrashIcon class="w-4 h-4 text-red-400" />
-      </Button>
+    <!-- Actions -->
+    <div class="mt-4 pt-4 border-t border-gray-700 flex gap-2">
+      <template v-if="readonly">
+        <Button variant="secondary" size="sm" @click="$emit('view', preset)" class="flex-1">
+          <EyeIcon class="w-4 h-4 mr-1" />
+          View Details
+        </Button>
+      </template>
+      <template v-else>
+        <Button variant="secondary" size="sm" @click="$emit('edit', preset)" class="flex-1">
+          <PencilIcon class="w-4 h-4 mr-1" />
+          Edit
+        </Button>
+        <Button variant="ghost" size="sm" @click="$emit('delete', preset)" :aria-label="'Delete preset ' + preset.name">
+          <TrashIcon class="w-4 h-4 text-red-400" />
+        </Button>
+      </template>
     </div>
   </Card>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
+import { PencilIcon, TrashIcon, EyeIcon } from '@heroicons/vue/24/outline'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
@@ -76,7 +84,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['edit', 'delete'])
+defineEmits(['edit', 'delete', 'view'])
 
 const categoryVariant = computed(() => {
   const categoryMap = {

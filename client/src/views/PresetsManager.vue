@@ -62,6 +62,7 @@
             :key="preset.id"
             :preset="preset"
             :readonly="true"
+            @view="openViewModal"
           />
         </div>
       </template>
@@ -106,6 +107,7 @@
     <CustomPresetForm
       v-model="showPresetForm"
       :preset="editingPreset"
+      :readonly="isFormReadonly"
       @save="handleSavePreset"
     />
 
@@ -234,14 +236,24 @@ async function fetchCustomPresets() {
   }
 }
 
+const isFormReadonly = ref(false)
+
 // Modal Handlers
 function openCreateModal() {
   editingPreset.value = null
+  isFormReadonly.value = false
   showPresetForm.value = true
 }
 
 function openEditModal(preset) {
   editingPreset.value = preset
+  isFormReadonly.value = false
+  showPresetForm.value = true
+}
+
+function openViewModal(preset) {
+  editingPreset.value = preset
+  isFormReadonly.value = true
   showPresetForm.value = true
 }
 

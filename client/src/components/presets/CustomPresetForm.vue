@@ -7,8 +7,9 @@
 -->
 
 <template>
-  <Modal v-model="isOpen" :title="isEditing ? 'Edit Custom Preset' : 'Create Custom Preset'" class="max-w-4xl">
+  <Modal v-model="isOpen" :title="readonly ? 'Preset Details' : (isEditing ? 'Edit Custom Preset' : 'Create Custom Preset')" class="max-w-4xl">
     <form @submit.prevent="handleSubmit" class="space-y-6">
+      <fieldset :disabled="readonly">
       <!-- Basic Information -->
       <div class="space-y-4">
         <h3 class="text-lg font-semibold text-primary">Basic Information</h3>
@@ -183,14 +184,20 @@
       <div v-if="error" class="p-3 bg-red-900/20 border border-red-700 rounded-lg text-red-400 text-sm">
         {{ error }}
       </div>
+      </fieldset>
     </form>
 
     <template #footer>
       <div class="flex justify-end gap-3">
-        <Button variant="ghost" @click="close">Cancel</Button>
-        <Button variant="primary" @click="handleSubmit" :loading="saving">
-          {{ isEditing ? 'Update' : 'Create' }} Preset
-        </Button>
+        <template v-if="readonly">
+           <Button variant="secondary" @click="close">Close</Button>
+        </template>
+        <template v-else>
+          <Button variant="ghost" @click="close">Cancel</Button>
+          <Button variant="primary" @click="handleSubmit" :loading="saving">
+            {{ isEditing ? 'Update' : 'Create' }} Preset
+          </Button>
+        </template>
       </div>
     </template>
   </Modal>
@@ -205,7 +212,8 @@ import { EMOJI_OPTIONS, DEFAULT_EMOJI } from '@/constants/emojis'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  preset: { type: Object, default: null }
+  preset: { type: Object, default: null },
+  readonly: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue', 'save'])
