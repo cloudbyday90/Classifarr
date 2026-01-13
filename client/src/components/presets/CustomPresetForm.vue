@@ -36,18 +36,77 @@
 
         <div>
           <label class="block text-sm font-medium mb-2">Icon</label>
-          <div class="flex gap-2 items-center">
-            <input
-              v-model="form.icon"
-              type="text"
-              placeholder="📦 (emoji or icon)"
-              maxlength="2"
-              pattern="[\u00A9-\u1FAFF]{1,2}"
-              title="Please enter 1–2 emoji or icon characters."
-              class="w-24 px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-center text-2xl"
-            />
-            <span class="text-sm text-gray-400">Enter an emoji to represent this preset</span>
-          </div>
+          <select
+            v-model="form.icon"
+            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-lg"
+          >
+            <optgroup label="Movies">
+              <option value="🎬">🎬 Clapperboard</option>
+              <option value="🎞️">🎞️ Film Frames</option>
+              <option value="🎥">🎥 Movie Camera</option>
+              <option value="📽️">📽️ Film Projector</option>
+            </optgroup>
+            <optgroup label="TV Shows">
+              <option value="📺">📺 Television</option>
+              <option value="📡">📡 Satellite</option>
+            </optgroup>
+            <optgroup label="Genres">
+              <option value="🎭">🎭 Theater Masks</option>
+              <option value="💥">💥 Action</option>
+              <option value="😰">😰 Thriller</option>
+              <option value="🔍">🔍 Mystery</option>
+              <option value="💕">💕 Romance</option>
+              <option value="👻">👻 Horror</option>
+              <option value="🤣">🤣 Comedy</option>
+              <option value="🧠">🧠 Psychological</option>
+              <option value="🦸">🦸 Superhero</option>
+              <option value="🌌">🌌 Sci-Fi</option>
+              <option value="🧟">🧟 Zombie</option>
+              <option value="🧛">🧛 Vampire</option>
+              <option value="🕵️">🕵️ Spy</option>
+              <option value="💰">💰 Heist</option>
+              <option value="🥋">🥋 Martial Arts</option>
+            </optgroup>
+            <optgroup label="Themes/Seasonal">
+              <option value="🎄">🎄 Christmas/Holiday</option>
+              <option value="🎃">🎃 Halloween</option>
+              <option value="🦃">🦃 Thanksgiving</option>
+              <option value="💘">💘 Valentine's</option>
+              <option value="🐰">🐰 Easter</option>
+              <option value="☀️">☀️ Summer</option>
+              <option value="❄️">❄️ Winter</option>
+            </optgroup>
+            <optgroup label="Quality/Awards">
+              <option value="⭐">⭐ Star</option>
+              <option value="🏆">🏆 Trophy</option>
+              <option value="🏅">🏅 Award</option>
+              <option value="💎">💎 Gem</option>
+            </optgroup>
+            <optgroup label="General">
+              <option value="📁">📁 Folder</option>
+              <option value="🎯">🎯 Target</option>
+              <option value="🔖">🔖 Bookmark</option>
+              <option value="📦">📦 Package</option>
+            </optgroup>
+            <optgroup label="Regional (Flags)">
+              <option value="🇺🇸">🇺🇸 USA</option>
+              <option value="🇬🇧">🇬🇧 UK</option>
+              <option value="🇯🇵">🇯🇵 Japan</option>
+              <option value="🇰🇷">🇰🇷 Korea</option>
+              <option value="🇮🇳">🇮🇳 India</option>
+              <option value="🇫🇷">🇫🇷 France</option>
+              <option value="🌍">🌍 International</option>
+            </optgroup>
+            <optgroup label="Special Interest">
+              <option value="🎤">🎤 Stand-up/Music</option>
+              <option value="🎸">🎸 Music</option>
+              <option value="🍳">🍳 Food/Cooking</option>
+              <option value="🔬">🔬 Science</option>
+              <option value="📚">📚 Documentary/Educational</option>
+              <option value="🙏">🙏 Faith/Spiritual</option>
+              <option value="👽">👽 Conspiracy/UFO</option>
+            </optgroup>
+          </select>
         </div>
 
         <div>
@@ -230,7 +289,7 @@ const availableGenres = [
 const defaultForm = () => ({
   name: '',
   description: '',
-  icon: '📦',
+  icon: '🎬',
   category: 'custom',
   signals: {
     certifications: {
@@ -260,7 +319,7 @@ watch(() => props.modelValue, (newVal) => {
       form.value = {
         name: props.preset.name || '',
         description: props.preset.description || '',
-        icon: props.preset.icon || '📦',
+        icon: props.preset.icon || '🎬',
         category: props.preset.category || 'custom',
         signals: {
           certifications: {
@@ -300,7 +359,7 @@ async function handleSubmit() {
     const presetData = {
       name: form.value.name.trim(),
       description: form.value.description.trim(),
-      icon: form.value.icon || '📦',
+      icon: form.value.icon || '🎬',
       category: form.value.category,
       signals: form.value.signals
     }

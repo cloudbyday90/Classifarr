@@ -5,6 +5,20 @@
 
 ### What's New
 
+#### New Presets Page
+- **Browse All Presets**: New dedicated page to browse all 168 system presets and manage your custom presets
+  - Access via Classification → Presets in the sidebar
+  - Tabbed interface: System Presets (read-only) vs Custom Presets (editable)
+  - Grid view with preset cards showing icon, name, category, and signal summary
+  - Search and category filtering to quickly find the presets you need
+  - Create, edit, and delete your own custom presets
+
+#### Improved Preset Creation
+- **Emoji Dropdown Selector**: Select preset icons from a dropdown of 60+ categorized emojis instead of manually typing emojis
+  - 8 organized categories: Movies, TV Shows, Genres, Themes/Seasonal, Quality/Awards, General, Regional, Special Interest
+  - One-click selection for better user experience
+  - Consistent with emojis used in system presets
+
 #### Improved Policy Setup Experience
 - **Clearer Empty States**: When a library has no presets configured, you'll now see a clean, intuitive interface with a dashed border container and centered plus icon guiding you to add presets
 - **Library Header Display**: Each policy card now shows the associated library name with an icon at the top for better context
