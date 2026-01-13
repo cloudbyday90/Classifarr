@@ -241,14 +241,22 @@ describe('Media Server API', () => {
             mockClient.query.mockResolvedValueOnce({
                 rows: [{ id: 1, name: 'Movies', media_type: 'movie', external_id: 'lib-1' }]
             });
+            // Mock: INSERT library_policies for library 1
+            mockClient.query.mockResolvedValueOnce({});
             // Mock: INSERT library 2
             mockClient.query.mockResolvedValueOnce({
                 rows: [{ id: 2, name: 'TV Shows', media_type: 'tv', external_id: 'lib-2' }]
             });
+            // Mock: INSERT library_policies for library 2
+            mockClient.query.mockResolvedValueOnce({});
             // Mock: UPDATE last_sync
             mockClient.query.mockResolvedValueOnce({});
             // Mock: COMMIT
             mockClient.query.mockResolvedValueOnce({});
+            
+            // Mock error_log INSERTs from background sync failures (auto-sync tries to sync non-existent libraries)
+            // The syncLibrary calls will fail and log errors, which try to INSERT into error_log
+            mockClient.query.mockResolvedValue({ rows: [{ error_id: 1 }] });
 
             const response = await request(app).post('/api/media-server/sync');
 
