@@ -31,6 +31,7 @@ class DiscordBotService {
   async loadConfig(ignoreEnabledStatus = false) {
     // For API calls (getServers, getChannels, getChannelDetails), we need the token
     // regardless of enabled status. Only for initialization should we check enabled.
+    // v0.37.8b-alpha: Added ignoreEnabledStatus parameter to fix config persistence
     const enabledFilter = ignoreEnabledStatus ? '' : 'AND enabled = true';
     const result = await db.query(`SELECT * FROM notification_config WHERE type = $1 ${enabledFilter} LIMIT 1`, ['discord']);
     if (result.rows.length > 0) {
