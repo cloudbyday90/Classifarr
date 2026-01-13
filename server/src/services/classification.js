@@ -784,25 +784,8 @@ class ClassificationService {
       }
     }
 
-    // Step -0.5: Event detection now handled by PolicyEngine via event presets (v0.37.0)
-    // Legacy detectEventContent() removed - event types are now content_presets in the 'events' category
-
-    // Step -0.25: Check library rules (user-defined rating/genre/keyword rules)
-    const ruleMatch = await this.checkLibraryRules(metadata, libraries);
-    if (ruleMatch) {
-      logger.info('Library rule matched', {
-        title: metadata.title,
-        library: ruleMatch.library.name,
-        rule: ruleMatch.matchedRule
-      });
-      return {
-        library: ruleMatch.library,
-        confidence: ruleMatch.isException ? 98 : 90,
-        method: 'custom_rule',
-        reason: ruleMatch.reason,
-        libraries: libraries,
-      };
-    }
+    // NOTE: Legacy event detection (Step -0.5) and library rules (Step -0.25) removed in v0.37.8c.
+    // These are now handled by the PolicyEngine via content presets and policy evaluation.
 
     // Step 0: Check if media already exists in media server (100% confidence)
     const existingMedia = await mediaSyncService.findExistingMedia(metadata.tmdb_id, mediaType);
@@ -855,22 +838,15 @@ class ClassificationService {
       };
     }
 
-    // Step 3: Rule-based matching (labels + custom rules)
-    const legacyRuleMatch = await this.matchRules(metadata, libraries);
-    if (legacyRuleMatch && legacyRuleMatch.confidence >= 80) {
-      return {
-        ...legacyRuleMatch,
-        method: 'custom_rule',
-        libraries: libraries,
-      };
-    }
+    // NOTE: Legacy rule-based matching (Step 3) removed in v0.37.8c.
+    // PolicyEngine now handles all rule-based classification via content presets.
 
-    // Step 3.5: Policy Engine evaluation (v0.37.0)
+    // Step 3: Policy Engine evaluation (v0.37.0)
     // Modern policy-based classification with comprehensive signal scoring
     try {
       logger.info('Evaluating with PolicyEngine', { title: metadata.title });
       const policyResult = await policyEngine.evaluateItem(metadata);
-      
+
       if (policyResult.action === 'auto_classify' && policyResult.library) {
         // HIGH CONFIDENCE (≥85%) - Skip AI entirely, trust PolicyEngine
         logger.info('PolicyEngine auto-classified (AI skipped)', {
@@ -901,7 +877,7 @@ class ClassificationService {
           confidence: policyResult.confidence
         });
         const matchedLibrary = libraries.find(l => l.id === policyResult.library.library_id);
-        
+
         // Build clarification from policy breakdown
         const policyQuestion = {
           problem_summary: `Confirm: ${policyResult.library.policy_name}`,
@@ -918,7 +894,7 @@ class ClassificationService {
           signal_breakdown: policyResult.breakdown,
           calculated_confidence: policyResult.confidence,
         };
-        
+
         return {
           library: matchedLibrary,
           confidence: policyResult.confidence,
@@ -953,29 +929,13 @@ class ClassificationService {
     const signalCollector = new SignalCollector(metadata.tmdb_id, metadata.media_type);
 
     // Add detected signals
-    // Note: eventMatch removed in v0.37.0 - event detection now handled by PolicyEngine presets
-
-    if (ruleMatch) {
-      signalCollector.addSignal(SIGNAL_TYPES.CUSTOM_RULE,
-        ruleMatch.library,
-        ruleMatch.confidence,
-        { rule: ruleMatch.matchedRule }
-      );
-    }
+    // Note: Legacy rule signals removed in v0.37.8c - PolicyEngine now handles rule-based classification
 
     if (learnedPattern && learnedPattern.confidence < 80) {
       signalCollector.addSignal(SIGNAL_TYPES.LEARNED_PATTERN,
         libraries.find(l => l.id === learnedPattern.library_id),
         learnedPattern.confidence,
         {}
-      );
-    }
-
-    if (legacyRuleMatch && legacyRuleMatch.confidence < 80) {
-      signalCollector.addSignal(SIGNAL_TYPES.CUSTOM_RULE,
-        legacyRuleMatch.library,
-        legacyRuleMatch.confidence,
-        { rule: legacyRuleMatch.ruleName }
       );
     }
 
@@ -1111,7 +1071,7 @@ class ClassificationService {
         `SELECT corrected_library_id, corrected_by, title, created_at, user_note
          FROM learned_corrections 
          WHERE tmdb_id = $1 AND media_type = $2
-         ORDER BY updated_at DESC LIMIT 1`,
+         ORDER BY created_at DESC LIMIT 1`,
         [tmdbId, mediaType]
       );
 

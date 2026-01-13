@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.8d-alpha] - 2026-01-12
+
+### Fixed
+- **Classification Method Constraint**: Added all current and legacy methods to `classification_history_method_check` constraint
+- **Learned Corrections Query**: Fixed `ORDER BY updated_at` to use `created_at` (column doesn't exist)
+- **Ollama Timeout**: Extended initial timeout from 60s to 120s for model loading, with 60s heartbeat for subsequent chunks
+
+### Removed
+- **Deprecated Code Paths**: Removed `checkLibraryRules()` and `matchRules()` - PolicyEngine now handles all rule-based classification
+- **Legacy Signal Collection**: Removed `custom_rule` signal types from classification flow
+
+### Changed
+- **Hard Timeout**: Extended from 3 minutes to 5 minutes for complex classifications
+
 ## [0.37.8c-alpha] - 2026-01-12
 
 ### Changed

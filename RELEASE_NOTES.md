@@ -1,5 +1,33 @@
 # Classifarr Release Notes
 
+## v0.37.8d-alpha
+**Title: Bug Fixes & Deprecated Code Cleanup**
+
+### Bugs Fixed
+1. **Classification Method Constraint Error** - Added missing methods to database check constraint
+2. **Learned Corrections Query** - Fixed query using non-existent `updated_at` column
+3. **Ollama Model Loading Timeout** - Extended initial timeout from 60s to 120s
+
+### Code Cleanup
+- Removed deprecated `checkLibraryRules()` and `matchRules()` code paths
+- PolicyEngine now handles all rule-based classification
+- Cleaned up legacy signal collection
+
+### Classification Methods (Current)
+| Method | Description |
+|--------|-------------|
+| `existing_media` | Already in library |
+| `manual_correction` | User corrections |
+| `exact_match` | Previously confirmed TMDB |
+| `learned_pattern` | Pattern matching |
+| `source_library` | From known source |
+| `policy_auto` | PolicyEngine ≥85% |
+| `policy_prompt` | PolicyEngine 60-84% |
+| `ai_verified` / `ai_analysis` | AI paths |
+| `signal_calculation` / `fallback` | Fallbacks |
+
+---
+
 ## v0.37.8c-alpha
 **Title: Enhanced Overseerr/Jellyseerr Webhook Payload**
 

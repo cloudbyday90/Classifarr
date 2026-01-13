@@ -271,30 +271,35 @@ class OllamaService {
    */
   async generateWithProgress(prompt, model = 'qwen3:14b', temperature = 0.30, onProgress = null) {
     const config = await this.getConfig();
-    const HEARTBEAT_TIMEOUT_MS = 60000; // Solution D: 60 second inactivity timeout
-    const HARD_TIMEOUT_MS = 180000;     // Solution C: 3 minute absolute timeout
+    const INITIAL_TIMEOUT_MS = 120000;   // 2 minutes for first chunk (model loading)
+    const HEARTBEAT_TIMEOUT_MS = 60000;  // 60 seconds for subsequent chunks
+    const HARD_TIMEOUT_MS = 300000;      // 5 minute absolute timeout
 
     return new Promise((resolve, reject) => {
       let fullResponse = '';
       let tokenCount = 0;
       let lastChunkTime = Date.now();
+      let firstChunkReceived = false;
       let resolved = false; // Prevent double resolution
 
       const controller = new AbortController();
 
-      // Solution C: Hard 3-minute absolute timeout
+      // Hard absolute timeout
       const hardTimeout = setTimeout(() => {
         if (!resolved) {
           resolved = true;
           controller.abort();
-          reject(new Error('Generation timeout - no response after 3 minutes'));
+          reject(new Error('Generation timeout - no response after 5 minutes'));
         }
       }, HARD_TIMEOUT_MS);
 
-      // Solution D: Heartbeat watchdog - check every 10 seconds for 60s inactivity
+      // Heartbeat watchdog - check every 10 seconds for inactivity
       const heartbeatCheck = setInterval(() => {
         const timeSinceLastChunk = Date.now() - lastChunkTime;
-        if (timeSinceLastChunk > HEARTBEAT_TIMEOUT_MS && !resolved) {
+        // Use longer timeout for first chunk (model loading), shorter for subsequent
+        const currentTimeout = firstChunkReceived ? HEARTBEAT_TIMEOUT_MS : INITIAL_TIMEOUT_MS;
+
+        if (timeSinceLastChunk > currentTimeout && !resolved) {
           resolved = true;
           clearTimeout(hardTimeout);
           clearInterval(heartbeatCheck);
@@ -304,7 +309,8 @@ class OllamaService {
             if (onProgress) onProgress(tokenCount, true);
             resolve(fullResponse);
           } else {
-            reject(new Error('Generation stalled - no data received for 60 seconds'));
+            const waitedSeconds = Math.round(timeSinceLastChunk / 1000);
+            reject(new Error(`Generation stalled - no data received for ${waitedSeconds} seconds`));
           }
         }
       }, 10000);
@@ -320,6 +326,7 @@ class OllamaService {
       }).then(response => {
         response.data.on('data', (chunk) => {
           lastChunkTime = Date.now(); // Reset heartbeat timer
+          firstChunkReceived = true;  // Model is responding, use shorter timeout now
           try {
             const lines = chunk.toString().split('\n').filter(line => line.trim());
             for (const line of lines) {

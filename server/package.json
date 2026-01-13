@@ -1,6 +1,6 @@
 {
   "name": "classifarr-server",
-  "version": "0.37.8c",
+  "version": "0.37.8d",
   "description": "AI-powered media classification for the *arr ecosystem",
   "main": "src/index.js",
   "scripts": {
