@@ -11,7 +11,7 @@
     <div class="flex items-start gap-4">
       <!-- Icon -->
       <div class="text-4xl flex-shrink-0">
-        {{ preset.icon || '🎬' }}
+        {{ preset.icon || DEFAULT_EMOJI }}
       </div>
 
       <!-- Content -->
@@ -50,7 +50,7 @@
         <PencilIcon class="w-4 h-4 mr-1" />
         Edit
       </Button>
-      <Button variant="ghost" size="sm" @click="$emit('delete', preset)" aria-label="Delete preset">
+      <Button variant="ghost" size="sm" @click="$emit('delete', preset)" :aria-label="'Delete preset ' + preset.name">
         <TrashIcon class="w-4 h-4 text-red-400" />
       </Button>
     </div>
@@ -63,6 +63,7 @@ import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
+import { DEFAULT_EMOJI } from '@/constants/emojis'
 
 const props = defineProps({
   preset: {
