@@ -534,10 +534,8 @@ const saveConfig = async () => {
   saving.value = true
   connectionStatus.value = { status: 'idle' } // Clear previous status when saving
   try {
+    // Save configuration - server commits to database before returning
     await axios.put('/api/settings/notifications', config.value)
-    
-    // Wait a moment for database to commit the changes
-    await new Promise(resolve => setTimeout(resolve, 100));
     
     // If successfully saved, re-fetch channel details to update the "Connected" card
     if (config.value.channel_id) {
