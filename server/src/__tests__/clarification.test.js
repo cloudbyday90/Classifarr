@@ -140,7 +140,7 @@ describe('ClarificationService', () => {
       expect(tier.max_confidence).toBe(69);
     });
 
-    test('should return null for high confidence when no tier found', async () => {
+    test('should return fallback auto tier for high confidence when no tier found', async () => {
       // Mock no results from database
       db.query.mockResolvedValueOnce({
         rows: [],
@@ -148,7 +148,13 @@ describe('ClarificationService', () => {
 
       const tier = await clarificationService.getTierForConfidence(85);
 
-      expect(tier).toBeNull();
+      // Should return fallback auto tier for high-confidence items
+      expect(tier).not.toBeNull();
+      expect(tier.tier).toBe('auto');
+      expect(tier.action).toBe('auto_route');
+      expect(tier.description).toBe('High confidence - auto route');
+      expect(tier.min_confidence).toBe(70);
+      expect(tier.max_confidence).toBe(100);
     });
 
     test('should handle exact boundary values (50%, 69%, 70%)', async () => {
