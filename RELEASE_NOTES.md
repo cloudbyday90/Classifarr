@@ -43,7 +43,43 @@ The database was storing the fallback/suggested library in `library_id` and `lib
 **Impact:** 
 The UI is now consistent - items awaiting your decision clearly show "Awaiting Decision" status until you actually make a choice.
 
-#### 3. RAG Embeddings Now Work with Remote Ollama (Configuration Cache Bug)
+#### 3. Discord Notifications Now Always Appear for Clarification Items
+
+**Problem:**
+Some items requiring clarification were not appearing in Discord, even though they showed up in the "Awaiting Decision" queue on the platform. This meant you might miss items that need your input if you rely on Discord notifications.
+
+**Root Cause:**
+Multiple issues prevented Discord notifications from appearing reliably:
+- Errors during notification sending were being silently swallowed (no logging)
+- Missing tier configuration for certain confidence ranges would cause notifications to fail
+- No comprehensive logging to diagnose why notifications didn't appear
+
+**Solution:**
+- Added enhanced logging: Every notification attempt is now logged with classification ID, title, confidence, and status
+- Discord notification errors are now caught and logged with full error details (instead of crashing the classification)
+- Added fallback tiers for ALL confidence ranges (50-70: clarify, 70-100: auto) to ensure no item is missed
+- Comprehensive error logging shows exactly why a notification failed (channel issues, tier lookup failures, etc.)
+
+**Impact:**
+All items needing clarification now reliably appear in Discord with action buttons. If a notification fails for any reason, the error is logged in server logs for debugging, and the platform queue remains accurate.
+
+#### 4. Awaiting Decision Queue Always Shows Correct Count
+
+**Problem:**
+The "Awaiting Decision" queue might not accurately reflect all pending items, especially if Discord notifications failed to send.
+
+**Root Cause:**
+This was already working correctly, but we've added documentation to clarify: The queue is based purely on database `status = 'awaiting_decision'`, completely independent of Discord notification success.
+
+**Solution:**
+- Verified that `/api/classification/pending` queries directly from `classification_history.status = 'awaiting_decision'`
+- Queue count matches actual database records, regardless of Discord state
+- Items display correctly even when Discord notifications fail
+
+**Impact:**
+The platform queue is the source of truth for pending items. Even if Discord is down or notifications fail, you can always see and resolve pending items from the queue page.
+
+#### 5. RAG Embeddings Now Work with Remote Ollama (Configuration Cache Bug)
 
 **Problem:**
 Users with Ollama running on a remote host (e.g., `192.168.50.95:11434`) found that embeddings were still being sent to `localhost:11434` even after configuring the remote host in Settings → AI Provider. This caused:
