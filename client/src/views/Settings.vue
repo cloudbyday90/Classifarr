@@ -62,8 +62,8 @@ import Logs from './settings/Logs.vue'
 import Confidence from './settings/Confidence.vue'
 import Tavily from './settings/Tavily.vue'
 import OMDb from './settings/OMDb.vue'
-import Rules from './settings/Rules.vue'
 import RatingNormalization from './settings/RatingNormalization.vue'
+import HeartbeatSettings from './settings/HeartbeatSettings.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -77,6 +77,7 @@ const settingsGroups = [
       { id: 'general', label: 'General', icon: '⚙️', component: General },
       { id: 'scheduler', label: 'Scheduler', icon: '🕐', component: Scheduler },
       { id: 'queue', label: 'Queue', icon: '📋', component: Queue },
+      { id: 'heartbeat', label: 'Heartbeat/Queue', icon: '⏱️', component: HeartbeatSettings },
     ]
   },
   {
@@ -101,7 +102,6 @@ const settingsGroups = [
     tabs: [
       { id: 'ai', label: 'AI', icon: '🤖', component: AI },
       { id: 'confidence', label: 'Confidence', icon: '📊', component: Confidence },
-      { id: 'rules', label: 'Rules', icon: '🎯', component: Rules },
     ]
   },
   {

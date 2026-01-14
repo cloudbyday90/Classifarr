@@ -2795,4 +2795,88 @@ router.get('/embedding-provider/defaults', async (req, res) => {
   }
 });
 
+// ============================================
+// HEARTBEAT/PROVIDER LOCK CONFIGURATION
+// ============================================
+
+const providerLock = require('../services/providerLock');
+
+/**
+ * @swagger
+ * /api/settings/heartbeat:
+ *   get:
+ *     summary: Get heartbeat configuration
+ */
+router.get('/heartbeat', async (req, res) => {
+  try {
+    // Return in-memory config to ensure consistency
+    res.json({
+      heartbeat_timeout: providerLock.config.heartbeatTimeout,
+      heartbeat_interval: providerLock.config.heartbeatInterval,
+      max_wait_time: providerLock.config.maxWaitTime
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/heartbeat:
+ *   put:
+ *     summary: Update heartbeat configuration
+ */
+router.put('/heartbeat', async (req, res) => {
+  try {
+    const { heartbeat_timeout, heartbeat_interval, max_wait_time } = req.body;
+    
+    // Validate configuration values
+    if (heartbeat_timeout !== undefined && (heartbeat_timeout < 5000 || heartbeat_timeout > 120000)) {
+      return res.status(400).json({ error: 'heartbeat_timeout must be between 5000 and 120000 ms' });
+    }
+    
+    if (heartbeat_interval !== undefined && (heartbeat_interval < 1000 || heartbeat_interval > 30000)) {
+      return res.status(400).json({ error: 'heartbeat_interval must be between 1000 and 30000 ms' });
+    }
+    
+    if (max_wait_time !== undefined && (max_wait_time < 10000 || max_wait_time > 300000)) {
+      return res.status(400).json({ error: 'max_wait_time must be between 10000 and 300000 ms' });
+    }
+    
+    // Validate that heartbeat_interval is less than heartbeat_timeout
+    const finalInterval = heartbeat_interval !== undefined ? heartbeat_interval : providerLock.config.heartbeatInterval;
+    const finalTimeout = heartbeat_timeout !== undefined ? heartbeat_timeout : providerLock.config.heartbeatTimeout;
+    
+    if (finalInterval >= finalTimeout) {
+      return res.status(400).json({ 
+        error: 'heartbeat_interval must be less than heartbeat_timeout' 
+      });
+    }
+    
+    await providerLock.updateConfig({
+      heartbeatTimeout: heartbeat_timeout,
+      heartbeatInterval: heartbeat_interval,
+      maxWaitTime: max_wait_time,
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/provider-lock/status:
+ *   get:
+ *     summary: Get current provider lock status
+ */
+router.get('/provider-lock/status', async (req, res) => {
+  try {
+    res.json(providerLock.getLockStatus());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

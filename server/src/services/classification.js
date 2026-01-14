@@ -33,6 +33,7 @@ const embeddingService = require('./embeddingService');
 const contextManager = require('./contextManager');
 const patternReinforcementService = require('./patternReinforcementService');
 const policyEngine = require('./policyEngine');
+const providerLock = require('./providerLock');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -1393,37 +1394,58 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const configResult = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
     const config = configResult.rows[0] || { model: 'qwen3:14b', temperature: 0.30 };
 
-    // Track generation status for UI
-    const itemTitle = metadata.title || 'Unknown';
-    ollamaService.setGenerationStatus(true, config.model, itemTitle);
-
+    // Acquire lock with high priority (classification always wins)
+    await providerLock.acquireLock('classification', 'high');
+    
+    // Store config interval to avoid race conditions
+    const heartbeatIntervalMs = providerLock.config.heartbeatInterval;
+    let heartbeatTimer = null;
     let response;
+    
     try {
-      // Use streaming to monitor progress
-      let lastLogTime = Date.now();
-      response = await ollamaService.generateWithProgress(
-        prompt,
-        config.model,
-        parseFloat(config.temperature),
-        (tokenCount, isComplete) => {
-          // Update token count for UI
-          ollamaService.updateTokenCount(tokenCount);
+      // Start heartbeat interval - in outer try block for guaranteed cleanup
+      heartbeatTimer = setInterval(() => {
+        providerLock.heartbeat('classification');
+      }, heartbeatIntervalMs);
 
-          // Log progress every 2 seconds or on completion
-          const now = Date.now();
-          if (isComplete || now - lastLogTime > 2000) {
-            logger.debug('Ollama generation progress', {
-              tokens: tokenCount,
-              complete: isComplete,
-              model: config.model
-            });
-            lastLogTime = now;
+      // Track generation status for UI
+      const itemTitle = metadata.title || 'Unknown';
+      ollamaService.setGenerationStatus(true, config.model, itemTitle);
+
+      try {
+        // Use streaming to monitor progress
+        let lastLogTime = Date.now();
+        response = await ollamaService.generateWithProgress(
+          prompt,
+          config.model,
+          parseFloat(config.temperature),
+          (tokenCount, isComplete) => {
+            // Update token count for UI
+            ollamaService.updateTokenCount(tokenCount);
+
+            // Log progress every 2 seconds or on completion
+            const now = Date.now();
+            if (isComplete || now - lastLogTime > 2000) {
+              logger.debug('Ollama generation progress', {
+                tokens: tokenCount,
+                complete: isComplete,
+                model: config.model
+              });
+              lastLogTime = now;
+            }
           }
-        }
-      );
+        );
+      } finally {
+        // Clear generation status (inner finally for UI cleanup)
+        ollamaService.setGenerationStatus(false);
+      }
     } finally {
-      // Clear generation status
-      ollamaService.setGenerationStatus(false);
+      // Clean up heartbeat and release lock (outer finally - always executes)
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+      providerLock.releaseLock('classification');
     }
 
     // Parse AI response - check for CONFIRM format (verification mode)

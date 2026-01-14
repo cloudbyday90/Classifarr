@@ -11,6 +11,7 @@
 const axios = require('axios');
 const db = require('../config/database');
 const ollamaService = require('./ollama');
+const providerLock = require('./providerLock');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('EmbeddingProvider');
@@ -159,8 +160,32 @@ class EmbeddingProvider {
         }
 
         const mode = config.embedding_provider_mode || 'same';
+        const needsLock = mode === 'same';
 
+        if (needsLock) {
+            await providerLock.acquireLock('embedding', 'normal');
+        }
+
+        // Store config interval to avoid race conditions
+        const heartbeatIntervalMs = needsLock ? providerLock.config.heartbeatInterval : null;
+        let heartbeatTimer = null;
+        let lockReleased = false; // Track if lock was already released
         try {
+            if (needsLock) {
+                // Start heartbeat and check for preemption
+                heartbeatTimer = setInterval(() => {
+                    const shouldContinue = providerLock.heartbeat('embedding');
+                    if (!shouldContinue) {
+                        // Preemption requested - pause and yield
+                        clearInterval(heartbeatTimer);
+                        heartbeatTimer = null; // Mark timer as cleared
+                        providerLock.releaseLock('embedding');
+                        lockReleased = true; // Mark lock as released
+                        throw new Error('Embedding operation was preempted by high-priority classification request. Please retry the operation.');
+                    }
+                }, heartbeatIntervalMs);
+            }
+
             let result;
 
             switch (mode) {
@@ -209,6 +234,14 @@ class EmbeddingProvider {
                 error: error.message
             });
             throw error;
+        } finally {
+            // Clean up heartbeat and release lock (only if not already released)
+            if (heartbeatTimer) {
+                clearInterval(heartbeatTimer);
+            }
+            if (needsLock && !lockReleased) {
+                providerLock.releaseLock('embedding');
+            }
         }
     }
 

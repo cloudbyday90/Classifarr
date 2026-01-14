@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.39.0-alpha] - 2026-01-14
 
 ### Added
+- **Heartbeat-Based Queue System**: Smart resource management for Ollama to prevent contention
+  - Classification requests always have priority over embeddings
+  - Automatic lock release on timeout (prevents deadlocks)
+  - Configurable heartbeat timeout, interval, and max wait time
+  - Lock status monitoring in Settings UI
+  - Database migration (055) for heartbeat configuration columns
+  - New `providerLock` service with heartbeat-based locking mechanism
+  - API endpoints: GET/PUT `/api/settings/heartbeat`, GET `/api/settings/provider-lock/status`
+  - UI: HeartbeatSettings.vue component in Settings > General > Heartbeat/Queue tab
+  - Lock automatically acquired/released in classification and embedding operations
+  - Only applies when using same Ollama instance for both operations
+
 - **Embedding Provider Expansion**: Configurable embedding provider separate from classification provider
   - Support for dedicated Ollama instance (different host/port/model) for embeddings
   - Cloud provider support: OpenAI, Gemini, Voyage AI, OpenRouter, Cohere for embeddings
@@ -19,11 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - UI integration in AI settings with provider mode selector and conditional configuration fields
   - Backward compatible - existing 'same as classification' behavior preserved as default
 
+### Removed
+- **Rules Page**: Custom rules feature has been retired
+  - Settings > Rules page removed from UI
+  - Rules.vue component deleted
+  - Classification is now fully AI-driven with policy-based rules in library profiles
+  - Navigation updated to remove Rules tab from Settings
+
 ### Changed
 - **Embedding Architecture**: Refactored to use new `EmbeddingProvider` service
   - `embeddingRouter` now delegates to `embeddingProvider` for separate_ollama and cloud modes
   - Provider-agnostic embedding interface with support for parallel embedding generation
   - Enhanced embedding configuration UI with mode-specific settings
+  - Embedding operations now respect provider lock when using same Ollama instance
 
 ### Fixed
 - **Pending Classifications API Crash**: Fixed `/api/classification/pending` throwing "is not valid JSON" error
