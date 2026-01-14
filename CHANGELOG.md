@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.39.0-alpha] - 2026-01-14
 
+### Added
+- **Embedding Provider Expansion**: Configurable embedding provider separate from classification provider
+  - Support for dedicated Ollama instance (different host/port/model) for embeddings
+  - Cloud provider support: OpenAI, Gemini, Voyage AI, OpenRouter, Cohere for embeddings
+  - Per-provider model selection with smart defaults
+  - Test connection functionality for all embedding providers
+  - Database migration (054) for new embedding provider configuration fields
+  - New `embeddingProvider` service for routing embeddings to appropriate provider
+  - API endpoints: GET/PUT `/api/settings/embedding-provider`, POST `/api/settings/embedding-provider/test`
+  - UI integration in AI settings with provider mode selector and conditional configuration fields
+  - Backward compatible - existing 'same as classification' behavior preserved as default
+
+### Changed
+- **Embedding Architecture**: Refactored to use new `EmbeddingProvider` service
+  - `embeddingRouter` now delegates to `embeddingProvider` for separate_ollama and cloud modes
+  - Provider-agnostic embedding interface with support for parallel embedding generation
+  - Enhanced embedding configuration UI with mode-specific settings
+
 ### Fixed
 - **Pending Classifications API Crash**: Fixed `/api/classification/pending` throwing "is not valid JSON" error
   - `policy_question` column is JSONB in PostgreSQL (already parsed as object by pg driver)

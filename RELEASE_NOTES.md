@@ -1,7 +1,52 @@
 # Classifarr Release Notes
 
 ## v0.39.0-alpha
-**Title: Critical Bug Fixes for Classification & RAG**
+**Title: Embedding Provider Expansion + Critical Bug Fixes**
+
+### New Features
+
+#### Embedding Provider Options 🚀
+
+You can now choose where embeddings are generated, separate from your AI classification provider. This provides flexibility for performance optimization and cost management.
+
+**Three Provider Modes:**
+
+1. **Same as Classification (Default)**
+   - Uses the same provider configured for AI classification
+   - No additional setup needed - works exactly as before
+   - Perfect for most users who want simplicity
+
+2. **Separate Ollama Instance**
+   - Run embeddings on a dedicated Ollama server
+   - Configure different host/port (e.g., a more powerful machine for embeddings)
+   - Use a specialized embedding model (e.g., `nomic-embed-text`, `mxbai-embed-large`)
+   - Parallelize embedding generation with classification for better performance
+   - **Use Case:** You have one server for LLM inference and another optimized for embeddings
+
+3. **Cloud Providers**
+   - Use cloud embedding APIs for higher quality or faster processing
+   - Supported providers:
+     - **OpenAI**: `text-embedding-3-small` (best value), `text-embedding-3-large` (highest quality)
+     - **Google Gemini**: `text-embedding-004` (latest)
+     - **Voyage AI**: `voyage-2`, `voyage-large-2` (optimized for retrieval tasks)
+     - **OpenRouter**: Access multiple embedding providers through one API
+     - **Cohere**: `embed-english-v3.0`, `embed-multilingual-v3.0`
+   - **Use Case:** You want higher quality embeddings or your local machine isn't powerful enough
+
+**Configuration Location:**
+Settings → AI Provider → Embedding Provider (new section)
+
+**Features:**
+- Provider-specific model selection with smart defaults
+- Test connection button for all modes
+- API key masking for security
+- Backward compatible - existing configurations work without changes
+
+**Technical Details:**
+- New database migration adds 7 columns to `ai_provider_config` table
+- New `embeddingProvider` service handles routing to appropriate provider
+- API endpoints for configuration and testing
+- Supports parallel embedding generation when using different providers
 
 ### Bug Fixes
 
