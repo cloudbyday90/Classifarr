@@ -84,6 +84,11 @@ const router = createRouter({
           component: () => import('@/views/Settings.vue'),
         },
         {
+          path: '/settings/rag',
+          name: 'RAGSettings',
+          component: () => import('@/views/RAGSettings.vue'),
+        },
+        {
           path: '/system',
           name: 'System',
           component: () => import('@/views/System.vue'),

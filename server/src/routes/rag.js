@@ -652,4 +652,311 @@ router.get('/backfill/history', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/rag/overview
+ * Get overview stats for RAG dashboard
+ */
+router.get('/overview', async (req, res) => {
+    try {
+        // Get provider status
+        const config = await embeddingRouter.getConfig();
+        const providerOnline = embeddingRouter.getCircuitStatus().state !== 'OPEN';
+
+        // Get total embeddings count
+        const embeddingsResult = await db.query(`
+            SELECT COUNT(*) as total FROM classification_embeddings
+        `);
+
+        // Get pending count
+        const pendingResult = await db.query(`
+            SELECT COUNT(*) as count
+            FROM classification_history ch
+            LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
+            WHERE ce.id IS NULL AND ch.library_id IS NOT NULL
+        `);
+
+        // Get failed count (last 24 hours)
+        const failedResult = await db.query(`
+            SELECT COUNT(*) as count
+            FROM embedding_errors
+            WHERE created_at >= NOW() - INTERVAL '24 hours'
+            AND resolved = false
+        `);
+
+        // Get average generation time and last embedding time
+        const metricsResult = await db.query(`
+            SELECT 
+                AVG(duration_ms) as avg_time,
+                MAX(period_start) as last_time
+            FROM rag_metrics
+            WHERE operation = 'embedding_generation'
+            AND period_start >= NOW() - INTERVAL '24 hours'
+        `);
+
+        // Get recent activity
+        const activityResult = await db.query(`
+            SELECT * FROM rag_logs
+            ORDER BY created_at DESC
+            LIMIT 5
+        `);
+
+        res.json({
+            providerOnline,
+            stats: {
+                totalEmbeddings: parseInt(embeddingsResult.rows[0].total) || 0,
+                pendingCount: parseInt(pendingResult.rows[0].count) || 0,
+                failedCount: parseInt(failedResult.rows[0].count) || 0,
+                avgGenerationTime: Math.round(parseFloat(metricsResult.rows[0]?.avg_time) || 0),
+                lastEmbeddingTime: metricsResult.rows[0]?.last_time || null
+            },
+            config: {
+                embedding_provider_mode: config.embedding_provider_mode || 'same'
+            },
+            currentModel: config.embedding_model || config.embedding_ollama_model || 'unknown',
+            recentActivity: activityResult.rows
+        });
+    } catch (error) {
+        logger.error('Failed to get overview', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/logs
+ * Get RAG logs with filtering
+ */
+router.get('/logs', async (req, res) => {
+    try {
+        const { level, type, limit = 100, offset = 0 } = req.query;
+        
+        let query = 'SELECT * FROM rag_logs WHERE 1=1';
+        const params = [];
+        let paramCount = 1;
+
+        if (level && level !== 'all') {
+            query += ` AND level = $${paramCount}`;
+            params.push(level);
+            paramCount++;
+        }
+
+        if (type && type !== 'all') {
+            query += ` AND type = $${paramCount}`;
+            params.push(type);
+            paramCount++;
+        }
+
+        query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+        params.push(parseInt(limit), parseInt(offset));
+
+        const result = await db.query(query, params);
+
+        res.json({ logs: result.rows });
+    } catch (error) {
+        logger.error('Failed to get logs', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * DELETE /api/rag/logs
+ * Clear RAG logs
+ */
+router.delete('/logs', async (req, res) => {
+    try {
+        await db.query('DELETE FROM rag_logs');
+        res.json({ success: true, message: 'Logs cleared' });
+    } catch (error) {
+        logger.error('Failed to clear logs', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/advanced
+ * Get advanced configuration
+ */
+router.get('/advanced', async (req, res) => {
+    try {
+        const config = await db.query(`
+            SELECT 
+                max_retries, retry_delay, request_timeout,
+                cache_enabled, cache_ttl,
+                verbose_logging, log_embedding_content
+            FROM ai_provider_config WHERE id = 1
+        `);
+
+        if (config.rows.length === 0) {
+            return res.json({
+                max_retries: 3,
+                retry_delay: 1000,
+                request_timeout: 30000,
+                cache_enabled: false,
+                cache_ttl: 24,
+                verbose_logging: false,
+                log_embedding_content: false
+            });
+        }
+
+        res.json(config.rows[0]);
+    } catch (error) {
+        logger.error('Failed to get advanced config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * PUT /api/rag/advanced
+ * Update advanced configuration
+ */
+router.put('/advanced', async (req, res) => {
+    try {
+        const {
+            max_retries, retry_delay, request_timeout,
+            cache_enabled, cache_ttl,
+            verbose_logging, log_embedding_content
+        } = req.body;
+
+        await db.query(`
+            UPDATE ai_provider_config SET
+                max_retries = $1,
+                retry_delay = $2,
+                request_timeout = $3,
+                cache_enabled = $4,
+                cache_ttl = $5,
+                verbose_logging = $6,
+                log_embedding_content = $7
+            WHERE id = 1
+        `, [max_retries, retry_delay, request_timeout, cache_enabled, cache_ttl, verbose_logging, log_embedding_content]);
+        
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Failed to update advanced config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/export/config
+ * Export RAG configuration
+ */
+router.post('/export/config', async (req, res) => {
+    try {
+        const config = await db.query(`
+            SELECT * FROM ai_provider_config WHERE id = 1
+        `);
+
+        res.json(config.rows[0] || {});
+    } catch (error) {
+        logger.error('Failed to export config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/export/logs
+ * Export RAG logs
+ */
+router.post('/export/logs', async (req, res) => {
+    try {
+        const logs = await db.query(`
+            SELECT * FROM rag_logs ORDER BY created_at DESC LIMIT 1000
+        `);
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename=rag-logs.json');
+        res.json({ logs: logs.rows });
+    } catch (error) {
+        logger.error('Failed to export logs', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/export/metrics
+ * Export RAG metrics
+ */
+router.post('/export/metrics', async (req, res) => {
+    try {
+        const metrics = await db.query(`
+            SELECT * FROM embedding_metrics 
+            ORDER BY date DESC, hour DESC 
+            LIMIT 1000
+        `);
+
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename=rag-metrics.json');
+        res.json({ metrics: metrics.rows });
+    } catch (error) {
+        logger.error('Failed to export metrics', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/clear-embeddings
+ * Clear all embeddings (danger zone)
+ */
+router.post('/clear-embeddings', async (req, res) => {
+    try {
+        await db.query('DELETE FROM classification_embeddings');
+        
+        await db.query(`
+            INSERT INTO rag_logs (level, type, message)
+            VALUES ('warning', 'system', 'All embeddings cleared by user')
+        `);
+
+        res.json({ success: true, message: 'All embeddings cleared' });
+    } catch (error) {
+        logger.error('Failed to clear embeddings', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/reset-config
+ * Reset RAG configuration to defaults (danger zone)
+ */
+router.post('/reset-config', async (req, res) => {
+    try {
+        await db.query(`
+            UPDATE ai_provider_config SET
+                embedding_provider_mode = 'same',
+                embedding_ollama_host = NULL,
+                embedding_ollama_port = 11434,
+                embedding_ollama_model = NULL,
+                embedding_cloud_provider = NULL,
+                embedding_cloud_api_key = NULL,
+                embedding_cloud_model = NULL,
+                realtime_embedding_enabled = true,
+                idle_backfill_enabled = true,
+                idle_threshold = 30000,
+                idle_batch_size = 10,
+                scheduled_backfill_enabled = false,
+                scheduled_backfill_time = '02:00',
+                scheduled_backfill_days = '0,1,2,3,4,5,6',
+                scheduled_backfill_batch_size = 100,
+                scheduled_backfill_max_duration = 3600000,
+                manual_backfill_batch_size = 50,
+                max_retries = 3,
+                retry_delay = 1000,
+                request_timeout = 30000,
+                cache_enabled = false,
+                cache_ttl = 24,
+                verbose_logging = false,
+                log_embedding_content = false
+            WHERE id = 1
+        `);
+
+        await db.query(`
+            INSERT INTO rag_logs (level, type, message)
+            VALUES ('warning', 'system', 'RAG configuration reset to defaults by user')
+        `);
+
+        res.json({ success: true, message: 'Configuration reset to defaults' });
+    } catch (error) {
+        logger.error('Failed to reset config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
