@@ -1,4 +1,3 @@
-const embeddingProvider = require('../services/embeddingProvider');
 const db = require('../config/database');
 const ollamaService = require('../services/ollama');
 
@@ -14,13 +13,14 @@ jest.mock('../utils/logger', () => ({
 }));
 
 // Mock axios for cloud provider tests
-let mockAxios;
-jest.mock('axios', () => {
-    mockAxios = {
-        post: jest.fn()
-    };
-    return mockAxios;
-});
+const mockAxios = {
+    post: jest.fn()
+};
+
+jest.mock('axios', () => mockAxios);
+
+// Import after mocks are set up
+const embeddingProvider = require('../services/embeddingProvider');
 
 describe('EmbeddingProvider', () => {
     beforeEach(() => {
