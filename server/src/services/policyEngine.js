@@ -19,6 +19,7 @@
 const db = require('../config/database');
 const patternSignalCollector = require('./patternSignalCollector');
 const ragRetriever = require('./ragRetriever');
+const libraryProfileService = require('./libraryProfileService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('PolicyEngine');
@@ -232,13 +233,17 @@ class PolicyEngine {
                 preset: 0,
                 pattern: 0,
                 rag: 0,
-                history: 0
+                history: 0,
+                profile: 0
             };
 
             // Score presets
             if (policy.presets && policy.presets.length > 0) {
                 scores.preset = await this.scorePresets(policy.presets, item);
             }
+
+            // Score profile (library statistical match)
+            scores.profile = await this.scoreProfile(policy.library_id, item);
 
             // Score patterns (if trusted)
             if (policy.trust_patterns) {
@@ -256,21 +261,24 @@ class PolicyEngine {
             }
 
             // Get weights (policy-specific or defaults)
-            // Default weights as per v0.37.0 specification:
-            // - Preset: 40% (primary signal source)
-            // - Pattern: 25% (discovered associations)
-            // - RAG: 20% (semantic similarity)
-            // - History: 15% (learning from past decisions)
+            // Default weights as per v0.38.2 specification:
+            // - Preset: 35% (primary signal source - defined rules)
+            // - Profile: 25% (library statistical match - what's already there)
+            // - Pattern: 15% (discovered associations)
+            // - RAG: 15% (semantic similarity)
+            // - History: 10% (learning from past decisions)
             const weights = {
-                preset: policy.preset_weight ?? 0.40,
-                pattern: policy.pattern_weight ?? 0.25,
-                rag: policy.rag_weight ?? 0.20,
-                history: policy.history_weight ?? 0.15
+                preset: policy.preset_weight ?? 0.35,
+                profile: policy.profile_weight ?? 0.25,
+                pattern: policy.pattern_weight ?? 0.15,
+                rag: policy.rag_weight ?? 0.15,
+                history: policy.history_weight ?? 0.10
             };
 
             // Calculate weighted score
             const weightedScore = 
                 (scores.preset * weights.preset) +
+                (scores.profile * weights.profile) +
                 (scores.pattern * weights.pattern) +
                 (scores.rag * weights.rag) +
                 (scores.history * weights.history);
@@ -278,6 +286,7 @@ class PolicyEngine {
             // Normalize to 0-100 using only enabled scoring methods' weights
             const totalWeight =
                 (policy.presets && policy.presets.length > 0 ? weights.preset : 0) +
+                weights.profile + // Profile is always enabled
                 (policy.trust_patterns ? weights.pattern : 0) +
                 (policy.trust_rag ? weights.rag : 0) +
                 (policy.trust_history ? weights.history : 0);
@@ -306,8 +315,8 @@ class PolicyEngine {
                 library_id: policy.library_id,
                 library_name: policy.library_name,
                 score: 0,
-                scores: { preset: 0, pattern: 0, rag: 0, history: 0 },
-                weights: { preset: 0, pattern: 0, rag: 0, history: 0 }
+                scores: { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
+                weights: { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 }
             };
         }
     }
@@ -870,6 +879,42 @@ class PolicyEngine {
         } catch (error) {
             logger.debug('Failed to score history', { error: error.message });
             return 0;
+        }
+    }
+
+    /**
+     * Score library profile match
+     * Uses libraryProfileService to score item against library's statistical profile
+     */
+    async scoreProfile(libraryId, item) {
+        try {
+            const profileScore = await libraryProfileService.getProfileScore(libraryId, item);
+            
+            // Profile score is 0-100 where 50 is neutral:
+            // - Scores <= 50 are treated as 0 (no positive contribution)
+            // - Scores > 50 are scaled from 50-100 into 0-FORMULA_CONFIDENCE_CAP (e.g. 0-95)
+            let finalScore = 0;
+            if (profileScore > 50) {
+                const scaledScore = ((profileScore - 50) / 50) * FORMULA_CONFIDENCE_CAP;
+                finalScore = Math.max(0, Math.min(scaledScore, FORMULA_CONFIDENCE_CAP));
+            }
+            
+            logger.debug('Profile score calculated', {
+                libraryId,
+                title: item.title,
+                rawScore: profileScore,
+                finalScore
+            });
+            
+            return finalScore;
+
+        } catch (error) {
+            logger.error('Failed to score profile', { 
+                error: error.message,
+                libraryId,
+                title: item.title
+            });
+            return 0; // Return 0 on error to be conservative (don't bias the score)
         }
     }
 

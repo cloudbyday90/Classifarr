@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.38.2-alpha] - 2026-01-14
 
 ### Fixed
+- **PolicyEngine Now Uses Library Profiles**: Added `profile` scoring to PolicyEngine evaluation
+  - Library profiles (statistical snapshots of library content) now contribute to classification confidence
+  - New `scoreProfile()` method calls `libraryProfileService.getProfileScore()`
+  - Profile weight defaults to 25% of total score
+  - Profiles provide base confidence ("item fits what's already in library")
+  - Presets provide boost confidence ("item matches defined criteria")
+  - Example: Library with 99% Comedy content will now score new Comedy items highly
+
 - **Classification Pipeline: SignalCollector Not Running**: Fixed critical bug where `SignalCollector.collectAll()` was never invoked during classification
   - Library profile scoring was being skipped entirely
   - Custom rules evaluation was not happening
@@ -33,9 +41,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prevents specialty libraries from catching all uncertain classifications
 
 ### Changed
+- **PolicyEngine Weights**: Adjusted default weights to accommodate profile scoring
+  - Preset: 35% (was 40%)
+  - Profile: 25% (NEW)
+  - Pattern: 15% (was 25%)
+  - RAG: 15% (was 20%)
+  - History: 10% (was 15%)
+  - Total still equals 100%
+
 - **Signal Collection Logging**: Enhanced logging in SignalCollector to show collection summary with total signals and signal types collected
 
 ### Technical Details
+- Library profiles are statistical snapshots showing rating distribution, genre distribution, studio distribution, and exclusions
+- Profile scoring returns 0-100 where 50 is neutral, >50 is positive match, <50 is negative match
+- PolicyEngine now evaluates 5 signal types: preset, profile, pattern, rag, history
+- All formula-based scores remain capped at 95% (only authoritative signals return 100%)
 - Root cause: Decision tree created SignalCollector but only manually added a few signals instead of running full `collectAll()` pipeline
 - PolicyEngine was evaluating but with minimal signal context (only getting 31% confidence for obvious mainstream content)
 - AI was receiving biased prompt examples and defaulting CLARIFY responses to wrong library

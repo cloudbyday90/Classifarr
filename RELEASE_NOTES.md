@@ -9,24 +9,39 @@
 We identified and fixed a critical bug where mainstream movies like "Predator: Badlands" and "People We Meet on Vacation" were being incorrectly classified as "Anime Movies" with low confidence.
 
 **The Problem:**
-- The classification system wasn't running its full signal collection pipeline
-- Library profiles, custom rules, and semantic search (RAG) were being skipped
-- The AI was receiving biased examples that primed it to suggest "Anime"
-- When uncertain, the system defaulted to the wrong library
+- The classification system wasn't using your library profiles at all
+- Library profiles show what's *actually in* your libraries (e.g., "99% Comedy, 37% TV-MA")
+- This valuable data was being completely ignored during classification
+- The AI was also receiving biased examples that primed it to suggest "Anime"
 
 **The Fix:**
+- **Library profiles now contribute to classification** - if your Movies library has PG-13 Action movies, new PG-13 Action movies will get a confidence boost
 - Signal collection now runs completely, gathering all available classification hints
-- RAG/semantic search properly logs its activity so you can see it working
 - AI prompts no longer bias toward any specific library type
-- Uncertain classifications now default to general-purpose libraries (like "Movies") instead of specialty libraries
+- Uncertain classifications now default to general-purpose libraries
+
+#### How Library Profiles Work Now
+
+**Before:** Only your policy presets determined where content went. If your presets didn't explicitly match, confidence was low.
+
+**After:** The system now asks two questions:
+1. **"Does this item match my policy presets?"** (your defined rules)
+2. **"Does this item look like what's already in this library?"** (statistical match)
+
+For example, if your Comedy library contains:
+- 99% Comedy genre
+- 37% TV-MA rating
+- Top studios: Comedy Dynamics, HBO, Comedy Central
+
+A new TV-MA Comedy special will get high confidence even without specific presets, because it *looks like* what's already there.
 
 #### Better Debugging
-If you're having classification issues, check your logs for new RAG-related entries:
+If you're having classification issues, check your logs for new entries:
+- `Profile score calculated` - Shows how well items match library profiles
 - `RAG search initiated` - Shows RAG is being called
 - `RAG search returned no results` - No similar items found
-- `RAG results below threshold` - Similar items found but not confident enough
 
-This helps you understand why classifications are or aren't using your historical data.
+This helps you understand why classifications are making the decisions they are.
 
 ---
 
