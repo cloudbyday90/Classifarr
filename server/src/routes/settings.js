@@ -2659,4 +2659,140 @@ router.get('/media-path-config', async (req, res) => {
   }
 });
 
+// ============================================
+// EMBEDDING PROVIDER SETTINGS
+// ============================================
+
+const embeddingProvider = require('../services/embeddingProvider');
+
+/**
+ * @swagger
+ * /api/settings/embedding-provider:
+ *   get:
+ *     summary: Get embedding provider configuration
+ */
+router.get('/embedding-provider', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+        embedding_provider_mode,
+        embedding_ollama_host,
+        embedding_ollama_port,
+        embedding_ollama_model,
+        embedding_cloud_provider,
+        embedding_cloud_model,
+        embedding_cloud_api_key
+      FROM ai_provider_config 
+      WHERE id = 1
+    `);
+
+    const config = result.rows[0] || {};
+    
+    // Mask API key in response for security
+    if (config.embedding_cloud_api_key) {
+      config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
+    }
+    
+    res.json(config);
+  } catch (error) {
+    console.error('Failed to get embedding provider config:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/embedding-provider:
+ *   put:
+ *     summary: Update embedding provider configuration
+ */
+router.put('/embedding-provider', async (req, res) => {
+  try {
+    const {
+      embedding_provider_mode,
+      embedding_ollama_host,
+      embedding_ollama_port,
+      embedding_ollama_model,
+      embedding_cloud_provider,
+      embedding_cloud_api_key,
+      embedding_cloud_model,
+    } = req.body;
+
+    // Build update query - only update API key if provided and not masked
+    let apiKeyUpdate = '';
+    const params = [
+      embedding_provider_mode,
+      embedding_ollama_host,
+      embedding_ollama_port,
+      embedding_ollama_model,
+      embedding_cloud_provider,
+      embedding_cloud_model
+    ];
+
+    if (embedding_cloud_api_key && !isMaskedToken(embedding_cloud_api_key)) {
+      apiKeyUpdate = ', embedding_cloud_api_key = $7';
+      params.push(embedding_cloud_api_key);
+    }
+
+    const result = await db.query(`
+      UPDATE ai_provider_config SET
+        embedding_provider_mode = $1,
+        embedding_ollama_host = $2,
+        embedding_ollama_port = $3,
+        embedding_ollama_model = $4,
+        embedding_cloud_provider = $5,
+        embedding_cloud_model = $6
+        ${apiKeyUpdate}
+      WHERE id = 1
+      RETURNING *
+    `, params);
+
+    // Invalidate caches
+    embeddingProvider.resetConfig();
+    const embeddingRouter = require('../services/embeddingRouter');
+    embeddingRouter.resetConfig();
+
+    // Mask API key in response
+    if (result.rows[0]?.embedding_cloud_api_key) {
+      result.rows[0].embedding_cloud_api_key = maskToken(result.rows[0].embedding_cloud_api_key);
+    }
+
+    res.json({ success: true, config: result.rows[0] });
+  } catch (error) {
+    console.error('Failed to update embedding provider config:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/embedding-provider/test:
+ *   post:
+ *     summary: Test embedding provider connection
+ */
+router.post('/embedding-provider/test', async (req, res) => {
+  try {
+    const result = await embeddingProvider.testConnection();
+    res.json(result);
+  } catch (error) {
+    console.error('Embedding provider test failed:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/embedding-provider/defaults:
+ *   get:
+ *     summary: Get provider-specific model defaults
+ */
+router.get('/embedding-provider/defaults', async (req, res) => {
+  try {
+    const defaults = embeddingProvider.getProviderDefaults();
+    res.json(defaults);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
