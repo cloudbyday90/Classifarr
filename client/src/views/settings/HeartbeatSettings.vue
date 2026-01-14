@@ -146,8 +146,8 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
-import Card from '@/components/ui/Card.vue'
-import Button from '@/components/ui/Button.vue'
+import Card from '@/components/common/Card.vue'
+import Button from '@/components/common/Button.vue'
 
 const config = ref({
   heartbeat_timeout: 30000,
