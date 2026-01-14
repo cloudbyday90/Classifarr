@@ -1,9 +1,62 @@
 # Classifarr Release Notes
 
 ## v0.39.0-alpha
-**Title: Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion**
+**Title: RAG Settings Dashboard + Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion**
 
 ### New Features
+
+#### RAG Settings Dashboard 🎛️
+
+All RAG configuration is now consolidated in one comprehensive page: **Settings → RAG Settings**
+
+Access via the new "RAG & Embeddings" section in Settings or navigate directly to `/settings/rag`.
+
+**5 Dedicated Tabs:**
+
+**1. Overview Tab 📊**
+Quick dashboard showing:
+- **Status Cards**: Provider status (online/offline), total embeddings, pending items, failed count (24h)
+- **Quick Stats**: Provider mode, current model, average generation time, last embedding timestamp
+- **Recent Activity**: Live feed of the last 5 RAG operations with level indicators
+
+**2. Provider Tab 🔌**
+Configure your embedding provider:
+- **Same as Classification**: Use the same Ollama instance (default)
+- **Separate Ollama Instance**: Dedicated server for embeddings (configure host, port, model)
+- **Cloud Providers**: OpenAI, Gemini, Voyage AI, OpenRouter, or Cohere
+- Test connection button to verify configuration
+- Supports all embedding models per provider
+
+**3. Queue & Scheduling Tab ⏱️**
+Complete control over embedding generation:
+- **Heartbeat Configuration**: Fine-tune resource locking (timeout, interval, max wait)
+- **Current Lock Status**: Real-time display of lock state and duration
+- **Real-time Embeddings**: Toggle immediate generation during classification
+- **Idle Backfill**: Configure opportunistic processing during quiet periods
+- **Scheduled Backfill**: Set daily schedule with time/day picker, batch size, max duration
+- **Manual Backfill**: Full controls (start/pause/resume/clear) with real-time progress bar and ETA
+
+**4. Advanced Tab ⚙️**
+Fine-tune performance and debugging:
+- **Retry Settings**: Configure max retries, retry delay, request timeout
+- **Caching**: Enable embedding cache with configurable TTL (hours)
+- **Debug Options**: Verbose logging, log embedding content (with warnings)
+- **Danger Zone**: Clear all embeddings, reset configuration to defaults (with confirmations)
+
+**5. Monitoring Tab 📈**
+Keep track of your RAG system:
+- **Live Status Bar**: Real-time indicators for provider, heartbeat, queue length, lock status
+- **24-Hour Metrics**: Embeddings generated, avg generation time, success rate, errors, cache hits, total requests
+- **Activity Log Viewer**: Filterable logs by level (info/warning/error) and type (embedding/backfill/provider)
+- **Backfill Run History**: Table showing type, status, start time, duration, processed count
+- **Export Tools**: Download configuration, logs, or metrics as JSON for debugging
+
+**Benefits:**
+- Single source of truth for all RAG configuration
+- Live monitoring without leaving the UI
+- Easy troubleshooting with detailed logs and metrics
+- Export capabilities for external analysis
+- Clear visual feedback on system health
 
 #### Hybrid Backfill System 🔄
 
