@@ -35,6 +35,7 @@ const patternReinforcementService = require('./patternReinforcementService');
 const policyEngine = require('./policyEngine');
 const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
+const promptBuilder = require('./promptBuilder');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -1323,7 +1324,27 @@ CRITICAL RULES:
 2. Your job is to VERIFY the suggested library makes sense, OR request clarification if there are conflicts.
 3. If the calculated confidence is high and signals align, CONFIRM the decision.
 4. If signals conflict or you see a potential error, REQUEST CLARIFICATION.
+`;
 
+    // Add library profile statistics if we have a suggested library
+    if (signalContext && signalContext.suggestedLibrary) {
+      try {
+        const libraryProfileService = require('./libraryProfileService');
+        const profileStats = await libraryProfileService.getProfileStats(signalContext.suggestedLibrary.id);
+        if (profileStats.totalItems > 0) {
+          prompt += '\n';
+          prompt += libraryProfileService.formatForPrompt(profileStats);
+          prompt += '\n';
+        }
+      } catch (error) {
+        logger.warn('Failed to load library profile for AI prompt', {
+          libraryId: signalContext.suggestedLibrary.id,
+          error: error.message
+        });
+      }
+    }
+
+    prompt += `
 --- MEDIA INFORMATION ---
 Title: ${metadata.title}
 Year: ${metadata.year || 'Unknown'}

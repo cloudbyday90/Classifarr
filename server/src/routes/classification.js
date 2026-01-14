@@ -546,26 +546,29 @@ router.get('/history/:id/profile', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Get library ID from classification
-    const classification = await db.query(
-      'SELECT library_id FROM classification_history WHERE id = $1',
+    // Get stored profile snapshot from the classification history record
+    const result = await db.query(
+      'SELECT profile_snapshot FROM classification_history WHERE id = $1',
       [id]
     );
     
-    if (!classification.rows[0]?.library_id) {
-      return res.status(404).json({ error: 'Classification not found or has no library' });
+    const row = result.rows[0];
+    if (!row) {
+      return res.status(404).json({ error: 'Classification not found' });
     }
     
-    const libraryId = classification.rows[0].library_id;
-    const profileStats = await libraryProfileService.getProfileStats(libraryId);
+    const profileSnapshot = row.profile_snapshot;
+    if (!profileSnapshot) {
+      return res.status(404).json({ error: 'Classification has no stored profile snapshot' });
+    }
     
-    res.json(profileStats);
+    res.json(profileSnapshot);
   } catch (error) {
-    logger.error('Failed to get profile stats for classification', { 
+    logger.error('Failed to get profile snapshot for classification', {
       classificationId: req.params.id,
-      error: error.message 
+      error: error.message
     });
-    res.status(500).json({ error: 'Failed to load profile statistics' });
+    res.status(500).json({ error: 'Failed to load profile snapshot' });
   }
 });
 
