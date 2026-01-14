@@ -890,18 +890,23 @@ class PolicyEngine {
         try {
             const profileScore = await libraryProfileService.getProfileScore(libraryId, item);
             
-            // Profile score is 0-100 where 50 is neutral
-            // Cap at FORMULA_CONFIDENCE_CAP (95)
-            const cappedScore = Math.min(profileScore, FORMULA_CONFIDENCE_CAP);
+            // Profile score is 0-100 where 50 is neutral:
+            // - Scores <= 50 are treated as 0 (no positive contribution)
+            // - Scores > 50 are scaled from 50-100 into 0-FORMULA_CONFIDENCE_CAP (e.g. 0-95)
+            let finalScore = 0;
+            if (profileScore > 50) {
+                const scaledScore = ((profileScore - 50) / 50) * FORMULA_CONFIDENCE_CAP;
+                finalScore = Math.max(0, Math.min(scaledScore, FORMULA_CONFIDENCE_CAP));
+            }
             
             logger.debug('Profile score calculated', {
                 libraryId,
                 title: item.title,
                 rawScore: profileScore,
-                cappedScore
+                finalScore
             });
             
-            return cappedScore;
+            return finalScore;
 
         } catch (error) {
             logger.error('Failed to score profile', { 
