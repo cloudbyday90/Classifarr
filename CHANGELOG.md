@@ -28,17 +28,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Discord notifications now correctly show clarification buttons AND library dropdown for manual selection
 
 - **Embedding Service Stale Configuration Cache**: Fixed embeddings using stale localhost configuration
-  - `OllamaService.getConfig()` cached `baseUrl` on first call, never refreshing from database
+  - `OllamaService.getConfig()` cached `baseUrl` on first call without invalidation mechanism
   - When user configured remote Ollama host (e.g., 192.168.50.95:11434), embeddings still used cached localhost:11434
-  - Removed caching logic - now fetches fresh configuration from database on every call
-  - Embeddings now correctly use configured Ollama host for remote instances
+  - Added `ollamaService.resetConfig()` call to ai_provider_config update endpoint
+  - Cache now properly invalidated when user updates Ollama settings in UI
+  - Maintains performance benefits of caching while ensuring configuration changes take effect immediately
 
 ### Technical Details
 - Route `/api/classification/pending` now safely handles both string and JSONB formats for `policy_question`
 - Classification service `logClassification` method conditionally sets `library_id` and `library_name` based on status
 - When `status === 'awaiting_decision'`, both fields are NULL; when `status === 'completed'`, fields are populated
 - Classification service `parseAIResponse` now includes `libraries` array in CLARIFY result objects
-- Ollama service `getConfig()` removes early return cache check, always queries database for latest configuration
+- Ollama service `getConfig()` maintains cache for performance, invalidated via `resetConfig()` when settings updated
 
 ## [0.38.4-alpha] - 2026-01-14
 

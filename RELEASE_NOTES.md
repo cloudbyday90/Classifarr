@@ -70,12 +70,13 @@ async getConfig() {
 5. Embeddings fail silently because Ollama isn't running inside the container
 
 **Solution:**
-- Removed the caching check at the beginning of `getConfig()`
-- Now fetches fresh configuration from database on every call
-- Configuration changes in UI are immediately picked up by embedding service
+- Added `ollamaService.resetConfig()` call to ai_provider_config update endpoint
+- Cache is now properly invalidated when you update Ollama settings
+- Maintains performance benefits of caching (avoids repeated DB queries)
+- Configuration changes take effect immediately after saving
 
 **Impact:** 
-RAG embeddings now correctly use your configured Ollama host. If you have Ollama on a remote server, embeddings will work properly after this fix.
+RAG embeddings now correctly use your configured Ollama host. When you update the Ollama host in Settings → AI Provider, the change takes effect immediately. Performance is maintained through intelligent caching with proper invalidation.
 
 #### 4. Discord Clarification Prompts Now Working
 
@@ -100,7 +101,7 @@ Discord notifications now appear for items needing clarification, with both AI-s
 ### Technical Notes
 - Bug #1 fix location: `server/src/routes/classification.js` line 444
 - Bug #2 fix location: `server/src/services/classification.js` lines 1537-1540
-- Bug #3 fix location: `server/src/services/ollama.js` lines 102-105 (removed cache check)
+- Bug #3 fix location: `server/src/services/ollama.js` lines 102-107 (cache with invalidation), `server/src/routes/settings.js` line 2394 (reset cache on update)
 - Bug #4 fix location: `server/src/services/classification.js` lines 1500, 1521
 
 ## v0.38.4-alpha

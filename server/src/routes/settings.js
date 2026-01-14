@@ -2391,6 +2391,7 @@ router.put('/ai', async (req, res) => {
 
     // Clear config cache
     aiRouterService.clearCache();
+    ollamaService.resetConfig(); // Clear Ollama config cache to pick up ollama_host/ollama_port changes
 
     const config = result.rows[0];
     if (config.api_key) {
