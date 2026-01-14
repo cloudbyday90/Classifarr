@@ -35,7 +35,7 @@ const patternReinforcementService = require('./patternReinforcementService');
 const policyEngine = require('./policyEngine');
 const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
-const promptBuilder = require('./promptBuilder');
+const libraryProfileService = require('./libraryProfileService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -1329,7 +1329,6 @@ CRITICAL RULES:
     // Add library profile statistics if we have a suggested library
     if (signalContext && signalContext.suggestedLibrary) {
       try {
-        const libraryProfileService = require('./libraryProfileService');
         const profileStats = await libraryProfileService.getProfileStats(signalContext.suggestedLibrary.id);
         if (profileStats.totalItems > 0) {
           prompt += '\n';
