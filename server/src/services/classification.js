@@ -34,6 +34,7 @@ const contextManager = require('./contextManager');
 const patternReinforcementService = require('./patternReinforcementService');
 const policyEngine = require('./policyEngine');
 const providerLock = require('./providerLock');
+const idleDetector = require('../utils/idleDetector');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -41,6 +42,9 @@ const logger = createLogger('classification');
 class ClassificationService {
   async classify(overseerrPayload) {
     try {
+      // Record classification activity for idle detection
+      idleDetector.recordActivity();
+
       // Parse payload - supports multiple formats (Overseerr, Plex gap analysis, Rule Builder)
       const { media_type, tmdbId, title, year, existingMetadata } = this.parseOverseerrPayload(overseerrPayload);
 
@@ -278,6 +282,18 @@ class ClassificationService {
   async getTavilyConfig() {
     const result = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
     return result.rows[0] || null;
+  }
+
+  async isRealtimeEmbeddingEnabled() {
+    try {
+      const result = await db.query(
+        'SELECT realtime_embedding_enabled FROM ai_provider_config WHERE id = 1'
+      );
+      return result.rows.length > 0 ? result.rows[0].realtime_embedding_enabled : true;
+    } catch (error) {
+      // Default to true if column doesn't exist yet (migration not run)
+      return true;
+    }
   }
 
   async enrichWithWebSearch(metadata) {
@@ -1623,18 +1639,37 @@ Think step by step, then respond with ONLY one of the formats above.`;
       await contentTypeAnalyzer.analyze(metadata, classificationId);
     }
 
-    // Generate embedding for RAG (async, don't wait)
+    // Generate embedding for RAG (real-time mode if enabled)
     if (status === 'completed' && result.library) {
-      setImmediate(async () => {
+      // Check if real-time embedding is enabled
+      const realtimeEnabled = await this.isRealtimeEmbeddingEnabled();
+      
+      if (realtimeEnabled) {
+        // Generate immediately (critical path)
         try {
           await embeddingService.generateAndStore(classificationId, {
             ...metadata,
             library_name: libraryName
           });
         } catch (embedError) {
-          logger.debug('Embedding generation deferred', { id: classificationId });
+          logger.error('[Embedding] Real-time generation failed, will retry in backfill', { 
+            id: classificationId,
+            error: embedError.message 
+          });
         }
-      });
+      } else {
+        // Queue for backfill (async, don't wait)
+        setImmediate(async () => {
+          try {
+            await embeddingService.generateAndStore(classificationId, {
+              ...metadata,
+              library_name: libraryName
+            });
+          } catch (embedError) {
+            logger.debug('Embedding generation deferred', { id: classificationId });
+          }
+        });
+      }
     }
 
     return classificationId;
