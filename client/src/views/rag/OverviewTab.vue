@@ -174,7 +174,13 @@ const formatTime = (time) => {
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return ''
   const date = new Date(timestamp)
-  return date.toLocaleTimeString()
+  // Use toLocaleString with options to show timezone
+  return date.toLocaleString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short'
+  })
 }
 
 onMounted(() => {

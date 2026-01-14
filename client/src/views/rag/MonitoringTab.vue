@@ -416,7 +416,16 @@ const formatNumber = (num) => {
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return 'N/A'
   const date = new Date(timestamp)
-  return date.toLocaleString()
+  // Use toLocaleString with options to show timezone
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short'
+  })
 }
 
 const formatDuration = (start, end) => {

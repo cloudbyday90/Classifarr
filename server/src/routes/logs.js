@@ -178,7 +178,11 @@ router.get('/error/:errorId/report', async (req, res, next) => {
     // Generate markdown bug report
     let report = `## Bug Report\n\n`;
     report += `**Error ID:** \`${log.error_id}\`\n`;
-    report += `**Timestamp:** ${log.created_at}\n`;
+    // Format timestamp as ISO 8601 UTC to avoid timezone confusion
+    const timestamp = log.created_at instanceof Date 
+      ? log.created_at.toISOString() 
+      : new Date(log.created_at).toISOString();
+    report += `**Timestamp:** ${timestamp}\n`;
     report += `**Level:** ${log.level}\n`;
     report += `**Module:** ${log.module}\n\n`;
     report += `### Description\n\n${log.message}\n\n`;
