@@ -42,6 +42,9 @@ class ProviderLockService {
     };
     this.configLoaded = false;
     
+    // Promise queue to ensure atomic lock acquisitions
+    this.acquisitionQueue = Promise.resolve();
+    
     // Load config from database on initialization (async, non-blocking)
     // Service uses defaults until config loads from database
     this.loadConfig();
@@ -73,12 +76,32 @@ class ProviderLockService {
 
   /**
    * Acquire lock for provider access
+   * Uses a promise queue to ensure atomic state transitions and prevent race conditions
    * @param {string} requestor - 'classification' or 'embedding'
    * @param {string} priority - 'high' (classification) or 'normal' (embedding)
    * @returns {Promise<boolean>} True if lock acquired
    * @throws {Error} If the max wait time is exceeded while waiting for the lock
    */
   async acquireLock(requestor, priority = 'normal') {
+    // Queue this acquisition request to ensure atomicity
+    // Each request waits for the previous one to complete before checking/setting lock state
+    const acquisitionPromise = this.acquisitionQueue.then(async () => {
+      return await this._acquireLockInternal(requestor, priority);
+    });
+    
+    // Update queue to chain next request after this one
+    this.acquisitionQueue = acquisitionPromise.catch(() => {
+      // Catch errors so queue continues even if this acquisition fails
+    });
+    
+    return acquisitionPromise;
+  }
+
+  /**
+   * Internal lock acquisition logic (called via queue for atomicity)
+   * @private
+   */
+  async _acquireLockInternal(requestor, priority = 'normal') {
     const startWait = Date.now();
     
     while (this.lockState.isLocked) {
@@ -116,6 +139,7 @@ class ProviderLockService {
       await this.sleep(1000);
     }
     
+    // Atomic state transition - at this point we're guaranteed to be the only one setting the lock
     this.lockState = {
       isLocked: true,
       lockedBy: requestor,

@@ -336,5 +336,21 @@ describe('ProviderLockService', () => {
       // Clean up
       providerLock.releaseLock('embedding');
     });
+
+    test('should use promise queue to prevent race conditions', async () => {
+      // Verify the queue mechanism exists
+      expect(providerLock.acquisitionQueue).toBeDefined();
+      
+      // Start a lock acquisition
+      const promise1 = providerLock.acquireLock('classification', 'high');
+      
+      // Verify the queue is updated (it's a promise)
+      expect(providerLock.acquisitionQueue).toBeInstanceOf(Promise);
+      
+      await promise1;
+      
+      // Clean up
+      providerLock.releaseLock('classification');
+    });
   });
 });
