@@ -87,12 +87,12 @@ class ClarificationService {
         
         // Fallback tier for high-confidence items without explicit tier
         // This ensures all confidence ranges are covered, even with missing DB config
-        logger.info('Using fallback auto tier for high-confidence item', { confidence: roundedConfidence });
+        logger.info(`Using fallback auto tier for high-confidence item with confidence: ${roundedConfidence}`);
         return {
           tier: 'auto',
           action: 'auto_route',
           description: 'High confidence - auto route',
-          min_confidence: 90,
+          min_confidence: 70,  // Actual range starts at 70, not 90
           max_confidence: 100
         };
       }
