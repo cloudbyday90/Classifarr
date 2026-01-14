@@ -190,6 +190,38 @@ async function initializeServices() {
   } catch (error) {
     console.warn('Startup policy generation failed:', error.message);
   }
+
+  // Auto-queue items needing rating normalization (first 1000 items)
+  try {
+    const ratingNormalizer = require('./utils/ratingNormalizer');
+    const needsSQL = ratingNormalizer.getNeedsNormalizationSQL();
+    
+    const result = await db.query(`
+      SELECT COUNT(*) as count FROM media_server_items
+      WHERE original_rating IS NULL
+        AND content_rating IS NOT NULL
+        AND ${needsSQL}
+    `);
+    
+    const count = parseInt(result.rows[0].count);
+    
+    if (count > 0) {
+      console.log(`Auto-queuing first 1000 items for rating normalization (${count} total need normalization)`);
+      
+      await db.query(`
+        INSERT INTO task_queue (task_type, priority, payload, status)
+        SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', id), 'pending'
+        FROM media_server_items
+        WHERE original_rating IS NULL
+          AND content_rating IS NOT NULL
+          AND ${needsSQL}
+        LIMIT 1000
+        ON CONFLICT DO NOTHING
+      `);
+    }
+  } catch (error) {
+    console.warn('Startup rating normalization check failed:', error.message);
+  }
 }
 
 // Start server

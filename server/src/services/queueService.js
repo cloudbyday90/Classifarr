@@ -188,6 +188,72 @@ class QueueService {
     }
 
     /**
+     * Process rating normalization for a media item
+     */
+    async processRatingNormalization(task) {
+        const ratingNormalizer = require('../utils/ratingNormalizer');
+        const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
+        const { media_item_id } = payload;
+
+        try {
+            const result = await db.query(`
+                SELECT id, content_rating, metadata, media_type
+                FROM media_server_items WHERE id = $1
+            `, [media_item_id]);
+
+            if (result.rows.length === 0) {
+                await this.completeTask(task.id, { skipped: true, reason: 'Item not found' });
+                return;
+            }
+
+            const item = result.rows[0];
+            const originalRating = item.content_rating;
+            const normalizedRating = ratingNormalizer.getPriorityRating(item);
+
+            // Always set original_rating on first normalization, even if rating doesn't change
+            // This marks the item as processed and prevents re-queuing
+            await db.query(`
+                UPDATE media_server_items
+                SET original_rating = COALESCE(original_rating, $2), 
+                    content_rating = $3, 
+                    last_synced = NOW()
+                WHERE id = $1
+            `, [media_item_id, originalRating, normalizedRating]);
+
+            if (normalizedRating !== originalRating) {
+                logger.info('Rating normalized', {
+                    itemId: media_item_id,
+                    original: originalRating,
+                    normalized: normalizedRating
+                });
+
+                await this.completeTask(task.id, {
+                    normalized: true,
+                    original: originalRating,
+                    new: normalizedRating
+                });
+            } else {
+                logger.debug('Rating already standard', {
+                    itemId: media_item_id,
+                    rating: originalRating
+                });
+
+                await this.completeTask(task.id, {
+                    normalized: false,
+                    reason: 'Rating already standard',
+                    rating: originalRating
+                });
+            }
+        } catch (error) {
+            logger.error('Rating normalization failed', {
+                itemId: media_item_id,
+                error: error.message
+            });
+            throw error;
+        }
+    }
+
+    /**
      * Process a single task
      */
     async processTask(task) {
@@ -337,6 +403,35 @@ class QueueService {
                                         rated: omdbResult.rated,
                                         genre: omdbResult.genre
                                     });
+
+                                    // Normalize rating from OMDb if available
+                                    if (enrichPayload.itemId && omdbResult.rated && omdbResult.rated !== 'N/A') {
+                                        try {
+                                            const currentItem = await db.query(
+                                                `SELECT content_rating FROM media_server_items WHERE id = $1`,
+                                                [enrichPayload.itemId]
+                                            );
+                                            
+                                            if (currentItem.rows.length > 0) {
+                                                const currentRating = currentItem.rows[0].content_rating;
+                                                
+                                                await db.query(
+                                                    `UPDATE media_server_items
+                                                     SET original_rating = COALESCE(original_rating, $2), content_rating = $3
+                                                     WHERE id = $1`,
+                                                    [enrichPayload.itemId, currentRating, omdbResult.rated]
+                                                );
+                                                
+                                                logger.info('Rating updated from OMDb', {
+                                                    itemId: enrichPayload.itemId,
+                                                    original: currentRating,
+                                                    omdb: omdbResult.rated
+                                                });
+                                            }
+                                        } catch (ratingError) {
+                                            logger.debug('Failed to update rating from OMDb', { error: ratingError.message });
+                                        }
+                                    }
                                 } else if (enrichPayload.itemId) {
                                     // OMDb returned no result - queue for Tavily fallback
                                     try {
@@ -659,6 +754,10 @@ class QueueService {
                         sourceLibrary: enrichPayload.source_library_name,
                         tavilyEnriched: !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory)
                     });
+                    break;
+
+                case 'rating_normalization':
+                    await this.processRatingNormalization(task);
                     break;
 
                 default:

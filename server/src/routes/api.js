@@ -46,6 +46,7 @@ const policiesRouter = require('./policies');
 const presetsRouter = require('./presets');
 const suggestionsRouter = require('./suggestions');
 const migrationRouter = require('./migration');
+const ratingNormalizationRouter = require('./ratingNormalization');
 
 const router = express.Router();
 
@@ -79,6 +80,7 @@ router.use('/policies', policiesRouter);
 router.use('/presets', presetsRouter);
 router.use('/suggestions', suggestionsRouter);
 router.use('/migration', migrationRouter);
+router.use('/rating-normalization', ratingNormalizationRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {

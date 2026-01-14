@@ -1,5 +1,87 @@
 # Classifarr Release Notes
 
+## v0.38.3-alpha
+**Title: Automatic Rating Standardization**
+
+### What's New
+
+#### Problem: Rating Format Mismatch
+Your library has items with mixed rating formats that don't match each other, even when they mean the same thing.
+
+**Example from your library:**
+```
+Rating Distribution:
+13: 15%    ← Age-based (Europe/Asia)
+14: 15%    ← Age-based
+15: 15%    ← Age-based
+16: 15%    ← Age-based
+PG-13: 3%  ← MPAA (US)
+R: 5%      ← MPAA (US)
+```
+
+**The Impact:**
+- Library profiles can't match "13" with "PG-13" even though they're equivalent
+- Classification confidence is artificially low because ratings don't align
+- Policy presets expecting "PG-13" don't match items rated "13"
+
+#### Solution: Automatic Rating Normalization
+We've implemented a comprehensive rating normalization system that standardizes all ratings to MPAA/TV standards.
+
+**How It Works:**
+
+1. **Priority System** (most reliable source wins):
+   - First: OMDb `rated` field (US MPAA ratings directly from IMDb) 
+   - Second: TMDB US certification
+   - Third: Normalized age-based rating (13→PG-13, 16→R, etc.)
+   - Fallback: "NR" for unknowns
+
+2. **Automatic Processing**:
+   - **On server startup**: Auto-queues first 1,000 items needing normalization
+   - **Daily at 3 AM**: Checks for new items and auto-queues if found
+   - **During OMDb enrichment**: Updates rating when enrichment succeeds
+   - **During media sync**: Normalizes ratings from Plex/Emby/Jellyfin
+
+3. **Original Ratings Preserved**:
+   - Your original rating is saved in `original_rating` column
+   - `content_rating` is updated to normalized value
+   - Nothing is lost—you can always see what it was
+
+**Rating Mappings:**
+```
+Age-based → MPAA:
+13 → PG-13
+14 → PG-13
+15 → R
+16 → R
+17 → R
+18 → NC-17
+
+UK Ratings → MPAA:
+U → G
+PG → PG
+12A → PG-13
+
+German FSK → MPAA:
+FSK 12 → PG-13
+FSK 16 → R
+FSK 18 → NC-17
+```
+
+**Admin UI Panel** (Settings → Metadata → Rating Normalization):
+- View real-time statistics
+- "Normalize All" button for immediate processing
+- Progress bar shows completion percentage
+- Auto-refreshes every 5 seconds during processing
+- "Regenerate Profiles" button after completion
+
+**What This Means for You:**
+- Your library profiles will now correctly recognize equivalent ratings
+- Classification confidence will increase for items with previously non-standard ratings
+- Policy presets will match more items (PG-13 preset now matches "13", "14", "12A", etc.)
+- More accurate library scoring and better routing decisions
+
+---
+
 ## v0.38.2-alpha
 **Title: Classification Accuracy Improvements**
 

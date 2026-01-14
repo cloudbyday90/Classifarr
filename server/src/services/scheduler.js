@@ -58,6 +58,9 @@ class SchedulerService {
 
         // Also run initial sync after startup (2 min delay)
         setTimeout(() => this.runPeriodicLibrarySync(), 120000);
+
+        // Daily rating normalization check at 3 AM
+        this.schedule('rating-normalization-check', '0 3 * * *', () => this.runRatingNormalizationCheck());
     }
 
     /**
@@ -84,6 +87,43 @@ class SchedulerService {
             }
         } catch (error) {
             logger.error('Error running periodic library sync', { error: error.message });
+        }
+    }
+
+    /**
+     * Check for items needing rating normalization and queue them
+     */
+    async runRatingNormalizationCheck() {
+        try {
+            logger.info('Running daily rating normalization check');
+            
+            const ratingNormalizer = require('../utils/ratingNormalizer');
+            const needsSQL = ratingNormalizer.getNeedsNormalizationSQL();
+            
+            const result = await db.query(`
+                SELECT COUNT(*) as count FROM media_server_items
+                WHERE original_rating IS NULL
+                  AND content_rating IS NOT NULL
+                  AND ${needsSQL}
+            `);
+            
+            const count = parseInt(result.rows[0].count);
+            
+            if (count > 0) {
+                logger.info(`Auto-queuing ${count} items for normalization`);
+                
+                await db.query(`
+                    INSERT INTO task_queue (task_type, priority, payload, status)
+                    SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', id), 'pending'
+                    FROM media_server_items
+                    WHERE original_rating IS NULL
+                      AND content_rating IS NOT NULL
+                      AND ${needsSQL}
+                    ON CONFLICT DO NOTHING
+                `);
+            }
+        } catch (error) {
+            logger.error('Daily normalization check failed', { error: error.message });
         }
     }
 
