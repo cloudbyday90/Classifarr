@@ -2680,14 +2680,19 @@ router.get('/embedding-provider', async (req, res) => {
         embedding_ollama_port,
         embedding_ollama_model,
         embedding_cloud_provider,
-        embedding_cloud_model
+        embedding_cloud_model,
+        embedding_cloud_api_key
       FROM ai_provider_config 
       WHERE id = 1
     `);
 
     const config = result.rows[0] || {};
     
-    // Don't return API keys in GET requests
+    // Mask API key in response for security
+    if (config.embedding_cloud_api_key) {
+      config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
+    }
+    
     res.json(config);
   } catch (error) {
     console.error('Failed to get embedding provider config:', error.message);
