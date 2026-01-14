@@ -159,13 +159,13 @@ describe('PolicyCard.vue', () => {
       expect(plusIcon.text()).toBe('+');
     });
 
-    it('displays "Add Presets" button in empty state', () => {
+    it('displays "Configure" button in empty state', () => {
       const wrapper = mount(PolicyCard, {
         props: { policy: mockPolicyEmpty }
       });
-      const addButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Add Presets');
-      expect(addButton).toBeDefined();
-      expect(addButton.props('variant')).toBe('primary');
+      const configureButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Configure');
+      expect(configureButton).toBeDefined();
+      expect(configureButton.props('variant')).toBe('primary');
     });
 
     it('displays threshold footer in empty state', () => {
@@ -246,12 +246,12 @@ describe('PolicyCard.vue', () => {
   });
 
   describe('Actions', () => {
-    it('displays Edit button', () => {
+    it('displays Configure button', () => {
       const wrapper = mount(PolicyCard, {
         props: { policy: mockPolicyWithPresets }
       });
-      const editButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Edit');
-      expect(editButton).toBeDefined();
+      const configureButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Configure');
+      expect(configureButton).toBeDefined();
     });
 
     it('displays Reset button', () => {
@@ -262,15 +262,15 @@ describe('PolicyCard.vue', () => {
       expect(resetButton).toBeDefined();
     });
 
-    it('emits edit event when Edit button is clicked', async () => {
+    it('emits configure event when Configure button is clicked', async () => {
       const wrapper = mount(PolicyCard, {
         props: { policy: mockPolicyWithPresets }
       });
-      const editButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Edit');
-      await editButton.trigger('click');
+      const configureButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Configure');
+      await configureButton.trigger('click');
 
-      expect(wrapper.emitted('edit')).toBeTruthy();
-      expect(wrapper.emitted('edit')[0]).toEqual([mockPolicyWithPresets]);
+      expect(wrapper.emitted('configure')).toBeTruthy();
+      expect(wrapper.emitted('configure')[0]).toEqual([mockPolicyWithPresets]);
     });
 
     it('emits delete event when Reset button is clicked', async () => {
@@ -284,15 +284,15 @@ describe('PolicyCard.vue', () => {
       expect(wrapper.emitted('delete')[0]).toEqual([mockPolicyWithPresets]);
     });
 
-    it('emits add-presets event when Add Presets button is clicked in empty state', async () => {
+    it('emits configure event when Configure button is clicked in empty state', async () => {
       const wrapper = mount(PolicyCard, {
         props: { policy: mockPolicyEmpty }
       });
-      const addButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Add Presets');
-      await addButton.trigger('click');
+      const configureButton = wrapper.findAllComponents(Button).find(b => b.text() === 'Configure');
+      await configureButton.trigger('click');
 
-      expect(wrapper.emitted('add-presets')).toBeTruthy();
-      expect(wrapper.emitted('add-presets')[0]).toEqual([mockPolicyEmpty]);
+      expect(wrapper.emitted('configure')).toBeTruthy();
+      expect(wrapper.emitted('configure')[0]).toEqual([mockPolicyEmpty]);
     });
 
     it('shows "Show Weights" button only when presets exist', () => {

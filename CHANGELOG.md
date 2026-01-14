@@ -8,14 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.38.1-alpha] - 2026-01-14
 
 ### Changed
-- **Policy "Add Presets" UX**: "Add Presets" button now opens the full Policy Builder modal (same as Edit) instead of jumping directly to preset selection
-  - Users can now see the Combined Signals summary when adding presets
-  - Provides consistent experience between "Add Presets" and "Edit" actions
-  - Existing presets and customization options visible during preset addition
+- **Unified Policy Configuration Modal**: Consolidated `PolicyBuilderModal` and `PresetSelectionModal` into single modal
+  - Preset selection UI (suggestions, categories, search, grid) now inline in policy modal
+  - Removed nested modal experience
+  - Modal title now shows "[Library Name] Policy" instead of "Edit Policy" / "Create Policy"
+  - Save button shows "Create Policy" or "Save Policy" based on state
+  - Policy name and description auto-generated from library and presets if not provided
+  - Removed Basic Information section (Policy Name, Description inputs, Library dropdown)
+  - Replaced with read-only library header with lock icon
+- **PolicyCard Button Rename**: Replaced "Add Presets" and "Edit" buttons with single "Configure" button
+  - Both empty and filled policy cards now use "Configure" for consistency
+- **Advanced Settings Collapsible**: Scoring Weights and Combination Mode sections now collapsed by default
+  - Reduces visual clutter while still providing access to advanced features
 
 ### Removed
-- Removed duplicate `PresetSelectionModal` instance from `PolicyList.vue` (now handled within `PolicyBuilderModal`)
-- Removed `openPresetSelector` and `addPresetsToPolicy` functions from `PolicyList.vue` (no longer needed)
+- **Nested PresetSelectionModal**: No longer opens as separate popup from PolicyBuilderModal (UI integrated inline)
+- **Unused state in PolicyList.vue**: Removed legacy preset selector code (no longer needed)
 
 ## [0.38.0-alpha] - 2026-01-13
 

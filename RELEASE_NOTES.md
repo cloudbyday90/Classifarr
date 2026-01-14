@@ -1,18 +1,39 @@
 # Classifarr Release Notes
 
 ## v0.38.1-alpha
-**Title: Consistent Policy Editing Experience**
+**Title: Streamlined Policy Configuration**
 
-### Improvements
+### What's New
 
-#### Consistent Policy Editing Experience
-- **"Add Presets" now opens full editor**: When you click "Add Presets" on a policy card, you'll now see the complete Policy Builder view instead of just the preset selector
-  - See the Combined Signals summary showing how all your presets work together
-  - View and manage existing presets while adding new ones
-  - Same experience whether you click "Add Presets" or "Edit"
+#### Unified Policy Editor
+The policy configuration experience has been completely redesigned into a single, streamlined modal:
 
-### What Changed
-Previously, clicking "Add Presets" would immediately jump to the preset selection screen, skipping the main Policy Builder interface. This meant you couldn't see the Combined Signals feature that shows how multiple presets merge together. Now, both "Add Presets" and "Edit" open the same Policy Builder modal, where you can click "+ Add Presets" to open the preset selector in context.
+- **Everything in one place**: No more nested popups - preset selection, customization, and settings are all in one scrollable view
+- **See Combined Signals immediately**: When you select multiple presets, the Combined Signals summary shows instantly below your selections
+- **Simpler button**: "Configure" replaces the confusing "Add Presets" and "Edit" buttons
+- **Cleaner titles**: Modal now shows "[Library Name] Policy" (e.g., "Anime Movies Policy")
+- **Advanced settings collapsed**: Scoring weights and combination mode are now tucked away under "Advanced Settings" to reduce clutter
+- **Auto-generated names**: Policy name and description are automatically created from your library and selected presets if you don't provide them
+
+#### Before vs After
+
+| Before | After |
+|--------|-------|
+| Click "Add Presets" → Separate popup → Select presets → Close → Can't see Combined Signals | Click "Configure" → Select presets inline → Combined Signals visible immediately |
+| "Add Presets" button + "Edit" button | Single "Configure" button |
+| "Edit Policy" / "Create Policy" title | "[Library Name] Policy" title |
+| Basic Information section with name/description inputs | Auto-generated from library and presets |
+| Library dropdown (can change) | Read-only library header with lock icon 🔒 |
+
+#### What This Means for You
+
+**Faster workflow**: No more clicking through multiple modals. Everything you need is in one place.
+
+**Better understanding**: With Combined Signals visible while selecting presets, you can immediately see how your choices work together.
+
+**Less confusion**: One "Configure" button for all actions - whether you're adding presets or editing settings.
+
+**Cleaner interface**: Advanced features are still available but hidden until you need them.
 
 ---
 
