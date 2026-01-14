@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.1-alpha] - 2026-01-14
+
+### Changed
+- **Policy "Add Presets" UX**: "Add Presets" button now opens the full Policy Builder modal (same as Edit) instead of jumping directly to preset selection
+  - Users can now see the Combined Signals summary when adding presets
+  - Provides consistent experience between "Add Presets" and "Edit" actions
+  - Existing presets and customization options visible during preset addition
+
+### Removed
+- Removed duplicate `PresetSelectionModal` instance from `PolicyList.vue` (now handled within `PolicyBuilderModal`)
+- Removed `openPresetSelector` and `addPresetsToPolicy` functions from `PolicyList.vue` (no longer needed)
+
 ## [0.38.0-alpha] - 2026-01-13
 
 ### Added

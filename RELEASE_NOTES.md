@@ -1,5 +1,21 @@
 # Classifarr Release Notes
 
+## v0.38.1-alpha
+**Title: Consistent Policy Editing Experience**
+
+### Improvements
+
+#### Consistent Policy Editing Experience
+- **"Add Presets" now opens full editor**: When you click "Add Presets" on a policy card, you'll now see the complete Policy Builder view instead of just the preset selector
+  - See the Combined Signals summary showing how all your presets work together
+  - View and manage existing presets while adding new ones
+  - Same experience whether you click "Add Presets" or "Edit"
+
+### What Changed
+Previously, clicking "Add Presets" would immediately jump to the preset selection screen, skipping the main Policy Builder interface. This meant you couldn't see the Combined Signals feature that shows how multiple presets merge together. Now, both "Add Presets" and "Edit" open the same Policy Builder modal, where you can click "+ Add Presets" to open the preset selector in context.
+
+---
+
 ## v0.38.0-alpha
 **Title: Enhanced Policy Setup Experience**
 
