@@ -25,7 +25,6 @@
             <span>✨</span> Suggested
           </h3>
           <button
-            v-if="suggestedPresets.length > 0"
             @click="addAllSuggested"
             class="text-xs px-2 py-1 bg-primary bg-opacity-20 text-primary rounded hover:bg-opacity-30 transition-colors"
           >
@@ -857,6 +856,7 @@ watch(() => props.policy, (newPolicy) => {
         name: p.name,
         icon: p.icon,
         weight: p.weight || 1.0,
+        customSignals: p.customSignals || null,
       }))
     }
   } else {
@@ -924,13 +924,15 @@ const togglePresetSelection = (preset) => {
     selectedPresets.value.splice(idx, 1)
     expandedPresetIds.value.delete(id)
   } else {
-    // Add preset
+    // Add preset, preserving original structure and ensuring both id fields are populated
+    const normalizedId = preset.id ?? preset.preset_id
+    const normalizedPresetId = preset.preset_id ?? preset.id
+    
     selectedPresets.value.push({
-      id: id,
-      preset_id: id,
-      name: preset.name,
-      icon: preset.icon,
-      weight: 1.0,
+      ...preset,
+      id: normalizedId,
+      preset_id: normalizedPresetId,
+      weight: preset.weight ?? 1.0,
     })
   }
 }
