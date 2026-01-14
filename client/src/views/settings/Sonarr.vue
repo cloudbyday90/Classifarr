@@ -438,7 +438,8 @@ const startEditing = async (instance) => {
   editingId.value = instance.id
   isEditing.value = true
   isAddingNew.value = false
-  // Explicitly include id to ensure API lookups work with masked API key
+  // Note: The spread already includes id, but we explicitly set it for clarity
+  // when reading code that uses editForm.id for API calls with masked api_key
   editForm.value = { ...instance, id: instance.id }
   
   // Load profiles for this instance using direct API endpoint

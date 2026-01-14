@@ -12,7 +12,7 @@
       <span class="text-2xl">⚠️</span>
       <div class="flex-1">
         <h3 class="font-semibold text-yellow-400 mb-2">Incomplete Configuration Detected</h3>
-        <div v-for="config in incompleteConfigs" :key="config.type" class="mb-2">
+        <div v-for="config in incompleteConfigs" :key="`${config.type}-${config.id}`" class="mb-2">
           <p class="text-sm text-gray-300">
             Your <strong>{{ config.name }}</strong> configuration is missing a Quality Profile. 
             Content won't be added to {{ config.type }} until you select one.
