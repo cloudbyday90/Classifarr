@@ -538,8 +538,22 @@ class DiscordBotService {
   }
 
   async sendConfidenceBasedNotification(metadata, result) {
+    // Enhanced logging for debugging notification issues (v0.38.4-alpha)
+    // These console.log statements are intentional and help diagnose
+    // why notifications may not appear on Discord (e.g., tier lookup failures)
+    console.log('[Discord] Notification attempt', {
+      title: metadata.title,
+      confidence: result.confidence,
+      initialized: this.isInitialized,
+      hasClient: !!this.client,
+      classificationId: result.classification_id
+    });
+    
     if (!this.isInitialized || !this.client) {
-      console.warn('Discord bot not initialized');
+      console.warn('[Discord] Bot not initialized - notification skipped', {
+        isInitialized: this.isInitialized,
+        hasClient: !!this.client
+      });
       return;
     }
 
@@ -547,6 +561,7 @@ class DiscordBotService {
       const config = await this.loadConfig();
 
       if (!config.notify_on_classification) {
+        console.log('[Discord] Notifications disabled in config - skipping');
         return;
       }
 
@@ -555,19 +570,35 @@ class DiscordBotService {
 
       // Get confidence tier
       const tier = await clarificationService.getTierForConfidence(result.confidence);
+      
+      console.log('[Discord] Tier lookup result', {
+        confidence: result.confidence,
+        tier: tier ? tier.tier : 'null',
+        action: tier ? tier.action : 'null'
+      });
+      
       if (!tier) {
+        console.warn('[Discord] No tier found, falling back to standard notification', {
+          confidence: result.confidence
+        });
         // Fallback to standard notification
         return this.sendClassificationNotification(metadata, result);
       }
 
       const channel = await this.client.channels.fetch(this.channelId);
       if (!channel) {
-        console.error('Discord channel not found');
+        console.error('[Discord] Channel not found', { channelId: this.channelId });
         return;
       }
 
       // Check if AI needs clarification - use AI-generated question instead of pre-configured ones
       const hasClarification = result.needs_clarification && result.clarification;
+
+      console.log('[Discord] Creating notification', {
+        tier: tier.tier,
+        hasClarification,
+        requireAllConfirmations
+      });
 
       // Create embed based on tier (and clarification/requireAllConfirmations setting)
       const embed = this.createTieredEmbed(metadata, result, tier, requireAllConfirmations, hasClarification);
@@ -588,6 +619,12 @@ class DiscordBotService {
         components: components,
       });
 
+      console.log('[Discord] Notification sent successfully', {
+        messageId: message.id,
+        tier: tier.tier,
+        confidence: result.confidence
+      });
+
       // Store message ID and clarification status
       const status = hasClarification ? 'awaiting_clarification' : tier.action;
       await db.query(
@@ -595,7 +632,12 @@ class DiscordBotService {
         [message.id, status, result.classification_id]
       );
     } catch (error) {
-      console.error('Failed to send confidence-based notification:', error);
+      console.error('[Discord] Failed to send confidence-based notification:', {
+        error: error.message,
+        stack: error.stack,
+        title: metadata.title,
+        confidence: result.confidence
+      });
     }
   }
 

@@ -1,5 +1,63 @@
 # Classifarr Release Notes
 
+## v0.38.4-alpha
+**Title: Quality Profile UX and Discord Notification Fixes**
+
+### What's Fixed
+
+#### 1. Quality Profile Dropdown Not Loading When Editing Existing Configs
+
+**Problem:** 
+When you clicked "Change Settings" on an existing Radarr or Sonarr configuration, the Quality Profile dropdown showed "Select Profile..." with no options loaded. You had to manually click "Test Connection" every time to populate the dropdown, which was frustrating and unintuitive.
+
+**Solution:**
+- Quality profiles now automatically load when you click "Change Settings" on existing configs
+- Added a loading indicator ("Loading profiles...") so you know it's working
+- If the profile list fails to load, your saved profile ID is shown as a fallback option
+- Static options (availability, series type, monitoring) are now hardcoded and always available
+
+**Before:** Click "Change Settings" → See empty dropdown → Click "Test Connection" → Wait → Finally see profiles
+**After:** Click "Change Settings" → Profiles automatically load → Ready to edit immediately
+
+#### 2. Low-Confidence Items (e.g., 55%) Not Appearing on Discord
+
+**Problem:**
+Items with 55% confidence should fall into the "clarify" tier (50-69%) and trigger Discord notifications with clarification buttons. However, some items weren't appearing on Discord at all.
+
+**Root Cause:**
+- Decimal precision issues in tier lookup (55.4 vs 55)
+- Missing fallback tier for edge cases
+- Silent failures with no logging to diagnose issues
+
+**Solution:**
+- Confidence values are now rounded to avoid decimal precision issues
+- Added fallback tier for low-confidence items (50-69%) when database lookup fails
+- Enhanced logging throughout Discord notification pipeline
+- Logs now show: tier lookup results, confidence values, initialization status, and skip reasons
+
+**Impact:** 
+55% confidence items now correctly appear on Discord with clarification buttons, making it easier to help improve classification accuracy.
+
+#### 3. Warning for Incomplete Radarr/Sonarr Configurations
+
+**Problem:**
+Existing users who upgraded might have Radarr/Sonarr configs without `quality_profile_id` set (added in migration 053). Content won't route to \*arr without this required field, but there was no warning.
+
+**Solution:**
+- New warning banner appears on Dashboard when configs are incomplete
+- Warning shows: "⚠️ Your [Radarr/Sonarr] configuration is missing a Quality Profile. Content won't be added until you select one."
+- Direct "Configure Now" button links to the settings page
+- Warning can be dismissed (but reappears on refresh if still incomplete)
+
+**Impact:**
+You'll now be notified immediately if your configuration is incomplete, preventing silent failures when trying to add content to Radarr/Sonarr.
+
+### Technical Changes
+- Fixed masked API key issue preventing quality profile lookup on edit
+- Hardcoded static dropdown options to reduce dependency on test connection
+- Improved error handling and logging in Discord notification system
+- New API endpoint: `GET /api/settings/arr-config-status`
+
 ## v0.38.3-alpha
 **Title: Automatic Rating Standardization**
 

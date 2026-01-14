@@ -100,6 +100,94 @@ describe('ClarificationService', () => {
       expect(tier).toBeDefined();
       expect(tier.tier).toBe('manual');
     });
+
+    // New tests for v0.38.4-alpha fixes
+    test('should round decimal confidence values (55.4 -> 55)', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{
+          tier: 'clarify',
+          min_confidence: 50,
+          max_confidence: 69,
+          action: 'clarify_questions',
+          description: 'Ask clarifying questions',
+        }],
+      });
+
+      const tier = await clarificationService.getTierForConfidence(55.4);
+
+      expect(tier).toBeDefined();
+      expect(tier.tier).toBe('clarify');
+      // Verify the query was called with rounded value
+      expect(db.query).toHaveBeenCalledWith(
+        expect.any(String),
+        [55] // Should be rounded
+      );
+    });
+
+    test('should return fallback tier for low confidence when no tier found', async () => {
+      // Mock no results from database
+      db.query.mockResolvedValueOnce({
+        rows: [],
+      });
+
+      const tier = await clarificationService.getTierForConfidence(55);
+
+      expect(tier).toBeDefined();
+      expect(tier.tier).toBe('clarify');
+      expect(tier.action).toBe('clarify_questions');
+      expect(tier.description).toBe('Requires clarification');
+      expect(tier.min_confidence).toBe(50);
+      expect(tier.max_confidence).toBe(69);
+    });
+
+    test('should return null for high confidence when no tier found', async () => {
+      // Mock no results from database
+      db.query.mockResolvedValueOnce({
+        rows: [],
+      });
+
+      const tier = await clarificationService.getTierForConfidence(85);
+
+      expect(tier).toBeNull();
+    });
+
+    test('should handle exact boundary values (50%, 69%, 70%)', async () => {
+      // Test 50% (lower boundary of clarify tier)
+      db.query.mockResolvedValueOnce({
+        rows: [{
+          tier: 'clarify',
+          min_confidence: 50,
+          max_confidence: 69,
+          action: 'clarify_questions',
+        }],
+      });
+      let tier = await clarificationService.getTierForConfidence(50);
+      expect(tier.tier).toBe('clarify');
+
+      // Test 69% (upper boundary of clarify tier)
+      db.query.mockResolvedValueOnce({
+        rows: [{
+          tier: 'clarify',
+          min_confidence: 50,
+          max_confidence: 69,
+          action: 'clarify_questions',
+        }],
+      });
+      tier = await clarificationService.getTierForConfidence(69);
+      expect(tier.tier).toBe('clarify');
+
+      // Test 70% (lower boundary of verify tier)
+      db.query.mockResolvedValueOnce({
+        rows: [{
+          tier: 'verify',
+          min_confidence: 70,
+          max_confidence: 89,
+          action: 'verify_buttons',
+        }],
+      });
+      tier = await clarificationService.getTierForConfidence(70);
+      expect(tier.tier).toBe('verify');
+    });
   });
 
   describe('matchQuestions', () => {

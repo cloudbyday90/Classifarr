@@ -692,6 +692,55 @@ router.get('/sonarr/:id/quality-profiles', async (req, res) => {
 });
 
 // ============================================
+// ARR CONFIG STATUS (for incomplete config warnings)
+// ============================================
+
+/**
+ * @swagger
+ * /api/settings/arr-config-status:
+ *   get:
+ *     summary: Check for incomplete Radarr/Sonarr configurations
+ *     description: Returns configs missing required fields like quality_profile_id
+ */
+router.get('/arr-config-status', async (req, res) => {
+  try {
+    const incompleteConfigs = [];
+    
+    // Check Radarr configs for missing quality_profile_id
+    const radarrResult = await db.query(
+      'SELECT id, name FROM radarr_config WHERE quality_profile_id IS NULL'
+    );
+    
+    radarrResult.rows.forEach(row => {
+      incompleteConfigs.push({
+        type: 'Radarr',
+        name: row.name || `Radarr ${row.id}`,
+        id: row.id,
+        missingField: 'quality_profile_id'
+      });
+    });
+    
+    // Check Sonarr configs for missing quality_profile_id
+    const sonarrResult = await db.query(
+      'SELECT id, name FROM sonarr_config WHERE quality_profile_id IS NULL'
+    );
+    
+    sonarrResult.rows.forEach(row => {
+      incompleteConfigs.push({
+        type: 'Sonarr',
+        name: row.name || `Sonarr ${row.id}`,
+        id: row.id,
+        missingField: 'quality_profile_id'
+      });
+    });
+    
+    res.json({ incompleteConfigs });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // OLLAMA CONFIGURATION
 // ============================================
 

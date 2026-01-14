@@ -11,6 +11,9 @@
     <!-- Setup Banner (disabled for v0.30.0 - will enable after bugs fixed) -->
     <!-- <SetupBanner /> -->
     
+    <!-- Arr Config Warning -->
+    <ArrConfigWarning />
+    
     <!-- System Status Row -->
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
@@ -161,6 +164,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
 import SetupBanner from '@/components/SetupBanner.vue'
+import ArrConfigWarning from '@/components/settings/ArrConfigWarning.vue'
 
 const librariesStore = useLibrariesStore()
 
