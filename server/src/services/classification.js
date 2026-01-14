@@ -1534,9 +1534,10 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const status = result.needs_clarification ? 'awaiting_decision' : 'completed';
 
     // Only set library when classification is complete
-    // When awaiting_decision, library_id and library_name should be NULL
-    const libraryId = status === 'awaiting_decision' ? null : (result.library?.id || null);
-    const libraryName = status === 'awaiting_decision' ? null : (result.library?.name || null);
+    // When awaiting_decision, library_id and library_name should be NULL to prevent premature assignment
+    const isAwaitingDecision = status === 'awaiting_decision';
+    const libraryId = isAwaitingDecision ? null : (result.library?.id || null);
+    const libraryName = isAwaitingDecision ? null : (result.library?.name || null);
 
     const insertResult = await db.query(
       `INSERT INTO classification_history 
