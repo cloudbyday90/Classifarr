@@ -10,10 +10,11 @@ ALTER TABLE ai_provider_config
 ALTER TABLE ai_provider_config
   ADD COLUMN IF NOT EXISTS max_wait_time INTEGER DEFAULT 60000;
 
--- Initialize values for existing row if they don't exist
-UPDATE ai_provider_config 
-SET 
-  heartbeat_timeout = COALESCE(heartbeat_timeout, 30000),
-  heartbeat_interval = COALESCE(heartbeat_interval, 5000),
-  max_wait_time = COALESCE(max_wait_time, 60000)
-WHERE id = 1;
+-- Ensure a configuration row exists and initialize heartbeat values
+INSERT INTO ai_provider_config (id, heartbeat_timeout, heartbeat_interval, max_wait_time)
+VALUES (1, 30000, 5000, 60000)
+ON CONFLICT (id) DO UPDATE
+SET
+  heartbeat_timeout  = COALESCE(ai_provider_config.heartbeat_timeout, 30000),
+  heartbeat_interval = COALESCE(ai_provider_config.heartbeat_interval, 5000),
+  max_wait_time      = COALESCE(ai_provider_config.max_wait_time, 60000);

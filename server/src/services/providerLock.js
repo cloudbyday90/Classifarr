@@ -40,8 +40,10 @@ class ProviderLockService {
       heartbeatInterval: 5000, // 5 seconds - how often to send heartbeat
       maxWaitTime: 60000, // 60 seconds - max time to wait for lock
     };
+    this.configLoaded = false;
     
-    // Load config from database on initialization
+    // Load config from database on initialization (async, non-blocking)
+    // Service uses defaults until config loads from database
     this.loadConfig();
   }
 
@@ -61,6 +63,7 @@ class ProviderLockService {
         if (dbConfig.heartbeat_interval) this.config.heartbeatInterval = dbConfig.heartbeat_interval;
         if (dbConfig.max_wait_time) this.config.maxWaitTime = dbConfig.max_wait_time;
         
+        this.configLoaded = true;
         logger.info('Loaded heartbeat config from database', this.config);
       }
     } catch (error) {
@@ -73,6 +76,7 @@ class ProviderLockService {
    * @param {string} requestor - 'classification' or 'embedding'
    * @param {string} priority - 'high' (classification) or 'normal' (embedding)
    * @returns {Promise<boolean>} True if lock acquired
+   * @throws {Error} If the max wait time is exceeded while waiting for the lock
    */
   async acquireLock(requestor, priority = 'normal') {
     const startWait = Date.now();
@@ -94,10 +98,12 @@ class ProviderLockService {
       
       // Classification can preempt embedding
       if (priority === 'high' && this.lockState.lockedBy === 'embedding') {
-        logger.info('Classification preempting embedding');
-        // Signal embedding to pause
+        if (!this.lockState.preemptRequested) {
+          logger.info('Classification preempting embedding');
+        }
+        // Signal embedding to pause; actual yielding happens on its next heartbeat
         this.lockState.preemptRequested = true;
-        // Wait briefly for embedding to yield
+        // Continue looping to check if lock was released
         await this.sleep(1000);
         continue;
       }
@@ -126,13 +132,18 @@ class ProviderLockService {
    * Send heartbeat to maintain lock
    * @param {string} requestor - 'classification' or 'embedding'
    * @returns {boolean} True if should continue, false if should yield
+   * @throws {Error} If the requestor does not currently hold the lock
    */
   heartbeat(requestor) {
-    if (this.lockState.lockedBy === requestor) {
-      this.lockState.lastHeartbeat = Date.now();
-      return !this.lockState.preemptRequested; // Return false if should yield
+    if (this.lockState.lockedBy !== requestor) {
+      const owner = this.lockState.lockedBy || 'none';
+      const message = `Heartbeat called by "${requestor}" but lock is held by "${owner}"`;
+      logger.error(message);
+      throw new Error(message);
     }
-    return false;
+
+    this.lockState.lastHeartbeat = Date.now();
+    return !this.lockState.preemptRequested; // Return false if should yield
   }
 
   /**
@@ -141,18 +152,28 @@ class ProviderLockService {
    * @returns {boolean} True if lock was released
    */
   releaseLock(requestor) {
-    if (this.lockState.lockedBy === requestor || !this.lockState.isLocked) {
-      logger.info(`Lock released by ${requestor}`);
-      this.lockState = {
-        isLocked: false,
-        lockedBy: null,
-        lastHeartbeat: null,
-        startTime: null,
-        preemptRequested: false,
-      };
-      return true;
+    // Only allow the current lock holder to release the lock
+    if (!this.lockState.isLocked) {
+      logger.warn(`Release lock requested by ${requestor}, but no lock is currently held`);
+      return false;
     }
-    return false;
+
+    if (this.lockState.lockedBy !== requestor) {
+      logger.warn(
+        `Release lock denied for ${requestor}; lock is currently held by ${this.lockState.lockedBy}`
+      );
+      return false;
+    }
+
+    logger.info(`Lock released by ${requestor}`);
+    this.lockState = {
+      isLocked: false,
+      lockedBy: null,
+      lastHeartbeat: null,
+      startTime: null,
+      preemptRequested: false,
+    };
+    return true;
   }
 
   /**

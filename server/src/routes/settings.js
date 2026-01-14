@@ -2809,14 +2809,11 @@ const providerLock = require('../services/providerLock');
  */
 router.get('/heartbeat', async (req, res) => {
   try {
-    const config = await db.query(`
-      SELECT heartbeat_timeout, heartbeat_interval, max_wait_time
-      FROM ai_provider_config WHERE id = 1
-    `);
-    res.json(config.rows[0] || {
-      heartbeat_timeout: 30000,
-      heartbeat_interval: 5000,
-      max_wait_time: 60000
+    // Return in-memory config to ensure consistency
+    res.json({
+      heartbeat_timeout: providerLock.config.heartbeatTimeout,
+      heartbeat_interval: providerLock.config.heartbeatInterval,
+      max_wait_time: providerLock.config.maxWaitTime
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -2832,6 +2829,29 @@ router.get('/heartbeat', async (req, res) => {
 router.put('/heartbeat', async (req, res) => {
   try {
     const { heartbeat_timeout, heartbeat_interval, max_wait_time } = req.body;
+    
+    // Validate configuration values
+    if (heartbeat_timeout !== undefined && (heartbeat_timeout < 5000 || heartbeat_timeout > 120000)) {
+      return res.status(400).json({ error: 'heartbeat_timeout must be between 5000 and 120000 ms' });
+    }
+    
+    if (heartbeat_interval !== undefined && (heartbeat_interval < 1000 || heartbeat_interval > 30000)) {
+      return res.status(400).json({ error: 'heartbeat_interval must be between 1000 and 30000 ms' });
+    }
+    
+    if (max_wait_time !== undefined && (max_wait_time < 10000 || max_wait_time > 300000)) {
+      return res.status(400).json({ error: 'max_wait_time must be between 10000 and 300000 ms' });
+    }
+    
+    // Validate that heartbeat_interval is less than heartbeat_timeout
+    const finalInterval = heartbeat_interval !== undefined ? heartbeat_interval : providerLock.config.heartbeatInterval;
+    const finalTimeout = heartbeat_timeout !== undefined ? heartbeat_timeout : providerLock.config.heartbeatTimeout;
+    
+    if (finalInterval >= finalTimeout) {
+      return res.status(400).json({ 
+        error: 'heartbeat_interval must be less than heartbeat_timeout' 
+      });
+    }
     
     await providerLock.updateConfig({
       heartbeatTimeout: heartbeat_timeout,

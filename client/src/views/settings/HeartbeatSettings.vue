@@ -165,6 +165,7 @@ const lockStatus = ref({
 const saving = ref(false)
 const saveMessage = ref('')
 const saveSuccess = ref(false)
+const statusErrorCount = ref(0)
 
 let statusInterval = null
 
@@ -188,6 +189,32 @@ async function saveSettings() {
   saveMessage.value = ''
 
   try {
+    // Validate configuration values
+    if (config.value.heartbeat_timeout < 5000 || config.value.heartbeat_timeout > 120000) {
+      saveMessage.value = 'Heartbeat timeout must be between 5000 and 120000 ms'
+      saveSuccess.value = false
+      return
+    }
+    
+    if (config.value.heartbeat_interval < 1000 || config.value.heartbeat_interval > 30000) {
+      saveMessage.value = 'Heartbeat interval must be between 1000 and 30000 ms'
+      saveSuccess.value = false
+      return
+    }
+    
+    if (config.value.max_wait_time < 10000 || config.value.max_wait_time > 300000) {
+      saveMessage.value = 'Max wait time must be between 10000 and 300000 ms'
+      saveSuccess.value = false
+      return
+    }
+    
+    // Validate that heartbeat_interval is less than heartbeat_timeout
+    if (config.value.heartbeat_interval >= config.value.heartbeat_timeout) {
+      saveMessage.value = 'Heartbeat interval must be less than heartbeat timeout'
+      saveSuccess.value = false
+      return
+    }
+    
     await axios.put('/api/settings/heartbeat', config.value)
     saveMessage.value = 'Settings saved successfully!'
     saveSuccess.value = true
@@ -207,8 +234,17 @@ async function refreshStatus() {
   try {
     const response = await axios.get('/api/settings/provider-lock/status')
     lockStatus.value = response.data
+    statusErrorCount.value = 0 // Reset error count on success
   } catch (error) {
     console.error('Failed to get lock status:', error)
+    statusErrorCount.value++
+    
+    // Stop auto-refresh after 3 consecutive failures
+    if (statusErrorCount.value >= 3 && statusInterval) {
+      console.warn('Stopping status refresh after 3 consecutive failures')
+      clearInterval(statusInterval)
+      statusInterval = null
+    }
   }
 }
 

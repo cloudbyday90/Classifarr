@@ -169,6 +169,7 @@ class EmbeddingProvider {
         // Store config interval to avoid race conditions
         const heartbeatIntervalMs = needsLock ? providerLock.config.heartbeatInterval : null;
         let heartbeatTimer = null;
+        let lockReleased = false; // Track if lock was already released
         try {
             if (needsLock) {
                 // Start heartbeat and check for preemption
@@ -177,8 +178,10 @@ class EmbeddingProvider {
                     if (!shouldContinue) {
                         // Preemption requested - pause and yield
                         clearInterval(heartbeatTimer);
+                        heartbeatTimer = null; // Mark timer as cleared
                         providerLock.releaseLock('embedding');
-                        throw new Error('Embedding operation was preempted by high-priority classification request. The operation will be retried automatically.');
+                        lockReleased = true; // Mark lock as released
+                        throw new Error('Embedding operation was preempted by high-priority classification request. Please retry the operation.');
                     }
                 }, heartbeatIntervalMs);
             }
@@ -232,11 +235,11 @@ class EmbeddingProvider {
             });
             throw error;
         } finally {
-            // Clean up heartbeat and release lock
+            // Clean up heartbeat and release lock (only if not already released)
             if (heartbeatTimer) {
                 clearInterval(heartbeatTimer);
             }
-            if (needsLock) {
+            if (needsLock && !lockReleased) {
                 providerLock.releaseLock('embedding');
             }
         }
