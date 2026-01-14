@@ -1,8 +1,10 @@
-const db = require('../config/database');
-const ollamaService = require('../services/ollama');
-
+// Mock database
 jest.mock('../config/database');
+
+// Mock ollama service  
 jest.mock('../services/ollama');
+
+// Mock logger
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
@@ -16,10 +18,11 @@ jest.mock('../utils/logger', () => ({
 const mockAxios = {
     post: jest.fn()
 };
-
 jest.mock('axios', () => mockAxios);
 
-// Import after mocks are set up
+// Import modules after mocks are set up
+const db = require('../config/database');
+const ollamaService = require('../services/ollama');
 const embeddingProvider = require('../services/embeddingProvider');
 
 describe('EmbeddingProvider', () => {
