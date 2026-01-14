@@ -30,19 +30,31 @@ class RAGRetriever {
             // Check if RAG is enabled
             const enabled = await embeddingRouter.isEnabled();
             if (!enabled) {
+                logger.info('RAG search skipped - RAG is disabled', { title: metadata.title });
                 return [];
             }
 
             // Check minimum embeddings threshold
             const hasMinimum = await embeddingService.hasMinimumEmbeddings();
             if (!hasMinimum) {
-                logger.debug('Not enough embeddings for RAG');
+                const embeddingCount = await this.getEmbeddingCount();
+                logger.info('RAG search skipped - not enough embeddings', { 
+                    title: metadata.title,
+                    embeddingCount,
+                    minimumRequired: await embeddingService.getMinimumThreshold()
+                });
                 return [];
             }
 
             // Get config for threshold
             const config = await embeddingRouter.getConfig();
             const threshold = config?.rag_similarity_threshold || 0.70;
+
+            logger.info('RAG search initiated', { 
+                title: metadata.title, 
+                threshold,
+                limit
+            });
 
             // Generate embedding for query
             const text = embeddingService.formatForEmbedding(metadata);
@@ -72,6 +84,14 @@ class RAGRetriever {
                 LIMIT $2
             `, [vectorString, limit]);
 
+            if (result.rows.length === 0) {
+                logger.info('RAG search returned no results', { 
+                    title: metadata.title,
+                    embeddingCount: await this.getEmbeddingCount()
+                });
+                return [];
+            }
+
             // Filter by threshold and format results
             const matches = result.rows
                 .filter(row => row.similarity >= threshold)
@@ -87,17 +107,49 @@ class RAGRetriever {
                     date: row.created_at
                 }));
 
-            logger.debug('Semantic search completed', {
-                query: metadata.title,
+            if (matches.length === 0 && result.rows.length > 0) {
+                logger.info('RAG results below threshold', { 
+                    title: metadata.title,
+                    topSimilarity: result.rows[0]?.similarity || 0,
+                    threshold,
+                    totalResults: result.rows.length
+                });
+                return [];
+            }
+
+            logger.info('RAG search completed successfully', {
+                title: metadata.title,
                 matches: matches.length,
-                topSimilarity: matches[0]?.similarity || 0
+                topSimilarity: matches[0]?.similarity || 0,
+                threshold
             });
 
             return matches;
 
         } catch (error) {
-            logger.error('Semantic search failed', { error: error.message });
+            logger.error('Semantic search failed', { 
+                title: metadata.title,
+                error: error.message 
+            });
             return [];
+        }
+    }
+
+    /**
+     * Get count of available embeddings
+     * @returns {Promise<number>} Count of non-stale embeddings
+     */
+    async getEmbeddingCount() {
+        try {
+            const result = await db.query(`
+                SELECT COUNT(*) as count 
+                FROM classification_embeddings 
+                WHERE is_stale = false
+            `);
+            return parseInt(result.rows[0]?.count || 0);
+        } catch (error) {
+            logger.debug('Failed to get embedding count', { error: error.message });
+            return 0;
         }
     }
 

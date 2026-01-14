@@ -926,34 +926,24 @@ class ClassificationService {
 
     // Step 4: Collect signals and calculate confidence for AI verification
     // v0.33 Signal Aggregation Model (Legacy fallback)
-    const signalCollector = new SignalCollector(metadata.tmdb_id, metadata.media_type);
+    const signalCollector = new SignalCollector();
 
-    // Add detected signals
-    // Note: Legacy rule signals removed in v0.37.8c - PolicyEngine now handles rule-based classification
+    // Collect ALL signals via the full pipeline (v0.38.2-alpha fix)
+    const detectors = {
+      checkLearnedCorrections: this.checkLearnedCorrections.bind(this),
+      checkLibraryRules: this.checkLibraryRules.bind(this),
+      findExistingMedia: mediaSyncService.findExistingMedia.bind(mediaSyncService),
+      analyzeContent: contentTypeAnalyzer.analyze.bind(contentTypeAnalyzer),
+      checkExactMatch: this.checkExactMatch.bind(this),
+      checkLearnedPatterns: this.checkLearnedPatterns.bind(this),
+      matchRules: this.matchRules.bind(this),
+    };
 
-    if (learnedPattern && learnedPattern.confidence < 80) {
-      signalCollector.addSignal(SIGNAL_TYPES.LEARNED_PATTERN,
-        libraries.find(l => l.id === learnedPattern.library_id),
-        learnedPattern.confidence,
-        {}
-      );
-    }
-
-    if (metadata.contentAnalysis?.bestMatch) {
-      // Find best matching library for content type
-      const contentType = metadata.contentAnalysis.bestMatch.type;
-      const matchingLib = libraries.find(l =>
-        l.name.toLowerCase().includes(contentType.toLowerCase())
-      ) || libraries[0];
-
-      signalCollector.addSignal(SIGNAL_TYPES.CONTENT_ANALYSIS,
-        matchingLib,
-        metadata.contentAnalysis.bestMatch.confidence,
-        { contentType }
-      );
-    }
+    await signalCollector.collectAll(metadata, libraries, detectors);
 
     // Step 4.5: RAG-based semantic similarity (v0.34)
+    // Note: RAG is now also invoked within collectAll via library profile scoring,
+    // but we keep this for backward compatibility and to generate ragContext for AI
     let ragContext = null;
     try {
       const similarItems = await ragRetriever.semanticSearch(metadata, 5);
@@ -964,16 +954,19 @@ class ClassificationService {
         if (suggestedLibrary) {
           const ragLibrary = libraries.find(l => l.id === suggestedLibrary.libraryId);
           if (ragLibrary) {
-            signalCollector.addSignal(
-              SIGNAL_TYPES.SEMANTIC_SIMILARITY,
-              ragLibrary,
-              dynamicWeight,
-              {
-                similarItems: similarItems.slice(0, 3),
-                avgSimilarity: suggestedLibrary.avgSimilarity,
-                voteCount: suggestedLibrary.voteCount
-              }
-            );
+            // Only add if not already collected (collectAll may have added it)
+            if (!signalCollector.hasSignal(SIGNAL_TYPES.SEMANTIC_SIMILARITY)) {
+              signalCollector.addSignal(
+                SIGNAL_TYPES.SEMANTIC_SIMILARITY,
+                ragLibrary,
+                dynamicWeight,
+                {
+                  similarItems: similarItems.slice(0, 3),
+                  avgSimilarity: suggestedLibrary.avgSimilarity,
+                  voteCount: suggestedLibrary.voteCount
+                }
+              );
+            }
             ragContext = ragRetriever.formatForAIContext(similarItems);
             logger.info('RAG signal added', {
               title: metadata.title,
@@ -1268,6 +1261,21 @@ class ClassificationService {
     // Try to get web search results if Tavily is enabled
     const webSearchResults = await this.enrichWithWebSearch(metadata);
 
+    // Helper function to find a sensible default library
+    const getDefaultLibrary = (libraries, mediaType) => {
+      // Look for a general-purpose library matching the media type
+      const generalNames = mediaType === 'movie' 
+        ? ['movies', 'films', 'general movies']
+        : ['tv shows', 'tv series', 'series', 'television'];
+      
+      const generalLib = libraries.find(l => 
+        generalNames.some(name => l.name.toLowerCase().includes(name))
+      );
+      
+      // Fall back to lowest priority library (most general) instead of highest
+      return generalLib || libraries[libraries.length - 1];
+    };
+
     // Build prompt for AI - VERIFICATION ROLE
     // AI receives pre-calculated confidence and must verify or request clarification
     let prompt = `You are a media classification VERIFIER for a home media server. Your role is to VERIFY a pre-calculated classification decision.
@@ -1333,24 +1341,24 @@ Respond in ONE of these two formats:
 FORMAT 1 - CONFIRM the suggested library (if signals align and decision makes sense):
 CONFIRM|<library_number>|<brief_verification_reason>
 
-Example: CONFIRM|3|Signals align correctly - Japanese animation with anime keywords confirms Anime library
+Example: CONFIRM|2|Signals align correctly - Action movie with mainstream studio and PG-13 rating confirms Movies library
 
 FORMAT 2 - REQUEST CLARIFICATION (if signals conflict or you see a potential error):
 CLARIFY|<problem_summary>|<why_uncertain>|<question_to_ask>|<option1>|<option2>|<option3_optional>
 
-Example: CLARIFY|Anime vs Kids conflict|Content has both anime keywords AND kids-friendly rating|Is "${metadata.title}" primarily anime content or kids content?|Anime Library|Kids Library|Review manually
+Example: CLARIFY|Genre ambiguity|Content has both Documentary and Drama genres|Is this primarily a documentary or a drama film?|Documentaries|Movies|Review manually
 ` : `
 Analyze the media and respond in ONE of these two formats:
 
 FORMAT 1 - If you are confident (can determine the correct library from the data):
 CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>
 
-Example: CONFIDENT|3|92|Japanese animation with anime keywords, clearly belongs in Anime library
+Example: CONFIDENT|2|88|Action movie with mainstream studio and PG-13 rating, clearly belongs in Movies library
 
 FORMAT 2 - If you need clarification (conflicting signals, ambiguous data, or uncertain):
 CLARIFY|<problem_summary>|<why_uncertain>|<question_to_ask>|<option1>|<option2>|<option3_optional>
 
-Example: CLARIFY|Biographical music film with drama elements|TMDB lists Drama, Music, and Biography genres|Is this primarily a biographical drama or music documentary?|Biographical Drama|Music Documentary|Neither
+Example: CLARIFY|Genre ambiguity|Content has both Documentary and Drama genres|Is this primarily a documentary or a drama film?|Documentaries|Movies|Neither
 `}
 IMPORTANT FOR CLARIFICATION:
 - The problem_summary should be SHORT (max 50 chars)
@@ -1482,7 +1490,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
       };
 
       return {
-        library: signalContext?.suggestedLibrary || libraries[0], // Use calculated library if available
+        library: signalContext?.suggestedLibrary || getDefaultLibrary(libraries, metadata.media_type),
         confidence: signalContext?.confidence || 55, // Use calculated confidence or low default
         reason: `Needs clarification: ${problemSummary}`,
         needs_clarification: true,
@@ -1495,7 +1503,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
     // Fallback if AI response is malformed - treat as needing clarification
     logger.warn('AI response malformed, treating as uncertain', { response: response.substring(0, 200) });
     return {
-      library: libraries[0],
+      library: getDefaultLibrary(libraries, metadata.media_type),
       confidence: 50,
       reason: 'AI could not determine classification - manual review needed',
       needs_clarification: true,
