@@ -371,6 +371,11 @@ class LibraryProfileService {
         return stats;
     }
 
+    /**
+     * Get certification/content rating distribution for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<Array>} Array of certification stats with count and percentage
+     */
     async getCertificationDistribution(libraryId) {
         try {
             const result = await db.query(`
@@ -395,6 +400,11 @@ class LibraryProfileService {
         }
     }
 
+    /**
+     * Get genre distribution for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<Array>} Array of genre stats with count and percentage
+     */
     async getGenreDistribution(libraryId) {
         try {
             const result = await db.query(`
@@ -425,6 +435,11 @@ class LibraryProfileService {
         }
     }
 
+    /**
+     * Get studio distribution for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<Array>} Array of top 5 studios with count and percentage
+     */
     async getStudioDistribution(libraryId) {
         try {
             const result = await db.query(`
@@ -451,6 +466,11 @@ class LibraryProfileService {
         }
     }
 
+    /**
+     * Get language distribution for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<Array>} Array of top 5 languages with count and percentage
+     */
     async getLanguageDistribution(libraryId) {
         try {
             const result = await db.query(`
@@ -478,6 +498,11 @@ class LibraryProfileService {
         }
     }
 
+    /**
+     * Get total item count for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<number>} Total number of items in the library
+     */
     async getTotalItems(libraryId) {
         try {
             const result = await db.query(`
