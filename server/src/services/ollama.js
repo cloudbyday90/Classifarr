@@ -100,10 +100,9 @@ class OllamaService {
   }
 
   async getConfig() {
-    if (this.baseUrl) {
-      return { host: this.host, port: this.port, baseUrl: this.baseUrl };
-    }
-
+    // Always fetch fresh config from database to pick up configuration changes
+    // Previously cached baseUrl, causing stale localhost:11434 after user configured remote host
+    
     // Try to load from ollama_config table first
     const result = await db.query('SELECT id, host, port FROM ollama_config WHERE is_active = true LIMIT 1');
     if (result.rows.length > 0) {

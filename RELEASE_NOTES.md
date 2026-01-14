@@ -43,22 +43,39 @@ The database was storing the fallback/suggested library in `library_id` and `lib
 **Impact:** 
 The UI is now consistent - items awaiting your decision clearly show "Awaiting Decision" status until you actually make a choice.
 
-#### 3. Verified: RAG Embeddings Work with Remote Ollama
+#### 3. RAG Embeddings Now Work with Remote Ollama (Configuration Cache Bug)
 
-**Status:** ✅ Already Working (No Code Changes Needed)
+**Problem:**
+Users with Ollama running on a remote host (e.g., `192.168.50.95:11434`) found that embeddings were still being sent to `localhost:11434` even after configuring the remote host in Settings → AI Provider. This caused:
+- ✅ `curl http://192.168.50.95:11434/api/embeddings` → Works (external Ollama)
+- ❌ `curl http://localhost:11434/api/embeddings` → Fails (nothing inside container)
+- ❌ RAG status shows 0 embeddings despite thousands of classifications
 
-**Concern:**
-Users with Ollama running on a remote host (e.g., `192.168.50.95:11434`) reported that embedding generation might be using hardcoded `localhost:11434`, causing silent failures.
+**Root Cause:**
+The `OllamaService.getConfig()` method cached the `baseUrl` on first call:
+```javascript
+async getConfig() {
+    if (this.baseUrl) {
+      return { host: this.host, port: this.port, baseUrl: this.baseUrl }; // Returns cached value!
+    }
+    // ... fetch from database ...
+}
+```
 
-**Verification:**
-We reviewed the code and confirmed that the embedding service **already correctly** uses the configured Ollama host from the `ai_provider_config` table:
-1. `embeddingRouter.js` calls `ollamaService.embed()`
-2. `ollamaService.embed()` calls `this.getConfig()` to get the baseUrl
-3. `getConfig()` reads from database: first `ollama_config` table, then `ai_provider_config.ollama_host/ollama_port`
-4. Only falls back to `localhost:11434` if nothing is configured
+**What Happened:**
+1. On container startup, if `ollama_config` table is empty and `ai_provider_config.ollama_host` is NULL
+2. First call caches `localhost:11434` into `this.baseUrl`
+3. User then configures `192.168.50.95` in the UI
+4. All subsequent calls return the cached `localhost` value!
+5. Embeddings fail silently because Ollama isn't running inside the container
 
-**Conclusion:**
-If you've configured your Ollama host in Settings → AI Provider → Ollama Host, embeddings will use that host. No bug exists.
+**Solution:**
+- Removed the caching check at the beginning of `getConfig()`
+- Now fetches fresh configuration from database on every call
+- Configuration changes in UI are immediately picked up by embedding service
+
+**Impact:** 
+RAG embeddings now correctly use your configured Ollama host. If you have Ollama on a remote server, embeddings will work properly after this fix.
 
 #### 4. Discord Clarification Prompts Now Working
 
@@ -82,8 +99,8 @@ Discord notifications now appear for items needing clarification, with both AI-s
 
 ### Technical Notes
 - Bug #1 fix location: `server/src/routes/classification.js` line 444
-- Bug #2 fix location: `server/src/services/classification.js` lines 1537-1538
-- Bug #3: No changes needed, already working via `ai_provider_config` table
+- Bug #2 fix location: `server/src/services/classification.js` lines 1537-1540
+- Bug #3 fix location: `server/src/services/ollama.js` lines 102-105 (removed cache check)
 - Bug #4 fix location: `server/src/services/classification.js` lines 1500, 1521
 
 ## v0.38.4-alpha
