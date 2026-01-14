@@ -22,9 +22,12 @@ const classificationService = require('../services/classification');
 const reclassificationService = require('../services/reclassificationService');
 const clarificationService = require('../services/clarificationService');
 const patternReinforcementService = require('../services/patternReinforcementService');
+const libraryProfileService = require('../services/libraryProfileService');
 const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector');
+const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
+const logger = createLogger('classification');
 
 /**
  * @swagger
@@ -529,6 +532,40 @@ router.get('/pending/count', async (req, res) => {
     res.json({ count: parseInt(result.rows[0].count) });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/history/{id}/profile:
+ *   get:
+ *     summary: Get library profile snapshot used for classification
+ *     description: Returns the library profile statistics that were used at the time of classification
+ */
+router.get('/history/:id/profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get library ID from classification
+    const classification = await db.query(
+      'SELECT library_id FROM classification_history WHERE id = $1',
+      [id]
+    );
+    
+    if (!classification.rows[0]?.library_id) {
+      return res.status(404).json({ error: 'Classification not found or has no library' });
+    }
+    
+    const libraryId = classification.rows[0].library_id;
+    const profileStats = await libraryProfileService.getProfileStats(libraryId);
+    
+    res.json(profileStats);
+  } catch (error) {
+    logger.error('Failed to get profile stats for classification', { 
+      classificationId: req.params.id,
+      error: error.message 
+    });
+    res.status(500).json({ error: 'Failed to load profile statistics' });
   }
 });
 
