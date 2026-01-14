@@ -1,9 +1,44 @@
 # Classifarr Release Notes
 
 ## v0.39.0-alpha
-**Title: Embedding Provider Expansion + Critical Bug Fixes**
+**Title: Queue & Priority System + Embedding Provider Expansion**
 
 ### New Features
+
+#### Queue & Priority System ⏱️
+
+Classifarr now intelligently manages Ollama resources to prevent contention between classification and embedding operations.
+
+**Classification Priority:**
+When using the same Ollama instance for both classification and embeddings, classification always takes priority. Embedding jobs will wait or pause to ensure your downloads are classified quickly.
+
+**How It Works:**
+- Classification requests acquire a lock with high priority
+- Embedding requests wait if classification is active
+- Heartbeat mechanism prevents deadlocks (automatic timeout release)
+- Configurable timing parameters for your environment
+
+**Parallel Processing:**
+If you've configured a separate embedding provider (different Ollama instance or cloud), both operations can run simultaneously for maximum throughput.
+
+**Configuration:**
+Adjust timing in **Settings → General → Heartbeat/Queue**:
+- **Heartbeat Timeout**: How long before a stale lock is released (default: 30s)
+- **Heartbeat Interval**: How often heartbeat signals are sent (default: 5s)
+- **Max Wait Time**: Maximum time to wait for a lock (default: 60s)
+
+**Lock Status Monitor:**
+The UI shows real-time lock status:
+- Current lock state (locked/unlocked)
+- Which operation holds the lock (classification/embedding)
+- Lock duration
+- Last heartbeat timestamp
+
+**Technical Implementation:**
+- New `providerLock` service with heartbeat-based locking
+- Database migration (055) for configuration storage
+- API endpoints for configuration and status monitoring
+- Automatic integration with classification and embedding services
 
 #### Embedding Provider Options 🚀
 
@@ -47,6 +82,32 @@ Settings → AI Provider → Embedding Provider (new section)
 - New `embeddingProvider` service handles routing to appropriate provider
 - API endpoints for configuration and testing
 - Supports parallel embedding generation when using different providers
+
+### Removed Features
+
+#### Custom Rules Page Retired 🎯
+
+The dedicated Rules page in Settings has been removed. Classification is now fully AI-driven using the enhanced Policy Engine.
+
+**What Changed:**
+- Settings → Rules page removed from navigation
+- Rules.vue component deleted from codebase
+- All rule functionality now handled through Library Profiles and Policy Engine
+
+**Migration Path:**
+Classification rules are now managed through:
+1. **Library Profiles**: Configure content types, genres, ratings, and keywords in each library
+2. **Policy Engine**: AI evaluates items based on library profiles with weighted scoring
+3. **Smart Patterns**: System learns from your corrections and improves over time
+
+**Why This Change:**
+- Simplifies the UI by removing redundant configuration
+- Policy Engine provides more flexible and powerful rule-based classification
+- AI-driven approach adapts to your preferences automatically
+- Library-specific rules are easier to manage within library settings
+
+**Impact:**
+No data loss - existing library rules and policies continue to work. The removal only affects the standalone Rules page in Settings.
 
 ### Bug Fixes
 
