@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.2-alpha] - 2026-01-14
+
+### Fixed
+- **Classification Pipeline: SignalCollector Not Running**: Fixed critical bug where `SignalCollector.collectAll()` was never invoked during classification
+  - Library profile scoring was being skipped entirely
+  - Custom rules evaluation was not happening
+  - Existing media checks were bypassed
+  - Collection/franchise signals were not collected
+  - Now properly invokes full signal collection pipeline with all detectors
+
+- **RAG/Semantic Search Silent Failures**: Added comprehensive debug logging to RAG retriever
+  - Logs when RAG search is initiated with title and threshold
+  - Logs when no results are returned
+  - Logs when results are below similarity threshold
+  - Logs embedding count and RAG enabled status
+  - Helps diagnose why RAG isn't contributing to classifications
+
+- **AI Prompt Anime Bias**: Neutralized anime-specific examples in AI classification prompt
+  - Replaced "Japanese animation with anime keywords" example with generic "Action movie with mainstream studio" 
+  - Replaced "Anime vs Kids conflict" clarification example with "Genre ambiguity" example
+  - Prevents LLM from being primed to suggest Anime for unrelated content
+
+- **Fallback Library Selection**: Fixed fallback defaulting to highest-priority library (often specialty libraries like Anime)
+  - Now looks for general-purpose library matching media type (e.g., "Movies" for movies)
+  - Falls back to lowest-priority library (most general) instead of highest-priority
+  - Prevents specialty libraries from catching all uncertain classifications
+
+### Changed
+- **Signal Collection Logging**: Enhanced logging in SignalCollector to show collection summary with total signals and signal types collected
+
+### Technical Details
+- Root cause: Decision tree created SignalCollector but only manually added a few signals instead of running full `collectAll()` pipeline
+- PolicyEngine was evaluating but with minimal signal context (only getting 31% confidence for obvious mainstream content)
+- AI was receiving biased prompt examples and defaulting CLARIFY responses to wrong library
+
 ## [0.38.1-alpha] - 2026-01-14
 
 ### Changed

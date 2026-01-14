@@ -1,5 +1,35 @@
 # Classifarr Release Notes
 
+## v0.38.2-alpha
+**Title: Classification Accuracy Improvements**
+
+### What's New
+
+#### Fixed: Movies Incorrectly Classified as Anime
+We identified and fixed a critical bug where mainstream movies like "Predator: Badlands" and "People We Meet on Vacation" were being incorrectly classified as "Anime Movies" with low confidence.
+
+**The Problem:**
+- The classification system wasn't running its full signal collection pipeline
+- Library profiles, custom rules, and semantic search (RAG) were being skipped
+- The AI was receiving biased examples that primed it to suggest "Anime"
+- When uncertain, the system defaulted to the wrong library
+
+**The Fix:**
+- Signal collection now runs completely, gathering all available classification hints
+- RAG/semantic search properly logs its activity so you can see it working
+- AI prompts no longer bias toward any specific library type
+- Uncertain classifications now default to general-purpose libraries (like "Movies") instead of specialty libraries
+
+#### Better Debugging
+If you're having classification issues, check your logs for new RAG-related entries:
+- `RAG search initiated` - Shows RAG is being called
+- `RAG search returned no results` - No similar items found
+- `RAG results below threshold` - Similar items found but not confident enough
+
+This helps you understand why classifications are or aren't using your historical data.
+
+---
+
 ## v0.38.1-alpha
 **Title: Streamlined Policy Configuration**
 
