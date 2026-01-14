@@ -377,4 +377,279 @@ router.put('/patterns/:id/reject', async (req, res) => {
     }
 });
 
+/**
+ * Backfill API Endpoints
+ */
+const manualBackfillService = require('../services/manualBackfillService');
+const scheduledBackfillService = require('../services/scheduledBackfillService');
+const idleBackfillService = require('../services/idleBackfillService');
+const { parseDaysConfig, formatDaysConfig } = require('../utils/backfillHelpers');
+
+/**
+ * POST /api/rag/backfill/manual/start
+ * Start manual backfill
+ */
+router.post('/backfill/manual/start', async (req, res) => {
+    try {
+        const { batchSize } = req.body;
+        await manualBackfillService.start({ batchSize });
+        res.json({ success: true, status: manualBackfillService.getStatus() });
+    } catch (error) {
+        logger.error('Failed to start manual backfill', { error: error.message });
+        res.status(400).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/backfill/manual/pause
+ * Pause manual backfill
+ */
+router.post('/backfill/manual/pause', async (req, res) => {
+    try {
+        manualBackfillService.pause();
+        res.json({ success: true, status: manualBackfillService.getStatus() });
+    } catch (error) {
+        logger.error('Failed to pause manual backfill', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/backfill/manual/resume
+ * Resume manual backfill
+ */
+router.post('/backfill/manual/resume', async (req, res) => {
+    try {
+        await manualBackfillService.resume();
+        res.json({ success: true, status: manualBackfillService.getStatus() });
+    } catch (error) {
+        logger.error('Failed to resume manual backfill', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/backfill/manual/clear
+ * Clear manual backfill state
+ */
+router.post('/backfill/manual/clear', async (req, res) => {
+    try {
+        await manualBackfillService.clear();
+        res.json({ success: true, status: manualBackfillService.getStatus() });
+    } catch (error) {
+        logger.error('Failed to clear manual backfill', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/backfill/status
+ * Get backfill status for all modes
+ */
+router.get('/backfill/status', async (req, res) => {
+    try {
+        const pending = await manualBackfillService.getPendingCount();
+        const manualStatus = manualBackfillService.getStatus();
+        const idleStatus = idleBackfillService.getStatus();
+        const scheduleConfig = scheduledBackfillService.getSchedule();
+
+        res.json({
+            manual: manualStatus,
+            idle: idleStatus,
+            scheduled: scheduleConfig,
+            pending
+        });
+    } catch (error) {
+        logger.error('Failed to get backfill status', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/backfill/schedule
+ * Get scheduled backfill configuration
+ */
+router.get('/backfill/schedule', async (req, res) => {
+    try {
+        const config = await db.query(`
+            SELECT 
+                scheduled_backfill_enabled,
+                scheduled_backfill_time,
+                scheduled_backfill_days,
+                scheduled_backfill_batch_size,
+                scheduled_backfill_max_duration
+            FROM ai_provider_config WHERE id = 1
+        `);
+
+        if (config.rows.length === 0) {
+            return res.json({
+                scheduled_backfill_enabled: false,
+                scheduled_backfill_time: '02:00',
+                scheduled_backfill_days: '0,1,2,3,4,5,6',
+                scheduled_backfill_batch_size: 100,
+                scheduled_backfill_max_duration: 3600000
+            });
+        }
+
+        res.json(config.rows[0]);
+    } catch (error) {
+        logger.error('Failed to get schedule config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * PUT /api/rag/backfill/schedule
+ * Update scheduled backfill configuration
+ */
+router.put('/backfill/schedule', async (req, res) => {
+    try {
+        const {
+            enabled,
+            time,
+            days,
+            batchSize,
+            maxDuration
+        } = req.body;
+
+        await db.query(`
+            UPDATE ai_provider_config SET
+                scheduled_backfill_enabled = $1,
+                scheduled_backfill_time = $2,
+                scheduled_backfill_days = $3,
+                scheduled_backfill_batch_size = $4,
+                scheduled_backfill_max_duration = $5
+            WHERE id = 1
+        `, [enabled, time, formatDaysConfig(days), batchSize, maxDuration]);
+
+        // Update the service with new schedule
+        scheduledBackfillService.updateSchedule({ 
+            enabled, 
+            time, 
+            days: parseDaysConfig(days),
+            batchSize, 
+            maxDuration 
+        });
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Failed to update schedule config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/backfill/idle
+ * Get idle backfill configuration
+ */
+router.get('/backfill/idle', async (req, res) => {
+    try {
+        const config = await db.query(`
+            SELECT 
+                idle_backfill_enabled,
+                idle_threshold,
+                idle_batch_size
+            FROM ai_provider_config WHERE id = 1
+        `);
+
+        if (config.rows.length === 0) {
+            return res.json({
+                idle_backfill_enabled: true,
+                idle_threshold: 30000,
+                idle_batch_size: 10
+            });
+        }
+
+        res.json(config.rows[0]);
+    } catch (error) {
+        logger.error('Failed to get idle config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * PUT /api/rag/backfill/idle
+ * Update idle backfill configuration
+ */
+router.put('/backfill/idle', async (req, res) => {
+    try {
+        const { enabled, threshold, batchSize } = req.body;
+
+        await db.query(`
+            UPDATE ai_provider_config SET
+                idle_backfill_enabled = $1,
+                idle_threshold = $2,
+                idle_batch_size = $3
+            WHERE id = 1
+        `, [enabled, threshold, batchSize]);
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Failed to update idle config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/backfill/realtime
+ * Get real-time embedding configuration
+ */
+router.get('/backfill/realtime', async (req, res) => {
+    try {
+        const config = await db.query(`
+            SELECT realtime_embedding_enabled
+            FROM ai_provider_config WHERE id = 1
+        `);
+
+        if (config.rows.length === 0) {
+            return res.json({ realtime_embedding_enabled: true });
+        }
+
+        res.json(config.rows[0]);
+    } catch (error) {
+        logger.error('Failed to get realtime config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * PUT /api/rag/backfill/realtime
+ * Update real-time embedding configuration
+ */
+router.put('/backfill/realtime', async (req, res) => {
+    try {
+        const { enabled } = req.body;
+
+        await db.query(`
+            UPDATE ai_provider_config SET
+                realtime_embedding_enabled = $1
+            WHERE id = 1
+        `, [enabled]);
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Failed to update realtime config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/backfill/history
+ * Get backfill run history
+ */
+router.get('/backfill/history', async (req, res) => {
+    try {
+        const history = await db.query(`
+            SELECT * FROM backfill_runs 
+            ORDER BY created_at DESC 
+            LIMIT 20
+        `);
+
+        res.json({ history: history.rows });
+    } catch (error) {
+        logger.error('Failed to get backfill history', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

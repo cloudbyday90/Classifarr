@@ -1,9 +1,68 @@
 # Classifarr Release Notes
 
 ## v0.39.0-alpha
-**Title: Queue & Priority System + Embedding Provider Expansion**
+**Title: Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion**
 
 ### New Features
+
+#### Hybrid Backfill System 🔄
+
+Embedding generation is now fully configurable with **four complementary modes** to fit your workflow:
+
+**1. Real-Time Mode ⚡**
+- Embeddings generated immediately when items are classified
+- Best for keeping RAG data current
+- Adds ~100-300ms to classification time
+- Toggle on/off in Settings → AI → Backfill
+
+**2. Idle Backfill Mode 🌙**
+- Automatically processes pending embeddings during quiet periods
+- Starts after configurable idle threshold (default: 30 seconds of no classifications)
+- Pauses instantly when new classifications arrive
+- Small batch size (default: 10 items) for gentle background processing
+- Perfect for catching up without impacting active use
+
+**3. Scheduled Backfill Mode 📅**
+- Large batch processing at configured times
+- Set daily schedule with:
+  - Time picker (e.g., 2:00 AM)
+  - Day selector (run on specific days of the week)
+  - Batch size (default: 100 items)
+  - Max duration limit (default: 1 hour)
+- Perfect for overnight processing without impacting daytime performance
+
+**4. Manual Backfill Mode 🎮**
+- Take full control with on-demand backfill
+- Features:
+  - **Start/Pause/Resume/Clear** controls
+  - Real-time **progress bar** with percentage
+  - **ETA calculation** based on processing speed
+  - Configurable batch size
+  - Status persists through page navigation
+- Perfect for when you want to immediately catch up on pending embeddings
+
+**Backfill Status Dashboard:**
+- Pending embeddings count display
+- Current status for each mode
+- Run history table showing:
+  - Type (idle/scheduled/manual)
+  - Status (running/paused/completed/failed)
+  - Items processed
+  - Start and completion timestamps
+
+**Configuration:**
+All modes are configured in **Settings → AI → Embedding Backfill**:
+- Enable/disable each mode independently
+- Adjust timing and batch sizes for your environment
+- View real-time status and history
+
+**Technical Implementation:**
+- New database migration (056) for configuration and run history
+- New services: `idleBackfillService`, `scheduledBackfillService`, `manualBackfillService`
+- `backfillOrchestrator` coordinates all modes and prevents conflicts
+- `idleDetector` utility monitors classification activity
+- Comprehensive API endpoints for all modes
+- New BackfillSettings.vue component with full UI controls
 
 #### Queue & Priority System ⏱️
 
@@ -22,7 +81,7 @@ When using the same Ollama instance for both classification and embeddings, clas
 If you've configured a separate embedding provider (different Ollama instance or cloud), both operations can run simultaneously for maximum throughput.
 
 **Configuration:**
-Adjust timing in **Settings → General → Heartbeat/Queue**:
+Adjust timing in **Settings → General → Heartbeat**:
 - **Heartbeat Timeout**: How long before a stale lock is released (default: 30s)
 - **Heartbeat Interval**: How often heartbeat signals are sent (default: 5s)
 - **Max Wait Time**: Maximum time to wait for a lock (default: 60s)

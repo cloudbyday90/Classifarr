@@ -151,6 +151,15 @@ async function initializeServices() {
     console.warn('Embedding migration check failed:', error.message);
   }
 
+  // Initialize backfill orchestrator
+  try {
+    const backfillOrchestrator = require('./services/backfillOrchestrator');
+    await backfillOrchestrator.init();
+    console.log('Backfill orchestrator initialized');
+  } catch (error) {
+    console.warn('Backfill orchestrator initialization failed:', error.message);
+  }
+
   // Generate library profiles for all libraries with items (async, don't wait)
   try {
     const libraryProfileService = require('./services/libraryProfileService');
