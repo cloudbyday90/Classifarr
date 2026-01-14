@@ -74,4 +74,4 @@ const dismiss = () => {
   dismissed.value = true
   hasIncompleteConfigs.value = false
 }
-</invoke>
+</script>
