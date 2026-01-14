@@ -15,32 +15,73 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('EmbeddingProvider');
 
-// Provider-specific model defaults
+// Provider-specific model defaults and pricing
 const PROVIDER_DEFAULTS = {
     openai: {
         models: ['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'],
         default: 'text-embedding-3-small',
-        dimensions: { 'text-embedding-3-small': 1536, 'text-embedding-3-large': 3072, 'text-embedding-ada-002': 1536 }
+        dimensions: { 
+            'text-embedding-3-small': 1536, 
+            'text-embedding-3-large': 3072, 
+            'text-embedding-ada-002': 1536 
+        },
+        pricing: {
+            'text-embedding-3-small': 0.02,  // per 1M tokens
+            'text-embedding-3-large': 0.13,
+            'text-embedding-ada-002': 0.02
+        }
     },
     gemini: {
         models: ['text-embedding-004', 'embedding-001'],
         default: 'text-embedding-004',
-        dimensions: { 'text-embedding-004': 768, 'embedding-001': 768 }
+        dimensions: { 
+            'text-embedding-004': 768, 
+            'embedding-001': 768 
+        },
+        pricing: {
+            'text-embedding-004': 0.025,  // per 1M characters
+            'embedding-001': 0.025
+        }
     },
     voyage: {
         models: ['voyage-2', 'voyage-large-2', 'voyage-code-2'],
         default: 'voyage-2',
-        dimensions: { 'voyage-2': 1024, 'voyage-large-2': 1536, 'voyage-code-2': 1536 }
+        dimensions: { 
+            'voyage-2': 1024, 
+            'voyage-large-2': 1536, 
+            'voyage-code-2': 1536 
+        },
+        pricing: {
+            'voyage-2': 0.012,  // per 1M tokens (estimate)
+            'voyage-large-2': 0.012,
+            'voyage-code-2': 0.012
+        }
     },
     openrouter: {
         models: ['openai/text-embedding-3-small', 'openai/text-embedding-3-large'],
         default: 'openai/text-embedding-3-small',
-        dimensions: { 'openai/text-embedding-3-small': 1536, 'openai/text-embedding-3-large': 3072 }
+        dimensions: { 
+            'openai/text-embedding-3-small': 1536, 
+            'openai/text-embedding-3-large': 3072 
+        },
+        pricing: {
+            'openai/text-embedding-3-small': 0.02,  // per 1M tokens
+            'openai/text-embedding-3-large': 0.13
+        }
     },
     cohere: {
         models: ['embed-english-v3.0', 'embed-multilingual-v3.0', 'embed-english-light-v3.0'],
         default: 'embed-english-v3.0',
-        dimensions: { 'embed-english-v3.0': 1024, 'embed-multilingual-v3.0': 1024, 'embed-english-light-v3.0': 384 }
+        dimensions: { 
+            'embed-english-v3.0': 1024, 
+            'embed-multilingual-v3.0': 1024, 
+            'embed-english-light-v3.0': 384 
+        },
+        pricing: {
+            'embed-english-v3.0': 0.10,  // per 1M characters (estimate)
+            'embed-multilingual-v3.0': 0.10,
+            'embed-english-light-v3.0': 0.10
+        }
     }
 };
 
@@ -275,8 +316,8 @@ class EmbeddingProvider {
             const embedding = response.data.data[0].embedding;
             const usage = response.data.usage || {};
 
-            // Calculate cost: text-embedding-3-small: $0.02/1M tokens, text-embedding-3-large: $0.13/1M
-            const costPerMillion = model.includes('large') ? 0.13 : 0.02;
+            // Calculate cost using pricing from PROVIDER_DEFAULTS
+            const costPerMillion = PROVIDER_DEFAULTS.openai.pricing[model] || 0.02;
             const cost = (usage.total_tokens || 0) / 1000000 * costPerMillion;
 
             return {
@@ -311,8 +352,9 @@ class EmbeddingProvider {
 
             const embedding = response.data.embedding.values;
 
-            // Gemini embedding cost: ~$0.025/1M characters
-            const cost = (text.length / 1000000) * 0.025;
+            // Gemini embedding cost using pricing from PROVIDER_DEFAULTS
+            const costPerMillion = PROVIDER_DEFAULTS.gemini.pricing[model] || 0.025;
+            const cost = (text.length / 1000000) * costPerMillion;
 
             return {
                 embedding: embedding,
@@ -349,8 +391,9 @@ class EmbeddingProvider {
             const embedding = response.data.data[0].embedding;
             const usage = response.data.usage || {};
 
-            // Voyage pricing varies by model, estimate $0.01-0.02/1M tokens
-            const cost = (usage.total_tokens || 0) / 1000000 * 0.012;
+            // Voyage pricing from PROVIDER_DEFAULTS
+            const costPerMillion = PROVIDER_DEFAULTS.voyage.pricing[model] || 0.012;
+            const cost = (usage.total_tokens || 0) / 1000000 * costPerMillion;
 
             return {
                 embedding: embedding,
@@ -387,8 +430,8 @@ class EmbeddingProvider {
             const embedding = response.data.data[0].embedding;
             const usage = response.data.usage || {};
 
-            // OpenRouter pricing varies, use similar to OpenAI
-            const costPerMillion = model.includes('large') ? 0.13 : 0.02;
+            // OpenRouter pricing from PROVIDER_DEFAULTS  
+            const costPerMillion = PROVIDER_DEFAULTS.openrouter.pricing[model] || 0.02;
             const cost = (usage.total_tokens || 0) / 1000000 * costPerMillion;
 
             return {
@@ -426,8 +469,10 @@ class EmbeddingProvider {
 
             const embedding = response.data.embeddings[0];
 
-            // Cohere pricing: ~$0.10/1M tokens
-            const cost = (text.length / 1000000) * 0.10;
+            // Cohere pricing from PROVIDER_DEFAULTS (character-based, not token-based)
+            // Note: This is an estimate - actual pricing may vary
+            const costPerMillion = PROVIDER_DEFAULTS.cohere.pricing[model] || 0.10;
+            const cost = (text.length / 1000000) * costPerMillion;
 
             return {
                 embedding: embedding,

@@ -854,7 +854,10 @@ onMounted(async () => {
       api.getAIUsage().catch(() => null),
       api.getPatternConfig().catch(() => null),
       api.getCostSummary().catch(() => null),
-      api.get('/settings/embedding-provider').catch(() => null)
+      api.get('/settings/embedding-provider').catch(err => {
+        console.warn('Failed to load embedding provider config:', err)
+        return null
+      })
     ])
     
     if (configResponse.data) {
