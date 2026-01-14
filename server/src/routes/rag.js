@@ -383,6 +383,7 @@ router.put('/patterns/:id/reject', async (req, res) => {
 const manualBackfillService = require('../services/manualBackfillService');
 const scheduledBackfillService = require('../services/scheduledBackfillService');
 const idleBackfillService = require('../services/idleBackfillService');
+const { parseDaysConfig, formatDaysConfig } = require('../utils/backfillHelpers');
 
 /**
  * POST /api/rag/backfill/manual/start
@@ -519,13 +520,13 @@ router.put('/backfill/schedule', async (req, res) => {
                 scheduled_backfill_batch_size = $4,
                 scheduled_backfill_max_duration = $5
             WHERE id = 1
-        `, [enabled, time, Array.isArray(days) ? days.join(',') : days, batchSize, maxDuration]);
+        `, [enabled, time, formatDaysConfig(days), batchSize, maxDuration]);
 
         // Update the service with new schedule
         scheduledBackfillService.updateSchedule({ 
             enabled, 
             time, 
-            days: Array.isArray(days) ? days : days.split(',').map(d => parseInt(d)),
+            days: parseDaysConfig(days),
             batchSize, 
             maxDuration 
         });

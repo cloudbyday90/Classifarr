@@ -313,6 +313,7 @@ import Card from '@/components/common/Card.vue';
 import Button from '@/components/common/Button.vue';
 import Spinner from '@/components/common/Spinner.vue';
 import api from '@/api';
+import { parseDaysConfig } from '@/utils/backfillHelpers';
 
 export default {
   name: 'BackfillSettings',
@@ -421,9 +422,7 @@ export default {
           scheduleConfig.value = {
             enabled: response.data.scheduled_backfill_enabled || false,
             time: response.data.scheduled_backfill_time || '02:00',
-            days: response.data.scheduled_backfill_days 
-              ? response.data.scheduled_backfill_days.split(',').map(d => parseInt(d))
-              : [0, 1, 2, 3, 4, 5, 6],
+            days: parseDaysConfig(response.data.scheduled_backfill_days),
             batchSize: response.data.scheduled_backfill_batch_size || 100,
             maxDuration: response.data.scheduled_backfill_max_duration || 3600000
           };

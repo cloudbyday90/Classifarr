@@ -9,6 +9,7 @@
 const db = require('../config/database');
 const embeddingService = require('./embeddingService');
 const { createLogger } = require('../utils/logger');
+const { parseDaysConfig } = require('../utils/backfillHelpers');
 
 const logger = createLogger('ScheduledBackfillService');
 
@@ -51,9 +52,7 @@ class ScheduledBackfillService {
                 this.schedule = {
                     enabled: row.scheduled_backfill_enabled || false,
                     time: row.scheduled_backfill_time || '02:00',
-                    days: row.scheduled_backfill_days 
-                        ? row.scheduled_backfill_days.split(',').map(d => parseInt(d))
-                        : [0, 1, 2, 3, 4, 5, 6],
+                    days: parseDaysConfig(row.scheduled_backfill_days),
                     batchSize: row.scheduled_backfill_batch_size || 100,
                     maxDuration: row.scheduled_backfill_max_duration || 3600000
                 };
