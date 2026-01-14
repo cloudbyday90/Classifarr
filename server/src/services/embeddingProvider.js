@@ -165,11 +165,11 @@ class EmbeddingProvider {
 
             switch (mode) {
                 case 'same':
-                    // Use classification provider (legacy behavior)
+                    // Use classification provider (legacy behavior via ollamaService)
                     result = await this.getOllamaEmbedding(
                         text,
-                        config.ollama_host,
-                        config.ollama_port,
+                        null,  // Don't pass host - use ollamaService
+                        null,  // Don't pass port - use ollamaService
                         config.embedding_model || 'nomic-embed-text-v2-moe'
                     );
                     break;
