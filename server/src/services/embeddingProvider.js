@@ -166,6 +166,8 @@ class EmbeddingProvider {
             await providerLock.acquireLock('embedding', 'normal');
         }
 
+        // Store config interval to avoid race conditions
+        const heartbeatIntervalMs = needsLock ? providerLock.config.heartbeatInterval : null;
         let heartbeatTimer = null;
         try {
             if (needsLock) {
@@ -176,9 +178,9 @@ class EmbeddingProvider {
                         // Preemption requested - pause and yield
                         clearInterval(heartbeatTimer);
                         providerLock.releaseLock('embedding');
-                        throw new Error('Embedding preempted by classification');
+                        throw new Error('Embedding operation was preempted by high-priority classification request. The operation will be retried automatically.');
                     }
-                }, providerLock.config.heartbeatInterval);
+                }, heartbeatIntervalMs);
             }
 
             let result;

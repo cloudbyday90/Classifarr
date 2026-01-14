@@ -1397,13 +1397,15 @@ Think step by step, then respond with ONLY one of the formats above.`;
     // Acquire lock with high priority (classification always wins)
     await providerLock.acquireLock('classification', 'high');
     
+    // Store config interval to avoid race conditions
+    const heartbeatIntervalMs = providerLock.config.heartbeatInterval;
     let heartbeatTimer = null;
     let response;
     try {
       // Start heartbeat interval
       heartbeatTimer = setInterval(() => {
         providerLock.heartbeat('classification');
-      }, providerLock.config.heartbeatInterval);
+      }, heartbeatIntervalMs);
 
       // Track generation status for UI
       const itemTitle = metadata.title || 'Unknown';

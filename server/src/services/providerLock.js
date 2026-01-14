@@ -81,9 +81,15 @@ class ProviderLockService {
       // Check for stale lock (no heartbeat)
       if (this.lockState.lastHeartbeat && 
           Date.now() - this.lockState.lastHeartbeat > this.config.heartbeatTimeout) {
-        logger.warn(`Releasing stale lock held by ${this.lockState.lockedBy}`);
-        this.releaseLock(this.lockState.lockedBy);
-        break;
+        const staleOwner = this.lockState.lockedBy;
+        logger.warn(`Releasing stale lock held by ${staleOwner}`);
+        // Attempt to release and verify we actually released it
+        const released = this.releaseLock(staleOwner);
+        if (released) {
+          break; // Successfully released stale lock
+        }
+        // If release failed, another thread might have already handled it
+        continue;
       }
       
       // Classification can preempt embedding
@@ -168,9 +174,13 @@ class ProviderLockService {
    * @param {object} newConfig - New configuration values
    */
   async updateConfig(newConfig) {
-    this.config = { ...this.config, ...newConfig };
+    // Create new config object atomically
+    const updatedConfig = { 
+      ...this.config, 
+      ...newConfig 
+    };
     
-    // Persist to database
+    // Persist to database first
     try {
       await db.query(`
         UPDATE ai_provider_config SET
@@ -179,10 +189,13 @@ class ProviderLockService {
           max_wait_time = $3
         WHERE id = 1
       `, [
-        newConfig.heartbeatTimeout || this.config.heartbeatTimeout,
-        newConfig.heartbeatInterval || this.config.heartbeatInterval,
-        newConfig.maxWaitTime || this.config.maxWaitTime
+        updatedConfig.heartbeatTimeout,
+        updatedConfig.heartbeatInterval,
+        updatedConfig.maxWaitTime
       ]);
+      
+      // Only update in-memory config after successful DB write
+      this.config = updatedConfig;
       
       logger.info('Updated heartbeat config', this.config);
     } catch (error) {
