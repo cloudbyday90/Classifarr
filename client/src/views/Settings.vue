@@ -63,6 +63,7 @@ import Confidence from './settings/Confidence.vue'
 import Tavily from './settings/Tavily.vue'
 import OMDb from './settings/OMDb.vue'
 import Rules from './settings/Rules.vue'
+import RatingNormalization from './settings/RatingNormalization.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -92,6 +93,7 @@ const settingsGroups = [
       { id: 'tmdb', label: 'TMDB', icon: '🎞️', component: TMDB },
       { id: 'omdb', label: 'OMDb', icon: '🎬', component: OMDb },
       { id: 'tavily', label: 'Tavily', icon: '🔍', component: Tavily },
+      { id: 'rating-normalization', label: 'Rating Normalization', icon: '⭐', component: RatingNormalization },
     ]
   },
   {

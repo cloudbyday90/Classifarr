@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.3-alpha] - 2026-01-14
+
+### Added
+- **Rating Normalization System**: Comprehensive system to standardize age-based and international ratings to MPAA/TV standards
+  - New `ratingNormalizer.js` utility with priority-based rating selection
+  - Priority system: 1) OMDb rated field (most reliable), 2) TMDB US certification, 3) Normalized age-based rating, 4) "NR" for unknowns
+  - Support for age-based ratings: 13→PG-13, 14→PG-13, 15→R, 16→R, 17→R, 18→NC-17
+  - Support for UK ratings: U→G, PG→PG, 12A→PG-13
+  - Support for Australian ratings: M→PG-13, MA15+→R, R18+→NC-17
+  - Support for German FSK ratings: FSK 0→G, FSK 6→G, FSK 12→PG-13, FSK 16→R, FSK 18→NC-17
+  - Separate TV rating mappings: 13→TV-14, 16→TV-MA, etc.
+  - Original ratings preserved in new `original_rating` column
+  - Database migration 052 adds `original_rating` column with indexes
+
+- **Rating Normalization Queue Processing**: New task type `rating_normalization`
+  - Processes items asynchronously through queue system
+  - Updates `content_rating` to normalized value while preserving original
+  - Priority 5 tasks (medium priority)
+  - Logs normalization changes for audit trail
+
+- **Automatic Rating Updates from OMDb**: Metadata enrichment now updates ratings
+  - When OMDb enrichment succeeds, `content_rating` is updated to OMDb's rated field
+  - Original rating preserved in `original_rating` column
+  - Only updates if OMDb rated field is valid (not "N/A")
+  - Ensures most reliable rating source (OMDb from IMDb) takes precedence
+
+- **Rating Normalization Admin UI**: New Settings panel under Metadata section
+  - Real-time statistics: items needing normalization, already normalized, in queue, failed
+  - Progress bar showing normalization completion percentage
+  - "Normalize X Ratings" button to queue all items needing normalization
+  - "Refresh Status" button for manual stats update
+  - "Regenerate Profiles" button after completion
+  - Auto-polling every 5 seconds when processing
+  - Rating mapping examples showing transformations (13→PG-13, FSK 16→R, etc.)
+  - Success/error message toasts
+
+- **Rating Normalization API Endpoints**: Three new REST endpoints
+  - `GET /api/rating-normalization/stats`: Returns normalization statistics
+  - `POST /api/rating-normalization/backfill`: Queues all items needing normalization
+  - `POST /api/rating-normalization/finalize`: Checks completion and regenerates library profiles
+
+- **Automatic Rating Normalization on Startup**: Server startup auto-queues first 1000 items
+  - Runs after database migrations and service initialization
+  - Identifies items with age-based or non-standard ratings without `original_rating` set
+  - Only queues items needing normalization (skips already-standard ratings)
+  - Logs total count and queued count for visibility
+
+- **Daily Rating Normalization Check**: Scheduler runs daily at 3 AM
+  - Checks for new items needing normalization (from new media syncs)
+  - Auto-queues any items found
+  - Prevents manual intervention for ongoing library additions
+  - Logs activity for audit trail
+
+### Changed
+- **Metadata Enrichment**: Now normalizes ratings when OMDb data is available
+  - OMDb rated field takes precedence over existing content_rating
+  - Original rating preserved before update
+  - Ensures library items get most authoritative rating (from IMDb via OMDb)
+
+### Technical Details
+- New database column `original_rating` stores pre-normalization ratings
+- Index on `original_rating` for efficient queries
+- Conditional index on `content_rating WHERE original_rating IS NULL` for finding items needing normalization
+- Queue processing handles items in batches to prevent server overload
+- Rating normalizer uses mapping tables for consistent transformations
+- Standard ratings (G, PG, PG-13, R, NC-17, TV-Y, TV-Y7, TV-G, TV-PG, TV-14, TV-MA) pass through unchanged
+- Unknown/unmapped ratings default to "NR" (Not Rated)
+- Vue component uses reactive polling for real-time progress updates
+- Integration tests cover stats endpoint, backfill queuing, and finalization
+
 ## [0.38.2-alpha] - 2026-01-14
 
 ### Fixed
