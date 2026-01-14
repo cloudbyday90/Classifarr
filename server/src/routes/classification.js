@@ -439,9 +439,15 @@ router.get('/pending', async (req, res) => {
     const pending = await clarificationService.getPendingClassifications();
 
     // Parse policy_question JSON for each item
+    // policy_question is JSONB in PostgreSQL (already parsed as object)
+    // Handle both string (old data) and object (current format)
     const items = pending.map(item => ({
       ...item,
-      policy_question: item.policy_question ? JSON.parse(item.policy_question) : null,
+      policy_question: item.policy_question 
+        ? (typeof item.policy_question === 'string' 
+            ? JSON.parse(item.policy_question) 
+            : item.policy_question)
+        : null,
     }));
 
     res.json({

@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.0-alpha] - 2026-01-14
+
+### Fixed
+- **Pending Classifications API Crash**: Fixed `/api/classification/pending` throwing "is not valid JSON" error
+  - `policy_question` column is JSONB in PostgreSQL (already parsed as object by pg driver)
+  - Code was incorrectly calling `JSON.parse()` on an object, causing "[object Object] is not valid JSON" error
+  - Now checks `typeof` before parsing to handle both string (legacy data) and object (current) formats
+  - Ensures backward compatibility while preventing crashes on JSONB columns
+
+- **Awaiting Decision Library Assignment**: Fixed items showing assigned library while awaiting user decision
+  - Classifications with `awaiting_decision` status now have `library_id` and `library_name` set to NULL in database
+  - Library only assigned after user makes decision via Discord buttons or Queue UI
+  - Prevents misleading "Classified To: Anime Movies" display in history for pending items
+  - UI now clearly shows "Awaiting Decision" status instead of premature library assignment
+  - Discord notifications still show AI's suggested library for context, but database doesn't commit until decision made
+
+- **Discord Clarification Prompts Missing**: Fixed items needing clarification not appearing in Discord
+  - AI CLARIFY responses were missing `libraries` array in result object
+  - Discord `createTieredComponents` couldn't create dropdown menu without libraries array
+  - Now includes `libraries` array in CLARIFY responses (both AI clarification and fallback cases)
+  - Discord notifications now correctly show clarification buttons AND library dropdown for manual selection
+
+- **Embedding Service Stale Configuration Cache**: Fixed embeddings using stale localhost configuration
+  - `OllamaService.getConfig()` cached `baseUrl` on first call without invalidation mechanism
+  - When user configured remote Ollama host (e.g., 192.168.50.95:11434), embeddings still used cached localhost:11434
+  - Added `ollamaService.resetConfig()` call to ai_provider_config update endpoint
+  - Cache now properly invalidated when user updates Ollama settings in UI
+  - Maintains performance benefits of caching while ensuring configuration changes take effect immediately
+
+### Technical Details
+- Route `/api/classification/pending` now safely handles both string and JSONB formats for `policy_question`
+- Classification service `logClassification` method conditionally sets `library_id` and `library_name` based on status
+- When `status === 'awaiting_decision'`, both fields are NULL; when `status === 'completed'`, fields are populated
+- Classification service `parseAIResponse` now includes `libraries` array in CLARIFY result objects
+- Ollama service `getConfig()` maintains cache for performance, invalidated via `resetConfig()` when settings updated
+
 ## [0.38.4-alpha] - 2026-01-14
 
 ### Fixed

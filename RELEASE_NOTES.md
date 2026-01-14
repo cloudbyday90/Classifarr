@@ -1,5 +1,109 @@
 # Classifarr Release Notes
 
+## v0.39.0-alpha
+**Title: Critical Bug Fixes for Classification & RAG**
+
+### Bug Fixes
+
+#### 1. Pending Items Now Display Correctly (API Crash Fixed)
+
+**Problem:** 
+When you navigated to the "Awaiting Decision" queue, the page crashed with a 500 error: `"[object Object] is not valid JSON"`. The `/api/classification/pending` endpoint was broken, preventing you from seeing items that needed your decision.
+
+**Root Cause:**
+The `policy_question` column in PostgreSQL is stored as JSONB (a native JSON object type). The PostgreSQL driver automatically parses JSONB columns into JavaScript objects. However, the code was calling `JSON.parse()` on an already-parsed object, which caused the error.
+
+**Solution:**
+- Added type checking: `typeof item.policy_question === 'string'` before calling `JSON.parse()`
+- Now handles both formats: legacy string data (parsed) and current JSONB data (already objects)
+- Ensures backward compatibility while preventing crashes
+
+**Impact:** 
+Your "Awaiting Decision" queue now loads correctly, showing all pending items that need your input.
+
+#### 2. No More Premature Library Assignment  
+
+**Problem:** 
+When the AI returned a CLARIFY response (needing your decision), the classification history showed "Classified To: Anime Movies" even though the item was still awaiting your decision. This was confusing because it looked like the item was already classified when it wasn't.
+
+**Example:**
+- AI suggests "Anime Movies" but needs clarification
+- History shows: "✓ Classified To: Anime Movies" (misleading)
+- Queue page showed "Awaiting Decision" (correct, but inconsistent)
+
+**Root Cause:**
+The database was storing the fallback/suggested library in `library_id` and `library_name` columns even when `status = 'awaiting_decision'`. This caused the UI to display the library as if classification was complete.
+
+**Solution:**
+- When `status = 'awaiting_decision'`, set `library_id = NULL` and `library_name = NULL` in database
+- Library only assigned after you make a decision via Discord or Queue UI
+- Discord notifications still show the AI's suggestion for context
+- History UI now correctly shows "Awaiting Decision" instead of a library name
+
+**Impact:** 
+The UI is now consistent - items awaiting your decision clearly show "Awaiting Decision" status until you actually make a choice.
+
+#### 3. RAG Embeddings Now Work with Remote Ollama (Configuration Cache Bug)
+
+**Problem:**
+Users with Ollama running on a remote host (e.g., `192.168.50.95:11434`) found that embeddings were still being sent to `localhost:11434` even after configuring the remote host in Settings → AI Provider. This caused:
+- ✅ `curl http://192.168.50.95:11434/api/embeddings` → Works (external Ollama)
+- ❌ `curl http://localhost:11434/api/embeddings` → Fails (nothing inside container)
+- ❌ RAG status shows 0 embeddings despite thousands of classifications
+
+**Root Cause:**
+The `OllamaService.getConfig()` method cached the `baseUrl` on first call:
+```javascript
+async getConfig() {
+    if (this.baseUrl) {
+      return { host: this.host, port: this.port, baseUrl: this.baseUrl }; // Returns cached value!
+    }
+    // ... fetch from database ...
+}
+```
+
+**What Happened:**
+1. On container startup, if `ollama_config` table is empty and `ai_provider_config.ollama_host` is NULL
+2. First call caches `localhost:11434` into `this.baseUrl`
+3. User then configures `192.168.50.95` in the UI
+4. All subsequent calls return the cached `localhost` value!
+5. Embeddings fail silently because Ollama isn't running inside the container
+
+**Solution:**
+- Added `ollamaService.resetConfig()` call to ai_provider_config update endpoint
+- Cache is now properly invalidated when you update Ollama settings
+- Maintains performance benefits of caching (avoids repeated DB queries)
+- Configuration changes take effect immediately after saving
+
+**Impact:** 
+RAG embeddings now correctly use your configured Ollama host. When you update the Ollama host in Settings → AI Provider, the change takes effect immediately. Performance is maintained through intelligent caching with proper invalidation.
+
+#### 4. Discord Clarification Prompts Now Working
+
+**Problem:**
+Items with `needs_clarification: true` should trigger Discord prompts with clarification buttons, but **you weren't getting any Discord notifications** for items needing clarification.
+
+**Root Cause:**
+When the AI returns a CLARIFY response (or when AI response is malformed), the result object was missing the `libraries` array. The Discord notification code creates two components:
+1. Clarification buttons from `result.clarification.options`
+2. Library dropdown menu from `result.libraries`
+
+Without the `libraries` array, the dropdown creation at line 739 would fail the check `if (libraries && libraries.length > 1)`. While the clarification buttons were created correctly, the missing dropdown likely caused the entire component creation to fail silently.
+
+**Solution:**
+- Added `libraries: libraries` to CLARIFY response objects (lines 1500 and 1521)
+- Both AI clarification responses and fallback cases now include the libraries array
+- Discord can now create both the clarification buttons AND the library dropdown
+
+**Impact:** 
+Discord notifications now appear for items needing clarification, with both AI-suggested options as buttons and a manual library dropdown as fallback.
+
+### Technical Notes
+- Bug #1 fix location: `server/src/routes/classification.js` line 444
+- Bug #2 fix location: `server/src/services/classification.js` lines 1537-1540
+- Bug #3 fix location: `server/src/services/ollama.js` lines 102-107 (cache with invalidation), `server/src/routes/settings.js` line 2394 (reset cache on update)
+- Bug #4 fix location: `server/src/services/classification.js` lines 1500, 1521
+
 ## v0.38.4-alpha
 **Title: Quality Profile UX and Discord Notification Fixes**
 

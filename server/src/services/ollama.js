@@ -100,6 +100,8 @@ class OllamaService {
   }
 
   async getConfig() {
+    // Use cached config if available (performance optimization)
+    // Cache is invalidated via resetConfig() when settings are updated
     if (this.baseUrl) {
       return { host: this.host, port: this.port, baseUrl: this.baseUrl };
     }

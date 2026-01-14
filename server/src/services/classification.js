@@ -1497,6 +1497,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
         clarification: policyQuestion, // Enhanced policy question object
         pending_reason: problemSummary,
         policy_question: policyQuestion, // For database storage
+        libraries: libraries, // Include libraries array for Discord dropdown
       };
     }
 
@@ -1517,13 +1518,13 @@ Think step by step, then respond with ONLY one of the formats above.`;
           library_id: lib.id,
         })),
       },
+      libraries: libraries, // Include libraries array for Discord dropdown
     };
   }
 
   async logClassification(metadata, result) {
     // Extract collection_id from metadata if available
     const collectionId = metadata.collectionId || null;
-    const libraryName = result.library?.name || null;
     const signalsJson = result.signals ? JSON.stringify(result.signals) :
       result.signalContext?.signals ? JSON.stringify(result.signalContext.signals) : null;
 
@@ -1531,6 +1532,12 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const pendingReason = result.pending_reason || (result.needs_clarification ? result.reason : null);
     const policyQuestion = result.policy_question ? JSON.stringify(result.policy_question) : null;
     const status = result.needs_clarification ? 'awaiting_decision' : 'completed';
+
+    // Only set library when classification is complete
+    // When awaiting_decision, library_id and library_name should be NULL to prevent premature assignment
+    const isAwaitingDecision = status === 'awaiting_decision';
+    const libraryId = isAwaitingDecision ? null : (result.library?.id || null);
+    const libraryName = isAwaitingDecision ? null : (result.library?.name || null);
 
     const insertResult = await db.query(
       `INSERT INTO classification_history 
@@ -1542,7 +1549,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
         metadata.media_type,
         metadata.title,
         metadata.year,
-        result.library?.id,
+        libraryId,
         libraryName,
         result.confidence,
         result.method,
