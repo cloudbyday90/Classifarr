@@ -150,8 +150,13 @@
               <option v-for="profile in qualityProfiles" :key="profile.id" :value="profile.id">
                 {{ profile.name }}
               </option>
+              <!-- Show saved profile ID as fallback if list is empty but profile is set -->
+              <option v-if="!qualityProfiles.length && editForm.quality_profile_id" :value="editForm.quality_profile_id">
+                Profile ID: {{ editForm.quality_profile_id }}
+              </option>
             </select>
-            <p v-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
+            <p v-if="loadingProfiles" class="text-xs text-blue-400 mt-1">Loading profiles...</p>
+            <p v-else-if="!qualityProfiles.length && !editForm.quality_profile_id" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
           </div>
           <div>
             <label class="block text-sm font-medium mb-2">Series Type</label>
@@ -272,7 +277,8 @@
               {{ profile.name }}
             </option>
           </select>
-          <p v-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
+          <p v-if="loadingProfiles" class="text-xs text-blue-400 mt-1">Loading profiles...</p>
+          <p v-else-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
         </div>
         <div>
           <label class="block text-sm font-medium mb-2">Series Type</label>
@@ -346,11 +352,24 @@ const saving = ref(false)
 const isEditing = ref(false)
 const isAddingNew = ref(false)
 const editingId = ref(null)
+const loadingProfiles = ref(false)
 
 // New state for options
 const qualityProfiles = ref([])
-const seriesTypeOptions = ref([])
-const seasonMonitoringOptions = ref([])
+const seriesTypeOptions = ref([
+  { value: 'standard', label: 'Standard' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'anime', label: 'Anime' }
+])
+const seasonMonitoringOptions = ref([
+  { value: 'all', label: 'All Seasons' },
+  { value: 'future', label: 'Future Seasons' },
+  { value: 'missing', label: 'Missing Seasons' },
+  { value: 'existing', label: 'Existing Seasons' },
+  { value: 'first', label: 'First Season' },
+  { value: 'latest', label: 'Latest Season' },
+  { value: 'none', label: 'None' }
+])
 
 const editForm = ref({
   name: 'Sonarr',
@@ -419,17 +438,19 @@ const startEditing = async (instance) => {
   editingId.value = instance.id
   isEditing.value = true
   isAddingNew.value = false
-  editForm.value = { ...instance }
+  // Explicitly include id to ensure API lookups work with masked API key
+  editForm.value = { ...instance, id: instance.id }
   
-  // Try to load profiles for this instance
+  // Load profiles for this instance using direct API endpoint
+  loadingProfiles.value = true
   try {
     const response = await api.genericRequest('get', `/api/settings/sonarr/${instance.id}/quality-profiles`)
     qualityProfiles.value = response.data || []
-    
-    // Trigger test connection to load other options and refresh
-    testConnection(false)
   } catch (e) {
-    // If fail, just rely on test connection
+    console.warn('Failed to load quality profiles:', e)
+    // Keep existing profiles empty, user can test connection manually
+  } finally {
+    loadingProfiles.value = false
   }
 }
 
@@ -458,6 +479,7 @@ const testConnection = async (showToast = true) => {
         if (response.data.data.qualityProfiles) {
           qualityProfiles.value = response.data.data.qualityProfiles
         }
+        // Series type and monitoring options are hardcoded, but update if API provides them
         if (response.data.data.seriesTypeOptions) {
           seriesTypeOptions.value = response.data.data.seriesTypeOptions
         }

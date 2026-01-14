@@ -56,16 +56,38 @@ class ClarificationService {
    */
   async getTierForConfidence(confidence) {
     try {
+      // Round confidence to avoid decimal precision issues
+      const roundedConfidence = Math.round(confidence);
+      
       const result = await db.query(
         `SELECT * FROM confidence_thresholds 
          WHERE $1 >= min_confidence AND $1 <= max_confidence
+         ORDER BY min_confidence DESC
          LIMIT 1`,
-        [confidence]
+        [roundedConfidence]
       );
 
-      return result.rows[0] || null;
+      if (result.rows.length === 0) {
+        logger.warn('No tier found for confidence', { confidence, roundedConfidence });
+        
+        // Fallback tier for low-confidence items without explicit tier
+        if (roundedConfidence < 70) {
+          logger.info('Using fallback tier for low-confidence item', { confidence: roundedConfidence });
+          return { 
+            tier: 'clarify', 
+            action: 'clarify_questions', 
+            description: 'Requires clarification',
+            min_confidence: 50,
+            max_confidence: 69
+          };
+        }
+        
+        return null;
+      }
+
+      return result.rows[0];
     } catch (error) {
-      logger.error('Error getting tier', { error: error.message });
+      logger.error('Error getting tier', { error: error.message, confidence });
       return null;
     }
   }

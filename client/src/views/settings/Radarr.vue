@@ -150,8 +150,13 @@
               <option v-for="profile in qualityProfiles" :key="profile.id" :value="profile.id">
                 {{ profile.name }}
               </option>
+              <!-- Show saved profile ID as fallback if list is empty but profile is set -->
+              <option v-if="!qualityProfiles.length && editForm.quality_profile_id" :value="editForm.quality_profile_id">
+                Profile ID: {{ editForm.quality_profile_id }}
+              </option>
             </select>
-            <p v-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
+            <p v-if="loadingProfiles" class="text-xs text-blue-400 mt-1">Loading profiles...</p>
+            <p v-else-if="!qualityProfiles.length && !editForm.quality_profile_id" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
           </div>
           <div>
             <label class="block text-sm font-medium mb-2">Minimum Availability</label>
@@ -263,7 +268,8 @@
               {{ profile.name }}
             </option>
           </select>
-          <p v-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
+          <p v-if="loadingProfiles" class="text-xs text-blue-400 mt-1">Loading profiles...</p>
+          <p v-else-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
         </div>
         <div>
           <label class="block text-sm font-medium mb-2">Minimum Availability</label>
@@ -328,10 +334,16 @@ const saving = ref(false)
 const isEditing = ref(false)
 const isAddingNew = ref(false)
 const editingId = ref(null)
+const loadingProfiles = ref(false)
 
 // New state for options
 const qualityProfiles = ref([])
-const availabilityOptions = ref([])
+const availabilityOptions = ref([
+  { value: 'announced', label: 'Announced' },
+  { value: 'inCinemas', label: 'In Cinemas' },
+  { value: 'released', label: 'Released' },
+  { value: 'preDB', label: 'PreDB' }
+])
 
 const editForm = ref({
   name: 'Radarr',
@@ -398,19 +410,19 @@ const startEditing = async (instance) => {
   editingId.value = instance.id
   isEditing.value = true
   isAddingNew.value = false
-  editForm.value = { ...instance }
+  // Explicitly include id to ensure API lookups work with masked API key
+  editForm.value = { ...instance, id: instance.id }
   
-  // Try to load profiles for this instance
+  // Load profiles for this instance using direct API endpoint
+  loadingProfiles.value = true
   try {
     const response = await api.genericRequest('get', `/api/settings/radarr/${instance.id}/quality-profiles`)
     qualityProfiles.value = response.data || []
-    
-    // Also load available options via test endpoint or hardcode?
-    // We can use the test connection to get options
-    // But for now, let's just trigger a test connection to load everything
-    testConnection(false) // Don't show toast for silent load
   } catch (e) {
-    // If fail, just rely on test connection
+    console.warn('Failed to load quality profiles:', e)
+    // Keep existing profiles empty, user can test connection manually
+  } finally {
+    loadingProfiles.value = false
   }
 }
 
@@ -439,6 +451,7 @@ const testConnection = async (showToast = true) => {
         if (response.data.data.qualityProfiles) {
           qualityProfiles.value = response.data.data.qualityProfiles
         }
+        // Availability options are hardcoded, but update if API provides them
         if (response.data.data.minimumAvailabilityOptions) {
           availabilityOptions.value = response.data.data.minimumAvailabilityOptions
         }
