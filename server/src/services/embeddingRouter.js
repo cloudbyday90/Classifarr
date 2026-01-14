@@ -11,6 +11,7 @@
 const db = require('../config/database');
 const ollamaService = require('./ollama');
 const cloudLLMService = require('./cloudLLM');
+const embeddingProvider = require('./embeddingProvider');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('EmbeddingRouter');
@@ -41,6 +42,14 @@ const circuitBreaker = {
 class EmbeddingRouter {
     constructor() {
         this.config = null;
+    }
+
+    /**
+     * Reset cached configuration
+     */
+    resetConfig() {
+        this.config = null;
+        embeddingProvider.resetConfig();
     }
 
     /**
@@ -176,7 +185,49 @@ class EmbeddingRouter {
             return await this.embedWithOllama(text);
         }
 
-        const { provider, model, config } = await this.getProvider();
+        const config = await this.getConfig();
+
+        // Check if using new embedding provider mode
+        const mode = config?.embedding_provider_mode || 'same';
+        
+        if (mode !== 'same') {
+            // Use new embeddingProvider service for separate_ollama and cloud modes
+            try {
+                const result = await embeddingProvider.getEmbedding(text);
+                
+                // Success - reset circuit breaker
+                this.resetCircuit();
+                
+                return result;
+            } catch (error) {
+                this.recordFailure();
+                
+                logger.warn('Embedding provider failed, trying fallback', {
+                    mode,
+                    error: error.message
+                });
+
+                // Try Ollama fallback if enabled
+                if (config?.ollama_fallback_enabled) {
+                    try {
+                        const fallbackResult = await this.embedWithOllama(text);
+                        return {
+                            ...fallbackResult,
+                            provider: 'ollama',
+                            model: DEFAULT_MODELS.ollama,
+                            fallback: true
+                        };
+                    } catch (fallbackError) {
+                        logger.error('Fallback embedding also failed', { error: fallbackError.message });
+                    }
+                }
+
+                throw error;
+            }
+        }
+
+        // Legacy behavior: use embedding_provider column (mode = 'same')
+        const { provider, model, config: providerConfig } = await this.getProvider();
 
         try {
             let result;
@@ -187,14 +238,14 @@ class EmbeddingRouter {
                     break;
 
                 case 'gemini':
-                    result = await this.embedWithGemini(text, model, config);
+                    result = await this.embedWithGemini(text, model, providerConfig);
                     break;
 
                 case 'openai':
                 case 'openrouter':
                 case 'litellm':
                 case 'custom':
-                    result = await this.embedWithCloud(text, model, config);
+                    result = await this.embedWithCloud(text, model, providerConfig);
                     break;
 
                 default:
@@ -220,7 +271,7 @@ class EmbeddingRouter {
             });
 
             // Try Ollama fallback if enabled
-            if (config?.ollama_fallback_enabled && provider !== 'ollama') {
+            if (providerConfig?.ollama_fallback_enabled && provider !== 'ollama') {
                 try {
                     const fallbackResult = await this.embedWithOllama(text);
                     return {
