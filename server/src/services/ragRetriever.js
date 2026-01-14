@@ -34,14 +34,15 @@ class RAGRetriever {
                 return [];
             }
 
-            // Get embedding count once for efficiency
+            // Get config and embedding count once for efficiency
+            const config = await embeddingRouter.getConfig();
             const embeddingCount = await this.getEmbeddingCount();
+            const threshold = config?.rag_similarity_threshold || 0.70;
+            const minRequired = config?.rag_min_history_count || 50;
 
             // Check minimum embeddings threshold
             const hasMinimum = await embeddingService.hasMinimumEmbeddings();
             if (!hasMinimum) {
-                const config = await embeddingRouter.getConfig();
-                const minRequired = config?.rag_min_history_count || 50;
                 logger.info('RAG search skipped - not enough embeddings', { 
                     title: metadata.title,
                     embeddingCount,
@@ -49,10 +50,6 @@ class RAGRetriever {
                 });
                 return [];
             }
-
-            // Get config for threshold
-            const config = await embeddingRouter.getConfig();
-            const threshold = config?.rag_similarity_threshold || 0.70;
 
             logger.info('RAG search initiated', { 
                 title: metadata.title, 

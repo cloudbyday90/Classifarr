@@ -942,8 +942,8 @@ class ClassificationService {
     await signalCollector.collectAll(metadata, libraries, detectors);
 
     // Step 4.5: RAG-based semantic similarity (v0.34)
-    // Note: RAG is now also invoked within collectAll via library profile scoring,
-    // but we keep this for backward compatibility and to generate ragContext for AI
+    // Note: RAG/semantic search is handled here as a separate step (not via collectAll),
+    // and we keep this for backward compatibility and to generate ragContext for AI
     let ragContext = null;
     try {
       const similarItems = await ragRetriever.semanticSearch(metadata, 5);
@@ -958,13 +958,13 @@ class ClassificationService {
             if (!signalCollector.hasSignal(SIGNAL_TYPES.SEMANTIC_SIMILARITY)) {
               signalCollector.addSignal(
                 SIGNAL_TYPES.SEMANTIC_SIMILARITY,
-                ragLibrary,
-                dynamicWeight,
                 {
                   similarItems: similarItems.slice(0, 3),
                   avgSimilarity: suggestedLibrary.avgSimilarity,
                   voteCount: suggestedLibrary.voteCount
-                }
+                },
+                dynamicWeight,
+                ragLibrary
               );
             }
             ragContext = ragRetriever.formatForAIContext(similarItems);
