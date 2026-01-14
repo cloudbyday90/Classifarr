@@ -873,13 +873,14 @@ router.post('/export/logs', async (req, res) => {
 
 /**
  * POST /api/rag/export/metrics
- * Export RAG metrics
+ * Export RAG metrics (uses existing rag_metrics table from migration 039)
  */
 router.post('/export/metrics', async (req, res) => {
     try {
         const metrics = await db.query(`
-            SELECT * FROM embedding_metrics 
-            ORDER BY date DESC, hour DESC 
+            SELECT * FROM rag_metrics 
+            WHERE operation = 'embedding_generation'
+            ORDER BY period_start DESC 
             LIMIT 1000
         `);
 

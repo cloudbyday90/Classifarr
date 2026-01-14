@@ -67,27 +67,38 @@ CREATE INDEX IF NOT EXISTS idx_embedding_errors_classification ON embedding_erro
 CREATE INDEX IF NOT EXISTS idx_embedding_errors_resolved ON embedding_errors(resolved);
 
 -- ============================================================================
--- 4. EMBEDDING METRICS TABLE
+-- 4. EMBEDDING METRICS
 -- ============================================================================
-
-CREATE TABLE IF NOT EXISTS embedding_metrics (
-    id SERIAL PRIMARY KEY,
-    date DATE NOT NULL,
-    hour INTEGER NOT NULL,
-    generated_count INTEGER DEFAULT 0,
-    error_count INTEGER DEFAULT 0,
-    total_time_ms INTEGER DEFAULT 0,
-    cache_hits INTEGER DEFAULT 0,
-    UNIQUE(date, hour)
-);
-
--- Index for efficient queries
-CREATE INDEX IF NOT EXISTS idx_embedding_metrics_date_hour ON embedding_metrics(date DESC, hour DESC);
+-- NOTE: Metrics for embedding_generation operations are already tracked by the
+-- existing rag_metrics table (created in migration 039), which includes
+-- operation type, duration_ms, success/failure, period_start, and metadata.
+-- To avoid duplication and schema confusion, we use the existing rag_metrics
+-- table rather than creating a separate embedding_metrics table.
+--
+-- Query example for embedding metrics:
+--   SELECT * FROM rag_metrics WHERE operation = 'embedding_generation'
+-- ============================================================================
 
 -- ============================================================================
 -- NOTES
 -- ============================================================================
 -- This migration adds comprehensive monitoring and logging for RAG operations:
+--
+-- 1. Advanced Configuration: Adds retry, timeout, cache, and debug settings
+--    to ai_provider_config for fine-tuning RAG performance
+--
+-- 2. Activity Logging: Creates rag_logs table for detailed operation tracking
+--    with level (info/warning/error) and type (embedding/backfill/provider/cache)
+--
+-- 3. Error Tracking: Creates embedding_errors table to log and track failed
+--    embedding generation attempts with retry counts and resolution status
+--
+-- 4. Metrics: Uses existing rag_metrics table (from migration 039) for
+--    performance metrics. Query with: operation = 'embedding_generation'
+--
+-- Together with migration 039's rag_metrics table and rag_health_summary view,
+-- this provides complete monitoring infrastructure for RAG operations.
+-- ============================================================================
 -- - Advanced configuration for retry logic, caching, and debugging
 -- - Activity logs for tracking all RAG operations
 -- - Error tracking for failed embeddings
