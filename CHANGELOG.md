@@ -21,12 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - UI now clearly shows "Awaiting Decision" status instead of premature library assignment
   - Discord notifications still show AI's suggested library for context, but database doesn't commit until decision made
 
+- **Discord Clarification Prompts Missing**: Fixed items needing clarification not appearing in Discord
+  - AI CLARIFY responses were missing `libraries` array in result object
+  - Discord `createTieredComponents` couldn't create dropdown menu without libraries array
+  - Now includes `libraries` array in CLARIFY responses (both AI clarification and fallback cases)
+  - Discord notifications now correctly show clarification buttons AND library dropdown for manual selection
+
 ### Technical Details
 - Route `/api/classification/pending` now safely handles both string and JSONB formats for `policy_question`
 - Classification service `logClassification` method conditionally sets `library_id` and `library_name` based on status
 - When `status === 'awaiting_decision'`, both fields are NULL; when `status === 'completed'`, fields are populated
+- Classification service `parseAIResponse` now includes `libraries` array in CLARIFY result objects
 - Embedding service already correctly uses configured Ollama host from `ai_provider_config` table (no code changes needed)
-- Discord notification flow already correctly handles `needs_clarification` items with button generation (verified working)
 
 ## [0.38.4-alpha] - 2026-01-14
 

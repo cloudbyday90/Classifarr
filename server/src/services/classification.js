@@ -1497,6 +1497,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
         clarification: policyQuestion, // Enhanced policy question object
         pending_reason: problemSummary,
         policy_question: policyQuestion, // For database storage
+        libraries: libraries, // Include libraries array for Discord dropdown
       };
     }
 
@@ -1517,6 +1518,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
           library_id: lib.id,
         })),
       },
+      libraries: libraries, // Include libraries array for Discord dropdown
     };
   }
 

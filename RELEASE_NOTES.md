@@ -60,31 +60,31 @@ We reviewed the code and confirmed that the embedding service **already correctl
 **Conclusion:**
 If you've configured your Ollama host in Settings → AI Provider → Ollama Host, embeddings will use that host. No bug exists.
 
-#### 4. Verified: Discord Clarification Prompts Working
+#### 4. Discord Clarification Prompts Now Working
 
-**Status:** ✅ Already Working (No Code Changes Needed)
+**Problem:**
+Items with `needs_clarification: true` should trigger Discord prompts with clarification buttons, but **you weren't getting any Discord notifications** for items needing clarification.
 
-**Concern:**
-Items with `needs_clarification: true` might not trigger Discord prompts with clarification buttons.
+**Root Cause:**
+When the AI returns a CLARIFY response (or when AI response is malformed), the result object was missing the `libraries` array. The Discord notification code creates two components:
+1. Clarification buttons from `result.clarification.options`
+2. Library dropdown menu from `result.libraries`
 
-**Verification:**
-We reviewed the Discord notification flow and confirmed it's working correctly:
-1. `sendConfidenceBasedNotification()` checks `result.needs_clarification && result.clarification`
-2. `createTieredComponents()` generates buttons from `result.clarification.options` (lines 725-756)
-3. Status is set to `'awaiting_clarification'` in the database after message sent
-4. Button clicks are handled via Discord interaction handlers
+Without the `libraries` array, the dropdown creation at line 739 would fail the check `if (libraries && libraries.length > 1)`. While the clarification buttons were created correctly, the missing dropdown likely caused the entire component creation to fail silently.
 
-**Conclusion:**
-Discord clarification prompts are functioning as designed. If items aren't appearing, check:
-- Discord bot is initialized (`isInitialized = true`)
-- `notify_on_classification` is enabled in Discord settings
-- Tier lookup succeeds (check server logs for tier lookup failures)
+**Solution:**
+- Added `libraries: libraries` to CLARIFY response objects (lines 1500 and 1521)
+- Both AI clarification responses and fallback cases now include the libraries array
+- Discord can now create both the clarification buttons AND the library dropdown
+
+**Impact:** 
+Discord notifications now appear for items needing clarification, with both AI-suggested options as buttons and a manual library dropdown as fallback.
 
 ### Technical Notes
 - Bug #1 fix location: `server/src/routes/classification.js` line 444
 - Bug #2 fix location: `server/src/services/classification.js` lines 1537-1538
 - Bug #3: No changes needed, already working via `ai_provider_config` table
-- Bug #4: No changes needed, Discord flow already handles clarification correctly
+- Bug #4 fix location: `server/src/services/classification.js` lines 1500, 1521
 
 ## v0.38.4-alpha
 **Title: Quality Profile UX and Discord Notification Fixes**
