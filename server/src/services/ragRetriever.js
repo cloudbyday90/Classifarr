@@ -38,10 +38,12 @@ class RAGRetriever {
             const hasMinimum = await embeddingService.hasMinimumEmbeddings();
             if (!hasMinimum) {
                 const embeddingCount = await this.getEmbeddingCount();
+                const config = await embeddingRouter.getConfig();
+                const minRequired = config?.rag_min_history_count || 50;
                 logger.info('RAG search skipped - not enough embeddings', { 
                     title: metadata.title,
                     embeddingCount,
-                    minimumRequired: await embeddingService.getMinimumThreshold()
+                    minimumRequired: minRequired
                 });
                 return [];
             }
