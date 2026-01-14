@@ -26,8 +26,12 @@ const AGE_TO_MPAA_MAP = {
   'U': 'G',
   'PG': 'PG',
   '12A': 'PG-13',
+  '15': 'R',  // UK 15 rating (also covered by age-based '15' above)
+  '18': 'NC-17',  // UK 18 rating (also covered by age-based '18' above)
   
   // Australia
+  'G': 'G',
+  'PG': 'PG',
   'M': 'PG-13',
   'MA15+': 'R',
   'R18+': 'NC-17',

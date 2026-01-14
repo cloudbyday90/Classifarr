@@ -66,9 +66,13 @@ describe('RatingNormalizer', () => {
       expect(ratingNormalizer.normalizeRating('U', 'movie')).toBe('G');
       expect(ratingNormalizer.normalizeRating('PG', 'movie')).toBe('PG');
       expect(ratingNormalizer.normalizeRating('12A', 'movie')).toBe('PG-13');
+      expect(ratingNormalizer.normalizeRating('15', 'movie')).toBe('R');
+      expect(ratingNormalizer.normalizeRating('18', 'movie')).toBe('NC-17');
     });
 
     test('normalizes Australian ratings', () => {
+      expect(ratingNormalizer.normalizeRating('G', 'movie')).toBe('G');
+      expect(ratingNormalizer.normalizeRating('PG', 'movie')).toBe('PG');
       expect(ratingNormalizer.normalizeRating('M', 'movie')).toBe('PG-13');
       expect(ratingNormalizer.normalizeRating('MA15+', 'movie')).toBe('R');
       expect(ratingNormalizer.normalizeRating('R18+', 'movie')).toBe('NC-17');
