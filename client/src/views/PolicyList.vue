@@ -36,9 +36,8 @@
             v-for="policy in library.policies" 
             :key="policy.id"
             :policy="policy"
-            @edit="editPolicy"
+            @configure="editPolicy"
             @delete="confirmReset"
-            @add-presets="editPolicy"
           />
         </div>
       </div>

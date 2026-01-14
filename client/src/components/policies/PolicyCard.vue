@@ -37,9 +37,9 @@
           <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
             <span class="text-2xl text-primary">+</span>
           </div>
-          <p class="text-secondary-foreground font-medium">No presets configured. <span class="text-primary cursor-pointer" @click="$emit('add-presets', policy)">Add Presets</span>.</p>
-          <Button @click="$emit('add-presets', policy)" variant="primary" size="default">
-            Add Presets
+          <p class="text-secondary-foreground font-medium">No presets configured.</p>
+          <Button @click="$emit('configure', policy)" variant="primary" size="default">
+            Configure
           </Button>
         </div>
       </div>
@@ -93,8 +93,8 @@
           <Button v-if="policy.preset_count > 0" @click="$emit('delete', policy)" variant="ghost" size="sm" class="text-red-400 hover:text-red-300">
             Reset
           </Button>
-          <Button @click="$emit('edit', policy)" variant="primary" size="sm">
-            Edit
+          <Button @click="$emit('configure', policy)" variant="primary" size="sm">
+            Configure
           </Button>
            <Button v-if="policy.preset_count > 0" @click="showWeights = !showWeights" variant="ghost" size="sm">
             {{ showWeights ? 'Hide' : 'Show' }} Weights
@@ -118,7 +118,7 @@ defineProps({
   },
 })
 
-defineEmits(['edit', 'delete', 'add-presets'])
+defineEmits(['configure', 'delete'])
 
 const showWeights = ref(false)
 </script>

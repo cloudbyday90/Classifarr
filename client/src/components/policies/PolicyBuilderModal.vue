@@ -7,73 +7,122 @@
 -->
 
 <template>
-  <Modal v-model="isOpen" :title="isEditing ? 'Edit Policy' : 'Create Policy'" class="max-w-6xl">
+  <Modal v-model="isOpen" :title="modalTitle" class="max-w-6xl">
     <div class="space-y-6">
-      <!-- Basic Info -->
-      <div class="space-y-4">
-        <h3 class="text-lg font-semibold">Basic Information</h3>
-        
-        <div>
-          <label class="block text-sm font-medium mb-2">Policy Name</label>
-          <input 
-            v-model="form.name" 
-            type="text" 
-            placeholder="e.g., Family Content Policy"
-            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none"
-          />
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium mb-2">Description</label>
-          <textarea 
-            v-model="form.description" 
-            placeholder="Describe what this policy matches..."
-            rows="3"
-            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none"
-          ></textarea>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium mb-2">Library</label>
-          <select 
-            v-model="form.library_id" 
-            :disabled="isEditing"
-            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none"
-          >
-            <option value="">Select a library</option>
-            <optgroup v-if="movieLibraries.length" label="🎬 Movies">
-              <option v-for="lib in movieLibraries" :key="lib.id" :value="lib.id">
-                {{ lib.name }}
-              </option>
-            </optgroup>
-            <optgroup v-if="tvLibraries.length" label="📺 TV Shows">
-              <option v-for="lib in tvLibraries" :key="lib.id" :value="lib.id">
-                {{ lib.name }}
-              </option>
-            </optgroup>
-            <optgroup v-if="otherLibraries.length" label="📁 Other">
-              <option v-for="lib in otherLibraries" :key="lib.id" :value="lib.id">
-                {{ lib.name }}
-              </option>
-            </optgroup>
-          </select>
+      <!-- Library Context (read-only) with Lock Icon -->
+      <div class="flex items-center gap-3 p-3 bg-background-light rounded-lg border border-gray-700">
+        <span class="text-2xl">🔒</span>
+        <div class="flex-1">
+          <div class="text-sm text-gray-400">Library</div>
+          <div class="font-medium">{{ currentLibrary?.name || 'Unknown Library' }}</div>
         </div>
       </div>
 
-      <!-- Preset Selection -->
-      <div class="space-y-4">
-        <h3 class="text-lg font-semibold">Select Presets</h3>
-        <p class="text-sm text-gray-400">Choose presets that define what content belongs in this library</p>
-        
-        <div class="flex items-center justify-between bg-background-light p-4 rounded-lg border border-gray-700">
-          <div>
-            <div class="font-medium text-gray-200">Manually Add Presets.</div>
-            <div class="text-sm text-gray-400">Search for presets or see AI suggestions based on library name.</div>
-          </div>
-          <Button @click="showPresetSelector = true" variant="primary" :disabled="!form.library_id">
-            + Add Presets
-          </Button>
+      <!-- Suggested Presets Section -->
+      <div v-if="suggestedPresets.length > 0" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-primary flex items-center gap-2">
+            <span>✨</span> Suggested
+          </h3>
+          <button
+            @click="addAllSuggested"
+            class="text-xs px-2 py-1 bg-primary bg-opacity-20 text-primary rounded hover:bg-opacity-30 transition-colors"
+          >
+            + Add All
+          </button>
         </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div
+            v-for="preset in suggestedPresets"
+            :key="'suggested-' + preset.id"
+            @click="togglePresetSelection(preset)"
+            class="flex items-center gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
+            :class="isPresetSelected(preset.id) 
+              ? 'bg-success bg-opacity-10 border-success' 
+              : 'bg-primary bg-opacity-10 border-primary'"
+          >
+            <div v-if="isPresetSelected(preset.id)" class="flex-shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+              <span class="text-white text-xs font-bold">✓</span>
+            </div>
+            <div v-else class="flex-shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+              <span class="text-gray-500 text-xs">+</span>
+            </div>
+            <span class="text-lg">{{ preset.icon || '📦' }}</span>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium truncate">{{ preset.name }}</div>
+              <div class="text-xs text-gray-400">
+                {{ preset.match_score }}% match
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Tabs -->
+      <div class="space-y-3">
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="cat in categoryTabs"
+            :key="cat.value"
+            @click="selectedCategory = cat.value"
+            class="px-3 py-1.5 text-sm rounded-lg transition-colors"
+            :class="selectedCategory === cat.value 
+              ? 'bg-primary text-white' 
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
+          >
+            {{ cat.label }} 
+            <span v-if="cat.count" class="text-xs opacity-70">({{ cat.count }})</span>
+          </button>
+        </div>
+
+        <!-- Search -->
+        <input 
+          v-model="searchQuery"
+          type="search"
+          placeholder="Search presets..."
+          class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white placeholder-gray-500"
+        />
+      </div>
+
+      <!-- Preset Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+        <div
+          v-for="preset in filteredAvailablePresets"
+          :key="preset.id"
+          @click="togglePresetSelection(preset)"
+          class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-800"
+          :class="isPresetSelected(preset.id) 
+            ? 'bg-success bg-opacity-10 border-success' 
+            : 'bg-background-light border-gray-700'"
+        >
+          <div v-if="isPresetSelected(preset.id)" class="flex-shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+            <span class="text-white text-xs font-bold">✓</span>
+          </div>
+          <div v-else class="flex-shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+            <span class="text-gray-500 text-xs">+</span>
+          </div>
+          <span class="text-lg">{{ preset.icon || '📦' }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium truncate">{{ preset.name }}</div>
+            <div class="text-xs text-gray-400 truncate">{{ preset.description || preset.category }}</div>
+          </div>
+          <span 
+            v-if="preset.source === 'custom'" 
+            class="text-xs px-1.5 py-0.5 bg-blue-900 bg-opacity-50 text-blue-300 rounded"
+          >
+            Custom
+          </span>
+        </div>
+        
+        <div v-if="filteredAvailablePresets.length === 0" class="col-span-2 text-center py-8 text-gray-400">
+          No presets found matching your search
+        </div>
+      </div>
+
+      <div class="border-t border-gray-700 my-4"></div>
+
+      <!-- Preset Selection (was "Select Presets") -->
+      <div class="space-y-4">
         
         <!-- Selected presets summary -->
         <div v-if="selectedPresets.length > 0" class="border border-gray-700 rounded-lg p-4">
@@ -332,7 +381,151 @@
         </div>
       </div>
 
-      <!-- Thresholds -->
+      <!-- Advanced Settings (Collapsible) -->
+      <div class="space-y-4">
+        <button 
+          @click="showAdvanced = !showAdvanced" 
+          class="flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-white transition-colors"
+        >
+          <span>{{ showAdvanced ? '▼' : '▶' }}</span>
+          <span>⚙️ Advanced Settings</span>
+        </button>
+        
+        <div v-if="showAdvanced" class="space-y-6 pl-6">
+          <!-- Weights -->
+          <div class="space-y-4">
+            <h3 class="text-lg font-semibold">Scoring Weights</h3>
+            <p class="text-sm text-gray-400">Adjust how much each factor contributes to the final score</p>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">
+                  Presets: {{ Math.round(form.preset_weight * 100) }}%
+                </label>
+                <input 
+                  type="range" 
+                  v-model.number="form.preset_weight" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  class="w-full"
+                />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium mb-2">
+                  Patterns: {{ Math.round(form.pattern_weight * 100) }}%
+                </label>
+                <input 
+                  type="range" 
+                  v-model.number="form.pattern_weight" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  class="w-full"
+                />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium mb-2">
+                  RAG: {{ Math.round(form.rag_weight * 100) }}%
+                </label>
+                <input 
+                  type="range" 
+                  v-model.number="form.rag_weight" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  class="w-full"
+                />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium mb-2">
+                  History: {{ Math.round(form.history_weight * 100) }}%
+                </label>
+                <input 
+                  type="range" 
+                  v-model.number="form.history_weight" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  class="w-full"
+                />
+              </div>
+            </div>
+            
+            <div 
+              class="text-sm p-3 rounded-lg"
+              :class="Math.abs(totalWeight - 1) > 0.001 ? 'bg-yellow-900 bg-opacity-20 text-yellow-400' : 'bg-green-900 bg-opacity-20 text-green-400'"
+            >
+              Total: {{ Math.round(totalWeight * 100) }}% 
+              <span v-if="Math.abs(totalWeight - 1) > 0.001">(should equal 100%)</span>
+              <span v-else>✓</span>
+            </div>
+          </div>
+
+          <!-- Combination Mode -->
+          <div class="space-y-4">
+            <h3 class="text-lg font-semibold">Combination Mode</h3>
+            <div class="space-y-2">
+              <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
+                <input 
+                  type="radio" 
+                  v-model="form.combination_mode" 
+                  value="best_match" 
+                  class="w-4 h-4"
+                />
+                <div>
+                  <div class="font-medium">Best Match</div>
+                  <div class="text-xs text-gray-400">Use highest scoring preset</div>
+                </div>
+              </label>
+              
+              <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
+                <input 
+                  type="radio" 
+                  v-model="form.combination_mode" 
+                  value="average" 
+                  class="w-4 h-4"
+                />
+                <div>
+                  <div class="font-medium">Average</div>
+                  <div class="text-xs text-gray-400">Average all matching preset scores</div>
+                </div>
+              </label>
+              
+              <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
+                <input 
+                  type="radio" 
+                  v-model="form.combination_mode" 
+                  value="weighted_average" 
+                  class="w-4 h-4"
+                />
+                <div>
+                  <div class="font-medium">Weighted Average</div>
+                  <div class="text-xs text-gray-400">Use preset weights</div>
+                </div>
+              </label>
+              
+              <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
+                <input 
+                  type="radio" 
+                  v-model="form.combination_mode" 
+                  value="require_all" 
+                  class="w-4 h-4"
+                />
+                <div>
+                  <div class="font-medium">Require All</div>
+                  <div class="text-xs text-gray-400">All presets must match</div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Classification Thresholds -->
       <div class="space-y-4">
         <h3 class="text-lg font-semibold">Classification Thresholds</h3>
         
@@ -364,154 +557,14 @@
           <p class="text-xs text-gray-400 mt-1">Items scoring above this will prompt for confirmation</p>
         </div>
       </div>
-
-      <!-- Weights -->
-      <div class="space-y-4">
-        <h3 class="text-lg font-semibold">Scoring Weights</h3>
-        <p class="text-sm text-gray-400">Adjust how much each factor contributes to the final score</p>
-        
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-2">
-              Presets: {{ Math.round(form.preset_weight * 100) }}%
-            </label>
-            <input 
-              type="range" 
-              v-model.number="form.preset_weight" 
-              min="0" 
-              max="1" 
-              step="0.05" 
-              class="w-full"
-            />
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-2">
-              Patterns: {{ Math.round(form.pattern_weight * 100) }}%
-            </label>
-            <input 
-              type="range" 
-              v-model.number="form.pattern_weight" 
-              min="0" 
-              max="1" 
-              step="0.05" 
-              class="w-full"
-            />
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-2">
-              RAG: {{ Math.round(form.rag_weight * 100) }}%
-            </label>
-            <input 
-              type="range" 
-              v-model.number="form.rag_weight" 
-              min="0" 
-              max="1" 
-              step="0.05" 
-              class="w-full"
-            />
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium mb-2">
-              History: {{ Math.round(form.history_weight * 100) }}%
-            </label>
-            <input 
-              type="range" 
-              v-model.number="form.history_weight" 
-              min="0" 
-              max="1" 
-              step="0.05" 
-              class="w-full"
-            />
-          </div>
-        </div>
-        
-        <div 
-          class="text-sm p-3 rounded-lg"
-          :class="Math.abs(totalWeight - 1) > 0.001 ? 'bg-yellow-900 bg-opacity-20 text-yellow-400' : 'bg-green-900 bg-opacity-20 text-green-400'"
-        >
-          Total: {{ Math.round(totalWeight * 100) }}% 
-          <span v-if="Math.abs(totalWeight - 1) > 0.001">(should equal 100%)</span>
-          <span v-else>✓</span>
-        </div>
-      </div>
-
-      <!-- Combination Mode -->
-      <div class="space-y-4">
-        <h3 class="text-lg font-semibold">Combination Mode</h3>
-        <div class="space-y-2">
-          <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
-            <input 
-              type="radio" 
-              v-model="form.combination_mode" 
-              value="best_match" 
-              class="w-4 h-4"
-            />
-            <div>
-              <div class="font-medium">Best Match</div>
-              <div class="text-xs text-gray-400">Use highest scoring preset</div>
-            </div>
-          </label>
-          
-          <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
-            <input 
-              type="radio" 
-              v-model="form.combination_mode" 
-              value="average" 
-              class="w-4 h-4"
-            />
-            <div>
-              <div class="font-medium">Average</div>
-              <div class="text-xs text-gray-400">Average all matching preset scores</div>
-            </div>
-          </label>
-          
-          <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
-            <input 
-              type="radio" 
-              v-model="form.combination_mode" 
-              value="weighted_average" 
-              class="w-4 h-4"
-            />
-            <div>
-              <div class="font-medium">Weighted Average</div>
-              <div class="text-xs text-gray-400">Use preset weights</div>
-            </div>
-          </label>
-          
-          <label class="flex items-center gap-3 p-3 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600">
-            <input 
-              type="radio" 
-              v-model="form.combination_mode" 
-              value="require_all" 
-              class="w-4 h-4"
-            />
-            <div>
-              <div class="font-medium">Require All</div>
-              <div class="text-xs text-gray-400">All presets must match</div>
-            </div>
-          </label>
-        </div>
-      </div>
     </div>
 
     <template #footer>
       <Button @click="$emit('close')" variant="ghost">Cancel</Button>
       <Button @click="save" variant="primary" :disabled="!isValid">
-        {{ isEditing ? 'Update Policy' : 'Create Policy' }}
+        {{ hasExistingPresets ? 'Save Policy' : 'Create Policy' }}
       </Button>
     </template>
-    
-    <!-- Preset Selection Modal -->
-    <PresetSelectionModal
-      v-if="showPresetSelector"
-      v-model="showPresetSelector"
-      :library="currentLibrary"
-      :existing-preset-ids="existingPresetIds"
-      @confirm="addPresets"
-    />
   </Modal>
 </template>
 
@@ -520,7 +573,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/api'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
-import PresetSelectionModal from '@/components/policies/PresetSelectionModal.vue'
 
 const props = defineProps({
   modelValue: {
@@ -542,6 +594,15 @@ const emit = defineEmits(['update:modelValue', 'save', 'close'])
 const isOpen = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
+})
+
+const modalTitle = computed(() => {
+  const libraryName = currentLibrary.value?.name || 'New'
+  return `${libraryName} Policy`
+})
+
+const hasExistingPresets = computed(() => {
+  return props.policy?.presets?.length > 0 || selectedPresets.value.length > 0
 })
 
 const isEditing = computed(() => !!props.policy)
@@ -571,7 +632,12 @@ const allPresets = ref([])
 const selectedPresets = ref([])
 const expandedPresetIds = ref(new Set())
 const newKeyword = ref('')
-const showPresetSelector = ref(false)
+const showAdvanced = ref(false)
+
+// Preset selection state (integrated from PresetSelectionModal)
+const suggestedPresets = ref([])
+const searchQuery = ref('')
+const selectedCategory = ref('all')
 
 // Available options for signal customization
 const availableRatings = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR']
@@ -692,10 +758,69 @@ const combinedSignals = computed(() => {
   }
 })
 
+// Category tabs (integrated from PresetSelectionModal)
+const categoryTabs = computed(() => {
+  const categories = [
+    { value: 'all', label: 'All', count: allPresets.value.length }
+  ];
+  
+  // Get unique categories from presets
+  const categoryCounts = {};
+  allPresets.value.forEach(p => {
+    const cat = p.category || 'uncategorized';
+    if (cat !== 'custom') {
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
+  });
+  
+  Object.entries(categoryCounts).forEach(([cat, count]) => {
+    categories.push({ 
+      value: cat, 
+      label: cat.charAt(0).toUpperCase() + cat.slice(1), 
+      count 
+    });
+  });
+  
+  // Add "My Presets" tab for custom presets
+  const customCount = allPresets.value.filter(p => p.source === 'custom').length;
+  if (customCount > 0) {
+    categories.push({ value: 'custom', label: 'My Presets', count: customCount });
+  }
+  
+  return categories;
+});
 
+// Filtered available presets (not yet selected)
+const filteredAvailablePresets = computed(() => {
+  let presets = allPresets.value;
+  
+  // Filter out already selected presets
+  const selectedIds = selectedPresets.value.map(p => p.id || p.preset_id);
+  presets = presets.filter(p => !selectedIds.includes(p.id));
+  
+  // Filter by category
+  if (selectedCategory.value !== 'all') {
+    if (selectedCategory.value === 'custom') {
+      presets = presets.filter(p => p.source === 'custom');
+    } else {
+      presets = presets.filter(p => p.category === selectedCategory.value);
+    }
+  }
+  
+  // Filter by search
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase();
+    presets = presets.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      (p.description || '').toLowerCase().includes(query)
+    );
+  }
+  
+  return presets;
+});
 
 const isValid = computed(() => {
-  const hasBasicInfo = form.value.library_id && form.value.name && selectedPresets.value.length > 0
+  const hasBasicInfo = form.value.library_id && selectedPresets.value.length > 0
   const weightsValid = Math.abs(totalWeight.value - 1) <= 0.001
   return hasBasicInfo && weightsValid
 })
@@ -731,6 +856,7 @@ watch(() => props.policy, (newPolicy) => {
         name: p.name,
         icon: p.icon,
         weight: p.weight || 1.0,
+        customSignals: p.customSignals || null,
       }))
     }
   } else {
@@ -769,35 +895,55 @@ const fetchPresets = async () => {
   }
 }
 
-const addPresets = (presets) => {
-  if (!presets || !presets.length) return
-  
-  // Auto-fill policy name/desc if first presets
-  if (selectedPresets.value.length === 0) {
-      if (!form.value.name) {
-        form.value.name = `${presets[0].name} Policy`
-      }
-      if (!form.value.description) {
-        form.value.description = presets[0].description || ''
-      }
-  }
-
-  for (const preset of presets) {
-    const id = preset.id || preset.preset_id
-    if (!selectedPresets.value.some(p => (p.id === id || p.preset_id === id))) {
-      selectedPresets.value.push({
-        id: id,
-        preset_id: id,
-        name: preset.name,
-        icon: preset.icon,
-        weight: 1.0,
-      })
+// Load suggestions when library changes
+watch(() => form.value.library_id, async (newLibraryId) => {
+  if (newLibraryId) {
+    try {
+      const response = await api.get(`/policies/presets/suggest/${newLibraryId}`)
+      suggestedPresets.value = response.data.suggestions || []
+    } catch (error) {
+      console.error('Failed to fetch suggested presets:', error)
+      suggestedPresets.value = []
     }
+  } else {
+    suggestedPresets.value = []
   }
-  showPresetSelector.value = false
+}, { immediate: true })
+
+// Preset selection functions (integrated from PresetSelectionModal)
+const isPresetSelected = (presetId) => {
+  return selectedPresets.value.some(p => (p.id === presetId || p.preset_id === presetId))
 }
 
+const togglePresetSelection = (preset) => {
+  const id = preset.id || preset.preset_id
+  const idx = selectedPresets.value.findIndex(p => (p.id === id || p.preset_id === id))
+  
+  if (idx >= 0) {
+    // Remove preset
+    selectedPresets.value.splice(idx, 1)
+    expandedPresetIds.value.delete(id)
+  } else {
+    // Add preset, preserving original structure and ensuring both id fields are populated
+    const normalizedId = preset.id ?? preset.preset_id
+    const normalizedPresetId = preset.preset_id ?? preset.id
+    
+    selectedPresets.value.push({
+      ...preset,
+      id: normalizedId,
+      preset_id: normalizedPresetId,
+      weight: preset.weight ?? 1.0,
+    })
+  }
+}
 
+const addAllSuggested = () => {
+  suggestedPresets.value.forEach(preset => {
+    if (!isPresetSelected(preset.id)) {
+      togglePresetSelection(preset)
+    }
+  })
+}
 
 const updatePresetWeight = (presetId, weight) => {
   const preset = selectedPresets.value.find(p => p.preset_id === presetId || p.id === presetId)
@@ -945,8 +1091,23 @@ const resetForm = () => {
 const save = async () => {
   if (!isValid.value) return
 
+  // Auto-generate policy name if not set
+  let policyName = form.value.name
+  if (!policyName && currentLibrary.value && selectedPresets.value.length > 0) {
+    policyName = `${currentLibrary.value.name} Policy`
+  }
+  
+  // Auto-generate description if not set and we have presets
+  let policyDescription = form.value.description
+  if (!policyDescription && selectedPresets.value.length > 0) {
+    const presetNames = selectedPresets.value.map(p => p.name).join(', ')
+    policyDescription = `Policy for ${presetNames}`
+  }
+
   const policyData = {
     ...form.value,
+    name: policyName,
+    description: policyDescription,
     presets: selectedPresets.value.map(p => ({
       preset_id: p.preset_id || p.id,
       weight: p.weight || 1.0,

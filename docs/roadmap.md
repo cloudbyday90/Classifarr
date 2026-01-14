@@ -4,6 +4,41 @@ This document outlines the planned features and improvements for upcoming releas
 
 ---
 
+## v0.38.1-alpha (In Progress)
+
+**Theme: Unified Policy Configuration**
+
+### Completed Features
+
+#### Unified Policy Configuration Modal ✅
+- **Problem**: Fragmented policy editing experience with nested modals; users couldn't see Combined Signals while selecting presets
+- **Solution**: Consolidated `PolicyBuilderModal` and `PresetSelectionModal` into single unified modal
+  - Integrated preset selection UI inline (suggestions, categories, search, grid)
+  - Removed nested modal experience
+  - Modal title shows "[Library Name] Policy" instead of generic "Edit Policy"
+  - Save button adapts: "Create Policy" or "Save Policy" based on state
+  - Advanced Settings (Scoring Weights, Combination Mode) collapsed by default
+  - Auto-generated policy name/description from library and selected presets
+  - Single "Configure" button replaces "Add Presets" and "Edit" buttons
+
+### Future Enhancements
+
+#### Policy Name/Description Editing
+- **Issue**: With removal of Basic Information section, users can no longer edit policy names or descriptions through UI
+- **Proposed Solution**: Add optional "Edit Name" button or inline editing capability
+  - Allow users to override auto-generated names
+  - Preserve custom names/descriptions when editing existing policies
+  - Consider pencil icon next to policy name for inline editing
+
+#### Preset Usage Count Display
+- **Issue**: Users don't see how popular presets are when selecting them
+- **Proposed Solution**: Display "Used in X policies" count in preset grid
+  - API endpoint already exists: `/policies/presets/:id/usage`
+  - Consider implementing as hover tooltip to avoid performance impact
+  - Could batch-fetch usage counts for visible presets
+
+---
+
 ## v0.38.0-alpha (Current Release)
 
 **Theme: Enhanced Policy Setup Experience**
