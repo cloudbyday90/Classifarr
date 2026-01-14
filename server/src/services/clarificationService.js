@@ -92,7 +92,7 @@ class ClarificationService {
           tier: 'auto',
           action: 'auto_route',
           description: 'High confidence - auto route',
-          min_confidence: 70,  // Actual range starts at 70, not 90
+          min_confidence: 70,  // High confidence threshold
           max_confidence: 100
         };
       }

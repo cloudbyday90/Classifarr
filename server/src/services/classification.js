@@ -151,7 +151,7 @@ class ClassificationService {
       // Send Discord notification with confidence-based routing
       if (discordBot.isInitialized) {
         try {
-          // Enhanced logging for debugging notification issues (v0.38.4-alpha)
+          // Enhanced logging for debugging notification issues
           logger.info('[Discord] Notification attempt', {
             classification_id: classificationId,
             title: metadata.title,
