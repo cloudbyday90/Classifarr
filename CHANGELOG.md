@@ -8,6 +8,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.39.0-alpha] - 2026-01-14
 
 ### Added
+- **Dedicated RAG Settings Page**: New comprehensive UI for all RAG configuration (#141)
+  - **Overview Tab**: Dashboard with status cards, quick stats, recent activity
+    - Provider status (online/offline)
+    - Total embeddings count
+    - Pending items count
+    - Failed count (24h)
+    - Current model and provider mode display
+    - Average generation time
+    - Recent activity feed
+  - **Provider Tab**: Consolidated embedding provider configuration
+    - Provider mode selection (same as classification, separate Ollama, cloud)
+    - Separate Ollama instance configuration (host, port, model)
+    - Cloud provider configuration (OpenAI, Gemini, Voyage, OpenRouter, Cohere)
+    - Test connection functionality
+  - **Queue/Scheduling Tab**: Heartbeat and backfill controls with live progress
+    - Heartbeat configuration (timeout, interval, max wait)
+    - Current lock status display
+    - Real-time embeddings toggle
+    - Idle backfill configuration
+    - Scheduled backfill with day/time picker
+    - Manual backfill controls (start/pause/resume/clear)
+    - Real-time progress bar with ETA
+  - **Advanced Tab**: Retry settings, caching, debug options
+    - Max retries, retry delay, request timeout configuration
+    - Embedding cache toggle with TTL setting
+    - Verbose logging and content logging toggles
+    - Danger zone: Clear all embeddings, reset configuration
+  - **Monitoring Tab**: Live status, metrics, log viewer
+    - Live status indicators (provider, heartbeat, queue, lock)
+    - 24-hour metrics (generated, avg time, success rate, errors, cache hits, requests)
+    - Activity log viewer with level and type filtering
+    - Backfill run history table
+    - Export functions (configuration, logs, metrics as JSON)
+  - Database migration (057) for RAG monitoring tables
+  - New tables: `rag_logs`, `embedding_errors`, `embedding_metrics`
+  - API endpoints:
+    - GET `/api/rag/overview` - Overview dashboard stats
+    - GET/DELETE `/api/rag/logs` - Activity logs with filtering
+    - GET/PUT `/api/rag/advanced` - Advanced configuration
+    - POST `/api/rag/export/{config,logs,metrics}` - Export functions
+    - POST `/api/rag/clear-embeddings` - Clear all embeddings
+    - POST `/api/rag/reset-config` - Reset to defaults
+
 - **Hybrid Backfill System**: Flexible embedding generation across multiple modes (#140)
   - **Real-time Mode**: Generate embeddings immediately during classification (configurable on/off)
   - **Idle Mode**: Opportunistic backfill during quiet periods (starts after configurable idle threshold)
