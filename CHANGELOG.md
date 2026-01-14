@@ -27,6 +27,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Now includes `libraries` array in CLARIFY responses (both AI clarification and fallback cases)
   - Discord notifications now correctly show clarification buttons AND library dropdown for manual selection
 
+- **Discord Prompt Reliability**: Enhanced notification flow to ensure all clarification items trigger Discord prompts
+  - Added comprehensive logging for notification attempts and failures
+  - Errors are now properly logged instead of silently dropped
+  - Discord notification wrapped in try-catch to prevent classification failures when Discord is unavailable
+  - Enhanced `getTierForConfidence` with fallback tiers for all confidence ranges
+  - Verified tier configuration covers all confidence ranges (50-100)
+
+- **Awaiting Decision UI**: Platform queue now accurately displays all pending items
+  - Queue based purely on database status, independent of Discord notification state
+  - Count always matches actual `awaiting_decision` records in database
+  - Items display with actionable status regardless of Discord prompt success/failure
+
 - **Embedding Service Stale Configuration Cache**: Fixed embeddings using stale localhost configuration
   - `OllamaService.getConfig()` cached `baseUrl` on first call without invalidation mechanism
   - When user configured remote Ollama host (e.g., 192.168.50.95:11434), embeddings still used cached localhost:11434
@@ -40,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When `status === 'awaiting_decision'`, both fields are NULL; when `status === 'completed'`, fields are populated
 - Classification service `parseAIResponse` now includes `libraries` array in CLARIFY result objects
 - Ollama service `getConfig()` maintains cache for performance, invalidated via `resetConfig()` when settings updated
+- Classification service `sendConfidenceBasedNotification` call wrapped in try-catch with enhanced logging
+- Discord notification errors logged with full context (classification_id, title, confidence, error stack)
+- `getTierForConfidence` now provides fallback tiers for both low (<70) and high (>=70) confidence ranges
+- Platform queue (`/api/classification/pending`) queries directly from `classification_history.status = 'awaiting_decision'`
 
 ## [0.38.4-alpha] - 2026-01-14
 

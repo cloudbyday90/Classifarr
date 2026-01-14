@@ -150,11 +150,32 @@ class ClassificationService {
 
       // Send Discord notification with confidence-based routing
       if (discordBot.isInitialized) {
-        await discordBot.sendConfidenceBasedNotification(metadata, {
-          ...result,
-          classification_id: classificationId,
-          library_name: result.library?.name,
-        });
+        try {
+          // Enhanced logging for debugging notification issues
+          logger.info('[Discord] Notification attempt', {
+            classification_id: classificationId,
+            title: metadata.title,
+            confidence: result.confidence,
+            needs_clarification: result.needs_clarification,
+            status: result.needs_clarification ? 'awaiting_decision' : 'completed',
+            has_libraries: !!result.libraries
+          });
+          
+          await discordBot.sendConfidenceBasedNotification(metadata, {
+            ...result,
+            classification_id: classificationId,
+            library_name: result.library?.name,
+          });
+        } catch (discordError) {
+          // Log Discord notification errors - don't fail classification
+          logger.error('[Discord] Notification failed', {
+            error: discordError.message,
+            stack: discordError.stack,
+            classification_id: classificationId,
+            title: metadata.title,
+            confidence: result.confidence
+          });
+        }
       }
 
       // Enhanced AI metrics logging for monitoring and debugging
