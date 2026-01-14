@@ -1401,8 +1401,9 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const heartbeatIntervalMs = providerLock.config.heartbeatInterval;
     let heartbeatTimer = null;
     let response;
+    
     try {
-      // Start heartbeat interval
+      // Start heartbeat interval - in outer try block for guaranteed cleanup
       heartbeatTimer = setInterval(() => {
         providerLock.heartbeat('classification');
       }, heartbeatIntervalMs);
@@ -1435,13 +1436,14 @@ Think step by step, then respond with ONLY one of the formats above.`;
           }
         );
       } finally {
-        // Clear generation status
+        // Clear generation status (inner finally for UI cleanup)
         ollamaService.setGenerationStatus(false);
       }
     } finally {
-      // Clean up heartbeat and release lock
+      // Clean up heartbeat and release lock (outer finally - always executes)
       if (heartbeatTimer) {
         clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
       }
       providerLock.releaseLock('classification');
     }
