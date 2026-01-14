@@ -1,5 +1,91 @@
 # Classifarr Release Notes
 
+## v0.39.0-alpha
+**Title: Critical Bug Fixes for Classification & RAG**
+
+### Bug Fixes
+
+#### 1. Pending Items Now Display Correctly (API Crash Fixed)
+
+**Problem:** 
+When you navigated to the "Awaiting Decision" queue, the page crashed with a 500 error: `"[object Object] is not valid JSON"`. The `/api/classification/pending` endpoint was broken, preventing you from seeing items that needed your decision.
+
+**Root Cause:**
+The `policy_question` column in PostgreSQL is stored as JSONB (a native JSON object type). The PostgreSQL driver automatically parses JSONB columns into JavaScript objects. However, the code was calling `JSON.parse()` on an already-parsed object, which caused the error.
+
+**Solution:**
+- Added type checking: `typeof item.policy_question === 'string'` before calling `JSON.parse()`
+- Now handles both formats: legacy string data (parsed) and current JSONB data (already objects)
+- Ensures backward compatibility while preventing crashes
+
+**Impact:** 
+Your "Awaiting Decision" queue now loads correctly, showing all pending items that need your input.
+
+#### 2. No More Premature Library Assignment  
+
+**Problem:** 
+When the AI returned a CLARIFY response (needing your decision), the classification history showed "Classified To: Anime Movies" even though the item was still awaiting your decision. This was confusing because it looked like the item was already classified when it wasn't.
+
+**Example:**
+- AI suggests "Anime Movies" but needs clarification
+- History shows: "✓ Classified To: Anime Movies" (misleading)
+- Queue page showed "Awaiting Decision" (correct, but inconsistent)
+
+**Root Cause:**
+The database was storing the fallback/suggested library in `library_id` and `library_name` columns even when `status = 'awaiting_decision'`. This caused the UI to display the library as if classification was complete.
+
+**Solution:**
+- When `status = 'awaiting_decision'`, set `library_id = NULL` and `library_name = NULL` in database
+- Library only assigned after you make a decision via Discord or Queue UI
+- Discord notifications still show the AI's suggestion for context
+- History UI now correctly shows "Awaiting Decision" instead of a library name
+
+**Impact:** 
+The UI is now consistent - items awaiting your decision clearly show "Awaiting Decision" status until you actually make a choice.
+
+#### 3. Verified: RAG Embeddings Work with Remote Ollama
+
+**Status:** ✅ Already Working (No Code Changes Needed)
+
+**Concern:**
+Users with Ollama running on a remote host (e.g., `192.168.50.95:11434`) reported that embedding generation might be using hardcoded `localhost:11434`, causing silent failures.
+
+**Verification:**
+We reviewed the code and confirmed that the embedding service **already correctly** uses the configured Ollama host from the `ai_provider_config` table:
+1. `embeddingRouter.js` calls `ollamaService.embed()`
+2. `ollamaService.embed()` calls `this.getConfig()` to get the baseUrl
+3. `getConfig()` reads from database: first `ollama_config` table, then `ai_provider_config.ollama_host/ollama_port`
+4. Only falls back to `localhost:11434` if nothing is configured
+
+**Conclusion:**
+If you've configured your Ollama host in Settings → AI Provider → Ollama Host, embeddings will use that host. No bug exists.
+
+#### 4. Verified: Discord Clarification Prompts Working
+
+**Status:** ✅ Already Working (No Code Changes Needed)
+
+**Concern:**
+Items with `needs_clarification: true` might not trigger Discord prompts with clarification buttons.
+
+**Verification:**
+We reviewed the Discord notification flow and confirmed it's working correctly:
+1. `sendConfidenceBasedNotification()` checks `result.needs_clarification && result.clarification`
+2. `createTieredComponents()` generates buttons from `result.clarification.options` (lines 725-756)
+3. Status is set to `'awaiting_clarification'` in the database after message sent
+4. Button clicks are handled via Discord interaction handlers
+
+**Conclusion:**
+Discord clarification prompts are functioning as designed. If items aren't appearing, check:
+- Discord bot is initialized (`isInitialized = true`)
+- `notify_on_classification` is enabled in Discord settings
+- Tier lookup succeeds (check server logs for tier lookup failures)
+
+### Technical Notes
+- Bug #1 fix location: `server/src/routes/classification.js` line 444
+- Bug #2 fix location: `server/src/services/classification.js` lines 1537-1538
+- Bug #3: No changes needed, already working via `ai_provider_config` table
+- Bug #4: No changes needed, Discord flow already handles clarification correctly
+
 ## v0.38.4-alpha
 **Title: Quality Profile UX and Discord Notification Fixes**
 

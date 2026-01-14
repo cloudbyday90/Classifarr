@@ -1523,7 +1523,6 @@ Think step by step, then respond with ONLY one of the formats above.`;
   async logClassification(metadata, result) {
     // Extract collection_id from metadata if available
     const collectionId = metadata.collectionId || null;
-    const libraryName = result.library?.name || null;
     const signalsJson = result.signals ? JSON.stringify(result.signals) :
       result.signalContext?.signals ? JSON.stringify(result.signalContext.signals) : null;
 
@@ -1531,6 +1530,11 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const pendingReason = result.pending_reason || (result.needs_clarification ? result.reason : null);
     const policyQuestion = result.policy_question ? JSON.stringify(result.policy_question) : null;
     const status = result.needs_clarification ? 'awaiting_decision' : 'completed';
+
+    // Only set library when classification is complete
+    // When awaiting_decision, library_id and library_name should be NULL
+    const libraryId = status === 'awaiting_decision' ? null : (result.library?.id || null);
+    const libraryName = status === 'awaiting_decision' ? null : (result.library?.name || null);
 
     const insertResult = await db.query(
       `INSERT INTO classification_history 
@@ -1542,7 +1546,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
         metadata.media_type,
         metadata.title,
         metadata.year,
-        result.library?.id,
+        libraryId,
         libraryName,
         result.confidence,
         result.method,
