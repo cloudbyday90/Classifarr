@@ -1,9 +1,46 @@
 # Classifarr Release Notes
 
 ## v0.39.0-alpha
-**Title: RAG Settings Dashboard + Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion**
+**Title: AI Prompt Enrichment + RAG Settings Dashboard + Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion**
 
 ### New Features
+
+#### AI Prompt Enrichment 🎯
+
+AI classification decisions are now informed by your library's actual content distribution (#142).
+
+**What's Included in AI Prompts:**
+When classifying new media, the AI now sees:
+- **Rating Distribution**: What content ratings are already in your library (e.g., "TV-MA: 45%, TV-14: 30%")
+- **Genre Mix**: Your library's genre composition with percentages
+- **Top Studios**: Most common studios/networks  
+- **Languages**: Primary languages in your library
+
+This helps the AI make better decisions by understanding what kind of content is already in each library, leading to more accurate classification suggestions that better match your library's existing profile.
+
+**History Transparency:**
+Each classification now shows a "Library Profile Used in Decision" panel in the classification history detail view. This new panel includes:
+- Visual distribution bars for content ratings (blue bars)
+- Genre distribution with percentages (purple bars)
+- Top studios list with percentages
+- Language distribution tags
+
+The profile statistics are captured at the time of classification and stored as a snapshot in the database (`profile_snapshot` column), so you can see the historical context even as your library composition changes over time.
+
+**Automatic Updates:**
+Profile statistics are automatically refreshed when:
+- Library sync completes
+- New content is added to your library
+- You manually refresh the library profile via API
+
+The AI always sees current data to ensure the best classification decisions aligned with your library's actual content.
+
+**Benefits:**
+- More accurate AI classifications based on actual library content
+- Complete transparency into what influenced each decision
+- Historical record of library composition at decision time
+- Better consistency with existing library content
+- Improved classification quality over time as library grows
 
 #### RAG Settings Dashboard 🎛️
 

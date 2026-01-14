@@ -17,6 +17,7 @@
  */
 
 const { createLogger } = require('../utils/logger');
+const libraryProfileService = require('./libraryProfileService');
 
 const logger = createLogger('PromptBuilder');
 
@@ -54,6 +55,98 @@ function safeJSONParse(value, defaultValue = null) {
  * @see https://github.com/cloudbyday90/Classifarr/issues/100
  */
 class PromptBuilder {
+    /**
+     * Build classification prompt with library profile
+     * @param {object} item - Media item with metadata
+     * @param {number} libraryId - Library ID
+     * @param {object} options - Options for prompt building
+     * @returns {Promise<string>} AI prompt with library profile
+     */
+    async buildClassificationPrompt(item, libraryId, options = {}) {
+        let prompt = '';
+        
+        // Add library profile stats if available
+        if (libraryId && options.includeProfile !== false) {
+            try {
+                const profileStats = await libraryProfileService.getProfileStats(libraryId);
+                if (profileStats.totalItems > 0) {
+                    prompt += libraryProfileService.formatForPrompt(profileStats);
+                    prompt += '\n\n';
+                }
+            } catch (error) {
+                logger.warn('Failed to load library profile for prompt', { 
+                    libraryId, 
+                    error: error.message 
+                });
+            }
+        }
+        
+        // Add item details
+        prompt += this.formatItemForPrompt(item);
+        
+        // Add classification instructions if provided
+        if (options.instructions) {
+            prompt += '\n\n';
+            prompt += options.instructions;
+        }
+        
+        return prompt;
+    }
+
+    /**
+     * Format media item for AI prompt
+     * @param {object} item - Media item
+     * @returns {string} Formatted item details
+     */
+    formatItemForPrompt(item) {
+        const lines = [];
+        
+        lines.push('=== MEDIA ITEM TO CLASSIFY ===');
+        lines.push(`Title: ${item.title || 'Unknown'}`);
+        if (item.year) lines.push(`Year: ${item.year}`);
+        if (item.media_type) lines.push(`Type: ${item.media_type}`);
+        if (item.certification) lines.push(`Rating: ${item.certification}`);
+        
+        // Genres
+        if (item.genres) {
+            const genres = Array.isArray(item.genres) ? item.genres : safeJSONParse(item.genres, []);
+            if (genres.length > 0) {
+                lines.push(`Genres: ${genres.join(', ')}`);
+            }
+        }
+        
+        // Overview
+        if (item.overview) {
+            lines.push(`\nOverview: ${item.overview}`);
+        }
+        
+        // Keywords
+        if (item.keywords) {
+            const keywords = Array.isArray(item.keywords) ? item.keywords : safeJSONParse(item.keywords, []);
+            if (keywords.length > 0) {
+                lines.push(`\nKeywords: ${keywords.slice(0, 10).join(', ')}`);
+            }
+        }
+        
+        // Studios
+        if (item.studios || item.production_companies) {
+            const studios = item.studios || item.production_companies;
+            const studiosList = Array.isArray(studios) ? studios : safeJSONParse(studios, []);
+            if (studiosList.length > 0) {
+                const studioNames = studiosList.map(s => 
+                    typeof s === 'string' ? s : s?.name
+                ).filter(Boolean);
+                if (studioNames.length > 0) {
+                    lines.push(`\nStudios: ${studioNames.join(', ')}`);
+                }
+            }
+        }
+        
+        lines.push('==============================');
+        
+        return lines.join('\n');
+    }
+
     /**
      * Build a prompt based on evaluation results
      * @param {object} item - Media item with metadata

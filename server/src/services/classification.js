@@ -35,6 +35,7 @@ const patternReinforcementService = require('./patternReinforcementService');
 const policyEngine = require('./policyEngine');
 const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
+const libraryProfileService = require('./libraryProfileService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -1323,7 +1324,26 @@ CRITICAL RULES:
 2. Your job is to VERIFY the suggested library makes sense, OR request clarification if there are conflicts.
 3. If the calculated confidence is high and signals align, CONFIRM the decision.
 4. If signals conflict or you see a potential error, REQUEST CLARIFICATION.
+`;
 
+    // Add library profile statistics if we have a suggested library
+    if (signalContext && signalContext.suggestedLibrary) {
+      try {
+        const profileStats = await libraryProfileService.getProfileStats(signalContext.suggestedLibrary.id);
+        if (profileStats.totalItems > 0) {
+          prompt += '\n';
+          prompt += libraryProfileService.formatForPrompt(profileStats);
+          prompt += '\n';
+        }
+      } catch (error) {
+        logger.warn('Failed to load library profile for AI prompt', {
+          libraryId: signalContext.suggestedLibrary.id,
+          error: error.message
+        });
+      }
+    }
+
+    prompt += `
 --- MEDIA INFORMATION ---
 Title: ${metadata.title}
 Year: ${metadata.year || 'Unknown'}
@@ -1598,10 +1618,25 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const libraryId = isAwaitingDecision ? null : (result.library?.id || null);
     const libraryName = isAwaitingDecision ? null : (result.library?.name || null);
 
+    // Get library profile snapshot for completed classifications
+    let profileSnapshot = null;
+    if (libraryId && status === 'completed') {
+      try {
+        const libraryProfileService = require('./libraryProfileService');
+        const profileStats = await libraryProfileService.getProfileStats(libraryId);
+        profileSnapshot = JSON.stringify(profileStats);
+      } catch (error) {
+        logger.warn('Failed to get profile snapshot for classification', {
+          libraryId,
+          error: error.message
+        });
+      }
+    }
+
     const insertResult = await db.query(
       `INSERT INTO classification_history 
-       (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question, profile_snapshot)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING id`,
       [
         metadata.tmdb_id,
@@ -1618,7 +1653,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
         collectionId,
         signalsJson,
         pendingReason,
-        policyQuestion
+        policyQuestion,
+        profileSnapshot
       ]
     );
 

@@ -22,9 +22,12 @@ const classificationService = require('../services/classification');
 const reclassificationService = require('../services/reclassificationService');
 const clarificationService = require('../services/clarificationService');
 const patternReinforcementService = require('../services/patternReinforcementService');
+const libraryProfileService = require('../services/libraryProfileService');
 const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector');
+const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
+const logger = createLogger('classification');
 
 /**
  * @swagger
@@ -529,6 +532,43 @@ router.get('/pending/count', async (req, res) => {
     res.json({ count: parseInt(result.rows[0].count) });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/history/{id}/profile:
+ *   get:
+ *     summary: Get library profile snapshot used for classification
+ *     description: Returns the library profile statistics that were used at the time of classification
+ */
+router.get('/history/:id/profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get stored profile snapshot from the classification history record
+    const result = await db.query(
+      'SELECT profile_snapshot FROM classification_history WHERE id = $1',
+      [id]
+    );
+    
+    const row = result.rows[0];
+    if (!row) {
+      return res.status(404).json({ error: 'Classification not found' });
+    }
+    
+    const profileSnapshot = row.profile_snapshot;
+    if (!profileSnapshot) {
+      return res.status(404).json({ error: 'Classification has no stored profile snapshot' });
+    }
+    
+    res.json(profileSnapshot);
+  } catch (error) {
+    logger.error('Failed to get profile snapshot for classification', {
+      classificationId: req.params.id,
+      error: error.message
+    });
+    res.status(500).json({ error: 'Failed to load profile snapshot' });
   }
 });
 

@@ -352,6 +352,255 @@ class LibraryProfileService {
             return defaultValue;
         }
     }
+
+    /**
+     * Get profile statistics for a library
+     * @param {number} libraryId - Library ID
+     * @returns {object} Profile statistics
+     */
+    async getProfileStats(libraryId) {
+        const stats = {
+            certificationDistribution: await this.getCertificationDistribution(libraryId),
+            genreDistribution: await this.getGenreDistribution(libraryId),
+            studioDistribution: await this.getStudioDistribution(libraryId),
+            languageDistribution: await this.getLanguageDistribution(libraryId),
+            totalItems: await this.getTotalItems(libraryId),
+            lastUpdated: new Date().toISOString()
+        };
+        
+        return stats;
+    }
+
+    /**
+     * Get certification/content rating distribution for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<Array>} Array of certification stats with count and percentage
+     */
+    async getCertificationDistribution(libraryId) {
+        try {
+            const result = await db.query(`
+                SELECT 
+                    COALESCE(content_rating, 'Unknown') as certification,
+                    COUNT(*) as count,
+                    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as percentage
+                FROM media_server_items
+                WHERE library_id = $1
+                GROUP BY content_rating
+                ORDER BY count DESC
+                LIMIT 10
+            `, [libraryId]);
+            
+            return result.rows;
+        } catch (error) {
+            logger.error('Failed to get certification distribution', {
+                libraryId,
+                error: error.message
+            });
+            return [];
+        }
+    }
+
+    /**
+     * Get genre distribution for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<Array>} Array of genre stats with count and percentage
+     */
+    async getGenreDistribution(libraryId) {
+        try {
+            const result = await db.query(`
+                SELECT 
+                    genre,
+                    COUNT(*) as count,
+                    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as percentage
+                FROM media_server_items,
+                     jsonb_array_elements_text(
+                         CASE 
+                             WHEN jsonb_typeof(genres) = 'array' THEN genres
+                             ELSE '[]'::jsonb
+                         END
+                     ) as genre
+                WHERE library_id = $1
+                GROUP BY genre
+                ORDER BY count DESC
+                LIMIT 10
+            `, [libraryId]);
+            
+            return result.rows;
+        } catch (error) {
+            logger.error('Failed to get genre distribution', {
+                libraryId,
+                error: error.message
+            });
+            return [];
+        }
+    }
+
+    /**
+     * Get studio distribution for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<Array>} Array of top 5 studios with count and percentage
+     */
+    async getStudioDistribution(libraryId) {
+        try {
+            const result = await db.query(`
+                SELECT 
+                    COALESCE(studio, 'Unknown') as studio,
+                    COUNT(*) as count,
+                    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as percentage
+                FROM media_server_items
+                WHERE library_id = $1
+                AND studio IS NOT NULL
+                AND studio != ''
+                GROUP BY studio
+                ORDER BY count DESC
+                LIMIT 5
+            `, [libraryId]);
+            
+            return result.rows;
+        } catch (error) {
+            logger.error('Failed to get studio distribution', {
+                libraryId,
+                error: error.message
+            });
+            return [];
+        }
+    }
+
+    /**
+     * Get language distribution for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<Array>} Array of top 5 languages with count and percentage
+     */
+    async getLanguageDistribution(libraryId) {
+        try {
+            const result = await db.query(`
+                SELECT 
+                    COALESCE(
+                        metadata->>'original_language', 
+                        'Unknown'
+                    ) as language,
+                    COUNT(*) as count,
+                    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as percentage
+                FROM media_server_items
+                WHERE library_id = $1
+                GROUP BY metadata->>'original_language'
+                ORDER BY count DESC
+                LIMIT 5
+            `, [libraryId]);
+            
+            return result.rows;
+        } catch (error) {
+            logger.error('Failed to get language distribution', {
+                libraryId,
+                error: error.message
+            });
+            return [];
+        }
+    }
+
+    /**
+     * Get total item count for a library
+     * @param {number} libraryId - Library ID
+     * @returns {Promise<number>} Total number of items in the library
+     */
+    async getTotalItems(libraryId) {
+        try {
+            const result = await db.query(`
+                SELECT COUNT(*)::int as total
+                FROM media_server_items
+                WHERE library_id = $1
+            `, [libraryId]);
+            
+            return result.rows[0]?.total || 0;
+        } catch (error) {
+            logger.error('Failed to get total items', {
+                libraryId,
+                error: error.message
+            });
+            return 0;
+        }
+    }
+
+    /**
+     * Format profile stats for AI prompt injection
+     * @param {object} stats - Profile statistics
+     * @returns {string} Formatted string for prompt
+     */
+    formatForPrompt(stats) {
+        const lines = [];
+        
+        lines.push('=== LIBRARY PROFILE STATISTICS ===');
+        lines.push(`Total items in library: ${stats.totalItems}`);
+        lines.push('');
+        
+        // Certification distribution
+        if (stats.certificationDistribution.length > 0) {
+            lines.push('Content Rating Distribution:');
+            stats.certificationDistribution.forEach(c => {
+                lines.push(`  - ${c.certification}: ${c.percentage}% (${c.count} items)`);
+            });
+            lines.push('');
+        }
+        
+        // Genre distribution
+        if (stats.genreDistribution.length > 0) {
+            lines.push('Genre Distribution:');
+            stats.genreDistribution.forEach(g => {
+                lines.push(`  - ${g.genre}: ${g.percentage}% (${g.count} items)`);
+            });
+            lines.push('');
+        }
+        
+        // Studio distribution
+        if (stats.studioDistribution.length > 0) {
+            lines.push('Top Studios:');
+            stats.studioDistribution.forEach(s => {
+                lines.push(`  - ${s.studio}: ${s.percentage}% (${s.count} items)`);
+            });
+            lines.push('');
+        }
+        
+        // Language distribution
+        if (stats.languageDistribution.length > 0) {
+            lines.push('Language Distribution:');
+            stats.languageDistribution.forEach(l => {
+                lines.push(`  - ${l.language}: ${l.percentage}% (${l.count} items)`);
+            });
+        }
+        
+        lines.push('=================================');
+        
+        return lines.join('\n');
+    }
+
+    /**
+     * Cache profile stats (placeholder for now)
+     * In the future, this could cache to Redis or a separate table
+     */
+    async cacheProfileStats(libraryId, stats) {
+        // For now, we rely on database query caching
+        // Future: implement Redis or similar caching
+        logger.debug('Profile stats cached', { libraryId });
+        return stats;
+    }
+
+    /**
+     * Emit normalized event after profile update
+     * Note: Node.js services don't have EventEmitter by default
+     * This would require extending EventEmitter or using a message bus
+     */
+    async updateAndNotify(libraryId) {
+        const stats = await this.getProfileStats(libraryId);
+        
+        // Cache the stats
+        await this.cacheProfileStats(libraryId, stats);
+        
+        // TODO: Emit event for other services when EventEmitter is added
+        // For now, just log
+        logger.info('Profile updated', { libraryId, totalItems: stats.totalItems });
+        
+        return stats;
+    }
 }
 
 module.exports = new LibraryProfileService();

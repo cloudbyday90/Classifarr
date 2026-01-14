@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **AI Prompt Enrichment**: Library profile statistics now injected into AI classification prompts (#142)
+  - Certification/rating distribution
+  - Genre distribution  
+  - Top studios
+  - Language distribution
+  
+- **Library Profile Panel**: New UI component in classification history detail (#142)
+  - Visual distribution bars for ratings and genres
+  - Profile snapshot from classification time
+  - Top studios and language distribution display
+  
+- **Profile Snapshot Storage**: Classification history now stores library profile at decision time (#142)
+  - New `profile_snapshot` column in `classification_history` table
+  - Enables transparency into what profile data influenced AI decisions
+  
+- **API Endpoints**: New endpoints for library profile statistics (#142)
+  - `GET /api/history/:id/profile` - Get profile used for specific classification
+  - Profile endpoints already exist in `/api/libraries/:id/profile`
+
+### Changed
+- **Prompt Builder**: Enhanced with library profile injection for AI context (#142)
+  - New `buildClassificationPrompt()` method
+  - `formatItemForPrompt()` helper for consistent item formatting
+  
+- **Classification Service**: Automatically captures and stores profile snapshots (#142)
+  - Profile stats captured at classification time for completed items
+  - Provides historical record of library composition
+
 ## [0.39.0-alpha] - 2026-01-14
 
 ### Added
