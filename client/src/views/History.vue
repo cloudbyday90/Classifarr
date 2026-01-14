@@ -193,6 +193,12 @@
             </div>
           </div>
 
+          <!-- Library Profile Panel -->
+          <LibraryProfilePanel 
+            v-if="selectedItem.library_id" 
+            :classificationId="selectedItem.id" 
+          />
+
           <!-- Actions -->
           <div class="space-y-3 pt-4 border-t border-gray-700">
             <!-- Correction Form -->
@@ -247,6 +253,7 @@ import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
 import BatchReclassifyModal from '@/components/BatchReclassifyModal.vue'
+import LibraryProfilePanel from '@/components/history/LibraryProfilePanel.vue'
 
 const librariesStore = useLibrariesStore()
 const libraries = computed(() => librariesStore.libraries)
