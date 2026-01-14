@@ -904,8 +904,12 @@ class PolicyEngine {
             return cappedScore;
 
         } catch (error) {
-            logger.debug('Failed to score profile', { error: error.message });
-            return 50; // Return neutral score on error
+            logger.error('Failed to score profile', { 
+                error: error.message,
+                libraryId,
+                title: item.title
+            });
+            return 0; // Return 0 on error to be conservative (don't bias the score)
         }
     }
 
