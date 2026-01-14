@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.4-alpha] - 2026-01-14
+
+### Fixed
+- **Quality Profile Dropdown Auto-Loading**: Fixed issue where quality profiles didn't load when editing existing Radarr/Sonarr configurations
+  - Clicking "Change Settings" on existing configs now automatically loads quality profiles
+  - Added `loadingProfiles` state to show loading indicator while fetching profiles
+  - Explicitly include `id` in editForm to ensure API lookups work with masked API keys
+  - Quality profile dropdown shows saved profile ID as fallback if profile list fails to load
+  - Hardcoded static options (availability, series type, monitor) to avoid dependency on test connection
+  - Fixed issue where masked API keys prevented profile lookup on edit
+
+- **Low-Confidence Discord Notifications (55%)**: Fixed tier lookup and notification issues
+  - `getTierForConfidence()` now rounds confidence values to avoid decimal precision issues
+  - Added fallback tier for low-confidence items (50-69%) when no explicit tier found in database
+  - Items with 55% confidence now correctly appear on Discord with clarification buttons
+  - Enhanced logging in `sendConfidenceBasedNotification` for debugging notification failures
+  - Logs tier lookup results, initialization status, and skip reasons
+
+### Added
+- **Incomplete Configuration Warnings**: New warning system for missing required fields
+  - New `ArrConfigWarning.vue` component displays warning banner on Dashboard
+  - Warning shown when Radarr/Sonarr configs missing `quality_profile_id`
+  - Banner includes direct "Configure Now" button linking to settings page
+  - New API endpoint `GET /api/settings/arr-config-status` to check for incomplete configs
+  - Warning can be dismissed by user (session-only, reappears on refresh if still incomplete)
+
+### Technical Details
+- Radarr availability options hardcoded: `announced`, `inCinemas`, `released`, `preDB`
+- Sonarr series type options hardcoded: `standard`, `daily`, `anime`
+- Sonarr monitoring options hardcoded: `all`, `future`, `missing`, `existing`, `first`, `latest`, `none`
+- Confidence rounding uses `Math.round()` to handle float precision issues
+- Fallback tier structure: `{ tier: 'clarify', action: 'clarify_questions', description: 'Requires clarification', min_confidence: 50, max_confidence: 69 }`
+- Enhanced Discord logging includes: title, confidence, tier, initialization status, channel details
+- ArrConfigWarning component auto-polls `/api/settings/arr-config-status` on Dashboard mount
+
 ## [0.38.3-alpha] - 2026-01-14
 
 ### Added
