@@ -11,6 +11,7 @@
 const axios = require('axios');
 const db = require('../config/database');
 const ollamaService = require('./ollama');
+const providerLock = require('./providerLock');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('EmbeddingProvider');
@@ -159,8 +160,27 @@ class EmbeddingProvider {
         }
 
         const mode = config.embedding_provider_mode || 'same';
+        const needsLock = mode === 'same';
 
+        if (needsLock) {
+            await providerLock.acquireLock('embedding', 'normal');
+        }
+
+        let heartbeatTimer = null;
         try {
+            if (needsLock) {
+                // Start heartbeat and check for preemption
+                heartbeatTimer = setInterval(() => {
+                    const shouldContinue = providerLock.heartbeat('embedding');
+                    if (!shouldContinue) {
+                        // Preemption requested - pause and yield
+                        clearInterval(heartbeatTimer);
+                        providerLock.releaseLock('embedding');
+                        throw new Error('Embedding preempted by classification');
+                    }
+                }, providerLock.config.heartbeatInterval);
+            }
+
             let result;
 
             switch (mode) {
@@ -209,6 +229,14 @@ class EmbeddingProvider {
                 error: error.message
             });
             throw error;
+        } finally {
+            // Clean up heartbeat and release lock
+            if (heartbeatTimer) {
+                clearInterval(heartbeatTimer);
+            }
+            if (needsLock) {
+                providerLock.releaseLock('embedding');
+            }
         }
     }
 

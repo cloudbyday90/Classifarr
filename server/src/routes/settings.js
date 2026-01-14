@@ -2795,4 +2795,68 @@ router.get('/embedding-provider/defaults', async (req, res) => {
   }
 });
 
+// ============================================
+// HEARTBEAT/PROVIDER LOCK CONFIGURATION
+// ============================================
+
+const providerLock = require('../services/providerLock');
+
+/**
+ * @swagger
+ * /api/settings/heartbeat:
+ *   get:
+ *     summary: Get heartbeat configuration
+ */
+router.get('/heartbeat', async (req, res) => {
+  try {
+    const config = await db.query(`
+      SELECT heartbeat_timeout, heartbeat_interval, max_wait_time
+      FROM ai_provider_config WHERE id = 1
+    `);
+    res.json(config.rows[0] || {
+      heartbeat_timeout: 30000,
+      heartbeat_interval: 5000,
+      max_wait_time: 60000
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/heartbeat:
+ *   put:
+ *     summary: Update heartbeat configuration
+ */
+router.put('/heartbeat', async (req, res) => {
+  try {
+    const { heartbeat_timeout, heartbeat_interval, max_wait_time } = req.body;
+    
+    await providerLock.updateConfig({
+      heartbeatTimeout: heartbeat_timeout,
+      heartbeatInterval: heartbeat_interval,
+      maxWaitTime: max_wait_time,
+    });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/provider-lock/status:
+ *   get:
+ *     summary: Get current provider lock status
+ */
+router.get('/provider-lock/status', async (req, res) => {
+  try {
+    res.json(providerLock.getLockStatus());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
