@@ -283,17 +283,17 @@ watch(() => props.modelValue, (newVal) => {
         signals: {
           certifications: {
             mode: props.sourcePreset.signals?.certifications?.mode || 'include',
-            include: props.sourcePreset.signals?.certifications?.include || [],
-            exclude: props.sourcePreset.signals?.certifications?.exclude || [],
+            include: [...(props.sourcePreset.signals?.certifications?.include || [])],
+            exclude: [...(props.sourcePreset.signals?.certifications?.exclude || [])],
             max: props.sourcePreset.signals?.certifications?.max || null
           },
           genres: {
-            prefer: props.sourcePreset.signals?.genres?.prefer || [],
-            exclude: props.sourcePreset.signals?.genres?.exclude || []
+            prefer: [...(props.sourcePreset.signals?.genres?.prefer || [])],
+            exclude: [...(props.sourcePreset.signals?.genres?.exclude || [])]
           },
           keywords: {
-            prefer: props.sourcePreset.signals?.keywords?.prefer || [],
-            exclude: props.sourcePreset.signals?.keywords?.exclude || []
+            prefer: [...(props.sourcePreset.signals?.keywords?.prefer || [])],
+            exclude: [...(props.sourcePreset.signals?.keywords?.exclude || [])]
           }
         }
       }
@@ -307,17 +307,17 @@ watch(() => props.modelValue, (newVal) => {
         signals: {
           certifications: {
             mode: props.preset.signals?.certifications?.mode || 'include',
-            include: props.preset.signals?.certifications?.include || [],
-            exclude: props.preset.signals?.certifications?.exclude || [],
+            include: [...(props.preset.signals?.certifications?.include || [])],
+            exclude: [...(props.preset.signals?.certifications?.exclude || [])],
             max: props.preset.signals?.certifications?.max || null
           },
           genres: {
-            prefer: props.preset.signals?.genres?.prefer || [],
-            exclude: props.preset.signals?.genres?.exclude || []
+            prefer: [...(props.preset.signals?.genres?.prefer || [])],
+            exclude: [...(props.preset.signals?.genres?.exclude || [])]
           },
           keywords: {
-            prefer: props.preset.signals?.keywords?.prefer || [],
-            exclude: props.preset.signals?.keywords?.exclude || []
+            prefer: [...(props.preset.signals?.keywords?.prefer || [])],
+            exclude: [...(props.preset.signals?.keywords?.exclude || [])]
           }
         }
       }

@@ -210,8 +210,8 @@ async function fetchUsageCount() {
     usageCount.value = response.data.count
   } catch (error) {
     console.error('Error fetching preset usage count:', error)
-    // Silently fail - usage count is optional
-    usageCount.value = 0
+    // Silently fail - usage count is optional; hide indicator when unavailable
+    usageCount.value = null
   }
 }
 

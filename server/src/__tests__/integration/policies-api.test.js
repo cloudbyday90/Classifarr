@@ -271,6 +271,33 @@ describe('Policies API Integration Tests', () => {
                 expect(response.body.count).toBe(0);
             }
         });
+
+        test('should return 400 for invalid presetId (non-numeric)', async () => {
+            const response = await request(app)
+                .get('/api/policies/presets/invalid/usage')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid presetId');
+        });
+
+        test('should return 400 for invalid presetId (negative number)', async () => {
+            const response = await request(app)
+                .get('/api/policies/presets/-1/usage')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid presetId');
+        });
+
+        test('should return 400 for invalid presetId (zero)', async () => {
+            const response = await request(app)
+                .get('/api/policies/presets/0/usage')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid presetId');
+        });
     });
 
     describe('GET /api/policies/presets/suggest/:libraryId', () => {

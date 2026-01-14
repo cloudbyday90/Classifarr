@@ -105,12 +105,17 @@ router.get('/presets/categories', async (req, res) => {
 router.get('/presets/:presetId/usage', async (req, res) => {
     try {
         const { presetId } = req.params;
+        const presetIdNum = Number.parseInt(presetId, 10);
+
+        if (!Number.isInteger(presetIdNum) || presetIdNum < 1) {
+            return res.status(400).json({ error: 'Invalid presetId: must be a positive integer' });
+        }
 
         const result = await db.query(`
             SELECT COUNT(*) as count
             FROM policy_presets
             WHERE preset_id = $1
-        `, [presetId]);
+        `, [presetIdNum]);
 
         res.json({ count: parseInt(result.rows[0].count, 10) });
     } catch (error) {
