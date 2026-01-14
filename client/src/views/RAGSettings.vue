@@ -69,7 +69,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { api } from '@/api'
+import api from '@/api'
 import OverviewTab from './rag/OverviewTab.vue'
 import ProviderTab from './rag/ProviderTab.vue'
 import QueueTab from './rag/QueueTab.vue'

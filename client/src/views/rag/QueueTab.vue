@@ -259,7 +259,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { api } from '@/api'
+import api from '@/api'
 
 const heartbeat = ref({
   timeout: 30000,

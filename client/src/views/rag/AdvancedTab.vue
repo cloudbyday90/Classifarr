@@ -174,7 +174,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { api } from '@/api'
+import api from '@/api'
 
 const config = ref({
   max_retries: 3,
