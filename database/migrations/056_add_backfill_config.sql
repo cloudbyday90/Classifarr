@@ -14,7 +14,7 @@ ALTER TABLE ai_provider_config
 ADD COLUMN IF NOT EXISTS idle_backfill_enabled BOOLEAN DEFAULT true;
 
 ALTER TABLE ai_provider_config
-ADD COLUMN IF NOT EXISTS idle_threshold INTEGER DEFAULT 30000; -- 30 seconds in ms
+ADD COLUMN IF NOT EXISTS idle_threshold INTEGER DEFAULT 30000; -- 30000 milliseconds (30 seconds)
 
 ALTER TABLE ai_provider_config
 ADD COLUMN IF NOT EXISTS idle_batch_size INTEGER DEFAULT 10;

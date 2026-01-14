@@ -312,7 +312,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import Card from '@/components/common/Card.vue';
 import Button from '@/components/common/Button.vue';
 import Spinner from '@/components/common/Spinner.vue';
-import api from '@/api/client';
+import api from '@/api';
 
 export default {
   name: 'BackfillSettings',

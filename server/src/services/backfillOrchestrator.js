@@ -36,6 +36,9 @@ class BackfillOrchestrator {
 
         logger.info('Initializing backfill orchestrator');
 
+        // Set cross-references for status checking
+        this.idleBackfillService.setManualBackfillService(this.manualBackfillService);
+
         // Start idle detector
         idleDetector.start();
 

@@ -28,6 +28,7 @@ class ManualBackfillService {
             error: null,
             runId: null
         };
+        this.isProcessing = false; // Flag to prevent concurrent runBackfill() calls
     }
 
     /**
@@ -123,6 +124,13 @@ class ManualBackfillService {
      * Run backfill process
      */
     async runBackfill() {
+        // Prevent concurrent execution
+        if (this.isProcessing) {
+            logger.warn('runBackfill() already in progress, skipping');
+            return;
+        }
+
+        this.isProcessing = true;
         try {
             while (this.state.status === 'running' && this.state.processed < this.state.total) {
                 const pending = await this.getPendingEmbeddings(this.state.batchSize);
@@ -160,7 +168,12 @@ class ManualBackfillService {
                             title: item.title,
                             error: error.message
                         });
-                        this.state.error = error.message;
+                        const itemErrorMessage = `Item ${item.id}: ${error.message}`;
+                        if (this.state.error) {
+                            this.state.error += ` | ${itemErrorMessage}`;
+                        } else {
+                            this.state.error = itemErrorMessage;
+                        }
                     }
                 }
             }
@@ -193,6 +206,8 @@ class ManualBackfillService {
                     WHERE id = $3
                 `, [error.message, this.state.processed, this.state.runId]);
             }
+        } finally {
+            this.isProcessing = false;
         }
     }
 
@@ -251,6 +266,7 @@ class ManualBackfillService {
             error: null,
             runId: null
         };
+        this.isProcessing = false;
         logger.info('Manual backfill state cleared');
     }
 

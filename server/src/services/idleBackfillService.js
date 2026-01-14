@@ -22,6 +22,14 @@ class IdleBackfillService {
         this.isRunning = false;
         this.batchSize = 10;
         this.config = null;
+        this.manualBackfillService = null; // Will be set by orchestrator
+    }
+
+    /**
+     * Set reference to manual backfill service for status checking
+     */
+    setManualBackfillService(service) {
+        this.manualBackfillService = service;
     }
 
     /**
@@ -128,6 +136,12 @@ class IdleBackfillService {
                     // Check if still idle before each item
                     if (!idleDetector.isIdle()) {
                         logger.info('Classification activity detected, pausing idle backfill');
+                        break;
+                    }
+
+                    // Check if manual backfill has started
+                    if (this.manualBackfillService && this.manualBackfillService.getStatus().status === 'running') {
+                        logger.info('Manual backfill started, stopping idle backfill');
                         break;
                     }
 
