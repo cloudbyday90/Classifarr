@@ -55,6 +55,10 @@ const AGE_TO_TV_MAP = {
 const STANDARD_MOVIE_RATINGS = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'NR', 'Unrated'];
 const STANDARD_TV_RATINGS = ['TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA'];
 
+// SQL fragment for checking if rating needs normalization
+const NEEDS_NORMALIZATION_SQL = `(content_rating ~ '^[0-9]+$' 
+             OR content_rating NOT IN ('G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR', 'Unrated'))`;
+
 class RatingNormalizer {
   /**
    * Check if a rating is already a standard MPAA or TV rating
@@ -109,6 +113,14 @@ class RatingNormalizer {
     }
     
     return 'NR';
+  }
+  /**
+   * Get the SQL fragment for checking if a rating needs normalization
+   * Used in database queries to find items needing processing
+   * @returns {string} SQL WHERE condition
+   */
+  getNeedsNormalizationSQL() {
+    return NEEDS_NORMALIZATION_SQL;
   }
 }
 

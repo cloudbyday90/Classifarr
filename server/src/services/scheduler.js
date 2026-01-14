@@ -97,12 +97,14 @@ class SchedulerService {
         try {
             logger.info('Running daily rating normalization check');
             
+            const ratingNormalizer = require('../utils/ratingNormalizer');
+            const needsSQL = ratingNormalizer.getNeedsNormalizationSQL();
+            
             const result = await db.query(`
                 SELECT COUNT(*) as count FROM media_server_items
                 WHERE original_rating IS NULL
                   AND content_rating IS NOT NULL
-                  AND (content_rating ~ '^[0-9]+$' 
-                       OR content_rating NOT IN ('G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR', 'Unrated'))
+                  AND ${needsSQL}
             `);
             
             const count = parseInt(result.rows[0].count);
@@ -116,8 +118,7 @@ class SchedulerService {
                     FROM media_server_items
                     WHERE original_rating IS NULL
                       AND content_rating IS NOT NULL
-                      AND (content_rating ~ '^[0-9]+$' 
-                           OR content_rating NOT IN ('G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR', 'Unrated'))
+                      AND ${needsSQL}
                     ON CONFLICT DO NOTHING
                 `);
             }

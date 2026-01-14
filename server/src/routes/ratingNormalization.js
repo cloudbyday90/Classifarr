@@ -12,6 +12,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const ratingNormalizer = require('../utils/ratingNormalizer');
 
 const logger = createLogger('RatingNormalizationAPI');
 
@@ -21,13 +22,14 @@ const logger = createLogger('RatingNormalizationAPI');
  */
 router.get('/stats', async (req, res) => {
   try {
+    const needsSQL = ratingNormalizer.getNeedsNormalizationSQL();
+    
     // Count items needing normalization (age-based or non-standard ratings without original_rating set)
     const needsNormalization = await db.query(`
       SELECT COUNT(*) as count FROM media_server_items
       WHERE original_rating IS NULL
         AND content_rating IS NOT NULL
-        AND (content_rating ~ '^[0-9]+$' 
-             OR content_rating NOT IN ('G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR', 'Unrated'))
+        AND ${needsSQL}
     `);
     
     // Count items already normalized
@@ -65,14 +67,15 @@ router.get('/stats', async (req, res) => {
  */
 router.post('/backfill', async (req, res) => {
   try {
+    const needsSQL = ratingNormalizer.getNeedsNormalizationSQL();
+    
     const result = await db.query(`
       INSERT INTO task_queue (task_type, priority, payload, status)
       SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', id), 'pending'
       FROM media_server_items
       WHERE original_rating IS NULL
         AND content_rating IS NOT NULL
-        AND (content_rating ~ '^[0-9]+$' 
-             OR content_rating NOT IN ('G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR', 'Unrated'))
+        AND ${needsSQL}
       ON CONFLICT DO NOTHING
       RETURNING id
     `);

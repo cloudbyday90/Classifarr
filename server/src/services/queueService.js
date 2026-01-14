@@ -210,13 +210,17 @@ class QueueService {
             const originalRating = item.content_rating;
             const normalizedRating = ratingNormalizer.getPriorityRating(item);
 
-            if (normalizedRating !== originalRating) {
-                await db.query(`
-                    UPDATE media_server_items
-                    SET original_rating = $2, content_rating = $3, last_synced = NOW()
-                    WHERE id = $1
-                `, [media_item_id, originalRating, normalizedRating]);
+            // Always set original_rating on first normalization, even if rating doesn't change
+            // This marks the item as processed and prevents re-queuing
+            await db.query(`
+                UPDATE media_server_items
+                SET original_rating = COALESCE(original_rating, $2), 
+                    content_rating = $3, 
+                    last_synced = NOW()
+                WHERE id = $1
+            `, [media_item_id, originalRating, normalizedRating]);
 
+            if (normalizedRating !== originalRating) {
                 logger.info('Rating normalized', {
                     itemId: media_item_id,
                     original: originalRating,
@@ -229,9 +233,15 @@ class QueueService {
                     new: normalizedRating
                 });
             } else {
+                logger.debug('Rating already standard', {
+                    itemId: media_item_id,
+                    rating: originalRating
+                });
+
                 await this.completeTask(task.id, {
                     normalized: false,
-                    reason: 'Rating already standard or same'
+                    reason: 'Rating already standard',
+                    rating: originalRating
                 });
             }
         } catch (error) {
