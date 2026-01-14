@@ -445,7 +445,7 @@ const startEditing = async (instance) => {
   // Load profiles for this instance using direct API endpoint
   loadingProfiles.value = true
   try {
-    const response = await api.genericRequest('get', `/api/settings/sonarr/${instance.id}/quality-profiles`)
+    const response = await api.getSonarrQualityProfiles(instance.id)
     qualityProfiles.value = response.data || []
   } catch (e) {
     console.warn('Failed to load quality profiles:', e)
