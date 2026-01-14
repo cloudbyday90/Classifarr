@@ -21,6 +21,9 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('clarificationService');
 
+// Threshold for fallback tier - items below this confidence get clarification tier
+const LOW_CONFIDENCE_THRESHOLD = 70;
+
 /**
  * Clamp confidence value between min and max
  * @param {number} value - Confidence value
@@ -71,7 +74,7 @@ class ClarificationService {
         logger.warn('No tier found for confidence', { confidence, roundedConfidence });
         
         // Fallback tier for low-confidence items without explicit tier
-        if (roundedConfidence < 70) {
+        if (roundedConfidence < LOW_CONFIDENCE_THRESHOLD) {
           logger.info('Using fallback tier for low-confidence item', { confidence: roundedConfidence });
           return { 
             tier: 'clarify', 

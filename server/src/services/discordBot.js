@@ -538,7 +538,9 @@ class DiscordBotService {
   }
 
   async sendConfidenceBasedNotification(metadata, result) {
-    // Enhanced logging for debugging notification issues
+    // Enhanced logging for debugging notification issues (v0.38.4-alpha)
+    // These console.log statements are intentional and help diagnose
+    // why notifications may not appear on Discord (e.g., tier lookup failures)
     console.log('[Discord] Notification attempt', {
       title: metadata.title,
       confidence: result.confidence,
