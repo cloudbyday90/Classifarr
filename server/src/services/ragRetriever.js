@@ -34,10 +34,12 @@ class RAGRetriever {
                 return [];
             }
 
+            // Get embedding count once for efficiency
+            const embeddingCount = await this.getEmbeddingCount();
+
             // Check minimum embeddings threshold
             const hasMinimum = await embeddingService.hasMinimumEmbeddings();
             if (!hasMinimum) {
-                const embeddingCount = await this.getEmbeddingCount();
                 const config = await embeddingRouter.getConfig();
                 const minRequired = config?.rag_min_history_count || 50;
                 logger.info('RAG search skipped - not enough embeddings', { 
@@ -55,7 +57,8 @@ class RAGRetriever {
             logger.info('RAG search initiated', { 
                 title: metadata.title, 
                 threshold,
-                limit
+                limit,
+                embeddingCount
             });
 
             // Generate embedding for query
@@ -89,7 +92,7 @@ class RAGRetriever {
             if (result.rows.length === 0) {
                 logger.info('RAG search returned no results', { 
                     title: metadata.title,
-                    embeddingCount: await this.getEmbeddingCount()
+                    embeddingCount
                 });
                 return [];
             }
