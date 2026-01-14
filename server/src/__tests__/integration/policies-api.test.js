@@ -241,6 +241,65 @@ describe('Policies API Integration Tests', () => {
         });
     });
 
+    describe('GET /api/policies/presets/:presetId/usage', () => {
+        test('should return usage count for preset', async () => {
+            // Use a preset that was attached to testPolicy
+            const response = await request(app)
+                .get(`/api/policies/presets/${testPresetIds[0]}/usage`)
+                .expect(200);
+
+            expect(response.body).toHaveProperty('count');
+            expect(typeof response.body.count).toBe('number');
+            expect(response.body.count).toBeGreaterThanOrEqual(1); // At least used in testPolicy
+        });
+
+        test('should return 0 for unused preset', async () => {
+            // Find a preset that's not being used
+            const unusedPresetResult = await db.query(`
+                SELECT id FROM content_presets
+                WHERE is_system = true 
+                AND id NOT IN (SELECT preset_id FROM policy_presets)
+                LIMIT 1
+            `);
+
+            if (unusedPresetResult.rows.length > 0) {
+                const unusedPresetId = unusedPresetResult.rows[0].id;
+                const response = await request(app)
+                    .get(`/api/policies/presets/${unusedPresetId}/usage`)
+                    .expect(200);
+
+                expect(response.body.count).toBe(0);
+            }
+        });
+
+        test('should return 400 for invalid presetId (non-numeric)', async () => {
+            const response = await request(app)
+                .get('/api/policies/presets/invalid/usage')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid presetId');
+        });
+
+        test('should return 400 for invalid presetId (negative number)', async () => {
+            const response = await request(app)
+                .get('/api/policies/presets/-1/usage')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid presetId');
+        });
+
+        test('should return 400 for invalid presetId (zero)', async () => {
+            const response = await request(app)
+                .get('/api/policies/presets/0/usage')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid presetId');
+        });
+    });
+
     describe('GET /api/policies/presets/suggest/:libraryId', () => {
         let animeLibraryId;
         let comedyLibraryId;

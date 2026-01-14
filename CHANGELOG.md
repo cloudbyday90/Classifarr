@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.38.0-alpha] - 2026-01-13
 
 ### Added
+- **Preset Viewer UX Improvements**: Reimagined system preset viewing experience
+  - New `PresetSummaryModal.vue` component displaying clean read-only summary (badges/chips instead of disabled form inputs)
+  - "Customize" button to clone system presets as custom presets
+  - Modal title shows "(Custom Preset)" suffix when customizing
+  - "Used in X policies" count displayed in preset summary header
+  - Auto-switch to Custom Presets tab after saving customization
+  - Success toast notification on preset creation
+  - Backend API endpoint: `GET /api/policies/presets/:presetId/usage` for usage count
+
 - **Policy Card Empty State Redesign**: New visual design for policies without presets
   - Dashed border container with centered plus icon
   - "No presets configured" messaging

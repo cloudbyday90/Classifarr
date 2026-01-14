@@ -7,7 +7,7 @@
 -->
 
 <template>
-  <Modal v-model="isOpen" :title="readonly ? 'Preset Details' : (isEditing ? 'Edit Custom Preset' : 'Create Custom Preset')" class="max-w-4xl">
+  <Modal v-model="isOpen" :title="modalTitle" class="max-w-4xl">
     <form @submit.prevent="handleSubmit" class="space-y-6">
       <fieldset :disabled="readonly">
       <!-- Basic Information -->
@@ -195,7 +195,7 @@
         <template v-else>
           <Button variant="ghost" @click="close">Cancel</Button>
           <Button variant="primary" @click="handleSubmit" :loading="saving">
-            {{ isEditing ? 'Update' : 'Create' }} Preset
+            {{ isCustomizing ? 'Create' : (isEditing ? 'Update' : 'Create') }} Preset
           </Button>
         </template>
       </div>
@@ -213,7 +213,8 @@ import { EMOJI_OPTIONS, DEFAULT_EMOJI } from '@/constants/emojis'
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   preset: { type: Object, default: null },
-  readonly: { type: Boolean, default: false }
+  readonly: { type: Boolean, default: false },
+  sourcePreset: { type: Object, default: null }
 })
 
 const emit = defineEmits(['update:modelValue', 'save'])
@@ -224,6 +225,15 @@ const isOpen = computed({
 })
 
 const isEditing = computed(() => !!props.preset?.id)
+const isCustomizing = computed(() => !!props.sourcePreset)
+
+const modalTitle = computed(() => {
+  if (props.readonly) return 'Preset Details'
+  if (isCustomizing.value) return `${props.sourcePreset.name} (Custom Preset)`
+  if (isEditing.value) return 'Edit Custom Preset'
+  return 'Create Custom Preset'
+})
+
 const saving = ref(false)
 const error = ref('')
 
@@ -262,7 +272,32 @@ const form = ref(defaultForm())
 // Reset form when modal opens
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
-    if (props.preset) {
+    // Priority: sourcePreset (customizing) > preset (editing) > defaultForm (creating)
+    if (props.sourcePreset) {
+      // Customizing from a system preset
+      form.value = {
+        name: props.sourcePreset.name || '',
+        description: props.sourcePreset.description || '',
+        icon: props.sourcePreset.icon || DEFAULT_EMOJI,
+        category: props.sourcePreset.category || 'custom',
+        signals: {
+          certifications: {
+            mode: props.sourcePreset.signals?.certifications?.mode || 'include',
+            include: [...(props.sourcePreset.signals?.certifications?.include || [])],
+            exclude: [...(props.sourcePreset.signals?.certifications?.exclude || [])],
+            max: props.sourcePreset.signals?.certifications?.max || null
+          },
+          genres: {
+            prefer: [...(props.sourcePreset.signals?.genres?.prefer || [])],
+            exclude: [...(props.sourcePreset.signals?.genres?.exclude || [])]
+          },
+          keywords: {
+            prefer: [...(props.sourcePreset.signals?.keywords?.prefer || [])],
+            exclude: [...(props.sourcePreset.signals?.keywords?.exclude || [])]
+          }
+        }
+      }
+    } else if (props.preset) {
       // Load existing preset data
       form.value = {
         name: props.preset.name || '',
@@ -272,17 +307,17 @@ watch(() => props.modelValue, (newVal) => {
         signals: {
           certifications: {
             mode: props.preset.signals?.certifications?.mode || 'include',
-            include: props.preset.signals?.certifications?.include || [],
-            exclude: props.preset.signals?.certifications?.exclude || [],
+            include: [...(props.preset.signals?.certifications?.include || [])],
+            exclude: [...(props.preset.signals?.certifications?.exclude || [])],
             max: props.preset.signals?.certifications?.max || null
           },
           genres: {
-            prefer: props.preset.signals?.genres?.prefer || [],
-            exclude: props.preset.signals?.genres?.exclude || []
+            prefer: [...(props.preset.signals?.genres?.prefer || [])],
+            exclude: [...(props.preset.signals?.genres?.exclude || [])]
           },
           keywords: {
-            prefer: props.preset.signals?.keywords?.prefer || [],
-            exclude: props.preset.signals?.keywords?.exclude || []
+            prefer: [...(props.preset.signals?.keywords?.prefer || [])],
+            exclude: [...(props.preset.signals?.keywords?.exclude || [])]
           }
         }
       }

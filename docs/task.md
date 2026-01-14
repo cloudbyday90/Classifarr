@@ -70,16 +70,48 @@
   - [x] Verify no regressions (Passes on relevant modules)
   - [x] Fix race condition in library sync (FK violation)
   - [x] Fix crash in Clear & Resync (Removed deprecated `runPatternAnalysis` call)
-  - [ ] Rebuild Docker and verify startup (User to perform)
+  - [x] Rebuild Docker and verify startup (User to perform)
+
+## Phase 9.6: Preset Viewer UX Improvements (v0.38.0-alpha)
+  - [x] Create `PresetSummaryModal.vue` component
+    - [x] Header with icon, name, description
+    - [x] "Used in X policies" count display
+    - [x] Content Ratings section (badges)
+    - [x] Genres section (chips with ✅/❌)
+    - [x] Keywords section (tag chips)
+    - [x] Footer with Close and Customize buttons
+  - [x] Modify `CustomPresetForm.vue`
+    - [x] Add `sourcePreset` prop for customization flow
+    - [x] Update modal title (show "(Custom Preset)" suffix when customizing)
+    - [x] Pre-populate form from `sourcePreset` when provided
+    - [x] Update save button text ("Create Preset" when customizing)
+  - [x] Modify `PresetsManager.vue`
+    - [x] Add state for `showSummaryModal`, `viewingPreset`, `customizingPreset`
+    - [x] Change system preset @view handler to use PresetSummaryModal
+    - [x] Handle "Customize" action from PresetSummaryModal
+    - [x] Add success toast after customization save
+    - [x] Auto-switch to Custom Presets tab after save
+  - [x] Backend API: Add preset usage count endpoint
+    - [x] `GET /api/policies/presets/:presetId/usage`
+    - [x] Query `policy_presets` table for count
+  - [x] Documentation Updates
+    - [x] Update `CHANGELOG.md` - Added Phase 9.6 changes
+    - [x] Update `RELEASE_NOTES.md` - Added "Improved Preset Viewing" section
+  - [x] Version Updates
+    - [x] Update `client/package.json` version to 0.38.0
+    - [x] Update `server/package.json` version to 0.38.0
+    - [x] Update `client/src/components/layout/Sidebar.vue` version display
 
 ## Phase 10: RAG Visualization
 - [ ] Store RAG matches in classification metadata
 - [ ] Create `RagMatchesPanel.vue`
 - [ ] Integrate into history detail
 
-## Phase 10: Documentation & Release
-- [ ] CHANGELOG.md (technical)
-- [ ] RELEASE_NOTES.md (high-level)
-- [ ] Version bump to 0.38.0
+## Phase 11: Documentation & Release
+- [x] CHANGELOG.md (technical)
+- [x] RELEASE_NOTES.md (high-level)
+- [x] Version bump to 0.38.0
+- [ ] Create `docs/roadmap.md` (v0.39.0 RAG visualization, future releases)
+- [ ] Update `docs/implementation_plan.md` - Add Phase 9.6 section
 - [ ] Docker build
 - [ ] Git tag, push, release

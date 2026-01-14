@@ -107,8 +107,16 @@
     <CustomPresetForm
       v-model="showPresetForm"
       :preset="editingPreset"
+      :sourcePreset="customizingPreset"
       :readonly="isFormReadonly"
       @save="handleSavePreset"
+    />
+
+    <!-- Preset Summary Modal (for system presets) -->
+    <PresetSummaryModal
+      v-model="showSummaryModal"
+      :preset="viewingPreset"
+      @customize="handleCustomize"
     />
 
     <!-- Delete Confirmation Modal -->
@@ -135,8 +143,12 @@ import Button from '@/components/common/Button.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import Modal from '@/components/common/Modal.vue'
 import CustomPresetForm from '@/components/presets/CustomPresetForm.vue'
+import PresetSummaryModal from '@/components/presets/PresetSummaryModal.vue'
 import PresetCard from '@/components/presets/PresetCard.vue'
 import presetsApi from '@/api/presets'
+import { useToast } from '@/stores/toast'
+
+const toast = useToast()
 
 const activeTab = ref('system')
 const searchQuery = ref('')
@@ -160,6 +172,9 @@ const errorCustom = ref('')
 // Modal State
 const showPresetForm = ref(false)
 const editingPreset = ref(null)
+const showSummaryModal = ref(false)
+const viewingPreset = ref(null)
+const customizingPreset = ref(null)
 const showDeleteConfirm = ref(false)
 const deleteTarget = ref(null)
 const deleting = ref(false)
@@ -241,19 +256,32 @@ const isFormReadonly = ref(false)
 // Modal Handlers
 function openCreateModal() {
   editingPreset.value = null
+  customizingPreset.value = null
   isFormReadonly.value = false
   showPresetForm.value = true
 }
 
 function openEditModal(preset) {
   editingPreset.value = preset
+  customizingPreset.value = null
   isFormReadonly.value = false
   showPresetForm.value = true
 }
 
 function openViewModal(preset) {
-  editingPreset.value = preset
-  isFormReadonly.value = true
+  viewingPreset.value = preset
+  showSummaryModal.value = true
+}
+
+function handleCustomize(preset) {
+  // Close summary modal
+  showSummaryModal.value = false
+  viewingPreset.value = null
+  
+  // Open form with sourcePreset for customization
+  editingPreset.value = null
+  customizingPreset.value = preset
+  isFormReadonly.value = false
   showPresetForm.value = true
 }
 
@@ -265,6 +293,7 @@ function confirmDelete(preset) {
 async function handleSavePreset(presetData) {
   try {
     const isEditing = !!editingPreset.value?.id
+    const isCustomizing = !!customizingPreset.value
     
     if (isEditing) {
       await presetsApi.updateCustomPreset(editingPreset.value.id, presetData)
@@ -278,6 +307,13 @@ async function handleSavePreset(presetData) {
     // Close modal
     showPresetForm.value = false
     editingPreset.value = null
+    customizingPreset.value = null
+
+    // If customizing, show success toast and switch to custom tab
+    if (isCustomizing) {
+      toast.success(`Custom preset '${presetData.name}' created!`)
+      activeTab.value = 'custom'
+    }
   } catch (error) {
     console.error('Error saving preset:', error)
     throw error // Let the form handle the error display
