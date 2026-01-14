@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.39.0-alpha] - 2026-01-14
 
 ### Added
+- **Hybrid Backfill System**: Flexible embedding generation across multiple modes (#140)
+  - **Real-time Mode**: Generate embeddings immediately during classification (configurable on/off)
+  - **Idle Mode**: Opportunistic backfill during quiet periods (starts after configurable idle threshold)
+  - **Scheduled Mode**: Large batch processing at configured times with day/time picker
+  - **Manual Mode**: On-demand backfill with full progress controls (start/pause/resume/clear)
+  - Database migration (056) for backfill configuration and run history tracking
+  - New services: `idleBackfillService`, `scheduledBackfillService`, `manualBackfillService`, `backfillOrchestrator`
+  - New utility: `idleDetector` for monitoring classification activity
+  - API endpoints: 
+    - Manual backfill: POST `/api/rag/backfill/manual/{start,pause,resume,clear}`, GET `/api/rag/backfill/status`
+    - Schedule config: GET/PUT `/api/rag/backfill/schedule`
+    - Idle config: GET/PUT `/api/rag/backfill/idle`
+    - Realtime config: GET/PUT `/api/rag/backfill/realtime`
+    - History: GET `/api/rag/backfill/history`
+  - UI: BackfillSettings.vue component integrated into Settings > AI
+  - Real-time progress tracking with ETA calculation
+  - Backfill run history table showing type, status, processed count, and timestamps
+  - Idle detection integrated into classification service
+  - Orchestrator coordinates all modes and prevents conflicts (e.g., idle stops when manual runs)
+
 - **Heartbeat-Based Queue System**: Smart resource management for Ollama to prevent contention
   - Classification requests always have priority over embeddings
   - Automatic lock release on timeout (prevents deadlocks)
@@ -16,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Database migration (055) for heartbeat configuration columns
   - New `providerLock` service with heartbeat-based locking mechanism
   - API endpoints: GET/PUT `/api/settings/heartbeat`, GET `/api/settings/provider-lock/status`
-  - UI: HeartbeatSettings.vue component in Settings > General > Heartbeat/Queue tab
+  - UI: HeartbeatSettings.vue component in Settings > General > Heartbeat tab
   - Lock automatically acquired/released in classification and embedding operations
   - Only applies when using same Ollama instance for both operations
 
@@ -39,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Navigation updated to remove Rules tab from Settings
 
 ### Changed
+- **Settings UI**: Renamed "Heartbeat/Queue" to "Heartbeat" in settings navigation
 - **Embedding Architecture**: Refactored to use new `EmbeddingProvider` service
   - `embeddingRouter` now delegates to `embeddingProvider` for separate_ollama and cloud modes
   - Provider-agnostic embedding interface with support for parallel embedding generation
