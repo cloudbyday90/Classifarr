@@ -709,6 +709,9 @@
       </div>
     </Card>
 
+    <!-- Backfill Settings -->
+    <BackfillSettings />
+
     <!-- Save Button -->
     <div class="flex justify-end">
       <Button @click="saveConfig" :disabled="saving">
@@ -726,6 +729,7 @@ import Button from '@/components/common/Button.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
+import BackfillSettings from '@/components/settings/BackfillSettings.vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 

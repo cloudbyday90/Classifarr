@@ -77,7 +77,7 @@ const settingsGroups = [
       { id: 'general', label: 'General', icon: '⚙️', component: General },
       { id: 'scheduler', label: 'Scheduler', icon: '🕐', component: Scheduler },
       { id: 'queue', label: 'Queue', icon: '📋', component: Queue },
-      { id: 'heartbeat', label: 'Heartbeat/Queue', icon: '⏱️', component: HeartbeatSettings },
+      { id: 'heartbeat', label: 'Heartbeat', icon: '⏱️', component: HeartbeatSettings },
     ]
   },
   {
