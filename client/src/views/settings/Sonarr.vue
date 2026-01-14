@@ -142,6 +142,37 @@
           </div>
         </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Quality Profile</label>
+            <select v-model="editForm.quality_profile_id" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+              <option :value="null">Select Profile...</option>
+              <option v-for="profile in qualityProfiles" :key="profile.id" :value="profile.id">
+                {{ profile.name }}
+              </option>
+            </select>
+            <p v-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Series Type</label>
+            <select v-model="editForm.series_type" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+              <option value="standard">Standard (Default)</option>
+              <option v-for="option in seriesTypeOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Monitor</label>
+            <select v-model="editForm.monitor" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+              <option value="all">All Seasons (Default)</option>
+              <option v-for="option in seasonMonitoringOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+        
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium mb-2">Associated Media Server</label>
@@ -232,6 +263,37 @@
         </div>
       </div>
 
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-2">Quality Profile</label>
+          <select v-model="editForm.quality_profile_id" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+            <option :value="null">Select Profile...</option>
+            <option v-for="profile in qualityProfiles" :key="profile.id" :value="profile.id">
+              {{ profile.name }}
+            </option>
+          </select>
+          <p v-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Series Type</label>
+          <select v-model="editForm.series_type" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+            <option value="standard">Standard (Default)</option>
+            <option v-for="option in seriesTypeOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Monitor</label>
+          <select v-model="editForm.monitor" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+            <option value="all">All Seasons (Default)</option>
+            <option v-for="option in seasonMonitoringOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium mb-2">Associated Media Server</label>
@@ -285,6 +347,11 @@ const isEditing = ref(false)
 const isAddingNew = ref(false)
 const editingId = ref(null)
 
+// New state for options
+const qualityProfiles = ref([])
+const seriesTypeOptions = ref([])
+const seasonMonitoringOptions = ref([])
+
 const editForm = ref({
   name: 'Sonarr',
   protocol: 'http',
@@ -294,7 +361,10 @@ const editForm = ref({
   api_key: '',
   verify_ssl: true,
   timeout: 30,
-  media_server_id: null
+  media_server_id: null,
+  quality_profile_id: null,
+  series_type: 'standard',
+  monitor: 'all'
 })
 
 const resetForm = () => {
@@ -307,8 +377,12 @@ const resetForm = () => {
     api_key: '',
     verify_ssl: true,
     timeout: 30,
-    media_server_id: null
+    media_server_id: null,
+    quality_profile_id: null,
+    series_type: 'standard',
+    monitor: 'all'
   }
+  qualityProfiles.value = []
 }
 
 onMounted(async () => {
@@ -341,11 +415,22 @@ const getMediaServerName = (id) => {
   return server ? server.name : 'Unknown'
 }
 
-const startEditing = (instance) => {
+const startEditing = async (instance) => {
   editingId.value = instance.id
   isEditing.value = true
   isAddingNew.value = false
   editForm.value = { ...instance }
+  
+  // Try to load profiles for this instance
+  try {
+    const response = await api.genericRequest('get', `/api/settings/sonarr/${instance.id}/quality-profiles`)
+    qualityProfiles.value = response.data || []
+    
+    // Trigger test connection to load other options and refresh
+    testConnection(false)
+  } catch (e) {
+    // If fail, just rely on test connection
+  }
 }
 
 const startAddingNew = () => {
@@ -361,17 +446,30 @@ const cancelEdit = () => {
   resetForm()
 }
 
-const testConnection = async () => {
+const testConnection = async (showToast = true) => {
   loading.value = true
   try {
     const response = await api.testSonarrConnection(editForm.value)
     if (response.data.success) {
-      toast.success('Connection successful!')
+      if (showToast) toast.success('Connection successful!')
+      
+      // Populate dropdowns from response
+      if (response.data.data) {
+        if (response.data.data.qualityProfiles) {
+          qualityProfiles.value = response.data.data.qualityProfiles
+        }
+        if (response.data.data.seriesTypeOptions) {
+          seriesTypeOptions.value = response.data.data.seriesTypeOptions
+        }
+        if (response.data.data.seasonMonitoringOptions) {
+          seasonMonitoringOptions.value = response.data.data.seasonMonitoringOptions
+        }
+      }
     } else {
-      toast.error(response.data.error || 'Connection failed')
+      if (showToast) toast.error(response.data.error || 'Connection failed')
     }
   } catch (error) {
-    toast.error(error.response?.data?.error || 'Connection test failed')
+    if (showToast) toast.error(error.response?.data?.error || 'Connection test failed')
   } finally {
     loading.value = false
   }

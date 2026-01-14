@@ -63,46 +63,43 @@ class RadarrService {
           new (require('https').Agent)({ rejectUnauthorized: false }) : undefined,
       });
 
-      // Get additional stats for detailed response
-      // SECURITY: Allow disabling SSL verification for self-signed certificates
-      // This is controlled by user configuration and is only enabled when verify_ssl is explicitly set to false
+      // Create an axios instance for this connection test
       const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ?
         new (require('https').Agent)({ rejectUnauthorized: false }) : undefined;
 
-      const [moviesResponse, rootFoldersResponse, qualityProfilesResponse] = await Promise.allSettled([
-        axios.get(`${url}/api/v3/movie`, {
-          headers: { 'X-Api-Key': apiKey },
-          timeout,
-          httpsAgent,
-        }),
-        axios.get(`${url}/api/v3/rootfolder`, {
-          headers: { 'X-Api-Key': apiKey },
-          timeout,
-          httpsAgent,
-        }),
-        axios.get(`${url}/api/v3/qualityprofile`, {
-          headers: { 'X-Api-Key': apiKey },
-          timeout,
-          httpsAgent,
-        }),
+      const client = axios.create({
+        baseURL: url,
+        headers: {
+          'X-Api-Key': apiKey,
+        },
+        timeout,
+        httpsAgent,
+      });
+
+      const [systemStatusResponse, qualityProfilesResponse, rootFoldersResponse] = await Promise.allSettled([
+        client.get('/api/v3/system/status'),
+        client.get('/api/v3/qualityprofile'),
+        client.get('/api/v3/rootfolder'),
       ]);
 
-      const movieCount = moviesResponse.status === 'fulfilled' ? moviesResponse.value.data.length : 0;
       const rootFolderCount = rootFoldersResponse.status === 'fulfilled' ? rootFoldersResponse.value.data.length : 0;
       const qualityProfileCount = qualityProfilesResponse.status === 'fulfilled' ? qualityProfilesResponse.value.data.length : 0;
 
       return {
         success: true,
         details: {
-          serverName: 'Radarr',
-          version: response.data.version,
+          radarr_version: systemStatusResponse.status === 'fulfilled' ? systemStatusResponse.value.data.version : 'Unknown',
           status: 'Connected',
           additionalInfo: {
-            'Movies': movieCount,
             'Root Folders': rootFolderCount,
             'Quality Profiles': qualityProfileCount,
           },
         },
+        data: {
+          qualityProfiles: qualityProfilesResponse.status === 'fulfilled' ? qualityProfilesResponse.value.data : [],
+          rootFolders: rootFoldersResponse.status === 'fulfilled' ? rootFoldersResponse.value.data : [],
+          minimumAvailabilityOptions: this.getMinimumAvailabilityOptions()
+        }
       };
     } catch (error) {
       const errorResponse = {

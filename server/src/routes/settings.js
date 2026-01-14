@@ -273,7 +273,7 @@ router.get('/radarr', async (req, res) => {
  */
 router.post('/radarr', async (req, res) => {
   try {
-    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id, quality_profile_id, minimum_availability } = req.body;
 
     // Construct URL from components if not provided
     const finalProtocol = protocol || 'http';
@@ -283,10 +283,10 @@ router.post('/radarr', async (req, res) => {
     const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
 
     const result = await db.query(
-      `INSERT INTO radarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO radarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id, quality_profile_id, minimum_availability)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [name, constructedUrl, api_key, finalProtocol, finalHost, finalPort, finalBasePath, verify_ssl !== false, timeout || 30, media_server_id || null]
+      [name, constructedUrl, api_key, finalProtocol, finalHost, finalPort, finalBasePath, verify_ssl !== false, timeout || 30, media_server_id || null, quality_profile_id || null, minimum_availability || 'released']
     );
 
     // Mask API key in response
@@ -309,7 +309,7 @@ router.post('/radarr', async (req, res) => {
 router.put('/radarr/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, quality_profile_id, minimum_availability } = req.body;
 
     // Get existing config to preserve API key if masked value is sent
     const existingResult = await db.query('SELECT api_key FROM radarr_config WHERE id = $1', [id]);
@@ -341,10 +341,12 @@ router.put('/radarr/:id', async (req, res) => {
            timeout = COALESCE($9, timeout),
            is_active = COALESCE($10, is_active),
            media_server_id = $11,
+           quality_profile_id = $12,
+           minimum_availability = $13,
            updated_at = NOW()
-       WHERE id = $12
+       WHERE id = $14
        RETURNING *`,
-      [name, constructedUrl, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, id]
+      [name, constructedUrl, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, quality_profile_id, minimum_availability, id]
     );
 
     if (result.rows.length === 0) {
@@ -496,7 +498,7 @@ router.get('/sonarr', async (req, res) => {
  */
 router.post('/sonarr', async (req, res) => {
   try {
-    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id, quality_profile_id, monitor, series_type } = req.body;
 
     // Construct URL from components if not provided
     const finalProtocol = protocol || 'http';
@@ -506,10 +508,10 @@ router.post('/sonarr', async (req, res) => {
     const constructedUrl = url || `${finalProtocol}://${finalHost}:${finalPort}${finalBasePath}`;
 
     const result = await db.query(
-      `INSERT INTO sonarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO sonarr_config (name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, media_server_id, quality_profile_id, monitor, series_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
-      [name, constructedUrl, api_key, finalProtocol, finalHost, finalPort, finalBasePath, verify_ssl !== false, timeout || 30, media_server_id || null]
+      [name, constructedUrl, api_key, finalProtocol, finalHost, finalPort, finalBasePath, verify_ssl !== false, timeout || 30, media_server_id || null, quality_profile_id || null, monitor || 'all', series_type || 'standard']
     );
 
     // Mask API key in response
@@ -532,7 +534,7 @@ router.post('/sonarr', async (req, res) => {
 router.put('/sonarr/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id } = req.body;
+    const { name, url, api_key, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, quality_profile_id, monitor, series_type } = req.body;
 
     // Get existing config to preserve API key if masked value is sent
     const existingResult = await db.query('SELECT api_key FROM sonarr_config WHERE id = $1', [id]);
@@ -564,10 +566,13 @@ router.put('/sonarr/:id', async (req, res) => {
            timeout = COALESCE($9, timeout),
            is_active = COALESCE($10, is_active),
            media_server_id = $11,
+           quality_profile_id = $12,
+           monitor = $13,
+           series_type = $14,
            updated_at = NOW()
-       WHERE id = $12
+       WHERE id = $15
        RETURNING *`,
-      [name, constructedUrl, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, id]
+      [name, constructedUrl, finalApiKey, protocol, host, port, base_path, verify_ssl, timeout, is_active, media_server_id, quality_profile_id, monitor, series_type, id]
     );
 
     if (result.rows.length === 0) {

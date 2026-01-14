@@ -63,19 +63,13 @@ class SonarrService {
           new (require('https').Agent)({ rejectUnauthorized: false }) : undefined,
       });
 
-      // Get additional stats for detailed response
       // SECURITY: Allow disabling SSL verification for self-signed certificates
       // This is controlled by user configuration and is only enabled when verify_ssl is explicitly set to false
       const httpsAgent = config && typeof config === 'object' && config.verify_ssl === false ?
         new (require('https').Agent)({ rejectUnauthorized: false }) : undefined;
 
-      const [seriesResponse, rootFoldersResponse, qualityProfilesResponse, languageProfilesResponse] = await Promise.allSettled([
-        axios.get(`${url}/api/v3/series`, {
-          headers: { 'X-Api-Key': apiKey },
-          timeout,
-          httpsAgent,
-        }),
-        axios.get(`${url}/api/v3/rootfolder`, {
+      const [systemStatusResponse, qualityProfilesResponse, rootFoldersResponse] = await Promise.allSettled([
+        axios.get(`${url}/api/v3/system/status`, {
           headers: { 'X-Api-Key': apiKey },
           timeout,
           httpsAgent,
@@ -85,36 +79,29 @@ class SonarrService {
           timeout,
           httpsAgent,
         }),
-        axios.get(`${url}/api/v3/languageprofile`, {
+        axios.get(`${url}/api/v3/rootfolder`, {
           headers: { 'X-Api-Key': apiKey },
           timeout,
           httpsAgent,
-        }).catch(() => ({ status: 'rejected' })), // Language profiles may not exist in newer versions
+        }),
       ]);
 
-      const seriesCount = seriesResponse.status === 'fulfilled' ? seriesResponse.value.data.length : 0;
-      const rootFolderCount = rootFoldersResponse.status === 'fulfilled' ? rootFoldersResponse.value.data.length : 0;
-      const qualityProfileCount = qualityProfilesResponse.status === 'fulfilled' ? qualityProfilesResponse.value.data.length : 0;
-      const languageProfileCount = languageProfilesResponse.status === 'fulfilled' ? languageProfilesResponse.value.data.length : 0;
-
-      const additionalInfo = {
-        'Series': seriesCount,
-        'Root Folders': rootFolderCount,
-        'Quality Profiles': qualityProfileCount,
-      };
-
-      if (languageProfileCount > 0) {
-        additionalInfo['Language Profiles'] = languageProfileCount;
-      }
+      const additionalInfo = {};
 
       return {
         success: true,
         details: {
           serverName: 'Sonarr',
-          version: response.data.version,
+          version: systemStatusResponse.status === 'fulfilled' ? systemStatusResponse.value.data.version : 'Unknown',
           status: 'Connected',
           additionalInfo,
         },
+        data: {
+          qualityProfiles: qualityProfilesResponse.status === 'fulfilled' ? qualityProfilesResponse.value.data : [],
+          rootFolders: rootFoldersResponse.status === 'fulfilled' ? rootFoldersResponse.value.data : [],
+          seriesTypeOptions: this.getSeriesTypeOptions(),
+          seasonMonitoringOptions: this.getSeasonMonitoringOptions()
+        }
       };
     } catch (error) {
       const errorResponse = {

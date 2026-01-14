@@ -144,6 +144,28 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
+            <label class="block text-sm font-medium mb-2">Quality Profile</label>
+            <select v-model="editForm.quality_profile_id" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+              <option :value="null">Select Profile...</option>
+              <option v-for="profile in qualityProfiles" :key="profile.id" :value="profile.id">
+                {{ profile.name }}
+              </option>
+            </select>
+            <p v-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Minimum Availability</label>
+            <select v-model="editForm.minimum_availability" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+              <option value="released">Released (Default)</option>
+              <option v-for="option in availabilityOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
             <label class="block text-sm font-medium mb-2">Associated Media Server</label>
             <select v-model="editForm.media_server_id" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
               <option :value="null">None (Not linked)</option>
@@ -234,6 +256,28 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
+          <label class="block text-sm font-medium mb-2">Quality Profile</label>
+          <select v-model="editForm.quality_profile_id" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+            <option :value="null">Select Profile...</option>
+            <option v-for="profile in qualityProfiles" :key="profile.id" :value="profile.id">
+              {{ profile.name }}
+            </option>
+          </select>
+          <p v-if="!qualityProfiles.length" class="text-xs text-gray-500 mt-1">Test connection to load profiles</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-2">Minimum Availability</label>
+          <select v-model="editForm.minimum_availability" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+            <option value="released">Released (Default)</option>
+            <option v-for="option in availabilityOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
           <label class="block text-sm font-medium mb-2">Associated Media Server</label>
           <select v-model="editForm.media_server_id" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
             <option :value="null">None (Not linked)</option>
@@ -285,6 +329,10 @@ const isEditing = ref(false)
 const isAddingNew = ref(false)
 const editingId = ref(null)
 
+// New state for options
+const qualityProfiles = ref([])
+const availabilityOptions = ref([])
+
 const editForm = ref({
   name: 'Radarr',
   protocol: 'http',
@@ -294,7 +342,9 @@ const editForm = ref({
   api_key: '',
   verify_ssl: true,
   timeout: 30,
-  media_server_id: null
+  media_server_id: null,
+  quality_profile_id: null,
+  minimum_availability: 'released'
 })
 
 const resetForm = () => {
@@ -307,8 +357,11 @@ const resetForm = () => {
     api_key: '',
     verify_ssl: true,
     timeout: 30,
-    media_server_id: null
+    media_server_id: null,
+    quality_profile_id: null,
+    minimum_availability: 'released'
   }
+  qualityProfiles.value = []
 }
 
 onMounted(async () => {
@@ -341,11 +394,24 @@ const getMediaServerName = (id) => {
   return server ? server.name : 'Unknown'
 }
 
-const startEditing = (instance) => {
+const startEditing = async (instance) => {
   editingId.value = instance.id
   isEditing.value = true
   isAddingNew.value = false
   editForm.value = { ...instance }
+  
+  // Try to load profiles for this instance
+  try {
+    const response = await api.genericRequest('get', `/api/settings/radarr/${instance.id}/quality-profiles`)
+    qualityProfiles.value = response.data || []
+    
+    // Also load available options via test endpoint or hardcode?
+    // We can use the test connection to get options
+    // But for now, let's just trigger a test connection to load everything
+    testConnection(false) // Don't show toast for silent load
+  } catch (e) {
+    // If fail, just rely on test connection
+  }
 }
 
 const startAddingNew = () => {
@@ -361,17 +427,27 @@ const cancelEdit = () => {
   resetForm()
 }
 
-const testConnection = async () => {
+const testConnection = async (showToast = true) => {
   loading.value = true
   try {
     const response = await api.testRadarrConnection(editForm.value)
     if (response.data.success) {
-      toast.success('Connection successful!')
+      if (showToast) toast.success('Connection successful!')
+      
+      // Populate dropdowns from response
+      if (response.data.data) {
+        if (response.data.data.qualityProfiles) {
+          qualityProfiles.value = response.data.data.qualityProfiles
+        }
+        if (response.data.data.minimumAvailabilityOptions) {
+          availabilityOptions.value = response.data.data.minimumAvailabilityOptions
+        }
+      }
     } else {
-      toast.error(response.data.error || 'Connection failed')
+      if (showToast) toast.error(response.data.error || 'Connection failed')
     }
   } catch (error) {
-    toast.error(error.response?.data?.error || 'Connection test failed')
+    if (showToast) toast.error(error.response?.data?.error || 'Connection test failed')
   } finally {
     loading.value = false
   }
