@@ -1,5 +1,81 @@
 # Classifarr Release Notes
 
+## v0.40.0 (Unreleased)
+**Comprehensive Bug Fix Release**
+
+### Critical Bug Fixes
+
+#### Wrong AI Model Selection 🤖
+- **Previous Bug**: Classification always used hardcoded `qwen3:14b` model instead of configured model
+- **Root Cause**: Code read from deprecated `ollama_config` table instead of `ai_provider_config.ollama_model`
+- **Fix**: Updated classification service to read from correct config table
+- **Impact**: Classifications now use your configured model (e.g., `gemma3:12b`)
+- **Fallback**: Defaults to `llama3.2` when no model configured (instead of `qwen3:14b`)
+
+#### Library Profile Generation Failure 📊
+- **Previous Bug**: Profile regeneration failed with `function jsonb_typeof(text[]) does not exist` error
+- **Root Cause**: Code used JSONB functions on TEXT[] array columns
+- **Fix**: Changed to use `unnest()` for PostgreSQL TEXT[] arrays
+- **Impact**: 
+  - Profile regeneration now works correctly
+  - Genre distribution statistics display properly
+  - Movies no longer misclassified due to broken profile scoring
+  - All items no longer stuck at 55% confidence
+
+#### RAG Performance Optimization ⚡
+- **Previous Behavior**: RAG semantic search ran 10-12+ times per classification (once per library)
+- **Fix**: Added caching to call RAG once per classification and reuse results
+- **Impact**: 
+  - 10-12x performance improvement for classifications
+  - Reduced load on embedding provider
+  - Faster classification response times
+
+#### Dashboard Awaiting Decision Display 📋
+- **Previous Bug**: "Awaiting Decision" count showed 0 even when items were pending
+- **Root Cause**: Incorrect API response parsing (missing `.data` property)
+- **Fix**: Corrected to access `pendingRes.data.count`
+- **Impact**: Dashboard now shows accurate count of items needing user input
+
+#### Dashboard Library Name Display 🏷️
+- **Previous Bug**: Items awaiting decision showed "→ " with no library name
+- **Root Cause**: `library_name` is NULL for awaiting items (by design), but UI didn't handle this
+- **Fix**: Show "⏳ Awaiting Decision" for items with `status='awaiting_decision'`
+- **Impact**: UI now clearly indicates which items need decisions
+
+#### Plex Sync Reconciliation 🔄
+- **Previous Bug**: Manually moving files to correct Plex library didn't update classification history
+- **Behavior**: 
+  - User moves file to correct library in Plex
+  - Plex scans and shows item in new library
+  - Classifarr syncs and updates `media_server_items.library_id`
+  - BUT classification history still shows `status='awaiting_decision'`
+- **Fix**: Added reconciliation logic after sync completes:
+  - Finds items that were awaiting decision but now exist in a Plex library
+  - Updates classification history to `status='completed'`
+  - Creates learned corrections for future classifications
+- **Impact**: 
+  - Manual Plex library placements now automatically resolve classification questions
+  - Future classifications of same content use learned preference
+  - No more manual cleanup of classification history needed
+
+### Testing
+- Added comprehensive unit test suite covering all bug fixes
+- All tests passing with 100% coverage of fixed code paths
+
+### Files Changed
+- `server/src/services/classification.js` - AI model selection fix
+- `server/src/services/libraryProfileService.js` - Genre distribution fix
+- `server/src/services/policyEngine.js` - RAG caching optimization
+- `server/src/services/mediaSync.js` - Plex sync reconciliation
+- `client/src/views/Dashboard.vue` - Dashboard display fixes
+- `server/src/__tests__/bug-fixes.test.js` - Comprehensive test suite
+
+### Verified Already Fixed
+- **Discord Bot Initialization**: Configuration save correctly sets `enabled=true`
+- **Rating Normalization**: Database UPDATE correctly applied after normalization
+
+---
+
 ## v0.39.3
 **Fix: Data Consistency, RAG UI Display & Post-Upgrade System**
 

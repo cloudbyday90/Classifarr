@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(No unreleased changes)
+### Fixed
+- **AI Model Selection**: Fixed classification using wrong Ollama model (`qwen3:14b`) instead of configured model
+  - Classification now reads from `ai_provider_config.ollama_model` instead of deprecated `ollama_config` table
+  - Falls back to `llama3.2` when no model is configured (instead of hardcoded `qwen3:14b`)
+- **Genre Distribution Query**: Fixed `jsonb_typeof(text[])` error in library profile generation
+  - Changed from `jsonb_array_elements_text()` to `unnest()` for TEXT[] array columns
+  - Fixes "Profile Regeneration" failures and incorrect genre statistics
+- **RAG Performance**: Optimized RAG semantic search to run once per classification instead of once per library
+  - Added caching of RAG results during policy evaluation
+  - Reduces RAG calls from 12+ to 1 per classification (performance improvement)
+- **Dashboard Awaiting Count**: Fixed "Awaiting Decision" count showing 0 instead of actual count
+  - Corrected API response parsing to access `pendingRes.data.count` instead of `pendingRes.count`
+- **Dashboard Library Display**: Fixed missing library name for items with `status='awaiting_decision'`
+  - Now shows "⏳ Awaiting Decision" instead of blank "→" for pending items
+- **Plex Sync Reconciliation**: Added automatic reconciliation of awaiting decision items
+  - When manually moved files are synced, classification history is automatically updated to `completed`
+  - Creates learned corrections so future classifications remember user's choice
+  - Eliminates need to manually update classification history after moving files
+
+(No other unreleased changes)
 
 ## [0.39.3-alpha] - 2026-01-15
 
