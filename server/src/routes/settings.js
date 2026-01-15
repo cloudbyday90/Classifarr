@@ -2229,7 +2229,15 @@ router.get('/ai', async (req, res) => {
         formula_pattern_weight: 0.40,
         formula_rule_weight: 0.30,
         formula_rag_weight: 0.20,
-        formula_history_weight: 0.10
+        formula_history_weight: 0.10,
+        // Embedding provider configuration
+        embedding_provider_mode: 'same',
+        embedding_ollama_host: '',
+        embedding_ollama_port: 11434,
+        embedding_ollama_model: '',
+        embedding_cloud_provider: '',
+        embedding_cloud_api_key: '',
+        embedding_cloud_model: ''
       });
     }
 
@@ -2237,6 +2245,10 @@ router.get('/ai', async (req, res) => {
     // Mask API key
     if (config.api_key) {
       config.api_key = maskToken(config.api_key);
+    }
+    // Mask embedding cloud API key
+    if (config.embedding_cloud_api_key) {
+      config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
     }
 
     res.json(config);
@@ -2282,7 +2294,15 @@ router.put('/ai', async (req, res) => {
       formula_pattern_weight,
       formula_rule_weight,
       formula_rag_weight,
-      formula_history_weight
+      formula_history_weight,
+      // Embedding provider configuration
+      embedding_provider_mode,
+      embedding_ollama_host,
+      embedding_ollama_port,
+      embedding_ollama_model,
+      embedding_cloud_provider,
+      embedding_cloud_api_key,
+      embedding_cloud_model
     } = req.body;
 
     // Handle API key - don't update if masked
@@ -2290,6 +2310,13 @@ router.put('/ai', async (req, res) => {
     if (isMaskedToken(api_key)) {
       const existing = await db.query('SELECT api_key FROM ai_provider_config WHERE id = 1');
       finalApiKey = existing.rows[0]?.api_key || '';
+    }
+
+    // Handle embedding cloud API key - don't update if masked
+    let finalEmbeddingCloudApiKey = embedding_cloud_api_key;
+    if (isMaskedToken(embedding_cloud_api_key)) {
+      const existing = await db.query('SELECT embedding_cloud_api_key FROM ai_provider_config WHERE id = 1');
+      finalEmbeddingCloudApiKey = existing.rows[0]?.embedding_cloud_api_key || '';
     }
 
     // Validate formula weights sum to approximately 1.0 if any are provided
@@ -2326,10 +2353,13 @@ router.put('/ai', async (req, res) => {
                 rag_similarity_threshold, rag_min_history_count,
                 rag_backfill_budget_type, rag_backfill_budget_value,
                 formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight,
+                embedding_provider_mode, embedding_ollama_host, embedding_ollama_port, embedding_ollama_model,
+                embedding_cloud_provider, embedding_cloud_api_key, embedding_cloud_model,
                 updated_at
             ) VALUES (
                 1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW()
+                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                $31, $32, $33, NOW()
             )
             ON CONFLICT (id) DO UPDATE SET
                 primary_provider = EXCLUDED.primary_provider,
@@ -2358,6 +2388,13 @@ router.put('/ai', async (req, res) => {
                 formula_rule_weight = EXCLUDED.formula_rule_weight,
                 formula_rag_weight = EXCLUDED.formula_rag_weight,
                 formula_history_weight = EXCLUDED.formula_history_weight,
+                embedding_provider_mode = EXCLUDED.embedding_provider_mode,
+                embedding_ollama_host = EXCLUDED.embedding_ollama_host,
+                embedding_ollama_port = EXCLUDED.embedding_ollama_port,
+                embedding_ollama_model = EXCLUDED.embedding_ollama_model,
+                embedding_cloud_provider = EXCLUDED.embedding_cloud_provider,
+                embedding_cloud_api_key = EXCLUDED.embedding_cloud_api_key,
+                embedding_cloud_model = EXCLUDED.embedding_cloud_model,
                 updated_at = NOW()
             RETURNING *
         `, [
@@ -2386,7 +2423,14 @@ router.put('/ai', async (req, res) => {
       formula_pattern_weight ?? 0.40,
       formula_rule_weight ?? 0.30,
       formula_rag_weight ?? 0.20,
-      formula_history_weight ?? 0.10
+      formula_history_weight ?? 0.10,
+      embedding_provider_mode || 'same',
+      embedding_ollama_host || '',
+      embedding_ollama_port || 11434,
+      embedding_ollama_model || '',
+      embedding_cloud_provider || '',
+      finalEmbeddingCloudApiKey || '',
+      embedding_cloud_model || ''
     ]);
 
     // Clear config cache
