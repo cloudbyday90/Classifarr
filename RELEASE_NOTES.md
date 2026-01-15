@@ -1,5 +1,28 @@
 # Classifarr Release Notes
 
+## v0.39.2-alpha
+**Critical Bug Fixes: Settings Preservation + RAG Status Accuracy**
+
+### Bug Fixes
+
+#### Settings No Longer Reset When Saving RAG Config 🔧
+- **Root Cause**: Saving embedding settings in RAG tab was overwriting ALL AI provider settings (including `primary_provider`) with defaults
+- **Fix**: Backend now uses nullish coalescing (`??`) to preserve existing values when fields are not provided in the request
+- **Impact**: You can now safely save RAG settings without losing your Ollama/OpenAI configuration
+
+#### Accurate Provider Status in RAG Dashboard 📊
+- **Previous Bug**: RAG showed "Online" even when AI provider was set to "None"
+- **Fix**: Status now correctly checks if provider is actually configured based on mode:
+  - "Same as Classification" → checks if `primary_provider` is configured
+  - "Separate Ollama" → checks if host is configured
+  - "Cloud" → checks if API key is configured
+
+#### Backfill Services Check RAG Enabled ⚙️
+- Idle, Scheduled, and Manual backfill services now verify `rag_enabled` before attempting embedding generation
+- Prevents "RAG is not enabled" errors when RAG is globally disabled
+
+---
+
 ## v0.39.0-alpha
 **Title: Robust Error Handling + AI Prompt Enrichment + RAG Settings Dashboard + Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion + Bug Fixes**
 
