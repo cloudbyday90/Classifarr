@@ -175,15 +175,25 @@ class PostUpgradeService {
 
     /**
      * Task Action: Clear logs (app_log and error_log tables, plus log files)
+     * 
+     * WARNING: This operation permanently removes all application and error logs
+     * from the database and truncates all .log files on disk. Any unreviewed
+     * production errors or audit information stored in these locations will be
+     * irrecoverably lost unless they have been archived elsewhere beforehand.
+     * 
+     * Only enable or run this task when you explicitly intend to start with a
+     * clean logging state (for example, immediately after an upgrade) and are
+     * confident that critical logs have already been collected or backed up.
      */
     async clearLogs() {
         logger.info('Clearing logs...');
+        logger.warn('All application and error logs will now be permanently deleted from the database and log files.');
 
-        // Clear database log tables
+        // Clear database log tables (destructive: removes all history)
         await db.query('TRUNCATE TABLE error_log');
         await db.query('TRUNCATE TABLE app_log');
 
-        // Clear log files if they exist
+        // Clear log files if they exist (destructive: truncates contents)
         const logDir = path.join(__dirname, '../../logs');
         try {
             const files = await fs.readdir(logDir);

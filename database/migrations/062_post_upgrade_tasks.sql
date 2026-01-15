@@ -14,11 +14,3 @@ CREATE INDEX IF NOT EXISTS idx_post_upgrade_tasks_task_id ON post_upgrade_tasks(
 
 -- Create index on version for filtering by version
 CREATE INDEX IF NOT EXISTS idx_post_upgrade_tasks_version ON post_upgrade_tasks(version);
-
--- Backfill library_name where it's NULL but library_id exists
--- This fixes historical data before the library_name field was consistently updated
-UPDATE classification_history ch
-SET library_name = l.name
-FROM libraries l
-WHERE ch.library_id = l.id
-  AND ch.library_name IS NULL;
