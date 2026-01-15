@@ -50,7 +50,7 @@ describe('Rating Normalization API', () => {
     test('counts items needing normalization (age-based ratings)', async () => {
       // Create test media server and library
       const serverResult = await db.query(`
-        INSERT INTO media_server (name, server_type, url, token)
+        INSERT INTO media_server (name, type, url, api_key)
         VALUES ('Test Server', 'plex', 'http://localhost', 'token')
         RETURNING id
       `);
@@ -82,7 +82,7 @@ describe('Rating Normalization API', () => {
 
     test('counts items needing normalization (non-standard ratings)', async () => {
       const serverResult = await db.query(`
-        INSERT INTO media_server (name, server_type, url, token)
+        INSERT INTO media_server (name, type, url, api_key)
         VALUES ('Test Server', 'plex', 'http://localhost', 'token')
         RETURNING id
       `);
@@ -131,7 +131,7 @@ describe('Rating Normalization API', () => {
   describe('POST /api/rating-normalization/backfill', () => {
     test('queues items needing normalization', async () => {
       const serverResult = await db.query(`
-        INSERT INTO media_server (name, server_type, url, token)
+        INSERT INTO media_server (name, type, url, api_key)
         VALUES ('Test Server', 'plex', 'http://localhost', 'token')
         RETURNING id
       `);
