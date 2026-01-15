@@ -42,7 +42,8 @@ class PolicyEngine {
         try {
             logger.info('Evaluating item against policies', { title: item.title });
 
-            // Initialize RAG cache for this evaluation
+            // Initialize RAG cache for this evaluation (scoped to this invocation)
+            // Note: This is instance-level but reset per evaluation, safe for sequential calls
             this._ragCache = null;
 
             // 1. Check for 100% confidence authoritative signals first
@@ -74,11 +75,18 @@ class PolicyEngine {
             }
 
             // 3. Pre-fetch RAG matches once for all policies (performance optimization)
-            try {
-                const ragMatches = await ragRetriever.semanticSearch(item, 5);
-                this._ragCache = { matches: ragMatches, timestamp: Date.now() };
-            } catch (error) {
-                logger.debug('Failed to pre-fetch RAG matches', { error: error.message });
+            // Only call RAG if at least one policy actually uses it
+            const anyPolicyUsesRAG = policies.some(p => p.trust_rag && (p.rag_weight || 0.15) > 0);
+            if (anyPolicyUsesRAG) {
+                try {
+                    const ragMatches = await ragRetriever.semanticSearch(item, 5);
+                    this._ragCache = { matches: ragMatches, timestamp: Date.now() };
+                } catch (error) {
+                    logger.debug('Failed to pre-fetch RAG matches', { error: error.message });
+                    this._ragCache = { matches: [], timestamp: Date.now() };
+                }
+            } else {
+                // No policy uses RAG, set empty cache
                 this._ragCache = { matches: [], timestamp: Date.now() };
             }
 

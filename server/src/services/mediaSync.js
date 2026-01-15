@@ -468,11 +468,13 @@ class MediaSyncService {
         for (const item of reconciledResult.rows) {
           try {
             await db.query(`
-              INSERT INTO learned_corrections (tmdb_id, media_type, library_id, source, created_at)
-              VALUES ($1, $2, $3, 'plex_reconciliation', NOW())
+              INSERT INTO learned_corrections (tmdb_id, media_type, corrected_library_id, title, corrected_by)
+              VALUES ($1, $2, $3, $4, $5)
               ON CONFLICT (tmdb_id, media_type) DO UPDATE
-              SET library_id = EXCLUDED.library_id, updated_at = NOW()
-            `, [item.tmdb_id, item.media_type, item.library_id]);
+              SET corrected_library_id = EXCLUDED.corrected_library_id,
+                  title = EXCLUDED.title,
+                  updated_at = NOW()
+            `, [item.tmdb_id, item.media_type, item.library_id, item.title, 'plex_reconciliation']);
           } catch (error) {
             logger.warn('Failed to create learned correction for reconciled item', {
               tmdb_id: item.tmdb_id,

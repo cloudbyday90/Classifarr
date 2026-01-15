@@ -108,6 +108,35 @@ describe('Bug Fixes - Comprehensive PR', () => {
             // RAG should not be called since cache is used
             expect(ragRetriever.semanticSearch).toHaveBeenCalledTimes(0);
         });
+
+        it('should not call RAG when no policies use RAG', async () => {
+            const mockItem = {
+                title: 'Test Movie',
+                genres: ['Action'],
+                tmdb_id: 12345
+            };
+
+            // Mock RAG search
+            ragRetriever.semanticSearch.mockResolvedValue([]);
+
+            // Mock database queries - policies exist but none use RAG
+            db.query
+                .mockResolvedValueOnce({ rows: [] }) // checkAuthoritativeSignals
+                .mockResolvedValueOnce({ rows: [
+                    { 
+                        id: 1, 
+                        library_id: 1,
+                        trust_rag: false, // RAG disabled
+                        rag_weight: 0
+                    }
+                ]}) // getActivePolicies
+                .mockResolvedValue({ rows: [] }); // For other queries
+
+            await policyEngine.evaluateItem(mockItem);
+
+            // RAG should not be called when no policies use it (optimization)
+            expect(ragRetriever.semanticSearch).toHaveBeenCalledTimes(0);
+        });
     });
 
     describe('Bug 3: Genre Distribution TEXT[] Handling', () => {
