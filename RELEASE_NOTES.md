@@ -36,7 +36,24 @@
   - `clear_embedding_queue` - Clear retry queue
   - `rebuild_embeddings` - Mark all embeddings as stale
   - `backfill_library_name` - Populate missing library names
+  - `clear_stale_retry_queue` - Remove orphaned retry queue entries
 - **Future Versions**: Just add tasks to config, no new migrations needed
+
+#### Stale Retry Queue Cleanup 🧹
+- **Previous Bug**: "Pending" count in RAG Overview showed incorrect number (e.g., 6,740 instead of 0) even when all embeddings existed
+- **Root Cause**: Retry queue entries were never removed when embeddings succeeded, accumulating orphaned entries
+- **Fix**: 
+  - Added `clear_stale_retry_queue` post-upgrade task to remove orphaned entries on upgrade
+  - Added cleanup in `storeEmbedding()` to remove retry queue entry when embedding succeeds
+- **Impact**: RAG Overview "Pending" count now accurately reflects actual pending items
+
+#### Settings Page Responsive Layout 📱
+- **Previous Bug**: Settings sidebar scroll was cut off, and mobile users couldn't access the right side content
+- **Fix**: 
+  - Desktop: Sidebar now has independent scroll with proper sticky positioning
+  - Mobile: Settings tabs display as horizontal scrollable chips above content
+  - Main content area now has `overflow-x-auto` for wide content
+- **Impact**: Settings page is now fully accessible on all screen sizes
 
 ### Previously Fixed in 0.39.3-alpha
 

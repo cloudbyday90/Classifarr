@@ -46,6 +46,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Handles dimension changes for all models: nomic-embed-text (768), mxbai-embed-large (1024), OpenAI (1536/3072), etc.
   - Migration safely clears existing embeddings if dimensions change (they will be regenerated)
   - Fixes issues for both new installations and existing systems
+- **Stale Retry Queue Entries**: Fixed inflated "Pending" count in RAG Overview
+  - Added post-upgrade task to clear orphaned retry queue entries where embeddings already exist
+  - Added cleanup in `storeEmbedding()` to remove retry queue entry when embedding succeeds
+  - Prevents accumulation of stale entries in `embedding_retry_queue` table
+- **Settings Page Responsive Layout**: Fixed sidebar scroll and mobile accessibility issues
+  - Desktop: Sidebar now has independent scroll with proper sticky positioning
+  - Mobile: Settings tabs now display as horizontal scrollable chips
+  - Main content area now has `overflow-x-auto` for wide content
+- **Post-Upgrade Log Directory**: Fixed `ENOENT` warning when logs directory doesn't exist
+  - `postUpgradeService.clearLogs()` now gracefully handles missing log directories
 
 ### Added
 - **Post-Upgrade Task System**: Introduced reusable system for version-specific maintenance operations
@@ -54,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Tasks run once per version upgrade automatically on server startup
   - Supports tasks like clearing logs, rebuilding embeddings, and data backfills
   - Eliminates need for manual migrations for one-time maintenance tasks
+  - Added `clear_stale_retry_queue` task for v0.39.3
 
 ## [0.39.2c-alpha] - 2026-01-15
 
