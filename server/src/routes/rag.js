@@ -11,6 +11,7 @@ const router = express.Router();
 const db = require('../config/database');
 const embeddingService = require('../services/embeddingService');
 const embeddingRouter = require('../services/embeddingRouter');
+const embeddingProvider = require('../services/embeddingProvider');
 const ragRetriever = require('../services/ragRetriever');
 const embeddingMigrationService = require('../services/embeddingMigrationService');
 const patternMiningService = require('../services/patternMiningService');
@@ -187,7 +188,7 @@ router.get('/health', async (req, res) => {
 
 /**
  * GET /api/rag/metrics
- * Get detailed metrics by operation type
+ * Get detailed metrics by operation type and provider metrics
  */
 router.get('/metrics', async (req, res) => {
     try {
@@ -200,10 +201,72 @@ router.get('/metrics', async (req, res) => {
             metrics[operation] = await ragLogger.getMetricsByOperation(operation, parseInt(hours));
         }
 
+        // Add embedding provider metrics
+        metrics.provider = embeddingProvider.getMetrics();
+
         res.json(metrics);
     } catch (error) {
         logger.error('Failed to get RAG metrics', { error: error.message });
         res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/circuit-breaker
+ * Get circuit breaker status
+ */
+router.get('/circuit-breaker', async (req, res) => {
+    try {
+        const status = embeddingProvider.circuitBreaker.getStatus();
+        const stateHistory = embeddingProvider.circuitBreaker.getStateHistory(20);
+
+        res.json({
+            ...status,
+            stateHistory
+        });
+    } catch (error) {
+        logger.error('Failed to get circuit breaker status', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/circuit-breaker/reset
+ * Manually reset circuit breaker
+ */
+router.post('/circuit-breaker/reset', async (req, res) => {
+    try {
+        embeddingProvider.circuitBreaker.reset();
+        
+        res.json({
+            success: true,
+            message: 'Circuit breaker reset successfully',
+            status: embeddingProvider.circuitBreaker.getStatus()
+        });
+    } catch (error) {
+        logger.error('Failed to reset circuit breaker', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/warmup
+ * Trigger model warmup
+ */
+router.post('/warmup', async (req, res) => {
+    try {
+        const result = await embeddingProvider.warmup();
+        
+        res.json({
+            success: true,
+            ...result
+        });
+    } catch (error) {
+        logger.error('Model warmup failed', { error: error.message });
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
     }
 });
 
@@ -831,6 +894,105 @@ router.put('/advanced', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         logger.error('Failed to update advanced config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/settings/embedding/retry
+ * Get retry configuration
+ */
+router.get('/settings/embedding/retry', async (req, res) => {
+    try {
+        const config = await db.query(`
+            SELECT 
+                request_timeout,
+                warmup_timeout,
+                max_retries,
+                retry_delay,
+                retry_backoff_multiplier,
+                jitter_factor
+            FROM ai_provider_config WHERE id = 1
+        `);
+
+        if (config.rows.length === 0) {
+            return res.json({
+                request_timeout: 30000,
+                warmup_timeout: 120000,
+                max_retries: 3,
+                retry_delay: 1000,
+                retry_backoff_multiplier: 2,
+                jitter_factor: 0.3
+            });
+        }
+
+        res.json(config.rows[0]);
+    } catch (error) {
+        logger.error('Failed to get retry config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * PUT /api/settings/embedding/retry
+ * Update retry configuration
+ */
+router.put('/settings/embedding/retry', async (req, res) => {
+    try {
+        const {
+            request_timeout,
+            warmup_timeout,
+            max_retries,
+            retry_delay,
+            retry_backoff_multiplier,
+            jitter_factor
+        } = req.body;
+
+        // Validate input ranges
+        const errors = [];
+        
+        if (request_timeout !== undefined && (request_timeout < 5000 || request_timeout > 300000)) {
+            errors.push('request_timeout must be between 5000 and 300000 (5s-300s)');
+        }
+        
+        if (warmup_timeout !== undefined && (warmup_timeout < 10000 || warmup_timeout > 600000)) {
+            errors.push('warmup_timeout must be between 10000 and 600000 (10s-600s)');
+        }
+        
+        if (max_retries !== undefined && (max_retries < 0 || max_retries > 10)) {
+            errors.push('max_retries must be between 0 and 10');
+        }
+        
+        if (retry_delay !== undefined && (retry_delay < 100 || retry_delay > 10000)) {
+            errors.push('retry_delay must be between 100 and 10000 (100ms-10s)');
+        }
+        
+        if (retry_backoff_multiplier !== undefined && (retry_backoff_multiplier < 1 || retry_backoff_multiplier > 5)) {
+            errors.push('retry_backoff_multiplier must be between 1 and 5');
+        }
+        
+        if (jitter_factor !== undefined && (jitter_factor < 0 || jitter_factor > 1)) {
+            errors.push('jitter_factor must be between 0 and 1');
+        }
+        
+        if (errors.length > 0) {
+            return res.status(400).json({ error: 'Validation failed', details: errors });
+        }
+
+        await db.query(`
+            UPDATE ai_provider_config SET
+                request_timeout = $1,
+                warmup_timeout = $2,
+                max_retries = $3,
+                retry_delay = $4,
+                retry_backoff_multiplier = $5,
+                jitter_factor = $6
+            WHERE id = 1
+        `, [request_timeout, warmup_timeout, max_retries, retry_delay, retry_backoff_multiplier, jitter_factor]);
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Failed to update retry config', { error: error.message });
         res.status(500).json({ error: error.message });
     }
 });

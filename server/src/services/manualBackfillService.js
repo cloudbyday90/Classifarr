@@ -8,6 +8,7 @@
 
 const db = require('../config/database');
 const embeddingService = require('./embeddingService');
+const embeddingProvider = require('./embeddingProvider');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('ManualBackfillService');
@@ -132,7 +133,24 @@ class ManualBackfillService {
 
         this.isProcessing = true;
         try {
+            // Warmup model before starting batch
+            logger.info('Warming up embedding model before batch processing');
+            try {
+                await embeddingProvider.warmup();
+            } catch (error) {
+                logger.warn('Model warmup failed, continuing anyway', { error: error.message });
+            }
+
             while (this.state.status === 'running' && this.state.processed < this.state.total) {
+                // Check circuit breaker status
+                const circuitStatus = embeddingProvider.circuitBreaker.getStatus();
+                if (circuitStatus.state === 'OPEN') {
+                    logger.warn('Circuit breaker is OPEN, pausing backfill');
+                    this.state.status = 'paused';
+                    this.state.error = 'Circuit breaker OPEN - too many failures. Please reset and try again.';
+                    break;
+                }
+
                 const pending = await this.getPendingEmbeddings(this.state.batchSize);
                 
                 if (pending.length === 0) {

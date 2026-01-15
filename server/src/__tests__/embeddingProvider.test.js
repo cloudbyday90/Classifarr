@@ -29,6 +29,7 @@ describe('EmbeddingProvider', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         embeddingProvider.resetConfig();
+        embeddingProvider.resetMetrics();
     });
 
     describe('getConfig', () => {
@@ -115,7 +116,7 @@ describe('EmbeddingProvider', () => {
                     model: 'mxbai-embed-large',
                     prompt: 'test text'
                 },
-                { timeout: 60000 }
+                { timeout: 120000 }
             );
             expect(result.provider).toBe('ollama');
             expect(result.dims).toBe(3);

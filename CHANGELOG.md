@@ -8,6 +8,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Robust Error Handling with Adaptive Timeouts and Retry Logic** (#153, part of Epic #136)
+  - **Retry Utilities** (`server/src/utils/retryUtils.js`): Comprehensive retry logic for transient failures
+    - `calculateBackoff()`: Exponential delay with configurable jitter
+    - `parseRetryAfter()`: Honors server-provided Retry-After headers
+    - `isRetryableError()`: Identifies transient errors (timeout, 429, 5xx)
+    - `getRetryDelay()`: Smart delay calculation respecting Retry-After headers
+    - `withRetry()`: Async function wrapper with automatic retry logic
+  - **Circuit Breaker Pattern** (`server/src/services/circuitBreaker.js`): Prevents cascading failures
+    - Three states: CLOSED (normal), OPEN (blocking), HALF_OPEN (recovery testing)
+    - Configurable failure threshold (default: 5) and recovery timeout (default: 60s)
+    - Automatic state transitions and recovery attempts
+    - Comprehensive metrics: requests, successes, failures, rejections, state history
+  - **Enhanced Embedding Provider** (`server/src/services/embeddingProvider.js`):
+    - Adaptive timeouts: 30s for warm models, 120s for cold models
+    - Auto-detection of cold models (5min idle threshold)
+    - Integrated retry logic on all API calls (Ollama, OpenAI, Gemini, Voyage, OpenRouter, Cohere)
+    - Request metrics tracking: latency, errors, retries with history
+    - `warmup()` method for pre-warming models before batch operations
+    - `getMetrics()` for comprehensive monitoring data
+  - **Backfill Service Updates** (`server/src/services/manualBackfillService.js`):
+    - Model warmup before batch operations
+    - Automatic pause when circuit breaker opens
+    - Enhanced progress logging
+  - **New API Endpoints** (`server/src/routes/rag.js`):
+    - GET `/api/rag/metrics` - Enhanced metrics including provider metrics with history
+    - GET `/api/rag/circuit-breaker` - Circuit breaker status and state history
+    - POST `/api/rag/circuit-breaker/reset` - Manual circuit breaker reset
+    - POST `/api/rag/warmup` - Trigger model warmup
+    - GET `/api/settings/embedding/retry` - Get retry configuration
+    - PUT `/api/settings/embedding/retry` - Update retry configuration
+  - **Database Migration** (059): Enhanced retry configuration
+    - `warmup_timeout`: Extended timeout for cold models (default: 120s)
+    - `retry_backoff_multiplier`: Exponential backoff multiplier (default: 2.0)
+    - `jitter_factor`: Randomization factor for retry delays (default: 0.3)
+  - **Monitoring UI** (`client/src/views/rag/MonitoringTab.vue`):
+    - Circuit breaker status card with state indicator and manual reset button
+    - Enhanced request metrics: total, success, failed, retries, avg latency
+    - Model status indicator (cold/warm) with manual warmup trigger
+    - Error history table: timestamp, error message, code, latency, retryable flag
+    - Retry history table: timestamp, attempt, error, backoff delay, Retry-After header
+  - **Advanced Configuration UI** (`client/src/views/rag/AdvancedTab.vue`):
+    - Retry configuration form with real-time validation
+    - Configurable request timeout (5-300s)
+    - Configurable warmup timeout (10-600s)
+    - Configurable max retries (0-10)
+    - Configurable base delay (100ms-10s)
+    - Configurable backoff multiplier (1-5)
+    - Configurable jitter factor (0-1)
+    - Visual example backoff sequence display
+  - **Comprehensive Test Coverage**:
+    - 19 tests for retry utilities (100% passing)
+    - 16 tests for circuit breaker (100% passing)
+
 - **AI Prompt Enrichment**: Library profile statistics now injected into AI classification prompts (#142)
   - Certification/rating distribution
   - Genre distribution  
