@@ -6,7 +6,6 @@
  * Tests for comprehensive bug fix PR
  */
 
-const classificationService = require('../services/classification');
 const libraryProfileService = require('../services/libraryProfileService');
 const policyEngine = require('../services/policyEngine');
 const mediaSync = require('../services/mediaSync');
@@ -81,32 +80,75 @@ describe('Bug Fixes - Comprehensive PR', () => {
 
             const result = await policyEngine.evaluateItem(mockItem);
 
-            // RAG should not be called when there are no policies (optimization)
+            // RAG should not be called when there are no policies (nothing to evaluate)
             expect(ragRetriever.semanticSearch).toHaveBeenCalledTimes(0);
             expect(result.action).toBe('manual');
         });
 
-        it('should use cached RAG results in scoreRAG method', async () => {
-            const libraryId = 1;
-            const mockItem = { title: 'Test Movie' };
-            
-            // Set up cache manually to test scoreRAG uses it
-            policyEngine._ragCache = {
-                matches: [
-                    { libraryId: 1, similarity: 0.85 },
-                    { libraryId: 2, similarity: 0.70 }
-                ],
-                timestamp: Date.now()
+        it('should call RAG once and reuse results for multiple policies', async () => {
+            const mockItem = {
+                title: 'Test Movie',
+                genres: ['Action'],
+                tmdb_id: 12345
             };
 
-            // scoreRAG should use cached results
-            const score = await policyEngine.scoreRAG(libraryId, mockItem);
+            const mockMatches = [
+                { libraryId: 1, similarity: 0.85 },
+                { libraryId: 2, similarity: 0.70 }
+            ];
+
+            const mockPolicies = [ 
+                { 
+                    id: 1, 
+                    library_id: 1,
+                    library_name: 'Library 1',
+                    name: 'Policy 1',
+                    trust_rag: true,
+                    trust_patterns: false,
+                    trust_history: false,
+                    rag_weight: 0.15,
+                    preset_weight: 0.35,
+                    profile_weight: 0.25,
+                    pattern_weight: 0.15,
+                    history_weight: 0.10,
+                    presets: []
+                },
+                { 
+                    id: 2, 
+                    library_id: 2,
+                    library_name: 'Library 2',
+                    name: 'Policy 2',
+                    trust_rag: true,
+                    trust_patterns: false,
+                    trust_history: false,
+                    rag_weight: 0.15,
+                    preset_weight: 0.35,
+                    profile_weight: 0.25,
+                    pattern_weight: 0.15,
+                    history_weight: 0.10,
+                    presets: []
+                }
+            ];
+
+            // Mock RAG search
+            ragRetriever.semanticSearch.mockResolvedValue(mockMatches);
+
+            // Mock getActivePolicies to return policies with presets already attached
+            jest.spyOn(policyEngine, 'getActivePolicies').mockResolvedValue(mockPolicies);
+
+            // Mock database queries
+            db.query
+                .mockResolvedValueOnce({ rows: [] }) // checkAuthoritativeSignals
+                .mockResolvedValue({ rows: [] }); // For all other queries (profile)
+
+            await policyEngine.evaluateItem(mockItem);
+
+            // RAG should be called only once, not once per policy (performance optimization)
+            expect(ragRetriever.semanticSearch).toHaveBeenCalledTimes(1);
+            expect(ragRetriever.semanticSearch).toHaveBeenCalledWith(mockItem, 5);
             
-            // Should return the top match for library 1 (85%)
-            expect(score).toBe(85);
-            
-            // RAG should not be called since cache is used
-            expect(ragRetriever.semanticSearch).toHaveBeenCalledTimes(0);
+            // Restore the spy
+            policyEngine.getActivePolicies.mockRestore();
         });
 
         it('should not call RAG when no policies use RAG', async () => {
@@ -151,7 +193,7 @@ describe('Bug Fixes - Comprehensive PR', () => {
                 rows: mockGenres
             });
 
-            const result = await libraryProfileService.getGenreDistribution(1);
+            await libraryProfileService.getGenreDistribution(1);
 
             // Verify the query uses unnest instead of jsonb functions
             expect(db.query).toHaveBeenCalledWith(

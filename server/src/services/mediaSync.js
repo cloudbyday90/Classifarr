@@ -446,7 +446,7 @@ class MediaSyncService {
           library_id = msi.library_id,
           library_name = l.name,
           method = 'source_library',
-          reason = 'Resolved via Plex library placement',
+          reason = 'Resolved via library placement',
           updated_at = NOW()
         FROM media_server_items msi
         JOIN libraries l ON msi.library_id = l.id
