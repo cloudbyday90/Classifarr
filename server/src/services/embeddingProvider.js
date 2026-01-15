@@ -13,6 +13,8 @@ const db = require('../config/database');
 const ollamaService = require('./ollama');
 const providerLock = require('./providerLock');
 const { createLogger } = require('../utils/logger');
+const { withRetry } = require('../utils/retryUtils');
+const CircuitBreaker = require('./circuitBreaker');
 
 const logger = createLogger('EmbeddingProvider');
 
@@ -96,6 +98,26 @@ const PROVIDER_DEFAULTS = {
 class EmbeddingProvider {
     constructor() {
         this.config = null;
+        this.circuitBreaker = new CircuitBreaker({
+            failureThreshold: 5,
+            recoveryTimeout: 60000,
+            halfOpenMaxAttempts: 3
+        });
+
+        // Metrics tracking
+        this.metrics = {
+            totalRequests: 0,
+            successfulRequests: 0,
+            failedRequests: 0,
+            retryAttempts: 0,
+            totalLatency: 0,
+            lastRequestTime: null,
+            errorHistory: [],
+            retryHistory: []
+        };
+
+        // Cold model detection
+        this.coldModelIdleThreshold = 5 * 60 * 1000; // 5 minutes
     }
 
     /**
@@ -143,6 +165,125 @@ class EmbeddingProvider {
     }
 
     /**
+     * Check if model is likely cold (needs warmup)
+     * @returns {boolean} True if model is likely cold
+     */
+    isModelCold() {
+        if (!this.metrics.lastRequestTime) {
+            return true; // Never used
+        }
+
+        const idleTime = Date.now() - this.metrics.lastRequestTime;
+        return idleTime > this.coldModelIdleThreshold;
+    }
+
+    /**
+     * Get adaptive timeout based on model state
+     * @param {Object} config - Configuration object
+     * @returns {number} Timeout in milliseconds
+     */
+    getAdaptiveTimeout(config) {
+        const warmupTimeout = config.warmup_timeout || 120000; // 120s default
+        const requestTimeout = config.request_timeout || 30000; // 30s default
+
+        return this.isModelCold() ? warmupTimeout : requestTimeout;
+    }
+
+    /**
+     * Warmup the model by making a test embedding request
+     * @returns {Promise<Object>} Warmup result
+     */
+    async warmup() {
+        logger.info('Warming up embedding model');
+        const startTime = Date.now();
+
+        try {
+            await this.getEmbedding('warmup test');
+            const duration = Date.now() - startTime;
+
+            logger.info('Model warmup completed', { duration });
+            return {
+                success: true,
+                duration
+            };
+        } catch (error) {
+            logger.error('Model warmup failed', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Get metrics data
+     * @returns {Object} Metrics information
+     */
+    getMetrics() {
+        const avgLatency = this.metrics.totalRequests > 0
+            ? this.metrics.totalLatency / this.metrics.totalRequests
+            : 0;
+
+        return {
+            totalRequests: this.metrics.totalRequests,
+            successfulRequests: this.metrics.successfulRequests,
+            failedRequests: this.metrics.failedRequests,
+            retryAttempts: this.metrics.retryAttempts,
+            avgLatency: Math.round(avgLatency),
+            lastRequestTime: this.metrics.lastRequestTime,
+            isModelCold: this.isModelCold(),
+            errorHistory: this.metrics.errorHistory.slice(-20),
+            retryHistory: this.metrics.retryHistory.slice(-20),
+            circuitBreaker: this.circuitBreaker.getStatus()
+        };
+    }
+
+    /**
+     * Record an error in history
+     * @param {Error} error - The error that occurred
+     * @param {number} latency - Request latency in ms
+     * @param {boolean} retryable - Whether error was retryable
+     */
+    recordError(error, latency, retryable) {
+        const errorRecord = {
+            timestamp: Date.now(),
+            message: error.message,
+            code: error.response?.status || error.code,
+            latency,
+            retryable
+        };
+
+        this.metrics.errorHistory.push(errorRecord);
+        
+        // Keep history limited
+        if (this.metrics.errorHistory.length > 100) {
+            this.metrics.errorHistory.shift();
+        }
+    }
+
+    /**
+     * Record a retry attempt in history
+     * @param {number} attempt - Retry attempt number
+     * @param {Error} error - The error that caused retry
+     * @param {number} delay - Backoff delay in ms
+     * @param {string} retryAfter - Retry-After header value if present
+     */
+    recordRetry(attempt, error, delay, retryAfter) {
+        const retryRecord = {
+            timestamp: Date.now(),
+            attempt,
+            error: error.message,
+            backoffDelay: delay,
+            retryAfter: retryAfter || null
+        };
+
+        this.metrics.retryHistory.push(retryRecord);
+        this.metrics.retryAttempts++;
+        
+        // Keep history limited
+        if (this.metrics.retryHistory.length > 100) {
+            this.metrics.retryHistory.shift();
+        }
+    }
+
+    /**
      * Generate embedding for text
      * Routes to appropriate provider based on embedding_provider_mode
      * 
@@ -152,6 +293,13 @@ class EmbeddingProvider {
     async getEmbedding(text) {
         if (!text || text.trim().length === 0) {
             throw new Error('Cannot embed empty text');
+        }
+
+        // Check circuit breaker
+        if (!this.circuitBreaker.isAllowed()) {
+            const error = new Error('Circuit breaker is OPEN - too many recent failures');
+            logger.warn('Request blocked by circuit breaker');
+            throw error;
         }
 
         const config = await this.getConfig();
@@ -170,6 +318,8 @@ class EmbeddingProvider {
         const heartbeatIntervalMs = needsLock ? providerLock.config.heartbeatInterval : null;
         let heartbeatTimer = null;
         let lockReleased = false; // Track if lock was already released
+        const startTime = Date.now();
+
         try {
             if (needsLock) {
                 // Start heartbeat and check for preemption
@@ -195,7 +345,8 @@ class EmbeddingProvider {
                         text,
                         null,  // Don't pass host - use ollamaService
                         null,  // Don't pass port - use ollamaService
-                        config.embedding_model || 'nomic-embed-text-v2-moe'
+                        config.embedding_model || 'nomic-embed-text-v2-moe',
+                        config
                     );
                     break;
 
@@ -205,7 +356,8 @@ class EmbeddingProvider {
                         text,
                         config.embedding_ollama_host,
                         config.embedding_ollama_port,
-                        config.embedding_ollama_model || 'nomic-embed-text-v2-moe'
+                        config.embedding_ollama_model || 'nomic-embed-text-v2-moe',
+                        config
                     );
                     break;
 
@@ -218,20 +370,42 @@ class EmbeddingProvider {
                     throw new Error(`Unknown embedding provider mode: ${mode}`);
             }
 
+            // Record success metrics
+            const latency = Date.now() - startTime;
+            this.metrics.totalRequests++;
+            this.metrics.successfulRequests++;
+            this.metrics.totalLatency += latency;
+            this.metrics.lastRequestTime = Date.now();
+            this.circuitBreaker.recordSuccess();
+
             logger.info('Embedding generated', {
                 mode,
                 provider: result.provider,
                 model: result.model,
                 dims: result.dims,
-                cost: result.cost
+                cost: result.cost,
+                latency
             });
 
             return result;
 
         } catch (error) {
+            // Record failure metrics
+            const latency = Date.now() - startTime;
+            this.metrics.totalRequests++;
+            this.metrics.failedRequests++;
+            this.metrics.totalLatency += latency;
+            this.circuitBreaker.recordFailure(error);
+
+            const { isRetryableError } = require('../utils/retryUtils');
+            const retryable = isRetryableError(error);
+            this.recordError(error, latency, retryable);
+
             logger.error('Failed to generate embedding', {
                 mode,
-                error: error.message
+                error: error.message,
+                latency,
+                retryable
             });
             throw error;
         } finally {
@@ -251,8 +425,9 @@ class EmbeddingProvider {
      * @param {string} host - Ollama host
      * @param {number} port - Ollama port
      * @param {string} model - Embedding model
+     * @param {Object} config - Configuration object
      */
-    async getOllamaEmbedding(text, host, port, model) {
+    async getOllamaEmbedding(text, host, port, model, config) {
         // If using classification Ollama (same mode), use existing service
         if (!host || !port) {
             const result = await ollamaService.embed(text, model);
@@ -265,8 +440,14 @@ class EmbeddingProvider {
             };
         }
 
-        // Otherwise, make direct request to separate Ollama instance
-        try {
+        // Otherwise, make direct request to separate Ollama instance with retry logic
+        const timeout = this.getAdaptiveTimeout(config);
+        const maxRetries = config.max_retries || 3;
+        const baseDelay = config.retry_delay || 1000;
+        const backoffMultiplier = config.retry_backoff_multiplier || 2;
+        const jitter = config.jitter_factor || 0.3;
+
+        const makeRequest = async () => {
             const baseUrl = `http://${host}:${port}`;
             
             const response = await axios.post(
@@ -275,10 +456,30 @@ class EmbeddingProvider {
                     model: model,
                     prompt: text
                 },
-                { timeout: 60000 }
+                { timeout }
             );
 
-            const embedding = response.data.embedding;
+            return response.data.embedding;
+        };
+
+        const embeddingWithRetry = withRetry(makeRequest, {
+            maxRetries,
+            baseDelay,
+            multiplier: backoffMultiplier,
+            jitter,
+            onRetry: (error, attempt, delay) => {
+                logger.warn('Retrying Ollama embedding request', {
+                    attempt: attempt + 1,
+                    delay,
+                    error: error.message
+                });
+                const retryAfter = error.response?.headers?.['retry-after'];
+                this.recordRetry(attempt + 1, error, delay, retryAfter);
+            }
+        });
+
+        try {
+            const embedding = await embeddingWithRetry();
 
             return {
                 embedding: embedding,
@@ -312,15 +513,15 @@ class EmbeddingProvider {
 
         switch (provider) {
             case 'openai':
-                return await this.getOpenAIEmbedding(text, apiKey, model);
+                return await this.getOpenAIEmbedding(text, apiKey, model, config);
             case 'gemini':
-                return await this.getGeminiEmbedding(text, apiKey, model);
+                return await this.getGeminiEmbedding(text, apiKey, model, config);
             case 'voyage':
-                return await this.getVoyageEmbedding(text, apiKey, model);
+                return await this.getVoyageEmbedding(text, apiKey, model, config);
             case 'openrouter':
-                return await this.getOpenRouterEmbedding(text, apiKey, model);
+                return await this.getOpenRouterEmbedding(text, apiKey, model, config);
             case 'cohere':
-                return await this.getCohereEmbedding(text, apiKey, model);
+                return await this.getCohereEmbedding(text, apiKey, model, config);
             default:
                 throw new Error(`Unknown cloud provider: ${provider}`);
         }
@@ -329,8 +530,14 @@ class EmbeddingProvider {
     /**
      * OpenAI embeddings
      */
-    async getOpenAIEmbedding(text, apiKey, model = 'text-embedding-3-small') {
-        try {
+    async getOpenAIEmbedding(text, apiKey, model = 'text-embedding-3-small', config = {}) {
+        const timeout = this.getAdaptiveTimeout(config);
+        const maxRetries = config.max_retries || 3;
+        const baseDelay = config.retry_delay || 1000;
+        const backoffMultiplier = config.retry_backoff_multiplier || 2;
+        const jitter = config.jitter_factor || 0.3;
+
+        const makeRequest = async () => {
             const response = await axios.post(
                 'https://api.openai.com/v1/embeddings',
                 {
@@ -342,7 +549,7 @@ class EmbeddingProvider {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    timeout: 60000
+                    timeout
                 }
             );
 
@@ -360,6 +567,26 @@ class EmbeddingProvider {
                 model: model,
                 cost: cost
             };
+        };
+
+        const embeddingWithRetry = withRetry(makeRequest, {
+            maxRetries,
+            baseDelay,
+            multiplier: backoffMultiplier,
+            jitter,
+            onRetry: (error, attempt, delay) => {
+                logger.warn('Retrying OpenAI embedding request', {
+                    attempt: attempt + 1,
+                    delay,
+                    error: error.message
+                });
+                const retryAfter = error.response?.headers?.['retry-after'];
+                this.recordRetry(attempt + 1, error, delay, retryAfter);
+            }
+        });
+
+        try {
+            return await embeddingWithRetry();
         } catch (error) {
             throw new Error(`OpenAI embedding failed: ${error.response?.data?.error?.message || error.message}`);
         }
@@ -368,8 +595,14 @@ class EmbeddingProvider {
     /**
      * Google Gemini embeddings
      */
-    async getGeminiEmbedding(text, apiKey, model = 'text-embedding-004') {
-        try {
+    async getGeminiEmbedding(text, apiKey, model = 'text-embedding-004', config = {}) {
+        const timeout = this.getAdaptiveTimeout(config);
+        const maxRetries = config.max_retries || 3;
+        const baseDelay = config.retry_delay || 1000;
+        const backoffMultiplier = config.retry_backoff_multiplier || 2;
+        const jitter = config.jitter_factor || 0.3;
+
+        const makeRequest = async () => {
             const response = await axios.post(
                 `https://generativelanguage.googleapis.com/v1/models/${model}:embedContent?key=${apiKey}`,
                 {
@@ -379,7 +612,7 @@ class EmbeddingProvider {
                 },
                 {
                     headers: { 'Content-Type': 'application/json' },
-                    timeout: 60000
+                    timeout
                 }
             );
 
@@ -396,6 +629,26 @@ class EmbeddingProvider {
                 model: model,
                 cost: cost
             };
+        };
+
+        const embeddingWithRetry = withRetry(makeRequest, {
+            maxRetries,
+            baseDelay,
+            multiplier: backoffMultiplier,
+            jitter,
+            onRetry: (error, attempt, delay) => {
+                logger.warn('Retrying Gemini embedding request', {
+                    attempt: attempt + 1,
+                    delay,
+                    error: error.message
+                });
+                const retryAfter = error.response?.headers?.['retry-after'];
+                this.recordRetry(attempt + 1, error, delay, retryAfter);
+            }
+        });
+
+        try {
+            return await embeddingWithRetry();
         } catch (error) {
             throw new Error(`Gemini embedding failed: ${error.response?.data?.error?.message || error.message}`);
         }
@@ -404,8 +657,14 @@ class EmbeddingProvider {
     /**
      * Voyage AI embeddings
      */
-    async getVoyageEmbedding(text, apiKey, model = 'voyage-2') {
-        try {
+    async getVoyageEmbedding(text, apiKey, model = 'voyage-2', config = {}) {
+        const timeout = this.getAdaptiveTimeout(config);
+        const maxRetries = config.max_retries || 3;
+        const baseDelay = config.retry_delay || 1000;
+        const backoffMultiplier = config.retry_backoff_multiplier || 2;
+        const jitter = config.jitter_factor || 0.3;
+
+        const makeRequest = async () => {
             const response = await axios.post(
                 'https://api.voyageai.com/v1/embeddings',
                 {
@@ -417,7 +676,7 @@ class EmbeddingProvider {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    timeout: 60000
+                    timeout
                 }
             );
 
@@ -435,6 +694,26 @@ class EmbeddingProvider {
                 model: model,
                 cost: cost
             };
+        };
+
+        const embeddingWithRetry = withRetry(makeRequest, {
+            maxRetries,
+            baseDelay,
+            multiplier: backoffMultiplier,
+            jitter,
+            onRetry: (error, attempt, delay) => {
+                logger.warn('Retrying Voyage embedding request', {
+                    attempt: attempt + 1,
+                    delay,
+                    error: error.message
+                });
+                const retryAfter = error.response?.headers?.['retry-after'];
+                this.recordRetry(attempt + 1, error, delay, retryAfter);
+            }
+        });
+
+        try {
+            return await embeddingWithRetry();
         } catch (error) {
             throw new Error(`Voyage embedding failed: ${error.response?.data?.error?.message || error.message}`);
         }
@@ -443,8 +722,14 @@ class EmbeddingProvider {
     /**
      * OpenRouter embeddings
      */
-    async getOpenRouterEmbedding(text, apiKey, model = 'openai/text-embedding-3-small') {
-        try {
+    async getOpenRouterEmbedding(text, apiKey, model = 'openai/text-embedding-3-small', config = {}) {
+        const timeout = this.getAdaptiveTimeout(config);
+        const maxRetries = config.max_retries || 3;
+        const baseDelay = config.retry_delay || 1000;
+        const backoffMultiplier = config.retry_backoff_multiplier || 2;
+        const jitter = config.jitter_factor || 0.3;
+
+        const makeRequest = async () => {
             const response = await axios.post(
                 'https://openrouter.ai/api/v1/embeddings',
                 {
@@ -456,7 +741,7 @@ class EmbeddingProvider {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    timeout: 60000
+                    timeout
                 }
             );
 
@@ -474,6 +759,26 @@ class EmbeddingProvider {
                 model: model,
                 cost: cost
             };
+        };
+
+        const embeddingWithRetry = withRetry(makeRequest, {
+            maxRetries,
+            baseDelay,
+            multiplier: backoffMultiplier,
+            jitter,
+            onRetry: (error, attempt, delay) => {
+                logger.warn('Retrying OpenRouter embedding request', {
+                    attempt: attempt + 1,
+                    delay,
+                    error: error.message
+                });
+                const retryAfter = error.response?.headers?.['retry-after'];
+                this.recordRetry(attempt + 1, error, delay, retryAfter);
+            }
+        });
+
+        try {
+            return await embeddingWithRetry();
         } catch (error) {
             throw new Error(`OpenRouter embedding failed: ${error.response?.data?.error?.message || error.message}`);
         }
@@ -482,8 +787,14 @@ class EmbeddingProvider {
     /**
      * Cohere embeddings
      */
-    async getCohereEmbedding(text, apiKey, model = 'embed-english-v3.0') {
-        try {
+    async getCohereEmbedding(text, apiKey, model = 'embed-english-v3.0', config = {}) {
+        const timeout = this.getAdaptiveTimeout(config);
+        const maxRetries = config.max_retries || 3;
+        const baseDelay = config.retry_delay || 1000;
+        const backoffMultiplier = config.retry_backoff_multiplier || 2;
+        const jitter = config.jitter_factor || 0.3;
+
+        const makeRequest = async () => {
             const response = await axios.post(
                 'https://api.cohere.ai/v1/embed',
                 {
@@ -496,7 +807,7 @@ class EmbeddingProvider {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    timeout: 60000
+                    timeout
                 }
             );
 
@@ -514,6 +825,26 @@ class EmbeddingProvider {
                 model: model,
                 cost: cost
             };
+        };
+
+        const embeddingWithRetry = withRetry(makeRequest, {
+            maxRetries,
+            baseDelay,
+            multiplier: backoffMultiplier,
+            jitter,
+            onRetry: (error, attempt, delay) => {
+                logger.warn('Retrying Cohere embedding request', {
+                    attempt: attempt + 1,
+                    delay,
+                    error: error.message
+                });
+                const retryAfter = error.response?.headers?.['retry-after'];
+                this.recordRetry(attempt + 1, error, delay, retryAfter);
+            }
+        });
+
+        try {
+            return await embeddingWithRetry();
         } catch (error) {
             throw new Error(`Cohere embedding failed: ${error.response?.data?.message || error.message}`);
         }
