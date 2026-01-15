@@ -94,6 +94,10 @@ const PROVIDER_DEFAULTS = {
  * - 'same': Use classification provider (existing behavior)
  * - 'separate_ollama': Use dedicated Ollama instance
  * - 'cloud': Use cloud embedding provider (OpenAI, Gemini, Voyage, OpenRouter, Cohere)
+ * 
+ * Note: Metrics updates in this class use simple counter increments which are atomic
+ * in Node.js's single-threaded event loop. In a truly concurrent environment (e.g.,
+ * worker threads, cluster mode), these would require synchronization mechanisms.
  */
 class EmbeddingProvider {
     constructor() {
@@ -105,6 +109,9 @@ class EmbeddingProvider {
         });
 
         // Metrics tracking
+        // Note: Updates to these metrics are performed with simple increments which are
+        // safe in Node.js's single-threaded model. For cluster/worker thread scenarios,
+        // consider using atomic operations or shared memory solutions.
         this.metrics = {
             totalRequests: 0,
             successfulRequests: 0,
@@ -165,7 +172,9 @@ class EmbeddingProvider {
     }
 
     /**
-     * Reset metrics (mainly for testing)
+     * Reset metrics
+     * @note This method is intended for testing purposes only to ensure test isolation.
+     * It should not be called in production code as it will clear all tracking data.
      */
     resetMetrics() {
         this.metrics = {
@@ -245,8 +254,9 @@ class EmbeddingProvider {
             avgLatency: Math.round(avgLatency),
             lastRequestTime: this.metrics.lastRequestTime,
             isModelCold: this.isModelCold(),
-            errorHistory: this.metrics.errorHistory.slice(-20),
-            retryHistory: this.metrics.retryHistory.slice(-20),
+            // Return last 100 items for history (limited internally to 100)
+            errorHistory: this.metrics.errorHistory.slice(-100),
+            retryHistory: this.metrics.retryHistory.slice(-100),
             circuitBreaker: this.circuitBreaker.getStatus()
         };
     }
@@ -315,6 +325,10 @@ class EmbeddingProvider {
         if (!this.circuitBreaker.isAllowed()) {
             const error = new Error('Circuit breaker is OPEN - too many recent failures');
             logger.warn('Request blocked by circuit breaker');
+            
+            // Record the circuit breaker rejection in error history
+            this.recordError(error, 0, false);
+            
             throw error;
         }
 

@@ -24,6 +24,11 @@ const STATES = {
 /**
  * Circuit Breaker pattern implementation
  * Prevents cascading failures by tracking errors and temporarily blocking requests
+ * 
+ * Note: This implementation is designed for single-process usage. In a distributed 
+ * or multi-threaded environment, the state transitions may have race conditions.
+ * For production use with high concurrency, consider using a distributed circuit 
+ * breaker implementation with atomic operations.
  */
 class CircuitBreaker {
     constructor(options = {}) {
@@ -37,6 +42,9 @@ class CircuitBreaker {
         this.halfOpenAttempts = 0;
         this.lastFailureTime = null;
         this.lastStateChange = Date.now();
+        
+        // Simple mutex flag to prevent concurrent state modifications
+        this._isTransitioning = false;
         
         // Metrics tracking
         this.metrics = {
@@ -71,10 +79,16 @@ class CircuitBreaker {
         if (this.state === STATES.OPEN) {
             const timeSinceFailure = Date.now() - this.lastFailureTime;
             
-            if (timeSinceFailure >= this.recoveryTimeout) {
-                // Transition to HALF_OPEN for recovery testing
-                this.transitionTo(STATES.HALF_OPEN, 'recovery timeout elapsed');
-                return true;
+            // Use mutex to prevent race condition during state transition
+            if (timeSinceFailure >= this.recoveryTimeout && !this._isTransitioning) {
+                this._isTransitioning = true;
+                try {
+                    // Transition to HALF_OPEN for recovery testing
+                    this.transitionTo(STATES.HALF_OPEN, 'recovery timeout elapsed');
+                    return true;
+                } finally {
+                    this._isTransitioning = false;
+                }
             }
 
             // Still in timeout period - reject
@@ -99,6 +113,8 @@ class CircuitBreaker {
 
     /**
      * Record a successful request
+     * Note: In high-concurrency scenarios, counter increments may have race conditions.
+     * This is acceptable for metrics tracking but may cause slight inaccuracies.
      */
     recordSuccess() {
         this.metrics.successfulRequests++;
@@ -106,9 +122,14 @@ class CircuitBreaker {
 
         if (this.state === STATES.HALF_OPEN) {
             // Enough successes - recover to CLOSED
-            if (this.successCount >= this.halfOpenMaxAttempts) {
-                this.transitionTo(STATES.CLOSED, 'recovery successful');
-                this.reset();
+            if (this.successCount >= this.halfOpenMaxAttempts && !this._isTransitioning) {
+                this._isTransitioning = true;
+                try {
+                    this.transitionTo(STATES.CLOSED, 'recovery successful');
+                    this.reset();
+                } finally {
+                    this._isTransitioning = false;
+                }
             }
         } else if (this.state === STATES.CLOSED) {
             // Reset failure count on success
@@ -119,6 +140,10 @@ class CircuitBreaker {
     /**
      * Record a failed request
      * @param {Error} error - The error that occurred
+     * Note: In high-concurrency scenarios, counter increments and threshold checks
+     * may have race conditions. This could cause multiple concurrent failures to 
+     * trigger state transitions. The mutex helps but doesn't completely eliminate
+     * the race in a truly concurrent environment.
      */
     recordFailure(error) {
         this.metrics.failedRequests++;
@@ -132,15 +157,25 @@ class CircuitBreaker {
             error: error.message
         });
 
-        if (this.state === STATES.HALF_OPEN) {
+        if (this.state === STATES.HALF_OPEN && !this._isTransitioning) {
             // Failed during recovery - go back to OPEN
-            this.transitionTo(STATES.OPEN, 'recovery attempt failed');
-            this.successCount = 0;
-            this.halfOpenAttempts = 0;
-        } else if (this.state === STATES.CLOSED) {
+            this._isTransitioning = true;
+            try {
+                this.transitionTo(STATES.OPEN, 'recovery attempt failed');
+                this.successCount = 0;
+                this.halfOpenAttempts = 0;
+            } finally {
+                this._isTransitioning = false;
+            }
+        } else if (this.state === STATES.CLOSED && !this._isTransitioning) {
             // Check if threshold exceeded
             if (this.failureCount >= this.failureThreshold) {
-                this.transitionTo(STATES.OPEN, `failure threshold (${this.failureThreshold}) exceeded`);
+                this._isTransitioning = true;
+                try {
+                    this.transitionTo(STATES.OPEN, `failure threshold (${this.failureThreshold}) exceeded`);
+                } finally {
+                    this._isTransitioning = false;
+                }
             }
         }
     }

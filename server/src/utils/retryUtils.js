@@ -36,9 +36,12 @@ function calculateBackoff(attempt, options = {}) {
     // Apply jitter: randomize between (1 - jitter) and (1 + jitter) of the delay
     const jitterRange = exponentialDelay * jitter;
     const jitteredDelay = exponentialDelay + (Math.random() * 2 - 1) * jitterRange;
+    
+    // Ensure delay is never negative
+    const clampedDelay = Math.max(0, jitteredDelay);
 
     // Cap at maxDelay
-    return Math.min(jitteredDelay, maxDelay);
+    return Math.min(clampedDelay, maxDelay);
 }
 
 /**
@@ -63,7 +66,8 @@ function parseRetryAfter(header) {
         const date = new Date(header);
         if (!isNaN(date.getTime())) {
             const delay = date.getTime() - Date.now();
-            return delay > 0 ? delay : 0;
+            // Return null for past dates to fall back to exponential backoff
+            return delay > 0 ? delay : null;
         }
     } catch (error) {
         // Invalid date format

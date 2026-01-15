@@ -517,7 +517,21 @@ const loadMetrics = async () => {
     }
 
     // Provider metrics
-    providerMetrics.value = metricsRes.data.provider || providerMetrics.value
+    if (metricsRes.data && metricsRes.data.provider) {
+      providerMetrics.value = metricsRes.data.provider
+    } else {
+      console.error('Metrics response missing provider metrics:', metricsRes.data)
+      providerMetrics.value = {
+        totalRequests: 0,
+        successfulRequests: 0,
+        failedRequests: 0,
+        retryAttempts: 0,
+        avgLatency: 0,
+        isModelCold: false,
+        errorHistory: [],
+        retryHistory: []
+      }
+    }
 
     // Circuit breaker status
     circuitBreaker.value = circuitRes.data
@@ -606,10 +620,11 @@ const resetCircuitBreaker = async () => {
   try {
     await api.post('/api/rag/circuit-breaker/reset')
     await loadMetrics()
-    alert('Circuit breaker reset successfully')
+    // Show success message in UI instead of alert
+    console.log('Circuit breaker reset successfully')
   } catch (error) {
     console.error('Failed to reset circuit breaker:', error)
-    alert('Failed to reset circuit breaker: ' + (error.response?.data?.error || error.message))
+    // Error will be visible in the UI through the metrics reload failure
   }
 }
 

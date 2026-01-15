@@ -948,6 +948,37 @@ router.put('/settings/embedding/retry', async (req, res) => {
             jitter_factor
         } = req.body;
 
+        // Validate input ranges
+        const errors = [];
+        
+        if (request_timeout !== undefined && (request_timeout < 5000 || request_timeout > 300000)) {
+            errors.push('request_timeout must be between 5000 and 300000 (5s-300s)');
+        }
+        
+        if (warmup_timeout !== undefined && (warmup_timeout < 10000 || warmup_timeout > 600000)) {
+            errors.push('warmup_timeout must be between 10000 and 600000 (10s-600s)');
+        }
+        
+        if (max_retries !== undefined && (max_retries < 0 || max_retries > 10)) {
+            errors.push('max_retries must be between 0 and 10');
+        }
+        
+        if (retry_delay !== undefined && (retry_delay < 100 || retry_delay > 10000)) {
+            errors.push('retry_delay must be between 100 and 10000 (100ms-10s)');
+        }
+        
+        if (retry_backoff_multiplier !== undefined && (retry_backoff_multiplier < 1 || retry_backoff_multiplier > 5)) {
+            errors.push('retry_backoff_multiplier must be between 1 and 5');
+        }
+        
+        if (jitter_factor !== undefined && (jitter_factor < 0 || jitter_factor > 1)) {
+            errors.push('jitter_factor must be between 0 and 1');
+        }
+        
+        if (errors.length > 0) {
+            return res.status(400).json({ error: 'Validation failed', details: errors });
+        }
+
         await db.query(`
             UPDATE ai_provider_config SET
                 request_timeout = $1,

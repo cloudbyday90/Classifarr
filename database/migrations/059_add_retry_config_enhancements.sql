@@ -11,11 +11,15 @@ ADD COLUMN IF NOT EXISTS warmup_timeout INTEGER DEFAULT 120000;
 
 -- Retry backoff multiplier (exponential backoff)
 ALTER TABLE ai_provider_config
-ADD COLUMN IF NOT EXISTS retry_backoff_multiplier NUMERIC(3,1) DEFAULT 2.0;
+ADD COLUMN IF NOT EXISTS retry_backoff_multiplier NUMERIC(3,1) 
+    CHECK (retry_backoff_multiplier >= 1.0 AND retry_backoff_multiplier <= 5.0)
+    DEFAULT 2.0;
 
 -- Jitter factor for randomizing retry delays (0-1)
 ALTER TABLE ai_provider_config
-ADD COLUMN IF NOT EXISTS jitter_factor NUMERIC(3,2) DEFAULT 0.3;
+ADD COLUMN IF NOT EXISTS jitter_factor NUMERIC(3,2)
+    CHECK (jitter_factor >= 0 AND jitter_factor <= 1)
+    DEFAULT 0.3;
 
 -- ============================================================================
 -- NOTES

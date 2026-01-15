@@ -103,7 +103,7 @@
             type="number"
             min="0"
             max="1"
-            step="0.1"
+            step="0.01"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p class="mt-1 text-xs text-gray-500">Randomization factor (0-1, default: 0.3 for ±30%)</p>
@@ -344,11 +344,9 @@ const saveRetryConfig = async () => {
     
     saveSuccess.value = true
     saveMessage.value = 'Retry configuration saved successfully'
-    alert('Retry configuration saved successfully')
   } catch (error) {
     saveSuccess.value = false
     saveMessage.value = error.response?.data?.error || error.message
-    alert('Failed to save retry configuration: ' + saveMessage.value)
   } finally {
     saving.value = false
     setTimeout(() => {
