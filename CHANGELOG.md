@@ -195,13 +195,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HeartbeatSettings component (functionality moved to RAG → Backfill tab)
 
 - **Rules Page**: Custom rules feature has been retired
-- **Rules Page**: Custom rules feature has been retired
   - Settings > Rules page removed from UI
   - Rules.vue component deleted
   - Classification is now fully AI-driven with policy-based rules in library profiles
   - Navigation updated to remove Rules tab from Settings
 
 ### Changed
+- Settings sidebar now scrolls independently from main content
+- Removed duplicate embedding provider settings from AI settings panel
+- Heartbeat settings moved from General section to RAG → Backfill tab
+- Statistics page converted to tabbed interface for better organization
+
+- **Prompt Builder**: Enhanced with library profile injection for AI context (#142)
+  - New `buildClassificationPrompt()` method
+  - `formatItemForPrompt()` helper for consistent item formatting
+  
+- **Classification Service**: Automatically captures and stores profile snapshots (#142)
+  - Profile stats captured at classification time for completed items
+  - Provides historical record of library composition
+
 - **Settings UI**: Renamed "Heartbeat/Queue" to "Heartbeat" in settings navigation
 - **Embedding Architecture**: Refactored to use new `EmbeddingProvider` service
   - `embeddingRouter` now delegates to `embeddingProvider` for separate_ollama and cloud modes
@@ -247,6 +259,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `ollamaService.resetConfig()` call to ai_provider_config update endpoint
   - Cache now properly invalidated when user updates Ollama settings in UI
   - Maintains performance benefits of caching while ensuring configuration changes take effect immediately
+
+- **Ollama Embedding API Compatibility (v0.13.5+)**: Fixed 404 errors when generating embeddings
+  - Ollama v0.13.5 deprecated `/api/embeddings` endpoint, now uses `/api/embed`
+  - Updated request body parameter from `prompt` to `input` for new Ollama API
+  - Files updated: `server/src/services/ollama.js`, `server/src/services/embeddingProvider.js`
+  - Users on older Ollama versions should upgrade to v0.13.5 or later
+
+- **RAG Settings Overview Tab Crash**: Fixed TypeError when loading Overview tab (#158)
+  - Added null safety checks for API responses returning incomplete data
+  - Used optional chaining (`?.`) and nullish coalescing (`??`) for defensive access
+  - Added `.catch()` handlers to API calls with fallback defaults
+  - Updated `formatNumber()` to handle null/undefined values
+  - File updated: `client/src/views/rag/OverviewTab.vue`
 
 ### Technical Details
 - Route `/api/classification/pending` now safely handles both string and JSONB formats for `policy_question`
