@@ -178,198 +178,6 @@
           </div>
         </div>
 
-        <!-- Embedding Provider Mode -->
-        <div v-if="config.primary_provider !== 'none'" class="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-          <h3 class="font-medium text-gray-200">Embedding Provider</h3>
-          
-          <!-- Provider Mode Selection -->
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Provider Mode</label>
-            <select 
-              v-model="embeddingConfig.embedding_provider_mode"
-              class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-            >
-              <option value="same">Same as Classification Provider</option>
-              <option value="separate_ollama">Separate Ollama Instance</option>
-              <option value="cloud">Cloud Provider</option>
-            </select>
-            <p class="text-xs text-gray-500 mt-1">
-              <span v-if="embeddingConfig.embedding_provider_mode === 'same'">Use the same provider configured above for both classification and embeddings</span>
-              <span v-else-if="embeddingConfig.embedding_provider_mode === 'separate_ollama'">Use a dedicated Ollama instance for embeddings (e.g., different host/model)</span>
-              <span v-else>Use a cloud API specifically for embeddings (faster, higher quality)</span>
-            </p>
-          </div>
-
-          <!-- Separate Ollama Settings -->
-          <div v-if="embeddingConfig.embedding_provider_mode === 'separate_ollama'" class="space-y-3 p-3 bg-gray-900/50 rounded border border-gray-600">
-            <div class="grid grid-cols-3 gap-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Host</label>
-                <input 
-                  v-model="embeddingConfig.embedding_ollama_host"
-                  type="text"
-                  placeholder="192.168.1.100"
-                  class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Port</label>
-                <input 
-                  v-model.number="embeddingConfig.embedding_ollama_port"
-                  type="number"
-                  placeholder="11434"
-                  class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Model</label>
-                <input 
-                  v-model="embeddingConfig.embedding_ollama_model"
-                  type="text"
-                  placeholder="nomic-embed-text"
-                  class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-                />
-              </div>
-            </div>
-            <div class="flex items-center gap-4">
-              <Button variant="secondary" size="sm" @click="testEmbeddingProvider" :disabled="testingEmbedding">
-                <span v-if="testingEmbedding">Testing...</span>
-                <span v-else>🔌 Test Connection</span>
-              </Button>
-              <span v-if="embeddingTestResult" :class="embeddingTestResult.success ? 'text-green-400' : 'text-red-400'" class="text-sm">
-                {{ embeddingTestResult.success ? `✓ Connected (${embeddingTestResult.dimensions}d)` : embeddingTestResult.error }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Cloud Provider Settings -->
-          <div v-if="embeddingConfig.embedding_provider_mode === 'cloud'" class="space-y-3 p-3 bg-gray-900/50 rounded border border-gray-600">
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Cloud Provider</label>
-              <select 
-                v-model="embeddingConfig.embedding_cloud_provider"
-                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-              >
-                <option value="">Select provider...</option>
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Google Gemini</option>
-                <option value="voyage">Voyage AI</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="cohere">Cohere</option>
-              </select>
-            </div>
-
-            <div v-if="embeddingConfig.embedding_cloud_provider">
-              <label class="block text-sm font-medium text-gray-300 mb-1">API Key</label>
-              <PasswordInput 
-                v-model="embeddingConfig.embedding_cloud_api_key"
-                placeholder="Enter API key"
-                class="text-sm"
-              />
-              <p class="text-xs text-gray-500 mt-1">
-                <template v-if="embeddingConfig.embedding_cloud_provider === 'openai'">
-                  Get from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-400 hover:underline">platform.openai.com</a>
-                </template>
-                <template v-else-if="embeddingConfig.embedding_cloud_provider === 'gemini'">
-                  Get from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-400 hover:underline">aistudio.google.com</a>
-                </template>
-                <template v-else-if="embeddingConfig.embedding_cloud_provider === 'voyage'">
-                  Get from <a href="https://www.voyageai.com/" target="_blank" class="text-blue-400 hover:underline">voyageai.com</a>
-                </template>
-                <template v-else-if="embeddingConfig.embedding_cloud_provider === 'openrouter'">
-                  Get from <a href="https://openrouter.ai/keys" target="_blank" class="text-blue-400 hover:underline">openrouter.ai</a>
-                </template>
-                <template v-else-if="embeddingConfig.embedding_cloud_provider === 'cohere'">
-                  Get from <a href="https://dashboard.cohere.com/api-keys" target="_blank" class="text-blue-400 hover:underline">cohere.com</a>
-                </template>
-              </p>
-            </div>
-
-            <div v-if="embeddingConfig.embedding_cloud_provider">
-              <label class="block text-sm font-medium text-gray-300 mb-1">Model</label>
-              <select 
-                v-model="embeddingConfig.embedding_cloud_model"
-                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-              >
-                <option value="">Default for provider</option>
-                <!-- OpenAI -->
-                <template v-if="embeddingConfig.embedding_cloud_provider === 'openai'">
-                  <option value="text-embedding-3-small">⭐ text-embedding-3-small (1536d) - Best Value</option>
-                  <option value="text-embedding-3-large">text-embedding-3-large (3072d) - Highest Quality</option>
-                  <option value="text-embedding-ada-002">text-embedding-ada-002 (1536d) - Legacy</option>
-                </template>
-                <!-- Gemini -->
-                <template v-else-if="embeddingConfig.embedding_cloud_provider === 'gemini'">
-                  <option value="text-embedding-004">⭐ text-embedding-004 (768d) - Latest</option>
-                  <option value="embedding-001">embedding-001 (768d)</option>
-                </template>
-                <!-- Voyage -->
-                <template v-else-if="embeddingConfig.embedding_cloud_provider === 'voyage'">
-                  <option value="voyage-2">⭐ voyage-2 (1024d) - General Purpose</option>
-                  <option value="voyage-large-2">voyage-large-2 (1536d) - High Quality</option>
-                  <option value="voyage-code-2">voyage-code-2 (1536d) - Code Optimized</option>
-                </template>
-                <!-- OpenRouter -->
-                <template v-else-if="embeddingConfig.embedding_cloud_provider === 'openrouter'">
-                  <option value="openai/text-embedding-3-small">⭐ OpenAI text-embedding-3-small</option>
-                  <option value="openai/text-embedding-3-large">OpenAI text-embedding-3-large</option>
-                </template>
-                <!-- Cohere -->
-                <template v-else-if="embeddingConfig.embedding_cloud_provider === 'cohere'">
-                  <option value="embed-english-v3.0">⭐ embed-english-v3.0 (1024d)</option>
-                  <option value="embed-multilingual-v3.0">embed-multilingual-v3.0 (1024d)</option>
-                  <option value="embed-english-light-v3.0">embed-english-light-v3.0 (384d) - Fast</option>
-                </template>
-              </select>
-            </div>
-
-            <div class="flex items-center gap-4" v-if="embeddingConfig.embedding_cloud_provider">
-              <Button variant="secondary" size="sm" @click="testEmbeddingProvider" :disabled="testingEmbedding">
-                <span v-if="testingEmbedding">Testing...</span>
-                <span v-else>🔌 Test Connection</span>
-              </Button>
-              <span v-if="embeddingTestResult" :class="embeddingTestResult.success ? 'text-green-400' : 'text-red-400'" class="text-sm">
-                {{ embeddingTestResult.success ? `✓ Connected (${embeddingTestResult.dimensions}d)` : embeddingTestResult.error }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Legacy embedding provider for 'same' mode -->
-          <div v-if="embeddingConfig.embedding_provider_mode === 'same'" class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Embedding Provider</label>
-              <select 
-                v-model="config.embedding_provider"
-                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-              >
-                <option value="auto">Auto (use primary AI provider)</option>
-                <option value="ollama">Ollama (Local, Free)</option>
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Google Gemini</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Embedding Model</label>
-              <select 
-                v-model="config.embedding_model"
-                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-              >
-                <option value="">Default for provider</option>
-                <!-- Ollama models -->
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="nomic-embed-text">⭐ nomic-embed-text (768d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="mxbai-embed-large">⭐ mxbai-embed-large (1024d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'ollama'" value="nomic-embed-text-v2-moe">nomic-embed-text-v2-moe (768d)</option>
-                <!-- OpenAI models -->
-                <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-3-small">⭐ text-embedding-3-small (1536d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'openai'" value="text-embedding-3-large">text-embedding-3-large (3072d)</option>
-                <!-- Gemini models -->
-                <option v-if="effectiveEmbeddingProvider === 'gemini'" value="text-embedding-005">⭐ text-embedding-005 (768d)</option>
-                <option v-if="effectiveEmbeddingProvider === 'gemini'" value="text-embedding-004">text-embedding-004 (768d)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
         <!-- Advanced Settings -->
         <div v-if="config.primary_provider !== 'none'" class="space-y-4">
           <button 
@@ -405,90 +213,6 @@
                 />
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </Card>
-
-    <!-- RAG (Semantic Search) Settings -->
-    <Card v-if="config.primary_provider !== 'none'" title="🔍 Semantic Search (RAG)">
-      <div class="space-y-4">
-        <!-- Enable Toggle -->
-        <div class="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
-          <div>
-            <div class="font-medium text-gray-200">Enable Semantic Search</div>
-            <div class="text-sm text-gray-400">Learn from past classifications to improve future suggestions</div>
-          </div>
-          <Toggle v-model="config.rag_enabled" />
-        </div>
-
-        <div v-if="config.rag_enabled" class="space-y-4">
-          <!-- Thresholds -->
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Similarity Threshold</label>
-              <div class="flex items-center gap-2">
-                <input 
-                  v-model.number="config.rag_similarity_threshold"
-                  type="range"
-                  min="0.5"
-                  max="0.95"
-                  step="0.05"
-                  class="flex-1"
-                />
-                <span class="text-white w-12 text-right">{{ (config.rag_similarity_threshold * 100).toFixed(0) }}%</span>
-              </div>
-              <p class="text-xs text-gray-500 mt-1">Minimum similarity to consider a match</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Min History Count</label>
-              <input 
-                v-model.number="config.rag_min_history_count"
-                type="number"
-                min="10"
-                max="500"
-                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white"
-              />
-              <p class="text-xs text-gray-500 mt-1">RAG activates after this many classifications</p>
-            </div>
-          </div>
-
-          <!-- Backfill Budget (Cloud only) -->
-          <div v-if="effectiveEmbeddingProvider !== 'ollama'" class="p-4 bg-gray-800/50 rounded-lg">
-            <div class="font-medium text-gray-200 mb-3">Backfill Budget</div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm text-gray-400 mb-1">Budget Type</label>
-                <select 
-                  v-model="config.rag_backfill_budget_type"
-                  class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-                >
-                  <option value="percentage">% of daily AI budget</option>
-                  <option value="fixed">Fixed $ amount</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm text-gray-400 mb-1">
-                  {{ config.rag_backfill_budget_type === 'percentage' ? 'Percentage' : 'Amount ($)' }}
-                </label>
-                <input 
-                  v-model.number="config.rag_backfill_budget_value"
-                  type="number"
-                  :min="config.rag_backfill_budget_type === 'percentage' ? 1 : 0.01"
-                  :max="config.rag_backfill_budget_type === 'percentage' ? 100 : 10"
-                  :step="config.rag_backfill_budget_type === 'percentage' ? 5 : 0.1"
-                  class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
-                />
-              </div>
-            </div>
-            <p class="text-xs text-gray-500 mt-2">Budget for embedding existing classifications in the background</p>
-          </div>
-
-          <!-- RAG Status -->
-          <div v-if="ragStats" class="flex items-center gap-4 text-sm text-gray-400">
-            <span>📊 {{ ragStats.total }} embeddings</span>
-            <span v-if="ragStats.stale > 0" class="text-yellow-400">⚠️ {{ ragStats.stale }} stale</span>
-            <span v-if="ragStats.pendingRetries > 0" class="text-orange-400">🔄 {{ ragStats.pendingRetries }} pending retry</span>
           </div>
         </div>
       </div>
@@ -709,9 +433,6 @@
       </div>
     </Card>
 
-    <!-- Backfill Settings -->
-    <BackfillSettings />
-
     <!-- Save Button -->
     <div class="flex justify-end">
       <Button @click="saveConfig" :disabled="saving">
@@ -729,7 +450,6 @@ import Button from '@/components/common/Button.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
-import BackfillSettings from '@/components/settings/BackfillSettings.vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 
@@ -738,13 +458,11 @@ const loading = ref(true)
 const saving = ref(false)
 const testing = ref(false)
 const testingOllama = ref(false)
-const testingEmbedding = ref(false)
 const loadingModels = ref(false)
 const loadingOllamaModels = ref(false)
 const showAdvanced = ref(false)
 const testResult = ref(null)
 const ollamaTestResult = ref(null)
-const embeddingTestResult = ref(null)
 const availableModels = ref([])
 const ollamaModels = ref([])
 const usageStats = ref(null)
@@ -769,22 +487,10 @@ const config = ref({
   // RAG settings
   rag_enabled: false,
   embedding_provider: 'auto',
-  embedding_model: '',
   rag_similarity_threshold: 0.70,
   rag_min_history_count: 50,
   rag_backfill_budget_type: 'percentage',
   rag_backfill_budget_value: 25
-})
-
-// Separate embedding provider configuration
-const embeddingConfig = ref({
-  embedding_provider_mode: 'same',
-  embedding_ollama_host: '',
-  embedding_ollama_port: 11434,
-  embedding_ollama_model: 'nomic-embed-text',
-  embedding_cloud_provider: '',
-  embedding_cloud_api_key: '',
-  embedding_cloud_model: ''
 })
 
 // API providers are cloud-based services that charge per API call
@@ -796,14 +502,6 @@ const isApiProvider = computed(() => {
 const budgetPercentUsed = computed(() => {
   if (!config.value.monthly_budget_usd) return 0
   return Math.round((config.value.current_month_usage_usd / config.value.monthly_budget_usd) * 100)
-})
-
-// Effective embedding provider (auto = same as primary)
-const effectiveEmbeddingProvider = computed(() => {
-  if (config.value.embedding_provider === 'auto') {
-    return config.value.primary_provider
-  }
-  return config.value.embedding_provider
 })
 
 // RAG statistics
@@ -853,15 +551,11 @@ const parseOllamaHost = (hostValue) => {
 
 onMounted(async () => {
   try {
-    const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse, embeddingConfigResponse] = await Promise.all([
+    const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse] = await Promise.all([
       api.getAIConfig(),
       api.getAIUsage().catch(() => null),
       api.getPatternConfig().catch(() => null),
-      api.getCostSummary().catch(() => null),
-      api.get('/settings/embedding-provider').catch(err => {
-        console.warn('Failed to load embedding provider config:', err)
-        return null
-      })
+      api.getCostSummary().catch(() => null)
     ])
     
     if (configResponse.data) {
@@ -886,11 +580,6 @@ onMounted(async () => {
       if (loadedConfig.model && cloudProviders.includes(loadedConfig.primary_provider)) {
         availableModels.value = [{ id: loadedConfig.model, name: loadedConfig.model }]
       }
-    }
-    
-    // Load embedding provider config
-    if (embeddingConfigResponse?.data) {
-      embeddingConfig.value = { ...embeddingConfig.value, ...embeddingConfigResponse.data }
     }
     
     if (usageResponse?.data) {
@@ -1015,38 +704,13 @@ const saveConfig = async () => {
   try {
     await Promise.all([
       api.updateAIConfig(config.value),
-      api.updatePatternConfig(patternConfig.value),
-      api.put('/settings/embedding-provider', embeddingConfig.value)
+      api.updatePatternConfig(patternConfig.value)
     ])
     toast.success('AI configuration saved!')
   } catch (error) {
     toast.error('Failed to save configuration')
   } finally {
     saving.value = false
-  }
-}
-
-const testEmbeddingProvider = async () => {
-  testingEmbedding.value = true
-  embeddingTestResult.value = null
-  try {
-    // First save the config
-    await api.put('/settings/embedding-provider', embeddingConfig.value)
-    
-    // Then test the connection
-    const response = await api.post('/settings/embedding-provider/test')
-    embeddingTestResult.value = response.data
-    
-    if (response.data.success) {
-      toast.success('Embedding provider connection successful!')
-    } else {
-      toast.error('Embedding provider test failed')
-    }
-  } catch (error) {
-    embeddingTestResult.value = { success: false, error: error.message }
-    toast.error('Failed to test embedding provider')
-  } finally {
-    testingEmbedding.value = false
   }
 }
 
