@@ -71,19 +71,15 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
 import OverviewTab from './rag/OverviewTab.vue'
-import ProviderTab from './rag/ProviderTab.vue'
-import QueueTab from './rag/QueueTab.vue'
+import BackfillTab from './rag/BackfillTab.vue'
 import AdvancedTab from './rag/AdvancedTab.vue'
-import MonitoringTab from './rag/MonitoringTab.vue'
 
 const activeTab = ref('overview')
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: '📊', component: OverviewTab },
-  { id: 'provider', label: 'Provider', icon: '🔌', component: ProviderTab },
-  { id: 'queue', label: 'Queue/Scheduling', icon: '⏱️', component: QueueTab },
-  { id: 'advanced', label: 'Advanced', icon: '⚙️', component: AdvancedTab },
-  { id: 'monitoring', label: 'Monitoring', icon: '📈', component: MonitoringTab }
+  { id: 'backfill', label: 'Backfill', icon: '⏱️', component: BackfillTab },
+  { id: 'advanced', label: 'Advanced', icon: '⚙️', component: AdvancedTab }
 ]
 
 const currentTabComponent = computed(() => {

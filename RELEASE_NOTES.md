@@ -5,6 +5,39 @@
 
 ### New Features
 
+#### RAG & Embeddings Settings Consolidation 🧹
+
+Cleaner settings navigation with consolidated RAG & Embeddings configuration (#154).
+
+**Settings Organization:**
+- **RAG settings moved under Classification**: No more separate section, easier to find
+- **Independent sidebar scroll**: Navigate settings without scrolling the entire page
+- **3 focused tabs** in RAG settings:
+  - **Overview**: Provider configuration, connection testing, status at a glance
+  - **Backfill**: Real-time mode, idle/scheduled backfill, manual controls, heartbeat settings
+  - **Advanced**: Retry configuration, caching, debug options, danger zone
+
+**Statistics Improvements:**
+- **Tabbed interface**: Classification stats and RAG metrics in separate tabs
+- **RAG Statistics tab** includes:
+  - Circuit breaker status with reset button
+  - Request metrics (total, success, failed, retries, avg latency)
+  - Model warmup status and trigger
+  - Error history, retry history, backfill history tables
+  - Export options (config, logs, metrics)
+
+**Simplified Configuration:**
+- Removed duplicate embedding provider settings from AI panel
+- Single location for all RAG & embedding configuration
+- Heartbeat settings integrated into RAG → Backfill tab
+- All functionality preserved - nothing lost in the reorganization
+
+**Benefits:**
+- **Faster navigation**: Less scrolling, clearer structure
+- **No duplication**: Single source of truth for RAG settings
+- **Better organization**: Related settings grouped logically
+- **Improved monitoring**: Comprehensive RAG metrics in Statistics page
+
 #### Robust Error Handling with Adaptive Timeouts & Retry Logic 🛡️
 
 Embedding API calls now include enterprise-grade error handling to improve system stability and resilience (#153).
