@@ -68,6 +68,7 @@ describe('EmbeddingProvider', () => {
         it('should use classification Ollama when mode is same', async () => {
             const mockConfig = {
                 embedding_provider_mode: 'same',
+                primary_provider: 'ollama',
                 ollama_host: 'localhost',
                 ollama_port: 11434,
                 embedding_model: 'nomic-embed-text-v2-moe'
@@ -296,6 +297,7 @@ describe('EmbeddingProvider', () => {
         it('should test connection successfully', async () => {
             const mockConfig = {
                 embedding_provider_mode: 'same',
+                primary_provider: 'ollama',
                 ollama_host: 'localhost',
                 ollama_port: 11434,
                 embedding_model: 'nomic-embed-text-v2-moe'
