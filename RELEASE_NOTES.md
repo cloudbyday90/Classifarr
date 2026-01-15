@@ -1,5 +1,13 @@
 # Classifarr Release Notes
 
+## v0.39.2a-alpha
+**Hotfix: Sidebar Version Display**
+
+### Fixes
+- Updated sidebar version display to show correct version (was showing v0.38.4-alpha)
+
+---
+
 ## v0.39.2-alpha
 **Critical Bug Fixes: Settings Preservation + RAG Status Accuracy**
 

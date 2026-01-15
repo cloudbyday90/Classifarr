@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (No unreleased changes)
 
+## [0.39.2a-alpha] - 2026-01-15
+
+### Fixed
+- Sidebar version display now shows correct version (was stuck on v0.38.4-alpha)
+
+## [0.39.2-alpha] - 2026-01-15
+
+### Fixed
+- **Settings Preservation**: PUT `/settings/ai` now uses nullish coalescing to preserve existing values when fields are undefined - fixes bug where saving RAG config would reset AI provider to 'none'
+- **Accurate RAG Status**: Provider status now correctly shows "Offline" when AI provider is not configured in "Same as Classification" mode
+- **Backfill RAG Check**: Idle, Scheduled, and Manual backfill services now verify `rag_enabled` before attempting embedding generation
+
 ## [0.39.0-alpha] - 2026-01-14
 
 ### Added
