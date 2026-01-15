@@ -276,9 +276,16 @@ class EmbeddingService {
                 try {
                     // Truncate and alter table to match new dimension
                     // We must truncate because existing vectors are incompatible
+                    // Strategy: Drop and recreate column to avoid pgvector casting issues
                     await db.query('BEGIN');
                     await db.query('TRUNCATE TABLE classification_embeddings');
-                    await db.query(`ALTER TABLE classification_embeddings ALTER COLUMN embedding TYPE vector(${targetDims})`);
+                    await db.query('ALTER TABLE classification_embeddings DROP COLUMN embedding');
+                    await db.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`);
+
+                    // Re-create the index if needed (though dropping column usually drops index)
+                    // We'll create a basic IVFFLAT index for now if rows > 0, but since we truncated, 
+                    // we don't need to index immediately. The migration logic handles index creation usually.
+
                     await db.query('COMMIT');
 
                     logger.info(`Schema auto-healed to vector(${targetDims}). Retrying storage...`);
