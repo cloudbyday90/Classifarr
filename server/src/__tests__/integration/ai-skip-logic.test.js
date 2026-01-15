@@ -78,10 +78,11 @@ describe('AI Skip Logic Integration Tests (v0.37.0)', () => {
                 trust_rag,
                 trust_history,
                 preset_weight,
+                profile_weight,
                 pattern_weight,
                 rag_weight,
                 history_weight
-            ) VALUES ($1, 'Test AI Skip Policy', true, 85, 60, false, false, false, 1.0, 0.0, 0.0, 0.0)
+            ) VALUES ($1, 'Test AI Skip Policy', true, 85, 60, false, false, false, 1.0, 0.0, 0.0, 0.0, 0.0)
             RETURNING id
         `, [testLibraryId]);
         testPolicyId = policyRes.rows[0].id;

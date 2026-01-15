@@ -4,23 +4,18 @@
  */
 
 const request = require('supertest');
-const { getTestDatabase } = require('./test-db');
+// Import database module - note: this is replaced by testcontainers setup in beforeAll
+// Each integration test suite gets an isolated PostgreSQL instance via setup.js
+const db = require('../../config/database');
 
 describe('Rating Normalization API', () => {
-  let db;
   let app;
 
   beforeAll(async () => {
-    db = await getTestDatabase();
-    
     // Create minimal express app for testing
     const express = require('express');
     app = express();
     app.use(express.json());
-    
-    // Mock database for routes
-    const originalDb = require('../../config/database');
-    jest.spyOn(originalDb, 'query').mockImplementation((...args) => db.query(...args));
     
     const ratingNormalizationRouter = require('../../routes/ratingNormalization');
     app.use('/api/rating-normalization', ratingNormalizationRouter);
@@ -34,11 +29,7 @@ describe('Rating Normalization API', () => {
     await db.query('DELETE FROM media_server');
   });
 
-  afterAll(async () => {
-    if (db) {
-      await db.end();
-    }
-  });
+  // No afterAll cleanup needed - db is managed by integration test setup
 
   describe('GET /api/rating-normalization/stats', () => {
     test('returns correct counts when no items exist', async () => {
@@ -57,7 +48,7 @@ describe('Rating Normalization API', () => {
     test('counts items needing normalization (age-based ratings)', async () => {
       // Create test media server and library
       const serverResult = await db.query(`
-        INSERT INTO media_server (name, server_type, url, token)
+        INSERT INTO media_server (name, type, url, api_key)
         VALUES ('Test Server', 'plex', 'http://localhost', 'token')
         RETURNING id
       `);
@@ -89,7 +80,7 @@ describe('Rating Normalization API', () => {
 
     test('counts items needing normalization (non-standard ratings)', async () => {
       const serverResult = await db.query(`
-        INSERT INTO media_server (name, server_type, url, token)
+        INSERT INTO media_server (name, type, url, api_key)
         VALUES ('Test Server', 'plex', 'http://localhost', 'token')
         RETURNING id
       `);
@@ -138,7 +129,7 @@ describe('Rating Normalization API', () => {
   describe('POST /api/rating-normalization/backfill', () => {
     test('queues items needing normalization', async () => {
       const serverResult = await db.query(`
-        INSERT INTO media_server (name, server_type, url, token)
+        INSERT INTO media_server (name, type, url, api_key)
         VALUES ('Test Server', 'plex', 'http://localhost', 'token')
         RETURNING id
       `);

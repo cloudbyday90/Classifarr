@@ -591,15 +591,16 @@ describe('PolicyEngine Integration Tests', () => {
 
                 const evaluation = await policyEngine.evaluatePolicy(defaultPolicy, item);
 
-                // Verify default weights are applied correctly
-                expect(evaluation.weights.preset).toBe(0.40);
-                expect(evaluation.weights.pattern).toBe(0.25);
-                expect(evaluation.weights.rag).toBe(0.20);
-                expect(evaluation.weights.history).toBe(0.15);
+                // Verify default weights are applied correctly (includes profile_weight)
+                expect(evaluation.weights.preset).toBe(0.35);
+                expect(evaluation.weights.profile).toBe(0.25);
+                expect(evaluation.weights.pattern).toBe(0.15);
+                expect(evaluation.weights.rag).toBe(0.15);
+                expect(evaluation.weights.history).toBe(0.10);
 
                 // Verify weights sum to 1.0
-                const weightSum = evaluation.weights.preset + evaluation.weights.pattern +
-                    evaluation.weights.rag + evaluation.weights.history;
+                const weightSum = evaluation.weights.preset + evaluation.weights.profile +
+                    evaluation.weights.pattern + evaluation.weights.rag + evaluation.weights.history;
                 expect(weightSum).toBeCloseTo(1.0, 5);
             } finally {
                 // Cleanup
@@ -705,6 +706,14 @@ describe('PolicyEngine Integration Tests', () => {
         });
 
         test('Formula-based scores should never exceed 95%', async () => {
+            // Create a dedicated library for this test
+            const libRes = await db.query(`
+                INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)
+                VALUES ($1, 'test-high-score-lib-' || gen_random_uuid()::text, 'High Score Test Library', 'movie', true)
+                RETURNING id
+            `, [testMediaServerId]);
+            const highScoreLibId = libRes.rows[0].id;
+
             // Create multiple high-scoring presets
             const highPresetRes = await db.query(`
                 INSERT INTO content_presets (key, name, signals, is_system)
@@ -728,7 +737,7 @@ describe('PolicyEngine Integration Tests', () => {
                 )
                 VALUES ($1, 'High Score Policy', true, 85, 60)
                 RETURNING id
-            `, [testLibraryId]);
+            `, [highScoreLibId]);
             const highPolicyId = highPolicyRes.rows[0].id;
 
             await db.query(`
@@ -755,6 +764,7 @@ describe('PolicyEngine Integration Tests', () => {
                 await db.query('DELETE FROM policy_presets WHERE policy_id = $1', [highPolicyId]);
                 await db.query('DELETE FROM library_policies WHERE id = $1', [highPolicyId]);
                 await db.query('DELETE FROM content_presets WHERE id = $1', [highPresetId]);
+                await db.query('DELETE FROM libraries WHERE id = $1', [highScoreLibId]);
             }
         });
     });
