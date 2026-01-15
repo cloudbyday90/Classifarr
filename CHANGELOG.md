@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (No unreleased changes)
 
+## [0.39.2c-alpha] - 2026-01-15
+
+### Fixed
+- **Database Auto-Healing**: Added logic to automatically detecting dimension mismatches (e.g., "expected 2000, not 768") and resize the vector column on the fly.
+- Increased embedding generation timeout to 5 minutes.
+
 ## [0.39.2b-alpha] - 2026-01-15
 
 ### Fixed

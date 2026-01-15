@@ -196,19 +196,19 @@ class EmbeddingRouter {
 
         // Check if using new embedding provider mode
         const mode = config?.embedding_provider_mode || 'same';
-        
+
         if (mode !== 'same') {
             // Use new embeddingProvider service for separate_ollama and cloud modes
             try {
                 const result = await embeddingProvider.getEmbedding(text);
-                
+
                 // Success - reset circuit breaker
                 this.resetCircuit();
-                
+
                 return result;
             } catch (error) {
                 this.recordFailure();
-                
+
                 logger.warn('Embedding provider failed, trying fallback', {
                     mode,
                     error: error.message
@@ -265,8 +265,8 @@ class EmbeddingRouter {
 
             return {
                 ...result,
-                provider,
-                model
+                provider: result.provider || provider || 'ollama',
+                model: result.model || model
             };
 
         } catch (error) {
@@ -304,6 +304,8 @@ class EmbeddingRouter {
         return {
             embedding: result.embedding,
             dims: result.dims,
+            provider: 'ollama',
+            model: model,
             cost: 0 // Local is free
         };
     }

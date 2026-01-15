@@ -1,5 +1,14 @@
 # Classifarr Release Notes
 
+## v0.39.2c-alpha
+**Fix: Database Auto-Healing & Timeouts**
+
+### Fixes
+- **Auto-Healing Database**: Automatically detects and fixes vector dimension mismatches. Switching embedding models (e.g., 768d → 1024d) now automatically resizes the database column without manual SQL.
+- **Improved Timeouts**: Increased embedding generation timeout to 5 minutes to prevent failures during initial model pulling.
+
+---
+
 ## v0.39.2b-alpha
 **Fix: RAG Auto-Enable on Configuration Save**
 

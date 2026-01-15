@@ -225,7 +225,7 @@ class OllamaService {
         model,
         input: text,
       }, {
-        timeout: 60000, // 1 minute timeout for embeddings
+        timeout: 300000, // 5 minute timeout for embeddings (allows for model pulling)
       });
 
       // New /api/embed endpoint returns embeddings array (for batch support)

@@ -17,8 +17,40 @@ const embeddingMigrationService = require('../services/embeddingMigrationService
 const patternMiningService = require('../services/patternMiningService');
 const ragLogger = require('../utils/ragLogger');
 const { createLogger } = require('../utils/logger');
+const ollamaService = require('../services/ollama');
 
 const logger = createLogger('RAG API');
+
+/**
+ * POST /api/rag/test-connection
+ * Test connection to embedding provider with supplied config
+ */
+router.post('/test-connection', async (req, res) => {
+    try {
+        const { mode, host, port, model } = req.body;
+        const start = Date.now();
+
+        if (mode === 'same' || mode === 'separate_ollama') {
+            const ollamaHost = host || 'localhost';
+            const ollamaPort = port || 11434;
+
+            await ollamaService.testConnection(ollamaHost, ollamaPort);
+        } else if (mode === 'cloud') {
+            // For cloud, we simply ack for now as validation happens during generating
+            // Could be improved to test API key validity
+        }
+
+        res.json({
+            success: true,
+            latency: Date.now() - start
+        });
+    } catch (error) {
+        res.json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 /**
  * GET /api/rag/status

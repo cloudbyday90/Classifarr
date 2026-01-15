@@ -30,17 +30,17 @@ class EmbeddingService {
      */
     safeGet(obj, path, defaultValue = null) {
         if (!obj) return defaultValue;
-        
+
         const keys = path.split('.');
         let result = obj;
-        
+
         for (const key of keys) {
             if (result === null || result === undefined || typeof result !== 'object') {
                 return defaultValue;
             }
             result = result[key];
         }
-        
+
         return result !== undefined ? result : defaultValue;
     }
 
@@ -54,7 +54,7 @@ class EmbeddingService {
         if (!Array.isArray(items) || items.length === 0) {
             return [];
         }
-        
+
         return items
             .slice(0, limit)
             .map(item => {
@@ -100,8 +100,8 @@ class EmbeddingService {
         }
 
         // Certification/Rating
-        const certification = this.safeGet(metadata, 'certification') || 
-                             this.safeGet(metadata, 'content_rating');
+        const certification = this.safeGet(metadata, 'certification') ||
+            this.safeGet(metadata, 'content_rating');
         if (certification) {
             parts.push(`Rating: ${certification}`);
         }
@@ -123,8 +123,8 @@ class EmbeddingService {
         // Franchise/Collection
         const collection = this.safeGet(metadata, 'belongs_to_collection');
         if (collection) {
-            const franchiseName = typeof collection === 'object' 
-                ? collection.name 
+            const franchiseName = typeof collection === 'object'
+                ? collection.name
                 : collection;
             if (franchiseName) {
                 parts.push(`Franchise: ${franchiseName}`);
@@ -161,7 +161,7 @@ class EmbeddingService {
 
         // Overview (truncated to 300 chars)
         if (metadata.overview) {
-            const truncatedOverview = metadata.overview.length > 300 
+            const truncatedOverview = metadata.overview.length > 300
                 ? metadata.overview.slice(0, 300) + '...'
                 : metadata.overview;
             parts.push(`Synopsis: ${truncatedOverview}`);
@@ -178,7 +178,7 @@ class EmbeddingService {
         try {
             const config = await embeddingRouter.getConfig();
             const configVersion = config?.embedding_format_version || 1;
-            
+
             return configVersion !== this.EMBEDDING_FORMAT_VERSION;
         } catch (error) {
             logger.warn('Failed to check embedding version mismatch', { error: error.message });
@@ -263,6 +263,54 @@ class EmbeddingService {
                 provider: embeddingResult.provider
             };
         } catch (error) {
+            // Check for dimension mismatch (pgvector error)
+            // Error can look like: "expected 768 dimensions, not 1536" OR "different vector dimensions 768 and 1024"
+            const isDimensionMismatch =
+                (error.message.includes('expected') && error.message.includes('dimensions')) ||
+                (error.message.includes('different') && error.message.includes('vector') && error.message.includes('dimensions'));
+
+            if (isDimensionMismatch) {
+                const targetDims = embeddingResult.dims;
+                logger.warn(`Dimension mismatch detected (Target: ${targetDims}). Auto-healing database schema...`);
+
+                try {
+                    // Truncate and alter table to match new dimension
+                    // We must truncate because existing vectors are incompatible
+                    await db.query('BEGIN');
+                    await db.query('TRUNCATE TABLE classification_embeddings');
+                    await db.query(`ALTER TABLE classification_embeddings ALTER COLUMN embedding TYPE vector(${targetDims})`);
+                    await db.query('COMMIT');
+
+                    logger.info(`Schema auto-healed to vector(${targetDims}). Retrying storage...`);
+
+                    // Retry storage once
+                    const vectorString = `[${embeddingResult.embedding.join(',')}]`;
+                    const retryResult = await db.query(`
+                        INSERT INTO classification_embeddings 
+                        (classification_id, embedding, embedding_dims, provider, model)
+                        VALUES ($1, $2::vector, $3, $4, $5)
+                        RETURNING id
+                    `, [
+                        classificationId,
+                        vectorString,
+                        embeddingResult.dims,
+                        embeddingResult.provider,
+                        embeddingResult.model
+                    ]);
+
+                    return {
+                        id: retryResult.rows[0].id,
+                        dims: embeddingResult.dims,
+                        provider: embeddingResult.provider
+                    };
+
+                } catch (healingError) {
+                    await db.query('ROLLBACK');
+                    logger.error('Failed to auto-heal database schema', { error: healingError.message });
+                    throw error; // Throw original error if healing fails
+                }
+            }
+
             logger.error('Failed to store embedding', { error: error.message });
             throw error;
         }

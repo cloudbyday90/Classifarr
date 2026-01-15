@@ -234,14 +234,21 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/api'
+import { CheckCircleIcon, XCircleIcon, CpuChipIcon, ServerStackIcon, ClockIcon } from '@heroicons/vue/24/outline'
+import { useToast } from '@/stores/toast'
+
+const props = defineProps(['provider'])
+const toast = useToast()
 
 const loading = ref(true)
-const providerOnline = ref(false)
 const stats = ref({
+  providerStatus: 'unknown',
   totalEmbeddings: 0,
-  pendingCount: 0,
-  failedCount: 0,
-  avgGenerationTime: 0,
+  pendingEmbeddings: 0,
+  failed24h: 0,
+  providerOnline: false,
+  heartbeatActive: false,
+  queueSize: 0,
   lastEmbeddingTime: null
 })
 const config = ref({
@@ -264,14 +271,14 @@ const recommendedModels = ref([
   { name: 'nomic-embed-text', description: '⭐ Recommended - 768 dims, fast' },
   { name: 'nomic-embed-text-v1.5', description: '768 dims, improved quality' },
   { name: 'mxbai-embed-large', description: 'State-of-art - 1024 dims' },
-  { name: 'snowflake-arctic-embed2', description: 'Multilingual - 1024 dims' },
-  { name: 'bge-m3', description: '100+ languages - 1024 dims' },
-  { name: 'bge-large', description: 'BAAI - 1024 dims' },
-  { name: 'all-minilm', description: 'Fastest - 384 dims, low resources' },
+  { name: 'snowflake-arctic-embed2', description: 'Enterprise grade - 1024 dims' },
+  { name: 'bge-m3', description: 'Multilingual - 1024 dims' },
+  { name: 'bge-large', description: 'High precision - 1024 dims' },
+  { name: 'all-minilm', description: 'Very fast - 384 dims' },
   { name: 'paraphrase-multilingual', description: 'Multilingual - 768 dims' }
 ])
 
-const loadOverview = async () => {
+const loadStats = async () => {
   try {
     loading.value = true
     
@@ -279,12 +286,12 @@ const loadOverview = async () => {
     const handleApiError = () => ({ data: {} })
     
     const [overviewRes, configRes] = await Promise.all([
-      api.get('/rag/overview').catch(handleApiError),
+      api.get('/rag/status').catch(handleApiError),
       api.get('/settings/ai').catch(handleApiError)
     ])
     
     // Safely extract with defaults
-    providerOnline.value = overviewRes.data?.providerOnline ?? false
+    // providerOnline.value = overviewRes.data?.providerOnline ?? false // This line is removed as providerOnline is now part of stats
     
     // Merge with defaults instead of replacing
     stats.value = {
@@ -318,24 +325,40 @@ const loadOverview = async () => {
   }
 }
 
+const loadActivity = async () => {
+  try {
+    const res = await api.get('/rag/activity')
+    recentActivity.value = res.data
+  } catch (error) {
+    console.error('Failed to load activity:', error)
+  }
+}
+
 const testConnection = async () => {
   testing.value = true
   testResult.value = null
   
   try {
-    const response = await api.post('/rag/test', {
-      text: 'Test embedding for Classifarr'
+    const response = await api.post('/rag/test-connection', {
+      mode: config.value.mode,
+      host: config.value.ollama_host,
+      port: config.value.ollama_port,
+      model: config.value.mode === 'same' ? config.value.embedding_model : config.value.ollama_model
     })
     
-    testResult.value = {
-      success: true,
-      dims: response.data.dims || 'unknown'
+    if (response.data.success) {
+      testResult.value = { success: true, message: `Connected successfully (${response.data.latency}ms)` }
+      toast.success(`Connected successfully (${response.data.latency}ms)`)
+    } else {
+      testResult.value = { success: false, message: response.data.error || 'Connection failed' }
+      toast.error(response.data.error || 'Connection failed')
     }
   } catch (error) {
     testResult.value = {
       success: false,
       error: error.response?.data?.error || error.message
     }
+    toast.error(error.response?.data?.error || error.message)
   } finally {
     testing.value = false
   }
@@ -356,8 +379,14 @@ const saveConfig = async () => {
       embedding_cloud_api_key: config.value.cloud_api_key,
       embedding_cloud_model: config.value.cloud_model
     })
+    toast.success('RAG configuration saved successfully')
+    
+    // Refresh stats to check provider status
+    setTimeout(loadStats, 1000)
+    
   } catch (error) {
     console.error('Failed to save config:', error)
+    toast.error(error.response?.data?.error || 'Failed to save configuration')
   } finally {
     saving.value = false
   }

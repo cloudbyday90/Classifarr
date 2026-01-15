@@ -425,9 +425,14 @@ class EmbeddingProvider {
             this.metrics.totalRequests++;
             this.metrics.failedRequests++;
             this.metrics.totalLatency += latency;
-            this.circuitBreaker.recordFailure(error);
-
             const retryable = isRetryableError(error);
+
+            // Only trip circuit breaker for retryable (transient) errors or server errors (5xx)
+            // Don't trip for client errors (4xx) or configuration issues to avoid false 'Offline' status
+            if (retryable || (error.response?.status >= 500)) {
+                this.circuitBreaker.recordFailure(error);
+            }
+
             this.recordError(error, latency, retryable);
 
             logger.error('Failed to generate embedding', {
