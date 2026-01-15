@@ -354,7 +354,7 @@ const testConnection = async () => {
       }
       toast.success(`Connected successfully (${response.data.dims} dimensions, ${response.data.latency}ms)`)
     } else {
-      testResult.value = { success: false, message: response.data.error || 'Connection failed' }
+      testResult.value = { success: false, error: response.data.error || 'Connection failed' }
       toast.error(response.data.error || 'Connection failed')
     }
   } catch (error) {
