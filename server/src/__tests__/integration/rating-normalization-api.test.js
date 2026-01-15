@@ -4,23 +4,16 @@
  */
 
 const request = require('supertest');
-const { getTestDatabase } = require('./test-db');
+const db = require('../../config/database');
 
 describe('Rating Normalization API', () => {
-  let db;
   let app;
 
   beforeAll(async () => {
-    db = await getTestDatabase();
-    
     // Create minimal express app for testing
     const express = require('express');
     app = express();
     app.use(express.json());
-    
-    // Mock database for routes
-    const originalDb = require('../../config/database');
-    jest.spyOn(originalDb, 'query').mockImplementation((...args) => db.query(...args));
     
     const ratingNormalizationRouter = require('../../routes/ratingNormalization');
     app.use('/api/rating-normalization', ratingNormalizationRouter);

@@ -223,8 +223,8 @@ describe('Event Detection Migration Tests (v0.37.0)', () => {
                     library_id, name, enabled,
                     auto_classify_threshold, prompt_threshold,
                     trust_patterns, trust_rag, trust_history,
-                    preset_weight, pattern_weight, rag_weight, history_weight
-                ) VALUES ($1, 'Holiday Policy', true, 75, 60, false, false, false, 1.0, 0.0, 0.0, 0.0)
+                    preset_weight, profile_weight, pattern_weight, rag_weight, history_weight
+                ) VALUES ($1, 'Holiday Policy', true, 75, 60, false, false, false, 1.0, 0.0, 0.0, 0.0, 0.0)
                 RETURNING id
             `, [testLibraryId]);
             testPolicyId = policyRes.rows[0].id;
