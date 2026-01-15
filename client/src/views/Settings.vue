@@ -9,7 +9,7 @@
 <template>
   <div class="flex gap-6 min-h-[calc(100vh-200px)]">
     <!-- Sidebar Navigation -->
-    <nav class="w-56 flex-shrink-0">
+    <nav class="w-56 flex-shrink-0 max-h-[calc(100vh-120px)] overflow-y-auto">
       <div class="sticky top-4 space-y-6">
         <h1 class="text-2xl font-bold px-3">Settings</h1>
         
@@ -77,7 +77,7 @@ import Confidence from './settings/Confidence.vue'
 import Tavily from './settings/Tavily.vue'
 import OMDb from './settings/OMDb.vue'
 import RatingNormalization from './settings/RatingNormalization.vue'
-import HeartbeatSettings from './settings/HeartbeatSettings.vue'
+import RAGSettings from './RAGSettings.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -91,7 +91,6 @@ const settingsGroups = [
       { id: 'general', label: 'General', icon: '⚙️', component: General },
       { id: 'scheduler', label: 'Scheduler', icon: '🕐', component: Scheduler },
       { id: 'queue', label: 'Queue', icon: '📋', component: Queue },
-      { id: 'heartbeat', label: 'Heartbeat', icon: '⏱️', component: HeartbeatSettings },
     ]
   },
   {
@@ -116,12 +115,7 @@ const settingsGroups = [
     tabs: [
       { id: 'ai', label: 'AI', icon: '🤖', component: AI },
       { id: 'confidence', label: 'Confidence', icon: '📊', component: Confidence },
-    ]
-  },
-  {
-    name: 'RAG & Embeddings',
-    tabs: [
-      { id: 'rag', label: 'RAG Settings', icon: '🧠', isLink: true, path: '/settings/rag' },
+      { id: 'rag', label: 'RAG & Embeddings', icon: '🧠', component: RAGSettings },
     ]
   },
   {

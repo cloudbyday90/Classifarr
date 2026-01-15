@@ -65,25 +65,120 @@
       </div>
     </div>
 
-    <!-- Quick Stats -->
+    <!-- Provider Settings -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-semibold text-white mb-4">Quick Stats</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <h3 class="text-lg font-semibold text-white mb-4">Embedding Provider</h3>
+      <div class="space-y-4">
         <div>
-          <p class="text-sm text-gray-400">Provider Mode</p>
-          <p class="text-white font-medium mt-1">{{ config.embedding_provider_mode || 'same' }}</p>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Mode</label>
+          <select
+            v-model="config.mode"
+            @change="saveConfig"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="same">Same as Classification</option>
+            <option value="separate_ollama">Separate Ollama Instance</option>
+            <option value="cloud">Cloud Provider</option>
+          </select>
         </div>
-        <div>
-          <p class="text-sm text-gray-400">Current Model</p>
-          <p class="text-white font-medium mt-1">{{ currentModel || 'N/A' }}</p>
+
+        <!-- Separate Ollama Config -->
+        <div v-if="config.mode === 'separate_ollama'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
+          <h4 class="font-medium text-white">Ollama Configuration</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Host</label>
+              <input
+                v-model="config.ollama_host"
+                type="text"
+                placeholder="192.168.1.100"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Port</label>
+              <input
+                v-model.number="config.ollama_port"
+                type="number"
+                placeholder="11434"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
+              <input
+                v-model="config.ollama_model"
+                type="text"
+                placeholder="nomic-embed-text"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
         </div>
-        <div>
-          <p class="text-sm text-gray-400">Avg Generation Time</p>
-          <p class="text-white font-medium mt-1">{{ stats.avgGenerationTime }}ms</p>
+
+        <!-- Cloud Provider Config -->
+        <div v-if="config.mode === 'cloud'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
+          <h4 class="font-medium text-white">Cloud Provider Configuration</h4>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Provider</label>
+              <select
+                v-model="config.cloud_provider"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select provider</option>
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Google Gemini</option>
+                <option value="voyage">Voyage AI</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="cohere">Cohere</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">API Key</label>
+              <input
+                v-model="config.cloud_api_key"
+                type="password"
+                placeholder="Enter API key"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
+              <input
+                v-model="config.cloud_model"
+                type="text"
+                placeholder="text-embedding-3-small"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
         </div>
-        <div>
-          <p class="text-sm text-gray-400">Last Embedding</p>
-          <p class="text-white font-medium mt-1">{{ formatTime(stats.lastEmbeddingTime) }}</p>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-3">
+          <button
+            @click="testConnection"
+            :disabled="testing"
+            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ testing ? 'Testing...' : 'Test Connection' }}
+          </button>
+          <button
+            @click="saveConfig"
+            :disabled="saving"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ saving ? 'Saving...' : 'Save Configuration' }}
+          </button>
+        </div>
+
+        <!-- Test Result -->
+        <div v-if="testResult" :class="[
+          'p-4 rounded-lg',
+          testResult.success ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
+        ]">
+          {{ testResult.success ? `✓ Connected successfully (${testResult.dims} dimensions)` : `✗ ${testResult.error}` }}
         </div>
       </div>
     </div>
@@ -133,24 +228,90 @@ const stats = ref({
   avgGenerationTime: 0,
   lastEmbeddingTime: null
 })
-const config = ref({})
-const currentModel = ref('')
+const config = ref({
+  mode: 'same',
+  ollama_host: '',
+  ollama_port: 11434,
+  ollama_model: '',
+  cloud_provider: '',
+  cloud_api_key: '',
+  cloud_model: ''
+})
 const recentActivity = ref([])
+const testing = ref(false)
+const saving = ref(false)
+const testResult = ref(null)
 
 const loadOverview = async () => {
   try {
     loading.value = true
-    const response = await api.get('/api/rag/overview')
+    const [overviewRes, configRes] = await Promise.all([
+      api.get('/api/rag/overview'),
+      api.get('/api/settings/ai')
+    ])
     
-    providerOnline.value = response.data.providerOnline
-    stats.value = response.data.stats
-    config.value = response.data.config
-    currentModel.value = response.data.currentModel
-    recentActivity.value = response.data.recentActivity || []
+    providerOnline.value = overviewRes.data.providerOnline
+    stats.value = overviewRes.data.stats
+    recentActivity.value = overviewRes.data.recentActivity || []
+    
+    // Load provider configuration
+    const data = configRes.data
+    config.value = {
+      mode: data.embedding_provider_mode || 'same',
+      ollama_host: data.embedding_ollama_host || '',
+      ollama_port: data.embedding_ollama_port || 11434,
+      ollama_model: data.embedding_ollama_model || '',
+      cloud_provider: data.embedding_cloud_provider || '',
+      cloud_api_key: data.embedding_cloud_api_key || '',
+      cloud_model: data.embedding_cloud_model || ''
+    }
   } catch (error) {
     console.error('Failed to load overview:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const testConnection = async () => {
+  testing.value = true
+  testResult.value = null
+  
+  try {
+    const response = await api.post('/api/rag/test', {
+      text: 'Test embedding for Classifarr'
+    })
+    
+    testResult.value = {
+      success: true,
+      dims: response.data.dims || 'unknown'
+    }
+  } catch (error) {
+    testResult.value = {
+      success: false,
+      error: error.response?.data?.error || error.message
+    }
+  } finally {
+    testing.value = false
+  }
+}
+
+const saveConfig = async () => {
+  saving.value = true
+  
+  try {
+    await api.put('/api/settings/ai', {
+      embedding_provider_mode: config.value.mode,
+      embedding_ollama_host: config.value.ollama_host,
+      embedding_ollama_port: config.value.ollama_port,
+      embedding_ollama_model: config.value.ollama_model,
+      embedding_cloud_provider: config.value.cloud_provider,
+      embedding_cloud_api_key: config.value.cloud_api_key,
+      embedding_cloud_model: config.value.cloud_model
+    })
+  } catch (error) {
+    console.error('Failed to save config:', error)
+  } finally {
+    saving.value = false
   }
 }
 
@@ -174,7 +335,6 @@ const formatTime = (time) => {
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return ''
   const date = new Date(timestamp)
-  // Use toLocaleString with options to show timezone
   return date.toLocaleString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
