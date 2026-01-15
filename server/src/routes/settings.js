@@ -29,6 +29,8 @@ const ollamaService = require('../services/ollama');
 const tmdbService = require('../services/tmdb');
 const discordBotService = require('../services/discordBot');
 const tavilyService = require('../services/tavily');
+const embeddingProvider = require('../services/embeddingProvider');
+const embeddingRouter = require('../services/embeddingRouter');
 const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
 const startupService = require('../services/startupService');
 const pathTestService = require('../services/pathTestService');
@@ -2438,8 +2440,6 @@ router.put('/ai', async (req, res) => {
     ollamaService.resetConfig(); // Clear Ollama config cache to pick up ollama_host/ollama_port changes
     
     // Invalidate embedding caches
-    const embeddingProvider = require('../services/embeddingProvider');
-    const embeddingRouter = require('../services/embeddingRouter');
     embeddingProvider.resetConfig();
     embeddingRouter.resetConfig();
 
@@ -2717,8 +2717,6 @@ router.get('/media-path-config', async (req, res) => {
 // EMBEDDING PROVIDER SETTINGS
 // ============================================
 
-const embeddingProvider = require('../services/embeddingProvider');
-
 /**
  * @swagger
  * /api/settings/embedding-provider:
@@ -2803,7 +2801,6 @@ router.put('/embedding-provider', async (req, res) => {
 
     // Invalidate caches
     embeddingProvider.resetConfig();
-    const embeddingRouter = require('../services/embeddingRouter');
     embeddingRouter.resetConfig();
 
     // Mask API key in response
