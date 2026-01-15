@@ -29,7 +29,7 @@
           <div>
             <p class="text-sm text-gray-400">Total Embeddings</p>
             <p class="text-2xl font-bold text-white mt-1">
-              {{ formatNumber(stats.totalEmbeddings) }}
+              {{ formatNumber(stats?.totalEmbeddings) }}
             </p>
           </div>
           <span class="text-3xl text-blue-400">💾</span>
@@ -40,11 +40,11 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-400">Pending</p>
-            <p :class="['text-2xl font-bold mt-1', stats.pendingCount > 0 ? 'text-yellow-400' : 'text-green-400']">
-              {{ formatNumber(stats.pendingCount) }}
+            <p :class="['text-2xl font-bold mt-1', (stats?.pendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
+              {{ formatNumber(stats?.pendingCount) }}
             </p>
           </div>
-          <span :class="['text-3xl', stats.pendingCount > 0 ? 'text-yellow-400' : 'text-green-400']">
+          <span :class="['text-3xl', (stats?.pendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
             ⏱️
           </span>
         </div>
@@ -54,12 +54,12 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-400">Failed (24h)</p>
-            <p :class="['text-2xl font-bold mt-1', stats.failedCount > 0 ? 'text-red-400' : 'text-green-400']">
-              {{ formatNumber(stats.failedCount) }}
+            <p :class="['text-2xl font-bold mt-1', (stats?.failedCount || 0) > 0 ? 'text-red-400' : 'text-green-400']">
+              {{ formatNumber(stats?.failedCount) }}
             </p>
           </div>
-          <span :class="['text-3xl', stats.failedCount > 0 ? 'text-red-400' : 'text-green-400']">
-            {{ stats.failedCount > 0 ? '⚠️' : '✓' }}
+          <span :class="['text-3xl', (stats?.failedCount || 0) > 0 ? 'text-red-400' : 'text-green-400']">
+            {{ (stats?.failedCount || 0) > 0 ? '⚠️' : '✓' }}
           </span>
         </div>
       </div>
@@ -246,16 +246,27 @@ const loadOverview = async () => {
   try {
     loading.value = true
     const [overviewRes, configRes] = await Promise.all([
-      api.get('/api/rag/overview'),
-      api.get('/api/settings/ai')
+      api.get('/api/rag/overview').catch(() => ({ data: {} })),
+      api.get('/api/settings/ai').catch(() => ({ data: {} }))
     ])
     
-    providerOnline.value = overviewRes.data.providerOnline
-    stats.value = overviewRes.data.stats
-    recentActivity.value = overviewRes.data.recentActivity || []
+    // Safely extract with defaults
+    providerOnline.value = overviewRes.data?.providerOnline ?? false
     
-    // Load provider configuration
-    const data = configRes.data
+    // Merge with defaults instead of replacing
+    stats.value = {
+      totalEmbeddings: 0,
+      pendingCount: 0,
+      failedCount: 0,
+      avgGenerationTime: 0,
+      lastEmbeddingTime: null,
+      ...overviewRes.data?.stats
+    }
+    
+    recentActivity.value = overviewRes.data?.recentActivity || []
+    
+    // Load provider configuration with defaults
+    const data = configRes.data || {}
     config.value = {
       mode: data.embedding_provider_mode || 'same',
       ollama_host: data.embedding_ollama_host || '',
@@ -267,6 +278,7 @@ const loadOverview = async () => {
     }
   } catch (error) {
     console.error('Failed to load overview:', error)
+    // Don't crash - keep defaults
   } finally {
     loading.value = false
   }
@@ -316,7 +328,7 @@ const saveConfig = async () => {
 }
 
 const formatNumber = (num) => {
-  if (!num) return '0'
+  if (num === undefined || num === null) return '0'
   return num.toLocaleString()
 }
 
