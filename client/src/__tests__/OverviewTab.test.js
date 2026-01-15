@@ -419,4 +419,176 @@ describe('OverviewTab.vue', () => {
       expect(wrapper.text()).toContain('No recent activity');
     });
   });
+
+  // v0.39.3-alpha: Regression tests for critical bug fixes
+  describe('v0.39.3-alpha Bug Fixes', () => {
+    describe('Issue 1: Provider Status displays correctly', () => {
+      it('extracts providerOnline from API response correctly', async () => {
+        const mockOverviewData = {
+          data: {
+            providerOnline: true,
+            stats: { totalEmbeddings: 100, pendingCount: 0, failedCount: 0 },
+            recentActivity: []
+          }
+        };
+
+        api.get.mockImplementation((url) => {
+          if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+          if (url === '/settings/ai') return Promise.resolve({ data: {} });
+          return Promise.reject(new Error('Unknown URL'));
+        });
+
+        const wrapper = mount(OverviewTab);
+        await flushPromises();
+
+        // Provider status should show "Online" when providerOnline is true
+        expect(wrapper.text()).toContain('Online');
+        expect(wrapper.text()).not.toContain('Offline');
+      });
+
+      it('shows "Offline" when providerOnline is false', async () => {
+        const mockOverviewData = {
+          data: {
+            providerOnline: false,
+            stats: { totalEmbeddings: 0, pendingCount: 0, failedCount: 0 },
+            recentActivity: []
+          }
+        };
+
+        api.get.mockImplementation((url) => {
+          if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+          if (url === '/settings/ai') return Promise.resolve({ data: {} });
+          return Promise.reject(new Error('Unknown URL'));
+        });
+
+        const wrapper = mount(OverviewTab);
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('Offline');
+      });
+
+      it('defaults to "Offline" when providerOnline is missing from API', async () => {
+        const mockOverviewData = {
+          data: {
+            // providerOnline is missing
+            stats: { totalEmbeddings: 0, pendingCount: 0, failedCount: 0 },
+            recentActivity: []
+          }
+        };
+
+        api.get.mockImplementation((url) => {
+          if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+          if (url === '/settings/ai') return Promise.resolve({ data: {} });
+          return Promise.reject(new Error('Unknown URL'));
+        });
+
+        const wrapper = mount(OverviewTab);
+        await flushPromises();
+
+        // Should default to Offline when providerOnline is not provided
+        expect(wrapper.text()).toContain('Offline');
+      });
+    });
+
+    describe('Issue 2: Test Connection shows dimensions', () => {
+      it('displays dimensions in success message', async () => {
+        const mockOverviewData = { data: { providerOnline: true, stats: {}, recentActivity: [] } };
+        const mockConfigData = { data: { embedding_provider_mode: 'same' } };
+
+        api.get.mockImplementation((url) => {
+          if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+          if (url === '/settings/ai') return Promise.resolve(mockConfigData);
+          return Promise.reject(new Error('Unknown URL'));
+        });
+
+        api.post.mockResolvedValue({
+          data: {
+            success: true,
+            dims: 768,
+            latency: 123,
+            provider: 'ollama',
+            model: 'nomic-embed-text'
+          }
+        });
+
+        const wrapper = mount(OverviewTab);
+        await flushPromises();
+
+        const testButton = wrapper.findAll('button').find(b => b.text().includes('Test Connection'));
+        await testButton.trigger('click');
+        await flushPromises();
+
+        // Should show dimensions in the test result
+        expect(wrapper.text()).toContain('768 dimensions');
+      });
+
+      it('handles test connection failure gracefully', async () => {
+        const mockOverviewData = { data: { providerOnline: true, stats: {}, recentActivity: [] } };
+        const mockConfigData = { data: { embedding_provider_mode: 'same' } };
+
+        api.get.mockImplementation((url) => {
+          if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+          if (url === '/settings/ai') return Promise.resolve(mockConfigData);
+          return Promise.reject(new Error('Unknown URL'));
+        });
+
+        api.post.mockResolvedValue({
+          data: {
+            success: false,
+            error: 'Connection failed'
+          }
+        });
+
+        const wrapper = mount(OverviewTab);
+        await flushPromises();
+
+        const testButton = wrapper.findAll('button').find(b => b.text().includes('Test Connection'));
+        await testButton.trigger('click');
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('Connection failed');
+      });
+    });
+
+    describe('Issue 3: Data loads on mount', () => {
+      it('calls API endpoints on component mount', async () => {
+        const mockOverviewData = {
+          data: {
+            providerOnline: true,
+            stats: { totalEmbeddings: 100, pendingCount: 5, failedCount: 2 },
+            recentActivity: []
+          }
+        };
+        const mockConfigData = { data: { embedding_provider_mode: 'same' } };
+
+        api.get.mockImplementation((url) => {
+          if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+          if (url === '/settings/ai') return Promise.resolve(mockConfigData);
+          return Promise.reject(new Error('Unknown URL'));
+        });
+
+        mount(OverviewTab);
+        await flushPromises();
+
+        // Verify that loadStats was called (which calls both endpoints)
+        expect(api.get).toHaveBeenCalledWith('/rag/overview');
+        expect(api.get).toHaveBeenCalledWith('/settings/ai');
+      });
+
+      it('loads data successfully even when one API call fails', async () => {
+        api.get.mockImplementation((url) => {
+          if (url === '/rag/overview') return Promise.reject(new Error('Network error'));
+          if (url === '/settings/ai') return Promise.resolve({ data: {} });
+          return Promise.reject(new Error('Unknown URL'));
+        });
+
+        const wrapper = mount(OverviewTab);
+        await flushPromises();
+
+        // Component should still render with defaults
+        expect(wrapper.exists()).toBe(true);
+        expect(wrapper.text()).toContain('0'); // Default values
+      });
+    });
+  });
 });

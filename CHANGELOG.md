@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cloud Provider Validation**: Improved error messages when cloud provider is selected but not configured
   - Better validation for 'same', 'separate_ollama', and 'cloud' modes
   - Clear user guidance on what needs to be configured for each mode
+- **Embedding Vector Dimensions**: Added migration 061 to fix "column does not have dimensions" errors
+  - Automatically detects configured embedding model and resizes vector column to match
+  - Handles dimension changes for all models: nomic-embed-text (768), mxbai-embed-large (1024), OpenAI (1536/3072), etc.
+  - Migration safely clears existing embeddings if dimensions change (they will be regenerated)
+  - Fixes issues for both new installations and existing systems
 
 ## [0.39.2c-alpha] - 2026-01-15
 

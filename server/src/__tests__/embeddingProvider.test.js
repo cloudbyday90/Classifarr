@@ -424,4 +424,145 @@ describe('EmbeddingProvider', () => {
             expect(result.dims).toBe(3);
         });
     });
+
+    // v0.39.3-alpha: Tests for ConfigurationError and circuit breaker behavior
+    describe('v0.39.3-alpha Configuration Error Handling', () => {
+        describe('ConfigurationError for missing cloud provider', () => {
+            it('should throw ConfigurationError when cloud mode has no provider configured', async () => {
+                const mockConfig = {
+                    embedding_provider_mode: 'cloud',
+                    embedding_cloud_provider: null, // Missing!
+                    embedding_cloud_api_key: 'test-key',
+                    embedding_cloud_model: 'test-model'
+                };
+
+                db.query.mockResolvedValue({ rows: [mockConfig] });
+
+                await expect(embeddingProvider.getEmbedding('test text'))
+                    .rejects
+                    .toThrow('No cloud embedding provider configured');
+            });
+
+            it('should throw ConfigurationError when cloud mode has no API key', async () => {
+                const mockConfig = {
+                    embedding_provider_mode: 'cloud',
+                    embedding_cloud_provider: 'openai',
+                    embedding_cloud_api_key: null, // Missing!
+                    embedding_cloud_model: 'text-embedding-3-small'
+                };
+
+                db.query.mockResolvedValue({ rows: [mockConfig] });
+
+                await expect(embeddingProvider.getEmbedding('test text'))
+                    .rejects
+                    .toThrow('No API key configured for openai');
+            });
+        });
+
+        describe('ConfigurationError for missing same mode configuration', () => {
+            it('should throw ConfigurationError when same mode has no AI provider', async () => {
+                const mockConfig = {
+                    embedding_provider_mode: 'same',
+                    primary_provider: 'none', // Not configured!
+                    embedding_model: 'nomic-embed-text'
+                };
+
+                db.query.mockResolvedValue({ rows: [mockConfig] });
+
+                await expect(embeddingProvider.getEmbedding('test text'))
+                    .rejects
+                    .toThrow('No AI provider configured for embedding generation');
+            });
+
+            it('should throw ConfigurationError when same mode has null primary_provider', async () => {
+                const mockConfig = {
+                    embedding_provider_mode: 'same',
+                    primary_provider: null, // Not configured!
+                    embedding_model: 'nomic-embed-text'
+                };
+
+                db.query.mockResolvedValue({ rows: [mockConfig] });
+
+                await expect(embeddingProvider.getEmbedding('test text'))
+                    .rejects
+                    .toThrow('No AI provider configured for embedding generation');
+            });
+        });
+
+        describe('ConfigurationError for missing separate_ollama configuration', () => {
+            it('should throw ConfigurationError when separate_ollama has no host', async () => {
+                const mockConfig = {
+                    embedding_provider_mode: 'separate_ollama',
+                    embedding_ollama_host: null, // Missing!
+                    embedding_ollama_port: 11434,
+                    embedding_ollama_model: 'nomic-embed-text'
+                };
+
+                db.query.mockResolvedValue({ rows: [mockConfig] });
+
+                await expect(embeddingProvider.getEmbedding('test text'))
+                    .rejects
+                    .toThrow('No separate Ollama host configured');
+            });
+
+            it('should throw ConfigurationError when separate_ollama has empty host', async () => {
+                const mockConfig = {
+                    embedding_provider_mode: 'separate_ollama',
+                    embedding_ollama_host: '', // Empty!
+                    embedding_ollama_port: 11434,
+                    embedding_ollama_model: 'nomic-embed-text'
+                };
+
+                db.query.mockResolvedValue({ rows: [mockConfig] });
+
+                await expect(embeddingProvider.getEmbedding('test text'))
+                    .rejects
+                    .toThrow('No separate Ollama host configured');
+            });
+        });
+
+        describe('ConfigurationError properties', () => {
+            it('should mark ConfigurationError with isConfigurationError flag', async () => {
+                const mockConfig = {
+                    embedding_provider_mode: 'cloud',
+                    embedding_cloud_provider: null,
+                    embedding_cloud_api_key: 'key'
+                };
+
+                db.query.mockResolvedValue({ rows: [mockConfig] });
+
+                try {
+                    await embeddingProvider.getEmbedding('test text');
+                    fail('Should have thrown');
+                } catch (error) {
+                    expect(error.isConfigurationError).toBe(true);
+                    expect(error.name).toBe('ConfigurationError');
+                }
+            });
+        });
+
+        describe('Circuit breaker should not trip on ConfigurationError', () => {
+            it('should not trip circuit breaker on configuration errors', async () => {
+                const mockConfig = {
+                    embedding_provider_mode: 'cloud',
+                    embedding_cloud_provider: null
+                };
+
+                db.query.mockResolvedValue({ rows: [mockConfig] });
+
+                // Try to trigger an error multiple times
+                for (let i = 0; i < 10; i++) {
+                    try {
+                        await embeddingProvider.getEmbedding('test text');
+                    } catch (error) {
+                        // Expected to throw
+                    }
+                }
+
+                // Circuit breaker should still allow requests
+                const status = embeddingProvider.circuitBreaker.getStatus();
+                expect(status.state).not.toBe('OPEN');
+            });
+        });
+    });
 });
