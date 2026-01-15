@@ -16,26 +16,34 @@ jest.mock('../../utils/logger', () => ({
     })
 }));
 
+// Create mock database object at module scope
+let mockDbQuery = jest.fn();
+let mockDbPool = null;
+
+// Mock the database module - must be at module level with 'mock' prefixed variables
+jest.mock('../../config/database', () => ({
+    query: (...args) => mockDbQuery(...args),
+    pool: { query: (...args) => mockDbQuery(...args) }
+}));
+
 describe('RAG API Integration Tests', () => {
     let app;
-    let db;
     let pgMem;
+    let pgAdapter;
 
     beforeAll(async () => {
         // Create in-memory database
         pgMem = newDb();
-        db = pgMem.adapters.createPg();
+        pgAdapter = pgMem.adapters.createPg();
 
-        // Mock the database module
-        jest.mock('../../config/database', () => ({
-            query: jest.fn((...args) => db.query(...args)),
-            pool: db
-        }));
+        // Set up the mock to use the in-memory database
+        mockDbQuery = jest.fn(async (...args) => {
+            return pgAdapter.query(...args);
+        });
+        mockDbPool = pgAdapter;
 
         // Setup schema
-        await db.query(`
-            CREATE EXTENSION IF NOT EXISTS vector;
-            
+        await pgAdapter.query(`
             CREATE TABLE IF NOT EXISTS ai_provider_config (
                 id SERIAL PRIMARY KEY,
                 primary_provider VARCHAR(50),
@@ -53,7 +61,7 @@ describe('RAG API Integration Tests', () => {
 
             CREATE TABLE IF NOT EXISTS classification_embeddings (
                 id SERIAL PRIMARY KEY,
-                embedding vector(768),
+                classification_id INTEGER,
                 embedding_dims INTEGER,
                 provider VARCHAR(50),
                 model VARCHAR(100),
@@ -74,13 +82,21 @@ describe('RAG API Integration Tests', () => {
             VALUES (1, 'ollama', 'same');
         `);
 
-        // Import app after mocks are set up
+        // Clear module cache and import app after mocks are set up
+        jest.resetModules();
+
+        // Re-apply the mock after reset
+        jest.doMock('../../config/database', () => ({
+            query: (...args) => mockDbQuery(...args),
+            pool: { query: (...args) => mockDbQuery(...args) }
+        }));
+
         app = require('../../index');
     });
 
     afterAll(async () => {
-        if (db) {
-            await db.end();
+        if (pgAdapter) {
+            try { await pgAdapter.end(); } catch (e) { /* ignore */ }
         }
     });
 
@@ -96,7 +112,7 @@ describe('RAG API Integration Tests', () => {
 
         it('should return providerOnline=true when same mode is properly configured', async () => {
             // Update config to have a valid provider
-            await db.query(`
+            await pgAdapter.query(`
                 UPDATE ai_provider_config 
                 SET primary_provider = 'ollama', embedding_provider_mode = 'same'
                 WHERE id = 1
@@ -111,7 +127,7 @@ describe('RAG API Integration Tests', () => {
 
         it('should return providerOnline=false when same mode has no provider', async () => {
             // Update config to have no provider
-            await db.query(`
+            await pgAdapter.query(`
                 UPDATE ai_provider_config 
                 SET primary_provider = 'none', embedding_provider_mode = 'same'
                 WHERE id = 1
@@ -125,7 +141,7 @@ describe('RAG API Integration Tests', () => {
         });
 
         it('should return providerOnline=false when cloud mode has no API key', async () => {
-            await db.query(`
+            await pgAdapter.query(`
                 UPDATE ai_provider_config 
                 SET embedding_provider_mode = 'cloud', 
                     embedding_cloud_provider = 'openai',
@@ -141,7 +157,7 @@ describe('RAG API Integration Tests', () => {
         });
 
         it('should return providerOnline=false when separate_ollama has no host', async () => {
-            await db.query(`
+            await pgAdapter.query(`
                 UPDATE ai_provider_config 
                 SET embedding_provider_mode = 'separate_ollama',
                     embedding_ollama_host = NULL
