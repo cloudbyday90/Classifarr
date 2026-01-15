@@ -11,6 +11,7 @@ const router = express.Router();
 const db = require('../config/database');
 const embeddingService = require('../services/embeddingService');
 const embeddingRouter = require('../services/embeddingRouter');
+const embeddingProvider = require('../services/embeddingProvider');
 const ragRetriever = require('../services/ragRetriever');
 const embeddingMigrationService = require('../services/embeddingMigrationService');
 const patternMiningService = require('../services/patternMiningService');
@@ -187,7 +188,7 @@ router.get('/health', async (req, res) => {
 
 /**
  * GET /api/rag/metrics
- * Get detailed metrics by operation type
+ * Get detailed metrics by operation type and provider metrics
  */
 router.get('/metrics', async (req, res) => {
     try {
@@ -200,10 +201,72 @@ router.get('/metrics', async (req, res) => {
             metrics[operation] = await ragLogger.getMetricsByOperation(operation, parseInt(hours));
         }
 
+        // Add embedding provider metrics
+        metrics.provider = embeddingProvider.getMetrics();
+
         res.json(metrics);
     } catch (error) {
         logger.error('Failed to get RAG metrics', { error: error.message });
         res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/circuit-breaker
+ * Get circuit breaker status
+ */
+router.get('/circuit-breaker', async (req, res) => {
+    try {
+        const status = embeddingProvider.circuitBreaker.getStatus();
+        const stateHistory = embeddingProvider.circuitBreaker.getStateHistory(20);
+
+        res.json({
+            ...status,
+            stateHistory
+        });
+    } catch (error) {
+        logger.error('Failed to get circuit breaker status', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/circuit-breaker/reset
+ * Manually reset circuit breaker
+ */
+router.post('/circuit-breaker/reset', async (req, res) => {
+    try {
+        embeddingProvider.circuitBreaker.reset();
+        
+        res.json({
+            success: true,
+            message: 'Circuit breaker reset successfully',
+            status: embeddingProvider.circuitBreaker.getStatus()
+        });
+    } catch (error) {
+        logger.error('Failed to reset circuit breaker', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/warmup
+ * Trigger model warmup
+ */
+router.post('/warmup', async (req, res) => {
+    try {
+        const result = await embeddingProvider.warmup();
+        
+        res.json({
+            success: true,
+            ...result
+        });
+    } catch (error) {
+        logger.error('Model warmup failed', { error: error.message });
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
     }
 });
 
@@ -831,6 +894,74 @@ router.put('/advanced', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         logger.error('Failed to update advanced config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/settings/embedding/retry
+ * Get retry configuration
+ */
+router.get('/settings/embedding/retry', async (req, res) => {
+    try {
+        const config = await db.query(`
+            SELECT 
+                request_timeout,
+                warmup_timeout,
+                max_retries,
+                retry_delay,
+                retry_backoff_multiplier,
+                jitter_factor
+            FROM ai_provider_config WHERE id = 1
+        `);
+
+        if (config.rows.length === 0) {
+            return res.json({
+                request_timeout: 30000,
+                warmup_timeout: 120000,
+                max_retries: 3,
+                retry_delay: 1000,
+                retry_backoff_multiplier: 2,
+                jitter_factor: 0.3
+            });
+        }
+
+        res.json(config.rows[0]);
+    } catch (error) {
+        logger.error('Failed to get retry config', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * PUT /api/settings/embedding/retry
+ * Update retry configuration
+ */
+router.put('/settings/embedding/retry', async (req, res) => {
+    try {
+        const {
+            request_timeout,
+            warmup_timeout,
+            max_retries,
+            retry_delay,
+            retry_backoff_multiplier,
+            jitter_factor
+        } = req.body;
+
+        await db.query(`
+            UPDATE ai_provider_config SET
+                request_timeout = $1,
+                warmup_timeout = $2,
+                max_retries = $3,
+                retry_delay = $4,
+                retry_backoff_multiplier = $5,
+                jitter_factor = $6
+            WHERE id = 1
+        `, [request_timeout, warmup_timeout, max_retries, retry_delay, retry_backoff_multiplier, jitter_factor]);
+
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Failed to update retry config', { error: error.message });
         res.status(500).json({ error: error.message });
     }
 });
