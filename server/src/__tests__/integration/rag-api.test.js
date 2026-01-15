@@ -4,7 +4,7 @@
  */
 
 const request = require('supertest');
-const { newDb } = require('pg-mem');
+const setup = require('./setup');
 
 // Mock logger
 jest.mock('../../utils/logger', () => ({
@@ -16,89 +16,42 @@ jest.mock('../../utils/logger', () => ({
     })
 }));
 
-// Create mock database object at module scope
-let mockDbQuery = jest.fn();
-let mockDbPool = null;
+const express = require('express');
+const ragRouter = require('../../routes/rag');
+const bodyParser = require('body-parser');
 
-// Mock the database module - must be at module level with 'mock' prefixed variables
-jest.mock('../../config/database', () => ({
-    query: (...args) => mockDbQuery(...args),
-    pool: { query: (...args) => mockDbQuery(...args) }
-}));
+// Don't mock the database module locally - allow it to use the global mock from setup.js
+// which points to the test container
 
 describe('RAG API Integration Tests', () => {
     let app;
-    let pgMem;
-    let pgAdapter;
+    let pool;
 
     beforeAll(async () => {
-        // Create in-memory database
-        pgMem = newDb();
-        pgAdapter = pgMem.adapters.createPg();
+        // Get the pool from the setup module (initialized in global setup)
+        pool = setup.getPool();
 
-        // Set up the mock to use the in-memory database
-        mockDbQuery = jest.fn(async (...args) => {
-            return pgAdapter.query(...args);
-        });
-        mockDbPool = pgAdapter;
+        // No manual schema setup needed - it's done in globally via migrations
 
-        // Setup schema
-        await pgAdapter.query(`
-            CREATE TABLE IF NOT EXISTS ai_provider_config (
-                id SERIAL PRIMARY KEY,
-                primary_provider VARCHAR(50),
-                embedding_provider_mode VARCHAR(50) DEFAULT 'same',
-                embedding_model VARCHAR(100),
-                embedding_ollama_host VARCHAR(255),
-                embedding_ollama_port INTEGER DEFAULT 11434,
-                embedding_ollama_model VARCHAR(100),
-                embedding_cloud_provider VARCHAR(50),
-                embedding_cloud_api_key TEXT,
-                embedding_cloud_model VARCHAR(100),
-                rag_enabled BOOLEAN DEFAULT false,
-                rag_min_history_count INTEGER DEFAULT 50
-            );
 
-            CREATE TABLE IF NOT EXISTS classification_embeddings (
-                id SERIAL PRIMARY KEY,
-                classification_id INTEGER,
-                embedding_dims INTEGER,
-                provider VARCHAR(50),
-                model VARCHAR(100),
-                is_stale BOOLEAN DEFAULT false,
-                created_at TIMESTAMP DEFAULT NOW()
-            );
+        // Clear any existing data
+        await pool.query('TRUNCATE TABLE ai_provider_config RESTART IDENTITY CASCADE');
+        await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
+        await pool.query('TRUNCATE TABLE embedding_retry_queue RESTART IDENTITY CASCADE');
 
-            CREATE TABLE IF NOT EXISTS embedding_retry_queue (
-                id SERIAL PRIMARY KEY,
-                classification_id INTEGER,
-                attempt_count INTEGER DEFAULT 0,
-                status VARCHAR(20) DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-
-            -- Insert default config
+        // Insert default config
+        await pool.query(`
             INSERT INTO ai_provider_config (id, primary_provider, embedding_provider_mode) 
-            VALUES (1, 'ollama', 'same');
+            VALUES (1, 'ollama', 'same')
         `);
 
-        // Clear module cache and import app after mocks are set up
-        jest.resetModules();
-
-        // Re-apply the mock after reset
-        jest.doMock('../../config/database', () => ({
-            query: (...args) => mockDbQuery(...args),
-            pool: { query: (...args) => mockDbQuery(...args) }
-        }));
-
-        app = require('../../index');
+        // Create test app
+        app = express();
+        app.use(bodyParser.json());
+        app.use('/api/rag', ragRouter);
     });
 
-    afterAll(async () => {
-        if (pgAdapter) {
-            try { await pgAdapter.end(); } catch (e) { /* ignore */ }
-        }
-    });
+
 
     describe('GET /api/rag/status', () => {
         it('should return providerOnline field', async () => {
@@ -112,7 +65,7 @@ describe('RAG API Integration Tests', () => {
 
         it('should return providerOnline=true when same mode is properly configured', async () => {
             // Update config to have a valid provider
-            await pgAdapter.query(`
+            await pool.query(`
                 UPDATE ai_provider_config 
                 SET primary_provider = 'ollama', embedding_provider_mode = 'same'
                 WHERE id = 1
@@ -127,7 +80,7 @@ describe('RAG API Integration Tests', () => {
 
         it('should return providerOnline=false when same mode has no provider', async () => {
             // Update config to have no provider
-            await pgAdapter.query(`
+            await pool.query(`
                 UPDATE ai_provider_config 
                 SET primary_provider = 'none', embedding_provider_mode = 'same'
                 WHERE id = 1
@@ -141,7 +94,7 @@ describe('RAG API Integration Tests', () => {
         });
 
         it('should return providerOnline=false when cloud mode has no API key', async () => {
-            await pgAdapter.query(`
+            await pool.query(`
                 UPDATE ai_provider_config 
                 SET embedding_provider_mode = 'cloud', 
                     embedding_cloud_provider = 'openai',
@@ -157,7 +110,7 @@ describe('RAG API Integration Tests', () => {
         });
 
         it('should return providerOnline=false when separate_ollama has no host', async () => {
-            await pgAdapter.query(`
+            await pool.query(`
                 UPDATE ai_provider_config 
                 SET embedding_provider_mode = 'separate_ollama',
                     embedding_ollama_host = NULL

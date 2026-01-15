@@ -35,7 +35,8 @@ beforeAll(async () => {
 
     try {
         // Start PostgreSQL container and copy the SQL file
-        container = await new PostgreSqlContainer('postgres:15-alpine')
+        // Use pgvector image to support RAG embeddings
+        container = await new PostgreSqlContainer('pgvector/pgvector:pg15')
             .withDatabase('classifarr_test')
             .withUsername('test')
             .withPassword('test')
