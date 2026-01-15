@@ -72,8 +72,8 @@ class ManualBackfillService {
                 title: row.title,
                 media_type: row.media_type,
                 library_name: row.library_name,
-                metadata: typeof row.metadata === 'string' 
-                    ? JSON.parse(row.metadata) 
+                metadata: typeof row.metadata === 'string'
+                    ? JSON.parse(row.metadata)
                     : row.metadata
             }));
         } catch (error) {
@@ -86,6 +86,12 @@ class ManualBackfillService {
      * Start manual backfill
      */
     async start(options = {}) {
+        // Check if RAG is enabled before starting
+        const configResult = await db.query('SELECT rag_enabled FROM ai_provider_config WHERE id = 1');
+        if (!configResult.rows[0]?.rag_enabled) {
+            throw new Error('RAG is not enabled. Please enable RAG in settings before running backfill.');
+        }
+
         if (this.state.status === 'running') {
             throw new Error('Backfill already running');
         }
@@ -98,9 +104,9 @@ class ManualBackfillService {
         this.state.error = null;
         this.state.eta = null;
 
-        logger.info('Manual backfill started', { 
+        logger.info('Manual backfill started', {
             total: this.state.total,
-            batchSize: this.state.batchSize 
+            batchSize: this.state.batchSize
         });
 
         // Create run record
@@ -152,7 +158,7 @@ class ManualBackfillService {
                 }
 
                 const pending = await this.getPendingEmbeddings(this.state.batchSize);
-                
+
                 if (pending.length === 0) {
                     logger.info('No more pending embeddings');
                     break;
@@ -198,7 +204,7 @@ class ManualBackfillService {
 
             if (this.state.status === 'running') {
                 this.state.status = 'completed';
-                
+
                 await db.query(`
                     UPDATE backfill_runs 
                     SET status = 'completed', 
@@ -306,8 +312,8 @@ class ManualBackfillService {
     getStatus() {
         return {
             ...this.state,
-            progress: this.state.total > 0 
-                ? Math.round((this.state.processed / this.state.total) * 100) 
+            progress: this.state.total > 0
+                ? Math.round((this.state.processed / this.state.total) * 100)
                 : 0
         };
     }

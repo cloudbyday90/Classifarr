@@ -38,6 +38,7 @@ class ScheduledBackfillService {
         try {
             const result = await db.query(`
                 SELECT 
+                    rag_enabled,
                     scheduled_backfill_enabled,
                     scheduled_backfill_time,
                     scheduled_backfill_days,
@@ -50,6 +51,7 @@ class ScheduledBackfillService {
             if (result.rows.length > 0) {
                 const row = result.rows[0];
                 this.schedule = {
+                    ragEnabled: row.rag_enabled || false,
                     enabled: row.scheduled_backfill_enabled || false,
                     time: row.scheduled_backfill_time || '02:00',
                     days: parseDaysConfig(row.scheduled_backfill_days),
@@ -70,7 +72,7 @@ class ScheduledBackfillService {
      */
     async initScheduler() {
         await this.loadScheduleConfig();
-        
+
         if (this.schedulerInterval) {
             clearInterval(this.schedulerInterval);
         }
@@ -131,8 +133,8 @@ class ScheduledBackfillService {
                 title: row.title,
                 media_type: row.media_type,
                 library_name: row.library_name,
-                metadata: typeof row.metadata === 'string' 
-                    ? JSON.parse(row.metadata) 
+                metadata: typeof row.metadata === 'string'
+                    ? JSON.parse(row.metadata)
                     : row.metadata
             }));
         } catch (error) {
@@ -145,6 +147,15 @@ class ScheduledBackfillService {
      * Run scheduled backfill
      */
     async runScheduledBackfill() {
+        // Reload config to get latest rag_enabled status
+        await this.loadScheduleConfig();
+
+        // Check if RAG is enabled
+        if (!this.schedule.ragEnabled) {
+            logger.debug('RAG is not enabled, skipping scheduled backfill');
+            return;
+        }
+
         if (this.isRunning) {
             logger.warn('Scheduled backfill already running');
             return;
@@ -154,9 +165,9 @@ class ScheduledBackfillService {
         const startTime = Date.now();
         let processed = 0;
 
-        logger.info('Starting scheduled backfill', { 
+        logger.info('Starting scheduled backfill', {
             batchSize: this.schedule.batchSize,
-            maxDuration: this.schedule.maxDuration 
+            maxDuration: this.schedule.maxDuration
         });
 
         // Create run record
@@ -170,7 +181,7 @@ class ScheduledBackfillService {
         try {
             while (Date.now() - startTime < this.schedule.maxDuration) {
                 const pending = await this.getPendingEmbeddings(this.schedule.batchSize);
-                
+
                 if (pending.length === 0) {
                     logger.info('No more pending embeddings');
                     break;
@@ -209,7 +220,7 @@ class ScheduledBackfillService {
             }
 
             const duration = Date.now() - startTime;
-            
+
             await db.query(`
                 UPDATE backfill_runs 
                 SET status = 'completed', 
@@ -218,13 +229,13 @@ class ScheduledBackfillService {
                 WHERE id = $2
             `, [processed, runId]);
 
-            logger.info('Scheduled backfill completed', { 
-                processed, 
-                durationMs: duration 
+            logger.info('Scheduled backfill completed', {
+                processed,
+                durationMs: duration
             });
         } catch (error) {
             logger.error('Scheduled backfill error', { error: error.message });
-            
+
             await db.query(`
                 UPDATE backfill_runs 
                 SET status = 'failed', 

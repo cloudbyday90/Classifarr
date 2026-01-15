@@ -39,6 +39,7 @@ class IdleBackfillService {
         try {
             const result = await db.query(`
                 SELECT 
+                    rag_enabled,
                     idle_backfill_enabled,
                     idle_threshold,
                     idle_batch_size
@@ -49,7 +50,7 @@ class IdleBackfillService {
             if (result.rows.length > 0) {
                 this.config = result.rows[0];
                 this.batchSize = this.config.idle_batch_size || 10;
-                
+
                 // Update idle detector threshold
                 if (this.config.idle_threshold) {
                     idleDetector.setIdleThreshold(this.config.idle_threshold);
@@ -83,8 +84,8 @@ class IdleBackfillService {
                 title: row.title,
                 media_type: row.media_type,
                 library_name: row.library_name,
-                metadata: typeof row.metadata === 'string' 
-                    ? JSON.parse(row.metadata) 
+                metadata: typeof row.metadata === 'string'
+                    ? JSON.parse(row.metadata)
                     : row.metadata
             }));
         } catch (error) {
@@ -99,6 +100,12 @@ class IdleBackfillService {
     async startIdleBackfill() {
         // Load latest config
         await this.loadConfig();
+
+        // Check if RAG is enabled first
+        if (!this.config?.rag_enabled) {
+            logger.debug('RAG is not enabled, skipping idle backfill');
+            return;
+        }
 
         if (!this.config?.idle_backfill_enabled) {
             logger.debug('Idle backfill is disabled');
@@ -126,7 +133,7 @@ class IdleBackfillService {
         try {
             while (this.isRunning && idleDetector.isIdle()) {
                 const pending = await this.getPendingEmbeddings(this.batchSize);
-                
+
                 if (pending.length === 0) {
                     logger.info('No pending embeddings, idle backfill complete');
                     break;
@@ -157,7 +164,7 @@ class IdleBackfillService {
                             library_name: item.library_name
                         });
                         totalProcessed++;
-                        
+
                         // Update run progress
                         await db.query(
                             'UPDATE backfill_runs SET processed = $1 WHERE id = $2',
@@ -190,7 +197,7 @@ class IdleBackfillService {
             logger.info('Idle backfill completed', { processed: totalProcessed });
         } catch (error) {
             logger.error('Idle backfill error', { error: error.message });
-            
+
             await db.query(`
                 UPDATE backfill_runs 
                 SET status = 'failed', 
