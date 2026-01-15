@@ -3,6 +3,15 @@
 ## v0.39.0-alpha
 **Title: Robust Error Handling + AI Prompt Enrichment + RAG Settings Dashboard + Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion**
 
+### Bug Fixes
+
+#### RAG Embedding Connection Fixes 🔌
+- **Ollama 0.13+ Compatibility**: Updated embedding endpoint from `/api/embeddings` to `/api/embed` with new `input` parameter format
+- **Test Connection Works Offline**: You can now test the embedding provider connection without enabling RAG globally first
+- **API Routing Fixed**: Corrected double URL prefix (`/api/api/...`) in all three RAG settings tabs (Overview, Backfill, Advanced)
+- **Embedding Model Dropdown**: Select from 8 recommended models instead of free text input
+- **Test Suite Updated**: Added 3 regression tests to prevent future API format issues
+
 ### New Features
 
 #### RAG & Embeddings Settings Consolidation 🧹
