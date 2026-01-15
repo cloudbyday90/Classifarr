@@ -28,6 +28,9 @@ const logger = createLogger('PolicyEngine');
 // Formula scores are CAPPED at 95% maximum
 const FORMULA_CONFIDENCE_CAP = 95;
 
+// Default weight for RAG scoring when not explicitly configured
+const DEFAULT_RAG_WEIGHT = 0.15;
+
 /**
  * Policy-Driven Classification Engine
  * Evaluates media items against library policies with comprehensive signal scoring
@@ -70,10 +73,23 @@ class PolicyEngine {
                 };
             }
 
-            // 3. Evaluate each policy
+            // 3. Pre-fetch RAG matches once for all policies (performance optimization)
+            // Only call RAG if at least one policy actually uses it
+            let ragCache = { matches: [], timestamp: Date.now() };
+            const anyPolicyUsesRAG = policies.some(p => p.trust_rag && (p.rag_weight || DEFAULT_RAG_WEIGHT) > 0);
+            if (anyPolicyUsesRAG) {
+                try {
+                    const ragMatches = await ragRetriever.semanticSearch(item, 5);
+                    ragCache = { matches: ragMatches, timestamp: Date.now() };
+                } catch (error) {
+                    logger.debug('Failed to pre-fetch RAG matches', { error: error.message });
+                }
+            }
+
+            // 4. Evaluate each policy
             const evaluations = [];
             for (const policy of policies) {
-                const evaluation = await this.evaluatePolicy(policy, item);
+                const evaluation = await this.evaluatePolicy(policy, item, ragCache);
                 if (evaluation.score > 0) {
                     evaluations.push(evaluation);
                 }
@@ -226,9 +242,10 @@ class PolicyEngine {
      * Evaluate a single policy against an item
      * @param {object} policy - Policy with presets
      * @param {object} item - Media item
+     * @param {object} ragCache - Cached RAG search results
      * @returns {Promise<object>} Evaluation result with score breakdown
      */
-    async evaluatePolicy(policy, item) {
+    async evaluatePolicy(policy, item, ragCache = { matches: [], timestamp: Date.now() }) {
         try {
             const scores = {
                 preset: 0,
@@ -253,7 +270,7 @@ class PolicyEngine {
 
             // Score RAG (if trusted)
             if (policy.trust_rag) {
-                scores.rag = await this.scoreRAG(policy.library_id, item);
+                scores.rag = await this.scoreRAG(policy.library_id, item, ragCache);
             }
 
             // Score history (if trusted)
@@ -810,10 +827,15 @@ class PolicyEngine {
 
     /**
      * Score RAG/embedding similarity
+     * @param {number} libraryId - Library ID to score for
+     * @param {object} item - Media item
+     * @param {object} ragCache - Cached RAG search results
+     * @returns {Promise<number>} RAG similarity score (0-95)
      */
-    async scoreRAG(libraryId, item) {
+    async scoreRAG(libraryId, item, ragCache = { matches: [], timestamp: Date.now() }) {
         try {
-            const matches = await ragRetriever.semanticSearch(item, 5);
+            // Use cached RAG results
+            const matches = ragCache?.matches || [];
             
             if (!matches || matches.length === 0) {
                 return 0;

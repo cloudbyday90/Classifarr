@@ -119,6 +119,9 @@ class MediaSyncService {
           await this.upsertCollection(media_server_id, libraryId, collection);
         }
 
+        // Reconcile awaiting decision items with synced media
+        await this.reconcileAwaitingDecisions(libraryId);
+
         // Mark sync as completed
         await db.query(
           `UPDATE media_server_sync_status 
@@ -421,6 +424,76 @@ class MediaSyncService {
         return jellyfinService;
       default:
         throw new Error(`Unknown media server type: ${type}`);
+    }
+  }
+
+  /**
+   * Reconcile awaiting decision items with synced media
+   * When an item that was 'awaiting_decision' is found in a Plex library,
+   * mark it as resolved and create a learned correction
+   * @param {number} libraryId - Library ID that was just synced
+   */
+  async reconcileAwaitingDecisions(libraryId) {
+    try {
+      logger.debug('Reconciling awaiting decisions with synced media', { libraryId });
+
+      // Find classification history items that are awaiting decision
+      // and have matching media in the synced library
+      const reconciledResult = await db.query(`
+        UPDATE classification_history ch
+        SET 
+          status = 'completed',
+          library_id = msi.library_id,
+          library_name = l.name,
+          method = 'source_library',
+          reason = 'Resolved via library placement',
+          updated_at = NOW()
+        FROM media_server_items msi
+        JOIN libraries l ON msi.library_id = l.id
+        WHERE ch.tmdb_id = msi.tmdb_id
+          AND ch.media_type = msi.media_type
+          AND ch.status = 'awaiting_decision'
+          AND msi.library_id = $1
+        RETURNING ch.id, ch.tmdb_id, ch.media_type, ch.title, l.id as library_id, l.name as library_name
+      `, [libraryId]);
+
+      if (reconciledResult.rows.length > 0) {
+        logger.info('Reconciled awaiting decisions', {
+          libraryId,
+          count: reconciledResult.rows.length,
+          items: reconciledResult.rows.map(r => ({ title: r.title, library: r.library_name }))
+        });
+
+        // Create learned corrections for each reconciled item
+        for (const item of reconciledResult.rows) {
+          try {
+            await db.query(`
+              INSERT INTO learned_corrections (tmdb_id, media_type, corrected_library_id, title, corrected_by)
+              VALUES ($1, $2, $3, $4, $5)
+              ON CONFLICT (tmdb_id, media_type) DO UPDATE
+              SET corrected_library_id = EXCLUDED.corrected_library_id,
+                  title = EXCLUDED.title,
+                  updated_at = NOW()
+            `, [item.tmdb_id, item.media_type, item.library_id, item.title, 'plex_reconciliation']);
+          } catch (error) {
+            logger.warn('Failed to create learned correction for reconciled item', {
+              tmdb_id: item.tmdb_id,
+              error: error.message
+            });
+          }
+        }
+      } else {
+        logger.debug('No awaiting decisions to reconcile', { libraryId });
+      }
+
+      return reconciledResult.rows.length;
+    } catch (error) {
+      logger.error('Failed to reconcile awaiting decisions', {
+        libraryId,
+        error: error.message
+      });
+      // Don't throw - reconciliation failure shouldn't break the sync
+      return 0;
     }
   }
 }
