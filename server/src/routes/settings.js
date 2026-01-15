@@ -2436,10 +2436,20 @@ router.put('/ai', async (req, res) => {
     // Clear config cache
     aiRouterService.clearCache();
     ollamaService.resetConfig(); // Clear Ollama config cache to pick up ollama_host/ollama_port changes
+    
+    // Invalidate embedding caches
+    const embeddingProvider = require('../services/embeddingProvider');
+    const embeddingRouter = require('../services/embeddingRouter');
+    embeddingProvider.resetConfig();
+    embeddingRouter.resetConfig();
 
     const config = result.rows[0];
     if (config.api_key) {
       config.api_key = maskToken(config.api_key);
+    }
+    // Mask embedding cloud API key
+    if (config.embedding_cloud_api_key) {
+      config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
     }
 
     res.json(config);
