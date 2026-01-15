@@ -591,7 +591,7 @@ describe('PolicyEngine Integration Tests', () => {
 
                 const evaluation = await policyEngine.evaluatePolicy(defaultPolicy, item);
 
-                // Verify default weights are applied correctly (v0.38.0+ includes profile_weight)
+                // Verify default weights are applied correctly (includes profile_weight)
                 expect(evaluation.weights.preset).toBe(0.35);
                 expect(evaluation.weights.profile).toBe(0.25);
                 expect(evaluation.weights.pattern).toBe(0.15);

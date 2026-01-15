@@ -4,6 +4,8 @@
  */
 
 const request = require('supertest');
+// Import database module - note: this is replaced by testcontainers setup in beforeAll
+// Each integration test suite gets an isolated PostgreSQL instance via setup.js
 const db = require('../../config/database');
 
 describe('Rating Normalization API', () => {
