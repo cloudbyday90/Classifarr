@@ -165,6 +165,22 @@ class EmbeddingProvider {
     }
 
     /**
+     * Reset metrics (mainly for testing)
+     */
+    resetMetrics() {
+        this.metrics = {
+            totalRequests: 0,
+            successfulRequests: 0,
+            failedRequests: 0,
+            retryAttempts: 0,
+            totalLatency: 0,
+            lastRequestTime: null,
+            errorHistory: [],
+            retryHistory: []
+        };
+    }
+
+    /**
      * Check if model is likely cold (needs warmup)
      * @returns {boolean} True if model is likely cold
      */
