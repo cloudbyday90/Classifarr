@@ -534,6 +534,11 @@ const saveConfig = async () => {
   saving.value = true
   connectionStatus.value = { status: 'idle' } // Clear previous status when saving
   try {
+    // Auto-enable notifications when bot_token and channel_id are configured
+    if (config.value.bot_token && config.value.channel_id && !config.value.enabled) {
+      config.value.enabled = true
+    }
+    
     // Save configuration - server commits to database before returning
     await axios.put('/api/settings/notifications', config.value)
     
