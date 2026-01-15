@@ -61,7 +61,7 @@ router.get('/models', async (req, res) => {
 
 /**
  * POST /api/rag/test
- * Test embedding generation
+ * Test embedding generation (bypasses rag_enabled check)
  */
 router.post('/test', async (req, res) => {
     try {
@@ -69,7 +69,10 @@ router.post('/test', async (req, res) => {
         const testText = text || 'Test embedding for Classifarr';
 
         const startTime = Date.now();
-        const result = await embeddingRouter.embed(testText);
+
+        // Use embeddingProvider directly to bypass rag_enabled check
+        // This allows testing the connection before RAG is fully enabled
+        const result = await embeddingProvider.getEmbedding(testText);
         const elapsed = Date.now() - startTime;
 
         res.json({
@@ -193,7 +196,7 @@ router.get('/health', async (req, res) => {
 router.get('/metrics', async (req, res) => {
     try {
         const { hours = 24 } = req.query;
-        
+
         const operations = ['semantic_search', 'hybrid_search', 'embedding_generation', 'pattern_mining'];
         const metrics = {};
 
@@ -237,7 +240,7 @@ router.get('/circuit-breaker', async (req, res) => {
 router.post('/circuit-breaker/reset', async (req, res) => {
     try {
         embeddingProvider.circuitBreaker.reset();
-        
+
         res.json({
             success: true,
             message: 'Circuit breaker reset successfully',
@@ -256,16 +259,16 @@ router.post('/circuit-breaker/reset', async (req, res) => {
 router.post('/warmup', async (req, res) => {
     try {
         const result = await embeddingProvider.warmup();
-        
+
         res.json({
             success: true,
             ...result
         });
     } catch (error) {
         logger.error('Model warmup failed', { error: error.message });
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
-            error: error.message 
+            error: error.message
         });
     }
 });
@@ -277,7 +280,7 @@ router.post('/warmup', async (req, res) => {
 router.get('/errors', async (req, res) => {
     try {
         const { limit = 50, operation } = req.query;
-        
+
         const errors = await ragLogger.getRecentErrors(
             parseInt(limit),
             operation || null
@@ -586,12 +589,12 @@ router.put('/backfill/schedule', async (req, res) => {
         `, [enabled, time, formatDaysConfig(days), batchSize, maxDuration]);
 
         // Update the service with new schedule
-        scheduledBackfillService.updateSchedule({ 
-            enabled, 
-            time, 
+        scheduledBackfillService.updateSchedule({
+            enabled,
+            time,
             days: parseDaysConfig(days),
-            batchSize, 
-            maxDuration 
+            batchSize,
+            maxDuration
         });
 
         res.json({ success: true });
@@ -791,7 +794,7 @@ router.get('/overview', async (req, res) => {
 router.get('/logs', async (req, res) => {
     try {
         const { level, type, limit = 100, offset = 0 } = req.query;
-        
+
         let query = 'SELECT * FROM rag_logs WHERE 1=1';
         const params = [];
         let paramCount = 1;
@@ -890,7 +893,7 @@ router.put('/advanced', async (req, res) => {
                 log_embedding_content = $7
             WHERE id = 1
         `, [max_retries, retry_delay, request_timeout, cache_enabled, cache_ttl, verbose_logging, log_embedding_content]);
-        
+
         res.json({ success: true });
     } catch (error) {
         logger.error('Failed to update advanced config', { error: error.message });
@@ -950,31 +953,31 @@ router.put('/settings/embedding/retry', async (req, res) => {
 
         // Validate input ranges
         const errors = [];
-        
+
         if (request_timeout !== undefined && (request_timeout < 5000 || request_timeout > 300000)) {
             errors.push('request_timeout must be between 5000 and 300000 (5s-300s)');
         }
-        
+
         if (warmup_timeout !== undefined && (warmup_timeout < 10000 || warmup_timeout > 600000)) {
             errors.push('warmup_timeout must be between 10000 and 600000 (10s-600s)');
         }
-        
+
         if (max_retries !== undefined && (max_retries < 0 || max_retries > 10)) {
             errors.push('max_retries must be between 0 and 10');
         }
-        
+
         if (retry_delay !== undefined && (retry_delay < 100 || retry_delay > 10000)) {
             errors.push('retry_delay must be between 100 and 10000 (100ms-10s)');
         }
-        
+
         if (retry_backoff_multiplier !== undefined && (retry_backoff_multiplier < 1 || retry_backoff_multiplier > 5)) {
             errors.push('retry_backoff_multiplier must be between 1 and 5');
         }
-        
+
         if (jitter_factor !== undefined && (jitter_factor < 0 || jitter_factor > 1)) {
             errors.push('jitter_factor must be between 0 and 1');
         }
-        
+
         if (errors.length > 0) {
             return res.status(400).json({ error: 'Validation failed', details: errors });
         }
@@ -1062,7 +1065,7 @@ router.post('/export/metrics', async (req, res) => {
 router.post('/clear-embeddings', async (req, res) => {
     try {
         await db.query('DELETE FROM classification_embeddings');
-        
+
         await db.query(`
             INSERT INTO rag_logs (level, type, message)
             VALUES ('warning', 'system', 'All embeddings cleared by user')

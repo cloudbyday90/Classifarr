@@ -302,10 +302,10 @@ let statusInterval = null
 const loadConfig = async () => {
   try {
     const [heartbeatRes, realtimeRes, idleRes, scheduleRes] = await Promise.all([
-      api.get('/api/settings/heartbeat'),
-      api.get('/api/rag/backfill/realtime'),
-      api.get('/api/rag/backfill/idle'),
-      api.get('/api/rag/backfill/schedule')
+      api.get('/settings/heartbeat'),
+      api.get('/rag/backfill/realtime'),
+      api.get('/rag/backfill/idle'),
+      api.get('/rag/backfill/schedule')
     ])
 
     heartbeat.value = {
@@ -331,7 +331,7 @@ const loadConfig = async () => {
 
 const loadManualStatus = async () => {
   try {
-    const response = await api.get('/api/rag/backfill/status')
+    const response = await api.get('/rag/backfill/status')
     const manual = response.data.manual
 
     manualStatus.value = {
@@ -349,7 +349,7 @@ const loadManualStatus = async () => {
 
 const startBackfill = async () => {
   try {
-    await api.post('/api/rag/backfill/manual/start', {})
+    await api.post('/rag/backfill/manual/start', {})
     await loadManualStatus()
   } catch (error) {
     console.error('Failed to start backfill:', error)
@@ -358,7 +358,7 @@ const startBackfill = async () => {
 
 const pauseBackfill = async () => {
   try {
-    await api.post('/api/rag/backfill/manual/pause')
+    await api.post('/rag/backfill/manual/pause')
     await loadManualStatus()
   } catch (error) {
     console.error('Failed to pause backfill:', error)
@@ -367,7 +367,7 @@ const pauseBackfill = async () => {
 
 const resumeBackfill = async () => {
   try {
-    await api.post('/api/rag/backfill/manual/resume')
+    await api.post('/rag/backfill/manual/resume')
     await loadManualStatus()
   } catch (error) {
     console.error('Failed to resume backfill:', error)
@@ -376,7 +376,7 @@ const resumeBackfill = async () => {
 
 const clearBackfill = async () => {
   try {
-    await api.post('/api/rag/backfill/manual/clear')
+    await api.post('/rag/backfill/manual/clear')
     await loadManualStatus()
   } catch (error) {
     console.error('Failed to clear backfill:', error)
@@ -389,20 +389,20 @@ const saveQueueConfig = async () => {
 
   try {
     await Promise.all([
-      api.put('/api/settings/heartbeat', {
+      api.put('/settings/heartbeat', {
         heartbeat_timeout: heartbeat.value.timeout,
         heartbeat_interval: heartbeat.value.interval,
         max_wait_time: heartbeat.value.maxWait
       }),
-      api.put('/api/rag/backfill/realtime', {
+      api.put('/rag/backfill/realtime', {
         enabled: backfill.value.realtime_enabled
       }),
-      api.put('/api/rag/backfill/idle', {
+      api.put('/rag/backfill/idle', {
         enabled: backfill.value.idle_enabled,
         threshold: backfill.value.idle_threshold,
         batchSize: backfill.value.idle_batch_size
       }),
-      api.put('/api/rag/backfill/schedule', {
+      api.put('/rag/backfill/schedule', {
         enabled: backfill.value.scheduled_enabled,
         time: backfill.value.scheduled_time,
         days: '0,1,2,3,4,5,6',

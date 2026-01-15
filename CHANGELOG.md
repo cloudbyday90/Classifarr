@@ -36,12 +36,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Ollama Embedding API Compatibility** - Updated embedding code to use new `/api/embed` endpoint with `input` parameter instead of deprecated `/api/embeddings` with `prompt` parameter (Ollama 0.13+)
-- **RAG Settings API Prefix Duplication** - Fixed double `/api/api/` prefix in RAG settings API calls (`OverviewTab.vue`)
+- **RAG Settings API Prefix Duplication** - Fixed double `/api/api/` prefix in RAG settings API calls across all three RAG tab files:
+  - `OverviewTab.vue`: Fixed 4 API calls
+  - `BackfillTab.vue`: Fixed 14 API calls
+  - `AdvancedTab.vue`: Fixed 6 API calls
+- **RAG Test Connection Bypass** - Modified `/api/rag/test` endpoint to use `embeddingProvider.getEmbedding()` directly, bypassing the `rag_enabled` database check. Users can now test embedding provider connectivity before globally enabling RAG.
 - **Embedding Model Selection** - Added model dropdown for both "Same as Classification" and "Separate Ollama Instance" modes (replacing free text input)
+- **Test Suite Updates** - Updated `embeddingProvider.test.js` to match new Ollama `/api/embed` endpoint and response format
 
 ### Added
 - **Embedding Model Dropdown** - Pre-populated dropdown with 8 recommended Ollama embedding models:
   - `nomic-embed-text` (recommended), `nomic-embed-text-v1.5`, `mxbai-embed-large`, `snowflake-arctic-embed2`, `bge-m3`, `bge-large`, `all-minilm`, `paraphrase-multilingual`
+- **Embedding Model for Same Mode** - New `embedding_model` configuration field allows selecting embedding model even when using the same Ollama server as classification
 
 - **Robust Error Handling with Adaptive Timeouts and Retry Logic** (#153, part of Epic #136)
   - **Retry Utilities** (`server/src/utils/retryUtils.js`): Comprehensive retry logic for transient failures

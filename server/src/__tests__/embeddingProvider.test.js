@@ -47,7 +47,7 @@ describe('EmbeddingProvider', () => {
                 ollama_port: 11434,
                 embedding_model: 'nomic-embed-text-v2-moe'
             };
-            
+
             db.query.mockResolvedValue({ rows: [mockConfig] });
 
             const config = await embeddingProvider.getConfig();
@@ -104,17 +104,17 @@ describe('EmbeddingProvider', () => {
             db.query.mockResolvedValue({ rows: [mockConfig] });
             mockAxios.post.mockResolvedValue({
                 data: {
-                    embedding: [0.4, 0.5, 0.6]
+                    embeddings: [[0.4, 0.5, 0.6]]
                 }
             });
 
             const result = await embeddingProvider.getEmbedding('test text');
 
             expect(mockAxios.post).toHaveBeenCalledWith(
-                'http://192.168.1.100:11435/api/embeddings',
+                'http://192.168.1.100:11435/api/embed',
                 {
                     model: 'mxbai-embed-large',
-                    prompt: 'test text'
+                    input: 'test text'
                 },
                 { timeout: 120000 }
             );
@@ -347,6 +347,81 @@ describe('EmbeddingProvider', () => {
             db.query.mockResolvedValue({ rows: [] });
 
             await expect(embeddingProvider.getEmbedding('test')).rejects.toThrow('No embedding provider configuration found');
+        });
+    });
+
+    // Regression tests for v0.38.5-alpha fixes
+    describe('Ollama API endpoint format (v0.38.5 regression)', () => {
+        it('should use /api/embed endpoint (not deprecated /api/embeddings)', async () => {
+            const mockConfig = {
+                embedding_provider_mode: 'separate_ollama',
+                embedding_ollama_host: '192.168.1.100',
+                embedding_ollama_port: 11434,
+                embedding_ollama_model: 'nomic-embed-text'
+            };
+
+            db.query.mockResolvedValue({ rows: [mockConfig] });
+            mockAxios.post.mockResolvedValue({
+                data: { embeddings: [[0.1, 0.2]] }
+            });
+
+            await embeddingProvider.getEmbedding('test');
+
+            // Verify /api/embed endpoint is called (not /api/embeddings)
+            expect(mockAxios.post).toHaveBeenCalledWith(
+                expect.stringContaining('/api/embed'),
+                expect.any(Object),
+                expect.any(Object)
+            );
+            // Verify it does NOT contain /api/embeddings
+            expect(mockAxios.post).not.toHaveBeenCalledWith(
+                expect.stringContaining('/api/embeddings'),
+                expect.any(Object),
+                expect.any(Object)
+            );
+        });
+
+        it('should use input parameter (not deprecated prompt)', async () => {
+            const mockConfig = {
+                embedding_provider_mode: 'separate_ollama',
+                embedding_ollama_host: 'localhost',
+                embedding_ollama_port: 11434,
+                embedding_ollama_model: 'nomic-embed-text'
+            };
+
+            db.query.mockResolvedValue({ rows: [mockConfig] });
+            mockAxios.post.mockResolvedValue({
+                data: { embeddings: [[0.1]] }
+            });
+
+            await embeddingProvider.getEmbedding('test text');
+
+            // Verify request body uses 'input' not 'prompt'
+            expect(mockAxios.post).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({ input: 'test text' }),
+                expect.any(Object)
+            );
+        });
+
+        it('should handle embeddings array response format', async () => {
+            const mockConfig = {
+                embedding_provider_mode: 'separate_ollama',
+                embedding_ollama_host: 'localhost',
+                embedding_ollama_port: 11434,
+                embedding_ollama_model: 'mxbai-embed-large'
+            };
+
+            db.query.mockResolvedValue({ rows: [mockConfig] });
+            // New format: embeddings array
+            mockAxios.post.mockResolvedValue({
+                data: { embeddings: [[0.5, 0.6, 0.7]] }
+            });
+
+            const result = await embeddingProvider.getEmbedding('test');
+
+            expect(result.embedding).toEqual([0.5, 0.6, 0.7]);
+            expect(result.dims).toBe(3);
         });
     });
 });

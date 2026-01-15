@@ -308,8 +308,8 @@ const maxExampleDelay = computed(() => {
 const loadConfig = async () => {
   try {
     const [advancedRes, retryRes] = await Promise.all([
-      api.get('/api/rag/advanced'),
-      api.get('/api/settings/embedding/retry')
+      api.get('/rag/advanced'),
+      api.get('/settings/embedding/retry')
     ])
     
     config.value = {
@@ -340,7 +340,7 @@ const saveRetryConfig = async () => {
   saveMessage.value = ''
 
   try {
-    await api.put('/api/settings/embedding/retry', retryConfig.value)
+    await api.put('/settings/embedding/retry', retryConfig.value)
     
     saveSuccess.value = true
     saveMessage.value = 'Retry configuration saved successfully'
@@ -360,7 +360,7 @@ const saveAdvancedConfig = async () => {
   saveMessage.value = ''
 
   try {
-    await api.put('/api/rag/advanced', config.value)
+    await api.put('/rag/advanced', config.value)
     
     saveSuccess.value = true
     saveMessage.value = 'Advanced settings saved successfully'
@@ -381,7 +381,7 @@ const confirmClearEmbeddings = async () => {
   }
 
   try {
-    await api.post('/api/rag/clear-embeddings')
+    await api.post('/rag/clear-embeddings')
     alert('All embeddings have been cleared')
   } catch (error) {
     alert('Failed to clear embeddings: ' + (error.response?.data?.error || error.message))
@@ -394,7 +394,7 @@ const confirmResetConfig = async () => {
   }
 
   try {
-    await api.post('/api/rag/reset-config')
+    await api.post('/rag/reset-config')
     await loadConfig()
     alert('Configuration has been reset to defaults')
   } catch (error) {
