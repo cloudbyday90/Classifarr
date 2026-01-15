@@ -1,9 +1,14 @@
 # Classifarr Release Notes
 
-## v0.40.0 (Unreleased)
-**Comprehensive Bug Fix Release**
+## v0.39.4-alpha
+**Comprehensive Bug Fix & Stability Release**
 
 ### Critical Bug Fixes
+
+#### Integration Test Stability 🧪
+- **Previous Bug**: Integration tests failing due to missing `pgvector` extension and database mocking conflicts
+- **Fix**: Upgraded test container to `pgvector/pgvector:pg15` and refactored `rag-api` tests
+- **Impact**: Ensures reliable verified builds and prevents regression
 
 #### Wrong AI Model Selection 🤖
 - **Previous Bug**: Classification always used hardcoded `qwen3:14b` model instead of configured model
