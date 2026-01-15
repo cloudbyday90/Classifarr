@@ -211,9 +211,13 @@ router.post('/corrections', async (req, res) => {
 
     const { library_id: original_library_id, tmdb_id, metadata } = classResult.rows[0];
 
-    // Update classification
+    // Update classification with library_id and library_name
     await db.query(
-      'UPDATE classification_history SET library_id = $1, status = $2 WHERE id = $3',
+      `UPDATE classification_history 
+       SET library_id = $1, 
+           library_name = (SELECT name FROM libraries WHERE id = $1),
+           status = $2 
+       WHERE id = $3`,
       [corrected_library_id, 'corrected', classification_id]
     );
 

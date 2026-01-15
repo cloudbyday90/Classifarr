@@ -125,7 +125,7 @@ describe('EmbeddingService', () => {
     });
 
     describe('getStats', () => {
-        it('should return embedding statistics', async () => {
+        it('should return embedding statistics with field aliases', async () => {
             db.query
                 .mockResolvedValueOnce({
                     rows: [{ total: '100', stale: '5', providers: '2', avg_dims: '768.5' }]
@@ -138,10 +138,12 @@ describe('EmbeddingService', () => {
 
             expect(stats).toEqual({
                 total: 100,
+                totalEmbeddings: 100,  // Alias field
                 stale: 5,
                 providers: 2,
                 avgDims: 769,
-                pendingRetries: 3
+                pendingRetries: 3,
+                pendingCount: 3  // Alias field
             });
         });
     });

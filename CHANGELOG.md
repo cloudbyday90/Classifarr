@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.39.3-alpha] - 2026-01-15
 
 ### Fixed
+- **library_name Data Consistency**: Fixed `library_name` not being set when classifications are corrected
+  - Updated classification correction endpoint to set both `library_id` and `library_name`
+  - Updated Discord bot correction handler to set both `library_id` and `library_name`
+  - Updated reclassification service to set both `library_id` and `library_name`
+  - Added migration to backfill existing NULL `library_name` values
+  - Ensures embeddings formatted with `formatForEmbedding()` include proper library context
+- **RAG Overview Statistics Display**: Fixed Total Embeddings and Pending counts showing "0"
+  - Added `totalEmbeddings` and `pendingCount` field aliases in `embeddingService.getStats()` for frontend compatibility
+  - Added fallback mapping in frontend to handle both old and new field names
+  - RAG Overview tab now correctly displays embedding counts
 - **RAG Overview Provider Status**: Fixed "Provider Status" card always showing "Offline"
   - Template now correctly references `stats.providerOnline` instead of undefined `providerOnline`
   - Backend `/api/rag/status` endpoint now returns `providerOnline` field
@@ -36,6 +46,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Handles dimension changes for all models: nomic-embed-text (768), mxbai-embed-large (1024), OpenAI (1536/3072), etc.
   - Migration safely clears existing embeddings if dimensions change (they will be regenerated)
   - Fixes issues for both new installations and existing systems
+
+### Added
+- **Post-Upgrade Task System**: Introduced reusable system for version-specific maintenance operations
+  - Created `post_upgrade_tasks` table to track executed tasks
+  - Created `postUpgradeService` to manage task execution
+  - Tasks run once per version upgrade automatically on server startup
+  - Supports tasks like clearing logs, rebuilding embeddings, and data backfills
+  - Eliminates need for manual migrations for one-time maintenance tasks
 
 ## [0.39.2c-alpha] - 2026-01-15
 

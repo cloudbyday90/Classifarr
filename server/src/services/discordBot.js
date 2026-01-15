@@ -973,10 +973,10 @@ class DiscordBotService {
 
       const newLibraryName = libResult.rows[0].name;
 
-      // Update classification
+      // Update classification with library_id and library_name
       await db.query(
-        'UPDATE classification_history SET library_id = $1, status = $2 WHERE id = $3',
-        [newLibraryId, 'corrected', classificationId]
+        'UPDATE classification_history SET library_id = $1, library_name = $2, status = $3 WHERE id = $4',
+        [newLibraryId, newLibraryName, 'corrected', classificationId]
       );
 
       // Save correction

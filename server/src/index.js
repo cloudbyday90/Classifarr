@@ -250,6 +250,16 @@ async function startServer() {
       // Continue anyway - some migrations might fail if already applied
     }
 
+    // Run post-upgrade tasks
+    try {
+      const postUpgradeService = require('./services/postUpgradeService');
+      const taskResult = await postUpgradeService.runPendingTasks();
+      console.log(`Post-upgrade tasks: ${taskResult.executed} executed, ${taskResult.skipped} already completed`);
+    } catch (upgradeError) {
+      console.error('Post-upgrade task error:', upgradeError.message);
+      // Continue anyway - post-upgrade tasks are non-critical
+    }
+
     // Initialize services
     await initializeServices();
 
