@@ -1,5 +1,14 @@
 # Classifarr Release Notes
 
+## v0.39.2b-alpha
+**Fix: RAG Auto-Enable on Configuration Save**
+
+### Fixes
+- Saving embedding configuration now automatically sets `rag_enabled = true`
+- Previously, users had to manually enable RAG in database even after configuring embedding settings
+
+---
+
 ## v0.39.2a-alpha
 **Hotfix: Sidebar Version Display**
 

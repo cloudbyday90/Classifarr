@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (No unreleased changes)
 
+## [0.39.2b-alpha] - 2026-01-15
+
+### Fixed
+- Saving RAG embedding configuration now automatically enables `rag_enabled` flag - fixes "RAG is not enabled" error when starting backfill
+
 ## [0.39.2a-alpha] - 2026-01-15
 
 ### Fixed
