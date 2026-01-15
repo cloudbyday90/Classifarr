@@ -245,9 +245,13 @@ const testResult = ref(null)
 const loadOverview = async () => {
   try {
     loading.value = true
+    
+    // Error handler for failed API calls - returns empty data object to prevent crashes
+    const handleApiError = () => ({ data: {} })
+    
     const [overviewRes, configRes] = await Promise.all([
-      api.get('/api/rag/overview').catch(() => ({ data: {} })),
-      api.get('/api/settings/ai').catch(() => ({ data: {} }))
+      api.get('/api/rag/overview').catch(handleApiError),
+      api.get('/api/settings/ai').catch(handleApiError)
     ])
     
     // Safely extract with defaults
@@ -278,7 +282,7 @@ const loadOverview = async () => {
     }
   } catch (error) {
     console.error('Failed to load overview:', error)
-    // Don't crash - keep defaults
+    // Keep default empty values to prevent component crash while displaying graceful fallback UI
   } finally {
     loading.value = false
   }
@@ -328,7 +332,7 @@ const saveConfig = async () => {
 }
 
 const formatNumber = (num) => {
-  if (num === undefined || num === null) return '0'
+  if (num == null) return '0'
   return num.toLocaleString()
 }
 

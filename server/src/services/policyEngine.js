@@ -181,6 +181,7 @@ class PolicyEngine {
                     lp.trust_rag,
                     lp.trust_history,
                     lp.preset_weight,
+                    lp.profile_weight,
                     lp.pattern_weight,
                     lp.rag_weight,
                     lp.history_weight,
