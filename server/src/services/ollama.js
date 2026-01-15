@@ -221,14 +221,15 @@ class OllamaService {
         await this.pullModel(model);
       }
 
-      const response = await axios.post(`${config.baseUrl}/api/embeddings`, {
+      const response = await axios.post(`${config.baseUrl}/api/embed`, {
         model,
-        prompt: text,
+        input: text,
       }, {
         timeout: 60000, // 1 minute timeout for embeddings
       });
 
-      const embedding = response.data.embedding;
+      // New /api/embed endpoint returns embeddings array (for batch support)
+      const embedding = response.data.embeddings?.[0] || response.data.embedding;
       return {
         embedding: embedding,
         dims: embedding.length

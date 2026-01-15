@@ -23,10 +23,10 @@ const PROVIDER_DEFAULTS = {
     openai: {
         models: ['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'],
         default: 'text-embedding-3-small',
-        dimensions: { 
-            'text-embedding-3-small': 1536, 
-            'text-embedding-3-large': 3072, 
-            'text-embedding-ada-002': 1536 
+        dimensions: {
+            'text-embedding-3-small': 1536,
+            'text-embedding-3-large': 3072,
+            'text-embedding-ada-002': 1536
         },
         pricing: {
             'text-embedding-3-small': 0.02,  // per 1M tokens
@@ -37,9 +37,9 @@ const PROVIDER_DEFAULTS = {
     gemini: {
         models: ['text-embedding-004', 'embedding-001'],
         default: 'text-embedding-004',
-        dimensions: { 
-            'text-embedding-004': 768, 
-            'embedding-001': 768 
+        dimensions: {
+            'text-embedding-004': 768,
+            'embedding-001': 768
         },
         pricing: {
             'text-embedding-004': 0.025,  // per 1M characters
@@ -49,10 +49,10 @@ const PROVIDER_DEFAULTS = {
     voyage: {
         models: ['voyage-2', 'voyage-large-2', 'voyage-code-2'],
         default: 'voyage-2',
-        dimensions: { 
-            'voyage-2': 1024, 
-            'voyage-large-2': 1536, 
-            'voyage-code-2': 1536 
+        dimensions: {
+            'voyage-2': 1024,
+            'voyage-large-2': 1536,
+            'voyage-code-2': 1536
         },
         pricing: {
             'voyage-2': 0.012,  // per 1M tokens (estimate)
@@ -63,9 +63,9 @@ const PROVIDER_DEFAULTS = {
     openrouter: {
         models: ['openai/text-embedding-3-small', 'openai/text-embedding-3-large'],
         default: 'openai/text-embedding-3-small',
-        dimensions: { 
-            'openai/text-embedding-3-small': 1536, 
-            'openai/text-embedding-3-large': 3072 
+        dimensions: {
+            'openai/text-embedding-3-small': 1536,
+            'openai/text-embedding-3-large': 3072
         },
         pricing: {
             'openai/text-embedding-3-small': 0.02,  // per 1M tokens
@@ -75,10 +75,10 @@ const PROVIDER_DEFAULTS = {
     cohere: {
         models: ['embed-english-v3.0', 'embed-multilingual-v3.0', 'embed-english-light-v3.0'],
         default: 'embed-english-v3.0',
-        dimensions: { 
-            'embed-english-v3.0': 1024, 
-            'embed-multilingual-v3.0': 1024, 
-            'embed-english-light-v3.0': 384 
+        dimensions: {
+            'embed-english-v3.0': 1024,
+            'embed-multilingual-v3.0': 1024,
+            'embed-english-light-v3.0': 384
         },
         pricing: {
             'embed-english-v3.0': 0.10,  // per 1M characters (estimate)
@@ -277,7 +277,7 @@ class EmbeddingProvider {
         };
 
         this.metrics.errorHistory.push(errorRecord);
-        
+
         // Keep history limited
         if (this.metrics.errorHistory.length > 100) {
             this.metrics.errorHistory.shift();
@@ -302,7 +302,7 @@ class EmbeddingProvider {
 
         this.metrics.retryHistory.push(retryRecord);
         this.metrics.retryAttempts++;
-        
+
         // Keep history limited
         if (this.metrics.retryHistory.length > 100) {
             this.metrics.retryHistory.shift();
@@ -325,10 +325,10 @@ class EmbeddingProvider {
         if (!this.circuitBreaker.isAllowed()) {
             const error = new Error('Circuit breaker is OPEN - too many recent failures');
             logger.warn('Request blocked by circuit breaker');
-            
+
             // Record the circuit breaker rejection in error history
             this.recordError(error, 0, false);
-            
+
             throw error;
         }
 
@@ -478,17 +478,18 @@ class EmbeddingProvider {
 
         const makeRequest = async () => {
             const baseUrl = `http://${host}:${port}`;
-            
+
             const response = await axios.post(
-                `${baseUrl}/api/embeddings`,
+                `${baseUrl}/api/embed`,
                 {
                     model: model,
-                    prompt: text
+                    input: text
                 },
                 { timeout }
             );
 
-            return response.data.embedding;
+            // New /api/embed endpoint returns embeddings array (for batch support)
+            return response.data.embeddings?.[0] || response.data.embedding;
         };
 
         const embeddingWithRetry = withRetry(makeRequest, {

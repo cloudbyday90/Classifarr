@@ -82,6 +82,20 @@
           </select>
         </div>
 
+        <!-- Embedding Model for Same as Classification mode -->
+        <div v-if="config.mode === 'same'" class="space-y-2">
+          <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Model</label>
+          <select
+            v-model="config.embedding_model"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option v-for="model in recommendedModels" :key="model.name" :value="model.name">
+              {{ model.name }} - {{ model.description }}
+            </option>
+          </select>
+          <p class="text-xs text-gray-400">Uses the same Ollama server as your AI classification provider</p>
+        </div>
+
         <!-- Separate Ollama Config -->
         <div v-if="config.mode === 'separate_ollama'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
           <h4 class="font-medium text-white">Ollama Configuration</h4>
@@ -106,12 +120,14 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
-              <input
+              <select
                 v-model="config.ollama_model"
-                type="text"
-                placeholder="nomic-embed-text"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              >
+                <option v-for="model in recommendedModels" :key="model.name" :value="model.name">
+                  {{ model.name }} - {{ model.description }}
+                </option>
+              </select>
             </div>
           </div>
         </div>
@@ -230,9 +246,10 @@ const stats = ref({
 })
 const config = ref({
   mode: 'same',
+  embedding_model: 'nomic-embed-text',
   ollama_host: '',
   ollama_port: 11434,
-  ollama_model: '',
+  ollama_model: 'nomic-embed-text',
   cloud_provider: '',
   cloud_api_key: '',
   cloud_model: ''
@@ -242,6 +259,18 @@ const testing = ref(false)
 const saving = ref(false)
 const testResult = ref(null)
 
+// Recommended Ollama embedding models
+const recommendedModels = ref([
+  { name: 'nomic-embed-text', description: '⭐ Recommended - 768 dims, fast' },
+  { name: 'nomic-embed-text-v1.5', description: '768 dims, improved quality' },
+  { name: 'mxbai-embed-large', description: 'State-of-art - 1024 dims' },
+  { name: 'snowflake-arctic-embed2', description: 'Multilingual - 1024 dims' },
+  { name: 'bge-m3', description: '100+ languages - 1024 dims' },
+  { name: 'bge-large', description: 'BAAI - 1024 dims' },
+  { name: 'all-minilm', description: 'Fastest - 384 dims, low resources' },
+  { name: 'paraphrase-multilingual', description: 'Multilingual - 768 dims' }
+])
+
 const loadOverview = async () => {
   try {
     loading.value = true
@@ -250,8 +279,8 @@ const loadOverview = async () => {
     const handleApiError = () => ({ data: {} })
     
     const [overviewRes, configRes] = await Promise.all([
-      api.get('/api/rag/overview').catch(handleApiError),
-      api.get('/api/settings/ai').catch(handleApiError)
+      api.get('/rag/overview').catch(handleApiError),
+      api.get('/settings/ai').catch(handleApiError)
     ])
     
     // Safely extract with defaults
@@ -273,9 +302,10 @@ const loadOverview = async () => {
     const data = configRes.data || {}
     config.value = {
       mode: data.embedding_provider_mode || 'same',
+      embedding_model: data.embedding_model || 'nomic-embed-text',
       ollama_host: data.embedding_ollama_host || '',
       ollama_port: data.embedding_ollama_port || 11434,
-      ollama_model: data.embedding_ollama_model || '',
+      ollama_model: data.embedding_ollama_model || 'nomic-embed-text',
       cloud_provider: data.embedding_cloud_provider || '',
       cloud_api_key: data.embedding_cloud_api_key || '',
       cloud_model: data.embedding_cloud_model || ''
@@ -293,7 +323,7 @@ const testConnection = async () => {
   testResult.value = null
   
   try {
-    const response = await api.post('/api/rag/test', {
+    const response = await api.post('/rag/test', {
       text: 'Test embedding for Classifarr'
     })
     
@@ -315,8 +345,9 @@ const saveConfig = async () => {
   saving.value = true
   
   try {
-    await api.put('/api/settings/ai', {
+    await api.put('/settings/ai', {
       embedding_provider_mode: config.value.mode,
+      embedding_model: config.value.embedding_model,
       embedding_ollama_host: config.value.ollama_host,
       embedding_ollama_port: config.value.ollama_port,
       embedding_ollama_model: config.value.ollama_model,

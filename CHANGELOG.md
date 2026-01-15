@@ -34,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated BackfillSettings component from AI settings
 - HeartbeatSettings component (functionality moved to RAG → Backfill tab)
 
+### Fixed
+- **Ollama Embedding API Compatibility** - Updated embedding code to use new `/api/embed` endpoint with `input` parameter instead of deprecated `/api/embeddings` with `prompt` parameter (Ollama 0.13+)
+- **RAG Settings API Prefix Duplication** - Fixed double `/api/api/` prefix in RAG settings API calls (`OverviewTab.vue`)
+- **Embedding Model Selection** - Added model dropdown for both "Same as Classification" and "Separate Ollama Instance" modes (replacing free text input)
+
+### Added
+- **Embedding Model Dropdown** - Pre-populated dropdown with 8 recommended Ollama embedding models:
+  - `nomic-embed-text` (recommended), `nomic-embed-text-v1.5`, `mxbai-embed-large`, `snowflake-arctic-embed2`, `bge-m3`, `bge-large`, `all-minilm`, `paraphrase-multilingual`
+
 - **Robust Error Handling with Adaptive Timeouts and Retry Logic** (#153, part of Epic #136)
   - **Retry Utilities** (`server/src/utils/retryUtils.js`): Comprehensive retry logic for transient failures
     - `calculateBackoff()`: Exponential delay with configurable jitter
