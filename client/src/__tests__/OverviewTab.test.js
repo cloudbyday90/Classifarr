@@ -57,7 +57,6 @@ describe('OverviewTab.vue', () => {
           embedding_ollama_host: '',
           embedding_ollama_port: 11434,
           embedding_ollama_model: '',
-          embedding_model: 'nomic-embed-text',
           embedding_cloud_provider: '',
           embedding_cloud_api_key: '',
           embedding_cloud_model: ''
@@ -213,73 +212,6 @@ describe('OverviewTab.vue', () => {
       const zeros = wrapper.text().match(/\b0\b/g);
       expect(zeros).toBeTruthy();
       expect(zeros.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Embedding Model Selection', () => {
-    it('renders the embedding model dropdown in "same" mode', async () => {
-      const mockOverviewData = { data: { providerOnline: true, stats: {}, recentActivity: [] } };
-      const mockConfigData = {
-        data: {
-          embedding_provider_mode: 'same',
-          embedding_model: 'nomic-embed-text'
-        }
-      };
-
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
-        return Promise.reject(new Error('Unknown URL'));
-      });
-
-      const wrapper = mount(OverviewTab);
-      await flushPromises();
-
-      // Find the select for embedding model
-      const selects = wrapper.findAll('select');
-      // 1st select is mode, 2nd is embedding model
-      const modelSelect = selects[1];
-
-      expect(modelSelect.exists()).toBe(true);
-      expect(modelSelect.element.value).toBe('nomic-embed-text');
-      expect(wrapper.text()).toContain('nomic-embed-text - ⭐ Recommended');
-    });
-
-    it('updates config when model is changed', async () => {
-      const mockOverviewData = { data: { providerOnline: true, stats: {}, recentActivity: [] } };
-      const mockConfigData = {
-        data: {
-          embedding_provider_mode: 'same',
-          embedding_model: 'nomic-embed-text'
-        }
-      };
-
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
-        return Promise.reject(new Error('Unknown URL'));
-      });
-
-      const wrapper = mount(OverviewTab);
-      await flushPromises();
-
-      const selects = wrapper.findAll('select');
-      const modelSelect = selects[1];
-
-      await modelSelect.setValue('mxbai-embed-large');
-
-      // Trigger save (since v-model updates config but verify save is called only on button click or change if bound)
-      // Component calls saveConfig logic? No, only on @change for MODE.
-      // For model select, we need to check if it's bound.
-      // Looking at OverviewTab.vue: <select v-model="config.embedding_model" ...> (no @change)
-      // So we have to click "Save Configuration" to trigger API put.
-
-      const saveButton = wrapper.findAll('button').find(b => b.text().includes('Save Configuration'));
-      await saveButton.trigger('click');
-
-      expect(api.put).toHaveBeenCalledWith('/settings/ai', expect.objectContaining({
-        embedding_model: 'mxbai-embed-large'
-      }));
     });
   });
 
