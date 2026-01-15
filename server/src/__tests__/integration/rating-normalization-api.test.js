@@ -27,11 +27,7 @@ describe('Rating Normalization API', () => {
     await db.query('DELETE FROM media_server');
   });
 
-  afterAll(async () => {
-    if (db) {
-      await db.end();
-    }
-  });
+  // No afterAll cleanup needed - db is managed by integration test setup
 
   describe('GET /api/rating-normalization/stats', () => {
     test('returns correct counts when no items exist', async () => {
