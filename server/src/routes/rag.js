@@ -726,7 +726,25 @@ router.get('/overview', async (req, res) => {
     try {
         // Get provider status
         const config = await embeddingRouter.getConfig();
-        const providerOnline = embeddingRouter.getCircuitStatus().state !== 'OPEN';
+        const circuitOk = embeddingRouter.getCircuitStatus().state !== 'OPEN';
+
+        // Check if provider is actually configured based on mode
+        let providerConfigured = false;
+        if (config) {
+            const mode = config.embedding_provider_mode || 'same';
+            if (mode === 'same') {
+                // Using same as classification - check if AI provider is configured
+                providerConfigured = config.primary_provider && config.primary_provider !== 'none';
+            } else if (mode === 'separate_ollama') {
+                // Separate Ollama - check if host is configured
+                providerConfigured = !!config.embedding_ollama_host;
+            } else if (mode === 'cloud') {
+                // Cloud provider - check if API key is configured
+                providerConfigured = !!config.embedding_cloud_api_key;
+            }
+        }
+
+        const providerOnline = circuitOk && providerConfigured;
 
         // Get total embeddings count
         const embeddingsResult = await db.query(`

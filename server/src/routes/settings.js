@@ -707,12 +707,12 @@ router.get('/sonarr/:id/quality-profiles', async (req, res) => {
 router.get('/arr-config-status', async (req, res) => {
   try {
     const incompleteConfigs = [];
-    
+
     // Check Radarr configs for missing quality_profile_id
     const radarrResult = await db.query(
       'SELECT id, name FROM radarr_config WHERE quality_profile_id IS NULL'
     );
-    
+
     radarrResult.rows.forEach(row => {
       incompleteConfigs.push({
         type: 'Radarr',
@@ -721,12 +721,12 @@ router.get('/arr-config-status', async (req, res) => {
         missingField: 'quality_profile_id'
       });
     });
-    
+
     // Check Sonarr configs for missing quality_profile_id
     const sonarrResult = await db.query(
       'SELECT id, name FROM sonarr_config WHERE quality_profile_id IS NULL'
     );
-    
+
     sonarrResult.rows.forEach(row => {
       incompleteConfigs.push({
         type: 'Sonarr',
@@ -735,7 +735,7 @@ router.get('/arr-config-status', async (req, res) => {
         missingField: 'quality_profile_id'
       });
     });
-    
+
     res.json({ incompleteConfigs });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -2307,18 +2307,24 @@ router.put('/ai', async (req, res) => {
       embedding_cloud_model
     } = req.body;
 
+    // Fetch existing config to use as fallback for undefined values (partial updates)
+    const existingResult = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
+    const existing = existingResult.rows[0] || {};
+
     // Handle API key - don't update if masked
     let finalApiKey = api_key;
     if (isMaskedToken(api_key)) {
-      const existing = await db.query('SELECT api_key FROM ai_provider_config WHERE id = 1');
-      finalApiKey = existing.rows[0]?.api_key || '';
+      finalApiKey = existing.api_key || '';
+    } else if (api_key === undefined) {
+      finalApiKey = existing.api_key || '';
     }
 
     // Handle embedding cloud API key - don't update if masked
     let finalEmbeddingCloudApiKey = embedding_cloud_api_key;
     if (isMaskedToken(embedding_cloud_api_key)) {
-      const existing = await db.query('SELECT embedding_cloud_api_key FROM ai_provider_config WHERE id = 1');
-      finalEmbeddingCloudApiKey = existing.rows[0]?.embedding_cloud_api_key || '';
+      finalEmbeddingCloudApiKey = existing.embedding_cloud_api_key || '';
+    } else if (embedding_cloud_api_key === undefined) {
+      finalEmbeddingCloudApiKey = existing.embedding_cloud_api_key || '';
     }
 
     // Validate formula weights sum to approximately 1.0 if any are provided
@@ -2400,45 +2406,45 @@ router.put('/ai', async (req, res) => {
                 updated_at = NOW()
             RETURNING *
         `, [
-      primary_provider || 'none',
-      api_endpoint || '',
+      primary_provider ?? existing.primary_provider ?? 'none',
+      api_endpoint ?? existing.api_endpoint ?? '',
       finalApiKey || '',
-      model || '',
-      temperature || 0.7,
-      max_tokens || 2000,
-      monthly_budget_usd || null,
-      budget_alert_threshold || 80,
-      pause_on_budget_exhausted !== false,
-      ollama_fallback_enabled || false,
-      ollama_for_basic_tasks || false,
-      ollama_for_budget_exhausted !== false,
-      ollama_host || 'localhost',
-      ollama_port || 11434,
-      ollama_model || 'llama3.2',
-      rag_enabled || false,
-      embedding_provider || 'auto',
-      embedding_model || '',
-      rag_similarity_threshold || 0.70,
-      rag_min_history_count || 50,
-      rag_backfill_budget_type || 'percentage',
-      rag_backfill_budget_value || 25,
-      formula_pattern_weight ?? 0.40,
-      formula_rule_weight ?? 0.30,
-      formula_rag_weight ?? 0.20,
-      formula_history_weight ?? 0.10,
-      embedding_provider_mode || 'same',
-      embedding_ollama_host || '',
-      embedding_ollama_port || 11434,
-      embedding_ollama_model || '',
-      embedding_cloud_provider || '',
+      model ?? existing.model ?? '',
+      temperature ?? existing.temperature ?? 0.7,
+      max_tokens ?? existing.max_tokens ?? 2000,
+      monthly_budget_usd ?? existing.monthly_budget_usd ?? null,
+      budget_alert_threshold ?? existing.budget_alert_threshold ?? 80,
+      pause_on_budget_exhausted ?? existing.pause_on_budget_exhausted ?? true,
+      ollama_fallback_enabled ?? existing.ollama_fallback_enabled ?? false,
+      ollama_for_basic_tasks ?? existing.ollama_for_basic_tasks ?? false,
+      ollama_for_budget_exhausted ?? existing.ollama_for_budget_exhausted ?? true,
+      ollama_host ?? existing.ollama_host ?? 'localhost',
+      ollama_port ?? existing.ollama_port ?? 11434,
+      ollama_model ?? existing.ollama_model ?? 'llama3.2',
+      rag_enabled ?? existing.rag_enabled ?? false,
+      embedding_provider ?? existing.embedding_provider ?? 'auto',
+      embedding_model ?? existing.embedding_model ?? '',
+      rag_similarity_threshold ?? existing.rag_similarity_threshold ?? 0.70,
+      rag_min_history_count ?? existing.rag_min_history_count ?? 50,
+      rag_backfill_budget_type ?? existing.rag_backfill_budget_type ?? 'percentage',
+      rag_backfill_budget_value ?? existing.rag_backfill_budget_value ?? 25,
+      formula_pattern_weight ?? existing.formula_pattern_weight ?? 0.40,
+      formula_rule_weight ?? existing.formula_rule_weight ?? 0.30,
+      formula_rag_weight ?? existing.formula_rag_weight ?? 0.20,
+      formula_history_weight ?? existing.formula_history_weight ?? 0.10,
+      embedding_provider_mode ?? existing.embedding_provider_mode ?? 'same',
+      embedding_ollama_host ?? existing.embedding_ollama_host ?? '',
+      embedding_ollama_port ?? existing.embedding_ollama_port ?? 11434,
+      embedding_ollama_model ?? existing.embedding_ollama_model ?? '',
+      embedding_cloud_provider ?? existing.embedding_cloud_provider ?? '',
       finalEmbeddingCloudApiKey || '',
-      embedding_cloud_model || ''
+      embedding_cloud_model ?? existing.embedding_cloud_model ?? ''
     ]);
 
     // Clear config cache
     aiRouterService.clearCache();
     ollamaService.resetConfig(); // Clear Ollama config cache to pick up ollama_host/ollama_port changes
-    
+
     // Invalidate embedding caches
     embeddingProvider.resetConfig();
     embeddingRouter.resetConfig();
@@ -2764,36 +2770,36 @@ router.get('/heartbeat', async (req, res) => {
 router.put('/heartbeat', async (req, res) => {
   try {
     const { heartbeat_timeout, heartbeat_interval, max_wait_time } = req.body;
-    
+
     // Validate configuration values
     if (heartbeat_timeout !== undefined && (heartbeat_timeout < 5000 || heartbeat_timeout > 120000)) {
       return res.status(400).json({ error: 'heartbeat_timeout must be between 5000 and 120000 ms' });
     }
-    
+
     if (heartbeat_interval !== undefined && (heartbeat_interval < 1000 || heartbeat_interval > 30000)) {
       return res.status(400).json({ error: 'heartbeat_interval must be between 1000 and 30000 ms' });
     }
-    
+
     if (max_wait_time !== undefined && (max_wait_time < 10000 || max_wait_time > 300000)) {
       return res.status(400).json({ error: 'max_wait_time must be between 10000 and 300000 ms' });
     }
-    
+
     // Validate that heartbeat_interval is less than heartbeat_timeout
     const finalInterval = heartbeat_interval !== undefined ? heartbeat_interval : providerLock.config.heartbeatInterval;
     const finalTimeout = heartbeat_timeout !== undefined ? heartbeat_timeout : providerLock.config.heartbeatTimeout;
-    
+
     if (finalInterval >= finalTimeout) {
-      return res.status(400).json({ 
-        error: 'heartbeat_interval must be less than heartbeat_timeout' 
+      return res.status(400).json({
+        error: 'heartbeat_interval must be less than heartbeat_timeout'
       });
     }
-    
+
     await providerLock.updateConfig({
       heartbeatTimeout: heartbeat_timeout,
       heartbeatInterval: heartbeat_interval,
       maxWaitTime: max_wait_time,
     });
-    
+
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
