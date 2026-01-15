@@ -1,9 +1,44 @@
 # Classifarr Release Notes
 
 ## v0.39.3
-**Fix: RAG Settings Overview Tab Critical Bugs**
+**Fix: Data Consistency, RAG UI Display & Post-Upgrade System**
 
-### Bug Fixes
+### Critical Bug Fixes
+
+#### library_name Data Consistency 🔧
+- **Previous Bug**: When classifications were corrected via Discord or reclassification service, the `library_name` column was not updated, leaving it NULL or stale
+- **Impact**: Embeddings were missing library context, making RAG similarity searches less accurate
+- **Fix**: Updated all 3 correction locations to set both `library_id` AND `library_name`:
+  - Classification corrections API endpoint
+  - Discord bot correction handler
+  - Reclassification service
+- **Data Backfill**: Migration automatically populates missing `library_name` values for existing data
+- **Result**: RAG embeddings now include complete library context for better classification accuracy
+
+#### RAG Overview Statistics Display 📊
+- **Previous Bug**: Total Embeddings and Pending counts showed "0" even when embeddings existed in database
+- **Root Cause**: Field name mismatch between backend (`total`, `pendingRetries`) and frontend (`totalEmbeddings`, `pendingCount`)
+- **Fix**: Backend now returns both field names for backward compatibility
+- **Impact**: RAG Overview tab now displays accurate embedding counts
+
+### New Features
+
+#### Post-Upgrade Task System ✨
+- **What**: Reusable system for version-specific one-time maintenance operations
+- **Why**: Eliminates need for new migrations for each release's maintenance tasks
+- **How It Works**:
+  - Tasks defined in configuration (not database migrations)
+  - Tracks executed tasks in `post_upgrade_tasks` table
+  - Runs automatically on server startup after migrations
+  - Tasks are idempotent (safe to run multiple times)
+- **Available Task Types**:
+  - `clear_logs` - Fresh log start for new version
+  - `clear_embedding_queue` - Clear retry queue
+  - `rebuild_embeddings` - Mark all embeddings as stale
+  - `backfill_library_name` - Populate missing library names
+- **Future Versions**: Just add tasks to config, no new migrations needed
+
+### Previously Fixed in 0.39.3-alpha
 
 #### Provider Status Now Accurate 📊
 - **Previous Bug**: Provider Status card always showed "Offline" even when provider was online

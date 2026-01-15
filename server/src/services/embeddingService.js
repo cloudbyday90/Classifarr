@@ -433,10 +433,12 @@ class EmbeddingService {
             const stats = result.rows[0];
             return {
                 total: parseInt(stats.total) || 0,
+                totalEmbeddings: parseInt(stats.total) || 0,  // Alias for frontend compatibility
                 stale: parseInt(stats.stale) || 0,
                 providers: parseInt(stats.providers) || 0,
                 avgDims: Math.round(parseFloat(stats.avg_dims)) || 0,
-                pendingRetries: parseInt(queueResult.rows[0].pending) || 0
+                pendingRetries: parseInt(queueResult.rows[0].pending) || 0,
+                pendingCount: parseInt(queueResult.rows[0].pending) || 0  // Alias for frontend compatibility
             };
         } catch (error) {
             logger.error('Failed to get embedding stats', { error: error.message });

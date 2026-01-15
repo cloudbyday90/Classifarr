@@ -96,10 +96,13 @@ class ReclassificationService {
                 arrConfig: originalMapping
             };
 
-            // 5. Update classification history
+            // 5. Update classification history with library_id and library_name
             await db.query(`
         UPDATE classification_history 
-        SET library_id = $1, status = 'reclassified', updated_at = NOW()
+        SET library_id = $1, 
+            library_name = (SELECT name FROM libraries WHERE id = $1),
+            status = 'reclassified', 
+            updated_at = NOW()
         WHERE id = $2
       `, [targetLibraryId, classificationId]);
 

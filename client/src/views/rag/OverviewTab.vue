@@ -295,8 +295,8 @@ const loadStats = async () => {
     // Merge with defaults instead of replacing
     stats.value = {
       providerOnline: overviewRes.data?.providerOnline ?? false,
-      totalEmbeddings: 0,
-      pendingCount: 0,
+      totalEmbeddings: overviewRes.data?.stats?.totalEmbeddings ?? overviewRes.data?.stats?.total ?? 0,
+      pendingCount: overviewRes.data?.stats?.pendingCount ?? overviewRes.data?.stats?.pendingRetries ?? 0,
       failedCount: 0,
       avgGenerationTime: 0,
       lastEmbeddingTime: null,
