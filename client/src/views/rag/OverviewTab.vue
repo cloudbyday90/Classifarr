@@ -346,6 +346,7 @@ const saveConfig = async () => {
   
   try {
     await api.put('/settings/ai', {
+      rag_enabled: true, // Enable RAG when saving embedding configuration
       embedding_provider_mode: config.value.mode,
       embedding_model: config.value.embedding_model,
       embedding_ollama_host: config.value.ollama_host,
