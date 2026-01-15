@@ -257,6 +257,9 @@ class EmbeddingService {
                 embeddingResult.model
             ]);
 
+            // Clean up any retry queue entry for this classification since it's now complete
+            await db.query('DELETE FROM embedding_retry_queue WHERE classification_id = $1', [classificationId]);
+
             return {
                 id: result.rows[0].id,
                 dims: embeddingResult.dims,

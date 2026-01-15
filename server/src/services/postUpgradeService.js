@@ -28,6 +28,11 @@ const POST_UPGRADE_TASKS = {
             id: 'backfill_library_name_0393',
             action: 'backfill_library_name',
             description: 'Populate library_name where missing'
+        },
+        {
+            id: 'clear_stale_retry_queue_0393',
+            action: 'clear_stale_retry_queue',
+            description: 'Remove orphaned entries from embedding retry queue'
         }
     ]
 };
@@ -156,6 +161,10 @@ class PostUpgradeService {
                 await this.backfillLibraryName();
                 break;
 
+            case 'clear_stale_retry_queue':
+                await this.clearStaleRetryQueue();
+                break;
+
             default:
                 throw new Error(`Unknown task action: ${task.action}`);
         }
@@ -252,6 +261,25 @@ class PostUpgradeService {
         `);
 
         logger.info(`Backfilled library_name for ${result.rowCount} classifications`);
+    }
+
+    /**
+     * Task Action: Clear stale entries from embedding retry queue
+     * Removes items that are marked as 'pending' but already have embeddings
+     */
+    async clearStaleRetryQueue() {
+        logger.info('Clearing stale entries from embedding retry queue...');
+
+        // Delete retry queue entries where the classification already has an embedding
+        const result = await db.query(`
+            DELETE FROM embedding_retry_queue erq
+            WHERE EXISTS (
+                SELECT 1 FROM classification_embeddings ce
+                WHERE ce.classification_id = erq.classification_id
+            )
+        `);
+
+        logger.info(`Cleared ${result.rowCount} stale entries from retry queue`);
     }
 }
 
