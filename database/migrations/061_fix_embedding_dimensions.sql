@@ -66,20 +66,19 @@ BEGIN
     -- Check if we have existing embeddings
     SELECT COUNT(*) INTO has_embeddings FROM classification_embeddings;
 
-    -- Get current column dimensions by checking the actual column type
-    -- Extract dimension from type like "vector(2000)" or "vector(768)"
-    SELECT 
-        CASE 
-            WHEN data_type = 'USER-DEFINED' AND udt_name = 'vector' THEN
-                -- Extract number from character_maximum_length or try to parse from UDT
-                -- For pgvector, we need to query the column directly
-                (SELECT embedding_dims FROM classification_embeddings LIMIT 1)
-            ELSE 2000  -- Default from migration 031
-        END INTO current_column_dims
-    FROM information_schema.columns 
-    WHERE table_name = 'classification_embeddings' 
-    AND column_name = 'embedding'
-    LIMIT 1;
+    -- Get current column dimensions by inspecting the actual column type in pg_catalog
+    -- For pgvector, the dimension is stored in atttypmod and computed as (atttypmod - 4)
+    SELECT
+        CASE
+            WHEN att.atttypid = 'vector'::regtype AND att.atttypmod > 0 THEN
+                att.atttypmod - 4
+            ELSE 2000  -- Default from migration 031 if we can't determine it
+        END
+    INTO current_column_dims
+    FROM pg_attribute att
+    WHERE att.attrelid = 'classification_embeddings'::regclass
+      AND att.attname = 'embedding'
+      AND NOT att.attisdropped;
 
     -- If we can't determine current dims, assume it's 2000 (the original)
     IF current_column_dims IS NULL THEN

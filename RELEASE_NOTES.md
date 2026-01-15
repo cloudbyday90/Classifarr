@@ -1,6 +1,6 @@
 # Classifarr Release Notes
 
-## v0.39.3-alpha
+## v0.39.3
 **Fix: RAG Settings Overview Tab Critical Bugs**
 
 ### Bug Fixes
