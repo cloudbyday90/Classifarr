@@ -79,7 +79,14 @@ class EmbeddingRouter {
                     formula_pattern_weight,
                     formula_rule_weight,
                     formula_rag_weight,
-                    formula_history_weight
+                    formula_history_weight,
+                    embedding_provider_mode,
+                    embedding_ollama_host,
+                    embedding_ollama_port,
+                    embedding_ollama_model,
+                    embedding_cloud_provider,
+                    embedding_cloud_api_key,
+                    embedding_cloud_model
                 FROM ai_provider_config 
                 WHERE id = 1
             `);

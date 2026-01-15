@@ -29,6 +29,8 @@ const ollamaService = require('../services/ollama');
 const tmdbService = require('../services/tmdb');
 const discordBotService = require('../services/discordBot');
 const tavilyService = require('../services/tavily');
+const embeddingProvider = require('../services/embeddingProvider');
+const embeddingRouter = require('../services/embeddingRouter');
 const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
 const startupService = require('../services/startupService');
 const pathTestService = require('../services/pathTestService');
@@ -2229,7 +2231,15 @@ router.get('/ai', async (req, res) => {
         formula_pattern_weight: 0.40,
         formula_rule_weight: 0.30,
         formula_rag_weight: 0.20,
-        formula_history_weight: 0.10
+        formula_history_weight: 0.10,
+        // Embedding provider configuration
+        embedding_provider_mode: 'same',
+        embedding_ollama_host: '',
+        embedding_ollama_port: 11434,
+        embedding_ollama_model: '',
+        embedding_cloud_provider: '',
+        embedding_cloud_api_key: '',
+        embedding_cloud_model: ''
       });
     }
 
@@ -2237,6 +2247,10 @@ router.get('/ai', async (req, res) => {
     // Mask API key
     if (config.api_key) {
       config.api_key = maskToken(config.api_key);
+    }
+    // Mask embedding cloud API key
+    if (config.embedding_cloud_api_key) {
+      config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
     }
 
     res.json(config);
@@ -2282,7 +2296,15 @@ router.put('/ai', async (req, res) => {
       formula_pattern_weight,
       formula_rule_weight,
       formula_rag_weight,
-      formula_history_weight
+      formula_history_weight,
+      // Embedding provider configuration
+      embedding_provider_mode,
+      embedding_ollama_host,
+      embedding_ollama_port,
+      embedding_ollama_model,
+      embedding_cloud_provider,
+      embedding_cloud_api_key,
+      embedding_cloud_model
     } = req.body;
 
     // Handle API key - don't update if masked
@@ -2290,6 +2312,13 @@ router.put('/ai', async (req, res) => {
     if (isMaskedToken(api_key)) {
       const existing = await db.query('SELECT api_key FROM ai_provider_config WHERE id = 1');
       finalApiKey = existing.rows[0]?.api_key || '';
+    }
+
+    // Handle embedding cloud API key - don't update if masked
+    let finalEmbeddingCloudApiKey = embedding_cloud_api_key;
+    if (isMaskedToken(embedding_cloud_api_key)) {
+      const existing = await db.query('SELECT embedding_cloud_api_key FROM ai_provider_config WHERE id = 1');
+      finalEmbeddingCloudApiKey = existing.rows[0]?.embedding_cloud_api_key || '';
     }
 
     // Validate formula weights sum to approximately 1.0 if any are provided
@@ -2326,10 +2355,13 @@ router.put('/ai', async (req, res) => {
                 rag_similarity_threshold, rag_min_history_count,
                 rag_backfill_budget_type, rag_backfill_budget_value,
                 formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight,
+                embedding_provider_mode, embedding_ollama_host, embedding_ollama_port, embedding_ollama_model,
+                embedding_cloud_provider, embedding_cloud_api_key, embedding_cloud_model,
                 updated_at
             ) VALUES (
                 1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, NOW()
+                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                $31, $32, $33, NOW()
             )
             ON CONFLICT (id) DO UPDATE SET
                 primary_provider = EXCLUDED.primary_provider,
@@ -2358,6 +2390,13 @@ router.put('/ai', async (req, res) => {
                 formula_rule_weight = EXCLUDED.formula_rule_weight,
                 formula_rag_weight = EXCLUDED.formula_rag_weight,
                 formula_history_weight = EXCLUDED.formula_history_weight,
+                embedding_provider_mode = EXCLUDED.embedding_provider_mode,
+                embedding_ollama_host = EXCLUDED.embedding_ollama_host,
+                embedding_ollama_port = EXCLUDED.embedding_ollama_port,
+                embedding_ollama_model = EXCLUDED.embedding_ollama_model,
+                embedding_cloud_provider = EXCLUDED.embedding_cloud_provider,
+                embedding_cloud_api_key = EXCLUDED.embedding_cloud_api_key,
+                embedding_cloud_model = EXCLUDED.embedding_cloud_model,
                 updated_at = NOW()
             RETURNING *
         `, [
@@ -2386,16 +2425,31 @@ router.put('/ai', async (req, res) => {
       formula_pattern_weight ?? 0.40,
       formula_rule_weight ?? 0.30,
       formula_rag_weight ?? 0.20,
-      formula_history_weight ?? 0.10
+      formula_history_weight ?? 0.10,
+      embedding_provider_mode || 'same',
+      embedding_ollama_host || '',
+      embedding_ollama_port || 11434,
+      embedding_ollama_model || '',
+      embedding_cloud_provider || '',
+      finalEmbeddingCloudApiKey || '',
+      embedding_cloud_model || ''
     ]);
 
     // Clear config cache
     aiRouterService.clearCache();
     ollamaService.resetConfig(); // Clear Ollama config cache to pick up ollama_host/ollama_port changes
+    
+    // Invalidate embedding caches
+    embeddingProvider.resetConfig();
+    embeddingRouter.resetConfig();
 
     const config = result.rows[0];
     if (config.api_key) {
       config.api_key = maskToken(config.api_key);
+    }
+    // Mask embedding cloud API key
+    if (config.embedding_cloud_api_key) {
+      config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
     }
 
     res.json(config);
@@ -2660,140 +2714,21 @@ router.get('/media-path-config', async (req, res) => {
 });
 
 // ============================================
-// EMBEDDING PROVIDER SETTINGS
+// EMBEDDING PROVIDER SETTINGS (Consolidated)
 // ============================================
-
-const embeddingProvider = require('../services/embeddingProvider');
-
-/**
- * @swagger
- * /api/settings/embedding-provider:
- *   get:
- *     summary: Get embedding provider configuration
- */
-router.get('/embedding-provider', async (req, res) => {
-  try {
-    const result = await db.query(`
-      SELECT 
-        embedding_provider_mode,
-        embedding_ollama_host,
-        embedding_ollama_port,
-        embedding_ollama_model,
-        embedding_cloud_provider,
-        embedding_cloud_model,
-        embedding_cloud_api_key
-      FROM ai_provider_config 
-      WHERE id = 1
-    `);
-
-    const config = result.rows[0] || {};
-    
-    // Mask API key in response for security
-    if (config.embedding_cloud_api_key) {
-      config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
-    }
-    
-    res.json(config);
-  } catch (error) {
-    console.error('Failed to get embedding provider config:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * @swagger
- * /api/settings/embedding-provider:
- *   put:
- *     summary: Update embedding provider configuration
- */
-router.put('/embedding-provider', async (req, res) => {
-  try {
-    const {
-      embedding_provider_mode,
-      embedding_ollama_host,
-      embedding_ollama_port,
-      embedding_ollama_model,
-      embedding_cloud_provider,
-      embedding_cloud_api_key,
-      embedding_cloud_model,
-    } = req.body;
-
-    // Build update query - only update API key if provided and not masked
-    let apiKeyUpdate = '';
-    const params = [
-      embedding_provider_mode,
-      embedding_ollama_host,
-      embedding_ollama_port,
-      embedding_ollama_model,
-      embedding_cloud_provider,
-      embedding_cloud_model
-    ];
-
-    if (embedding_cloud_api_key && !isMaskedToken(embedding_cloud_api_key)) {
-      apiKeyUpdate = ', embedding_cloud_api_key = $7';
-      params.push(embedding_cloud_api_key);
-    }
-
-    const result = await db.query(`
-      UPDATE ai_provider_config SET
-        embedding_provider_mode = $1,
-        embedding_ollama_host = $2,
-        embedding_ollama_port = $3,
-        embedding_ollama_model = $4,
-        embedding_cloud_provider = $5,
-        embedding_cloud_model = $6
-        ${apiKeyUpdate}
-      WHERE id = 1
-      RETURNING *
-    `, params);
-
-    // Invalidate caches
-    embeddingProvider.resetConfig();
-    const embeddingRouter = require('../services/embeddingRouter');
-    embeddingRouter.resetConfig();
-
-    // Mask API key in response
-    if (result.rows[0]?.embedding_cloud_api_key) {
-      result.rows[0].embedding_cloud_api_key = maskToken(result.rows[0].embedding_cloud_api_key);
-    }
-
-    res.json({ success: true, config: result.rows[0] });
-  } catch (error) {
-    console.error('Failed to update embedding provider config:', error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-/**
- * @swagger
- * /api/settings/embedding-provider/test:
- *   post:
- *     summary: Test embedding provider connection
- */
-router.post('/embedding-provider/test', async (req, res) => {
-  try {
-    const result = await embeddingProvider.testConnection();
-    res.json(result);
-  } catch (error) {
-    console.error('Embedding provider test failed:', error.message);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * @swagger
- * /api/settings/embedding-provider/defaults:
- *   get:
- *     summary: Get provider-specific model defaults
- */
-router.get('/embedding-provider/defaults', async (req, res) => {
-  try {
-    const defaults = embeddingProvider.getProviderDefaults();
-    res.json(defaults);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// Note: Embedding provider configuration endpoints were consolidated into /api/settings/ai
+// to eliminate redundancy and provide a unified API for all AI provider settings.
+//
+// Previously available endpoints (now removed):
+//   - GET/PUT /api/settings/embedding-provider -> Use GET/PUT /api/settings/ai
+//   - POST /api/settings/embedding-provider/test -> Use POST /api/rag/test
+//   - GET /api/settings/embedding-provider/defaults -> Unused, removed
+//
+// The /api/settings/ai endpoint now handles all embedding provider fields:
+//   - embedding_provider_mode (same/separate_ollama/cloud)
+//   - embedding_ollama_host, embedding_ollama_port, embedding_ollama_model
+//   - embedding_cloud_provider, embedding_cloud_api_key, embedding_cloud_model
+// ============================================
 
 // ============================================
 // HEARTBEAT/PROVIDER LOCK CONFIGURATION
