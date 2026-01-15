@@ -2714,9 +2714,20 @@ router.get('/media-path-config', async (req, res) => {
 });
 
 // ============================================
-// EMBEDDING PROVIDER SETTINGS
-// Note: Embedding provider configuration is now managed through /api/settings/ai
-// Test connection is available through /api/rag/test
+// EMBEDDING PROVIDER SETTINGS (Consolidated)
+// ============================================
+// Note: Embedding provider configuration endpoints were consolidated into /api/settings/ai
+// to eliminate redundancy and provide a unified API for all AI provider settings.
+//
+// Previously available endpoints (now removed):
+//   - GET/PUT /api/settings/embedding-provider -> Use GET/PUT /api/settings/ai
+//   - POST /api/settings/embedding-provider/test -> Use POST /api/rag/test
+//   - GET /api/settings/embedding-provider/defaults -> Unused, removed
+//
+// The /api/settings/ai endpoint now handles all embedding provider fields:
+//   - embedding_provider_mode (same/separate_ollama/cloud)
+//   - embedding_ollama_host, embedding_ollama_port, embedding_ollama_model
+//   - embedding_cloud_provider, embedding_cloud_api_key, embedding_cloud_model
 // ============================================
 
 // ============================================
