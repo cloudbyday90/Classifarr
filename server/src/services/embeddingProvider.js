@@ -13,7 +13,7 @@ const db = require('../config/database');
 const ollamaService = require('./ollama');
 const providerLock = require('./providerLock');
 const { createLogger } = require('../utils/logger');
-const { withRetry } = require('../utils/retryUtils');
+const { withRetry, isRetryableError } = require('../utils/retryUtils');
 const CircuitBreaker = require('./circuitBreaker');
 
 const logger = createLogger('EmbeddingProvider');
@@ -397,7 +397,6 @@ class EmbeddingProvider {
             this.metrics.totalLatency += latency;
             this.circuitBreaker.recordFailure(error);
 
-            const { isRetryableError } = require('../utils/retryUtils');
             const retryable = isRetryableError(error);
             this.recordError(error, latency, retryable);
 
