@@ -911,8 +911,33 @@ class EmbeddingProvider {
     /**
      * Test connection for any provider
      */
-    async testConnection() {
+    async testConnection(config = {}) {
         try {
+            // If config is provided, we are testing a specific setup (draft)
+            if (Object.keys(config).length > 0) {
+                const mode = config.mode || config.embedding_provider_mode;
+
+                if (mode === 'same' || mode === 'separate_ollama') {
+                    const host = config.host || config.embedding_ollama_host;
+                    const port = config.port || config.embedding_ollama_port;
+                    const model = config.model || config.embedding_ollama_model;
+
+                    // Use getOllamaEmbedding with explicit config
+                    const result = await this.getOllamaEmbedding('Test Connection', host, port, model, config);
+
+                    return {
+                        success: true,
+                        provider: 'ollama',
+                        model: model,
+                        dimensions: result.dims,
+                        cost: 0
+                    };
+                }
+
+                // TODO: Add cloud provider test logic here if needed
+            }
+
+            // Fallback: Test existing saved configuration
             const testEmbedding = await this.getEmbedding('test connection');
             return {
                 success: true,

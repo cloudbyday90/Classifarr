@@ -31,8 +31,8 @@ router.post('/test-connection', async (req, res) => {
         const start = Date.now();
 
         // Actually test embedding generation to get dimensions
-        const result = await embeddingProvider.testConnection();
-        
+        const result = await embeddingProvider.testConnection(req.body);
+
         res.json({
             success: result.success,
             latency: Date.now() - start,
