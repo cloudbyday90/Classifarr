@@ -1,7 +1,7 @@
 # Classifarr Release Notes
 
 ## v0.39.0-alpha
-**Title: Robust Error Handling + AI Prompt Enrichment + RAG Settings Dashboard + Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion**
+**Title: Robust Error Handling + AI Prompt Enrichment + RAG Settings Dashboard + Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion + Bug Fixes**
 
 ### Bug Fixes
 
@@ -11,6 +11,38 @@
 - **API Routing Fixed**: Corrected double URL prefix (`/api/api/...`) in all three RAG settings tabs (Overview, Backfill, Advanced)
 - **Embedding Model Dropdown**: Select from 8 recommended models instead of free text input
 - **Test Suite Updated**: Added 3 regression tests to prevent future API format issues
+
+#### 6. Ollama Embedding API Updated for v0.13.5+
+
+**Problem:**
+RAG "Test Connection" was failing with 404 errors even though Ollama was running and the AI Provider test succeeded.
+
+**Root Cause:**
+Ollama v0.13.5 changed their embedding API:
+- Old endpoint: `/api/embeddings` (deprecated)
+- New endpoint: `/api/embed`
+- Old body: `{ prompt: "text" }`
+- New body: `{ input: "text" }`
+
+**Solution:**
+- Updated `ollama.js` and `embeddingProvider.js` to use new `/api/embed` endpoint
+- Changed request body parameter from `prompt` to `input`
+
+**Impact:**
+RAG embeddings now work correctly with Ollama v0.13.5+. Users on older Ollama versions should upgrade.
+
+#### 7. RAG Overview Tab Loading Fixed
+
+**Problem:**
+The RAG Settings Overview tab would crash with `TypeError: Cannot read properties of undefined (reading 'totalEmbeddings')` when the API returned incomplete data.
+
+**Solution:**
+- Added defensive null checks with optional chaining (`?.`)
+- API calls now have `.catch()` handlers returning empty defaults
+- `formatNumber()` helper handles null/undefined gracefully
+
+**Impact:**
+The Overview tab now loads reliably, showing default values (0) when API data is unavailable, instead of crashing.
 
 ### New Features
 

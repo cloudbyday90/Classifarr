@@ -64,8 +64,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve(mockConfigData);
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
         return Promise.reject(new Error('Unknown URL'));
       });
 
@@ -94,8 +94,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve(mockConfigData);
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
         return Promise.reject(new Error('Unknown URL'));
       });
 
@@ -144,8 +144,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve({ data: {} });
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve({ data: {} });
         return Promise.reject(new Error('Unknown URL'));
       });
 
@@ -173,8 +173,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve({ data: {} });
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve({ data: {} });
         return Promise.reject(new Error('Unknown URL'));
       });
 
@@ -199,8 +199,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve({ data: {} });
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve({ data: {} });
         return Promise.reject(new Error('Unknown URL'));
       });
 
@@ -252,8 +252,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve({ data: {} });
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve({ data: {} });
         return Promise.reject(new Error('Unknown URL'));
       });
 
@@ -273,8 +273,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve({ data: {} });
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve({ data: {} });
         return Promise.reject(new Error('Unknown URL'));
       });
 
@@ -294,8 +294,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve({ data: {} });
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve({ data: {} });
         return Promise.reject(new Error('Unknown URL'));
       });
 
@@ -318,8 +318,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve({ data: {} });
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve({ data: {} });
         return Promise.reject(new Error('Unknown URL'));
       });
 
@@ -339,8 +339,8 @@ describe('OverviewTab.vue', () => {
       };
 
       api.get.mockImplementation((url) => {
-        if (url === '/api/rag/overview') return Promise.resolve(mockOverviewData);
-        if (url === '/api/settings/ai') return Promise.resolve({ data: {} });
+        if (url === '/rag/overview') return Promise.resolve(mockOverviewData);
+        if (url === '/settings/ai') return Promise.resolve({ data: {} });
         return Promise.reject(new Error('Unknown URL'));
       });
 
