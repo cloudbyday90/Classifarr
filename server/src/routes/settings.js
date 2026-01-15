@@ -2327,6 +2327,33 @@ router.put('/ai', async (req, res) => {
       finalEmbeddingCloudApiKey = existing.embedding_cloud_api_key || '';
     }
 
+    // Check if embedding model changed - if so, clear existing embeddings (dimension incompatibility)
+    const modelChanged = (
+      (embedding_model && embedding_model !== existing.embedding_model) ||
+      (embedding_provider_mode && embedding_provider_mode !== existing.embedding_provider_mode) ||
+      (embedding_ollama_model && embedding_ollama_model !== existing.embedding_ollama_model) ||
+      (embedding_cloud_model && embedding_cloud_model !== existing.embedding_cloud_model)
+    );
+
+    if (modelChanged && existing.embedding_model) {
+      // Clear embeddings - dimensions will be incompatible
+      const { createLogger } = require('../utils/logger');
+      const logger = createLogger('SettingsAPI');
+      
+      try {
+        await db.query('DELETE FROM classification_embeddings');
+        logger.warn('Embedding model changed - cleared existing embeddings', {
+          oldMode: existing.embedding_provider_mode,
+          newMode: embedding_provider_mode || existing.embedding_provider_mode,
+          oldModel: existing.embedding_model || existing.embedding_ollama_model || existing.embedding_cloud_model,
+          newModel: embedding_model || embedding_ollama_model || embedding_cloud_model
+        });
+      } catch (error) {
+        logger.error('Failed to clear embeddings after model change', { error: error.message });
+        // Continue anyway - don't fail the config update
+      }
+    }
+
     // Validate formula weights sum to approximately 1.0 if any are provided
     const providedWeights = [formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight];
     const hasWeights = providedWeights.some(w => w !== undefined);

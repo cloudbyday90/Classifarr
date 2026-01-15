@@ -14,12 +14,12 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-400">Provider Status</p>
-            <p :class="['text-2xl font-bold mt-1', providerOnline ? 'text-green-400' : 'text-red-400']">
-              {{ providerOnline ? 'Online' : 'Offline' }}
+            <p :class="['text-2xl font-bold mt-1', stats.providerOnline ? 'text-green-400' : 'text-red-400']">
+              {{ stats.providerOnline ? 'Online' : 'Offline' }}
             </p>
           </div>
-          <span :class="['text-3xl', providerOnline ? 'text-green-400' : 'text-red-400']">
-            {{ providerOnline ? '✓' : '✗' }}
+          <span :class="['text-3xl', stats.providerOnline ? 'text-green-400' : 'text-red-400']">
+            {{ stats.providerOnline ? '✓' : '✗' }}
           </span>
         </div>
       </div>
@@ -291,10 +291,10 @@ const loadStats = async () => {
     ])
     
     // Safely extract with defaults
-    // providerOnline.value = overviewRes.data?.providerOnline ?? false // This line is removed as providerOnline is now part of stats
     
     // Merge with defaults instead of replacing
     stats.value = {
+      providerOnline: overviewRes.data?.providerOnline ?? false,
       totalEmbeddings: 0,
       pendingCount: 0,
       failedCount: 0,
@@ -347,10 +347,14 @@ const testConnection = async () => {
     })
     
     if (response.data.success) {
-      testResult.value = { success: true, message: `Connected successfully (${response.data.latency}ms)` }
-      toast.success(`Connected successfully (${response.data.latency}ms)`)
+      testResult.value = { 
+        success: true, 
+        dims: response.data.dims,
+        message: `Connected successfully (${response.data.latency}ms)` 
+      }
+      toast.success(`Connected successfully (${response.data.dims} dimensions, ${response.data.latency}ms)`)
     } else {
-      testResult.value = { success: false, message: response.data.error || 'Connection failed' }
+      testResult.value = { success: false, error: response.data.error || 'Connection failed' }
       toast.error(response.data.error || 'Connection failed')
     }
   } catch (error) {
@@ -421,6 +425,6 @@ const formatTimestamp = (timestamp) => {
 }
 
 onMounted(() => {
-  loadOverview()
+  loadStats()
 })
 </script>

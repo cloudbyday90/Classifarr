@@ -1,5 +1,42 @@
 # Classifarr Release Notes
 
+## v0.39.3
+**Fix: RAG Settings Overview Tab Critical Bugs**
+
+### Bug Fixes
+
+#### Provider Status Now Accurate 📊
+- **Previous Bug**: Provider Status card always showed "Offline" even when provider was online
+- **Fix**: Corrected variable reference (`stats.providerOnline` instead of `providerOnline`) and added `providerOnline` field to API response
+- **Impact**: You can now accurately see your embedding provider status
+
+#### Test Connection Shows Dimensions 🔢
+- **Previous Bug**: Test connection showed "undefined dimensions" on success
+- **Fix**: Test connection now actually generates a test embedding to get real dimensions
+- **Impact**: You can verify your embedding model is working and see its dimension count (e.g., 768, 1024, 1536)
+
+#### Page Data Loading Fixed 🔄
+- **Previous Bug**: RAG Overview page never loaded data (showed defaults)
+- **Fix**: Fixed function call in component mount hook (`loadStats()` instead of `loadOverview()`)
+- **Impact**: Page now properly loads your configuration and statistics on load
+
+#### Model Change Clears Embeddings ⚠️
+- **New Behavior**: Changing embedding models now automatically clears existing embeddings
+- **Why**: Different models have different vector dimensions (768 vs 1024 vs 1536)
+- **Impact**: Prevents database errors and ensures RAG continues working correctly after model changes
+- **Note**: You'll see a warning in logs when embeddings are cleared
+
+#### Configuration Errors Don't Trip Circuit Breaker 🔧
+- **Previous Bug**: Missing API keys or misconfigured providers would trip the circuit breaker, showing "Circuit breaker open"
+- **Fix**: Configuration errors are now distinguished from transient network errors
+- **Impact**: Circuit breaker only trips for actual network/server failures, not configuration issues
+- **Better Error Messages**: Clear guidance on what needs to be configured for each provider mode:
+  - "Same as Classification" → requires AI provider configured
+  - "Separate Ollama" → requires Ollama host configured  
+  - "Cloud" → requires cloud provider and API key configured
+
+---
+
 ## v0.39.2c-alpha
 **Fix: Database Auto-Healing & Timeouts**
 

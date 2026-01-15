@@ -18,6 +18,18 @@ const CircuitBreaker = require('./circuitBreaker');
 
 const logger = createLogger('EmbeddingProvider');
 
+/**
+ * Configuration Error class - used to distinguish config errors from transient failures
+ * Configuration errors should NOT trip the circuit breaker
+ */
+class ConfigurationError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'ConfigurationError';
+        this.isConfigurationError = true;
+    }
+}
+
 // Provider-specific model defaults and pricing
 const PROVIDER_DEFAULTS = {
     openai: {
@@ -334,7 +346,7 @@ class EmbeddingProvider {
 
         const config = await this.getConfig();
         if (!config) {
-            throw new Error('No embedding provider configuration found');
+            throw new ConfigurationError('No embedding provider configuration found');
         }
 
         const mode = config.embedding_provider_mode || 'same';
@@ -371,6 +383,10 @@ class EmbeddingProvider {
             switch (mode) {
                 case 'same':
                     // Use classification provider (legacy behavior via ollamaService)
+                    // Validate that primary provider is configured
+                    if (!config.primary_provider || config.primary_provider === 'none') {
+                        throw new ConfigurationError('No AI provider configured for embedding generation. Please configure an AI provider in Settings > AI Provider.');
+                    }
                     result = await this.getOllamaEmbedding(
                         text,
                         null,  // Don't pass host - use ollamaService
@@ -382,6 +398,10 @@ class EmbeddingProvider {
 
                 case 'separate_ollama':
                     // Use dedicated Ollama instance
+                    // Validate that separate Ollama host is configured
+                    if (!config.embedding_ollama_host) {
+                        throw new ConfigurationError('No separate Ollama host configured. Please configure host and port in RAG Settings > Embedding Provider.');
+                    }
                     result = await this.getOllamaEmbedding(
                         text,
                         config.embedding_ollama_host,
@@ -393,11 +413,12 @@ class EmbeddingProvider {
 
                 case 'cloud':
                     // Use cloud provider
+                    // Validation happens in getCloudEmbedding
                     result = await this.getCloudEmbedding(text, config);
                     break;
 
                 default:
-                    throw new Error(`Unknown embedding provider mode: ${mode}`);
+                    throw new ConfigurationError(`Unknown embedding provider mode: ${mode}`);
             }
 
             // Record success metrics
@@ -428,8 +449,9 @@ class EmbeddingProvider {
             const retryable = isRetryableError(error);
 
             // Only trip circuit breaker for retryable (transient) errors or server errors (5xx)
-            // Don't trip for client errors (4xx) or configuration issues to avoid false 'Offline' status
-            if (retryable || (error.response?.status >= 500)) {
+            // Don't trip for client errors (4xx), configuration issues, or validation errors to avoid false 'Offline' status
+            const isConfigError = error.isConfigurationError || error.name === 'ConfigurationError';
+            if (!isConfigError && (retryable || (error.response?.status >= 500))) {
                 this.circuitBreaker.recordFailure(error);
             }
 
@@ -439,7 +461,8 @@ class EmbeddingProvider {
                 mode,
                 error: error.message,
                 latency,
-                retryable
+                retryable,
+                isConfigError
             });
             throw error;
         } finally {
@@ -539,11 +562,11 @@ class EmbeddingProvider {
         const model = config.embedding_cloud_model || PROVIDER_DEFAULTS[provider]?.default;
 
         if (!provider) {
-            throw new Error('No cloud embedding provider configured');
+            throw new ConfigurationError('No cloud embedding provider configured');
         }
 
         if (!apiKey) {
-            throw new Error(`No API key configured for ${provider}`);
+            throw new ConfigurationError(`No API key configured for ${provider}`);
         }
 
         switch (provider) {
@@ -558,7 +581,7 @@ class EmbeddingProvider {
             case 'cohere':
                 return await this.getCohereEmbedding(text, apiKey, model, config);
             default:
-                throw new Error(`Unknown cloud provider: ${provider}`);
+                throw new ConfigurationError(`Unknown cloud provider: ${provider}`);
         }
     }
 
