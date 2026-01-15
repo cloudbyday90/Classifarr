@@ -196,6 +196,9 @@ class PostUpgradeService {
         // Clear log files if they exist (destructive: truncates contents)
         const logDir = path.join(__dirname, '../../logs');
         try {
+            // Check if directory exists first
+            await fs.access(logDir);
+
             const files = await fs.readdir(logDir);
             for (const file of files) {
                 if (file.endsWith('.log')) {
@@ -205,8 +208,12 @@ class PostUpgradeService {
                 }
             }
         } catch (error) {
-            // Log directory might not exist, that's okay
-            logger.warn('Could not clear log files:', { error: error.message });
+            // Log directory might not exist, that's expected in containerized environments
+            if (error.code === 'ENOENT') {
+                logger.debug('Log directory does not exist, skipping file cleanup');
+            } else {
+                logger.warn('Could not clear log files:', { error: error.message });
+            }
         }
 
         logger.info('Logs cleared successfully');
