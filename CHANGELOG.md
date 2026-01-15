@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+(No unreleased changes)
+
+## [0.39.0-alpha] - 2026-01-14
+
 ### Added
 - **RAG & Embeddings Settings Consolidation** (#154, part of Epic #136)
   - Consolidated RAG & Embeddings settings under Classification section in settings sidebar
@@ -21,30 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `ClassificationStats.vue`: Classification metrics and trends
     - `RAGStats.vue`: RAG metrics, circuit breaker status, error/retry/backfill history
 
-### Changed
-- Settings sidebar now scrolls independently from main content
-- Removed duplicate embedding provider settings from AI settings panel
-- Heartbeat settings moved from General section to RAG → Backfill tab
-- Statistics page converted to tabbed interface for better organization
-
-### Removed
-- Standalone `/settings/rag` route (now integrated into Settings panel)
-- Duplicate Semantic Search (RAG) configuration card from AI settings
-- Separate RAG & Embeddings section in settings sidebar
-- Deprecated BackfillSettings component from AI settings
-- HeartbeatSettings component (functionality moved to RAG → Backfill tab)
-
-### Fixed
-- **Ollama Embedding API Compatibility** - Updated embedding code to use new `/api/embed` endpoint with `input` parameter instead of deprecated `/api/embeddings` with `prompt` parameter (Ollama 0.13+)
-- **RAG Settings API Prefix Duplication** - Fixed double `/api/api/` prefix in RAG settings API calls across all three RAG tab files:
-  - `OverviewTab.vue`: Fixed 4 API calls
-  - `BackfillTab.vue`: Fixed 14 API calls
-  - `AdvancedTab.vue`: Fixed 6 API calls
-- **RAG Test Connection Bypass** - Modified `/api/rag/test` endpoint to use `embeddingProvider.getEmbedding()` directly, bypassing the `rag_enabled` database check. Users can now test embedding provider connectivity before globally enabling RAG.
-- **Embedding Model Selection** - Added model dropdown for both "Same as Classification" and "Separate Ollama Instance" modes (replacing free text input)
-- **Test Suite Updates** - Updated `embeddingProvider.test.js` to match new Ollama `/api/embed` endpoint and response format
-
-### Added
 - **Embedding Model Dropdown** - Pre-populated dropdown with 8 recommended Ollama embedding models:
   - `nomic-embed-text` (recommended), `nomic-embed-text-v1.5`, `mxbai-embed-large`, `snowflake-arctic-embed2`, `bge-m3`, `bge-large`, `all-minilm`, `paraphrase-multilingual`
 - **Embedding Model for Same Mode** - New `embedding_model` configuration field allows selecting embedding model even when using the same Ollama server as classification
@@ -121,18 +101,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GET /api/history/:id/profile` - Get profile used for specific classification
   - Profile endpoints already exist in `/api/libraries/:id/profile`
 
-### Changed
-- **Prompt Builder**: Enhanced with library profile injection for AI context (#142)
-  - New `buildClassificationPrompt()` method
-  - `formatItemForPrompt()` helper for consistent item formatting
-  
-- **Classification Service**: Automatically captures and stores profile snapshots (#142)
-  - Profile stats captured at classification time for completed items
-  - Provides historical record of library composition
-
-## [0.39.0-alpha] - 2026-01-14
-
-### Added
 - **Dedicated RAG Settings Page**: New comprehensive UI for all RAG configuration (#141)
   - **Overview Tab**: Dashboard with status cards, quick stats, recent activity
     - Provider status (online/offline)
@@ -220,6 +188,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Backward compatible - existing 'same as classification' behavior preserved as default
 
 ### Removed
+- Standalone `/settings/rag` route (now integrated into Settings panel)
+- Duplicate Semantic Search (RAG) configuration card from AI settings
+- Separate RAG & Embeddings section in settings sidebar
+- Deprecated BackfillSettings component from AI settings
+- HeartbeatSettings component (functionality moved to RAG → Backfill tab)
+
+- **Rules Page**: Custom rules feature has been retired
 - **Rules Page**: Custom rules feature has been retired
   - Settings > Rules page removed from UI
   - Rules.vue component deleted
