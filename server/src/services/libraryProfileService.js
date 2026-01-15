@@ -413,13 +413,9 @@ class LibraryProfileService {
                     COUNT(*) as count,
                     ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) as percentage
                 FROM media_server_items,
-                     jsonb_array_elements_text(
-                         CASE 
-                             WHEN jsonb_typeof(genres) = 'array' THEN genres
-                             ELSE '[]'::jsonb
-                         END
-                     ) as genre
+                     unnest(genres) as genre
                 WHERE library_id = $1
+                  AND genres IS NOT NULL
                 GROUP BY genre
                 ORDER BY count DESC
                 LIMIT 10

@@ -1426,9 +1426,11 @@ IMPORTANT FOR CLARIFICATION:
 
 Think step by step, then respond with ONLY one of the formats above.`;
 
-    // Get Ollama config
-    const configResult = await db.query('SELECT * FROM ollama_config WHERE is_active = true LIMIT 1');
-    const config = configResult.rows[0] || { model: 'qwen3:14b', temperature: 0.30 };
+    // Get Ollama config from ai_provider_config
+    const configResult = await db.query('SELECT ollama_model, temperature FROM ai_provider_config WHERE id = 1');
+    const config = configResult.rows[0] 
+      ? { model: configResult.rows[0].ollama_model || 'llama3.2', temperature: configResult.rows[0].temperature || 0.30 }
+      : { model: 'llama3.2', temperature: 0.30 };
 
     // Acquire lock with high priority (classification always wins)
     await providerLock.acquireLock('classification', 'high');

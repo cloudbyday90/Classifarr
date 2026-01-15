@@ -61,7 +61,10 @@
                 <span class="text-xl">{{ item.media_type === 'movie' ? '🎬' : '📺' }}</span>
                 <div>
                   <div class="font-medium">{{ item.title }}</div>
-                  <div class="text-sm text-gray-400">→ {{ item.library_name }}</div>
+                  <div class="text-sm text-gray-400">
+                    <span v-if="item.status === 'awaiting_decision'">⏳ Awaiting Decision</span>
+                    <span v-else>→ {{ item.library_name }}</span>
+                  </div>
                 </div>
               </div>
               <Badge :variant="getConfidenceVariant(item.confidence)">
@@ -214,7 +217,7 @@ const loadData = async () => {
     // Load awaiting decision count
     try {
       const pendingRes = await api.get('/classification/pending/count')
-      awaitingDecisionCount.value = pendingRes.count || 0
+      awaitingDecisionCount.value = pendingRes.data.count || 0
     } catch (e) {
       console.error('Failed to load awaiting decision count:', e)
     }

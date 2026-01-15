@@ -42,6 +42,9 @@ class PolicyEngine {
         try {
             logger.info('Evaluating item against policies', { title: item.title });
 
+            // Initialize RAG cache for this evaluation
+            this._ragCache = null;
+
             // 1. Check for 100% confidence authoritative signals first
             const authoritativeMatch = await this.checkAuthoritativeSignals(item);
             if (authoritativeMatch) {
@@ -70,7 +73,16 @@ class PolicyEngine {
                 };
             }
 
-            // 3. Evaluate each policy
+            // 3. Pre-fetch RAG matches once for all policies (performance optimization)
+            try {
+                const ragMatches = await ragRetriever.semanticSearch(item, 5);
+                this._ragCache = { matches: ragMatches, timestamp: Date.now() };
+            } catch (error) {
+                logger.debug('Failed to pre-fetch RAG matches', { error: error.message });
+                this._ragCache = { matches: [], timestamp: Date.now() };
+            }
+
+            // 4. Evaluate each policy
             const evaluations = [];
             for (const policy of policies) {
                 const evaluation = await this.evaluatePolicy(policy, item);
@@ -813,7 +825,8 @@ class PolicyEngine {
      */
     async scoreRAG(libraryId, item) {
         try {
-            const matches = await ragRetriever.semanticSearch(item, 5);
+            // Use cached RAG results if available
+            const matches = this._ragCache?.matches || [];
             
             if (!matches || matches.length === 0) {
                 return 0;
