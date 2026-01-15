@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **RAG & Embeddings Settings Consolidation** (#154, part of Epic #136)
+  - Consolidated RAG & Embeddings settings under Classification section in settings sidebar
+  - Added independent scroll to settings sidebar navigation
+  - Statistics page now includes tabbed navigation (Classification, RAG & Embeddings)
+  - RAG settings reorganized into 3 focused tabs:
+    - **Overview**: Provider status, embedding provider configuration, and test connection
+    - **Backfill**: Real-time mode, idle backfill, scheduled backfill, manual controls, and heartbeat settings
+    - **Advanced**: Retry configuration, caching, debug options, and danger zone actions
+  - Moved RAG monitoring/stats to Statistics → RAG & Embeddings tab
+  - Created dedicated statistics components:
+    - `ClassificationStats.vue`: Classification metrics and trends
+    - `RAGStats.vue`: RAG metrics, circuit breaker status, error/retry/backfill history
+
+### Changed
+- Settings sidebar now scrolls independently from main content
+- Removed duplicate embedding provider settings from AI settings panel
+- Heartbeat settings moved from General section to RAG → Backfill tab
+- Statistics page converted to tabbed interface for better organization
+
+### Removed
+- Standalone `/settings/rag` route (now integrated into Settings panel)
+- Duplicate Semantic Search (RAG) configuration card from AI settings
+- Separate RAG & Embeddings section in settings sidebar
+- Deprecated BackfillSettings component from AI settings
+- HeartbeatSettings component (functionality moved to RAG → Backfill tab)
+
 - **Robust Error Handling with Adaptive Timeouts and Retry Logic** (#153, part of Epic #136)
   - **Retry Utilities** (`server/src/utils/retryUtils.js`): Comprehensive retry logic for transient failures
     - `calculateBackoff()`: Exponential delay with configurable jitter
