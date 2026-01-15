@@ -1,9 +1,70 @@
 # Classifarr Release Notes
 
 ## v0.39.0-alpha
-**Title: AI Prompt Enrichment + RAG Settings Dashboard + Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion**
+**Title: Robust Error Handling + AI Prompt Enrichment + RAG Settings Dashboard + Hybrid Backfill System + Queue & Priority + Embedding Provider Expansion**
 
 ### New Features
+
+#### Robust Error Handling with Adaptive Timeouts & Retry Logic 🛡️
+
+Embedding API calls now include enterprise-grade error handling to improve system stability and resilience (#153).
+
+**Intelligent Retry Logic:**
+- **Exponential Backoff**: Automatic retry with increasing delays (e.g., 1s → 2s → 4s)
+- **Jitter**: Randomization prevents thundering herd (configurable ±30%)
+- **Retry-After Headers**: Honors server-provided retry timing (for 429 rate limits)
+- **Smart Error Detection**: Only retries transient errors (timeouts, 5xx, rate limits)
+- **Configurable**: Max retries (0-10), base delay (100ms-10s), multiplier (1-5)
+
+**Adaptive Timeouts:**
+- **Cold Model Detection**: Automatically identifies models idle for 5+ minutes
+- **Warm Model Timeout**: 30s default for active models
+- **Cold Model Timeout**: 120s extended timeout for warmup operations
+- **Manual Warmup**: Pre-warm models before batch operations via UI or API
+
+**Circuit Breaker Protection:**
+- **States**: CLOSED (normal) → OPEN (blocking) → HALF_OPEN (testing recovery)
+- **Automatic Blocking**: After 5 consecutive failures, blocks requests for 60s
+- **Recovery Testing**: Attempts limited requests after timeout to test recovery
+- **Manual Reset**: Reset circuit breaker via UI when issues are resolved
+- **State History**: Track all state transitions with timestamps and reasons
+
+**Enhanced Monitoring UI:**
+- **Circuit Breaker Card**: Live state indicator (green/yellow/red) with reset button
+- **Request Metrics**: Total, successful, failed, retries, avg latency
+- **Model Status**: Visual indicator (🧊 cold / 🔥 warm) with warmup button
+- **Error History Table**: Time, error message, HTTP code, latency, retryable flag
+- **Retry History Table**: Time, attempt number, backoff delay, Retry-After header
+
+**Advanced Configuration:**
+- **Retry Settings Form**: Configure all retry parameters with live validation
+- **Visual Backoff Example**: See actual delay sequence based on your settings
+- **Per-Provider Support**: Works with all embedding providers (Ollama, OpenAI, Gemini, Voyage, OpenRouter, Cohere)
+
+**Benefits:**
+- **Improved Reliability**: Automatic recovery from transient failures
+- **Better User Experience**: Fewer failed operations, clearer error messages
+- **Cost Efficiency**: Honors rate limits, prevents unnecessary retries
+- **Transparency**: Complete visibility into errors and retry attempts
+- **Performance**: Adaptive timeouts optimize for cold vs warm models
+- **Protection**: Circuit breaker prevents cascading failures
+
+**Configuration Defaults:**
+```
+Request Timeout: 30s (warm) / 120s (cold)
+Max Retries: 3
+Base Delay: 1s
+Backoff Multiplier: 2.0
+Jitter Factor: 0.3 (±30%)
+Circuit Breaker: 5 failures → 60s timeout
+```
+
+**New API Endpoints:**
+- `GET /api/rag/metrics` - Enhanced with provider metrics & history
+- `GET /api/rag/circuit-breaker` - Circuit breaker status & state history
+- `POST /api/rag/circuit-breaker/reset` - Manual reset
+- `POST /api/rag/warmup` - Trigger model warmup
+- `GET/PUT /api/settings/embedding/retry` - Retry configuration
 
 #### AI Prompt Enrichment 🎯
 
