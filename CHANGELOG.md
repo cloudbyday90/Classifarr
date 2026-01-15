@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (No unreleased changes)
 
+## [0.39.3-alpha] - 2026-01-15
+
+### Fixed
+- **RAG Overview Provider Status**: Fixed "Provider Status" card always showing "Offline"
+  - Template now correctly references `stats.providerOnline` instead of undefined `providerOnline`
+  - Backend `/api/rag/status` endpoint now returns `providerOnline` field
+  - Frontend properly extracts `providerOnline` from API response in `loadStats()`
+- **RAG Test Connection Dimensions**: Fixed "undefined dimensions" in test connection success message
+  - `/api/rag/test-connection` now calls `embeddingProvider.testConnection()` to generate actual test embedding
+  - Frontend properly displays dimension count in success message and toast
+- **RAG Overview Data Loading**: Fixed page never loading data on mount
+  - `onMounted` hook now calls correct function `loadStats()` instead of non-existent `loadOverview()`
+- **Embedding Model Change Handling**: Changing embedding models now automatically clears existing embeddings
+  - Prevents dimension mismatch errors when switching between models with different vector sizes (e.g., 768 → 1024)
+  - Added warning log when embeddings are cleared due to model change
+- **Configuration Error Handling**: Configuration errors no longer trip the circuit breaker
+  - Introduced `ConfigurationError` class to distinguish config issues from transient failures
+  - Circuit breaker now only trips for network/server errors, not missing API keys or misconfigured providers
+  - Added validation with clear error messages for each embedding provider mode
+- **Cloud Provider Validation**: Improved error messages when cloud provider is selected but not configured
+  - Better validation for 'same', 'separate_ollama', and 'cloud' modes
+  - Clear user guidance on what needs to be configured for each mode
+
 ## [0.39.2c-alpha] - 2026-01-15
 
 ### Fixed

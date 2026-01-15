@@ -30,19 +30,16 @@ router.post('/test-connection', async (req, res) => {
         const { mode, host, port, model } = req.body;
         const start = Date.now();
 
-        if (mode === 'same' || mode === 'separate_ollama') {
-            const ollamaHost = host || 'localhost';
-            const ollamaPort = port || 11434;
-
-            await ollamaService.testConnection(ollamaHost, ollamaPort);
-        } else if (mode === 'cloud') {
-            // For cloud, we simply ack for now as validation happens during generating
-            // Could be improved to test API key validity
-        }
-
+        // Actually test embedding generation to get dimensions
+        const result = await embeddingProvider.testConnection();
+        
         res.json({
-            success: true,
-            latency: Date.now() - start
+            success: result.success,
+            latency: Date.now() - start,
+            dims: result.dimensions,
+            provider: result.provider,
+            model: result.model,
+            error: result.error
         });
     } catch (error) {
         res.json({
@@ -63,10 +60,29 @@ router.get('/status', async (req, res) => {
         const circuitStatus = embeddingRouter.getCircuitStatus();
         const hasMinimum = await embeddingService.hasMinimumEmbeddings();
 
+        // Check if provider is actually configured based on mode
+        const circuitOk = circuitStatus.state !== 'OPEN';
+        let providerConfigured = false;
+        if (config) {
+            const mode = config.embedding_provider_mode || 'same';
+            if (mode === 'same') {
+                // Using same as classification - check if AI provider is configured
+                providerConfigured = config.primary_provider && config.primary_provider !== 'none';
+            } else if (mode === 'separate_ollama') {
+                // Separate Ollama - check if host is configured
+                providerConfigured = !!config.embedding_ollama_host;
+            } else if (mode === 'cloud') {
+                // Cloud provider - check if API key is configured
+                providerConfigured = !!config.embedding_cloud_api_key;
+            }
+        }
+        const providerOnline = circuitOk && providerConfigured;
+
         res.json({
             enabled: config?.rag_enabled || false,
             provider: config?.embedding_provider || 'auto',
             model: config?.embedding_model || null,
+            providerOnline: providerOnline,
             stats: stats || { total: 0, stale: 0, pendingRetries: 0 },
             circuitBreaker: circuitStatus,
             hasMinimumEmbeddings: hasMinimum,
