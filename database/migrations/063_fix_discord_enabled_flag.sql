@@ -16,11 +16,9 @@ WHERE bot_token IS NOT NULL
   AND channel_id != ''
   AND enabled = false;
 
--- Log the migration
-DO $$
-DECLARE
-  updated_count INTEGER;
-BEGIN
-  GET DIAGNOSTICS updated_count = ROW_COUNT;
-  RAISE NOTICE 'Migration 063: Updated % Discord configurations to enabled = true', updated_count;
-END $$;
+-- Get row count for logging
+SELECT COUNT(*) as updated_count 
+FROM notification_config
+WHERE enabled = true
+  AND updated_at >= NOW() - INTERVAL '1 second';
+
