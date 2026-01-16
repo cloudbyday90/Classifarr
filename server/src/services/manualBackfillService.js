@@ -40,9 +40,10 @@ class ManualBackfillService {
             const result = await db.query(`
                 SELECT COUNT(*) as count
                 FROM classification_history ch
-                LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
-                WHERE ce.id IS NULL
-                AND ch.library_id IS NOT NULL
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM classification_embeddings ce
+                    WHERE ce.classification_id = ch.id
+                )
             `);
 
             return parseInt(result.rows[0].count) || 0;
@@ -60,9 +61,10 @@ class ManualBackfillService {
             const result = await db.query(`
                 SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
                 FROM classification_history ch
-                LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
-                WHERE ce.id IS NULL
-                AND ch.library_id IS NOT NULL
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM classification_embeddings ce
+                    WHERE ce.classification_id = ch.id
+                )
                 ORDER BY ch.created_at DESC
                 LIMIT $1
             `, [limit]);
@@ -124,7 +126,7 @@ class ManualBackfillService {
             this.state.status = 'failed';
         });
 
-        return this.getStatus();
+        return await this.getStatus();
     }
 
     /**
@@ -302,18 +304,30 @@ class ManualBackfillService {
             const elapsed = Date.now() - this.state.startTime;
             const avgTimePerItem = elapsed / this.state.processed;
             const remaining = this.state.total - this.state.processed;
-            this.state.eta = Math.round(remaining * avgTimePerItem / 1000); // seconds
+            // Ensure ETA is never negative
+            this.state.eta = Math.max(0, Math.round(remaining * avgTimePerItem / 1000)); // seconds
         }
     }
 
     /**
      * Get current status
      */
-    getStatus() {
+    async getStatus() {
+        // Dynamically calculate total to handle items added during backfill
+        const currentPending = await this.getPendingCount();
+        const dynamicTotal = this.state.processed + currentPending;
+        
+        // Use the larger of initial total or dynamic total to avoid progress going backwards
+        const total = Math.max(this.state.total, dynamicTotal);
+        
+        // Clamp progress to never exceed total
+        const displayProcessed = Math.min(this.state.processed, total);
+        
         return {
             ...this.state,
-            progress: this.state.total > 0
-                ? Math.round((this.state.processed / this.state.total) * 100)
+            total: total,
+            progress: total > 0
+                ? Math.round((displayProcessed / total) * 100)
                 : 0
         };
     }

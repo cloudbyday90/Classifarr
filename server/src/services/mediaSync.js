@@ -446,8 +446,7 @@ class MediaSyncService {
           library_id = msi.library_id,
           library_name = l.name,
           method = 'source_library',
-          reason = 'Resolved via library placement',
-          updated_at = NOW()
+          reason = 'Resolved via library placement'
         FROM media_server_items msi
         JOIN libraries l ON msi.library_id = l.id
         WHERE ch.tmdb_id = msi.tmdb_id
@@ -472,8 +471,7 @@ class MediaSyncService {
               VALUES ($1, $2, $3, $4, $5)
               ON CONFLICT (tmdb_id, media_type) DO UPDATE
               SET corrected_library_id = EXCLUDED.corrected_library_id,
-                  title = EXCLUDED.title,
-                  updated_at = NOW()
+                  title = EXCLUDED.title
             `, [item.tmdb_id, item.media_type, item.library_id, item.title, 'plex_reconciliation']);
           } catch (error) {
             logger.warn('Failed to create learned correction for reconciled item', {

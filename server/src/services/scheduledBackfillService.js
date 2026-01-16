@@ -121,9 +121,10 @@ class ScheduledBackfillService {
             const result = await db.query(`
                 SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
                 FROM classification_history ch
-                LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
-                WHERE ce.id IS NULL
-                AND ch.library_id IS NOT NULL
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM classification_embeddings ce
+                    WHERE ce.classification_id = ch.id
+                )
                 ORDER BY ch.created_at DESC
                 LIMIT $1
             `, [limit]);
