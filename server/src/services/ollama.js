@@ -212,38 +212,6 @@ class OllamaService {
     }
   }
 
-  /**
-   * Preload a model into Ollama memory without running inference
-   * Uses /api/load endpoint with keep_alive parameter
-   * @param {string} modelName - Model name to preload
-   * @param {string} keepAlive - Duration to keep model loaded (e.g., '5m', '1h')
-   * @param {string} host - Optional host override
-   * @param {number} port - Optional port override
-   * @returns {Promise<boolean>} True if successful
-   */
-  async preloadModel(modelName, keepAlive = '10m', host = null, port = null) {
-    try {
-      const config = await this.getConfig();
-      const testHost = host || config.host;
-      const testPort = port || config.port;
-      const testUrl = `http://${testHost}:${testPort}`;
-
-      logger.info('Preloading model into Ollama memory', { model: modelName, keepAlive });
-
-      await axios.post(`${testUrl}/api/load`, {
-        model: modelName,
-        keep_alive: keepAlive
-      }, {
-        timeout: 120000 // 2 minute timeout for model loading
-      });
-
-      logger.info('Model preloaded successfully', { model: modelName });
-      return true;
-    } catch (error) {
-      logger.error('Failed to preload model', { model: modelName, error: error.message });
-      return false;
-    }
-  }
 
   /**
    * Check if a specific model is currently loaded in Ollama memory

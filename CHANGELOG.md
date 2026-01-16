@@ -5,12 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.39.7b-alpha] - 2026-01-16
+
+### Removed
+- `preloadModel()` from OllamaService (used non-existent `/api/load` endpoint).
+- Model preloading logic from IdleBackfillService.
+
 ## [v0.39.7a-alpha] - 2026-01-16
-
-### Fixed
-- OllamaService logger import now uses `createLogger('OllamaService')` instead of importing module directly.
-
-## [v0.39.7-alpha] - 2026-01-16
 
 ### Fixed
 - PROFILE_SCORE weight calculation in signal-based confidence.

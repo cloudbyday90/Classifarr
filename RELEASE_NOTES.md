@@ -1,17 +1,21 @@
 # Classifarr Release Notes
 
-## v0.39.7a-alpha
-**Title: Logger Import Hotfix**
+## v0.39.7b-alpha
+**Title: Remove Non-Working Preload Logic**
 
-### Fixes
-- **OllamaService Logger**: Fixed incorrect logger import in `ollama.js` that caused `logger.error is not a function` error
-  - Was importing logger module directly instead of using `createLogger()`
-  - This broke IdleBackfillService when calling Ollama model methods
+### Removed
+- **preloadModel()**: Removed from `ollama.js` - the `/api/load` endpoint doesn't exist in Ollama's API
+- **Model preloading logic**: Removed from `idleBackfillService.js`
+
+### Note for Users
+For optimal performance with multiple models (e.g., classification + embedding), configure your Ollama environment:
+- `OLLAMA_KEEP_ALIVE=-1` - Keeps models loaded indefinitely
+- `OLLAMA_MAX_LOADED_MODELS=2` - Allows both models to stay loaded simultaneously
 
 ---
 
-## v0.39.7-alpha
-**Title: Classification Fixes, AI Retry & Logger Resilience**
+## v0.39.7a-alpha
+**Title: Logger Import Hotfix**
 
 ### Fixes
 - **PROFILE_SCORE Weight**: Fixed profile score calculation in signal-based confidence

@@ -70,41 +70,6 @@ describe('OllamaService', () => {
         });
     });
 
-    describe('preloadModel', () => {
-        it('should preload model with keep_alive parameter', async () => {
-            axios.post.mockResolvedValueOnce({ data: {} });
-
-            const result = await ollamaService.preloadModel('mxbai-embed-large', '30m', 'localhost', 11434);
-
-            expect(axios.post).toHaveBeenCalledWith(
-                'http://localhost:11434/api/load',
-                { model: 'mxbai-embed-large', keep_alive: '30m' },
-                { timeout: 120000 }
-            );
-            expect(result).toBe(true);
-        });
-
-        it('should use default keep_alive of 10m', async () => {
-            axios.post.mockResolvedValueOnce({ data: {} });
-
-            await ollamaService.preloadModel('test-model', undefined, 'localhost', 11434);
-
-            expect(axios.post).toHaveBeenCalledWith(
-                expect.any(String),
-                { model: 'test-model', keep_alive: '10m' },
-                expect.any(Object)
-            );
-        });
-
-        it('should return false on preload failure', async () => {
-            axios.post.mockRejectedValueOnce(new Error('Model not found'));
-
-            const result = await ollamaService.preloadModel('nonexistent', '10m', 'localhost', 11434);
-
-            expect(result).toBe(false);
-        });
-    });
-
     describe('isModelLoaded', () => {
         it('should return true when model is loaded (exact match)', async () => {
             axios.get.mockResolvedValueOnce({
