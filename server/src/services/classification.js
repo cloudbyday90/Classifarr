@@ -954,7 +954,7 @@ class ClassificationService {
           confidence: policyResult.confidence
         });
         
-        // Log signal context before AI call for debugging (Bug #11 logging)
+        // Log signal context before AI call for debugging
         if (policyResult.ranked && policyResult.ranked.length > 0) {
           logger.debug('Signal breakdown before AI', {
             title: metadata.title,
@@ -1571,7 +1571,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
         suggestedLibrary: signalContext?.suggestedLibrary?.name
       });
 
-      // Log full signal breakdown for debugging (Bug #11 logging)
+      // Log full signal breakdown for debugging
       if (signalContext) {
         logger.debug('Signal breakdown with AI CLARIFY', {
           title: metadata.title,
