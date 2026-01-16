@@ -44,9 +44,9 @@ const SENSITIVE_FIELDS = [
 // Sanitize sensitive data
 function sanitizeData(data) {
   if (!data || typeof data !== 'object') return data;
-  
+
   const sanitized = Array.isArray(data) ? [...data] : { ...data };
-  
+
   for (const key in sanitized) {
     const lowerKey = key.toLowerCase();
     if (SENSITIVE_FIELDS.some(field => lowerKey.includes(field))) {
@@ -55,7 +55,7 @@ function sanitizeData(data) {
       sanitized[key] = sanitizeData(sanitized[key]);
     }
   }
-  
+
   return sanitized;
 }
 
@@ -78,7 +78,7 @@ function getSystemContext() {
 // Capture request context
 function getRequestContext(req) {
   if (!req) return null;
-  
+
   return sanitizeData({
     method: req.method,
     url: req.url,
@@ -106,7 +106,7 @@ class FileLogger {
 
   initialize() {
     if (!LOG_CONFIG.enabled || this.initialized) return;
-    
+
     try {
       // Create log directory if it doesn't exist
       if (!fs.existsSync(LOG_CONFIG.logDir)) {
@@ -131,14 +131,14 @@ class FileLogger {
   rotateLog(logPath) {
     // Prevent concurrent rotations
     if (this.rotating) return;
-    
+
     try {
       if (!fs.existsSync(logPath)) return;
-      
+
       this.rotating = true;
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const rotatedPath = `${logPath}.${timestamp}`;
-      
+
       // Rename current log file
       fs.renameSync(logPath, rotatedPath);
 
@@ -147,9 +147,9 @@ class FileLogger {
         const gzip = zlib.createGzip();
         const input = fs.createReadStream(rotatedPath);
         const output = fs.createWriteStream(`${rotatedPath}.gz`);
-        
+
         input.pipe(gzip).pipe(output);
-        
+
         output.on('finish', () => {
           // Delete uncompressed file after compression
           try {
@@ -159,12 +159,12 @@ class FileLogger {
           }
           this.rotating = false;
         });
-        
+
         output.on('error', (err) => {
           console.error('Failed to compress log file:', err.message);
           this.rotating = false;
         });
-        
+
         input.on('error', (err) => {
           console.error('Failed to read log file for compression:', err.message);
           this.rotating = false;
@@ -246,7 +246,7 @@ function cleanupOldLogs() {
     const now = Date.now();
     const maxAge = LOG_CONFIG.maxAge * 24 * 60 * 60 * 1000; // Convert days to milliseconds
     const files = fs.readdirSync(LOG_CONFIG.logDir);
-    
+
     let totalSize = 0;
     const fileStats = [];
 
@@ -256,10 +256,10 @@ function cleanupOldLogs() {
       if (!file.match(/\.(log|gz)$/) && !file.includes('.log.')) {
         return;
       }
-      
+
       const filePath = path.join(LOG_CONFIG.logDir, file);
       const stats = fs.statSync(filePath);
-      
+
       // Delete files older than maxAge
       if (now - stats.mtime.getTime() > maxAge) {
         fs.unlinkSync(filePath);
@@ -273,10 +273,10 @@ function cleanupOldLogs() {
     // If total size exceeds limit, delete oldest files
     if (totalSize > LOG_CONFIG.maxTotalSize) {
       fileStats.sort((a, b) => a.mtime - b.mtime); // Sort oldest first
-      
+
       for (const file of fileStats) {
         if (totalSize <= LOG_CONFIG.maxTotalSize) break;
-        
+
         fs.unlinkSync(file.path);
         totalSize -= file.size;
         console.log(`Deleted old log file to free space: ${path.basename(file.path)}`);
@@ -294,7 +294,7 @@ class Logger {
     this.module = module;
     this.level = LOG_LEVELS[process.env.LOG_LEVEL || 'INFO'];
     this.db = null;
-    
+
     // Lazy load database to avoid circular dependencies
     try {
       this.db = require('../config/database');
@@ -312,14 +312,14 @@ class Logger {
 
   async persistToDb(level, message, data, options = {}) {
     if (!this.db) return null;
-    
+
     try {
       const sanitizedData = sanitizeData(data);
       const systemContext = getSystemContext();
       const requestContext = options.req ? getRequestContext(options.req) : null;
-      
+
       const stack = options.error?.stack || new Error().stack;
-      
+
       const result = await this.db.query(
         `INSERT INTO error_log (level, module, message, stack_trace, request_context, system_context, metadata)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -334,7 +334,7 @@ class Logger {
           sanitizedData
         ]
       );
-      
+
       return result.rows[0].error_id;
     } catch (err) {
       // Don't fail if logging to DB fails
@@ -346,11 +346,19 @@ class Logger {
   async error(message, data, options = {}) {
     if (this.level >= LOG_LEVELS.ERROR) {
       const formattedMsg = this.formatMessage('ERROR', message, data);
+      // Synchronous logging - always succeeds
       console.error(formattedMsg);
       fileLogger.writeMainLog(formattedMsg);
       fileLogger.writeErrorLog(formattedMsg);
-      const errorId = await this.persistToDb('ERROR', message, data, options);
-      return errorId;
+
+      // Async DB persistence - fire and forget, never throws
+      try {
+        const errorId = await this.persistToDb('ERROR', message, data, options);
+        return errorId;
+      } catch (dbErr) {
+        // Silently ignore DB errors - we already logged to console/file
+        return null;
+      }
     }
     return null;
   }
@@ -358,11 +366,19 @@ class Logger {
   async warn(message, data, options = {}) {
     if (this.level >= LOG_LEVELS.WARN) {
       const formattedMsg = this.formatMessage('WARN', message, data);
+      // Synchronous logging - always succeeds
       console.warn(formattedMsg);
       fileLogger.writeMainLog(formattedMsg);
       fileLogger.writeErrorLog(formattedMsg);
-      const errorId = await this.persistToDb('WARN', message, data, options);
-      return errorId;
+
+      // Async DB persistence - fire and forget, never throws
+      try {
+        const errorId = await this.persistToDb('WARN', message, data, options);
+        return errorId;
+      } catch (dbErr) {
+        // Silently ignore DB errors - we already logged to console/file
+        return null;
+      }
     }
     return null;
   }
@@ -391,11 +407,11 @@ if (process.env.NODE_ENV !== 'test') {
   fileLogger.initialize();
 }
 
-module.exports = { 
-  createLogger, 
-  Logger, 
-  sanitizeData, 
-  getSystemContext, 
+module.exports = {
+  createLogger,
+  Logger,
+  sanitizeData,
+  getSystemContext,
   getRequestContext,
   cleanupOldLogs,
   initializeFileLogging: () => fileLogger.initialize()
