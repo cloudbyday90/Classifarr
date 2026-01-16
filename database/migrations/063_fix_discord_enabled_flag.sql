@@ -16,9 +16,4 @@ WHERE bot_token IS NOT NULL
   AND channel_id != ''
   AND enabled = false;
 
--- Get row count for logging
-SELECT COUNT(*) as updated_count 
-FROM notification_config
-WHERE enabled = true
-  AND updated_at >= NOW() - INTERVAL '1 second';
 

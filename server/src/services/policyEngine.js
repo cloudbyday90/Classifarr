@@ -75,17 +75,27 @@ class PolicyEngine {
 
             // 2.5. Filter policies by media_type (Bug #9 fix)
             const itemMediaType = item.media_type?.toLowerCase();
+            
+            // If media_type is missing, we cannot filter - log warning and continue with all policies
+            // This maintains backwards compatibility with items that don't have media_type set
             const candidatePolicies = itemMediaType 
                 ? policies.filter(p => p.library_media_type?.toLowerCase() === itemMediaType)
                 : policies;
 
-            logger.info('Filtered policies by media_type', {
-                title: item.title,
-                mediaType: itemMediaType,
-                totalPolicies: policies.length,
-                candidatePolicies: candidatePolicies.length,
-                skippedPolicies: policies.length - candidatePolicies.length
-            });
+            if (!itemMediaType) {
+                logger.warn('Item missing media_type, evaluating against all policies', {
+                    title: item.title,
+                    totalPolicies: policies.length
+                });
+            } else {
+                logger.info('Filtered policies by media_type', {
+                    title: item.title,
+                    mediaType: itemMediaType,
+                    totalPolicies: policies.length,
+                    candidatePolicies: candidatePolicies.length,
+                    skippedPolicies: policies.length - candidatePolicies.length
+                });
+            }
 
             if (candidatePolicies.length === 0) {
                 logger.warn('No policies match item media_type', {
