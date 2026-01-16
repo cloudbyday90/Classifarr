@@ -1,5 +1,16 @@
 # Classifarr Release Notes
 
+## v0.39.5a-alpha
+**Hotfix: Database Connection Crash**
+
+### Critical Bug Fix
+- **Container Crash on Database Errors**: Removed `process.exit(-1)` from database pool error handler
+  - Transient database connection errors were killing the entire application (Exit 255)
+  - Now logs errors and allows connection pool to recover naturally
+  - Fixes container crashes on Unraid and other Docker deployments
+
+---
+
 ## v0.39.5-alpha
 **Critical Bug Fixes - Sync Reconciliation & RAG Embedding Issues**
 

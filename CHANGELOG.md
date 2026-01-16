@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.5a-alpha] - 2026-01-15
+
+### Fixed
+- **CRITICAL: Container Crash**: Removed `process.exit(-1)` from database pool error handler in `database.js`
+  - Transient idle client errors no longer kill the entire application
+  - Connection pool now recovers naturally from temporary database issues
+
 ## [0.39.5-alpha] - 2026-01-15
 
 ### Fixed
