@@ -185,6 +185,82 @@ class OllamaService {
     }
   }
 
+  /**
+   * Get currently loaded models in Ollama memory
+   * Uses /api/ps endpoint to check running models
+   * @param {string} host - Optional host override
+   * @param {number} port - Optional port override
+   * @returns {Promise<Array>} List of loaded models with name, size, digest
+   */
+  async getLoadedModels(host = null, port = null) {
+    try {
+      const config = await this.getConfig();
+      const testHost = host || config.host;
+      const testPort = port || config.port;
+      const testUrl = `http://${testHost}:${testPort}`;
+
+      const response = await axios.get(`${testUrl}/api/ps`, {
+        timeout: 5000
+      });
+      return response.data.models || [];
+    } catch (error) {
+      // If endpoint doesn't exist or fails, return empty array (non-fatal)
+      logger.warn('Failed to get loaded models', { error: error.message });
+      return [];
+    }
+  }
+
+  /**
+   * Preload a model into Ollama memory without running inference
+   * Uses /api/load endpoint with keep_alive parameter
+   * @param {string} modelName - Model name to preload
+   * @param {string} keepAlive - Duration to keep model loaded (e.g., '5m', '1h')
+   * @param {string} host - Optional host override
+   * @param {number} port - Optional port override
+   * @returns {Promise<boolean>} True if successful
+   */
+  async preloadModel(modelName, keepAlive = '10m', host = null, port = null) {
+    try {
+      const config = await this.getConfig();
+      const testHost = host || config.host;
+      const testPort = port || config.port;
+      const testUrl = `http://${testHost}:${testPort}`;
+
+      logger.info('Preloading model into Ollama memory', { model: modelName, keepAlive });
+
+      await axios.post(`${testUrl}/api/load`, {
+        model: modelName,
+        keep_alive: keepAlive
+      }, {
+        timeout: 120000 // 2 minute timeout for model loading
+      });
+
+      logger.info('Model preloaded successfully', { model: modelName });
+      return true;
+    } catch (error) {
+      logger.error('Failed to preload model', { model: modelName, error: error.message });
+      return false;
+    }
+  }
+
+  /**
+   * Check if a specific model is currently loaded in Ollama memory
+   * @param {string} modelName - Model name to check (with or without tag)
+   * @param {string} host - Optional host override
+   * @param {number} port - Optional port override
+   * @returns {Promise<boolean>} True if model is loaded
+   */
+  async isModelLoaded(modelName, host = null, port = null) {
+    const loadedModels = await this.getLoadedModels(host, port);
+    // Check for exact match or match with tag suffix (e.g., 'gemma3:12b' matches 'gemma3:12b')
+    return loadedModels.some(m =>
+      m.name === modelName ||
+      m.name.startsWith(modelName + ':') ||
+      modelName.startsWith(m.name.split(':')[0])
+    );
+  }
+
+
   async generate(prompt, model = 'qwen3:14b', temperature = 0.30) {
     try {
       const config = await this.getConfig();
@@ -206,9 +282,10 @@ class OllamaService {
    * Generate embeddings for text
    * @param {string} text - Text to embed
    * @param {string} model - Embedding model name (default: nomic-embed-text-v2-moe)
+   * @param {string} keepAlive - Duration to keep model loaded (default: '5m')
    * @returns {Promise<{embedding: number[], dims: number}>} Embedding vector and dimensions
    */
-  async embed(text, model = 'nomic-embed-text-v2-moe') {
+  async embed(text, model = 'nomic-embed-text-v2-moe', keepAlive = '5m') {
     try {
       const config = await this.getConfig();
 
@@ -224,6 +301,7 @@ class OllamaService {
       const response = await axios.post(`${config.baseUrl}/api/embed`, {
         model,
         input: text,
+        keep_alive: keepAlive, // Keep model loaded for batch efficiency
       }, {
         timeout: 300000, // 5 minute timeout for embeddings (allows for model pulling)
       });

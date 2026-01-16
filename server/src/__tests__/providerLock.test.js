@@ -37,10 +37,10 @@ describe('ProviderLockService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Don't reset modules - work with the singleton
     providerLock = require('../services/providerLock');
-    
+
     // Mock successful DB query for loadConfig  
     db.query.mockResolvedValue({
       rows: [{
@@ -49,7 +49,7 @@ describe('ProviderLockService', () => {
         max_wait_time: 60000
       }]
     });
-    
+
     // Reset lock state before each test
     providerLock.lockState = {
       isLocked: false,
@@ -57,8 +57,9 @@ describe('ProviderLockService', () => {
       lastHeartbeat: null,
       startTime: null,
       preemptRequested: false,
+      activeModel: null,
     };
-    
+
     // Reset config to defaults
     providerLock.config = {
       heartbeatTimeout: 30000,
@@ -70,7 +71,7 @@ describe('ProviderLockService', () => {
   describe('Lock Acquisition', () => {
     test('should acquire lock when unlocked', async () => {
       const result = await providerLock.acquireLock('classification', 'high');
-      
+
       expect(result).toBe(true);
       expect(providerLock.lockState.isLocked).toBe(true);
       expect(providerLock.lockState.lockedBy).toBe('classification');
@@ -81,15 +82,15 @@ describe('ProviderLockService', () => {
     test('should wait for lock to be released by another requestor', async () => {
       // First lock acquisition
       await providerLock.acquireLock('embedding', 'normal');
-      
+
       // Simulate releasing the lock after a delay
       setTimeout(() => {
         providerLock.releaseLock('embedding');
       }, 100);
-      
+
       // Second lock acquisition should wait
       const result = await providerLock.acquireLock('classification', 'high');
-      
+
       expect(result).toBe(true);
       expect(providerLock.lockState.lockedBy).toBe('classification');
     });
@@ -97,16 +98,16 @@ describe('ProviderLockService', () => {
     test('should release stale lock when heartbeat timeout exceeded', async () => {
       // Acquire lock
       await providerLock.acquireLock('embedding', 'normal');
-      
+
       // Set short heartbeat timeout
       providerLock.config.heartbeatTimeout = 50;
-      
+
       // Set lastHeartbeat to past
       providerLock.lockState.lastHeartbeat = Date.now() - 100;
-      
+
       // Try to acquire lock - should detect and release stale lock
       const result = await providerLock.acquireLock('classification', 'high');
-      
+
       expect(result).toBe(true);
       expect(providerLock.lockState.lockedBy).toBe('classification');
     });
@@ -116,19 +117,19 @@ describe('ProviderLockService', () => {
     test('should signal preemption when high-priority request arrives', async () => {
       // Embedding acquires lock
       await providerLock.acquireLock('embedding', 'normal');
-      
+
       // Start classification request in background (will wait for preemption)
       const classificationPromise = providerLock.acquireLock('classification', 'high');
-      
+
       // Allow some time for preemption signal to be set
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       // Check that preemption was requested
       expect(providerLock.lockState.preemptRequested).toBe(true);
-      
+
       // Release embedding lock
       providerLock.releaseLock('embedding');
-      
+
       // Classification should acquire lock
       const result = await classificationPromise;
       expect(result).toBe(true);
@@ -139,22 +140,22 @@ describe('ProviderLockService', () => {
   describe('Heartbeat', () => {
     test('should update lastHeartbeat when lock owner sends heartbeat', async () => {
       await providerLock.acquireLock('classification', 'high');
-      
+
       const initialHeartbeat = providerLock.lockState.lastHeartbeat;
-      
+
       // Wait a bit
       await new Promise(resolve => setTimeout(resolve, 10));
-      
+
       // Send heartbeat
       const result = providerLock.heartbeat('classification');
-      
+
       expect(result).toBe(true);
       expect(providerLock.lockState.lastHeartbeat).toBeGreaterThan(initialHeartbeat);
     });
 
     test('should throw error when non-owner tries to send heartbeat', async () => {
       await providerLock.acquireLock('classification', 'high');
-      
+
       expect(() => {
         providerLock.heartbeat('embedding');
       }).toThrow('Heartbeat called by "embedding" but lock is held by "classification"');
@@ -162,13 +163,13 @@ describe('ProviderLockService', () => {
 
     test('should return false when preemption is requested', async () => {
       await providerLock.acquireLock('embedding', 'normal');
-      
+
       // Request preemption
       providerLock.lockState.preemptRequested = true;
-      
+
       // Heartbeat should indicate to yield
       const result = providerLock.heartbeat('embedding');
-      
+
       expect(result).toBe(false);
     });
 
@@ -182,9 +183,9 @@ describe('ProviderLockService', () => {
   describe('Lock Release', () => {
     test('should release lock when called by lock owner', async () => {
       await providerLock.acquireLock('classification', 'high');
-      
+
       const result = providerLock.releaseLock('classification');
-      
+
       expect(result).toBe(true);
       expect(providerLock.lockState.isLocked).toBe(false);
       expect(providerLock.lockState.lockedBy).toBe(null);
@@ -192,9 +193,9 @@ describe('ProviderLockService', () => {
 
     test('should not release lock when called by non-owner', async () => {
       await providerLock.acquireLock('classification', 'high');
-      
+
       const result = providerLock.releaseLock('embedding');
-      
+
       expect(result).toBe(false);
       expect(providerLock.lockState.isLocked).toBe(true);
       expect(providerLock.lockState.lockedBy).toBe('classification');
@@ -202,31 +203,68 @@ describe('ProviderLockService', () => {
 
     test('should return false when no lock is held', () => {
       const result = providerLock.releaseLock('classification');
-      
+
       expect(result).toBe(false);
     });
 
     test('should reset all lock state when releasing', async () => {
       await providerLock.acquireLock('classification', 'high');
-      
+
       providerLock.releaseLock('classification');
-      
+
       expect(providerLock.lockState).toEqual({
         isLocked: false,
         lockedBy: null,
         lastHeartbeat: null,
         startTime: null,
         preemptRequested: false,
+        activeModel: null,
       });
+    });
+  });
+
+  describe('Model Affinity Tracking', () => {
+    test('should set active model when lock is held', async () => {
+      await providerLock.acquireLock('embedding', 'normal');
+
+      providerLock.setActiveModel('mxbai-embed-large');
+
+      expect(providerLock.lockState.activeModel).toBe('mxbai-embed-large');
+    });
+
+    test('should not set active model when no lock is held', () => {
+      providerLock.setActiveModel('some-model');
+
+      expect(providerLock.lockState.activeModel).toBe(null);
+    });
+
+    test('should get active model', async () => {
+      await providerLock.acquireLock('classification', 'high');
+      providerLock.setActiveModel('gemma3:12b');
+
+      expect(providerLock.getActiveModel()).toBe('gemma3:12b');
+
+      providerLock.releaseLock('classification');
+    });
+
+    test('should reset active model when lock is released', async () => {
+      await providerLock.acquireLock('embedding', 'normal');
+      providerLock.setActiveModel('nomic-embed-text');
+
+      expect(providerLock.getActiveModel()).toBe('nomic-embed-text');
+
+      providerLock.releaseLock('embedding');
+
+      expect(providerLock.getActiveModel()).toBe(null);
     });
   });
 
   describe('Lock Status', () => {
     test('should return current lock status', async () => {
       await providerLock.acquireLock('classification', 'high');
-      
+
       const status = providerLock.getLockStatus();
-      
+
       expect(status.isLocked).toBe(true);
       expect(status.lockedBy).toBe('classification');
       expect(status.lastHeartbeat).toBeDefined();
@@ -237,18 +275,18 @@ describe('ProviderLockService', () => {
 
     test('should calculate lock duration correctly', async () => {
       await providerLock.acquireLock('classification', 'high');
-      
+
       // Wait a bit
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       const status = providerLock.getLockStatus();
-      
+
       expect(status.lockDuration).toBeGreaterThanOrEqual(50);
     });
 
     test('should return 0 duration when no lock is held', () => {
       const status = providerLock.getLockStatus();
-      
+
       expect(status.lockDuration).toBe(0);
     });
   });
@@ -260,36 +298,36 @@ describe('ProviderLockService', () => {
         heartbeatInterval: 10000,
         maxWaitTime: 120000
       };
-      
+
       await providerLock.updateConfig(newConfig);
-      
+
       expect(providerLock.config.heartbeatTimeout).toBe(45000);
       expect(providerLock.config.heartbeatInterval).toBe(10000);
       expect(providerLock.config.maxWaitTime).toBe(120000);
-      
+
       // Verify database was called to persist
       expect(db.query).toHaveBeenCalled();
     });
 
     test('should throw error when database update fails', async () => {
       const originalTimeout = providerLock.config.heartbeatTimeout;
-      
+
       // Make next db.query call fail
       db.query.mockRejectedValueOnce(new Error('Database error'));
-      
+
       await expect(
         providerLock.updateConfig({ heartbeatTimeout: 45000 })
       ).rejects.toThrow('Database error');
-      
+
       // Config should not be updated in memory if DB update fails
       expect(providerLock.config.heartbeatTimeout).toBe(originalTimeout);
     });
 
     test('should preserve existing config values when partial update', async () => {
       const initialTimeout = providerLock.config.heartbeatTimeout;
-      
+
       await providerLock.updateConfig({ heartbeatInterval: 8000 });
-      
+
       expect(providerLock.config.heartbeatTimeout).toBe(initialTimeout);
       expect(providerLock.config.heartbeatInterval).toBe(8000);
     });
@@ -324,15 +362,15 @@ describe('ProviderLockService', () => {
       const result1 = await providerLock.acquireLock('classification', 'high');
       expect(result1).toBe(true);
       expect(providerLock.lockState.lockedBy).toBe('classification');
-      
+
       // Release lock
       providerLock.releaseLock('classification');
-      
+
       // Verify another requestor can now acquire it
       const result2 = await providerLock.acquireLock('embedding', 'normal');
       expect(result2).toBe(true);
       expect(providerLock.lockState.lockedBy).toBe('embedding');
-      
+
       // Clean up
       providerLock.releaseLock('embedding');
     });
@@ -340,15 +378,15 @@ describe('ProviderLockService', () => {
     test('should use promise queue to prevent race conditions', async () => {
       // Verify the queue mechanism exists
       expect(providerLock.acquisitionQueue).toBeDefined();
-      
+
       // Start a lock acquisition
       const promise1 = providerLock.acquireLock('classification', 'high');
-      
+
       // Verify the queue is updated (it's a promise)
       expect(providerLock.acquisitionQueue).toBeInstanceOf(Promise);
-      
+
       await promise1;
-      
+
       // Clean up
       providerLock.releaseLock('classification');
     });

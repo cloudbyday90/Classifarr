@@ -506,7 +506,8 @@ class EmbeddingProvider {
     async getOllamaEmbedding(text, host, port, model, config) {
         // If using classification Ollama (same mode), use existing service
         if (!host || !port) {
-            const result = await ollamaService.embed(text, model);
+            // Use 15m keep_alive for batch efficiency during backfill operations
+            const result = await ollamaService.embed(text, model, '15m');
             return {
                 embedding: result.embedding,
                 dims: result.dims,

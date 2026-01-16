@@ -82,7 +82,7 @@ describe('EmbeddingProvider', () => {
 
             const result = await embeddingProvider.getEmbedding('test text');
 
-            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'nomic-embed-text-v2-moe');
+            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'nomic-embed-text-v2-moe', '15m');
             expect(result).toEqual({
                 embedding: [0.1, 0.2, 0.3],
                 dims: 3,

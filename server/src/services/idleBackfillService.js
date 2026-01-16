@@ -8,6 +8,7 @@
 
 const db = require('../config/database');
 const embeddingService = require('./embeddingService');
+const ollamaService = require('./ollama');
 const idleDetector = require('../utils/idleDetector');
 const { createLogger } = require('../utils/logger');
 
@@ -156,6 +157,34 @@ class IdleBackfillService {
         let totalProcessed = 0;
 
         try {
+            // Phase 4: Smart Batching - Preload embedding model before starting batch
+            // This avoids model swapping for each embedding request
+            const embeddingConfig = await db.query(`
+                SELECT embedding_model, embedding_provider_mode, embedding_ollama_host
+                FROM ai_provider_config WHERE id = 1
+            `);
+
+            if (embeddingConfig.rows.length > 0) {
+                const { embedding_model, embedding_provider_mode, embedding_ollama_host } = embeddingConfig.rows[0];
+
+                // Only preload if using "same" mode (shared Ollama)
+                if (embedding_provider_mode === 'same' && embedding_model) {
+                    const isLoaded = await ollamaService.isModelLoaded(embedding_model);
+
+                    if (!isLoaded) {
+                        logger.info('Preloading embedding model before batch', { model: embedding_model });
+                        const preloaded = await ollamaService.preloadModel(embedding_model, '30m');
+
+                        if (preloaded) {
+                            logger.info('Embedding model preloaded successfully', { model: embedding_model });
+                        } else {
+                            logger.warn('Failed to preload embedding model, continuing anyway', { model: embedding_model });
+                        }
+                    } else {
+                        logger.debug('Embedding model already loaded', { model: embedding_model });
+                    }
+                }
+            }
             while (this.isRunning && idleDetector.isIdle()) {
                 const pending = await this.getPendingEmbeddings(this.batchSize);
 

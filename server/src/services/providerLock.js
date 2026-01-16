@@ -34,6 +34,7 @@ class ProviderLockService {
       lastHeartbeat: null,
       startTime: null,
       preemptRequested: false,
+      activeModel: null, // Track which model the lock holder is using
     };
     this.config = {
       heartbeatTimeout: 30000, // 30 seconds - release lock if no heartbeat
@@ -196,8 +197,29 @@ class ProviderLockService {
       lastHeartbeat: null,
       startTime: null,
       preemptRequested: false,
+      activeModel: null, // Reset active model on release
     };
     return true;
+  }
+
+  /**
+   * Set the active model being used by the current lock holder
+   * Enables model affinity tracking for smarter batching
+   * @param {string} modelName - Name of the model being used
+   */
+  setActiveModel(modelName) {
+    if (this.lockState.isLocked) {
+      this.lockState.activeModel = modelName;
+      logger.debug('Active model set', { model: modelName, lockedBy: this.lockState.lockedBy });
+    }
+  }
+
+  /**
+   * Get the currently active model
+   * @returns {string|null} Current model name or null
+   */
+  getActiveModel() {
+    return this.lockState.activeModel;
   }
 
   /**
