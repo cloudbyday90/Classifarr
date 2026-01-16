@@ -560,6 +560,21 @@ class DiscordBotService {
     try {
       const config = await this.loadConfig();
 
+      // Log enabled flag value (Bug #11 logging)
+      console.log('[Discord] Config check', {
+        enabled: config.enabled,
+        notify_on_classification: config.notify_on_classification,
+        bot_token_present: !!config.bot_token,
+        channel_id_present: !!config.channel_id
+      });
+
+      if (!config.enabled) {
+        console.log('[Discord] Notifications disabled via enabled flag - skipping', {
+          enabled: config.enabled
+        });
+        return;
+      }
+
       if (!config.notify_on_classification) {
         console.log('[Discord] Notifications disabled in config - skipping');
         return;

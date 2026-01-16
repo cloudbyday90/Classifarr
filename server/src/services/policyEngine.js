@@ -73,10 +73,46 @@ class PolicyEngine {
                 };
             }
 
+            // 2.5. Filter policies by media_type (Bug #9 fix)
+            const itemMediaType = item.media_type?.toLowerCase();
+            
+            // If media_type is missing, we cannot filter - log warning and continue with all policies
+            // This maintains backwards compatibility with items that don't have media_type set
+            const candidatePolicies = itemMediaType 
+                ? policies.filter(p => p.library_media_type?.toLowerCase() === itemMediaType)
+                : policies;
+
+            if (!itemMediaType) {
+                logger.warn('Item missing media_type, evaluating against all policies', {
+                    title: item.title,
+                    totalPolicies: policies.length
+                });
+            } else {
+                logger.info('Filtered policies by media_type', {
+                    title: item.title,
+                    mediaType: itemMediaType,
+                    totalPolicies: policies.length,
+                    candidatePolicies: candidatePolicies.length,
+                    skippedPolicies: policies.length - candidatePolicies.length
+                });
+            }
+
+            if (candidatePolicies.length === 0) {
+                logger.warn('No policies match item media_type', {
+                    title: item.title,
+                    mediaType: itemMediaType
+                });
+                return {
+                    action: 'manual',
+                    confidence: 0,
+                    ranked: []
+                };
+            }
+
             // 3. Pre-fetch RAG matches once for all policies (performance optimization)
             // Only call RAG if at least one policy actually uses it
             let ragCache = { matches: [], timestamp: Date.now() };
-            const anyPolicyUsesRAG = policies.some(p => p.trust_rag && (p.rag_weight || DEFAULT_RAG_WEIGHT) > 0);
+            const anyPolicyUsesRAG = candidatePolicies.some(p => p.trust_rag && (p.rag_weight || DEFAULT_RAG_WEIGHT) > 0);
             if (anyPolicyUsesRAG) {
                 try {
                     const ragMatches = await ragRetriever.semanticSearch(item, 5);
@@ -88,7 +124,7 @@ class PolicyEngine {
 
             // 4. Evaluate each policy
             const evaluations = [];
-            for (const policy of policies) {
+            for (const policy of candidatePolicies) {
                 const evaluation = await this.evaluatePolicy(policy, item, ragCache);
                 if (evaluation.score > 0) {
                     evaluations.push(evaluation);
