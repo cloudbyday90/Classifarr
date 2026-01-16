@@ -12,10 +12,12 @@ jest.mock('../config/database', () => ({
     })
 }));
 jest.mock('../utils/logger', () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
+    createLogger: () => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn()
+    })
 }));
 
 const axios = require('axios');
