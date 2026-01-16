@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **CRITICAL: Sync Reconciliation Error**: Fixed `column "updated_at" of relation "classification_history" does not exist` error
+  - Removed `updated_at = NOW()` from classification_history UPDATE query in reconciliation logic
+  - Removed `updated_at = NOW()` from learned_corrections UPDATE query (column doesn't exist in either table)
+- **RAG Pending Count Query**: Standardized all pending embedding queries to use NOT EXISTS pattern
+  - Updated overview endpoint, manual backfill, idle backfill, and scheduled backfill services
+  - Removed `library_id IS NOT NULL` filter to count all items without embeddings
+- **Backfill Progress Display**: Fixed progress exceeding total and negative ETA issues
+  - Made backfill status calculation dynamic to handle items added during backfill
+  - Total now calculated as `max(initialTotal, processed + currentPending)`
+  - Progress display clamped to never exceed 100%
+  - ETA calculation now uses Math.max(0, ...) to prevent negative values
+- **Idle Backfill Total Calculation**: Fixed idle backfill not setting total in backfill_runs
+  - Added getPendingCount() method to idle backfill service
+  - Idle backfill now sets total when creating backfill_runs record
+
 ## [0.39.4-alpha] - 2026-01-15
 
 ### Fixed

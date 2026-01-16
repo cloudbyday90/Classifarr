@@ -65,6 +65,27 @@ class IdleBackfillService {
     }
 
     /**
+     * Get pending embeddings count
+     */
+    async getPendingCount() {
+        try {
+            const result = await db.query(`
+                SELECT COUNT(*) as count
+                FROM classification_history ch
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM classification_embeddings ce
+                    WHERE ce.classification_id = ch.id
+                )
+            `);
+
+            return parseInt(result.rows[0].count) || 0;
+        } catch (error) {
+            logger.error('Failed to get pending count', { error: error.message });
+            return 0;
+        }
+    }
+
+    /**
      * Get pending embeddings
      */
     async getPendingEmbeddings(limit = 10) {
@@ -72,9 +93,10 @@ class IdleBackfillService {
             const result = await db.query(`
                 SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
                 FROM classification_history ch
-                LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
-                WHERE ce.id IS NULL
-                AND ch.library_id IS NOT NULL
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM classification_embeddings ce
+                    WHERE ce.classification_id = ch.id
+                )
                 ORDER BY ch.created_at DESC
                 LIMIT $1
             `, [limit]);
@@ -120,12 +142,15 @@ class IdleBackfillService {
         this.isRunning = true;
         logger.info('Starting idle backfill');
 
-        // Create run record
+        // Get initial pending count
+        const initialPending = await this.getPendingCount();
+
+        // Create run record with total
         const runResult = await db.query(`
-            INSERT INTO backfill_runs (type, status)
-            VALUES ('idle', 'running')
+            INSERT INTO backfill_runs (type, status, total)
+            VALUES ('idle', 'running', $1)
             RETURNING id
-        `);
+        `, [initialPending]);
         const runId = runResult.rows[0].id;
 
         let totalProcessed = 0;
@@ -147,9 +172,12 @@ class IdleBackfillService {
                     }
 
                     // Check if manual backfill has started
-                    if (this.manualBackfillService && this.manualBackfillService.getStatus().status === 'running') {
-                        logger.info('Manual backfill started, stopping idle backfill');
-                        break;
+                    if (this.manualBackfillService) {
+                        const manualStatus = await this.manualBackfillService.getStatus();
+                        if (manualStatus.status === 'running') {
+                            logger.info('Manual backfill started, stopping idle backfill');
+                            break;
+                        }
                     }
 
                     if (!this.isRunning) {

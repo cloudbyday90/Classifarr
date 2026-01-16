@@ -1,5 +1,55 @@
 # Classifarr Release Notes
 
+## Upcoming Release
+**Critical Bug Fixes - Sync Reconciliation & RAG Embedding Issues**
+
+### Critical Bug Fixes
+
+#### CRITICAL: Sync Reconciliation Database Error 🔥
+- **Previous Bug**: Sync reconciliation failing with `column "updated_at" of relation "classification_history" does not exist`
+- **Error ID**: `026eef91-2e2c-45f4-9316-bd5dc15f1185`
+- **Root Cause**: PR #164 added `updated_at = NOW()` to UPDATE queries for tables that don't have this column
+- **Fix**: 
+  - Removed `updated_at = NOW()` from classification_history UPDATE query
+  - Removed `updated_at = NOW()` from learned_corrections UPDATE query
+- **Impact**: Library syncs now complete successfully without database errors
+
+#### RAG Pending Count Inconsistency 📊
+- **Previous Bug**: Different pending counts shown in Overview (0) vs Backfill tab (4489)
+- **Root Cause**: Inconsistent query patterns and library_id filtering
+- **Fix**: 
+  - Standardized all pending count queries to use NOT EXISTS pattern
+  - Removed `library_id IS NOT NULL` filter to count ALL items without embeddings
+  - Updated overview, manual backfill, idle backfill, and scheduled backfill services
+- **Impact**: Consistent pending counts across all RAG tabs
+
+#### Backfill Progress Display Issues 📈
+- **Previous Bug**: Progress showing impossible values (1200/1160) and negative ETA (-1s)
+- **Root Cause**: 
+  - Total set once at start, never updated when new items added during backfill
+  - No handling for edge cases where processed > total
+- **Fix**: 
+  - Made getStatus() async to dynamically query current pending count
+  - Total now calculated as `max(initialTotal, processed + currentPending)`
+  - Progress clamped to never exceed 100%
+  - ETA uses Math.max(0, ...) to prevent negative values
+- **Impact**: Accurate progress display even when items added during backfill
+
+#### Idle Backfill Not Processing Items ⏸️
+- **Previous Bug**: Idle backfill creating runs with total=0 and processing nothing
+- **Root Cause**: Idle backfill didn't calculate or set total when creating backfill_runs record
+- **Fix**: 
+  - Added getPendingCount() method to idle backfill service
+  - Idle backfill now sets total when creating backfill_runs record
+- **Impact**: Idle backfill now correctly processes pending items
+
+### Files Changed
+- `server/src/services/mediaSync.js` - Removed invalid updated_at references
+- `server/src/routes/rag.js` - Standardized pending count queries, made getStatus calls async
+- `server/src/services/manualBackfillService.js` - Dynamic total calculation, async getStatus
+- `server/src/services/idleBackfillService.js` - Added getPendingCount, set total on start
+- `server/src/services/scheduledBackfillService.js` - Standardized pending count query
+
 ## v0.39.4-alpha
 **Comprehensive Bug Fix & Stability Release**
 

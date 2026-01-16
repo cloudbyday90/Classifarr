@@ -149,9 +149,10 @@ router.post('/backfill/start', async (req, res) => {
         const result = await db.query(`
             SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
             FROM classification_history ch
-            LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
-            WHERE ce.id IS NULL
-            AND ch.library_id IS NOT NULL
+            WHERE NOT EXISTS (
+                SELECT 1 FROM classification_embeddings ce
+                WHERE ce.classification_id = ch.id
+            )
             LIMIT $1
         `, [limit]);
 
@@ -507,7 +508,7 @@ router.post('/backfill/manual/start', async (req, res) => {
     try {
         const { batchSize } = req.body;
         await manualBackfillService.start({ batchSize });
-        res.json({ success: true, status: manualBackfillService.getStatus() });
+        res.json({ success: true, status: await manualBackfillService.getStatus() });
     } catch (error) {
         logger.error('Failed to start manual backfill', { error: error.message });
         res.status(400).json({ error: error.message });
@@ -521,7 +522,7 @@ router.post('/backfill/manual/start', async (req, res) => {
 router.post('/backfill/manual/pause', async (req, res) => {
     try {
         manualBackfillService.pause();
-        res.json({ success: true, status: manualBackfillService.getStatus() });
+        res.json({ success: true, status: await manualBackfillService.getStatus() });
     } catch (error) {
         logger.error('Failed to pause manual backfill', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -535,7 +536,7 @@ router.post('/backfill/manual/pause', async (req, res) => {
 router.post('/backfill/manual/resume', async (req, res) => {
     try {
         await manualBackfillService.resume();
-        res.json({ success: true, status: manualBackfillService.getStatus() });
+        res.json({ success: true, status: await manualBackfillService.getStatus() });
     } catch (error) {
         logger.error('Failed to resume manual backfill', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -549,7 +550,7 @@ router.post('/backfill/manual/resume', async (req, res) => {
 router.post('/backfill/manual/clear', async (req, res) => {
     try {
         await manualBackfillService.clear();
-        res.json({ success: true, status: manualBackfillService.getStatus() });
+        res.json({ success: true, status: await manualBackfillService.getStatus() });
     } catch (error) {
         logger.error('Failed to clear manual backfill', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -563,7 +564,7 @@ router.post('/backfill/manual/clear', async (req, res) => {
 router.get('/backfill/status', async (req, res) => {
     try {
         const pending = await manualBackfillService.getPendingCount();
-        const manualStatus = manualBackfillService.getStatus();
+        const manualStatus = await manualBackfillService.getStatus();
         const idleStatus = idleBackfillService.getStatus();
         const scheduleConfig = scheduledBackfillService.getSchedule();
 
@@ -803,8 +804,10 @@ router.get('/overview', async (req, res) => {
         const pendingResult = await db.query(`
             SELECT COUNT(*) as count
             FROM classification_history ch
-            LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
-            WHERE ce.id IS NULL AND ch.library_id IS NOT NULL
+            WHERE NOT EXISTS (
+                SELECT 1 FROM classification_embeddings ce
+                WHERE ce.classification_id = ch.id
+            )
         `);
 
         // Get failed count (last 24 hours)
