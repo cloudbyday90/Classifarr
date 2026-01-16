@@ -380,6 +380,20 @@ class EmbeddingProvider {
 
             let result;
 
+            // Helper to check preemption and yield if needed (best practice per Node.js async patterns)
+            // This allows classification to preempt BEFORE the HTTP call starts, not just during heartbeats
+            const checkPreemptionAndYield = () => {
+                if (needsLock && providerLock.isPreemptPending()) {
+                    if (heartbeatTimer) {
+                        clearInterval(heartbeatTimer);
+                        heartbeatTimer = null;
+                    }
+                    providerLock.releaseLock('embedding');
+                    lockReleased = true;
+                    throw new Error('Embedding operation was preempted by high-priority classification request. Please retry the operation.');
+                }
+            };
+
             switch (mode) {
                 case 'same':
                     // Use classification provider (legacy behavior via ollamaService)
@@ -387,6 +401,8 @@ class EmbeddingProvider {
                     if (!config.primary_provider || config.primary_provider === 'none') {
                         throw new ConfigurationError('No AI provider configured for embedding generation. Please configure an AI provider in Settings > AI Provider.');
                     }
+                    // Check preemption BEFORE starting HTTP request (Node.js event loop is non-preemptive)
+                    checkPreemptionAndYield();
                     result = await this.getOllamaEmbedding(
                         text,
                         null,  // Don't pass host - use ollamaService
@@ -402,6 +418,8 @@ class EmbeddingProvider {
                     if (!config.embedding_ollama_host) {
                         throw new ConfigurationError('No separate Ollama host configured. Please configure host and port in RAG Settings > Embedding Provider.');
                     }
+                    // Check preemption before HTTP request
+                    checkPreemptionAndYield();
                     result = await this.getOllamaEmbedding(
                         text,
                         config.embedding_ollama_host,
@@ -414,6 +432,7 @@ class EmbeddingProvider {
                 case 'cloud':
                     // Use cloud provider
                     // Validation happens in getCloudEmbedding
+                    checkPreemptionAndYield();
                     result = await this.getCloudEmbedding(text, config);
                     break;
 

@@ -38,13 +38,13 @@ class ProviderLockService {
     this.config = {
       heartbeatTimeout: 30000, // 30 seconds - release lock if no heartbeat
       heartbeatInterval: 5000, // 5 seconds - how often to send heartbeat
-      maxWaitTime: 60000, // 60 seconds - max time to wait for lock
+      maxWaitTime: 120000, // 120 seconds - max time to wait for lock (increased for safety)
     };
     this.configLoaded = false;
-    
+
     // Promise queue to ensure atomic lock acquisitions
     this.acquisitionQueue = Promise.resolve();
-    
+
     // Load config from database on initialization (async, non-blocking)
     // Service uses defaults until config loads from database
     this.loadConfig();
@@ -59,13 +59,13 @@ class ProviderLockService {
         SELECT heartbeat_timeout, heartbeat_interval, max_wait_time
         FROM ai_provider_config WHERE id = 1
       `);
-      
+
       if (result.rows.length > 0) {
         const dbConfig = result.rows[0];
         if (dbConfig.heartbeat_timeout) this.config.heartbeatTimeout = dbConfig.heartbeat_timeout;
         if (dbConfig.heartbeat_interval) this.config.heartbeatInterval = dbConfig.heartbeat_interval;
         if (dbConfig.max_wait_time) this.config.maxWaitTime = dbConfig.max_wait_time;
-        
+
         this.configLoaded = true;
         logger.info('Loaded heartbeat config from database', this.config);
       }
@@ -88,12 +88,12 @@ class ProviderLockService {
     const acquisitionPromise = this.acquisitionQueue.then(async () => {
       return await this._acquireLockInternal(requestor, priority);
     });
-    
+
     // Update queue to chain next request after this one
     this.acquisitionQueue = acquisitionPromise.catch(() => {
       // Catch errors so queue continues even if this acquisition fails
     });
-    
+
     return acquisitionPromise;
   }
 
@@ -103,11 +103,11 @@ class ProviderLockService {
    */
   async _acquireLockInternal(requestor, priority = 'normal') {
     const startWait = Date.now();
-    
+
     while (this.lockState.isLocked) {
       // Check for stale lock (no heartbeat)
-      if (this.lockState.lastHeartbeat && 
-          Date.now() - this.lockState.lastHeartbeat > this.config.heartbeatTimeout) {
+      if (this.lockState.lastHeartbeat &&
+        Date.now() - this.lockState.lastHeartbeat > this.config.heartbeatTimeout) {
         const staleOwner = this.lockState.lockedBy;
         logger.warn(`Releasing stale lock held by ${staleOwner}`);
         // Attempt to release and verify we actually released it
@@ -118,7 +118,7 @@ class ProviderLockService {
         // If release failed, another thread might have already handled it
         continue;
       }
-      
+
       // Classification can preempt embedding
       if (priority === 'high' && this.lockState.lockedBy === 'embedding') {
         if (!this.lockState.preemptRequested) {
@@ -130,15 +130,15 @@ class ProviderLockService {
         await this.sleep(1000);
         continue;
       }
-      
+
       // Check max wait time
       if (Date.now() - startWait > this.config.maxWaitTime) {
         throw new Error(`[ProviderLock] Timeout waiting for lock (requestor: ${requestor})`);
       }
-      
+
       await this.sleep(1000);
     }
-    
+
     // Atomic state transition - at this point we're guaranteed to be the only one setting the lock
     this.lockState = {
       isLocked: true,
@@ -147,7 +147,7 @@ class ProviderLockService {
       startTime: Date.now(),
       preemptRequested: false,
     };
-    
+
     logger.info(`Lock acquired by ${requestor}`);
     return true;
   }
@@ -201,6 +201,15 @@ class ProviderLockService {
   }
 
   /**
+   * Check if preemption is pending for embedding operations
+   * Embeddings should call this BEFORE starting HTTP requests to Ollama
+   * @returns {boolean} True if embedding should yield to classification
+   */
+  isPreemptPending() {
+    return this.lockState.preemptRequested && this.lockState.lockedBy === 'embedding';
+  }
+
+  /**
    * Get current lock status
    * @returns {object} Lock status information
    */
@@ -208,8 +217,8 @@ class ProviderLockService {
     return {
       ...this.lockState,
       config: this.config,
-      lockDuration: this.lockState.startTime 
-        ? Date.now() - this.lockState.startTime 
+      lockDuration: this.lockState.startTime
+        ? Date.now() - this.lockState.startTime
         : 0,
     };
   }
@@ -220,11 +229,11 @@ class ProviderLockService {
    */
   async updateConfig(newConfig) {
     // Create new config object atomically
-    const updatedConfig = { 
-      ...this.config, 
-      ...newConfig 
+    const updatedConfig = {
+      ...this.config,
+      ...newConfig
     };
-    
+
     // Persist to database first
     try {
       await db.query(`
@@ -238,10 +247,10 @@ class ProviderLockService {
         updatedConfig.heartbeatInterval,
         updatedConfig.maxWaitTime
       ]);
-      
+
       // Only update in-memory config after successful DB write
       this.config = updatedConfig;
-      
+
       logger.info('Updated heartbeat config', this.config);
     } catch (error) {
       logger.error('Failed to update heartbeat config in database:', error);
