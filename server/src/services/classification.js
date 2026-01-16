@@ -41,6 +41,10 @@ const { createLogger } = require('../utils/logger');
 const logger = createLogger('classification');
 
 // Constants
+// Retry delay between failed classification attempts when AI is unavailable.
+// Set to 5 minutes as a conservative backoff to avoid hammering external providers
+// (TMDB, LLMs, etc.) while still allowing eventual progress without manual intervention.
+// Configurable via this constant - adjust based on your provider rate limits and needs.
 const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 
 class ClassificationService {
@@ -1063,9 +1067,10 @@ class ClassificationService {
       logger.error('AI classification failed', { error: error.message });
       
       // Check if we should queue for retry based on confidence
-      // Only queue for retry if confidence is below 80% (not confident enough without AI)
-      if (confidenceResult.confidence < 80) {
-        logger.info('AI unavailable with low confidence - queuing for retry', {
+      // Only queue for retry if confidence is below 50% (very low confidence without AI)
+      // Items with confidence >= 50% can use signal_calculation fallback
+      if (confidenceResult.confidence < 50) {
+        logger.info('AI unavailable with very low confidence - queuing for retry', {
           confidence: confidenceResult.confidence,
           tmdbId: metadata.tmdb_id,
           title: metadata.title,
@@ -1906,8 +1911,19 @@ Think step by step, then respond with ONLY one of the formats above.`;
         );
 
         // Send notification for manual review if metadata is valid
+        let metadata;
         try {
-          const metadata = JSON.parse(classification.metadata);
+          metadata = JSON.parse(classification.metadata);
+        } catch (parseError) {
+          logger.error('Failed to parse metadata for notification after max retries', {
+            classificationId,
+            error: parseError.message,
+          });
+          // Cannot send notification without valid metadata, but status is already updated
+          return;
+        }
+
+        try {
           await discordBot.sendConfidenceBasedNotification(
             metadata,
             {
@@ -1917,10 +1933,10 @@ Think step by step, then respond with ONLY one of the formats above.`;
             },
             null
           );
-        } catch (parseError) {
-          logger.error('Failed to parse metadata for notification', {
+        } catch (notificationError) {
+          logger.error('Failed to send notification after max retries', {
             classificationId,
-            error: parseError.message,
+            error: notificationError.message,
           });
         }
 
@@ -1977,7 +1993,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
             newResult.confidence,
             newResult.library?.id || null,
             newResult.library?.name || null,
-            classification.retry_count,
+            classification.retry_count + 1,
             classificationId,
           ]
         );
