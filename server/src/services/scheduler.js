@@ -54,6 +54,12 @@ class SchedulerService {
         // Also run initial sync after startup (2 min delay)
         setTimeout(() => this.runPeriodicLibrarySync(), 120000);
 
+        // Process retry queue every 5 minutes for AI-unavailable retries
+        this.schedule('retry-queue', '*/5 * * * *', () => this.processRetryQueue());
+
+        // Also run initial retry queue check after startup (1 min delay)
+        setTimeout(() => this.processRetryQueue(), 60000);
+
         // Daily rating normalization check at 3 AM
         this.schedule('rating-normalization-check', '0 3 * * *', () => this.runRatingNormalizationCheck());
     }
@@ -409,6 +415,52 @@ class SchedulerService {
             }
         } catch (error) {
             logger.error('Error running auto-learn rules', { error: error.message });
+        }
+    }
+
+    /**
+     * Process retry queue for classifications that failed due to AI unavailability
+     * Runs every 5 minutes to retry pending classifications
+     */
+    async processRetryQueue() {
+        try {
+            // Find items that are ready for retry
+            const result = await db.query(`
+                SELECT id, title, retry_count, max_retries
+                FROM classification_history
+                WHERE status = 'pending_retry'
+                  AND retry_after <= NOW()
+                  AND retry_count < max_retries
+                ORDER BY retry_after ASC
+                LIMIT 50
+            `);
+
+            if (result.rows.length === 0) {
+                logger.debug('Retry queue: No items ready for retry');
+                return;
+            }
+
+            logger.info(`Retry queue: Processing ${result.rows.length} items`);
+
+            const classificationService = require('./classification');
+
+            for (const item of result.rows) {
+                try {
+                    await classificationService.retryClassification(item.id);
+                } catch (itemError) {
+                    logger.error(`Retry queue: Failed to retry classification ${item.id}`, {
+                        error: itemError.message,
+                        title: item.title,
+                    });
+                }
+            }
+
+            logger.info(`Retry queue: Completed processing ${result.rows.length} items`);
+        } catch (error) {
+            logger.error('Error processing retry queue', {
+                error: error.message,
+                stack: error.stack,
+            });
         }
     }
 }
