@@ -1,5 +1,15 @@
 # Classifarr Release Notes
 
+## v0.39.7a-alpha
+**Title: Logger Import Hotfix**
+
+### Fixes
+- **OllamaService Logger**: Fixed incorrect logger import in `ollama.js` that caused `logger.error is not a function` error
+  - Was importing logger module directly instead of using `createLogger()`
+  - This broke IdleBackfillService when calling Ollama model methods
+
+---
+
 ## v0.39.7-alpha
 **Title: Classification Fixes, AI Retry & Logger Resilience**
 
