@@ -315,19 +315,21 @@ class ManualBackfillService {
     async getStatus() {
         // Dynamically calculate total to handle items added during backfill
         const currentPending = await this.getPendingCount();
+        // Calculate dynamic total as processed + pending to account for items
+        // that may have been added during the backfill process (e.g., new classifications)
         const dynamicTotal = this.state.processed + currentPending;
         
         // Use the larger of initial total or dynamic total to avoid progress going backwards
         const total = Math.max(this.state.total, dynamicTotal);
         
-        // Clamp progress to never exceed total
-        const displayProcessed = Math.min(this.state.processed, total);
+        // Clamp processed value to never exceed total (prevents progress > 100%)
+        const clampedProcessed = Math.min(this.state.processed, total);
         
         return {
             ...this.state,
             total: total,
             progress: total > 0
-                ? Math.round((displayProcessed / total) * 100)
+                ? Math.round((clampedProcessed / total) * 100)
                 : 0
         };
     }
