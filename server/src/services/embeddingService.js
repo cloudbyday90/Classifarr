@@ -433,7 +433,20 @@ class EmbeddingService {
                 SELECT COUNT(*) as pending FROM embedding_retry_queue WHERE status = 'pending'
             `);
 
+            // Count items in classification_history that don't have embeddings yet
+            // This matches the query used by manualBackfillService.getPendingCount()
+            const pendingResult = await db.query(`
+                SELECT COUNT(*) as count
+                FROM classification_history ch
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM classification_embeddings ce
+                    WHERE ce.classification_id = ch.id
+                )
+            `);
+
             const stats = result.rows[0];
+            const actualPending = parseInt(pendingResult.rows[0].count) || 0;
+
             return {
                 total: parseInt(stats.total) || 0,
                 totalEmbeddings: parseInt(stats.total) || 0,  // Alias for frontend compatibility
@@ -441,7 +454,7 @@ class EmbeddingService {
                 providers: parseInt(stats.providers) || 0,
                 avgDims: Math.round(parseFloat(stats.avg_dims)) || 0,
                 pendingRetries: parseInt(queueResult.rows[0].pending) || 0,
-                pendingCount: parseInt(queueResult.rows[0].pending) || 0  // Alias for frontend compatibility
+                pendingCount: actualPending  // Fixed: Now counts actual items without embeddings
             };
         } catch (error) {
             logger.error('Failed to get embedding stats', { error: error.message });

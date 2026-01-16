@@ -131,7 +131,10 @@ describe('EmbeddingService', () => {
                     rows: [{ total: '100', stale: '5', providers: '2', avg_dims: '768.5' }]
                 })
                 .mockResolvedValueOnce({
-                    rows: [{ pending: '3' }]
+                    rows: [{ pending: '3' }]  // retry queue count
+                })
+                .mockResolvedValueOnce({
+                    rows: [{ count: '42' }]  // actual pending embeddings (items without embeddings)
                 });
 
             const stats = await embeddingService.getStats();
@@ -143,7 +146,7 @@ describe('EmbeddingService', () => {
                 providers: 2,
                 avgDims: 769,
                 pendingRetries: 3,
-                pendingCount: 3  // Alias field
+                pendingCount: 42  // Now counts actual items without embeddings, not retry queue
             });
         });
     });
