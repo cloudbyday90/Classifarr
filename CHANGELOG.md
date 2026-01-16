@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.39.7-alpha] - 2026-01-16
+
+### Fixed
+- PROFILE_SCORE weight calculation in signal-based confidence.
+- Fallback status handling when AI is unavailable.
+- Logger `error()` and `warn()` methods now handle DB persistence failures gracefully.
+
+### Added
+- AI retry mechanism for classifications when AI is unavailable (migration 065).
+- `logger.test.js` with 15 tests for logger resilience.
+- `idleBackfillService.test.js` with 11 tests for model preloading.
+
+### Removed
+- Deprecated `sendSmartSuggestionNotification()` from Discord bot.
+
 ## [v0.39.6-alpha] - 2026-01-16
 
 ### Added

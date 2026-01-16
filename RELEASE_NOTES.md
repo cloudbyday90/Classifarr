@@ -1,5 +1,33 @@
 # Classifarr Release Notes
 
+## v0.39.7-alpha
+**Title: Classification Fixes, AI Retry & Logger Resilience**
+
+### Fixes
+- **PROFILE_SCORE Weight**: Fixed profile score calculation in signal-based confidence
+- **Fallback Status**: Fixed classification fallback status handling when AI is unavailable
+- **Logger Error Handling**: Fixed `logger.error is not a function` error in IdleBackfillService
+  - Added try-catch around database persistence in `logger.error()` and `logger.warn()`
+  - Console and file logging now complete synchronously before async DB persistence
+
+### New Features
+- **AI Retry Mechanism**: Classifications that fail due to AI unavailability are now queued for automatic retry
+  - New `pending_retry` status and `queued_for_retry` method
+  - Migration 065: Added `retry_after`, `retry_count`, `max_retries` columns
+  - Retry queue processed every 5 minutes
+
+### Removed
+- **Smart Suggestions from Discord**: Removed deprecated `sendSmartSuggestionNotification()` from Discord bot
+  - Discord no longer links to deprecated rule-builder
+  - All classification flows now use PolicyEngine
+
+### Added
+- **Logger Tests**: 15 new tests for logger resilience when database fails
+- **IdleBackfillService Tests**: 11 new tests for model preloading, configuration, and lifecycle
+- Total test count increased from 577 to 603
+
+---
+
 ## v0.39.6-alpha
 **Title: Intelligent Model Swapping & RAG Optimization**
 
