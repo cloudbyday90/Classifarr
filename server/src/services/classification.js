@@ -40,6 +40,9 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
 
+// Constants
+const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+
 class ClassificationService {
   async classify(overseerrPayload) {
     try {
@@ -1073,7 +1076,7 @@ class ClassificationService {
           confidence: confidenceResult.confidence,
           method: 'queued_for_retry',
           reason: 'AI temporarily unavailable - queued for retry',
-          retry_after: new Date(Date.now() + (5 * 60 * 1000)), // 5 minutes from now
+          retry_after: new Date(Date.now() + RETRY_DELAY_MS),
           retry_count: 0,
           max_retries: 3,
           libraries: libraries,
@@ -1902,16 +1905,24 @@ Think step by step, then respond with ONLY one of the formats above.`;
           ]
         );
 
-        // Send notification for manual review
-        await discordBot.sendConfidenceBasedNotification(
-          JSON.parse(classification.metadata),
-          {
-            confidence: classification.confidence || 50,
-            reason: `AI unavailable after ${classification.retry_count} retries`,
-            needs_clarification: true,
-          },
-          null
-        );
+        // Send notification for manual review if metadata is valid
+        try {
+          const metadata = JSON.parse(classification.metadata);
+          await discordBot.sendConfidenceBasedNotification(
+            metadata,
+            {
+              confidence: classification.confidence || 50,
+              reason: `AI unavailable after ${classification.retry_count} retries`,
+              needs_clarification: true,
+            },
+            null
+          );
+        } catch (parseError) {
+          logger.error('Failed to parse metadata for notification', {
+            classificationId,
+            error: parseError.message,
+          });
+        }
 
         return;
       }
@@ -1924,7 +1935,24 @@ Think step by step, then respond with ONLY one of the formats above.`;
       });
 
       // Parse the original metadata
-      const metadata = JSON.parse(classification.metadata);
+      let metadata;
+      try {
+        metadata = JSON.parse(classification.metadata);
+      } catch (parseError) {
+        logger.error('Failed to parse metadata for retry', {
+          classificationId,
+          error: parseError.message,
+        });
+        // Mark as failed if metadata is invalid
+        await db.query(
+          `UPDATE classification_history 
+           SET status = 'failed',
+               error_message = $1
+           WHERE id = $2`,
+          ['Invalid metadata - cannot retry', classificationId]
+        );
+        return;
+      }
 
       // Re-run classification
       const newResult = await this.classify(metadata);
@@ -1968,7 +1996,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
            WHERE id = $3`,
           [
             classification.retry_count + 1,
-            new Date(Date.now() + (5 * 60 * 1000)), // 5 minutes from now
+            new Date(Date.now() + RETRY_DELAY_MS),
             classificationId,
           ]
         );

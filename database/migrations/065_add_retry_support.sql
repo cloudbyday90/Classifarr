@@ -11,7 +11,7 @@ ADD COLUMN IF NOT EXISTS max_retries INTEGER DEFAULT 3;
 -- Add index for efficient retry queue processing
 CREATE INDEX IF NOT EXISTS idx_classification_history_retry_queue 
 ON classification_history (retry_after, status)
-WHERE status = 'pending_retry' AND retry_after IS NOT NULL;
+WHERE status = 'pending_retry';
 
 -- Update status constraint to include 'pending_retry'
 ALTER TABLE classification_history

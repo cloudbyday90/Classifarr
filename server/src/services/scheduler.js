@@ -13,6 +13,7 @@ const queueService = require('./queueService');
 const mediaSyncService = require('./mediaSync');
 const discordBot = require('./discordBot');
 const ollamaService = require('./ollama');
+const classificationService = require('./classification');
 
 const logger = createLogger('SchedulerService');
 
@@ -441,8 +442,6 @@ class SchedulerService {
             }
 
             logger.info(`Retry queue: Processing ${result.rows.length} items`);
-
-            const classificationService = require('./classification');
 
             for (const item of result.rows) {
                 try {
