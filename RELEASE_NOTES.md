@@ -1,5 +1,23 @@
 # Classifarr Release Notes
 
+## v0.39.6-alpha
+**Title: Intelligent Model Swapping & RAG Optimization**
+
+### New Features
+- **Intelligent Model Swapping**: Reduces overhead when sharing a GPU between classification and embedding tasks by preventing unnecessary model reloads.
+- **Smart Preloading**: Idle backfill now proactively loads the embedding model into VRAM before starting batch processing.
+- **Model Affinity Tracking**: The system now tracks which model is currently active, optimizing lock acquisition strategies.
+
+### Improvements
+- Added `keep_alive` support to Ollama embedding requests for better batch performance.
+- Increased default provider lock wait time from 60s to 120s to prevent timeouts during heavy load.
+- Improved classification preemption logic to interrupt embedding tasks more reliably.
+
+### Fixes
+- Fixed an issue where classification requests could timeout waiting for long-running embedding operations.
+
+---
+
 ## v0.39.5b-alpha
 **Hotfix: RAG Pending Count & Migration Fix**
 
