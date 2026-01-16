@@ -40,6 +40,13 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
 
+// Constants
+// Retry delay between failed classification attempts when AI is unavailable.
+// Set to 5 minutes as a conservative backoff to avoid hammering external providers
+// (TMDB, LLMs, etc.) while still allowing eventual progress without manual intervention.
+// Configurable via this constant - adjust based on your provider rate limits and needs.
+const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+
 class ClassificationService {
   async classify(overseerrPayload) {
     try {
@@ -1058,7 +1065,32 @@ class ClassificationService {
       };
     } catch (error) {
       logger.error('AI classification failed', { error: error.message });
-      // Fallback to calculated result if AI fails
+      
+      // Check if we should queue for retry based on confidence
+      // Only queue for retry if confidence is below 50% (very low confidence without AI)
+      // Items with confidence >= 50% can use signal_calculation fallback
+      if (confidenceResult.confidence < 50) {
+        logger.info('AI unavailable with very low confidence - queuing for retry', {
+          confidence: confidenceResult.confidence,
+          tmdbId: metadata.tmdb_id,
+          title: metadata.title,
+        });
+        
+        return {
+          library: null,
+          confidence: confidenceResult.confidence,
+          method: 'queued_for_retry',
+          reason: 'AI temporarily unavailable - queued for retry',
+          retry_after: new Date(Date.now() + RETRY_DELAY_MS),
+          retry_count: 0,
+          max_retries: 3,
+          libraries: libraries,
+          signalContext: signalContext,
+          needs_retry: true,
+        };
+      }
+      
+      // Fallback to calculated result if AI fails but confidence is acceptable
       if (confidenceResult.suggestedLibrary && confidenceResult.confidence >= 50) {
         return {
           library: confidenceResult.suggestedLibrary,
@@ -1068,6 +1100,7 @@ class ClassificationService {
           libraries: libraries,
         };
       }
+      
       // Last resort: use the lowest priority library
       const fallbackLibrary = libraries[libraries.length - 1];
       return {
@@ -1635,11 +1668,23 @@ Think step by step, then respond with ONLY one of the formats above.`;
     // For pending items (needs clarification)
     const pendingReason = result.pending_reason || (result.needs_clarification ? result.reason : null);
     const policyQuestion = result.policy_question ? JSON.stringify(result.policy_question) : null;
-    const status = result.needs_clarification ? 'awaiting_decision' : 'completed';
+    
+    // Handle retry status
+    let status;
+    if (result.needs_retry) {
+      status = 'pending_retry';
+    } else {
+      // Determine status: awaiting_decision if needs clarification, fallback method, or low confidence
+      status = (
+        result.needs_clarification || 
+        result.method === 'fallback' ||
+        (result.confidence && result.confidence < 70)
+      ) ? 'awaiting_decision' : 'completed';
+    }
 
     // Only set library when classification is complete
-    // When awaiting_decision, library_id and library_name should be NULL to prevent premature assignment
-    const isAwaitingDecision = status === 'awaiting_decision';
+    // When awaiting_decision or pending_retry, library_id and library_name should be NULL to prevent premature assignment
+    const isAwaitingDecision = status === 'awaiting_decision' || status === 'pending_retry';
     const libraryId = isAwaitingDecision ? null : (result.library?.id || null);
     const libraryName = isAwaitingDecision ? null : (result.library?.name || null);
 
@@ -1660,8 +1705,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
     const insertResult = await db.query(
       `INSERT INTO classification_history 
-       (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question, profile_snapshot)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+       (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question, profile_snapshot, retry_after, retry_count, max_retries)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        RETURNING id`,
       [
         metadata.tmdb_id,
@@ -1679,7 +1724,10 @@ Think step by step, then respond with ONLY one of the formats above.`;
         signalsJson,
         pendingReason,
         policyQuestion,
-        profileSnapshot
+        profileSnapshot,
+        result.retry_after || null,
+        result.retry_count || 0,
+        result.max_retries || 3
       ]
     );
 
@@ -1820,6 +1868,166 @@ Think step by step, then respond with ONLY one of the formats above.`;
     } catch (error) {
       logger.error('Failed to route to arr', { error: error.message });
       // Don't throw - classification was successful even if routing failed
+    }
+  }
+
+  /**
+   * Retry classification for an item that failed due to AI unavailability
+   * @param {number} classificationId - ID of the classification_history entry to retry
+   */
+  async retryClassification(classificationId) {
+    try {
+      // Get the classification entry
+      const result = await db.query(
+        `SELECT * FROM classification_history WHERE id = $1`,
+        [classificationId]
+      );
+
+      if (result.rows.length === 0) {
+        logger.warn('Classification not found for retry', { classificationId });
+        return;
+      }
+
+      const classification = result.rows[0];
+
+      // Check if we've exceeded max retries
+      if (classification.retry_count >= classification.max_retries) {
+        logger.warn('Max retries exceeded - marking as awaiting_decision', {
+          classificationId,
+          retry_count: classification.retry_count,
+        });
+
+        // Update to awaiting_decision after max retries
+        await db.query(
+          `UPDATE classification_history 
+           SET status = 'awaiting_decision',
+               reason = $1,
+               method = 'fallback'
+           WHERE id = $2`,
+          [
+            `AI unavailable after ${classification.retry_count} retries - manual review needed`,
+            classificationId,
+          ]
+        );
+
+        // Send notification for manual review if metadata is valid
+        let metadata;
+        try {
+          metadata = JSON.parse(classification.metadata);
+        } catch (parseError) {
+          logger.error('Failed to parse metadata for notification after max retries', {
+            classificationId,
+            error: parseError.message,
+          });
+          // Cannot send notification without valid metadata, but status is already updated
+          return;
+        }
+
+        try {
+          await discordBot.sendConfidenceBasedNotification(
+            metadata,
+            {
+              confidence: classification.confidence || 50,
+              reason: `AI unavailable after ${classification.retry_count} retries`,
+              needs_clarification: true,
+            },
+            null
+          );
+        } catch (notificationError) {
+          logger.error('Failed to send notification after max retries', {
+            classificationId,
+            error: notificationError.message,
+          });
+        }
+
+        return;
+      }
+
+      // Attempt re-classification
+      logger.info('Retrying classification', {
+        classificationId,
+        retry_count: classification.retry_count,
+        title: classification.title,
+      });
+
+      // Parse the original metadata
+      let metadata;
+      try {
+        metadata = JSON.parse(classification.metadata);
+      } catch (parseError) {
+        logger.error('Failed to parse metadata for retry', {
+          classificationId,
+          error: parseError.message,
+        });
+        // Mark as failed if metadata is invalid
+        await db.query(
+          `UPDATE classification_history 
+           SET status = 'failed',
+               error_message = $1
+           WHERE id = $2`,
+          ['Invalid metadata - cannot retry', classificationId]
+        );
+        return;
+      }
+
+      // Re-run classification
+      const newResult = await this.classify(metadata);
+
+      // If classification succeeded (not pending_retry), update the entry
+      if (!newResult.needs_retry) {
+        await db.query(
+          `UPDATE classification_history 
+           SET status = $1,
+               method = $2,
+               reason = $3,
+               confidence = $4,
+               library_id = $5,
+               library_name = $6,
+               retry_count = $7,
+               retry_after = NULL
+           WHERE id = $8`,
+          [
+            newResult.needs_clarification ? 'awaiting_decision' : 'completed',
+            newResult.method,
+            newResult.reason,
+            newResult.confidence,
+            newResult.library?.id || null,
+            newResult.library?.name || null,
+            classification.retry_count + 1,
+            classificationId,
+          ]
+        );
+
+        logger.info('Classification retry succeeded', {
+          classificationId,
+          method: newResult.method,
+          library: newResult.library?.name,
+        });
+      } else {
+        // Still failing - increment retry count and update retry_after
+        await db.query(
+          `UPDATE classification_history 
+           SET retry_count = $1,
+               retry_after = $2
+           WHERE id = $3`,
+          [
+            classification.retry_count + 1,
+            new Date(Date.now() + RETRY_DELAY_MS),
+            classificationId,
+          ]
+        );
+
+        logger.info('Classification retry still pending', {
+          classificationId,
+          retry_count: classification.retry_count + 1,
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to retry classification', {
+        classificationId,
+        error: error.message,
+        stack: error.stack,
+      });
     }
   }
 
