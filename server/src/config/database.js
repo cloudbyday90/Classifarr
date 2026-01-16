@@ -27,8 +27,9 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
+  // Log the error but don't crash - the pool will recover
+  // Transient connection errors are common and shouldn't kill the process
   console.error('Unexpected error on idle client', err);
-  process.exit(-1);
 });
 
 module.exports = {
