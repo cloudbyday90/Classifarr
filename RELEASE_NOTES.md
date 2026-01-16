@@ -1,5 +1,23 @@
 # Classifarr Release Notes
 
+## v0.39.5b-alpha
+**Hotfix: RAG Pending Count & Migration Fix**
+
+### Bug Fixes
+- **RAG Overview Pending Count**: Overview "Pending" now correctly shows items without embeddings (was always showing 0)
+  - `getStats()` now queries actual items needing embeddings instead of retry queue
+  - Matches the count shown in Manual Backfill
+- **Database Migration 064**: Fixed schema error in `064_backfill_library_associations.sql`
+  - Removed invalid `updated_at = NOW()` reference (column doesn't exist in classification_history)
+  - All integration tests now passing (309/309)
+
+### Added
+- **Database Resilience Tests**: New `database-resilience.test.js` to prevent regression of Exit 255 crash bug
+  - Verifies `process.exit` is not in database config
+  - Tests pool error handler gracefully handles ECONNRESET and connection terminated errors
+
+---
+
 ## v0.39.5a-alpha
 **Hotfix: Database Connection Crash**
 

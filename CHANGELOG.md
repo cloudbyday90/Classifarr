@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.5b-alpha] - 2026-01-16
+
+### Fixed
+- **RAG Overview Pending Count**: Fixed `getStats()` to count actual items without embeddings instead of retry queue
+- **Database Migration 064**: Removed invalid `updated_at = NOW()` from backfill migration (column doesn't exist)
+
+### Added
+- **Database Resilience Tests**: New tests to prevent regression of Exit 255 crash bug
+
 ## [0.39.5a-alpha] - 2026-01-15
 
 ### Fixed
