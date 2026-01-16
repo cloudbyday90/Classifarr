@@ -953,6 +953,17 @@ class ClassificationService {
           topLibrary: policyResult.ranked[0]?.library_name,
           confidence: policyResult.confidence
         });
+        
+        // Log signal context before AI call for debugging (Bug #11 logging)
+        if (policyResult.ranked && policyResult.ranked.length > 0) {
+          logger.debug('Signal breakdown before AI', {
+            title: metadata.title,
+            suggestedLibrary: policyResult.ranked[0]?.library_name,
+            rankedCount: policyResult.ranked.length,
+            topConfidence: policyResult.ranked[0]?.score
+          });
+        }
+        
         metadata.policyResult = policyResult;
         // Falls through to legacy signal collection and AI
       }
@@ -1556,8 +1567,20 @@ Think step by step, then respond with ONLY one of the formats above.`;
         title: metadata.title,
         problem: problemSummary,
         options: options.map(o => o.label),
-        hasSignalContext: !!signalContext
+        hasSignalContext: !!signalContext,
+        suggestedLibrary: signalContext?.suggestedLibrary?.name
       });
+
+      // Log full signal breakdown for debugging (Bug #11 logging)
+      if (signalContext) {
+        logger.debug('Signal breakdown with AI CLARIFY', {
+          title: metadata.title,
+          confidence: signalContext.confidence,
+          suggestedLibrary: signalContext.suggestedLibrary?.name,
+          breakdown: signalContext.breakdown,
+          hasConflict: signalContext.hasConflict
+        });
+      }
 
       // Build policy question object for pending queue storage
       const policyQuestion = {
