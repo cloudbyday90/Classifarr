@@ -1,6 +1,6 @@
 # Classifarr Release Notes
 
-## Upcoming Release
+## v0.39.5-alpha
 **Critical Bug Fixes - Sync Reconciliation & RAG Embedding Issues**
 
 ### Critical Bug Fixes
@@ -49,6 +49,8 @@
 - `server/src/services/manualBackfillService.js` - Dynamic total calculation, async getStatus
 - `server/src/services/idleBackfillService.js` - Added getPendingCount, set total on start
 - `server/src/services/scheduledBackfillService.js` - Standardized pending count query
+
+
 
 ## v0.39.4-alpha
 **Comprehensive Bug Fix & Stability Release**

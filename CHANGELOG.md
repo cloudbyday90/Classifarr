@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.39.5-alpha] - 2026-01-15
 
 ### Fixed
 - **CRITICAL: Sync Reconciliation Error**: Fixed `column "updated_at" of relation "classification_history" does not exist` error
@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Idle Backfill Total Calculation**: Fixed idle backfill not setting total in backfill_runs
   - Added getPendingCount() method to idle backfill service
   - Idle backfill now sets total when creating backfill_runs record
+
+
 
 ## [0.39.4-alpha] - 2026-01-15
 
