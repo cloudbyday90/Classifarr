@@ -1,6 +1,69 @@
 # Classifarr Release Notes
 
 ## Unreleased
+
+### 🔐 API Key Management System (#182)
+
+**Secure third-party integrations and automation with API keys**
+
+#### New Features
+
+- **Create API Keys**: Generate secure API keys with custom names and permission levels
+  - `read_write`: Full access to all endpoints
+  - `read_only`: Restricted to GET endpoints only
+- **Security Settings Page**: New Settings → Security page for managing API keys
+- **Dual Authentication**: All API routes now support both JWT tokens (web UI) and API keys (integrations)
+- **Encrypted Storage**: Keys stored using AES-256-GCM encryption (can be retrieved by authenticated users)
+- **Key Retrieval**: View full API keys again when logged in (unlike passwords, keys can be revealed)
+- **Usage Tracking**: Monitor last used timestamp and IP address for each key
+- **Active/Inactive Toggle**: Temporarily disable keys without revoking them
+- **Auto-Generated Default Key**: First startup creates a default read-write API key (shown in logs)
+
+#### Security Features
+
+- Keys use `clf_` prefix with 32-character base64url-encoded suffix
+- Encrypted storage allows secure retrieval (not one-way hashed like passwords)
+- Permission enforcement middleware protects write operations
+- Rate limiting on key management endpoints
+- Activity tracking with IP address logging
+
+#### UI Features
+
+- Create, view, and revoke keys through Settings → Security
+- Copy keys to clipboard with one click
+- Reveal full keys using eye icon (keys are encrypted, not hashed)
+- Inline name editing (double-click)
+- Active/inactive status toggle
+- Last used timestamp and IP display
+
+#### Usage Example
+
+```bash
+# Create a read-only key in Settings → Security
+
+# Use it for monitoring
+curl -X GET http://localhost:21324/api/libraries \
+  -H "X-API-Key: clf_your_key_here"
+
+# Create a read-write key for automation
+
+# Use it for triggering syncs
+curl -X POST http://localhost:21324/api/libraries/1/sync \
+  -H "X-API-Key: clf_your_key_here" \
+  -H "Content-Type: application/json"
+```
+
+#### Protected Routes
+
+- **Libraries**: GET (read-only), POST/PUT/DELETE (read-write)
+- **Queue**: GET (read-only), POST/DELETE (read-write)
+- **Stats**: GET (read-only)
+- **Media Sync**: GET (read-only), POST (read-write)
+
+---
+
+### 📊 Enhanced UI for Sync Status and CARSA Warnings
+
 **Title: Enhanced UI for Sync Status and CARSA Warnings**
 
 ### What's New

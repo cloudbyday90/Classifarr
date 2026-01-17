@@ -39,14 +39,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New database migration `066_arr_library_mapping_preservation.sql`
   - Comprehensive unit tests for snapshot, lookup, and remapping logic
 
-- **API Key Management Support** (Fixes #181)
+- **API Key Management Support** (Fixes #181, #182)
   - New `api_keys` table for API key authentication and management
   - Support for external integrations and automation
-  - Secure key storage using hashed values with prefix identification
-  - Configurable permissions (read_only, read_write, admin)
+  - **Encrypted key storage** using AES-256-GCM (keys can be retrieved by authenticated users)
+  - API key service with generation, validation, and permission enforcement
+  - Middleware for dual authentication (JWT tokens or API keys)
+  - Configurable permissions (read_only, read_write)
   - Activity tracking: last used timestamp and IP address
   - Key expiration support with optional expiry dates
   - Active/inactive status control
+  - **Security settings UI** in Settings → Security for key management
+  - Create, reveal, revoke, and manage API keys through web interface
+  - Copy-to-clipboard functionality
+  - Auto-generated default API key on first startup
+  - Permission enforcement on protected routes (libraries, queue, stats, media-sync)
   - Optimized with indexes on key_hash, key_prefix, and is_active columns
   - New database migration `067_add_api_keys.sql`
   - Comprehensive integration tests for migration and data operations

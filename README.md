@@ -217,6 +217,68 @@ Open `http://localhost:21324`
 5. **Configure AI Provider** (recommended) - Choose Ollama, OpenAI, Gemini, or OpenRouter
 6. **Configure Discord** (optional) - For notifications and corrections
 
+## 🔐 API Authentication
+
+Classifarr supports two authentication methods for secure access:
+
+### 1. JWT Tokens (Web UI)
+Used by the web interface for user sessions. Tokens are automatically managed by the browser.
+
+### 2. API Keys (Integrations)
+For third-party integrations, automation, and external tools.
+
+#### Creating an API Key
+
+1. Go to **Settings** → **Security**
+2. Click **Create New API Key**
+3. Set a descriptive name and permission level:
+   - **Read-Write**: Full access to all endpoints
+   - **Read-Only**: Access to GET endpoints only
+4. Copy the key (you can view it again later when logged in)
+5. Use in requests with the `X-API-Key` header
+
+#### Using an API Key
+
+```bash
+# Get libraries
+curl -X GET http://localhost:21324/api/libraries \
+  -H "X-API-Key: clf_your_api_key_here"
+
+# Trigger a library sync
+curl -X POST http://localhost:21324/api/libraries/1/sync \
+  -H "X-API-Key: clf_your_api_key_here" \
+  -H "Content-Type: application/json"
+```
+
+#### Permission Levels
+
+| Permission | Endpoints | Use Case |
+|------------|-----------|----------|
+| `read_only` | All GET endpoints | Monitoring, dashboards, read-only integrations |
+| `read_write` | All endpoints (GET, POST, PUT, DELETE) | Automation, full integrations, webhook processing |
+
+#### Security Best Practices
+
+- **Store keys securely** - Use environment variables or secret managers
+- **Use read-only keys** when write access is not needed
+- **Rotate keys periodically** - Revoke old keys and create new ones
+- **Revoke unused keys** - Delete keys that are no longer in use
+- **Never commit keys** to version control
+- **Monitor usage** - Check "Last Used" timestamps in Settings → Security
+
+#### Default API Key
+
+On first startup, Classifarr auto-generates a read-write API key named "Default API Key". The full key is displayed in the server logs:
+
+```
+✓ Auto-generated default API key
+  Prefix: clf_abc1...
+  Full key: clf_abc123xyz...
+  Save this key - it will not be shown again!
+```
+
+You can view this key again later in **Settings** → **Security** by clicking the eye icon.
+
 ## 🎯 How Classification Works (v0.37.0)
 
 The Policy Engine uses a **formula-first, AI-validates** approach:
