@@ -259,6 +259,14 @@ describe('RAG API Integration Tests', () => {
             expect(response.body.stats).toHaveProperty('failedCount');
             expect(response.body.stats).toHaveProperty('avgGenerationTime');
             expect(response.body.stats).toHaveProperty('lastEmbeddingTime');
+            
+            // Verify types are correct
+            expect(typeof response.body.stats.totalEmbeddings).toBe('number');
+            expect(typeof response.body.stats.pendingCount).toBe('number');
+            expect(typeof response.body.stats.failedCount).toBe('number');
+            expect(typeof response.body.stats.avgGenerationTime).toBe('number');
+            // lastEmbeddingTime can be null or string
+            expect(response.body.stats.lastEmbeddingTime === null || typeof response.body.stats.lastEmbeddingTime === 'string').toBe(true);
         });
 
         it('should return pendingCount that matches actual unembedded items', async () => {

@@ -50,13 +50,8 @@ app.use('/api/queue', queueRouter);
 describe('Sync Lock Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset sync status
-    syncStatus.isRunning = false;
-    syncStatus.type = null;
-    syncStatus.progress = 0;
-    syncStatus.currentLibrary = null;
-    syncStatus.startedAt = null;
-    syncStatus.canInterrupt = true;
+    // Reset sync status using the centralized reset method
+    syncStatus.reset();
     
     // Mock queueService
     queueService.running = false;

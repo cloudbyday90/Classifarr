@@ -252,18 +252,23 @@ router.get('/detailed', async (req, res) => {
             if (!isNaN(parsedHours) && parsedHours > 0 && parsedHours <= 720) { // Max 30 days
                 hours = parsedHours;
             } else {
-                return res.status(400).json({ error: 'Invalid hours parameter. Must be between 1 and 720.' });
+                return res.status(400).json({ error: `Invalid hours parameter: '${req.query.hours}'. Must be an integer between 1 and 720.` });
             }
         }
 
-        // Helper function to get operation metrics
+        // Helper function to get operation metrics (parallelized for performance)
         const getRAGMetrics = async (hours) => {
             const operations = ['semantic_search', 'hybrid_search', 'embedding_generation', 'pattern_mining'];
-            const operationMetrics = {};
+            
+            // Fetch all operation metrics in parallel to reduce overall latency
+            const metricsResults = await Promise.all(
+                operations.map((operation) => ragLogger.getMetricsByOperation(operation, hours))
+            );
 
-            for (const operation of operations) {
-                operationMetrics[operation] = await ragLogger.getMetricsByOperation(operation, hours);
-            }
+            const operationMetrics = {};
+            operations.forEach((operation, index) => {
+                operationMetrics[operation] = metricsResults[index];
+            });
 
             return {
                 operationMetrics,
@@ -281,31 +286,62 @@ router.get('/detailed', async (req, res) => {
             return history.rows;
         };
 
+        // Helper function to get failed count (last 24 hours)
+        const getFailedCount = async () => {
+            const result = await db.query(`
+                SELECT COUNT(*) as count
+                FROM embedding_errors
+                WHERE created_at >= NOW() - INTERVAL '24 hours'
+                AND resolved = false
+            `);
+            return parseInt(result.rows[0]?.count) || 0;
+        };
+
+        // Helper function to get average generation time and last embedding time
+        const getGenerationMetrics = async () => {
+            const result = await db.query(`
+                SELECT 
+                    AVG(duration_ms) as avg_time,
+                    MAX(period_start) as last_time
+                FROM rag_metrics
+                WHERE operation = 'embedding_generation'
+                AND period_start >= NOW() - INTERVAL '24 hours'
+            `);
+            return {
+                avgGenerationTime: Math.round(parseFloat(result.rows[0]?.avg_time) || 0),
+                lastEmbeddingTime: result.rows[0]?.last_time || null
+            };
+        };
+
         // Parallel fetch all required data
         const [
             statsData,
             metricsData,
             circuitBreakerStatus,
             backfillHistoryData,
-            config
+            config,
+            failedCount,
+            generationMetrics
         ] = await Promise.all([
             embeddingService.getStats(),
             getRAGMetrics(hours),
             embeddingProvider.circuitBreaker.getStatus(),
             getBackfillHistory(),
-            embeddingRouter.getConfig()
+            embeddingRouter.getConfig(),
+            getFailedCount(),
+            getGenerationMetrics()
         ]);
 
-        // Get circuit breaker state history
+        // Get circuit breaker state history (synchronous in-memory call; safe to run after Promise.all)
         const stateHistory = embeddingProvider.circuitBreaker.getStateHistory(20);
 
         res.json({
             stats: {
                 totalEmbeddings: statsData?.totalEmbeddings || statsData?.total || 0,
                 pendingCount: statsData?.pendingCount || 0,
-                failedCount: statsData?.failedCount || 0,
-                avgGenerationTime: statsData?.avgGenerationTime || 0,
-                lastEmbeddingTime: statsData?.lastEmbeddingTime || null
+                failedCount: failedCount,
+                avgGenerationTime: generationMetrics.avgGenerationTime,
+                lastEmbeddingTime: generationMetrics.lastEmbeddingTime
             },
             providerOnline: circuitBreakerStatus?.state === 'CLOSED',
             operationMetrics: metricsData?.operationMetrics || {},

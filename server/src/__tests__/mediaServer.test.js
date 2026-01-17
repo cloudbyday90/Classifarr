@@ -56,12 +56,7 @@ describe('Media Server API', () => {
         
         // Reset syncStatus singleton to prevent cross-test contamination
         // This prevents timeouts when running tests in parallel with sync-lock.test.js
-        syncStatus.isRunning = false;
-        syncStatus.type = null;
-        syncStatus.progress = 0;
-        syncStatus.currentLibrary = null;
-        syncStatus.startedAt = null;
-        syncStatus.canInterrupt = true;
+        syncStatus.reset();
     });
 
     describe('POST /api/media-server - Issue #74 Regression Test', () => {

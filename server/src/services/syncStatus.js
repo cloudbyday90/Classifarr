@@ -55,6 +55,11 @@ class SyncStatus {
 
   stop() {
     logger.info('Sync stopped', { type: this.type, duration: this.startedAt ? Date.now() - this.startedAt : 0 });
+    this.reset();
+  }
+
+  reset() {
+    // Reset all state to initial values
     this.isRunning = false;
     this.type = null;
     this.progress = 0;
