@@ -245,7 +245,16 @@ router.get('/health', async (req, res) => {
  */
 router.get('/detailed', async (req, res) => {
     try {
-        const { hours = 24 } = req.query;
+        // Validate and parse hours parameter
+        let hours = 24; // default
+        if (req.query.hours !== undefined) {
+            const parsedHours = parseInt(req.query.hours, 10);
+            if (!isNaN(parsedHours) && parsedHours > 0 && parsedHours <= 720) { // Max 30 days
+                hours = parsedHours;
+            } else {
+                return res.status(400).json({ error: 'Invalid hours parameter. Must be between 1 and 720.' });
+            }
+        }
 
         // Helper function to get operation metrics
         const getRAGMetrics = async (hours) => {
@@ -253,7 +262,7 @@ router.get('/detailed', async (req, res) => {
             const operationMetrics = {};
 
             for (const operation of operations) {
-                operationMetrics[operation] = await ragLogger.getMetricsByOperation(operation, parseInt(hours));
+                operationMetrics[operation] = await ragLogger.getMetricsByOperation(operation, hours);
             }
 
             return {
@@ -281,7 +290,7 @@ router.get('/detailed', async (req, res) => {
             config
         ] = await Promise.all([
             embeddingService.getStats(),
-            getRAGMetrics(parseInt(hours)),
+            getRAGMetrics(hours),
             embeddingProvider.circuitBreaker.getStatus(),
             getBackfillHistory(),
             embeddingRouter.getConfig()

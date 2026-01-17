@@ -306,5 +306,23 @@ describe('RAG API Integration Tests', () => {
 
             expect(response.body).toHaveProperty('stats');
         });
+
+        it('should reject invalid hours parameter', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed?hours=invalid')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid hours parameter');
+        });
+
+        it('should reject hours parameter that is too large', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed?hours=1000')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid hours parameter');
+        });
     });
 });
