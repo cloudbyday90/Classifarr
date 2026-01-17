@@ -14,6 +14,18 @@ const logger = createLogger('SyncStatus');
 
 /**
  * Singleton to track sync status and provide locking
+ * 
+ * This provides application-level locking for sync operations to prevent concurrent
+ * execution of "Sync Libraries" and "Clear & Re-sync All" (CARSA) operations.
+ * 
+ * Note: This works alongside database-level sync tracking (media_server_sync_status table).
+ * - Application lock (this singleton): Prevents concurrent sync API requests
+ * - Database tracking: Records per-library sync history and status
+ * 
+ * The mediaSync service's syncLibrary() method uses database-level tracking for
+ * individual library syncs. When called from the API endpoint, both locks are active.
+ * When called internally (e.g., by syncAllLibraries() during CARSA), only database
+ * tracking is used since the application lock is already held by the parent operation.
  */
 class SyncStatus {
   constructor() {

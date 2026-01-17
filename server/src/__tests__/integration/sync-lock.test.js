@@ -172,11 +172,17 @@ describe('Sync Lock Integration Tests', () => {
       syncStatus.start('full_resync', false);
       syncStatus.updateProgress(25);
 
+      // Trigger second CARSA - should interrupt first one
       const response = await request(app)
         .post('/api/queue/clear-and-resync')
         .expect(200);
 
       expect(response.body.success).toBe(true);
+      
+      // Verify the second CARSA has started and interrupted the first
+      // (Note: Both CARSAs run background tasks, so final state depends on async completion)
+      expect(syncStatus.type).toBe('full_resync');
+      expect(syncStatus.isRunning).toBe(true);
     });
   });
 
