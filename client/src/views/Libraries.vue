@@ -8,11 +8,39 @@
 
 <template>
   <div class="space-y-6">
+    <!-- Mapping Warning Banner -->
+    <MappingWarningBanner />
+
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold">Libraries</h1>
-      <Button @click="syncLibraries" :loading="syncing">
-        🔄 Sync Libraries
+      <Button 
+        @click="syncLibraries" 
+        :disabled="!syncStore.canStartSync"
+        :loading="syncStore.isRunning && syncStore.type === SYNC_TYPE.LIBRARY_SYNC"
+      >
+        <template v-if="syncStore.isRunning && syncStore.type === SYNC_TYPE.LIBRARY_SYNC">
+          Syncing... {{ syncStore.progress }}%
+        </template>
+        <template v-else-if="syncStore.isRunning">
+          {{ syncStore.statusText }}
+        </template>
+        <template v-else>
+          🔄 Sync Libraries
+        </template>
       </Button>
+    </div>
+
+    <!-- Progress bar during sync -->
+    <div v-if="syncStore.isRunning" class="p-4 bg-gray-800 rounded-lg border border-gray-700">
+      <div class="mb-2 h-2 bg-gray-700 rounded-full overflow-hidden">
+        <div
+          class="h-full bg-primary transition-all duration-300"
+          :style="{ width: `${syncStore.progress}%` }"
+        ></div>
+      </div>
+      <span class="text-sm text-gray-400">
+        {{ syncStore.currentLibrary || 'Processing...' }}
+      </span>
     </div>
 
     <div v-if="loading" class="text-center py-12 text-gray-400">
@@ -61,33 +89,47 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useLibrariesStore } from '@/stores/libraries'
+import { useSyncStatusStore, SYNC_TYPE } from '@/stores/syncStatus'
+import { useToast } from '@/stores/toast'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
+import MappingWarningBanner from '@/components/MappingWarningBanner.vue'
+
+// HTTP status codes
+const HTTP_CONFLICT = 409
 
 const librariesStore = useLibrariesStore()
 const { libraries, loading } = storeToRefs(librariesStore)
 
-const syncing = ref(false)
+const syncStore = useSyncStatusStore()
+const toast = useToast()
 
 onMounted(async () => {
   await librariesStore.fetchLibraries()
+  syncStore.startPolling()
+})
+
+onUnmounted(() => {
+  syncStore.stopPolling()
 })
 
 const syncLibraries = async () => {
-  syncing.value = true
   try {
     await api.syncMediaServer()
     await librariesStore.fetchLibraries()
   } catch (error) {
-    console.error('Failed to sync libraries:', error)
-    alert('Failed to sync libraries: ' + error.message)
-  } finally {
-    syncing.value = false
+    if (error.response?.status === HTTP_CONFLICT) {
+      // Sync already running - show message
+      toast.warning(error.response.data.message || 'Sync already in progress', 'Sync In Progress')
+    } else {
+      console.error('Failed to sync libraries:', error)
+      toast.error(error.message || 'An error occurred while syncing libraries', 'Sync Failed')
+    }
   }
 }
 </script>

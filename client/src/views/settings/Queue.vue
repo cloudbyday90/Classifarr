@@ -283,7 +283,7 @@
           🔄 Reprocess All Completed
         </button>
         <button
-          @click="clearAndResync"
+          @click="showCarsaDialog"
           :disabled="actionLoading"
           class="px-4 py-2 bg-orange-900/50 hover:bg-orange-800/50 text-orange-300 rounded transition-colors disabled:opacity-50"
         >
@@ -299,12 +299,16 @@
         </ul>
       </div>
     </div>
+
+    <!-- CARSA Warning Dialog -->
+    <ClearResyncDialog ref="carsaDialog" @confirm="handleCarsaConfirm" />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
+import ClearResyncDialog from '@/components/ClearResyncDialog.vue'
 
 const loading = ref(true)
 const saving = ref(false)
@@ -313,6 +317,8 @@ const saveSuccess = ref(false)
 const actionLoading = ref(false)
 const actionMessage = ref('')
 const actionSuccess = ref(false)
+
+const carsaDialog = ref(null)
 
 const stats = ref({
   pending: 0,
@@ -463,10 +469,11 @@ const reprocessCompleted = async () => {
   }
 }
 
-const clearAndResync = async () => {
-  if (!confirm('This will CLEAR ALL queue data and classification history, then trigger a fresh library sync. This action cannot be undone! Continue?')) {
-    return
-  }
+const showCarsaDialog = () => {
+  carsaDialog.value?.open()
+}
+
+const handleCarsaConfirm = async () => {
   actionLoading.value = true
   try {
     const response = await api.clearAndResync()
