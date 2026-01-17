@@ -136,6 +136,43 @@ describe('Sync Lock Integration Tests', () => {
 
       expect(syncStatus.isRunning).toBe(false); // Should be stopped after error
     });
+
+    it('should prevent TOCTOU race condition with concurrent requests', async () => {
+      // Mock sync to take some time so both requests can arrive "simultaneously"
+      mediaSyncService.syncLibrary.mockImplementation(() => {
+        return new Promise(resolve => {
+          setTimeout(() => resolve({ success: true }), 100);
+        });
+      });
+
+      // Fire two requests concurrently (without awaiting)
+      const request1Promise = request(app)
+        .post('/api/media-sync/sync/1')
+        .send({ incremental: false });
+      
+      const request2Promise = request(app)
+        .post('/api/media-sync/sync/2')
+        .send({ incremental: false });
+
+      // Wait for both to complete
+      const [response1, response2] = await Promise.all([request1Promise, request2Promise]);
+
+      // One should succeed (200), one should fail (409)
+      const responses = [response1, response2];
+      const successCount = responses.filter(r => r.status === 200).length;
+      const blockedCount = responses.filter(r => r.status === 409).length;
+
+      expect(successCount).toBe(1);
+      expect(blockedCount).toBe(1);
+
+      // Verify the blocked request got appropriate error message
+      const blockedResponse = responses.find(r => r.status === 409);
+      expect(blockedResponse.body.error).toBe('Sync already in progress');
+      expect(blockedResponse.body.message).toContain('library_sync is currently running');
+
+      // Verify the successful request actually called the service
+      expect(mediaSyncService.syncLibrary).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('POST /api/queue/clear-and-resync', () => {
