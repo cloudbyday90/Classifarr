@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
   permissions VARCHAR(50) NOT NULL DEFAULT 'read_write',
   created_at TIMESTAMP DEFAULT NOW(),
   last_used_at TIMESTAMP,
-  last_used_ip VARCHAR(45),
+  last_used_ip INET,
   is_active BOOLEAN DEFAULT true,
   expires_at TIMESTAMP
 );

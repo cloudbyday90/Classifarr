@@ -78,6 +78,7 @@ describe('Migration 067: API Keys Table', () => {
             expect(columnTypes.key_prefix.length).toBe(8);
             expect(columnTypes.permissions.type).toBe('character varying');
             expect(columnTypes.permissions.length).toBe(50);
+            expect(columnTypes.last_used_ip.type).toBe('inet');
             expect(columnTypes.is_active.type).toBe('boolean');
         });
 
@@ -246,6 +247,16 @@ describe('Migration 067: API Keys Table', () => {
             expect(result.rows[0].last_used_ip).toBe('192.168.1.100');
         });
 
+        test('should handle IPv6 addresses in last_used_ip', async () => {
+            const result = await db.query(`
+                INSERT INTO api_keys (name, key_hash, key_prefix, last_used_ip)
+                VALUES ('Test API Key IPv6', 'hash_ipv6', 'prefix6', '2001:db8::1')
+                RETURNING *;
+            `);
+
+            expect(result.rows[0].last_used_ip).toBe('2001:db8::1');
+        });
+
         test('should handle expiration timestamp', async () => {
             const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
 
@@ -306,7 +317,7 @@ describe('Migration 067: API Keys Table', () => {
                     permissions VARCHAR(50) NOT NULL DEFAULT 'read_write',
                     created_at TIMESTAMP DEFAULT NOW(),
                     last_used_at TIMESTAMP,
-                    last_used_ip VARCHAR(45),
+                    last_used_ip INET,
                     is_active BOOLEAN DEFAULT true,
                     expires_at TIMESTAMP
                 );
