@@ -1154,6 +1154,341 @@ class QueueService {
     }
 
     /**
+     * Build library snapshot with external IDs AND mappings before clearing
+     * Captures library info and mapping info needed to restore after re-sync
+     */
+    async buildLibrarySnapshot() {
+        try {
+            const librariesResult = await db.query(`
+                SELECT
+                    l.id,
+                    l.name,
+                    l.media_type,
+                    l.external_id,
+                    ms.type as media_server_type
+                FROM libraries l
+                LEFT JOIN media_server ms ON l.media_server_id = ms.id
+            `);
+
+            const mappingsResult = await db.query(`
+                SELECT * FROM library_arr_mappings
+            `);
+
+            const snapshot = {
+                libraries: {},
+                mappings: mappingsResult.rows
+            };
+
+            for (const lib of librariesResult.rows) {
+                snapshot.libraries[lib.id] = {
+                    name: lib.name,
+                    media_type: lib.media_type,
+                    external_id: lib.external_id,
+                    media_server_type: lib.media_server_type
+                };
+            }
+
+            logger.info('Built library snapshot', { 
+                libraryCount: Object.keys(snapshot.libraries).length,
+                mappingCount: snapshot.mappings.length
+            });
+            return snapshot;
+        } catch (error) {
+            logger.error('Failed to build library snapshot', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Build new library lookup after re-sync
+     * Creates lookup tables by external ID, name+type for matching
+     */
+    async buildNewLibraryLookup() {
+        try {
+            const result = await db.query(`
+                SELECT
+                    l.id,
+                    l.name,
+                    l.media_type,
+                    l.external_id,
+                    ms.type as media_server_type
+                FROM libraries l
+                LEFT JOIN media_server ms ON l.media_server_id = ms.id
+            `);
+
+            const lookup = {
+                byExternalId: {},
+                byNameType: {}
+            };
+
+            for (const lib of result.rows) {
+                // Index by external_id (most reliable)
+                if (lib.external_id && lib.media_server_type) {
+                    const key = `${lib.media_server_type}:${lib.external_id}`;
+                    lookup.byExternalId[key] = lib.id;
+                }
+
+                // Index by name + media_type (fallback)
+                const nameKey = `${lib.name.toLowerCase()}|${lib.media_type}`;
+                lookup.byNameType[nameKey] = lib.id;
+            }
+
+            logger.info('Built new library lookup', {
+                byExternalId: Object.keys(lookup.byExternalId).length,
+                byNameType: Object.keys(lookup.byNameType).length
+            });
+
+            return lookup;
+        } catch (error) {
+            logger.error('Failed to build library lookup', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Find new library ID using priority matching
+     * Priority: external_id (most reliable) > name+type (fallback)
+     */
+    findNewLibraryId(oldLibInfo, newLookup) {
+        // Priority 1: Match by external_id from same media server type
+        if (oldLibInfo.external_id && oldLibInfo.media_server_type) {
+            const key = `${oldLibInfo.media_server_type}:${oldLibInfo.external_id}`;
+            if (newLookup.byExternalId[key]) {
+                return newLookup.byExternalId[key];
+            }
+        }
+
+        // Priority 2: Match by name + media_type
+        const nameKey = `${oldLibInfo.name.toLowerCase()}|${oldLibInfo.media_type}`;
+        if (newLookup.byNameType[nameKey]) {
+            return newLookup.byNameType[nameKey];
+        }
+
+        return null; // Cannot remap
+    }
+
+    /**
+     * Remap mappings for a single *arr instance
+     * Recreates mappings that were CASCADE deleted when libraries were cleared
+     */
+    async remapInstanceMappings(type, config, snapshot, newLookup) {
+        const result = {
+            remapped: 0,
+            failed: 0,
+            failedLibraries: []
+        };
+
+        try {
+            // Find mappings for this instance in the snapshot
+            const instanceMappings = snapshot.mappings.filter(
+                m => m.arr_type === type && m.arr_config_id === config.id
+            );
+
+            if (instanceMappings.length === 0) {
+                logger.debug('No mappings found in snapshot for instance', {
+                    type,
+                    configId: config.id
+                });
+                return result;
+            }
+
+            for (const mapping of instanceMappings) {
+                const oldLibInfo = snapshot.libraries[mapping.library_id];
+
+                if (!oldLibInfo) {
+                    result.failed++;
+                    result.failedLibraries.push({
+                        oldId: mapping.library_id,
+                        reason: 'Library not found in snapshot'
+                    });
+                    continue;
+                }
+
+                const newLibraryId = this.findNewLibraryId(oldLibInfo, newLookup);
+
+                if (newLibraryId) {
+                    // Recreate the mapping with new library_id
+                    await db.query(
+                         `INSERT INTO library_arr_mappings 
+                         (library_id, arr_type, arr_config_id, arr_root_folder_id, arr_root_folder_path, 
+                          quality_profile_id, plex_path_prefix, arr_path_prefix, classifarr_path_prefix)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                         ON CONFLICT (library_id) DO UPDATE SET
+                            arr_type = EXCLUDED.arr_type,
+                            arr_config_id = EXCLUDED.arr_config_id,
+                            arr_root_folder_id = EXCLUDED.arr_root_folder_id,
+                            arr_root_folder_path = EXCLUDED.arr_root_folder_path,
+                            quality_profile_id = EXCLUDED.quality_profile_id,
+                            plex_path_prefix = EXCLUDED.plex_path_prefix,
+                            arr_path_prefix = EXCLUDED.arr_path_prefix,
+                            classifarr_path_prefix = EXCLUDED.classifarr_path_prefix,
+                            updated_at = NOW()`,
+                        [
+                            newLibraryId,
+                            mapping.arr_type,
+                            mapping.arr_config_id,
+                            mapping.arr_root_folder_id,
+                            mapping.arr_root_folder_path,
+                            mapping.quality_profile_id,
+                            mapping.plex_path_prefix,
+                            mapping.arr_path_prefix,
+                            mapping.classifarr_path_prefix
+                        ]
+                    );
+
+                    result.remapped++;
+
+                    logger.info('Restored library mapping', {
+                        instance: `${type} ${config.id}`,
+                        oldId: mapping.library_id,
+                        newId: newLibraryId,
+                        name: oldLibInfo.name,
+                        arr_root_folder: mapping.arr_root_folder_path
+                    });
+                } else {
+                    result.failed++;
+                    result.failedLibraries.push({
+                        oldId: mapping.library_id,
+                        name: oldLibInfo.name,
+                        reason: 'No matching library found after re-sync'
+                    });
+                }
+            }
+
+            return result;
+        } catch (error) {
+            logger.error('Failed to remap instance mappings', {
+                type,
+                configId: config.id,
+                error: error.message
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Remap library mappings for ALL Radarr and Sonarr instances
+     */
+    async remapAllArrMappings(oldLibrarySnapshot, newLibraryLookup) {
+        const results = {
+            radarr: [],
+            sonarr: [],
+            totalRemapped: 0,
+            totalFailed: 0
+        };
+
+        try {
+            // Process ALL Radarr instances
+            const radarrConfigs = await db.query('SELECT * FROM radarr_config');
+
+            for (const config of radarrConfigs.rows) {
+                const instanceResult = await this.remapInstanceMappings(
+                    'radarr',
+                    config,
+                    oldLibrarySnapshot,
+                    newLibraryLookup
+                );
+
+                results.radarr.push({
+                    id: config.id,
+                    name: config.name || `Radarr ${config.id}`,
+                    remapped: instanceResult.remapped,
+                    failed: instanceResult.failed,
+                    failedLibraries: instanceResult.failedLibraries
+                });
+
+                results.totalRemapped += instanceResult.remapped;
+                results.totalFailed += instanceResult.failed;
+            }
+
+            // Process ALL Sonarr instances
+            const sonarrConfigs = await db.query('SELECT * FROM sonarr_config');
+
+            for (const config of sonarrConfigs.rows) {
+                const instanceResult = await this.remapInstanceMappings(
+                    'sonarr',
+                    config,
+                    oldLibrarySnapshot,
+                    newLibraryLookup
+                );
+
+                results.sonarr.push({
+                    id: config.id,
+                    name: config.name || `Sonarr ${config.id}`,
+                    remapped: instanceResult.remapped,
+                    failed: instanceResult.failed,
+                    failedLibraries: instanceResult.failedLibraries
+                });
+
+                results.totalRemapped += instanceResult.remapped;
+                results.totalFailed += instanceResult.failed;
+            }
+
+            logger.info('Library mapping restoration complete', {
+                totalRemapped: results.totalRemapped,
+                totalFailed: results.totalFailed
+            });
+
+            return results;
+        } catch (error) {
+            logger.error('Failed to remap all arr mappings', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Notify user about mappings that couldn't be restored
+     */
+    async createRemapFailureNotification(results) {
+        if (results.totalFailed === 0) return;
+
+        try {
+            const failedDetails = [];
+
+            // Separate radarr and sonarr instances for clearer type detection
+            for (const instance of results.radarr) {
+                if (instance.failed > 0) {
+                    failedDetails.push({
+                        type: 'radarr',
+                        instanceId: instance.id,
+                        instanceName: instance.name,
+                        failedLibraries: instance.failedLibraries
+                    });
+                }
+            }
+
+            for (const instance of results.sonarr) {
+                if (instance.failed > 0) {
+                    failedDetails.push({
+                        type: 'sonarr',
+                        instanceId: instance.id,
+                        instanceName: instance.name,
+                        failedLibraries: instance.failedLibraries
+                    });
+                }
+            }
+
+            await db.query(`
+                INSERT INTO app_notifications (type, title, message, data, created_at)
+                VALUES ($1, $2, $3, $4, NOW())
+            `, [
+                'warning',
+                'Some library mappings need attention',
+                `${results.totalFailed} library mapping(s) could not be automatically restored after CARSA. Please review and reconfigure them manually.`,
+                JSON.stringify(failedDetails)
+            ]);
+
+            logger.warn('Created notification for failed mappings', {
+                totalFailed: results.totalFailed,
+                details: failedDetails
+            });
+        } catch (error) {
+            logger.error('Failed to create remap failure notification', { error: error.message });
+            // Don't throw - this is non-critical
+        }
+    }
+
+    /**
      * Clear all queue data and trigger fresh library sync
      */
     async clearAndResync() {
@@ -1169,7 +1504,16 @@ class QueueService {
 
             logger.info('Starting clear and resync process...');
 
-            // 1. Stop worker to prevent race conditions with active tasks
+            // 1. SNAPSHOT: Capture library info BEFORE clear
+            syncStatus.updateProgress(5, 'Capturing library snapshot...');
+            const oldLibrarySnapshot = await this.buildLibrarySnapshot();
+
+            logger.info('Captured pre-clear snapshot', {
+                libraries: Object.keys(oldLibrarySnapshot.libraries).length,
+                mappings: oldLibrarySnapshot.mappings.length
+            });
+
+            // 2. Stop worker to prevent race conditions with active tasks
             const wasRunning = this.running;
             if (wasRunning) {
                 this.stopWorker();
@@ -1179,51 +1523,52 @@ class QueueService {
 
             syncStatus.updateProgress(10, 'Stopping worker...');
 
-            // 2. Clear task queue
+            // 3. Clear task queue
             const queueResult = await db.query('DELETE FROM task_queue RETURNING id');
 
             syncStatus.updateProgress(20, 'Clearing task queue...');
 
-            // 3. Clear content_analysis_log first (references classification_history)
+            // 4. Clear content_analysis_log first (references classification_history)
             await db.query('DELETE FROM content_analysis_log');
 
-            // 4. Clear classification_embeddings BEFORE classification_history (FK dependency)
+            // 5. Clear classification_embeddings BEFORE classification_history (FK dependency)
             const embeddingsResult = await db.query('DELETE FROM classification_embeddings RETURNING id');
 
             syncStatus.updateProgress(30, 'Clearing embeddings...');
 
-            // 5. Clear classification history
+            // 6. Clear classification history
             const historyResult = await db.query('DELETE FROM classification_history RETURNING id');
 
             syncStatus.updateProgress(40, 'Clearing classification history...');
 
-            // 6. Clear learning patterns and corrections (full reset)
+            // 7. Clear learning patterns and corrections (full reset)
             const patternsResult = await db.query('DELETE FROM learning_patterns RETURNING id');
             const correctionsResult = await db.query('DELETE FROM classification_corrections RETURNING id');
 
             syncStatus.updateProgress(50, 'Clearing learning data...');
 
-            // 7. Clear ALL library classification rules
+            // 8. Clear ALL library classification rules
             const rulesV2Result = await db.query('DELETE FROM library_rules_v2 RETURNING id');
             await db.query('DELETE FROM library_custom_rules');
 
-            // 8. Clear library pattern suggestions (Available Library Filters)
+            // 9. Clear library pattern suggestions (Available Library Filters)
             await db.query('DELETE FROM library_pattern_suggestions');
 
             syncStatus.updateProgress(60, 'Clearing library rules...');
 
-            // 9. Clear library_profiles (references libraries)
+            // 10. Clear library_profiles (references libraries)
             await db.query('DELETE FROM library_profiles');
 
-            // 10. Clear media_server_collections (references libraries)
+            // 11. Clear media_server_collections (references libraries)
             const collectionsResult = await db.query('DELETE FROM media_server_collections RETURNING id');
 
-            // 11. Clear media_server_items (references libraries)
+            // 12. Clear media_server_items (references libraries)
             const itemsResult = await db.query('DELETE FROM media_server_items RETURNING id');
 
             syncStatus.updateProgress(70, 'Clearing media items...');
 
-            // 12. Clear libraries LAST (parent table)
+            // 13. Clear libraries (parent table) - library_arr_mappings CASCADE deleted
+            // Note: Mappings will be recreated after re-sync using snapshot data
             const librariesResult = await db.query('DELETE FROM libraries RETURNING id');
 
             logger.info('Cleared all synced data', {
@@ -1238,19 +1583,19 @@ class QueueService {
                 libraries: librariesResult.rowCount
             });
 
-            // 13. Clear in-memory caches
+            // 14. Clear in-memory caches
             this.omdbLimitHit = false; // Reset OMDb limit flag for fresh start
             
             syncStatus.updateProgress(75, 'Restarting worker...');
 
-            // 14. Restart worker if it was running
+            // 15. Restart worker if it was running
             if (wasRunning) {
                 this.startWorker();
             }
 
             syncStatus.updateProgress(80, 'Starting fresh sync...');
 
-            // 15. Trigger FRESH library sync from media server
+            // 16. Trigger FRESH library sync from media server
             // This runs in background so we don't block the response
             const mediaSyncService = require('./mediaSync');
             const scheduler = require('./scheduler');
@@ -1261,6 +1606,26 @@ class QueueService {
                     await mediaSyncService.syncAllLibraries();
 
                     logger.info('Fresh library sync completed after clear');
+
+                    syncStatus.updateProgress(85, 'Remapping library mappings...');
+
+                    // 17. REMAP: Restore *arr library mappings with new library IDs
+                    const newLibraryLookup = await this.buildNewLibraryLookup();
+
+                    const remapResults = await this.remapAllArrMappings(
+                        oldLibrarySnapshot,
+                        newLibraryLookup
+                    );
+
+                    logger.info('Library mapping restoration complete', {
+                        totalRemapped: remapResults.totalRemapped,
+                        totalFailed: remapResults.totalFailed
+                    });
+
+                    // 18. NOTIFY: If any mappings failed
+                    if (remapResults.totalFailed > 0) {
+                        await this.createRemapFailureNotification(remapResults);
+                    }
 
                     syncStatus.updateProgress(90, 'Running gap analysis...');
 
@@ -1274,6 +1639,21 @@ class QueueService {
                 } catch (err) {
                     logger.error('Failed to run library sync after clear', { error: err.message });
                     syncStatus.stop();
+                    
+                    // Create error notification for user
+                    try {
+                        await db.query(`
+                            INSERT INTO app_notifications (type, title, message, data, created_at)
+                            VALUES ($1, $2, $3, $4, NOW())
+                        `, [
+                            'error',
+                            'Library sync failed after CARSA',
+                            'Failed to complete library re-sync and mapping restoration after Clear and Re-sync All. Please check logs and try again.',
+                            JSON.stringify({ error: err.message, timestamp: new Date().toISOString() })
+                        ]);
+                    } catch (notifErr) {
+                        logger.error('Failed to create error notification', { error: notifErr.message });
+                    }
                 }
             })();
 
