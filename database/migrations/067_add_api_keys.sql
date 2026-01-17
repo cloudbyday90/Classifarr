@@ -29,7 +29,7 @@ COMMENT ON COLUMN api_keys.name IS
 COMMENT ON COLUMN api_keys.key_hash IS 
   'Hashed version of the API key for secure storage';
 COMMENT ON COLUMN api_keys.key_prefix IS 
-  'First 8 characters of the key for identification';
+  'First 8 characters of the API key for identification (exactly 8 chars)';
 COMMENT ON COLUMN api_keys.permissions IS 
   'Permission level: read_only, read_write, or admin';
 COMMENT ON COLUMN api_keys.last_used_at IS 

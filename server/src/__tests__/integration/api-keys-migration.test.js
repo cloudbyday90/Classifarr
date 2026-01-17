@@ -258,7 +258,10 @@ describe('Migration 067: API Keys Table', () => {
         });
 
         test('should handle expiration timestamp', async () => {
-            const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+            // Set expiration to 30 days from now
+            const DAYS_TO_EXPIRY = 30;
+            const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+            const expiresAt = new Date(Date.now() + (DAYS_TO_EXPIRY * MILLISECONDS_PER_DAY));
 
             const result = await db.query(`
                 INSERT INTO api_keys (name, key_hash, key_prefix, expires_at)
@@ -344,7 +347,7 @@ describe('Migration 067: API Keys Table', () => {
 
             if (!tableExists.rows[0].exists) {
                 // In test environment, migrations are applied directly without tracking
-                console.log('schema_migrations table not found (expected in test environment)');
+                // Skip this test as schema_migrations table doesn't exist
                 return;
             }
 
