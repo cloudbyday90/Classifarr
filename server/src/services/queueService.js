@@ -1164,8 +1164,8 @@ class QueueService {
                 syncStatus.forceStop();
             }
 
-            // Start CARSA sync status
-            syncStatus.start('full_resync', false);  // Cannot be interrupted
+            // Start CARSA sync status (marked non-interruptible for tracking purposes)
+            syncStatus.start('full_resync', false);
 
             logger.info('Starting clear and resync process...');
 

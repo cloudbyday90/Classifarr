@@ -45,32 +45,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Tracks sync progress via `syncStatus` singleton
   - Properly stops sync status on completion or error
 - **Clear and Resync**: Updated `clearAndResync()` to use sync status tracking
-  - Sets type to 'full_resync' with canInterrupt=false
+  - Sets type to 'full_resync' with canInterrupt=false (for tracking purposes)
   - Force stops any active sync before starting CARSA
   - Reports progress at each stage (0-100%)
-  - Properly stops sync status on completion or error
+  - **Note**: API returns after step 6; steps 7-9 run asynchronously in background
+  - Sync status is cleared when background operations complete (or on error)
 - **Clear and Resync Return Value**: Added `embeddingsCleared`, `collectionsCleared`, and `librariesCleared` to result object
 - **Clear and Resync Process**: Now clears in-memory caches before triggering fresh library sync
 
 ### Technical Details
 - **Sync Lock Mechanism**:
   - Singleton pattern ensures single source of truth for sync status
-  - `canStartSync(type)` method enforces locking rules:
+  - `tryStart(type)` method atomically checks and starts sync (prevents TOCTOU race conditions)
+  - `canStartSync(type)` method for checking lock status (read-only)
+  - Locking rules:
     - 'full_resync' (CARSA) can ALWAYS start
     - Other sync types blocked if any sync is running
   - `forceStop()` method allows CARSA to interrupt active syncs
   - Progress tracking with `updateProgress(progress, currentLibrary)`
+  - `canInterrupt` property is informational only; actual interruption logic is based on sync type
   
-- **CARSA Flow**:
+- **CARSA Flow** (API returns after step 6; steps 7-9 run in background):
   1. Check and force stop any active sync
   2. Start 'full_resync' sync status (progress: 0%)
   3. Stop worker to prevent race conditions (progress: 10%)
   4. Delete all tables in dependency-safe order (progress: 20-70%)
   5. Clear in-memory caches (`omdbLimitHit = false`) (progress: 75%)
   6. Restart worker (progress: 80%)
-  7. Trigger `syncAllLibraries()` in background (creates NEW libraries) (progress: 90%)
-  8. Run gap analysis with fresh library IDs (progress: 100%)
-  9. Stop sync status
+  7. **[Background]** Trigger `syncAllLibraries()` (creates NEW libraries) (progress: 90%)
+  8. **[Background]** Run gap analysis with fresh library IDs (progress: 100%)
+  9. **[Background]** Stop sync status
   
 - **Table Deletion Order**:
   1. `task_queue` (independent)

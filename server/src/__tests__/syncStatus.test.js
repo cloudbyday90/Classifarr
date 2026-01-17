@@ -69,7 +69,7 @@ describe('SyncStatus', () => {
 
   describe('stop', () => {
     it('should reset all sync status', () => {
-      syncStatus.start('library_sync');
+      syncStatus.start('full_resync', false);  // Set canInterrupt to false
       syncStatus.updateProgress(50, 'Test Library');
       syncStatus.stop();
 
@@ -78,6 +78,7 @@ describe('SyncStatus', () => {
       expect(syncStatus.progress).toBe(0);
       expect(syncStatus.currentLibrary).toBe(null);
       expect(syncStatus.startedAt).toBe(null);
+      expect(syncStatus.canInterrupt).toBe(true);  // Should be reset to true
     });
   });
 
@@ -168,6 +169,46 @@ describe('SyncStatus', () => {
       const canStartCARSA = syncStatus.canStartSync('full_resync');
 
       expect(canStartCARSA.allowed).toBe(true);
+    });
+  });
+
+  describe('tryStart - atomic lock acquisition', () => {
+    it('should atomically start sync when nothing is running', () => {
+      const result = syncStatus.tryStart('library_sync');
+
+      expect(result.started).toBe(true);
+      expect(syncStatus.isRunning).toBe(true);
+      expect(syncStatus.type).toBe('library_sync');
+    });
+
+    it('should fail to start when sync is already running', () => {
+      syncStatus.start('library_sync');
+      
+      const result = syncStatus.tryStart('incremental');
+
+      expect(result.started).toBe(false);
+      expect(result.reason).toContain('library_sync is currently running');
+      expect(syncStatus.type).toBe('library_sync'); // Original sync still running
+    });
+
+    it('should allow CARSA to start via tryStart even when sync is running', () => {
+      syncStatus.start('library_sync');
+      
+      const result = syncStatus.tryStart('full_resync', false);
+
+      expect(result.started).toBe(true);
+      expect(syncStatus.type).toBe('full_resync');
+      expect(syncStatus.canInterrupt).toBe(false);
+    });
+
+    it('should prevent TOCTOU race conditions', () => {
+      // Simulate two concurrent requests checking and starting
+      const result1 = syncStatus.tryStart('library_sync');
+      const result2 = syncStatus.tryStart('library_sync');
+
+      expect(result1.started).toBe(true);
+      expect(result2.started).toBe(false);
+      expect(result2.reason).toContain('library_sync is currently running');
     });
   });
 

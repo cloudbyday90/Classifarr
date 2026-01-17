@@ -22,7 +22,7 @@ class SyncStatus {
     this.progress = 0;
     this.currentLibrary = null;
     this.startedAt = null;
-    this.canInterrupt = true;   // CARSA can always interrupt
+    this.canInterrupt = true;   // Informational flag - actual interruption logic is based on sync type
   }
 
   start(type, canInterrupt = true) {
@@ -32,6 +32,7 @@ class SyncStatus {
     this.startedAt = Date.now();
     this.canInterrupt = canInterrupt;
     logger.info('Sync started', { type, canInterrupt });
+    return { started: true };
   }
 
   updateProgress(progress, currentLibrary = null) {
@@ -47,6 +48,7 @@ class SyncStatus {
     this.progress = 0;
     this.currentLibrary = null;
     this.startedAt = null;
+    this.canInterrupt = true;
   }
 
   forceStop() {
@@ -83,6 +85,28 @@ class SyncStatus {
     }
 
     return { allowed: true };
+  }
+
+  /**
+   * Atomically check and start sync to prevent TOCTOU race conditions
+   * Returns { started: true } if sync was started, { started: false, reason, progress } if blocked
+   */
+  tryStart(type, canInterrupt = true) {
+    // CARSA (full_resync) can always start
+    if (type === 'full_resync') {
+      return this.start(type, canInterrupt);
+    }
+
+    // Other syncs blocked if something is running
+    if (this.isRunning) {
+      return {
+        started: false,
+        reason: `${this.type} is currently running`,
+        progress: this.progress
+      };
+    }
+
+    return this.start(type, canInterrupt);
   }
 }
 

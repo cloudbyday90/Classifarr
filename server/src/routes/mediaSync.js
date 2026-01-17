@@ -33,17 +33,15 @@ router.post('/sync/:libraryId', async (req, res) => {
     const { libraryId } = req.params;
     const { incremental = false, batchSize = 100 } = req.body;
 
-    // Check if we can start sync
-    const canStart = syncStatus.canStartSync('library_sync');
-    if (!canStart.allowed) {
+    // Atomically check and start sync to prevent TOCTOU race condition
+    const startResult = syncStatus.tryStart('library_sync');
+    if (!startResult.started) {
       return res.status(409).json({
         error: 'Sync already in progress',
-        message: canStart.reason,
-        progress: canStart.progress
+        message: startResult.reason,
+        progress: startResult.progress
       });
     }
-
-    syncStatus.start('library_sync');
 
     logger.info('Starting library sync', { libraryId, incremental });
 
