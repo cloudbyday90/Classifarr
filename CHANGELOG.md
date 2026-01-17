@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Clear and Resync (CARSA)**: Fixed `clearAndResync()` to properly delete all critical tables including:
+  - `classification_embeddings` (explicitly deleted before `classification_history` for clearer logging/tracking, even though FK uses ON DELETE CASCADE)
+  - `library_profiles` (deleted before `libraries`)
+  - `media_server_collections` (deleted before `libraries`)
+  - `libraries` (deleted last as parent table)
+- **Clear and Resync Order**: Ensured deletion order respects foreign key dependencies to prevent constraint violations
+- **Clear and Resync Logging**: Updated logging to include counts for all deleted tables (embeddings, collections, libraries)
+- **Clear and Resync Library Sync**: Fixed library sync to fetch libraries from media server before syncing content
+
+### Changed
+- **Clear and Resync Return Value**: Added `embeddingsCleared`, `collectionsCleared`, and `librariesCleared` to result object
+
+### Technical Details
+- Tables are now deleted in the following dependency-safe order:
+  1. `task_queue` (independent)
+  2. `content_analysis_log` (references classification_history)
+  3. `classification_embeddings` (references classification_history)
+  4. `classification_history` (references libraries)
+  5. `learning_patterns` (independent)
+  6. `classification_corrections` (independent)
+  7. `library_rules_v2` (references libraries)
+  8. `library_custom_rules` (references libraries)
+  9. `library_pattern_suggestions` (references libraries)
+  10. `library_profiles` (references libraries)
+  11. `media_server_collections` (references libraries)
+  12. `media_server_items` (references libraries)
+  13. `libraries` (parent table - deleted last)
+
 ## [v0.39.7b-alpha] - 2026-01-16
 
 ### Removed

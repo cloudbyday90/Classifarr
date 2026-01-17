@@ -494,6 +494,62 @@ class MediaSyncService {
       return 0;
     }
   }
+
+  /**
+   * Sync libraries from media server (discover/refresh library list)
+   * @returns {Promise<Array<Object>>} Array of synced library objects with properties: id, media_server_id, external_id, name, media_type, arr_type
+   * @throws {Error} If no active media server is configured or sync fails
+   */
+  async syncLibrariesFromMediaServer() {
+    try {
+      // Get active media server
+      const serverResult = await db.query(
+        'SELECT * FROM media_server WHERE is_active = true LIMIT 1'
+      );
+
+      if (serverResult.rows.length === 0) {
+        throw new Error('No active media server configured');
+      }
+
+      const server = serverResult.rows[0];
+
+      // Get libraries from media server based on type
+      const service = this.getMediaServerService(server.type);
+      const libraries = await service.getLibraries(server.url, server.api_key);
+
+      // Insert/update libraries in database
+      const syncedLibraries = [];
+      for (const lib of libraries) {
+        let arrType = null;
+        if (lib.media_type === 'movie') {
+          arrType = 'radarr';
+        } else if (lib.media_type === 'tv') {
+          arrType = 'sonarr';
+        }
+
+        const result = await db.query(
+          `INSERT INTO libraries (media_server_id, external_id, name, media_type, arr_type)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (media_server_id, external_id) 
+           DO UPDATE SET name = EXCLUDED.name, media_type = EXCLUDED.media_type, arr_type = EXCLUDED.arr_type
+           RETURNING *`,
+          [server.id, lib.external_id, lib.name, lib.media_type, arrType]
+        );
+
+        syncedLibraries.push(result.rows[0]);
+      }
+
+      logger.info('Synced libraries from media server', {
+        mediaServer: server.type,
+        count: syncedLibraries.length
+      });
+
+      return syncedLibraries;
+    } catch (error) {
+      logger.error('Failed to sync libraries from media server', { error: error.message });
+      throw error;
+    }
+  }
 }
 
 module.exports = new MediaSyncService();

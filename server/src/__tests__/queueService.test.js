@@ -39,6 +39,16 @@ jest.mock('../utils/rateLimiter', () => ({
     }
 }));
 
+// Mock mediaSync and scheduler for clearAndResync tests
+jest.mock('../services/mediaSync', () => ({
+    syncLibrary: jest.fn().mockResolvedValue({}),
+    syncLibrariesFromMediaServer: jest.fn().mockResolvedValue([])
+}), { virtual: true });
+
+jest.mock('../services/scheduler', () => ({
+    runGapAnalysis: jest.fn().mockResolvedValue({})
+}), { virtual: true });
+
 describe('QueueService', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
@@ -272,6 +282,101 @@ describe('QueueService', () => {
                 expect.stringMatching(/UPDATE task_queue.*SET status = 'cancelled'/s),
                 expect.arrayContaining([123])
             );
+        });
+    });
+
+    describe('clearAndResync', () => {
+        it('should delete all required tables in correct order', async () => {
+            // Mock all DELETE queries to return rowCount
+            db.query.mockImplementation((query) => {
+                if (query.includes('DELETE FROM')) {
+                    return Promise.resolve({ 
+                        rows: [{ id: 1 }],
+                        rowCount: 5 
+                    });
+                }
+                if (query.includes('SELECT id FROM libraries')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                return Promise.resolve({ rows: [], rowCount: 0 });
+            });
+
+            const result = await queueService.clearAndResync();
+
+            // Verify all required tables are deleted
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM task_queue RETURNING id');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM content_analysis_log');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM classification_embeddings RETURNING id');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM classification_history RETURNING id');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM learning_patterns RETURNING id');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM classification_corrections RETURNING id');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM library_rules_v2 RETURNING id');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM library_custom_rules');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM library_pattern_suggestions');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM library_profiles');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM media_server_collections RETURNING id');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM media_server_items RETURNING id');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM libraries RETURNING id');
+
+            // Verify result contains all cleared counts
+            expect(result).toHaveProperty('queueCleared');
+            expect(result).toHaveProperty('embeddingsCleared');
+            expect(result).toHaveProperty('historyCleared');
+            expect(result).toHaveProperty('patternsCleared');
+            expect(result).toHaveProperty('correctionsCleared');
+            expect(result).toHaveProperty('rulesCleared');
+            expect(result).toHaveProperty('collectionsCleared');
+            expect(result).toHaveProperty('itemsReset');
+            expect(result).toHaveProperty('librariesCleared');
+        });
+
+        it('should delete tables in dependency-safe order', async () => {
+            const deletionOrder = [];
+            
+            db.query.mockImplementation((query) => {
+                if (query.includes('DELETE FROM task_queue')) {
+                    deletionOrder.push('task_queue');
+                } else if (query.includes('DELETE FROM content_analysis_log')) {
+                    deletionOrder.push('content_analysis_log');
+                } else if (query.includes('DELETE FROM classification_embeddings')) {
+                    deletionOrder.push('classification_embeddings');
+                } else if (query.includes('DELETE FROM classification_history')) {
+                    deletionOrder.push('classification_history');
+                } else if (query.includes('DELETE FROM library_profiles')) {
+                    deletionOrder.push('library_profiles');
+                } else if (query.includes('DELETE FROM media_server_collections')) {
+                    deletionOrder.push('media_server_collections');
+                } else if (query.includes('DELETE FROM media_server_items')) {
+                    deletionOrder.push('media_server_items');
+                } else if (query.includes('DELETE FROM libraries')) {
+                    deletionOrder.push('libraries');
+                }
+                
+                if (query.includes('SELECT id FROM libraries')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                
+                return Promise.resolve({ rows: [{ id: 1 }], rowCount: 1 });
+            });
+
+            await queueService.clearAndResync();
+
+            // Verify classification_embeddings is deleted before classification_history
+            const embeddingsIndex = deletionOrder.indexOf('classification_embeddings');
+            const historyIndex = deletionOrder.indexOf('classification_history');
+            expect(embeddingsIndex).toBeLessThan(historyIndex);
+
+            // Verify child tables are deleted before libraries (parent)
+            const librariesIndex = deletionOrder.indexOf('libraries');
+            expect(deletionOrder.indexOf('library_profiles')).toBeLessThan(librariesIndex);
+            expect(deletionOrder.indexOf('media_server_collections')).toBeLessThan(librariesIndex);
+            expect(deletionOrder.indexOf('media_server_items')).toBeLessThan(librariesIndex);
+        });
+
+        it('should handle errors gracefully', async () => {
+            db.query.mockRejectedValue(new Error('Database error'));
+
+            await expect(queueService.clearAndResync()).rejects.toThrow('Database error');
         });
     });
 });
