@@ -1,6 +1,42 @@
 # Classifarr Release Notes
 
 ## Unreleased
+**Title: Smart Preservation of Radarr/Sonarr Library Mappings During CARSA**
+
+### What's Fixed
+- **Broken library mappings after CARSA** (Issue #177): Radarr and Sonarr library mappings are now automatically preserved and restored after running "Clear and Re-sync All"
+- **Manual reconfiguration eliminated**: No more need to manually remap libraries to Radarr/Sonarr instances after CARSA
+
+### What's New
+- **Intelligent Mapping Restoration**: System automatically remaps libraries using:
+  - **Priority 1**: Media server library ID (most reliable - works even if library renamed)
+  - **Priority 2**: Library name + media type (fallback if server ID changes)
+- **Multi-Instance Support**: Works with multiple Radarr and Sonarr instances (e.g., Radarr 4K, Radarr 1080p)
+- **User Notifications**: If any mappings can't be restored automatically, you'll see a notification with details
+- **Quality Profile Preservation**: Quality profiles and root folder paths remain intact
+
+### How It Works
+When you run Clear and Resync:
+1. 🔍 **Snapshot**: System captures all library info BEFORE clearing (including media server IDs)
+2. 🗑️ **Clear**: All data is deleted as usual
+3. 🔄 **Re-sync**: Fresh libraries are synced from your media server with NEW IDs
+4. 🔗 **Remap**: System matches old libraries to new ones and updates all mappings
+5. ✅ **Notify**: You're notified of successful remaps and any that failed
+
+**Example**: Your "Movies 4K" library had ID 100, mapped to Radarr instance 1. After CARSA, it gets NEW ID 200, but your Radarr mapping is automatically updated to point to 200 instead of 100. No manual work needed!
+
+### For Users
+After updating:
+1. Run Clear and Resync as usual
+2. Your Radarr/Sonarr library mappings will be preserved automatically
+3. If any mappings couldn't be restored, you'll see a notification explaining why
+4. Check Settings → Radarr/Sonarr to verify mappings (should match what you had before)
+
+**Note**: This only works for mappings in the `library_arr_mappings` table. If you have custom settings elsewhere, they may need manual verification.
+
+---
+
+## Previous Release
 **Title: Fix CARSA to Use Fresh Library Sync (Prevents Stale ID References)**
 
 ### What's Fixed

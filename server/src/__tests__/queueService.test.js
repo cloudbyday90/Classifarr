@@ -432,4 +432,368 @@ describe('QueueService', () => {
             await expect(queueService.clearAndResync()).rejects.toThrow('Database error');
         });
     });
+
+    describe('Library Mapping Preservation', () => {
+        describe('buildLibrarySnapshot', () => {
+            it('should capture library info with external IDs', async () => {
+                db.query.mockResolvedValueOnce({
+                    rows: [
+                        {
+                            id: 1,
+                            name: 'Movies',
+                            media_type: 'movie',
+                            external_id: 'plex-123',
+                            media_server_type: 'plex'
+                        },
+                        {
+                            id: 2,
+                            name: 'TV Shows',
+                            media_type: 'tv',
+                            external_id: 'plex-456',
+                            media_server_type: 'plex'
+                        }
+                    ]
+                });
+
+                const snapshot = await queueService.buildLibrarySnapshot();
+
+                expect(snapshot).toEqual({
+                    1: {
+                        name: 'Movies',
+                        media_type: 'movie',
+                        external_id: 'plex-123',
+                        media_server_type: 'plex'
+                    },
+                    2: {
+                        name: 'TV Shows',
+                        media_type: 'tv',
+                        external_id: 'plex-456',
+                        media_server_type: 'plex'
+                    }
+                });
+            });
+
+            it('should handle empty library table', async () => {
+                db.query.mockResolvedValueOnce({ rows: [] });
+
+                const snapshot = await queueService.buildLibrarySnapshot();
+
+                expect(snapshot).toEqual({});
+            });
+        });
+
+        describe('buildNewLibraryLookup', () => {
+            it('should create lookup tables by external_id and name+type', async () => {
+                db.query.mockResolvedValueOnce({
+                    rows: [
+                        {
+                            id: 10,
+                            name: 'Movies',
+                            media_type: 'movie',
+                            external_id: 'plex-123',
+                            media_server_type: 'plex'
+                        },
+                        {
+                            id: 20,
+                            name: 'TV Shows',
+                            media_type: 'tv',
+                            external_id: 'plex-456',
+                            media_server_type: 'plex'
+                        }
+                    ]
+                });
+
+                const lookup = await queueService.buildNewLibraryLookup();
+
+                expect(lookup.byExternalId['plex:plex-123']).toBe(10);
+                expect(lookup.byExternalId['plex:plex-456']).toBe(20);
+                expect(lookup.byNameType['movies|movie']).toBe(10);
+                expect(lookup.byNameType['tv shows|tv']).toBe(20);
+            });
+        });
+
+        describe('findNewLibraryId', () => {
+            const newLookup = {
+                byExternalId: {
+                    'plex:plex-123': 10,
+                    'emby:emby-abc': 20
+                },
+                byNameType: {
+                    'movies|movie': 10,
+                    'tv shows|tv': 20
+                }
+            };
+
+            it('should match by external_id first (highest priority)', () => {
+                const oldLibInfo = {
+                    name: 'Movies',
+                    media_type: 'movie',
+                    external_id: 'plex-123',
+                    media_server_type: 'plex'
+                };
+
+                const newId = queueService.findNewLibraryId(oldLibInfo, newLookup);
+
+                expect(newId).toBe(10);
+            });
+
+            it('should fallback to name+type if external_id not found', () => {
+                const oldLibInfo = {
+                    name: 'Movies',
+                    media_type: 'movie',
+                    external_id: 'plex-999', // Not in lookup
+                    media_server_type: 'plex'
+                };
+
+                const newId = queueService.findNewLibraryId(oldLibInfo, newLookup);
+
+                expect(newId).toBe(10); // Found by name+type
+            });
+
+            it('should return null if no match found', () => {
+                const oldLibInfo = {
+                    name: 'Anime',
+                    media_type: 'tv',
+                    external_id: 'plex-999',
+                    media_server_type: 'plex'
+                };
+
+                const newId = queueService.findNewLibraryId(oldLibInfo, newLookup);
+
+                expect(newId).toBeNull();
+            });
+
+            it('should handle missing external_id gracefully', () => {
+                const oldLibInfo = {
+                    name: 'TV Shows',
+                    media_type: 'tv',
+                    media_server_type: 'plex'
+                };
+
+                const newId = queueService.findNewLibraryId(oldLibInfo, newLookup);
+
+                expect(newId).toBe(20); // Found by name+type
+            });
+        });
+
+        describe('remapInstanceMappings', () => {
+            const oldSnapshot = {
+                1: {
+                    name: 'Movies',
+                    media_type: 'movie',
+                    external_id: 'plex-123',
+                    media_server_type: 'plex'
+                },
+                2: {
+                    name: 'TV Shows',
+                    media_type: 'tv',
+                    external_id: 'plex-456',
+                    media_server_type: 'plex'
+                }
+            };
+
+            const newLookup = {
+                byExternalId: {
+                    'plex:plex-123': 10,
+                    'plex:plex-456': 20
+                },
+                byNameType: {
+                    'movies|movie': 10,
+                    'tv shows|tv': 20
+                }
+            };
+
+            it('should remap all mappings for an instance', async () => {
+                const config = { id: 1, name: 'Radarr 4K' };
+
+                db.query.mockResolvedValueOnce({
+                    rows: [
+                        {
+                            id: 100,
+                            library_id: 1, // Old library ID
+                            arr_root_folder_path: '/movies/4k'
+                        }
+                    ]
+                });
+
+                db.query.mockResolvedValueOnce({ rowCount: 1 }); // UPDATE
+
+                const result = await queueService.remapInstanceMappings(
+                    'radarr',
+                    config,
+                    oldSnapshot,
+                    newLookup
+                );
+
+                expect(result.remapped).toBe(1);
+                expect(result.failed).toBe(0);
+                expect(db.query).toHaveBeenCalledWith(
+                    expect.stringMatching(/UPDATE library_arr_mappings/),
+                    [10, 100] // New library ID, mapping ID
+                );
+            });
+
+            it('should track failed mappings', async () => {
+                const config = { id: 1, name: 'Radarr 4K' };
+
+                db.query.mockResolvedValueOnce({
+                    rows: [
+                        {
+                            id: 100,
+                            library_id: 3, // Not in snapshot
+                            arr_root_folder_path: '/movies/4k'
+                        }
+                    ]
+                });
+
+                const result = await queueService.remapInstanceMappings(
+                    'radarr',
+                    config,
+                    oldSnapshot,
+                    newLookup
+                );
+
+                expect(result.remapped).toBe(0);
+                expect(result.failed).toBe(1);
+                expect(result.failedLibraries).toEqual([
+                    {
+                        oldId: 3,
+                        reason: 'Library not found in snapshot'
+                    }
+                ]);
+            });
+        });
+
+        describe('remapAllArrMappings', () => {
+            const oldSnapshot = {
+                1: {
+                    name: 'Movies',
+                    media_type: 'movie',
+                    external_id: 'plex-123',
+                    media_server_type: 'plex'
+                }
+            };
+
+            const newLookup = {
+                byExternalId: { 'plex:plex-123': 10 },
+                byNameType: { 'movies|movie': 10 }
+            };
+
+            it('should remap all Radarr and Sonarr instances', async () => {
+                // Mock Radarr configs
+                db.query.mockResolvedValueOnce({
+                    rows: [{ id: 1, name: 'Radarr 4K' }]
+                });
+
+                // Mock Radarr mappings
+                db.query.mockResolvedValueOnce({
+                    rows: [
+                        {
+                            id: 100,
+                            library_id: 1,
+                            arr_root_folder_path: '/movies'
+                        }
+                    ]
+                });
+                db.query.mockResolvedValueOnce({ rowCount: 1 }); // UPDATE
+
+                // Mock Sonarr configs
+                db.query.mockResolvedValueOnce({
+                    rows: [{ id: 2, name: 'Sonarr' }]
+                });
+
+                // Mock Sonarr mappings (empty)
+                db.query.mockResolvedValueOnce({ rows: [] });
+
+                const results = await queueService.remapAllArrMappings(oldSnapshot, newLookup);
+
+                expect(results.totalRemapped).toBe(1);
+                expect(results.totalFailed).toBe(0);
+                expect(results.radarr).toHaveLength(1);
+                expect(results.sonarr).toHaveLength(1);
+            });
+        });
+
+        describe('createRemapFailureNotification', () => {
+            it('should create notification when mappings fail', async () => {
+                const results = {
+                    totalFailed: 2,
+                    totalRemapped: 1,
+                    radarr: [
+                        {
+                            id: 1,
+                            name: 'Radarr 4K',
+                            failed: 2,
+                            failedLibraries: [
+                                { oldId: 1, name: 'Movies', reason: 'No match' }
+                            ]
+                        }
+                    ],
+                    sonarr: []
+                };
+
+                db.query.mockResolvedValueOnce({ rowCount: 1 });
+
+                await queueService.createRemapFailureNotification(results);
+
+                expect(db.query).toHaveBeenCalledWith(
+                    expect.stringMatching(/INSERT INTO app_notifications/),
+                    expect.arrayContaining([
+                        'warning',
+                        'Some library mappings need attention',
+                        expect.stringContaining('2 library mapping(s)')
+                    ])
+                );
+            });
+
+            it('should not create notification when no failures', async () => {
+                const results = {
+                    totalFailed: 0,
+                    totalRemapped: 3,
+                    radarr: [],
+                    sonarr: []
+                };
+
+                await queueService.createRemapFailureNotification(results);
+
+                expect(db.query).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('clearAndResync with mapping preservation', () => {
+            it('should preserve library mappings during CARSA', async () => {
+                // Mock library snapshot
+                db.query.mockImplementationOnce(() =>
+                    Promise.resolve({
+                        rows: [
+                            {
+                                id: 1,
+                                name: 'Movies',
+                                media_type: 'movie',
+                                external_id: 'plex-123',
+                                media_server_type: 'plex'
+                            }
+                        ]
+                    })
+                );
+
+                // Mock all DELETE queries
+                db.query.mockImplementation((query) => {
+                    if (query.includes('DELETE FROM')) {
+                        return Promise.resolve({ rows: [{ id: 1 }], rowCount: 1 });
+                    }
+                    return Promise.resolve({ rows: [], rowCount: 0 });
+                });
+
+                const result = await queueService.clearAndResync();
+
+                // Verify snapshot was built
+                expect(db.query).toHaveBeenCalledWith(
+                    expect.stringMatching(/SELECT.*external_id.*FROM libraries/s)
+                );
+
+                expect(result).toHaveProperty('librariesCleared');
+            });
+        });
+    });
 });

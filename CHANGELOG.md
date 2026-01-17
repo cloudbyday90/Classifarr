@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Library Mapping Preservation During CARSA** (Fixes #177)
+  - Automatic preservation and restoration of Radarr/Sonarr library mappings during "Clear and Re-sync All" (CARSA)
+  - Smart matching system using priority-based lookup:
+    1. External library ID from media server (most reliable)
+    2. Library name + media type (fallback)
+  - Support for multiple Radarr and Sonarr instances
+  - User notifications when mappings cannot be automatically restored
+  - New `app_notifications` table for in-app user notifications
+  - New database migration `066_arr_library_mapping_preservation.sql`
+  - Comprehensive unit tests for snapshot, lookup, and remapping logic
+
+### Changed
+- **CARSA Process Enhanced**: Updated `clearAndResync()` to include library mapping preservation workflow:
+  1. Snapshot libraries with external IDs before clear
+  2. Clear all data as before
+  3. Re-sync libraries from media server (creates new library IDs)
+  4. Build lookup tables for new libraries
+  5. Remap all `library_arr_mappings` entries to new library IDs
+  6. Create notification if any mappings fail to restore
+
 ### Fixed
 - **Sync Concurrency**: Prevented race conditions between "Sync Libraries" and "Clear & Re-sync All" operations (Fixes #176)
   - Added central sync lock mechanism to prevent concurrent sync operations
@@ -25,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clear and Resync Order**: Ensured deletion order respects foreign key dependencies to prevent constraint violations
 - **Clear and Resync Logging**: Updated logging to include counts for all deleted tables (embeddings, collections, libraries)
 
-### Added
+### Added (Previous)
 - **Sync Status Singleton**: New `syncStatus.js` service to track sync operations centrally
   - Tracks sync type ('library_sync', 'full_resync', 'incremental')
   - Reports sync progress and current library being processed
