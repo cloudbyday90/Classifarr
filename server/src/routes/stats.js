@@ -620,7 +620,19 @@ async function getOverallStats() {
     FROM classification_history
   `);
 
-  return result.rows[0] || {};
+  // Get per-method breakdown
+  const byMethod = await db.query(`
+    SELECT 
+      method,
+      COUNT(*) as count,
+      ROUND(AVG(confidence)::numeric, 1) as avg_confidence
+    FROM classification_history
+    WHERE method IS NOT NULL
+    GROUP BY method
+    ORDER BY count DESC
+  `);
+
+  return { ...result.rows[0], byMethod: byMethod.rows };
 }
 
 async function getStatsByLibrary() {

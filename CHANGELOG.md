@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Dashboard Classification Methods Section** (Fixes #190)
+  - Fixed Dashboard 'Classification Methods' section to show accurate all-time statistics instead of only recent 8 items
+  - Methods are now dynamically loaded from backend with actual counts from `classification_history` table
+  - Added method icons (⚙️ Policy Engine, 📚 Source Library, ✋ Manual, 🧠 Learned Pattern, 🎯 Exact Match, 🤖 AI Analysis, 📋 Rule Match, 🎬 Existing Media, 🎄 Holiday Detection)
+  - Added method tooltips for better user understanding
+  - Added color-coding for different classification methods
+  - Methods are sorted by count (descending) for better visibility
+  - Average Confidence now calculated from backend all-time data instead of frontend per-method stats
+  - Removed hardcoded method names ("Exact Match", "Learned", "Rule-Based", "AI")
+  - Backend `/api/stats` endpoint now includes `byMethod` array with `method`, `count`, and `avg_confidence` for each classification method
+
 ### Added
 - **Health Check Endpoints for Kubernetes/Docker** (Fixes #183)
   - New `/api/system/health/live` endpoint for liveness probes (fast, no external checks)

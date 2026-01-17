@@ -79,10 +79,23 @@ describe('Stats API Integration Tests', () => {
                 policy_id, suggestion_type, suggestion_config, confidence, status
             ) VALUES ($1, 'adjust_threshold', '{"threshold_type": "auto_classify"}', 75, 'pending')
         `, [testPolicyId]);
+
+        // Insert test classification history data for method stats
+        await db.query(`
+            INSERT INTO classification_history (
+                tmdb_id, media_type, title, library_id, confidence, method, status
+            ) VALUES
+            (11111, 'movie', 'Test Classification 1', $1, 95, 'exact_match', 'completed'),
+            (11112, 'movie', 'Test Classification 2', $1, 85, 'exact_match', 'completed'),
+            (11113, 'movie', 'Test Classification 3', $1, 75, 'learned_pattern', 'completed'),
+            (11114, 'movie', 'Test Classification 4', $1, 90, 'ai_fallback', 'completed'),
+            (11115, 'movie', 'Test Classification 5', $1, 80, 'rule_match', 'completed')
+        `, [testLibraryId]);
     });
 
     afterAll(async () => {
         // Clean up test data
+        await db.query('DELETE FROM classification_history WHERE library_id = $1', [testLibraryId]);
         await db.query('DELETE FROM policy_tuning_suggestions WHERE policy_id = $1', [testPolicyId]);
         await db.query('DELETE FROM discovered_patterns WHERE library_id = $1', [testLibraryId]);
         await db.query('DELETE FROM policy_learning_stats WHERE policy_id = $1', [testPolicyId]);
@@ -104,6 +117,37 @@ describe('Stats API Integration Tests', () => {
             expect(res.body).toHaveProperty('avg_accuracy');
             expect(res.body).toHaveProperty('improving_count');
             expect(res.body).toHaveProperty('auto_rate');
+        });
+    });
+
+    describe('GET /api/stats', () => {
+        it('should return overall stats with byMethod breakdown', async () => {
+            const res = await request(app)
+                .get('/api/stats')
+                .expect(200);
+
+            // Check overall stats
+            expect(res.body).toHaveProperty('total');
+            expect(res.body).toHaveProperty('avg_confidence');
+            expect(res.body).toHaveProperty('high_confidence');
+            expect(res.body).toHaveProperty('low_confidence');
+
+            // Check byMethod array exists and has correct structure
+            expect(res.body).toHaveProperty('byMethod');
+            expect(Array.isArray(res.body.byMethod)).toBe(true);
+            
+            if (res.body.byMethod.length > 0) {
+                const methodItem = res.body.byMethod[0];
+                expect(methodItem).toHaveProperty('method');
+                expect(methodItem).toHaveProperty('count');
+                expect(methodItem).toHaveProperty('avg_confidence');
+                
+                // Verify it's sorted by count (descending)
+                if (res.body.byMethod.length > 1) {
+                    expect(Number(res.body.byMethod[0].count))
+                        .toBeGreaterThanOrEqual(Number(res.body.byMethod[1].count));
+                }
+            }
         });
     });
 
