@@ -264,7 +264,7 @@ class QueueService {
             switch (task.task_type) {
                 case 'classification':
                     const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
-                    const result = await classificationService.classify(payload);
+                    const result = await classificationService.classify({ ...payload, taskId: task.id });
                     await this.completeTask(task.id, result);
 
                     // If this was a gap analysis task for a specific item, update the item directly
@@ -412,17 +412,17 @@ class QueueService {
                                                 `SELECT content_rating FROM media_server_items WHERE id = $1`,
                                                 [enrichPayload.itemId]
                                             );
-                                            
+
                                             if (currentItem.rows.length > 0) {
                                                 const currentRating = currentItem.rows[0].content_rating;
-                                                
+
                                                 await db.query(
                                                     `UPDATE media_server_items
                                                      SET original_rating = COALESCE(original_rating, $2), content_rating = $3
                                                      WHERE id = $1`,
                                                     [enrichPayload.itemId, currentRating, omdbResult.rated]
                                                 );
-                                                
+
                                                 logger.info('Rating updated from OMDb', {
                                                     itemId: enrichPayload.itemId,
                                                     original: currentRating,
@@ -1188,7 +1188,7 @@ class QueueService {
                 };
             }
 
-            logger.info('Built library snapshot', { 
+            logger.info('Built library snapshot', {
                 libraryCount: Object.keys(snapshot.libraries).length,
                 mappingCount: snapshot.mappings.length
             });
@@ -1309,7 +1309,7 @@ class QueueService {
                 if (newLibraryId) {
                     // Recreate the mapping with new library_id
                     await db.query(
-                         `INSERT INTO library_arr_mappings 
+                        `INSERT INTO library_arr_mappings 
                          (library_id, arr_type, arr_config_id, arr_root_folder_id, arr_root_folder_path, 
                           quality_profile_id, plex_path_prefix, arr_path_prefix, classifarr_path_prefix)
                          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -1585,7 +1585,7 @@ class QueueService {
 
             // 14. Clear in-memory caches
             this.omdbLimitHit = false; // Reset OMDb limit flag for fresh start
-            
+
             syncStatus.updateProgress(75, 'Restarting worker...');
 
             // 15. Restart worker if it was running
@@ -1639,7 +1639,7 @@ class QueueService {
                 } catch (err) {
                     logger.error('Failed to run library sync after clear', { error: err.message });
                     syncStatus.stop();
-                    
+
                     // Create error notification for user
                     try {
                         await db.query(`

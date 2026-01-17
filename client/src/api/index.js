@@ -270,6 +270,9 @@ export default {
   getStats() {
     return apiClient.get('/classification/stats')
   },
+  getClassificationProgress() {
+    return apiClient.get('/classification/progress')
+  },
 
   // Rule Builder
   startRuleBuilder(data) {

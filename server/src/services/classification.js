@@ -26,6 +26,7 @@ const tavilyService = require('./tavily');
 const mediaSyncService = require('./mediaSync');
 const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 const clarificationService = require('./clarificationService');
+const classificationPhaseService = require('./classificationPhaseService');
 const { SignalCollector, SIGNAL_TYPES } = require('./signalCollector');
 const confidenceCalculator = require('./confidenceCalculator');
 const ragRetriever = require('./ragRetriever');
@@ -55,9 +56,14 @@ class ClassificationService {
       idleDetector.recordActivity();
 
       // Parse payload - supports multiple formats (Overseerr, Plex gap analysis, Rule Builder)
-      const { media_type, tmdbId, title, year, existingMetadata } = this.parseOverseerrPayload(overseerrPayload);
+      const { media_type, tmdbId, title, year, existingMetadata, taskId } = this.parseOverseerrPayload(overseerrPayload);
 
       logger.info(`Starting classification for ${media_type}: ${title} (TMDB: ${tmdbId || 'searching...'})`);
+
+      // Issue #192: Start phase tracking (skip for source_library items which are instant)
+      if (taskId && !existingMetadata.source_library_id) {
+        await classificationPhaseService.updatePhase(taskId, 'metadata_fetch', { title });
+      }
 
       let metadata;
 
@@ -130,7 +136,7 @@ class ClassificationService {
       }
 
       // Run decision tree
-      const result = await this.runDecisionTree(metadata, media_type);
+      const result = await this.runDecisionTree(metadata, media_type, taskId);
 
       // Log to database
       const classificationId = await this.logClassification(metadata, result, startTime);
@@ -165,6 +171,11 @@ class ClassificationService {
       // Send Discord notification with confidence-based routing
       if (discordBot.isInitialized) {
         try {
+          // Issue #192: Update phase to notification
+          if (taskId && !metadata.source_library_id) {
+            await classificationPhaseService.updatePhase(taskId, 'notification');
+          }
+
           // Enhanced logging for debugging notification issues
           logger.info('[Discord] Notification attempt', {
             classification_id: classificationId,
@@ -174,7 +185,7 @@ class ClassificationService {
             status: result.needs_clarification ? 'awaiting_decision' : 'completed',
             has_libraries: !!result.libraries
           });
-          
+
           await discordBot.sendConfidenceBasedNotification(metadata, {
             ...result,
             classification_id: classificationId,
@@ -203,6 +214,15 @@ class ClassificationService {
         hasSourceLibrary: !!metadata.source_library_id,
         contentType: metadata.contentAnalysis?.bestMatch?.type || null
       });
+
+      // Issue #192: Complete execution tracking
+      if (taskId && !metadata.source_library_id) {
+        await classificationPhaseService.completeTracking(taskId, {
+          library: result.library?.name,
+          confidence: result.confidence,
+          method: result.method
+        });
+      }
 
       return {
         success: true,
@@ -253,7 +273,10 @@ class ClassificationService {
       source_library_name: payload.source_library_name, // Source Plex library name
     };
 
-    return { media_type, tmdbId, title, year, existingMetadata };
+    // Extract taskId if present (injected by queueService)
+    const taskId = payload.taskId;
+
+    return { media_type, tmdbId, title, year, existingMetadata, taskId };
   }
 
   async enrichWithTMDB(tmdbId, mediaType) {
@@ -779,7 +802,7 @@ class ClassificationService {
     );
   }
 
-  async runDecisionTree(metadata, mediaType) {
+  async runDecisionTree(metadata, mediaType, taskId = null) {
     // Get all active libraries for this media type
     const librariesResult = await db.query(
       'SELECT * FROM libraries WHERE media_type = $1 AND is_active = true ORDER BY priority DESC',
@@ -891,6 +914,10 @@ class ClassificationService {
     // Step 3: Policy Engine evaluation (v0.37.0)
     // Modern policy-based classification with comprehensive signal scoring
     try {
+      if (taskId && !metadata.source_library_id) {
+        await classificationPhaseService.updatePhase(taskId, 'policy_eval');
+      }
+
       logger.info('Evaluating with PolicyEngine', { title: metadata.title });
       const policyResult = await policyEngine.evaluateItem(metadata);
 
@@ -961,7 +988,7 @@ class ClassificationService {
           topLibrary: policyResult.ranked[0]?.library_name,
           confidence: policyResult.confidence
         });
-        
+
         // Log signal context before AI call for debugging
         if (policyResult.ranked && policyResult.ranked.length > 0) {
           logger.debug('Signal breakdown before AI', {
@@ -971,7 +998,7 @@ class ClassificationService {
             topConfidence: policyResult.ranked[0]?.score
           });
         }
-        
+
         metadata.policyResult = policyResult;
         // Falls through to legacy signal collection and AI
       }
@@ -1004,6 +1031,10 @@ class ClassificationService {
     // and we keep this for backward compatibility and to generate ragContext for AI
     let ragContext = null;
     try {
+      if (taskId && !metadata.source_library_id) {
+        await classificationPhaseService.updatePhase(taskId, 'rag_analysis');
+      }
+
       const similarItems = await ragRetriever.semanticSearch(metadata, 5);
       if (similarItems && similarItems.length > 0) {
         const suggestedLibrary = ragRetriever.getSuggestedLibrary(similarItems);
@@ -1040,8 +1071,18 @@ class ClassificationService {
     }
 
     // Load weights and calculate confidence
+    if (taskId && !metadata.source_library_id) {
+      await classificationPhaseService.updatePhase(taskId, 'signal_combine');
+    }
+
     await confidenceCalculator.loadWeights();
     const confidenceResult = confidenceCalculator.calculate(signalCollector.getSignals());
+
+    if (taskId && !metadata.source_library_id) {
+      await classificationPhaseService.updatePhase(taskId, 'decision', {
+        confidence: confidenceResult.confidence
+      });
+    }
 
     // Generate AI context
     const aiContext = confidenceCalculator.toAIContext(confidenceResult);
@@ -1066,7 +1107,7 @@ class ClassificationService {
       };
     } catch (error) {
       logger.error('AI classification failed', { error: error.message });
-      
+
       // Check if we should queue for retry based on confidence
       // Only queue for retry if confidence is below 50% (very low confidence without AI)
       // Items with confidence >= 50% can use signal_calculation fallback
@@ -1076,7 +1117,7 @@ class ClassificationService {
           tmdbId: metadata.tmdb_id,
           title: metadata.title,
         });
-        
+
         return {
           library: null,
           confidence: confidenceResult.confidence,
@@ -1090,7 +1131,7 @@ class ClassificationService {
           needs_retry: true,
         };
       }
-      
+
       // Fallback to calculated result if AI fails but confidence is acceptable
       if (confidenceResult.suggestedLibrary && confidenceResult.confidence >= 50) {
         return {
@@ -1101,7 +1142,7 @@ class ClassificationService {
           libraries: libraries,
         };
       }
-      
+
       // Last resort: use the lowest priority library
       const fallbackLibrary = libraries[libraries.length - 1];
       return {
@@ -1348,14 +1389,14 @@ class ClassificationService {
     // Helper function to find a sensible default library
     const getDefaultLibrary = (libraries, mediaType) => {
       // Look for a general-purpose library matching the media type
-      const generalNames = mediaType === 'movie' 
+      const generalNames = mediaType === 'movie'
         ? ['movies', 'films', 'general movies']
         : ['tv shows', 'tv series', 'series', 'television'];
-      
-      const generalLib = libraries.find(l => 
+
+      const generalLib = libraries.find(l =>
         generalNames.some(name => l.name.toLowerCase().includes(name))
       );
-      
+
       // Fall back to lowest priority library (most general) instead of highest
       return generalLib || libraries[libraries.length - 1];
     };
@@ -1473,18 +1514,18 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
     // Get Ollama config from ai_provider_config
     const configResult = await db.query('SELECT ollama_model, temperature FROM ai_provider_config WHERE id = 1');
-    const config = configResult.rows[0] 
+    const config = configResult.rows[0]
       ? { model: configResult.rows[0].ollama_model || 'llama3.2', temperature: configResult.rows[0].temperature || 0.30 }
       : { model: 'llama3.2', temperature: 0.30 };
 
     // Acquire lock with high priority (classification always wins)
     await providerLock.acquireLock('classification', 'high');
-    
+
     // Store config interval to avoid race conditions
     const heartbeatIntervalMs = providerLock.config.heartbeatInterval;
     let heartbeatTimer = null;
     let response;
-    
+
     try {
       // Start heartbeat interval - in outer try block for guaranteed cleanup
       heartbeatTimer = setInterval(() => {
@@ -1669,7 +1710,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
     // For pending items (needs clarification)
     const pendingReason = result.pending_reason || (result.needs_clarification ? result.reason : null);
     const policyQuestion = result.policy_question ? JSON.stringify(result.policy_question) : null;
-    
+
     // Handle retry status
     let status;
     if (result.needs_retry) {
@@ -1677,7 +1718,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
     } else {
       // Determine status: awaiting_decision if needs clarification, fallback method, or low confidence
       status = (
-        result.needs_clarification || 
+        result.needs_clarification ||
         result.method === 'fallback' ||
         (result.confidence && result.confidence < 70)
       ) ? 'awaiting_decision' : 'completed';
@@ -1766,7 +1807,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
     if (status === 'completed' && result.library) {
       // Check if real-time embedding is enabled
       const realtimeEnabled = await this.isRealtimeEmbeddingEnabled();
-      
+
       if (realtimeEnabled) {
         // Generate immediately (critical path)
         try {
@@ -1775,9 +1816,9 @@ Think step by step, then respond with ONLY one of the formats above.`;
             library_name: libraryName
           });
         } catch (embedError) {
-          logger.error('[Embedding] Real-time generation failed, will retry in backfill', { 
+          logger.error('[Embedding] Real-time generation failed, will retry in backfill', {
             id: classificationId,
-            error: embedError.message 
+            error: embedError.message
           });
         }
       } else {

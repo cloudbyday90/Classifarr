@@ -233,7 +233,33 @@
       </div>
     </Card>
 
-    <!-- Up Next Queue (shows next pending items, not stuck processing ghosts) -->
+    <!-- Active Classifications -->
+    <div v-if="activeClassifications.length > 0" class="space-y-4">
+      <h2 class="text-xl font-bold flex items-center gap-2">
+        <span class="relative flex h-3 w-3">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+        </span>
+        Processing Now
+      </h2>
+      
+      <!-- Primary Progress Bar (First Item) -->
+      <GlobalProgressBar :task="activeClassifications[0]" />
+      
+      <!-- Other Active Items -->
+      <Card v-if="activeClassifications.length > 1">
+        <template #header>
+          <h3 class="text-lg font-semibold">Other Active Tasks</h3>
+        </template>
+        <div class="space-y-4">
+          <div v-for="task in activeClassifications.slice(1)" :key="task.taskId" class="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+            <ActivityItemProgress :task="task" />
+          </div>
+        </div>
+      </Card>
+    </div>
+
+    <!-- Up Next Queue -->
     <Card v-if="upNextQueue.length > 0">
       <template #header>
         <h2 class="text-lg font-semibold">Up Next</h2>
@@ -243,13 +269,13 @@
         <div 
           v-for="item in upNextQueue"
           :key="item.id"
-          class="flex items-center justify-between p-3 bg-background-light rounded-lg"
+          class="flex items-center justify-between p-3 bg-background-light rounded-lg opacity-75"
         >
           <div class="flex items-center space-x-3">
             <span class="text-gray-400 text-sm">#{{ item.id }}</span>
             <span>{{ getItemTitle(item) }}</span>
           </div>
-          <span class="text-sm text-gray-400">{{ formatTimeAgo(item.created_at) }}</span>
+          <span class="text-sm text-gray-400">Pending</span>
         </div>
       </div>
     </Card>
@@ -264,10 +290,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { DocumentTextIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
+import { io } from 'socket.io-client'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
 import Spinner from '@/components/common/Spinner.vue'
+import GlobalProgressBar from '@/components/activity/GlobalProgressBar.vue'
+import ActivityItemProgress from '@/components/activity/ActivityItemProgress.vue'
 import api from '@/api'
 
 // Activity page polling interval in seconds (configurable in settings)
@@ -275,6 +304,9 @@ const refreshInterval = ref(30) // Default 30 seconds
 const loading = ref(true)
 const lastUpdated = ref('')
 let refreshTimer = null
+let socket = null
+
+const activeClassifications = ref([])
 
 const stats = ref({
   classifiedToday: 0,
@@ -313,11 +345,12 @@ const refreshData = async () => {
   try {
     loading.value = true
     
-    const [liveStats, liveFeed, pendingTasks, aiStatus] = await Promise.all([
+    const [liveStats, liveFeed, pendingTasks, aiStatus, progressData] = await Promise.all([
       api.getLiveStats(),
       api.getLiveFeed(50),
       api.getPendingTasks(5),
-      api.getOllamaStatus().catch(() => ({ data: { isActive: false } }))
+      api.getOllamaStatus().catch(() => ({ data: { isActive: false } })),
+      api.getClassificationProgress().catch(() => ({ data: [] }))
     ])
 
     // Update stats
@@ -349,6 +382,17 @@ const refreshData = async () => {
     // Update Ollama status
     if (aiStatus.data) {
       ollamaStatus.value = aiStatus.data
+    }
+
+    // Update active classifications (initial state, then WebSocket takes over)
+    if (progressData.data) {
+      // Merge with existing to preserve animation state if possible, or just replace
+      // If we have socket updates, those are newer, so maybe only replace if empty?
+      // Actually, HTTP is snapshot, Socket is delta. 
+      // Ideally we trust Socket, but use HTTP for initial population.
+      if (!socket || !socket.connected) {
+         activeClassifications.value = progressData.data
+      }
     }
 
     lastUpdated.value = new Date().toLocaleTimeString()
@@ -474,6 +518,31 @@ onMounted(async () => {
   
   refreshData()
   
+  // Setup WebSocket for real-time progress
+  socket = io();
+  
+  socket.on('connect', () => {
+    console.log('Connected to WebSocket');
+  });
+
+  socket.on('task:progress', (data) => {
+    const existingIndex = activeClassifications.value.findIndex(t => t.taskId === data.taskId);
+    if (existingIndex !== -1) {
+      // Update existing
+      activeClassifications.value[existingIndex] = { ...activeClassifications.value[existingIndex], ...data };
+    } else {
+      // Add new
+      activeClassifications.value.push(data);
+    }
+  });
+
+  socket.on('task:completed', (data) => {
+    // Remove from active list
+    activeClassifications.value = activeClassifications.value.filter(t => t.taskId !== data.taskId);
+    // Refresh feed to show completed item
+    refreshData();
+  });
+
   // Auto-refresh based on configured interval
   refreshTimer = setInterval(() => {
     refreshData()
@@ -483,6 +552,9 @@ onMounted(async () => {
 onUnmounted(() => {
   if (refreshTimer) {
     clearInterval(refreshTimer)
+  }
+  if (socket) {
+    socket.disconnect();
   }
 })
 </script>

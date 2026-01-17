@@ -100,6 +100,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+const classificationProgressRouter = require('./routes/classificationProgress');
+app.use('/api/classification/progress', classificationProgressRouter);
+
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
@@ -204,19 +207,19 @@ async function initializeServices() {
   try {
     const ratingNormalizer = require('./utils/ratingNormalizer');
     const needsSQL = ratingNormalizer.getNeedsNormalizationSQL();
-    
+
     const result = await db.query(`
       SELECT COUNT(*) as count FROM media_server_items
       WHERE original_rating IS NULL
         AND content_rating IS NOT NULL
         AND ${needsSQL}
     `);
-    
+
     const count = parseInt(result.rows[0].count);
-    
+
     if (count > 0) {
       console.log(`Auto-queuing first 1000 items for rating normalization (${count} total need normalization)`);
-      
+
       await db.query(`
         INSERT INTO task_queue (task_type, priority, payload, status)
         SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', id), 'pending'
