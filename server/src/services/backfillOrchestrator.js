@@ -21,6 +21,8 @@ const logger = createLogger('BackfillOrchestrator');
 class BackfillOrchestrator {
     constructor() {
         this.initialized = false;
+        this.idleListener = null;    // Store reference for cleanup
+        this.activeListener = null;  // Store reference for cleanup
         this.idleBackfillService = idleBackfillService;
         this.scheduledBackfillService = scheduledBackfillService;
         this.manualBackfillService = manualBackfillService;
@@ -45,8 +47,16 @@ class BackfillOrchestrator {
         // Initialize scheduled backfill
         await this.scheduledBackfillService.initScheduler();
 
-        // Set up idle event listeners
-        idleDetector.on('idle', () => {
+        // Remove old listeners if they exist
+        if (this.idleListener) {
+            idleDetector.removeListener('idle', this.idleListener);
+        }
+        if (this.activeListener) {
+            idleDetector.removeListener('active', this.activeListener);
+        }
+
+        // Create and store new listeners
+        this.idleListener = () => {
             // Only start idle backfill if manual backfill is not running
             if (this.manualBackfillService.getStatus().status !== 'running') {
                 logger.info('System idle, starting idle backfill');
@@ -54,12 +64,16 @@ class BackfillOrchestrator {
                     logger.error('Idle backfill error', { error: error.message });
                 });
             }
-        });
+        };
 
-        idleDetector.on('active', () => {
+        this.activeListener = () => {
             logger.info('System active, stopping idle backfill');
             this.idleBackfillService.stopIdleBackfill();
-        });
+        };
+
+        // Attach listeners
+        idleDetector.on('idle', this.idleListener);
+        idleDetector.on('active', this.activeListener);
 
         this.initialized = true;
         logger.info('Backfill orchestrator initialized');
@@ -71,8 +85,17 @@ class BackfillOrchestrator {
     shutdown() {
         logger.info('Shutting down backfill orchestrator');
         
+        // Clean up listeners
+        if (this.idleListener) {
+            idleDetector.removeListener('idle', this.idleListener);
+            this.idleListener = null;
+        }
+        if (this.activeListener) {
+            idleDetector.removeListener('active', this.activeListener);
+            this.activeListener = null;
+        }
+        
         idleDetector.stop();
-        idleDetector.removeAllListeners();
         
         this.idleBackfillService.stopIdleBackfill();
         this.scheduledBackfillService.stop();

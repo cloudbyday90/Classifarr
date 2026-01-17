@@ -120,127 +120,160 @@ class IdleBackfillService {
      * Start idle backfill process
      */
     async startIdleBackfill() {
-        // Load latest config
-        await this.loadConfig();
-
-        // Check if RAG is enabled first
-        if (!this.config?.rag_enabled) {
-            logger.debug('RAG is not enabled, skipping idle backfill');
-            return;
-        }
-
-        if (!this.config?.idle_backfill_enabled) {
-            logger.debug('Idle backfill is disabled');
-            return;
-        }
-
-        if (this.isRunning) {
-            logger.debug('Idle backfill already running');
-            return;
-        }
-
-        this.isRunning = true;
-        logger.info('Starting idle backfill');
-
-        // Get initial pending count
-        const initialPending = await this.getPendingCount();
-
-        // Create run record with total
-        const runResult = await db.query(`
-            INSERT INTO backfill_runs (type, status, total)
-            VALUES ('idle', 'running', $1)
-            RETURNING id
-        `, [initialPending]);
-        const runId = runResult.rows[0].id;
-
-        let totalProcessed = 0;
-
+        let runId = null;
+        
         try {
-            // Note: For optimal performance with multiple models, configure your Ollama:
-            // OLLAMA_KEEP_ALIVE=-1 (keep models loaded indefinitely)
-            // OLLAMA_MAX_LOADED_MODELS=2 (or more for your model count)
-            // The keep_alive parameter on embed requests handles keeping models loaded
+            // Load latest config
+            const config = await this.loadConfig();
+            
+            if (!config) {
+                logger.error('Idle backfill NOT started: Failed to load configuration');
+                return;
+            }
 
-            while (this.isRunning && idleDetector.isIdle()) {
-                const pending = await this.getPendingEmbeddings(this.batchSize);
+            // Check if RAG is enabled first
+            if (!config.rag_enabled) {
+                logger.info('Idle backfill NOT started: RAG is disabled in settings');
+                return;
+            }
 
-                if (pending.length === 0) {
-                    logger.info('No pending embeddings, idle backfill complete');
-                    break;
-                }
+            if (!config.idle_backfill_enabled) {
+                logger.info('Idle backfill NOT started: Idle backfill is disabled in settings');
+                return;
+            }
 
-                for (const item of pending) {
-                    // Check if still idle before each item
-                    if (!idleDetector.isIdle()) {
-                        logger.info('Classification activity detected, pausing idle backfill');
+            if (this.isRunning) {
+                logger.info('Idle backfill NOT started: Already running');
+                return;
+            }
+
+            // Check for pending items BEFORE setting isRunning
+            const pendingCount = await this.getPendingCount();
+            if (pendingCount === 0) {
+                logger.info('Idle backfill NOT started: No pending embeddings');
+                return;
+            }
+
+            // Create run record with total BEFORE setting isRunning
+            const runResult = await db.query(`
+                INSERT INTO backfill_runs (type, status, total)
+                VALUES ('idle', 'running', $1)
+                RETURNING id
+            `, [pendingCount]);
+            runId = runResult.rows[0].id;
+
+            // Only set isRunning after database record is successfully created
+            this.isRunning = true;
+            logger.info('Starting idle backfill...', { pending: pendingCount, runId });
+
+            let totalProcessed = 0;
+
+            try {
+                // Note: For optimal performance with multiple models, configure your Ollama:
+                // OLLAMA_KEEP_ALIVE=-1 (keep models loaded indefinitely)
+                // OLLAMA_MAX_LOADED_MODELS=2 (or more for your model count)
+                // The keep_alive parameter on embed requests handles keeping models loaded
+
+                while (this.isRunning && idleDetector.isIdle()) {
+                    const pending = await this.getPendingEmbeddings(this.batchSize);
+
+                    if (pending.length === 0) {
+                        logger.info('No pending embeddings, idle backfill complete');
                         break;
                     }
 
-                    // Check if manual backfill has started
-                    if (this.manualBackfillService) {
-                        const manualStatus = await this.manualBackfillService.getStatus();
-                        if (manualStatus.status === 'running') {
-                            logger.info('Manual backfill started, stopping idle backfill');
+                    for (const item of pending) {
+                        // Check if still idle before each item
+                        if (!idleDetector.isIdle()) {
+                            logger.info('Classification activity detected, pausing idle backfill');
                             break;
+                        }
+
+                        // Check if manual backfill has started
+                        if (this.manualBackfillService) {
+                            const manualStatus = await this.manualBackfillService.getStatus();
+                            if (manualStatus.status === 'running') {
+                                logger.info('Manual backfill started, stopping idle backfill');
+                                break;
+                            }
+                        }
+
+                        if (!this.isRunning) {
+                            break;
+                        }
+
+                        try {
+                            await embeddingService.generateAndStore(item.id, {
+                                ...item.metadata,
+                                title: item.title,
+                                media_type: item.media_type,
+                                library_name: item.library_name
+                            });
+                            totalProcessed++;
+
+                            // Update run progress
+                            await db.query(
+                                'UPDATE backfill_runs SET processed = $1 WHERE id = $2',
+                                [totalProcessed, runId]
+                            );
+                        } catch (error) {
+                            logger.error('Failed to generate embedding in idle backfill', {
+                                id: item.id,
+                                title: item.title,
+                                error: error.message
+                            });
                         }
                     }
 
-                    if (!this.isRunning) {
-                        break;
-                    }
-
-                    try {
-                        await embeddingService.generateAndStore(item.id, {
-                            ...item.metadata,
-                            title: item.title,
-                            media_type: item.media_type,
-                            library_name: item.library_name
-                        });
-                        totalProcessed++;
-
-                        // Update run progress
-                        await db.query(
-                            'UPDATE backfill_runs SET processed = $1 WHERE id = $2',
-                            [totalProcessed, runId]
-                        );
-                    } catch (error) {
-                        logger.error('Failed to generate embedding in idle backfill', {
-                            id: item.id,
-                            title: item.title,
-                            error: error.message
-                        });
+                    // Brief pause between batches
+                    if (this.isRunning && idleDetector.isIdle()) {
+                        await this.sleep(1000);
                     }
                 }
 
-                // Brief pause between batches
-                if (this.isRunning && idleDetector.isIdle()) {
-                    await this.sleep(1000);
+                // Mark as completed
+                await db.query(`
+                    UPDATE backfill_runs 
+                    SET status = 'completed', 
+                        completed_at = NOW(),
+                        processed = $1
+                    WHERE id = $2
+                `, [totalProcessed, runId]);
+
+                logger.info('Idle backfill completed', { processed: totalProcessed });
+            } catch (error) {
+                logger.error('Idle backfill error', { error: error.message });
+
+                await db.query(`
+                    UPDATE backfill_runs 
+                    SET status = 'failed', 
+                        completed_at = NOW(),
+                        error = $1,
+                        processed = $2
+                    WHERE id = $3
+                `, [error.message, totalProcessed, runId]);
+            } finally {
+                this.isRunning = false;
+            }
+        } catch (error) {
+            logger.error('Idle backfill startup error', { error: error.message });
+            this.isRunning = false;
+            
+            // Clean up database record if it was created
+            if (runId) {
+                try {
+                    await db.query(`
+                        UPDATE backfill_runs 
+                        SET status = 'failed', 
+                            completed_at = NOW(),
+                            error = $1
+                        WHERE id = $2
+                    `, [error.message, runId]);
+                } catch (dbError) {
+                    logger.error('Failed to update backfill run status', { error: dbError.message });
                 }
             }
-
-            // Mark as completed
-            await db.query(`
-                UPDATE backfill_runs 
-                SET status = 'completed', 
-                    completed_at = NOW(),
-                    processed = $1
-                WHERE id = $2
-            `, [totalProcessed, runId]);
-
-            logger.info('Idle backfill completed', { processed: totalProcessed });
-        } catch (error) {
-            logger.error('Idle backfill error', { error: error.message });
-
-            await db.query(`
-                UPDATE backfill_runs 
-                SET status = 'failed', 
-                    completed_at = NOW(),
-                    error = $1,
-                    processed = $2
-                WHERE id = $3
-            `, [error.message, totalProcessed, runId]);
-        } finally {
-            this.isRunning = false;
+            return;
         }
     }
 
