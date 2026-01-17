@@ -2,6 +2,129 @@
 
 ## Unreleased
 
+### 🏥 Health Check Endpoints for Kubernetes/Docker (#183)
+
+**Comprehensive monitoring and health check endpoints for container orchestration**
+
+#### New Endpoints
+
+1. **`/api/system/health/live` - Liveness Probe**
+   - Fast response (&lt;10ms)
+   - Returns 200 if application is running
+   - Does NOT check external services
+   - Perfect for Kubernetes liveness checks
+   - No authentication required
+
+2. **`/api/system/health/ready` - Readiness Probe**
+   - Checks critical services (database only)
+   - Returns 200 if ready to serve traffic
+   - Returns 503 if not ready
+   - Perfect for Kubernetes readiness checks
+   - No authentication required
+
+3. **`/api/system/health` - Enhanced Health Status**
+   - Overall system health (healthy/unhealthy)
+   - Application version
+   - System uptime (human-readable format)
+   - Database connectivity status
+   - Requires authentication
+
+4. **`/api/system/health/services` - Detailed Service Health**
+   - Complete breakdown of all services:
+     - PostgreSQL database
+     - Media server (Plex/Emby/Jellyfin)
+     - All Radarr instances
+     - All Sonarr instances
+     - AI provider (Ollama/OpenAI/etc.)
+     - Queue worker status
+   - Each service includes:
+     - Status: `healthy`, `degraded`, `unhealthy`
+     - Response latency (ms)
+     - Last check timestamp
+     - Error message (if unhealthy)
+   - Overall system status with summary counts
+   - Requires authentication
+
+#### Features
+
+- **Smart Caching**: Service health checks cached for 30 seconds to reduce load
+- **Queue Worker Monitoring**: Monitors task queue for stuck/stale jobs
+- **Graceful Degradation**: App stays up even if external services are down
+- **Comprehensive Testing**: 12 unit tests ensuring reliability
+
+#### Docker/Kubernetes Integration
+
+**Docker Compose:**
+```yaml
+services:
+  classifarr:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:21324/api/system/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+**Kubernetes Deployment:**
+```yaml
+livenessProbe:
+  httpGet:
+    path: /api/system/health/live
+    port: 21324
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /api/system/health/ready
+    port: 21324
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+#### Response Examples
+
+**GET /api/system/health**
+```json
+{
+  "status": "healthy",
+  "version": "0.39.7b",
+  "uptime": "3d 14h",
+  "database": "connected",
+  "timestamp": "2026-01-17T15:30:00.000Z"
+}
+```
+
+**GET /api/system/health/services**
+```json
+{
+  "overall": "healthy",
+  "services": [
+    {
+      "name": "PostgreSQL",
+      "status": "healthy",
+      "latency": 5,
+      "timestamp": "2026-01-17T15:30:00.000Z"
+    },
+    {
+      "name": "Plex",
+      "status": "healthy",
+      "latency": 45,
+      "timestamp": "2026-01-17T15:30:00.000Z"
+    }
+  ],
+  "summary": {
+    "total": 7,
+    "healthy": 7,
+    "unhealthy": 0
+  },
+  "timestamp": "2026-01-17T15:30:00.000Z"
+}
+```
+
+---
+
 ### 🔐 API Key Management System (#182)
 
 **Secure third-party integrations and automation with API keys**

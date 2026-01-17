@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Health Check Endpoints for Kubernetes/Docker** (Fixes #183)
+  - New `/api/system/health/live` endpoint for liveness probes (fast, no external checks)
+  - New `/api/system/health/ready` endpoint for readiness probes (checks database connectivity)
+  - Enhanced `/api/system/health` endpoint with version, uptime, and database status
+  - New `/api/system/health/services` endpoint for detailed service health breakdown
+  - Queue worker health check monitoring
+  - 30-second caching for service health checks to reduce load
+  - Support for all services: database, media server, Radarr/Sonarr instances, AI provider, queue worker
+  - Comprehensive test coverage with 12 passing tests
+
 - **Frontend Sync Status UI** (Fixes #178)
   - New `useSyncStatusStore` Pinia store for centralized sync status tracking
   - Real-time sync progress display in Libraries view with progress bar
