@@ -513,6 +513,12 @@ class ClarificationService {
       if (generateRule && metadata.tmdb_id) {
         // Check if this is a tmdb_id that was previously uncertain
         // Create an exact_match pattern so this exact item is remembered
+        
+        // First, safely parse policy_question (may already be an object from JSONB)
+        const policyQuestion = typeof classification.policy_question === 'string'
+          ? JSON.parse(classification.policy_question)
+          : classification.policy_question;
+        
         const patternResult = await client.query(
           `INSERT INTO learning_patterns 
            (tmdb_id, media_type, library_id, pattern_type, confidence, metadata, created_by)
@@ -527,7 +533,7 @@ class ClarificationService {
             JSON.stringify({
               title: classification.title,
               resolved_from: 'policy_question',
-              original_question: classification.policy_question ? JSON.parse(classification.policy_question).question : null,
+              original_question: policyQuestion?.question || null,
               selected_option: selectedOption,
             }),
             resolvedBy

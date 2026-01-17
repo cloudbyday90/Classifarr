@@ -1510,6 +1510,13 @@ IMPORTANT FOR CLARIFICATION:
 - The question should be SPECIFIC and help the user understand what choosing each option means
 - Always provide 2-3 clear options (not just yes/no when possible)
 
+CRITICAL - DO NOT HALLUCINATE CONFLICTS:
+- Only mention libraries that have ACTUAL signal support (genres, keywords, patterns matching that library)
+- Certification (G, PG, TV-PG, R, TV-MA, etc.) is a CONTENT RATING for age-appropriateness, NOT a library indicator - do not use it to suggest which library content belongs to
+- DO NOT suggest "Family" library for R-rated Horror/Thriller content with no family-related signals
+- If signals clearly point to one library with no real conflict, use CONFIRM format, not CLARIFY
+- Only use CLARIFY when there are genuinely conflicting signals pointing to different libraries
+
 Think step by step, then respond with ONLY one of the formats above.`;
 
     // Get Ollama config from ai_provider_config
