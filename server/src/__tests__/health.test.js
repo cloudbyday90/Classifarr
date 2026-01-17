@@ -32,7 +32,8 @@ jest.mock('../services/healthCheckService', () => ({
   getAllServicesHealth: jest.fn(),
   getUptime: jest.fn(),
   getHealthCache: jest.fn(),
-  runAllHealthChecks: jest.fn()
+  runAllHealthChecks: jest.fn(),
+  checkQueueWorker: jest.fn()
 }));
 
 // Mock the auth middleware to avoid JWT dependency issues
@@ -139,6 +140,12 @@ describe('Health Endpoints', () => {
         database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 }
       });
       healthCheckService.getUptime.mockReturnValue('3d 14h');
+      healthCheckService.checkQueueWorker.mockResolvedValue({
+        status: 'connected',
+        name: 'Queue Worker',
+        latency: 0,
+        timestamp: new Date().toISOString()
+      });
 
       const response = await request(app)
         .get('/api/system/health')
@@ -157,6 +164,12 @@ describe('Health Endpoints', () => {
         database: { status: 'disconnected', lastCheck: new Date().toISOString(), error: 'Connection failed' }
       });
       healthCheckService.getUptime.mockReturnValue('1h 5m');
+      healthCheckService.checkQueueWorker.mockResolvedValue({
+        status: 'connected',
+        name: 'Queue Worker',
+        latency: 0,
+        timestamp: new Date().toISOString()
+      });
 
       const response = await request(app)
         .get('/api/system/health')
@@ -172,6 +185,12 @@ describe('Health Endpoints', () => {
         database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 }
       });
       healthCheckService.getUptime.mockReturnValue('2m 30s');
+      healthCheckService.checkQueueWorker.mockResolvedValue({
+        status: 'connected',
+        name: 'Queue Worker',
+        latency: 0,
+        timestamp: new Date().toISOString()
+      });
 
       const response = await request(app)
         .get('/api/system/health?refresh=true')

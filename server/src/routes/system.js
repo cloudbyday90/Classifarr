@@ -144,8 +144,12 @@ router.get('/health', async (req, res) => {
 
     const dbHealth = health.database;
     const isHealthy = dbHealth.status === 'connected';
+    const uptime = healthCheckService.getUptime();
 
     res.status(isHealthy ? 200 : 503).json({
+      status: isHealthy ? 'healthy' : 'unhealthy',
+      version: APP_VERSION,
+      uptime: uptime,
       database: dbHealth.status,
       mediaServer: health.mediaServer?.status || 'unknown',
       radarr: health.radarr?.status || 'unknown',
