@@ -34,6 +34,7 @@ jest.mock('../services/jellyfin', () => ({
 
 const db = require('../config/database');
 const mediaServerRouter = require('../routes/mediaServer');
+const syncStatus = require('../services/syncStatus');
 
 describe('Media Server API', () => {
     let app;
@@ -52,6 +53,10 @@ describe('Media Server API', () => {
         db.pool.connect.mockResolvedValue(mockClient);
 
         jest.clearAllMocks();
+        
+        // Reset syncStatus singleton to prevent cross-test contamination
+        // This prevents timeouts when running tests in parallel with sync-lock.test.js
+        syncStatus.reset();
     });
 
     describe('POST /api/media-server - Issue #74 Regression Test', () => {

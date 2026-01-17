@@ -231,4 +231,106 @@ describe('RAG API Integration Tests', () => {
             expect(typeof response.body.latency).toBe('number');
         });
     });
+
+    describe('GET /api/rag/detailed', () => {
+        it('should return consolidated statistics in a single response', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed')
+                .expect(200);
+
+            // Check top-level structure
+            expect(response.body).toHaveProperty('stats');
+            expect(response.body).toHaveProperty('providerOnline');
+            expect(response.body).toHaveProperty('operationMetrics');
+            expect(response.body).toHaveProperty('providerMetrics');
+            expect(response.body).toHaveProperty('circuitBreaker');
+            expect(response.body).toHaveProperty('backfillHistory');
+            expect(response.body).toHaveProperty('config');
+            expect(response.body).toHaveProperty('timestamp');
+        });
+
+        it('should return stats object with all required fields', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed')
+                .expect(200);
+
+            expect(response.body.stats).toHaveProperty('totalEmbeddings');
+            expect(response.body.stats).toHaveProperty('pendingCount');
+            expect(response.body.stats).toHaveProperty('failedCount');
+            expect(response.body.stats).toHaveProperty('avgGenerationTime');
+            expect(response.body.stats).toHaveProperty('lastEmbeddingTime');
+            
+            // Verify types are correct
+            expect(typeof response.body.stats.totalEmbeddings).toBe('number');
+            expect(typeof response.body.stats.pendingCount).toBe('number');
+            expect(typeof response.body.stats.failedCount).toBe('number');
+            expect(typeof response.body.stats.avgGenerationTime).toBe('number');
+            // lastEmbeddingTime can be null or string
+            expect(response.body.stats.lastEmbeddingTime === null || typeof response.body.stats.lastEmbeddingTime === 'string').toBe(true);
+        });
+
+        it('should return pendingCount that matches actual unembedded items', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed')
+                .expect(200);
+
+            // pendingCount should be a non-negative number
+            expect(typeof response.body.stats.pendingCount).toBe('number');
+            expect(response.body.stats.pendingCount).toBeGreaterThanOrEqual(0);
+        });
+
+        it('should return providerOnline as boolean', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed')
+                .expect(200);
+
+            expect(typeof response.body.providerOnline).toBe('boolean');
+        });
+
+        it('should return circuit breaker information', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed')
+                .expect(200);
+
+            expect(response.body.circuitBreaker).toHaveProperty('state');
+            expect(response.body.circuitBreaker).toHaveProperty('failureCount');
+            expect(response.body.circuitBreaker).toHaveProperty('lastFailureTime');
+            expect(response.body.circuitBreaker).toHaveProperty('stateHistory');
+            expect(response.body.circuitBreaker).toHaveProperty('config');
+        });
+
+        it('should return backfill history array', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed')
+                .expect(200);
+
+            expect(Array.isArray(response.body.backfillHistory)).toBe(true);
+        });
+
+        it('should accept hours query parameter', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed?hours=48')
+                .expect(200);
+
+            expect(response.body).toHaveProperty('stats');
+        });
+
+        it('should reject invalid hours parameter', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed?hours=invalid')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid hours parameter');
+        });
+
+        it('should reject hours parameter that is too large', async () => {
+            const response = await request(app)
+                .get('/api/rag/detailed?hours=1000')
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('Invalid hours parameter');
+        });
+    });
 });

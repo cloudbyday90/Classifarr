@@ -8,6 +8,33 @@
 
 <template>
   <div class="space-y-6">
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <div class="flex flex-col items-center gap-4">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <p class="text-gray-400">Loading RAG statistics...</p>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-900/20 border border-red-700 rounded-lg p-4">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">⚠️</span>
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold text-red-400 mb-1">Error Loading Statistics</h3>
+          <p class="text-sm text-gray-300">{{ error }}</p>
+          <button
+            @click="loadStats"
+            class="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content (only shown when not loading and no error) -->
+    <template v-else>
     <!-- Summary Cards -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
@@ -302,6 +329,7 @@
         </button>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -312,9 +340,11 @@ import api from '@/api'
 const stats = ref({
   totalEmbeddings: 0,
   pendingCount: 0,
-  failed24h: 0
+  failed24h: 0,
+  avgGenerationTime: 0
 })
 
+const providerOnline = ref(false)
 const backfillHistory = ref([])
 const circuitBreaker = ref({
   state: 'CLOSED',
@@ -334,42 +364,34 @@ const providerMetrics = ref({
   retryHistory: []
 })
 const warmingUp = ref(false)
+const loading = ref(true)
+const error = ref(null)
 
 let statusInterval = null
 
 const loadStats = async () => {
   try {
-    const [statusRes, backfillRes, metricsRes, circuitRes] = await Promise.all([
-      api.get('/api/rag/status'),
-      api.get('/api/rag/backfill/status'),
-      api.get('/api/rag/metrics', { params: { hours: 24 } }),
-      api.get('/api/rag/circuit-breaker')
-    ])
+    loading.value = true
+    error.value = null
+
+    // Single API call for all statistics
+    const response = await api.get('/api/rag/detailed', { params: { hours: 24 } })
 
     stats.value = {
-      totalEmbeddings: statusRes.data.stats?.total || 0,
-      pendingCount: backfillRes.data.pending || 0,
-      failed24h: metricsRes.data.embedding_generation?.error_count || 0
+      totalEmbeddings: response.data.stats.totalEmbeddings,
+      pendingCount: response.data.stats.pendingCount,
+      failed24h: response.data.stats.failedCount,
+      avgGenerationTime: response.data.stats.avgGenerationTime
     }
-
-    // Provider metrics
-    if (metricsRes.data && metricsRes.data.provider) {
-      providerMetrics.value = metricsRes.data.provider
-    }
-
-    // Circuit breaker status
-    circuitBreaker.value = circuitRes.data
-  } catch (error) {
-    console.error('Failed to load stats:', error)
-  }
-}
-
-const loadBackfillHistory = async () => {
-  try {
-    const response = await api.get('/api/rag/backfill/history')
-    backfillHistory.value = response.data.history || []
-  } catch (error) {
-    console.error('Failed to load backfill history:', error)
+    providerOnline.value = response.data.providerOnline
+    providerMetrics.value = response.data.providerMetrics
+    circuitBreaker.value = response.data.circuitBreaker
+    backfillHistory.value = response.data.backfillHistory
+  } catch (err) {
+    error.value = err.response?.data?.error || err.message || 'Unknown error'
+    console.error('Failed to load stats:', err)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -473,7 +495,6 @@ const formatDuration = (start, end) => {
 
 onMounted(() => {
   loadStats()
-  loadBackfillHistory()
   
   statusInterval = setInterval(() => {
     loadStats()
