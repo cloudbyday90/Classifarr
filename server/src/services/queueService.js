@@ -1442,10 +1442,22 @@ class QueueService {
         try {
             const failedDetails = [];
 
-            for (const instance of [...results.radarr, ...results.sonarr]) {
+            // Separate radarr and sonarr instances for clearer type detection
+            for (const instance of results.radarr) {
                 if (instance.failed > 0) {
                     failedDetails.push({
-                        type: instance.name.toLowerCase().includes('sonarr') ? 'sonarr' : 'radarr',
+                        type: 'radarr',
+                        instanceId: instance.id,
+                        instanceName: instance.name,
+                        failedLibraries: instance.failedLibraries
+                    });
+                }
+            }
+
+            for (const instance of results.sonarr) {
+                if (instance.failed > 0) {
+                    failedDetails.push({
+                        type: 'sonarr',
                         instanceId: instance.id,
                         instanceName: instance.name,
                         failedLibraries: instance.failedLibraries
@@ -1494,7 +1506,8 @@ class QueueService {
             const oldLibrarySnapshot = await this.buildLibrarySnapshot();
 
             logger.info('Captured pre-clear snapshot', {
-                libraries: Object.keys(oldLibrarySnapshot).length
+                libraries: Object.keys(oldLibrarySnapshot.libraries).length,
+                mappings: oldLibrarySnapshot.mappings.length
             });
 
             // 2. Stop worker to prevent race conditions with active tasks
@@ -1551,7 +1564,8 @@ class QueueService {
 
             syncStatus.updateProgress(70, 'Clearing media items...');
 
-            // 13. Clear libraries (parent table) - library_arr_mappings preserved via CASCADE
+            // 13. Clear libraries (parent table) - library_arr_mappings CASCADE deleted
+            // Note: Mappings will be recreated after re-sync using snapshot data
             const librariesResult = await db.query('DELETE FROM libraries RETURNING id');
 
             logger.info('Cleared all synced data', {
