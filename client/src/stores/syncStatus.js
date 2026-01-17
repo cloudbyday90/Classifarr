@@ -47,6 +47,14 @@ export const useSyncStatusStore = defineStore('syncStatus', {
       this.fetchStatus()
       this.pollInterval = setInterval(() => {
         this.fetchStatus()
+        // Smart polling: Only poll while sync is running, then reduce frequency
+        if (!this.isRunning && this.pollInterval) {
+          // If not running, slow down polling after first few checks
+          clearInterval(this.pollInterval)
+          this.pollInterval = setInterval(() => {
+            this.fetchStatus()
+          }, 10000) // Poll every 10s when idle instead of 2s
+        }
       }, 2000)
     },
 
@@ -59,6 +67,8 @@ export const useSyncStatusStore = defineStore('syncStatus', {
   },
 
   getters: {
+    // CARSA (full_resync) can run while library_sync is active because it interrupts and takes over
+    // This allows admins to force a complete reset even during an ongoing sync
     canSync: (state) => !state.isRunning || state.type === 'full_resync',
     statusText: (state) => {
       if (!state.isRunning) return 'Idle'

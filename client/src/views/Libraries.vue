@@ -93,6 +93,7 @@ import { onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSyncStatusStore } from '@/stores/syncStatus'
+import { useToast } from '@/stores/toast'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -103,6 +104,7 @@ const librariesStore = useLibrariesStore()
 const { libraries, loading } = storeToRefs(librariesStore)
 
 const syncStore = useSyncStatusStore()
+const toast = useToast()
 
 onMounted(async () => {
   await librariesStore.fetchLibraries()
@@ -120,10 +122,10 @@ const syncLibraries = async () => {
   } catch (error) {
     if (error.response?.status === 409) {
       // Sync already running - show message
-      alert(error.response.data.message || 'Sync already in progress')
+      toast.warning(error.response.data.message || 'Sync already in progress', 'Sync In Progress')
     } else {
       console.error('Failed to sync libraries:', error)
-      alert('Failed to sync libraries: ' + error.message)
+      toast.error(error.message || 'An error occurred while syncing libraries', 'Sync Failed')
     }
   }
 }

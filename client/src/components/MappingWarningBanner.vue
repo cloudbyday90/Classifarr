@@ -51,7 +51,10 @@ onMounted(async () => {
     }
   } catch (error) {
     // Silently fail if notifications endpoint doesn't exist yet
-    console.debug('Failed to fetch notifications', error)
+    // This is expected for installations without notification support
+    if (error.response?.status !== 404) {
+      console.warn('Failed to fetch notifications', error)
+    }
   }
 })
 
