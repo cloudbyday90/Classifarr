@@ -1,5 +1,27 @@
 # Classifarr Release Notes
 
+## Unreleased
+**Title: Fix Clear and Resync (CARSA) Orphaned Data Bug**
+
+### What's Fixed
+- **Clear and Resync (CARSA)** now properly deletes ALL tables with references to media server/library/classification data
+- Fixed "Library X no longer exists" errors after running CARSA
+- Fixed orphaned embeddings and collections that were not being cleaned up
+
+### What Changed
+The Clear and Resync function now deletes these additional tables:
+- **Classification Embeddings**: Previously orphaned embeddings are now properly deleted
+- **Library Profiles**: Auto-generated library statistics are now cleared
+- **Collections**: Media server collections are now cleared
+- **Libraries**: The libraries table itself is now cleared (previously skipped)
+
+All deletions now happen in dependency-safe order to prevent foreign key constraint violations.
+
+### For Users
+If you experienced "Library X no longer exists" errors or orphaned data after running Clear and Resync, this update resolves those issues. After updating, run Clear and Resync again for a complete fresh start.
+
+---
+
 ## v0.39.7b-alpha
 **Title: Remove Non-Working Preload Logic**
 
