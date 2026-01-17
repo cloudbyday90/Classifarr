@@ -1,6 +1,42 @@
 # Classifarr Release Notes
 
 ## Unreleased
+**Title: Enhanced UI for Sync Status and CARSA Warnings**
+
+### What's New
+- **Real-time Sync Progress**: The Libraries page now shows live sync status and progress
+  - See which library is currently being synced
+  - Visual progress bar shows completion percentage
+  - "Sync Libraries" button is disabled during active syncs to prevent conflicts
+  - Button displays current sync status (e.g., "Syncing... 45%")
+
+- **Improved CARSA Warning Dialog**: Replaced basic confirmation with a comprehensive dialog that explains:
+  - Exactly what will be deleted (classification history, embeddings, library data)
+  - What will be preserved (policies, AI settings, Discord config, ARR connections)
+  - What will be auto-restored (Radarr/Sonarr library mappings)
+  - Note about RAG embedding rebuild
+
+- **Post-CARSA Notifications**: New warning banner appears if library mappings couldn't be restored
+  - Shows prominently on Libraries and Settings pages
+  - Quick links to configure Radarr and Sonarr settings
+  - Can be dismissed once reviewed
+
+### How It Helps
+- **Better Visibility**: No more wondering if sync is running or stuck - see real-time progress
+- **Informed Decisions**: Clear warning before CARSA helps prevent accidental data loss
+- **Faster Recovery**: If mappings fail to restore, you'll know immediately with guidance on what to check
+
+### For Users
+After updating:
+1. Navigate to Libraries page - you'll see the new sync status display
+2. Try running "Sync Libraries" - watch the progress bar update in real-time
+3. Go to Settings → Queue → Advanced Operations
+4. Click "Clear & Re-sync All" to see the new comprehensive warning dialog
+5. If any library mappings can't be restored after CARSA, you'll see a warning banner with quick links to fix them
+
+---
+
+## Previous Release
 **Title: Smart Preservation of Radarr/Sonarr Library Mappings During CARSA**
 
 ### What's Fixed

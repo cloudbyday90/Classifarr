@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Frontend Sync Status UI** (Fixes #178)
+  - New `useSyncStatusStore` Pinia store for centralized sync status tracking
+  - Real-time sync progress display in Libraries view with progress bar
+  - Sync button now shows current sync status and disables during active operations
+  - Polling mechanism updates UI every 2 seconds during sync operations
+  - Visual feedback for sync type (library_sync vs full_resync)
+
+- **CARSA Warning Dialog** (Fixes #178)
+  - New `ClearResyncDialog.vue` component with comprehensive warning information
+  - Detailed explanation of what will be deleted vs. preserved
+  - Replaces basic browser confirm() dialog in Queue settings
+  - Clear visual hierarchy for warning, preserved settings, and notes
+
+- **Post-CARSA Notification Banner** (Fixes #178)
+  - New `MappingWarningBanner.vue` component for displaying mapping warnings
+  - Automatically shown after CARSA if library mappings need attention
+  - Quick navigation to Radarr/Sonarr settings pages
+  - Dismissible with API integration for notification management
+  - Displayed on Libraries and Settings views
+
 - **Library Mapping Preservation During CARSA** (Fixes #177)
   - Automatic preservation and restoration of Radarr/Sonarr library mappings during "Clear and Re-sync All" (CARSA)
   - Smart matching system using priority-based lookup:
