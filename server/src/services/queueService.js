@@ -1223,7 +1223,7 @@ class QueueService {
 
             for (const lib of result.rows) {
                 // Index by external_id (most reliable)
-                if (lib.external_id) {
+                if (lib.external_id && lib.media_server_type) {
                     const key = `${lib.media_server_type}:${lib.external_id}`;
                     lookup.byExternalId[key] = lib.id;
                 }
@@ -1309,7 +1309,7 @@ class QueueService {
                 if (newLibraryId) {
                     // Recreate the mapping with new library_id
                     await db.query(
-                        `INSERT INTO library_arr_mappings 
+                         `INSERT INTO library_arr_mappings 
                          (library_id, arr_type, arr_config_id, arr_root_folder_id, arr_root_folder_path, 
                           quality_profile_id, plex_path_prefix, arr_path_prefix, classifarr_path_prefix)
                          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -1319,6 +1319,9 @@ class QueueService {
                             arr_root_folder_id = EXCLUDED.arr_root_folder_id,
                             arr_root_folder_path = EXCLUDED.arr_root_folder_path,
                             quality_profile_id = EXCLUDED.quality_profile_id,
+                            plex_path_prefix = EXCLUDED.plex_path_prefix,
+                            arr_path_prefix = EXCLUDED.arr_path_prefix,
+                            classifarr_path_prefix = EXCLUDED.classifarr_path_prefix,
                             updated_at = NOW()`,
                         [
                             newLibraryId,
@@ -1636,6 +1639,21 @@ class QueueService {
                 } catch (err) {
                     logger.error('Failed to run library sync after clear', { error: err.message });
                     syncStatus.stop();
+                    
+                    // Create error notification for user
+                    try {
+                        await db.query(`
+                            INSERT INTO app_notifications (type, title, message, data, created_at)
+                            VALUES ($1, $2, $3, $4, NOW())
+                        `, [
+                            'error',
+                            'Library sync failed after CARSA',
+                            'Failed to complete library re-sync and mapping restoration after Clear and Re-sync All. Please check logs and try again.',
+                            JSON.stringify({ error: err.message, timestamp: new Date().toISOString() })
+                        ]);
+                    } catch (notifErr) {
+                        logger.error('Failed to create error notification', { error: notifErr.message });
+                    }
                 }
             })();
 

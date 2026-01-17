@@ -789,6 +789,116 @@ describe('QueueService', () => {
             });
         });
 
+        describe('NULL handling in library matching', () => {
+            describe('buildNewLibraryLookup', () => {
+                it('should skip libraries with NULL media_server_type when building external_id lookup', async () => {
+                    db.query.mockResolvedValueOnce({
+                        rows: [
+                            {
+                                id: 10,
+                                name: 'Movies',
+                                media_type: 'movie',
+                                external_id: 'plex-123',
+                                media_server_type: 'plex'
+                            },
+                            {
+                                id: 20,
+                                name: 'Orphaned Library',
+                                media_type: 'movie',
+                                external_id: 'orphan-456',
+                                media_server_type: null // No media server
+                            }
+                        ]
+                    });
+
+                    const lookup = await queueService.buildNewLibraryLookup();
+
+                    // Should have external_id entry for plex library only
+                    expect(lookup.byExternalId['plex:plex-123']).toBe(10);
+                    expect(lookup.byExternalId['null:orphan-456']).toBeUndefined();
+                    expect(lookup.byExternalId['undefined:orphan-456']).toBeUndefined();
+                    
+                    // Both should be in name lookup
+                    expect(lookup.byNameType['movies|movie']).toBe(10);
+                    expect(lookup.byNameType['orphaned library|movie']).toBe(20);
+                });
+
+                it('should skip libraries with NULL external_id when building external_id lookup', async () => {
+                    db.query.mockResolvedValueOnce({
+                        rows: [
+                            {
+                                id: 10,
+                                name: 'Movies',
+                                media_type: 'movie',
+                                external_id: null, // No external ID
+                                media_server_type: 'plex'
+                            }
+                        ]
+                    });
+
+                    const lookup = await queueService.buildNewLibraryLookup();
+
+                    // Should not have external_id entry
+                    expect(Object.keys(lookup.byExternalId)).toHaveLength(0);
+                    
+                    // Should still be in name lookup
+                    expect(lookup.byNameType['movies|movie']).toBe(10);
+                });
+            });
+
+            describe('findNewLibraryId', () => {
+                const newLookup = {
+                    byExternalId: {
+                        'plex:plex-123': 10
+                    },
+                    byNameType: {
+                        'movies|movie': 10
+                    }
+                };
+
+                it('should fallback to name+type when media_server_type is NULL', () => {
+                    const oldLibInfo = {
+                        name: 'Movies',
+                        media_type: 'movie',
+                        external_id: 'plex-123',
+                        media_server_type: null // NULL media server type
+                    };
+
+                    const newId = queueService.findNewLibraryId(oldLibInfo, newLookup);
+
+                    // Should match by name+type instead
+                    expect(newId).toBe(10);
+                });
+
+                it('should fallback to name+type when external_id is NULL', () => {
+                    const oldLibInfo = {
+                        name: 'Movies',
+                        media_type: 'movie',
+                        external_id: null, // NULL external ID
+                        media_server_type: 'plex'
+                    };
+
+                    const newId = queueService.findNewLibraryId(oldLibInfo, newLookup);
+
+                    // Should match by name+type instead
+                    expect(newId).toBe(10);
+                });
+
+                it('should return null when both external_id and name+type fail to match', () => {
+                    const oldLibInfo = {
+                        name: 'Deleted Library',
+                        media_type: 'movie',
+                        external_id: null,
+                        media_server_type: null
+                    };
+
+                    const newId = queueService.findNewLibraryId(oldLibInfo, newLookup);
+
+                    expect(newId).toBeNull();
+                });
+            });
+        });
+
         describe('clearAndResync with mapping preservation', () => {
             it('should preserve library mappings during CARSA', async () => {
                 // Mock library snapshot
