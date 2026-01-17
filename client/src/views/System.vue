@@ -18,34 +18,140 @@
       <template #header>
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-semibold">Health Status</h2>
-          <Button variant="secondary" size="sm" @click="refreshHealth">
+          <Button variant="secondary" size="sm" @click="refreshHealth" :disabled="refreshing">
             <ArrowPathIcon class="w-4 h-4 mr-2" :class="{ 'animate-spin': refreshing }" />
             Refresh
           </Button>
         </div>
       </template>
 
-      <div v-if="loadingHealth" class="text-center py-8">
-        <Spinner />
-        <p class="text-gray-400 mt-2">Checking health...</p>
+      <!-- Error Banner -->
+      <div v-if="error" class="p-4 bg-red-900/30 border border-red-700 rounded-lg mb-4">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">⚠️</span>
+          <div class="flex-1">
+            <div class="font-semibold text-red-400">Failed to load health status</div>
+            <div class="text-sm text-gray-400">{{ error }}</div>
+          </div>
+          <button @click="refreshHealth" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+            Retry
+          </button>
+        </div>
       </div>
 
+      <!-- Overall Status Banner -->
+      <div v-if="overallHealth && !loadingHealth" class="p-4 rounded-lg border transition-all mb-4"
+           :class="[getStatusConfig(overallHealth.status).bgClass, getStatusConfig(overallHealth.status).borderClass]">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-4xl">{{ getStatusConfig(overallHealth.status).icon }}</span>
+            <div>
+              <div class="text-xl font-semibold">{{ overallHealth.message }}</div>
+              <div class="text-sm opacity-90 mt-1">
+                {{ overallHealth.healthy }} of {{ overallHealth.total }} services operational
+                <span v-if="lastUpdated" class="text-xs ml-2">• {{ formatLastUpdated(lastUpdated) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter/Search Section -->
+      <div class="flex gap-3 mb-4">
+        <input v-model="searchQuery" placeholder="Search services..." aria-label="Search services"
+               class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" />
+        <select v-model="statusFilter" aria-label="Filter by status"
+                class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500">
+          <option value="">All Status</option>
+          <option value="healthy">Healthy Only</option>
+          <option value="degraded">Degraded Only</option>
+          <option value="unhealthy">Issues Only</option>
+          <option value="not_configured">Not Configured</option>
+        </select>
+      </div>
+
+      <!-- Loading Skeleton -->
+      <div v-if="loadingHealth && !healthServices.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div v-for="i in 9" :key="i" class="p-4 bg-background-light rounded-lg border border-gray-700 animate-pulse">
+          <div class="h-4 bg-gray-700 rounded w-3/4 mb-3"></div>
+          <div class="h-3 bg-gray-800 rounded w-1/2 mb-2"></div>
+          <div class="h-3 bg-gray-800 rounded w-2/3"></div>
+        </div>
+      </div>
+
+      <!-- Service Cards -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div 
-          v-for="service in healthServices"
+          v-for="service in filteredServices"
           :key="service.name"
-          class="p-4 bg-background-light rounded-lg border border-gray-700"
+          v-tooltip="getServiceTooltip(service)"
+          class="p-4 bg-background-light rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
         >
           <div class="flex items-center justify-between mb-2">
-            <h3 class="font-medium">{{ service.name }}</h3>
-            <Badge :variant="getHealthBadgeVariant(service.status)">
-              {{ service.status }}
-            </Badge>
+            <div class="flex items-center gap-2">
+              <span class="text-xl">{{ getServiceIcon(service.name) }}</span>
+              <h3 class="font-medium">{{ service.name }}</h3>
+            </div>
+            <div class="flex items-center gap-1">
+              <span :class="getStatusConfig(service.status).dotClass" class="w-2 h-2 rounded-full"></span>
+              <Badge :variant="getStatusConfig(service.status).badgeVariant">
+                {{ getStatusConfig(service.status).label }}
+              </Badge>
+            </div>
           </div>
           <p class="text-sm text-gray-400">{{ service.description }}</p>
-          <div v-if="service.responseTime || service.lastCheck" class="mt-2 flex items-center gap-3 text-xs text-gray-500">
-            <span v-if="service.responseTime">{{ service.responseTime }}ms</span>
+          
+          <!-- Latency and Last Check -->
+          <div v-if="service.responseTime != null || service.lastCheck" class="mt-2 flex items-center gap-3 text-xs text-gray-500">
+            <span v-if="service.responseTime != null" :class="getLatencyClass(service.responseTime)">
+              {{ service.responseTime }}ms
+            </span>
             <span v-if="service.lastCheck">{{ formatLastCheck(service.lastCheck) }}</span>
+          </div>
+
+          <!-- Queue Worker Metadata -->
+          <div v-if="service.key === 'queueWorker' && service.metadata" class="mt-2 text-xs text-gray-400">
+            <div>Processing: {{ service.metadata.processing || 0 }}</div>
+            <div>Pending: {{ service.metadata.pending || 0 }}</div>
+          </div>
+
+          <!-- Error Details -->
+          <div v-if="service.error" class="mt-2 p-2 bg-red-900/20 border border-red-800 rounded text-xs text-red-400">
+            {{ service.error }}
+          </div>
+
+          <!-- Instance Details for Radarr/Sonarr -->
+          <div v-if="service.instances && service.instances.length > 0" class="mt-3">
+            <button 
+              @click="toggleInstanceDetails(service.key)"
+              class="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              :aria-expanded="expandedServices.has(service.key)"
+              :aria-label="`${expandedServices.has(service.key) ? 'Collapse' : 'Expand'} ${service.instances.length} instance${service.instances.length > 1 ? 's' : ''}`"
+            >
+              {{ expandedServices.has(service.key) ? '▼' : '▶' }} 
+              {{ service.instances.length }} instance{{ service.instances.length > 1 ? 's' : '' }}
+            </button>
+            
+            <div v-if="expandedServices.has(service.key)" class="mt-2 space-y-2">
+              <div 
+                v-for="instance in service.instances" 
+                :key="instance.id"
+                class="p-2 bg-gray-800 rounded border border-gray-700 text-xs"
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium">{{ instance.name }}</span>
+                  <Badge :variant="getHealthBadgeVariant(instance.status)">
+                    {{ instance.status }}
+                  </Badge>
+                </div>
+                <div v-if="instance.responseTime != null" :class="getLatencyClass(instance.responseTime)">
+                  {{ instance.responseTime }}ms
+                </div>
+                <div v-if="instance.error" class="text-red-400 mt-1">
+                  {{ instance.error }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -141,18 +247,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import api from '@/api'
+import { getServiceIcon } from '@/utils/serviceIcons'
+import { getStatusConfig, getLatencyClass, getOverallHealth } from '@/utils/healthStatus'
+
+// Auto-refresh interval (30 seconds)
+const AUTO_REFRESH_INTERVAL_MS = 30000
 
 const loadingHealth = ref(true)
 const loadingStatus = ref(true)
 const refreshing = ref(false)
 const healthDetails = ref(null)
+const error = ref(null)
+const lastUpdated = ref(null)
+const searchQuery = ref('')
+const statusFilter = ref('')
+const expandedServices = ref(new Set())
+let autoRefreshInterval = null
 
 const healthServices = ref([
   { name: 'Database', key: 'database', status: 'unknown', description: 'PostgreSQL connection', responseTime: null, lastCheck: null },
@@ -160,6 +277,7 @@ const healthServices = ref([
   { name: 'Radarr', key: 'radarr', status: 'unknown', description: 'Movie management', responseTime: null, lastCheck: null },
   { name: 'Sonarr', key: 'sonarr', status: 'unknown', description: 'TV show management', responseTime: null, lastCheck: null },
   { name: 'AI Provider', key: 'ollama', status: 'unknown', description: 'Ollama/OpenAI/Anthropic', responseTime: null, lastCheck: null },
+  { name: 'Queue Worker', key: 'queueWorker', status: 'unknown', description: 'Task processing', responseTime: null, lastCheck: null },
   { name: 'TMDB', key: 'tmdb', status: 'unknown', description: 'Movie/TV metadata', responseTime: null, lastCheck: null },
   { name: 'OMDb', key: 'omdb', status: 'unknown', description: 'Movie/TV enrichment', responseTime: null, lastCheck: null },
   { name: 'Discord Bot', key: 'discordBot', status: 'unknown', description: 'Notifications', responseTime: null, lastCheck: null },
@@ -175,7 +293,50 @@ const systemStatus = ref({
   memoryUsage: { heapUsed: 0 }
 })
 
-const loadHealth = async () => {
+const overallHealth = computed(() => {
+  return getOverallHealth(healthServices.value)
+})
+
+const filteredServices = computed(() => {
+  let services = healthServices.value
+  
+  // Filter by search query
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    services = services.filter(s => 
+      s.name.toLowerCase().includes(query) ||
+      s.description.toLowerCase().includes(query)
+    )
+  }
+  
+  // Filter by status
+  if (statusFilter.value) {
+    services = services.filter(s => s.status === statusFilter.value)
+  }
+  
+  return services
+})
+
+const normalizeStatus = (status) => {
+  if (!status) return 'unknown'
+  const statusLower = status.toLowerCase()
+  
+  // Map old status values to new canonical values
+  if (statusLower === 'connected') return 'healthy'
+  if (statusLower === 'partial') return 'degraded'
+  if (statusLower === 'configured') return 'degraded'
+  if (statusLower === 'disconnected' || statusLower === 'error') return 'unhealthy'
+  if (statusLower === 'not configured') return 'not_configured'
+  
+  return status
+}
+
+const loadHealth = async (silent = false) => {
+  if (!silent) {
+    loadingHealth.value = true
+  }
+  error.value = null
+  
   try {
     const response = await api.getSystemHealth()
     
@@ -187,79 +348,103 @@ const loadHealth = async () => {
         { 
           name: 'Database', 
           key: 'database',
-          status: statusMap.database || 'unknown', 
+          status: normalizeStatus(statusMap.database), 
           description: 'PostgreSQL connection',
           responseTime: healthDetails.value.database?.responseTime,
-          lastCheck: healthDetails.value.database?.lastCheck
+          lastCheck: healthDetails.value.database?.lastCheck,
+          error: healthDetails.value.database?.error
         },
         { 
           name: 'Media Server', 
           key: 'mediaServer',
-          status: statusMap.mediaServer || 'unknown', 
+          status: normalizeStatus(statusMap.mediaServer), 
           description: healthDetails.value.mediaServer?.type ? `${healthDetails.value.mediaServer.type} - ${healthDetails.value.mediaServer.name || ''}` : 'Plex/Jellyfin/Emby',
           responseTime: healthDetails.value.mediaServer?.responseTime,
-          lastCheck: healthDetails.value.mediaServer?.lastCheck
+          lastCheck: healthDetails.value.mediaServer?.lastCheck,
+          error: healthDetails.value.mediaServer?.error
         },
         { 
           name: 'Radarr', 
           key: 'radarr',
-          status: statusMap.radarr || 'unknown', 
+          status: normalizeStatus(statusMap.radarr), 
           description: healthDetails.value.radarr?.instances?.length ? `${healthDetails.value.radarr.instances.length} instance(s)` : 'Movie management',
           responseTime: healthDetails.value.radarr?.responseTime,
-          lastCheck: healthDetails.value.radarr?.lastCheck
+          lastCheck: healthDetails.value.radarr?.lastCheck,
+          instances: healthDetails.value.radarr?.instances || [],
+          error: healthDetails.value.radarr?.error
         },
         { 
           name: 'Sonarr', 
           key: 'sonarr',
-          status: statusMap.sonarr || 'unknown', 
+          status: normalizeStatus(statusMap.sonarr), 
           description: healthDetails.value.sonarr?.instances?.length ? `${healthDetails.value.sonarr.instances.length} instance(s)` : 'TV show management',
           responseTime: healthDetails.value.sonarr?.responseTime,
-          lastCheck: healthDetails.value.sonarr?.lastCheck
+          lastCheck: healthDetails.value.sonarr?.lastCheck,
+          instances: healthDetails.value.sonarr?.instances || [],
+          error: healthDetails.value.sonarr?.error
         },
         { 
           name: 'AI Provider', 
           key: 'ollama',
-          status: statusMap.ollama || 'unknown', 
+          status: normalizeStatus(statusMap.ollama), 
           description: healthDetails.value.ollama?.provider ? healthDetails.value.ollama.provider : 'Ollama/OpenAI/Anthropic',
           responseTime: healthDetails.value.ollama?.responseTime,
-          lastCheck: healthDetails.value.ollama?.lastCheck
+          lastCheck: healthDetails.value.ollama?.lastCheck,
+          error: healthDetails.value.ollama?.error
+        },
+        { 
+          name: 'Queue Worker', 
+          key: 'queueWorker',
+          status: normalizeStatus(statusMap.queueWorker), 
+          description: 'Task processing',
+          responseTime: healthDetails.value.queueWorker?.latency ?? null,
+          lastCheck: healthDetails.value.queueWorker?.timestamp,
+          error: healthDetails.value.queueWorker?.error,
+          metadata: healthDetails.value.queueWorker?.metadata
         },
         { 
           name: 'TMDB', 
           key: 'tmdb',
-          status: statusMap.tmdb || 'unknown', 
+          status: normalizeStatus(statusMap.tmdb), 
           description: 'Movie/TV metadata',
           responseTime: healthDetails.value.tmdb?.responseTime,
-          lastCheck: healthDetails.value.tmdb?.lastCheck
+          lastCheck: healthDetails.value.tmdb?.lastCheck,
+          error: healthDetails.value.tmdb?.error
         },
         { 
           name: 'OMDb', 
           key: 'omdb',
-          status: statusMap.omdb || 'unknown', 
+          status: normalizeStatus(statusMap.omdb), 
           description: 'Movie/TV enrichment',
           responseTime: healthDetails.value.omdb?.responseTime,
-          lastCheck: healthDetails.value.omdb?.lastCheck
+          lastCheck: healthDetails.value.omdb?.lastCheck,
+          error: healthDetails.value.omdb?.error
         },
         { 
           name: 'Discord Bot', 
           key: 'discordBot',
-          status: statusMap.discordBot || 'unknown', 
+          status: normalizeStatus(statusMap.discordBot), 
           description: 'Notifications',
           responseTime: healthDetails.value.discordBot?.responseTime,
-          lastCheck: healthDetails.value.discordBot?.lastCheck
+          lastCheck: healthDetails.value.discordBot?.lastCheck,
+          error: healthDetails.value.discordBot?.error
         },
         { 
           name: 'Tavily', 
           key: 'tavily',
-          status: statusMap.tavily || 'unknown', 
+          status: normalizeStatus(statusMap.tavily), 
           description: 'Web search (optional)',
           responseTime: healthDetails.value.tavily?.responseTime,
-          lastCheck: healthDetails.value.tavily?.lastCheck
+          lastCheck: healthDetails.value.tavily?.lastCheck,
+          error: healthDetails.value.tavily?.error
         },
       ]
+      
+      lastUpdated.value = new Date()
     }
-  } catch (error) {
-    console.error('Failed to load health status:', error)
+  } catch (err) {
+    console.error('Failed to load health status:', err)
+    error.value = err.message || 'Failed to load health status'
   } finally {
     loadingHealth.value = false
     refreshing.value = false
@@ -289,6 +474,50 @@ const refreshHealth = async () => {
     // Fallback to regular load
   }
   await loadHealth()
+}
+
+const toggleInstanceDetails = (serviceKey) => {
+  if (expandedServices.value.has(serviceKey)) {
+    expandedServices.value.delete(serviceKey)
+  } else {
+    expandedServices.value.add(serviceKey)
+  }
+  // Force reactivity
+  expandedServices.value = new Set(expandedServices.value)
+}
+
+// TODO: Implement connection test
+// const testConnection = (serviceKey) => {
+//   console.log('Test connection for:', serviceKey)
+// }
+
+// TODO: Implement log viewer
+// const viewLogs = (serviceKey) => {
+//   console.log('View logs for:', serviceKey)
+// }
+
+const getServiceTooltip = (service) => {
+  let tooltip = `${service.name}\nStatus: ${getStatusConfig(service.status).label}`
+  if (service.responseTime != null) {
+    tooltip += `\nLatency: ${service.responseTime}ms`
+  }
+  if (service.lastCheck) {
+    tooltip += `\nLast Check: ${formatLastCheck(service.lastCheck)}`
+  }
+  return tooltip
+}
+
+const formatLastUpdated = (date) => {
+  if (!date) return ''
+  const now = new Date()
+  const diffMs = now - date
+  const diffSecs = Math.floor(diffMs / 1000)
+  
+  if (diffSecs < 10) return 'just now'
+  if (diffSecs < 60) return `${diffSecs}s ago`
+  const diffMins = Math.floor(diffSecs / 60)
+  if (diffMins < 60) return `${diffMins}m ago`
+  return formatLastCheck(date.toISOString())
 }
 
 const getHealthBadgeVariant = (status) => {
@@ -336,5 +565,17 @@ const formatMemory = (bytes) => {
 onMounted(() => {
   loadHealth()
   loadStatus()
+  
+  // Setup auto-refresh every 30 seconds
+  autoRefreshInterval = setInterval(() => {
+    loadHealth(true)
+  }, AUTO_REFRESH_INTERVAL_MS)
+})
+
+onUnmounted(() => {
+  // Cleanup interval
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval)
+  }
 })
 </script>

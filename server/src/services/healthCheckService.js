@@ -33,6 +33,12 @@ let healthCache = {
 let heartbeatInterval = null;
 const DEFAULT_HEARTBEAT_MS = 15 * 60 * 1000;
 
+// Track start time for uptime calculation
+const startTime = Date.now();
+
+// Worker stall threshold (10 minutes)
+const WORKER_STALL_THRESHOLD_MS = 10 * 60 * 1000;
+
 /**
  * Measure response time for an async operation
  */
@@ -597,20 +603,25 @@ async function checkQueueWorker() {
     try {
         const result = await db.query(
             `SELECT
-                 SUM(CASE WHEN status = 'processing'
-                           AND started_at > NOW() - INTERVAL '5 minutes'
-                          THEN 1 ELSE 0 END) AS processing,
-                 SUM(CASE WHEN status = 'processing'
-                           AND started_at < NOW() - INTERVAL '5 minutes'
-                          THEN 1 ELSE 0 END) AS stuck
+                 SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing,
+                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+                 MAX(started_at) AS last_activity
              FROM task_queue`
         );
 
         const processingCount = parseInt(result.rows[0].processing) || 0;
-        const stuckCount = parseInt(result.rows[0].stuck) || 0;
+        const pendingCount = parseInt(result.rows[0].pending) || 0;
+        const lastActivity = result.rows[0].last_activity;
 
-        // Worker is degraded if there are stuck jobs
-        const status = stuckCount > 0 ? 'degraded' : 'connected';
+        // Check if worker is stalled (no activity in last 10 minutes with pending tasks)
+        let status = 'connected';
+        if (lastActivity) {
+            const lastActivityTime = new Date(lastActivity);
+            const stallThreshold = new Date(Date.now() - WORKER_STALL_THRESHOLD_MS);
+            if (lastActivityTime < stallThreshold && pendingCount > 0) {
+                status = 'degraded';
+            }
+        }
 
         return {
             name: 'Queue Worker',
@@ -619,7 +630,8 @@ async function checkQueueWorker() {
             timestamp: new Date().toISOString(),
             metadata: {
                 processing: processingCount,
-                stuck: stuckCount
+                pending: pendingCount,
+                lastActivity: lastActivity
             }
         };
     } catch (error) {
@@ -634,19 +646,11 @@ async function checkQueueWorker() {
 }
 
 /**
- * Get uptime in human-readable format
+ * Get uptime in seconds
  */
 function getUptime() {
-    const uptimeSeconds = Math.floor(process.uptime());
-    const days = Math.floor(uptimeSeconds / 86400);
-    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-    const seconds = uptimeSeconds % 60;
-
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    if (minutes > 0) return `${minutes}m ${seconds}s`;
-    return `${seconds}s`;
+    const uptimeMs = Date.now() - startTime;
+    return Math.floor(uptimeMs / 1000);
 }
 
 /**
