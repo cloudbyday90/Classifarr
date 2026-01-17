@@ -231,6 +231,14 @@ async function initializeServices() {
   } catch (error) {
     console.warn('Startup rating normalization check failed:', error.message);
   }
+
+  // Auto-generate default API key if none exist
+  try {
+    const apiKeyService = require('./services/apiKeyService');
+    await apiKeyService.ensureDefaultApiKey();
+  } catch (error) {
+    console.warn('Default API key generation failed:', error.message);
+  }
 }
 
 // Start server

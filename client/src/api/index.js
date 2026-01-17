@@ -708,4 +708,23 @@ export default {
   getPolicySuggestionsSummary(policyId) {
     return apiClient.get(`/suggestions/policy/${policyId}/summary`)
   },
+
+  // API Keys (Security Settings)
+  // NOTE: Full keys can be viewed again by authenticated users
+  // This is intentional - users should be able to retrieve keys they may have lost
+  getApiKeys() {
+    return apiClient.get('/keys')
+  },
+  createApiKey(data) {
+    return apiClient.post('/keys', data)
+  },
+  updateApiKey(id, data) {
+    return apiClient.patch(`/keys/${id}`, data)
+  },
+  deleteApiKey(id) {
+    return apiClient.delete(`/keys/${id}`)
+  },
+  revealApiKey(id) {
+    return apiClient.get(`/keys/${id}/reveal`)
+  },
 }

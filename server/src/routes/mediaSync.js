@@ -20,15 +20,19 @@ const express = require('express');
 const mediaSyncService = require('../services/mediaSync');
 const { createLogger } = require('../utils/logger');
 const syncStatus = require('../services/syncStatus');
+const { authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
 
 const router = express.Router();
 const logger = createLogger('mediaSync-routes');
+
+// Apply authentication to all media-sync routes
+router.use(authenticateTokenOrApiKey);
 
 /**
  * @route POST /api/media-sync/sync/:libraryId
  * @desc Trigger library sync
  */
-router.post('/sync/:libraryId', async (req, res) => {
+router.post('/sync/:libraryId', requireReadWrite, async (req, res) => {
   try {
     const { libraryId } = req.params;
     const { incremental = false, batchSize = 100 } = req.body;

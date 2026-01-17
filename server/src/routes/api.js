@@ -48,6 +48,7 @@ const suggestionsRouter = require('./suggestions');
 const migrationRouter = require('./migration');
 const ratingNormalizationRouter = require('./ratingNormalization');
 const syncRouter = require('./sync');
+const apiKeysRouter = require('./apiKeys');
 
 const router = express.Router();
 
@@ -83,6 +84,7 @@ router.use('/suggestions', suggestionsRouter);
 router.use('/migration', migrationRouter);
 router.use('/rating-normalization', ratingNormalizationRouter);
 router.use('/sync', syncRouter);
+router.use('/keys', apiKeysRouter); // API key management
 
 // Root API endpoint
 router.get('/', (req, res) => {

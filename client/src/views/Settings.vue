@@ -115,6 +115,7 @@ import Tavily from './settings/Tavily.vue'
 import OMDb from './settings/OMDb.vue'
 import RatingNormalization from './settings/RatingNormalization.vue'
 import RAGSettings from './RAGSettings.vue'
+import Security from './settings/Security.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -165,6 +166,7 @@ const settingsGroups = [
   {
     name: 'System',
     tabs: [
+      { id: 'security', label: 'Security', icon: '🔑', component: Security },
       { id: 'backup', label: 'Backup', icon: '💾', component: Backup },
       { id: 'ssl', label: 'SSL/HTTPS', icon: '🔒', component: SSL },
       { id: 'logs', label: 'Logs', icon: '📝', component: Logs },

@@ -26,9 +26,13 @@ const ollamaService = require('../services/ollama');
 const mediaPatternAnalyzer = require('../services/mediaPatternAnalyzer');
 const libraryProfileService = require('../services/libraryProfileService');
 const { createLogger } = require('../utils/logger');
+const { authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
 
 const router = express.Router();
 const logger = createLogger('libraries');
+
+// Apply authentication to all library routes
+router.use(authenticateTokenOrApiKey);
 
 /**
  * @swagger
@@ -128,7 +132,7 @@ router.get('/:id', async (req, res) => {
  *   put:
  *     summary: Update library configuration
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, event_detection_type, event_sub_type } = req.body;
@@ -190,7 +194,7 @@ router.get('/:id/labels', async (req, res) => {
  *   post:
  *     summary: Assign label to library
  */
-router.post('/:id/labels', async (req, res) => {
+router.post('/:id/labels', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
     const { label_preset_id, rule_type } = req.body;
@@ -216,7 +220,7 @@ router.post('/:id/labels', async (req, res) => {
  *   delete:
  *     summary: Remove label from library
  */
-router.delete('/:id/labels/:labelId', async (req, res) => {
+router.delete('/:id/labels/:labelId', requireReadWrite, async (req, res) => {
   try {
     const { id, labelId } = req.params;
 
@@ -330,7 +334,7 @@ router.get('/:id/arr-options', async (req, res) => {
  *   put:
  *     summary: Update ARR settings for library
  */
-router.put('/:id/arr-settings', async (req, res) => {
+router.put('/:id/arr-settings', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
     const { settings } = req.body;
@@ -370,7 +374,7 @@ router.put('/:id/arr-settings', async (req, res) => {
  *   post:
  *     summary: Sync profiles from Radarr/Sonarr to cache table
  */
-router.post('/sync-arr-profiles', async (req, res) => {
+router.post('/sync-arr-profiles', requireReadWrite, async (req, res) => {
   try {
     let syncedCount = 0;
 
@@ -583,7 +587,7 @@ router.get('/event-types', async (req, res) => {
  *   post:
  *     summary: Trigger library sync
  */
-router.post('/:id/sync', async (req, res) => {
+router.post('/:id/sync', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
     const { incremental = false, batchSize = 100 } = req.body;
@@ -640,7 +644,7 @@ router.get('/:id/rules', async (req, res) => {
  *   post:
  *     summary: Add a new rule to a library (unified format)
  */
-router.post('/:id/rules', async (req, res) => {
+router.post('/:id/rules', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, conditions, is_active = true, priority = 0 } = req.body;
@@ -699,7 +703,7 @@ router.get('/:id/rules/debug-insert', async (req, res) => {
  *   put:
  *     summary: Update a library rule
  */
-router.put('/:id/rules/:ruleId', async (req, res) => {
+router.put('/:id/rules/:ruleId', requireReadWrite, async (req, res) => {
   try {
     const { id, ruleId } = req.params;
     const { name, description, conditions, is_active, priority } = req.body;
@@ -734,7 +738,7 @@ router.put('/:id/rules/:ruleId', async (req, res) => {
  *   delete:
  *     summary: Delete a library rule
  */
-router.delete('/:id/rules/:ruleId', async (req, res) => {
+router.delete('/:id/rules/:ruleId', requireReadWrite, async (req, res) => {
   try {
     const { id, ruleId } = req.params;
 
@@ -1299,7 +1303,7 @@ Valid operators: equals, contains, includes`;
  * Auto-generate rules based on library name
  * Called automatically when libraries are synced from Plex
  */
-router.post('/:id/rules/auto-generate', async (req, res) => {
+router.post('/:id/rules/auto-generate', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1461,7 +1465,7 @@ router.post('/:id/rules/auto-generate', async (req, res) => {
 /**
  * Auto-generate rules for ALL libraries based on their names
  */
-router.post('/auto-generate-all', async (req, res) => {
+router.post('/auto-generate-all', requireReadWrite, async (req, res) => {
   try {
     const libraries = await db.query('SELECT id FROM libraries WHERE is_active = true');
     let totalCreated = 0;
@@ -1573,7 +1577,7 @@ router.get('/:id/available-patterns', async (req, res) => {
  *   post:
  *     summary: Dismiss pending suggestions for a library
  */
-router.post('/:id/dismiss-suggestions', async (req, res) => {
+router.post('/:id/dismiss-suggestions', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1597,7 +1601,7 @@ router.post('/:id/dismiss-suggestions', async (req, res) => {
  *   post:
  *     summary: Trigger pattern re-analysis for a library
  */
-router.post('/:id/refresh-patterns', async (req, res) => {
+router.post('/:id/refresh-patterns', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1657,7 +1661,7 @@ router.get('/:id/dismissed-patterns', async (req, res) => {
  *   post:
  *     summary: Dismiss a specific pattern suggestion
  */
-router.post('/:id/dismiss-pattern', async (req, res) => {
+router.post('/:id/dismiss-pattern', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
     const { patternType, patternValue } = req.body;
@@ -1694,7 +1698,7 @@ router.post('/:id/dismiss-pattern', async (req, res) => {
  *   post:
  *     summary: Restore a previously dismissed pattern
  */
-router.post('/:id/restore-pattern', async (req, res) => {
+router.post('/:id/restore-pattern', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
     const { patternType, patternValue } = req.body;
@@ -1761,7 +1765,7 @@ router.get('/:id/profile', async (req, res) => {
  *     summary: Regenerate library profile
  *     description: Force regeneration of the library profile from current synced items
  */
-router.post('/:id/profile/refresh', async (req, res) => {
+router.post('/:id/profile/refresh', requireReadWrite, async (req, res) => {
   try {
     const { id } = req.params;
 
