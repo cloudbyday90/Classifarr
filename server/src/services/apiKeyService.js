@@ -23,7 +23,20 @@ const db = require('../config/database');
 // NOTE: We use encryption (not hashing) so authenticated users can view their keys again
 // This is different from password hashing - API keys need to be retrievable
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
-const ENCRYPTION_KEY = process.env.API_KEY_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+
+// IMPORTANT: Set API_KEY_ENCRYPTION_KEY in environment for production
+// If not set, a random key will be generated on each restart, making old keys unrecoverable
+const ENCRYPTION_KEY = process.env.API_KEY_ENCRYPTION_KEY;
+
+if (!ENCRYPTION_KEY) {
+  console.warn('WARNING: API_KEY_ENCRYPTION_KEY not set in environment!');
+  console.warn('Using a random key - all API keys will become invalid on server restart.');
+  console.warn('Set API_KEY_ENCRYPTION_KEY to a 64-character hex string to persist keys.');
+}
+
+const ENCRYPTION_KEY_BYTES = ENCRYPTION_KEY 
+  ? Buffer.from(ENCRYPTION_KEY.slice(0, 64), 'hex')
+  : crypto.randomBytes(32);
 
 /**
  * Encrypt an API key for secure storage
@@ -34,7 +47,7 @@ function encryptApiKey(key) {
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(
     ENCRYPTION_ALGORITHM,
-    Buffer.from(ENCRYPTION_KEY.slice(0, 64), 'hex'),
+    ENCRYPTION_KEY_BYTES,
     iv
   );
   
@@ -59,7 +72,7 @@ function encryptApiKey(key) {
 function decryptApiKey(encrypted, iv, authTag) {
   const decipher = crypto.createDecipheriv(
     ENCRYPTION_ALGORITHM,
-    Buffer.from(ENCRYPTION_KEY.slice(0, 64), 'hex'),
+    ENCRYPTION_KEY_BYTES,
     Buffer.from(iv, 'hex')
   );
   
@@ -303,8 +316,10 @@ async function ensureDefaultApiKey() {
     const key = await createApiKey('Default API Key', 'read_write');
     console.log('✓ Auto-generated default API key');
     console.log(`  Prefix: ${key.key_prefix}...`);
+    // NOTE: Full key is logged here for initial setup only
+    // Users can retrieve it later via Settings → Security
     console.log(`  Full key: ${key.key}`);
-    console.log('  Save this key - it will not be shown again!');
+    console.log('  You can view this key again in Settings → Security');
     return key;
   }
   

@@ -17,6 +17,7 @@
  */
 
 const apiKeyService = require('../services/apiKeyService');
+const authService = require('../services/auth');
 
 /**
  * Middleware to authenticate API key from X-API-Key header
@@ -67,8 +68,6 @@ async function authenticateTokenOrApiKey(req, res, next) {
   }
   
   // Fall back to JWT authentication
-  const authService = require('../services/auth');
-  
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
