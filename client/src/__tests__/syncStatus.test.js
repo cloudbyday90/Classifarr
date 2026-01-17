@@ -148,11 +148,81 @@ describe('useSyncStatusStore', () => {
     api.get.mockResolvedValue({ data: { isRunning: false } })
     
     store.startPolling()
-    const intervalId = store.pollInterval
     
     store.stopPolling()
     
     expect(store.pollInterval).toBe(null)
+    
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  })
+
+  it('switches from idle to active polling when sync starts', async () => {
+    vi.useFakeTimers()
+    const store = useSyncStatusStore()
+    
+    // Initially not running
+    api.get.mockResolvedValueOnce({ data: { isRunning: false } })
+    await store.fetchStatus()
+    expect(store.isPollingActive).toBe(false)
+    
+    // Start polling in idle mode
+    store.switchToIdlePoll()
+    expect(store.isPollingActive).toBe(false)
+    
+    // Sync starts
+    api.get.mockResolvedValueOnce({ data: { isRunning: true, type: 'library_sync' } })
+    await store.fetchStatus()
+    
+    // Should switch to active polling
+    expect(store.isPollingActive).toBe(true)
+    
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  })
+
+  it('switches from active to idle polling when sync finishes', async () => {
+    vi.useFakeTimers()
+    const store = useSyncStatusStore()
+    
+    // Initially running
+    api.get.mockResolvedValueOnce({ data: { isRunning: true, type: 'library_sync' } })
+    await store.fetchStatus()
+    
+    // Start polling in active mode
+    store.switchToActivePoll()
+    expect(store.isPollingActive).toBe(true)
+    
+    // Sync finishes
+    api.get.mockResolvedValueOnce({ data: { isRunning: false } })
+    await store.fetchStatus()
+    
+    // Should switch to idle polling
+    expect(store.isPollingActive).toBe(false)
+    
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  })
+
+  it('correctly updates isPollingActive flag during transitions', async () => {
+    vi.useFakeTimers()
+    const store = useSyncStatusStore()
+    
+    // Start with idle polling
+    store.switchToIdlePoll()
+    expect(store.isPollingActive).toBe(false)
+    
+    // Switch to active
+    store.switchToActivePoll()
+    expect(store.isPollingActive).toBe(true)
+    
+    // Switch back to idle
+    store.switchToIdlePoll()
+    expect(store.isPollingActive).toBe(false)
+    
+    // Stop polling should reset flag
+    store.stopPolling()
+    expect(store.isPollingActive).toBe(false)
     
     vi.clearAllTimers()
     vi.useRealTimers()

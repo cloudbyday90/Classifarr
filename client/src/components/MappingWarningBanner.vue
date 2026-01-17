@@ -11,8 +11,8 @@
     <div class="flex items-start gap-4">
       <span class="text-2xl">⚠️</span>
       <div class="flex-1">
-        <h3 class="font-semibold text-warning mb-1">{{ notification.title }}</h3>
-        <p class="text-sm text-gray-300 mb-3">{{ notification.message }}</p>
+        <h3 class="font-semibold text-warning mb-1">{{ notification?.title }}</h3>
+        <p class="text-sm text-gray-300 mb-3">{{ notification?.message }}</p>
         <div class="flex gap-2">
           <Button size="sm" variant="warning" @click="goToRadarr">
             Configure Radarr

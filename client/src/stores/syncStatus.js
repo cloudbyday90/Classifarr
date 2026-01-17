@@ -23,7 +23,7 @@ import api from '@/api'
 export const SYNC_TYPE = {
   LIBRARY_SYNC: 'library_sync',
   FULL_RESYNC: 'full_resync',
-  INCREMENTAL: 'incremental'
+  INCREMENTAL: 'incremental' // Reserved for future incremental sync support
 }
 
 // Constants for polling intervals (in milliseconds)
