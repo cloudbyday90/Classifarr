@@ -377,16 +377,37 @@ const loadStats = async () => {
     // Single API call for all statistics
     const response = await api.get('/api/rag/detailed', { params: { hours: 24 } })
 
-    stats.value = {
-      totalEmbeddings: response.data.stats.totalEmbeddings,
-      pendingCount: response.data.stats.pendingCount,
-      failed24h: response.data.stats.failedCount,
-      avgGenerationTime: response.data.stats.avgGenerationTime
+    // Check if response has error property (API returned error with 200 status)
+    if (response.data.error) {
+      error.value = response.data.error
+      loading.value = false
+      return
     }
-    providerOnline.value = response.data.providerOnline
-    providerMetrics.value = response.data.providerMetrics
-    circuitBreaker.value = response.data.circuitBreaker
-    backfillHistory.value = response.data.backfillHistory
+
+    // Validate response structure
+    if (!response.data.stats) {
+      error.value = 'Invalid response structure from server'
+      console.error('Invalid API response:', response.data)
+      loading.value = false
+      return
+    }
+
+    stats.value = {
+      totalEmbeddings: response.data.stats.totalEmbeddings || 0,
+      pendingCount: response.data.stats.pendingCount || 0,
+      failed24h: response.data.stats.failedCount || 0,
+      avgGenerationTime: response.data.stats.avgGenerationTime || 0
+    }
+    providerOnline.value = response.data.providerOnline || false
+    providerMetrics.value = response.data.providerMetrics || {}
+    circuitBreaker.value = response.data.circuitBreaker || {
+      state: 'CLOSED',
+      failureCount: 0,
+      config: { failureThreshold: 5 },
+      lastFailureTime: null,
+      stateHistory: []
+    }
+    backfillHistory.value = response.data.backfillHistory || []
   } catch (err) {
     error.value = err.response?.data?.error || err.message || 'Unknown error'
     console.error('Failed to load stats:', err)
