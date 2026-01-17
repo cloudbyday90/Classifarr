@@ -24,6 +24,20 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Cache package version at module load time
+const packageJson = require('../../package.json');
+const APP_VERSION = packageJson.version;
+
+/**
+ * Helper function to map service status to health status
+ */
+function mapServiceStatus(status) {
+  if (status === 'connected' || status === 'configured') {
+    return 'healthy';
+  }
+  return 'unhealthy';
+}
+
 // Health check endpoints (no authentication for Kubernetes/Docker probes)
 // These must be defined BEFORE the authenticateToken middleware
 
@@ -117,12 +131,9 @@ router.get('/health', async (req, res) => {
     const dbHealth = health.database;
     const isHealthy = dbHealth.status === 'connected';
 
-    // Get package version
-    const packageJson = require('../../package.json');
-
     res.status(isHealthy ? 200 : 503).json({
       status: isHealthy ? 'healthy' : 'unhealthy',
-      version: packageJson.version,
+      version: APP_VERSION,
       uptime: healthCheckService.getUptime(),
       database: dbHealth.status,
       timestamp: new Date().toISOString()
@@ -158,7 +169,7 @@ router.get('/health/services', async (req, res) => {
     if (services.database && services.database.status !== 'not configured') {
       allServices.push({
         name: 'PostgreSQL',
-        status: services.database.status === 'connected' ? 'healthy' : 'unhealthy',
+        status: mapServiceStatus(services.database.status),
         latency: services.database.responseTime || 0,
         timestamp: services.database.lastCheck,
         error: services.database.error
@@ -169,7 +180,7 @@ router.get('/health/services', async (req, res) => {
     if (services.mediaServer && services.mediaServer.status !== 'not configured') {
       allServices.push({
         name: services.mediaServer.type || 'Media Server',
-        status: services.mediaServer.status === 'connected' ? 'healthy' : 'unhealthy',
+        status: mapServiceStatus(services.mediaServer.status),
         latency: services.mediaServer.responseTime || 0,
         timestamp: services.mediaServer.lastCheck,
         error: services.mediaServer.error
@@ -181,7 +192,7 @@ router.get('/health/services', async (req, res) => {
       services.radarr.instances.forEach(instance => {
         allServices.push({
           name: `Radarr (${instance.name})`,
-          status: instance.status === 'connected' ? 'healthy' : 'unhealthy',
+          status: mapServiceStatus(instance.status),
           latency: instance.responseTime || 0,
           timestamp: services.radarr.lastCheck,
           error: instance.error
@@ -194,7 +205,7 @@ router.get('/health/services', async (req, res) => {
       services.sonarr.instances.forEach(instance => {
         allServices.push({
           name: `Sonarr (${instance.name})`,
-          status: instance.status === 'connected' ? 'healthy' : 'unhealthy',
+          status: mapServiceStatus(instance.status),
           latency: instance.responseTime || 0,
           timestamp: services.sonarr.lastCheck,
           error: instance.error
@@ -206,8 +217,7 @@ router.get('/health/services', async (req, res) => {
     if (services.aiProvider && services.aiProvider.status !== 'not configured') {
       allServices.push({
         name: services.aiProvider.provider || 'AI Provider',
-        status: services.aiProvider.status === 'connected' ? 'healthy' : 
-                (services.aiProvider.status === 'configured' ? 'healthy' : 'unhealthy'),
+        status: mapServiceStatus(services.aiProvider.status),
         latency: services.aiProvider.responseTime || 0,
         timestamp: services.aiProvider.lastCheck,
         error: services.aiProvider.error

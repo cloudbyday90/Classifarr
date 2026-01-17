@@ -602,13 +602,29 @@ async function checkQueueWorker() {
              AND started_at > NOW() - INTERVAL '5 minutes'`
         );
 
-        const isHealthy = parseInt(result.rows[0].processing) >= 0;
+        // Check for stuck jobs (processing for more than 5 minutes)
+        const stuckJobs = await db.query(
+            `SELECT COUNT(*) as stuck
+             FROM task_queue
+             WHERE status = 'processing'
+             AND started_at < NOW() - INTERVAL '5 minutes'`
+        );
+
+        const processingCount = parseInt(result.rows[0].processing) || 0;
+        const stuckCount = parseInt(stuckJobs.rows[0].stuck) || 0;
+
+        // Worker is healthy if there are no stuck jobs
+        const isHealthy = stuckCount === 0;
 
         return {
             name: 'Queue Worker',
             status: isHealthy ? 'healthy' : 'degraded',
             latency: 0,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            metadata: {
+                processing: processingCount,
+                stuck: stuckCount
+            }
         };
     } catch (error) {
         return {
