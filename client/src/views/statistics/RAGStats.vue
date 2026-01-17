@@ -8,6 +8,33 @@
 
 <template>
   <div class="space-y-6">
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <div class="flex flex-col items-center gap-4">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <p class="text-gray-400">Loading RAG statistics...</p>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-900/20 border border-red-700 rounded-lg p-4">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">⚠️</span>
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold text-red-400 mb-1">Error Loading Statistics</h3>
+          <p class="text-sm text-gray-300">{{ error }}</p>
+          <button
+            @click="loadStats"
+            class="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content (only shown when not loading and no error) -->
+    <template v-else>
     <!-- Summary Cards -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
@@ -302,6 +329,7 @@
         </button>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
