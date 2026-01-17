@@ -15,10 +15,10 @@
       <h1 class="text-2xl font-bold">Libraries</h1>
       <Button 
         @click="syncLibraries" 
-        :disabled="!syncStore.canSync"
-        :loading="syncStore.isRunning && syncStore.type === 'library_sync'"
+        :disabled="!syncStore.canStartSync"
+        :loading="syncStore.isRunning && syncStore.type === SYNC_TYPE.LIBRARY_SYNC"
       >
-        <template v-if="syncStore.isRunning && syncStore.type === 'library_sync'">
+        <template v-if="syncStore.isRunning && syncStore.type === SYNC_TYPE.LIBRARY_SYNC">
           Syncing... {{ syncStore.progress }}%
         </template>
         <template v-else-if="syncStore.isRunning">
@@ -92,13 +92,16 @@
 import { onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useLibrariesStore } from '@/stores/libraries'
-import { useSyncStatusStore } from '@/stores/syncStatus'
+import { useSyncStatusStore, SYNC_TYPE } from '@/stores/syncStatus'
 import { useToast } from '@/stores/toast'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
 import MappingWarningBanner from '@/components/MappingWarningBanner.vue'
+
+// HTTP status codes
+const HTTP_CONFLICT = 409
 
 const librariesStore = useLibrariesStore()
 const { libraries, loading } = storeToRefs(librariesStore)
@@ -120,7 +123,7 @@ const syncLibraries = async () => {
     await api.syncMediaServer()
     await librariesStore.fetchLibraries()
   } catch (error) {
-    if (error.response?.status === 409) {
+    if (error.response?.status === HTTP_CONFLICT) {
       // Sync already running - show message
       toast.warning(error.response.data.message || 'Sync already in progress', 'Sync In Progress')
     } else {

@@ -81,27 +81,27 @@ describe('useSyncStatusStore', () => {
     consoleError.mockRestore()
   })
 
-  it('canSync getter returns true when not running', () => {
+  it('canStartSync getter returns true when not running', () => {
     const store = useSyncStatusStore()
     store.isRunning = false
     
-    expect(store.canSync).toBe(true)
+    expect(store.canStartSync).toBe(true)
   })
 
-  it('canSync getter returns false when library_sync is running', () => {
+  it('canStartSync getter returns false when library_sync is running', () => {
     const store = useSyncStatusStore()
     store.isRunning = true
     store.type = 'library_sync'
     
-    expect(store.canSync).toBe(false)
+    expect(store.canStartSync).toBe(false)
   })
 
-  it('canSync getter returns false when full_resync is running', () => {
+  it('canStartSync getter returns false when full_resync is running', () => {
     const store = useSyncStatusStore()
     store.isRunning = true
     store.type = 'full_resync'
     
-    expect(store.canSync).toBe(false)
+    expect(store.canStartSync).toBe(false)
   })
 
   it('statusText returns correct text for idle state', () => {

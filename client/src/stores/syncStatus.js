@@ -19,6 +19,19 @@
 import { defineStore } from 'pinia'
 import api from '@/api'
 
+// Constants for sync types
+export const SYNC_TYPE = {
+  LIBRARY_SYNC: 'library_sync',
+  FULL_RESYNC: 'full_resync',
+  INCREMENTAL: 'incremental'
+}
+
+// Constants for polling intervals (in milliseconds)
+const POLLING_INTERVAL = {
+  ACTIVE: 2000,  // Fast polling when sync is active
+  IDLE: 10000    // Slow polling when sync is idle
+}
+
 export const useSyncStatusStore = defineStore('syncStatus', {
   state: () => ({
     isRunning: false,
@@ -27,7 +40,8 @@ export const useSyncStatusStore = defineStore('syncStatus', {
     currentLibrary: null,
     startedAt: null,
     pollInterval: null,
-    isPollingActive: false // Track if we're already in active polling mode
+    // Track whether we're currently using fast (2s) vs slow (10s) polling interval
+    isPollingActive: false
   }),
 
   actions: {
@@ -61,7 +75,7 @@ export const useSyncStatusStore = defineStore('syncStatus', {
       this.isPollingActive = true
       this.pollInterval = setInterval(() => {
         this.fetchStatus()
-      }, 2000) // Fast polling when active
+      }, POLLING_INTERVAL.ACTIVE)
     },
 
     switchToIdlePoll() {
@@ -71,7 +85,7 @@ export const useSyncStatusStore = defineStore('syncStatus', {
       this.isPollingActive = false
       this.pollInterval = setInterval(() => {
         this.fetchStatus()
-      }, 10000) // Slow polling when idle
+      }, POLLING_INTERVAL.IDLE)
     },
 
     async startPolling() {
@@ -94,13 +108,13 @@ export const useSyncStatusStore = defineStore('syncStatus', {
   },
 
   getters: {
-    // Button is disabled during ANY active sync operation
-    // This prevents conflicts between concurrent sync operations
-    canSync: (state) => !state.isRunning,
+    // Determines if the "Sync Libraries" button should be enabled
+    // Returns false during any active sync to prevent concurrent operations
+    canStartSync: (state) => !state.isRunning,
     statusText: (state) => {
       if (!state.isRunning) return 'Idle'
-      if (state.type === 'full_resync') return 'Re-syncing...'
-      if (state.type === 'library_sync') return 'Syncing libraries...'
+      if (state.type === SYNC_TYPE.FULL_RESYNC) return 'Re-syncing...'
+      if (state.type === SYNC_TYPE.LIBRARY_SYNC) return 'Syncing libraries...'
       return 'Syncing...'
     }
   }

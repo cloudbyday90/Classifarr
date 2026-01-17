@@ -35,6 +35,9 @@ import { useRouter } from 'vue-router'
 import api from '@/api'
 import Button from '@/components/common/Button.vue'
 
+// HTTP status codes
+const HTTP_NOT_FOUND = 404
+
 const router = useRouter()
 const notification = ref(null)
 const hasWarning = ref(false)
@@ -50,9 +53,9 @@ onMounted(async () => {
       hasWarning.value = true
     }
   } catch (error) {
-    // Silently fail if notifications endpoint doesn't exist yet
-    // This is expected for installations without notification support
-    if (error.response?.status !== 404) {
+    // Expected: 404 indicates notification system not yet implemented or no notifications
+    // Unexpected: Other errors may indicate API issues that should be logged
+    if (error.response?.status !== HTTP_NOT_FOUND) {
       console.warn('Failed to fetch notifications', error)
     }
   }
