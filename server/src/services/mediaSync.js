@@ -497,7 +497,8 @@ class MediaSyncService {
 
   /**
    * Sync libraries from media server (discover/refresh library list)
-   * @returns {Promise<Array>} Array of synced library objects
+   * @returns {Promise<Array<Object>>} Array of synced library objects with properties: id, media_server_id, external_id, name, media_type, arr_type
+   * @throws {Error} If no active media server is configured or sync fails
    */
   async syncLibrariesFromMediaServer() {
     try {
@@ -511,11 +512,10 @@ class MediaSyncService {
       }
 
       const server = serverResult.rows[0];
-      let libraries;
 
       // Get libraries from media server based on type
       const service = this.getMediaServerService(server.type);
-      libraries = await service.getLibraries(server.url, server.api_key);
+      const libraries = await service.getLibraries(server.url, server.api_key);
 
       // Insert/update libraries in database
       const syncedLibraries = [];
