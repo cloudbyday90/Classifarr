@@ -24,14 +24,90 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Apply authentication to all routes
+// Cache package version at module load time
+const packageJson = require('../../package.json');
+const APP_VERSION = packageJson.version;
+
+/**
+ * Helper function to map service status to health status
+ */
+function mapServiceStatus(status) {
+  switch (status) {
+    case 'connected':
+    case 'configured':
+      return 'healthy';
+    case 'partial':
+    case 'degraded':
+      return 'degraded';
+    case 'error':
+    case 'disconnected':
+    case 'not configured':
+    case 'not_configured':
+      return 'unhealthy';
+    default:
+      return 'unknown';
+  }
+}
+
+// Health check endpoints (no authentication for Kubernetes/Docker probes)
+// These must be defined BEFORE the authenticateToken middleware
+
+/**
+ * @swagger
+ * /api/system/health/live:
+ *   get:
+ *     summary: Liveness probe for Kubernetes/Docker
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Application is alive
+ */
+router.get('/health/live', (req, res) => {
+  res.status(200).json({
+    status: 'alive',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
+ * @swagger
+ * /api/system/health/ready:
+ *   get:
+ *     summary: Readiness probe for Kubernetes/Docker
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Application is ready to serve traffic
+ *       503:
+ *         description: Application is not ready
+ */
+router.get('/health/ready', async (req, res) => {
+  try {
+    const dbHealth = await healthCheckService.checkDatabase();
+    const isReady = dbHealth.status === 'connected';
+
+    res.status(isReady ? 200 : 503).json({
+      status: isReady ? 'ready' : 'not_ready',
+      database: dbHealth.status,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'not_ready',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Apply authentication to remaining routes
 router.use(authenticateToken);
 
 /**
  * @swagger
  * /api/system/health:
  *   get:
- *     summary: Get health status of all services
+ *     summary: Get enhanced health status with overall system health
  *     tags: [System]
  *     parameters:
  *       - in: query
@@ -41,7 +117,9 @@ router.use(authenticateToken);
  *         description: "Force refresh health checks (default: use cache)"
  *     responses:
  *       200:
- *         description: Health status of all services
+ *         description: System is healthy
+ *       503:
+ *         description: System is unhealthy
  */
 router.get('/health', async (req, res) => {
   try {
@@ -61,27 +139,153 @@ router.get('/health', async (req, res) => {
       }
     }
 
-    // Format response for frontend compatibility
-    const response = {
-      database: health.database.status,
-      discordBot: health.discordBot.status,
-      ollama: health.ollama.status,
-      radarr: health.radarr.status,
-      sonarr: health.sonarr.status,
-      mediaServer: health.mediaServer.status,
-      tmdb: health.tmdb.status,
-      omdb: health.omdb?.status || 'unknown',
-      tavily: health.tavily.status,
-      // Include detailed info
-      details: health,
-      // Heartbeat status
-      heartbeatActive: healthCheckService.isHeartbeatRunning()
-    };
+    const dbHealth = health.database;
+    const isHealthy = dbHealth.status === 'connected';
 
-    res.json(response);
+    res.status(isHealthy ? 200 : 503).json({
+      status: isHealthy ? 'healthy' : 'unhealthy',
+      version: APP_VERSION,
+      uptime: healthCheckService.getUptime(),
+      database: dbHealth.status,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Health check error:', error);
-    res.status(500).json({ error: 'Failed to check system health' });
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/system/health/services:
+ *   get:
+ *     summary: Get detailed health status of all services
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Detailed service health breakdown
+ */
+router.get('/health/services', async (req, res) => {
+  try {
+    const services = await healthCheckService.getAllServicesHealth();
+    
+    // Flatten the structure for easier consumption
+    const allServices = [];
+
+    // Add database
+    if (services.database && services.database.status !== 'not configured') {
+      const dbService = {
+        name: 'PostgreSQL',
+        status: mapServiceStatus(services.database.status),
+        latency: services.database.responseTime || 0,
+        timestamp: services.database.lastCheck
+      };
+      if (services.database.error !== undefined) {
+        dbService.error = services.database.error;
+      }
+      allServices.push(dbService);
+    }
+
+    // Add media server
+    if (services.mediaServer && services.mediaServer.status !== 'not configured') {
+      const mediaService = {
+        name: services.mediaServer.type || 'Media Server',
+        status: mapServiceStatus(services.mediaServer.status),
+        latency: services.mediaServer.responseTime || 0,
+        timestamp: services.mediaServer.lastCheck
+      };
+      if (services.mediaServer.error !== undefined) {
+        mediaService.error = services.mediaServer.error;
+      }
+      allServices.push(mediaService);
+    }
+
+    // Add Radarr instances
+    if (services.radarr && services.radarr.instances && services.radarr.instances.length > 0) {
+      services.radarr.instances.forEach(instance => {
+        const radarrService = {
+          name: `Radarr (${instance.name})`,
+          status: mapServiceStatus(instance.status),
+          latency: instance.responseTime || 0,
+          timestamp: services.radarr.lastCheck
+        };
+        if (instance.error !== undefined) {
+          radarrService.error = instance.error;
+        }
+        allServices.push(radarrService);
+      });
+    }
+
+    // Add Sonarr instances
+    if (services.sonarr && services.sonarr.instances && services.sonarr.instances.length > 0) {
+      services.sonarr.instances.forEach(instance => {
+        const sonarrService = {
+          name: `Sonarr (${instance.name})`,
+          status: mapServiceStatus(instance.status),
+          latency: instance.responseTime || 0,
+          timestamp: services.sonarr.lastCheck
+        };
+        if (instance.error !== undefined) {
+          sonarrService.error = instance.error;
+        }
+        allServices.push(sonarrService);
+      });
+    }
+
+    // Add AI Provider
+    if (services.aiProvider && services.aiProvider.status !== 'not configured') {
+      const aiService = {
+        name: services.aiProvider.provider || 'AI Provider',
+        status: mapServiceStatus(services.aiProvider.status),
+        latency: services.aiProvider.responseTime || 0,
+        timestamp: services.aiProvider.lastCheck
+      };
+      if (services.aiProvider.error !== undefined) {
+        aiService.error = services.aiProvider.error;
+      }
+      allServices.push(aiService);
+    }
+
+    // Add Queue Worker
+    if (services.queueWorker) {
+      const queueWorkerService = {
+        name: services.queueWorker.name,
+        status: services.queueWorker.status,
+        latency: services.queueWorker.latency || 0,
+        timestamp: services.queueWorker.timestamp
+      };
+      if (services.queueWorker.error !== undefined) {
+        queueWorkerService.error = services.queueWorker.error;
+      }
+      allServices.push(queueWorkerService);
+    }
+
+    const healthyCount = allServices.filter(s => s.status === 'healthy').length;
+    const totalCount = allServices.length;
+
+    // Calculate overall status
+    const overallStatus = healthyCount === totalCount ? 'healthy' : 'degraded';
+
+    res.json({
+      overall: overallStatus,
+      services: allServices,
+      summary: {
+        total: totalCount,
+        healthy: healthyCount,
+        unhealthy: totalCount - healthyCount
+      },
+      timestamp: services.timestamp
+    });
+  } catch (error) {
+    console.error('Service health check error:', error);
+    res.status(500).json({
+      error: 'Failed to check service health',
+      message: error.message
+    });
   }
 });
 

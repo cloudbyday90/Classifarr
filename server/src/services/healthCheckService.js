@@ -590,6 +590,107 @@ function isHeartbeatRunning() {
     return heartbeatInterval !== null;
 }
 
+/**
+ * Check Queue Worker status
+ */
+async function checkQueueWorker() {
+    try {
+        const result = await db.query(
+            `SELECT
+                 SUM(CASE WHEN status = 'processing'
+                           AND started_at > NOW() - INTERVAL '5 minutes'
+                          THEN 1 ELSE 0 END) AS processing,
+                 SUM(CASE WHEN status = 'processing'
+                           AND started_at < NOW() - INTERVAL '5 minutes'
+                          THEN 1 ELSE 0 END) AS stuck
+             FROM task_queue`
+        );
+
+        const processingCount = parseInt(result.rows[0].processing) || 0;
+        const stuckCount = parseInt(result.rows[0].stuck) || 0;
+
+        // Worker is degraded if there are stuck jobs
+        const status = stuckCount > 0 ? 'degraded' : 'connected';
+
+        return {
+            name: 'Queue Worker',
+            status,
+            latency: 0,
+            timestamp: new Date().toISOString(),
+            metadata: {
+                processing: processingCount,
+                stuck: stuckCount
+            }
+        };
+    } catch (error) {
+        return {
+            name: 'Queue Worker',
+            status: 'disconnected',
+            latency: 0,
+            error: error.message,
+            timestamp: new Date().toISOString()
+        };
+    }
+}
+
+/**
+ * Get uptime in human-readable format
+ */
+function getUptime() {
+    const uptimeSeconds = Math.floor(process.uptime());
+    const days = Math.floor(uptimeSeconds / 86400);
+    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+    const seconds = uptimeSeconds % 60;
+
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+}
+
+/**
+ * Get all services health with caching (30 seconds TTL)
+ */
+let servicesHealthCache = null;
+let servicesHealthCacheTime = null;
+const SERVICES_CACHE_TTL = 30000; // 30 seconds
+
+async function getAllServicesHealth() {
+    const now = Date.now();
+    
+    // Return cached result if still valid
+    if (servicesHealthCache && servicesHealthCacheTime && (now - servicesHealthCacheTime) < SERVICES_CACHE_TTL) {
+        return servicesHealthCache;
+    }
+
+    // Run all checks in parallel
+    const [database, mediaServer, radarr, sonarr, aiProvider, queueWorker] = await Promise.all([
+        checkDatabase(),
+        checkMediaServer(),
+        checkRadarr(),
+        checkSonarr(),
+        checkOllama(),
+        checkQueueWorker()
+    ]);
+
+    const result = {
+        database,
+        mediaServer,
+        radarr,
+        sonarr,
+        aiProvider,
+        queueWorker,
+        timestamp: new Date().toISOString()
+    };
+
+    // Update cache
+    servicesHealthCache = result;
+    servicesHealthCacheTime = now;
+
+    return result;
+}
+
 module.exports = {
     checkDatabase,
     checkDiscordBot,
@@ -601,8 +702,11 @@ module.exports = {
     checkTMDB,
     checkOMDb,
     checkTavily,
+    checkQueueWorker,
     runAllHealthChecks,
+    getAllServicesHealth,
     getHealthCache,
+    getUptime,
     startHeartbeat,
     stopHeartbeat,
     isHeartbeatRunning
