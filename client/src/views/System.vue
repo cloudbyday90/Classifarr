@@ -151,22 +151,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Quick Actions for unhealthy/degraded services -->
-          <div v-if="service.status === 'unhealthy' || service.status === 'degraded'" class="mt-3 flex gap-2">
-            <button 
-              @click="testConnection(service.key)"
-              class="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
-            >
-              Test
-            </button>
-            <button 
-              @click="viewLogs(service.key)"
-              class="text-xs px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded transition-colors"
-            >
-              Logs
-            </button>
-          </div>
         </div>
       </div>
     </Card>
@@ -270,6 +254,9 @@ import Spinner from '@/components/common/Spinner.vue'
 import api from '@/api'
 import { getServiceIcon } from '@/utils/serviceIcons'
 import { getStatusConfig, getLatencyClass, getOverallHealth } from '@/utils/healthStatus'
+
+// Auto-refresh interval (30 seconds)
+const AUTO_REFRESH_INTERVAL_MS = 30000
 
 const loadingHealth = ref(true)
 const loadingStatus = ref(true)
@@ -497,15 +484,15 @@ const toggleInstanceDetails = (serviceKey) => {
   expandedServices.value = new Set(expandedServices.value)
 }
 
-const testConnection = (serviceKey) => {
-  // TODO: Implement connection test
-  console.log('Test connection for:', serviceKey)
-}
+// TODO: Implement connection test
+// const testConnection = (serviceKey) => {
+//   console.log('Test connection for:', serviceKey)
+// }
 
-const viewLogs = (serviceKey) => {
-  // TODO: Implement log viewer
-  console.log('View logs for:', serviceKey)
-}
+// TODO: Implement log viewer
+// const viewLogs = (serviceKey) => {
+//   console.log('View logs for:', serviceKey)
+// }
 
 const getServiceTooltip = (service) => {
   let tooltip = `${service.name}\nStatus: ${getStatusConfig(service.status).label}`
@@ -580,7 +567,7 @@ onMounted(() => {
   // Setup auto-refresh every 30 seconds
   autoRefreshInterval = setInterval(() => {
     loadHealth(true)
-  }, 30000)
+  }, AUTO_REFRESH_INTERVAL_MS)
 })
 
 onUnmounted(() => {

@@ -10,6 +10,11 @@
  * Standardized health status configuration
  * Defines canonical status values and their visual properties
  */
+
+// Latency thresholds (milliseconds)
+const LATENCY_GOOD_THRESHOLD = 100;
+const LATENCY_WARNING_THRESHOLD = 500;
+
 export const HEALTH_STATUS = {
   healthy: {
     label: 'Healthy',
@@ -77,8 +82,8 @@ export function getStatusConfig(status) {
  */
 export function getLatencyClass(latency) {
   if (latency == null || latency === undefined) return 'text-gray-500'
-  if (latency < 100) return 'text-green-500'
-  if (latency < 500) return 'text-yellow-500'
+  if (latency < LATENCY_GOOD_THRESHOLD) return 'text-green-500'
+  if (latency < LATENCY_WARNING_THRESHOLD) return 'text-yellow-500'
   return 'text-red-500'
 }
 

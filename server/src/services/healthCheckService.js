@@ -36,6 +36,9 @@ const DEFAULT_HEARTBEAT_MS = 15 * 60 * 1000;
 // Track start time for uptime calculation
 const startTime = Date.now();
 
+// Worker stall threshold (10 minutes)
+const WORKER_STALL_THRESHOLD_MS = 10 * 60 * 1000;
+
 /**
  * Measure response time for an async operation
  */
@@ -614,8 +617,8 @@ async function checkQueueWorker() {
         let status = 'connected';
         if (lastActivity) {
             const lastActivityTime = new Date(lastActivity);
-            const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-            if (lastActivityTime < tenMinutesAgo && pendingCount > 0) {
+            const stallThreshold = new Date(Date.now() - WORKER_STALL_THRESHOLD_MS);
+            if (lastActivityTime < stallThreshold && pendingCount > 0) {
                 status = 'degraded';
             }
         }

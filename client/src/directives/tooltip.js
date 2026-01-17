@@ -11,6 +11,9 @@
  * Usage: v-tooltip="'Tooltip text'"
  */
 
+// Tooltip positioning margin
+const TOOLTIP_MARGIN = 8;
+
 let tooltipElement = null
 
 function createTooltip(text) {
@@ -28,10 +31,10 @@ function positionTooltip(tooltip, targetEl) {
   
   // Position above element, centered
   const left = rect.left + (rect.width / 2) - (tooltipRect.width / 2)
-  const top = rect.top - tooltipRect.height - 8 // 8px gap
+  const top = rect.top - tooltipRect.height - TOOLTIP_MARGIN
   
-  tooltip.style.left = `${Math.max(8, left)}px`
-  tooltip.style.top = `${Math.max(8, top)}px`
+  tooltip.style.left = `${Math.max(TOOLTIP_MARGIN, left)}px`
+  tooltip.style.top = `${Math.max(TOOLTIP_MARGIN, top)}px`
   
   // Fade in
   requestAnimationFrame(() => {
