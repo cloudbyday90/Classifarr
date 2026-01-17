@@ -147,8 +147,53 @@
             <div class="flex items-center justify-between mb-3">
               <span class="text-gray-400">Method:</span>
               <Badge :variant="getMethodVariant(selectedItem.method)">
-                {{ selectedItem.method }}
+                {{ getFriendlyMethodName(selectedItem.method) }}
               </Badge>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-400">Date:</span>
+              <span class="text-gray-300">
+                {{ formatDate(selectedItem.created_at) }}
+                <span 
+                  v-if="parsedMetadata?.classification_details?.processing_time_ms" 
+                  class="text-gray-500 text-sm"
+                >
+                  ({{ (parsedMetadata.classification_details.processing_time_ms / 1000).toFixed(2) }}s)
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Source Library Indicator -->
+          <div 
+            v-if="selectedItem.method === 'source_library'" 
+            class="bg-blue-900/20 border border-blue-700 rounded-lg p-3"
+          >
+            <div class="flex items-start gap-2">
+              <span class="text-blue-400 text-lg">ℹ️</span>
+              <div class="text-sm">
+                <p class="text-blue-300">This item already exists in your media server library.</p>
+                <p class="text-blue-400/70 mt-1">No classification analysis was needed.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Signal Breakdown -->
+          <div 
+            v-if="shouldShowSignalBreakdown" 
+            class="bg-background rounded-lg p-4 border border-gray-700"
+          >
+            <h4 class="font-semibold mb-3 text-yellow-400">🔬 Classification Signals</h4>
+            <div class="space-y-1">
+              <SignalRow icon="⚙️" label="Preset"  :score="signalScores.preset"  :weight="signalWeights.preset" />
+              <SignalRow icon="📊" label="Profile" :score="signalScores.profile" :weight="signalWeights.profile" />
+              <SignalRow icon="📚" label="Pattern" :score="signalScores.pattern" :weight="signalWeights.pattern" />
+              <SignalRow icon="🧠" label="RAG"     :score="signalScores.rag"     :weight="signalWeights.rag" />
+              <SignalRow icon="📖" label="History" :score="signalScores.history" :weight="signalWeights.history" />
+            </div>
+            <div class="mt-3 pt-3 border-t border-gray-700 flex justify-between">
+              <span class="text-gray-400">Combined Score:</span>
+              <span class="font-bold text-primary">{{ selectedItem.confidence }}%</span>
             </div>
           </div>
 
@@ -193,11 +238,19 @@
             </div>
           </div>
 
-          <!-- Library Profile Panel -->
-          <LibraryProfilePanel 
-            v-if="selectedItem.library_id" 
-            :classificationId="selectedItem.id" 
-          />
+          <!-- Collapsible Library Profile Panel -->
+          <div v-if="selectedItem.library_id" class="bg-background rounded-lg border border-gray-700">
+            <button 
+              @click="showLibraryProfile = !showLibraryProfile"
+              class="w-full p-4 flex items-center justify-between text-left hover:bg-gray-800/50 transition-colors rounded-lg"
+            >
+              <span class="font-semibold text-blue-400">📊 Library Profile Used in Decision</span>
+              <span class="text-gray-400 text-sm">{{ showLibraryProfile ? '▲ Hide' : '▼ Show' }}</span>
+            </button>
+            <div v-if="showLibraryProfile" class="border-t border-gray-700">
+              <LibraryProfilePanel :classificationId="selectedItem.id" />
+            </div>
+          </div>
 
           <!-- Actions -->
           <div class="space-y-3 pt-4 border-t border-gray-700">
@@ -254,6 +307,7 @@ import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
 import BatchReclassifyModal from '@/components/BatchReclassifyModal.vue'
 import LibraryProfilePanel from '@/components/history/LibraryProfilePanel.vue'
+import SignalRow from '@/components/history/SignalRow.vue'
 
 const librariesStore = useLibrariesStore()
 const libraries = computed(() => librariesStore.libraries)
@@ -265,6 +319,7 @@ const selectedItem = ref(null)
 const correcting = ref(false)
 const correctedLibraryId = ref('')
 const submitting = ref(false)
+const showLibraryProfile = ref(false)
 
 // Batch selection state
 const selectedItems = ref([])
@@ -315,12 +370,55 @@ const parsedMetadata = computed(() => {
   }
 })
 
+const signalScores = computed(() => {
+  return parsedMetadata.value?.classification_details?.scores || null
+})
+
+const signalWeights = computed(() => {
+  return parsedMetadata.value?.classification_details?.weights || {
+    preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10
+  }
+})
+
+// Check if signal breakdown should be shown (only for policy engine methods with actual scores)
+const shouldShowSignalBreakdown = computed(() => {
+  if (!signalScores.value) return false
+  // Check if any signal has a non-zero score (indicating policy engine was used)
+  const hasNonZeroScore = Object.values(signalScores.value).some(score => score > 0)
+  return hasNonZeroScore
+})
+
+const methodDisplayNames = {
+  'policy_engine': 'Policy Engine',
+  'policy_auto': 'Policy Engine',
+  'policy_prompt': 'Policy Engine',
+  'source_library': 'Source Library',
+  'manual_classification': 'Manual',
+  'manual_correction': 'Manual',
+  'learned_pattern': 'Learned Pattern',
+  'exact_match': 'Exact Match',
+  'ai_fallback': 'AI Analysis',
+  'ai_verified': 'AI Verified',
+  'signal_calculation': 'Signal Calculation',
+  'rule_match': 'Rule Match',
+  'existing_media': 'Existing Media',
+  'holiday_detection': 'Holiday Detection',
+  'queued_for_retry': 'Queued For Retry'
+}
+
+const getFriendlyMethodName = (method) => {
+  return methodDisplayNames[method] || 
+    method?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 
+    'Unknown'
+}
+
 onMounted(async () => {
   await loadPage(1)
 })
 
 const openDetail = (item) => {
   selectedItem.value = item
+  showLibraryProfile.value = false
 }
 
 const loadPage = async (page) => {

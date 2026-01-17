@@ -49,6 +49,7 @@ const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 
 class ClassificationService {
   async classify(overseerrPayload) {
+    const startTime = Date.now(); // Track processing time
     try {
       // Record classification activity for idle detection
       idleDetector.recordActivity();
@@ -132,7 +133,7 @@ class ClassificationService {
       const result = await this.runDecisionTree(metadata, media_type);
 
       // Log to database
-      const classificationId = await this.logClassification(metadata, result);
+      const classificationId = await this.logClassification(metadata, result, startTime);
 
       // Reinforce patterns (if any were used in classification)
       if (result.signalContext && result.signalContext.patternSignals) {
@@ -1659,7 +1660,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
     };
   }
 
-  async logClassification(metadata, result) {
+  async logClassification(metadata, result, startTime = null) {
     // Extract collection_id from metadata if available
     const collectionId = metadata.collectionId || null;
     const signalsJson = result.signals ? JSON.stringify(result.signals) :
@@ -1688,6 +1689,20 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const libraryId = isAwaitingDecision ? null : (result.library?.id || null);
     const libraryName = isAwaitingDecision ? null : (result.library?.name || null);
 
+    // Build classification_details for metadata
+    const classificationDetails = {
+      policy_name: result.policyResult?.library?.policy_name || null,
+      scores: result.policyResult?.library?.scores || { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
+      weights: result.policyResult?.library?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+      processing_time_ms: startTime ? Date.now() - startTime : null
+    };
+
+    // Add classification_details to metadata
+    const enrichedMetadata = {
+      ...metadata,
+      classification_details: classificationDetails
+    };
+
     // Get library profile snapshot for completed classifications
     let profileSnapshot = null;
     if (libraryId && status === 'completed') {
@@ -1709,16 +1724,16 @@ Think step by step, then respond with ONLY one of the formats above.`;
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        RETURNING id`,
       [
-        metadata.tmdb_id,
-        metadata.media_type,
-        metadata.title,
-        metadata.year,
+        enrichedMetadata.tmdb_id,
+        enrichedMetadata.media_type,
+        enrichedMetadata.title,
+        enrichedMetadata.year,
         libraryId,
         libraryName,
         result.confidence,
         result.method,
         result.reason,
-        JSON.stringify(metadata),
+        JSON.stringify(enrichedMetadata),
         status,
         collectionId,
         signalsJson,
@@ -1737,15 +1752,14 @@ Think step by step, then respond with ONLY one of the formats above.`;
     if (result.needs_clarification) {
       logger.info('Classification pending - awaiting clarification', {
         id: classificationId,
-        title: metadata.title,
+        title: enrichedMetadata.title,
         reason: pendingReason
       });
     }
 
     // Log content analysis if available
-    if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {
-      const analysis = metadata.contentAnalysis.bestMatch;
-      await contentTypeAnalyzer.analyze(metadata, classificationId);
+    if (enrichedMetadata.contentAnalysis && enrichedMetadata.contentAnalysis.bestMatch) {
+      await contentTypeAnalyzer.analyze(enrichedMetadata, classificationId);
     }
 
     // Generate embedding for RAG (real-time mode if enabled)
@@ -1757,7 +1771,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
         // Generate immediately (critical path)
         try {
           await embeddingService.generateAndStore(classificationId, {
-            ...metadata,
+            ...enrichedMetadata,
             library_name: libraryName
           });
         } catch (embedError) {
@@ -1771,7 +1785,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
         setImmediate(async () => {
           try {
             await embeddingService.generateAndStore(classificationId, {
-              ...metadata,
+              ...enrichedMetadata,
               library_name: libraryName
             });
           } catch (embedError) {

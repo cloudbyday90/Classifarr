@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Classification Details Signal Breakdown** (Fixes #185, v0.40.0-alpha)
+  - New `SignalRow.vue` component for displaying individual classification engine signals
+  - Signal breakdown section in Classification Details popup showing all 5 engines (Preset, Profile, Pattern, RAG, History)
+  - Grayed-out display for engines that didn't contribute (score = 0) with "(not used)" label
+  - Color-coded progress bars for signal strength (green ≥80%, yellow ≥60%, orange ≥40%, red <40%)
+  - Weight multipliers displayed for each engine (e.g., ×0.35)
+  - Combined score display at bottom of signal breakdown
+  - Source library indicator for items already in media server (no classification analysis needed)
+  - Friendly method names in classification badges (e.g., "Policy Engine" instead of "policy_auto")
+  - Collapsible Library Profile Panel (defaults to collapsed for cleaner UI)
+  - Processing time display next to classification date (e.g., "2.14s")
+  - Backend stores classification_details in metadata (policy_name, scores, weights, processing_time_ms)
+  - Full transparency into how classification decisions are reached
+
 - **Dashboard UI/UX Polish and Efficiency Improvements** (Fixes #204)
   - Added comprehensive loading states with animated skeleton cards during data fetch
   - Added error state with retry button for failed API calls
