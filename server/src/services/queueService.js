@@ -13,6 +13,7 @@ const { createLogger } = require('../utils/logger');
 const classificationService = require('./classification');
 const ollamaService = require('./ollama');
 const aiRouterService = require('./aiRouter');
+const syncStatus = require('./syncStatus');
 
 const logger = createLogger('QueueService');
 
@@ -1157,6 +1158,15 @@ class QueueService {
      */
     async clearAndResync() {
         try {
+            // CARSA always runs - force stop any active sync
+            if (syncStatus.isRunning) {
+                logger.info('CARSA interrupting active sync', { type: syncStatus.type });
+                syncStatus.forceStop();
+            }
+
+            // Start CARSA sync status (marked non-interruptible for tracking purposes)
+            syncStatus.start('full_resync', false);
+
             logger.info('Starting clear and resync process...');
 
             // 1. Stop worker to prevent race conditions with active tasks
@@ -1167,8 +1177,12 @@ class QueueService {
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
+            syncStatus.updateProgress(10, 'Stopping worker...');
+
             // 2. Clear task queue
             const queueResult = await db.query('DELETE FROM task_queue RETURNING id');
+
+            syncStatus.updateProgress(20, 'Clearing task queue...');
 
             // 3. Clear content_analysis_log first (references classification_history)
             await db.query('DELETE FROM content_analysis_log');
@@ -1176,12 +1190,18 @@ class QueueService {
             // 4. Clear classification_embeddings BEFORE classification_history (FK dependency)
             const embeddingsResult = await db.query('DELETE FROM classification_embeddings RETURNING id');
 
+            syncStatus.updateProgress(30, 'Clearing embeddings...');
+
             // 5. Clear classification history
             const historyResult = await db.query('DELETE FROM classification_history RETURNING id');
+
+            syncStatus.updateProgress(40, 'Clearing classification history...');
 
             // 6. Clear learning patterns and corrections (full reset)
             const patternsResult = await db.query('DELETE FROM learning_patterns RETURNING id');
             const correctionsResult = await db.query('DELETE FROM classification_corrections RETURNING id');
+
+            syncStatus.updateProgress(50, 'Clearing learning data...');
 
             // 7. Clear ALL library classification rules
             const rulesV2Result = await db.query('DELETE FROM library_rules_v2 RETURNING id');
@@ -1189,6 +1209,8 @@ class QueueService {
 
             // 8. Clear library pattern suggestions (Available Library Filters)
             await db.query('DELETE FROM library_pattern_suggestions');
+
+            syncStatus.updateProgress(60, 'Clearing library rules...');
 
             // 9. Clear library_profiles (references libraries)
             await db.query('DELETE FROM library_profiles');
@@ -1198,6 +1220,8 @@ class QueueService {
 
             // 11. Clear media_server_items (references libraries)
             const itemsResult = await db.query('DELETE FROM media_server_items RETURNING id');
+
+            syncStatus.updateProgress(70, 'Clearing media items...');
 
             // 12. Clear libraries LAST (parent table)
             const librariesResult = await db.query('DELETE FROM libraries RETURNING id');
@@ -1217,10 +1241,14 @@ class QueueService {
             // 13. Clear in-memory caches
             this.omdbLimitHit = false; // Reset OMDb limit flag for fresh start
             
+            syncStatus.updateProgress(75, 'Restarting worker...');
+
             // 14. Restart worker if it was running
             if (wasRunning) {
                 this.startWorker();
             }
+
+            syncStatus.updateProgress(80, 'Starting fresh sync...');
 
             // 15. Trigger FRESH library sync from media server
             // This runs in background so we don't block the response
@@ -1234,12 +1262,18 @@ class QueueService {
 
                     logger.info('Fresh library sync completed after clear');
 
+                    syncStatus.updateProgress(90, 'Running gap analysis...');
+
                     // Run gap analysis with new library IDs
                     await scheduler.runGapAnalysis();
 
                     logger.info('Gap analysis triggered after clear');
+
+                    syncStatus.updateProgress(100, 'Complete');
+                    syncStatus.stop();
                 } catch (err) {
                     logger.error('Failed to run library sync after clear', { error: err.message });
+                    syncStatus.stop();
                 }
             })();
 
@@ -1259,6 +1293,7 @@ class QueueService {
             return result;
         } catch (error) {
             logger.error('Failed to clear and resync', { error: error.message });
+            syncStatus.stop();
             throw error;
         }
     }
