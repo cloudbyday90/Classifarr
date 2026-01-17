@@ -127,13 +127,13 @@ describe('useSyncStatusStore', () => {
     expect(store.statusText).toBe('Syncing libraries...')
   })
 
-  it('startPolling starts interval', () => {
+  it('startPolling starts interval', async () => {
     vi.useFakeTimers()
     const store = useSyncStatusStore()
     
     api.get.mockResolvedValue({ data: { isRunning: false } })
     
-    store.startPolling()
+    await store.startPolling()
     
     expect(store.pollInterval).not.toBe(null)
     

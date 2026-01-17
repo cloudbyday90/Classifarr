@@ -74,10 +74,14 @@ export const useSyncStatusStore = defineStore('syncStatus', {
       }, 10000) // Slow polling when idle
     },
 
-    startPolling() {
-      this.fetchStatus()
-      // Start with fast polling initially
-      this.switchToActivePoll()
+    async startPolling() {
+      await this.fetchStatus()
+      // Start with appropriate polling speed based on current sync state
+      if (this.isRunning) {
+        this.switchToActivePoll()
+      } else {
+        this.switchToIdlePoll()
+      }
     },
 
     stopPolling() {
@@ -90,16 +94,9 @@ export const useSyncStatusStore = defineStore('syncStatus', {
   },
 
   getters: {
-    // CARSA (full_resync) can interrupt and replace an active library_sync
-    // However, we cannot start a sync if CARSA (full_resync) is already running
-    // This getter is used for the "Sync Libraries" button, not for CARSA
-    canSync: (state) => {
-      if (!state.isRunning) return true
-      // Can't sync if full_resync is running (CARSA has priority)
-      if (state.type === 'full_resync') return false
-      // Can't sync if library_sync is already running
-      return false
-    },
+    // Button is disabled during ANY active sync operation
+    // This prevents conflicts between concurrent sync operations
+    canSync: (state) => !state.isRunning,
     statusText: (state) => {
       if (!state.isRunning) return 'Idle'
       if (state.type === 'full_resync') return 'Re-syncing...'
