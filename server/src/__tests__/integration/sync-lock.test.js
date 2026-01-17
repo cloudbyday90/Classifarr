@@ -32,6 +32,12 @@ jest.mock('../../services/scheduler', () => ({
   runGapAnalysis: jest.fn()
 }));
 
+// Mock auth middleware to bypass authentication in tests
+jest.mock('../../middleware/apiKeyAuth', () => ({
+  authenticateTokenOrApiKey: (req, res, next) => next(),
+  requireReadWrite: (req, res, next) => next()
+}));
+
 const syncRouter = require('../../routes/sync');
 const mediaSyncRouter = require('../../routes/mediaSync');
 const queueRouter = require('../../routes/queue');
@@ -52,13 +58,13 @@ describe('Sync Lock Integration Tests', () => {
     jest.clearAllMocks();
     // Reset sync status using the centralized reset method
     syncStatus.reset();
-    
+
     // Mock queueService
     queueService.running = false;
     queueService.stopWorker = jest.fn();
     queueService.startWorker = jest.fn();
     queueService.omdbLimitHit = false;
-    
+
     // Default mock implementations
     mediaSyncService.syncLibrary.mockResolvedValue({ success: true });
     mediaSyncService.syncAllLibraries.mockResolvedValue();
@@ -144,7 +150,7 @@ describe('Sync Lock Integration Tests', () => {
       const request1Promise = request(app)
         .post('/api/media-sync/sync/1')
         .send({ incremental: false });
-      
+
       const request2Promise = request(app)
         .post('/api/media-sync/sync/2')
         .send({ incremental: false });
@@ -211,7 +217,7 @@ describe('Sync Lock Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      
+
       // The second CARSA should have been able to start
       // Note: Due to async background tasks in clearAndResync, sync status may already be stopped
       // The important thing is that the API call succeeded, proving CARSA can interrupt CARSA
@@ -222,15 +228,15 @@ describe('Sync Lock Integration Tests', () => {
     it('should prevent concurrent library syncs', () => {
       // First sync starts
       syncStatus.start('library_sync');
-      
+
       // Second sync is blocked
       const canStart = syncStatus.canStartSync('library_sync');
       expect(canStart.allowed).toBe(false);
       expect(canStart.reason).toContain('library_sync is currently running');
-      
+
       // Stop first sync
       syncStatus.stop();
-      
+
       // Second sync is now allowed
       const canStartNow = syncStatus.canStartSync('library_sync');
       expect(canStartNow.allowed).toBe(true);
@@ -240,7 +246,7 @@ describe('Sync Lock Integration Tests', () => {
       // Library sync is running
       syncStatus.start('library_sync');
       syncStatus.updateProgress(50);
-      
+
       // CARSA can still start
       const canStartCARSA = syncStatus.canStartSync('full_resync');
       expect(canStartCARSA.allowed).toBe(true);

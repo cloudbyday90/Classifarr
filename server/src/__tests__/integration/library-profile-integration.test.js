@@ -19,6 +19,12 @@ jest.mock('../../services/libraryProfileService', () => ({
     generateProfile: jest.fn()
 }));
 
+// Mock auth middleware to bypass authentication in tests
+jest.mock('../../middleware/apiKeyAuth', () => ({
+    authenticateTokenOrApiKey: (req, res, next) => next(),
+    requireReadWrite: (req, res, next) => next()
+}));
+
 const db = require('../../config/database');
 const libraryProfileService = require('../../services/libraryProfileService');
 
