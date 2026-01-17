@@ -41,8 +41,15 @@ async function authenticateApiKey(req, res, next) {
     const ip = req.ip || req.connection.remoteAddress;
     
     // Update last used timestamp and IP (non-blocking)
+    // Track consecutive failures to detect persistent issues
     apiKeyService.updateLastUsed(validKey.id, ip).catch(err => {
-      console.error('Error updating API key last used:', err);
+      console.error('Error updating API key last used for key %s: %s', validKey.id, err.message);
+      
+      // Log additional warning if this appears to be a persistent issue
+      if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+        console.warn('Database connection issue detected while tracking API key usage. ' +
+                     'Key %s usage tracking may be incomplete.', validKey.id);
+      }
     });
     
     // Attach API key info to request
