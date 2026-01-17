@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Idle Backfill Bug Fixes** (Fixes #203)
+  - Fixed initial activity timestamp preventing immediate idle detection (system can now be idle immediately on start)
+  - Fixed `isRunning` state not being reset on early exit (config disabled, no pending items, etc.)
+  - Changed startup decision logs from `debug` to `info` level for production visibility
+  - Added error handling for configuration load failures with proper logging
+  - Added event listener cleanup to prevent memory leaks and duplicate triggers
+  - Fixed state desync issues when errors occur during backfill
+  - Added comprehensive integration tests for all edge cases (12 tests)
+  - Idle backfill now reliably starts within idle threshold time after restart
+
 - **Dashboard Classification Methods Section** (Fixes #190)
   - Fixed Dashboard 'Classification Methods' section to show accurate all-time statistics instead of only recent 8 items
   - Methods are now dynamically loaded from backend with actual counts from `classification_history` table

@@ -74,10 +74,19 @@ describe('IdleBackfillService', () => {
             idleBackfillService.isRunning = true;
             idleBackfillService.config = { rag_enabled: true, idle_backfill_enabled: true };
 
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    rag_enabled: true,
+                    idle_backfill_enabled: true
+                }]
+            });
+
             await idleBackfillService.startIdleBackfill();
 
             // isRunning should still be true and no new backfill should have started
             expect(idleBackfillService.isRunning).toBe(true);
+            // Should not have called getPendingCount
+            expect(db.query).toHaveBeenCalledTimes(1); // only loadConfig
         });
 
         test('should start processing when enabled and idle', async () => {
@@ -109,6 +118,82 @@ describe('IdleBackfillService', () => {
 
             // Verify it started
             expect(db.query).toHaveBeenCalled();
+        });
+    });
+
+    describe('Bug #2: Early exit should not leave isRunning = true', () => {
+        test('should not set isRunning when config load fails', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [] // No config returned
+            });
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should not set isRunning when no pending embeddings', async () => {
+            db.query
+                .mockResolvedValueOnce({ // loadConfig
+                    rows: [{
+                        rag_enabled: true,
+                        idle_backfill_enabled: true,
+                        idle_threshold: 30000,
+                        idle_batch_size: 10
+                    }]
+                })
+                .mockResolvedValueOnce({ // getPendingCount
+                    rows: [{ count: '0' }]
+                });
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+    });
+
+    describe('Bug #4: Config load failure handling', () => {
+        test('should handle null config from loadConfig', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [] // Empty result, loadConfig returns null
+            });
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should handle config load error gracefully', async () => {
+            db.query.mockRejectedValueOnce(new Error('Database connection failed'));
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+    });
+
+    describe('Bug #6: isRunning state reset on errors', () => {
+        test('should reset isRunning on database error during backfill', async () => {
+            db.query
+                .mockResolvedValueOnce({ // loadConfig
+                    rows: [{
+                        rag_enabled: true,
+                        idle_backfill_enabled: true,
+                        idle_threshold: 30000,
+                        idle_batch_size: 10
+                    }]
+                })
+                .mockResolvedValueOnce({ // getPendingCount
+                    rows: [{ count: '5' }]
+                })
+                .mockRejectedValueOnce(new Error('Database error')); // INSERT backfill_runs fails
+
+            idleDetector.isIdle.mockReturnValue(true);
+
+            await idleBackfillService.startIdleBackfill();
+
+            // Should have reset isRunning despite error
+            expect(idleBackfillService.isRunning).toBe(false);
         });
     });
 

@@ -18,7 +18,8 @@ const logger = createLogger('IdleDetector');
 class IdleDetector extends EventEmitter {
     constructor() {
         super();
-        this.lastActivity = Date.now();
+        // Initialize to far past so system can be idle immediately on start
+        this.lastActivity = 0;
         this.idleThreshold = 30000; // 30 seconds default
         this.isCurrentlyIdle = false;
         this.checkInterval = null;
