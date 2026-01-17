@@ -1,139 +1,132 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2025 cloudbyday90
+ * Copyright (C) 2026 cloudbyday90
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
  */
 
+const { Server } = require('socket.io');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('WebSocketService');
 
 class WebSocketService {
-  constructor() {
-    this.io = null;
-    this.initialized = false;
-  }
-
-  /**
-   * Initialize the WebSocket service with a Socket.IO instance
-   * @param {Object} io - Socket.IO server instance
-   */
-  initialize(io) {
-    this.io = io;
-    this.initialized = true;
-
-    io.on('connection', (socket) => {
-      logger.info('WebSocket client connected', { socketId: socket.id });
-
-      // Join the classification progress room
-      socket.join('classification_progress');
-
-      socket.on('disconnect', () => {
-        logger.info('WebSocket client disconnected', { socketId: socket.id });
-      });
-
-      // Handle subscription to specific task progress
-      socket.on('subscribe_task', (taskId) => {
-        socket.join(`task_${taskId}`);
-        logger.debug('Client subscribed to task', { socketId: socket.id, taskId });
-      });
-
-      // Handle unsubscription from specific task progress
-      socket.on('unsubscribe_task', (taskId) => {
-        socket.leave(`task_${taskId}`);
-        logger.debug('Client unsubscribed from task', { socketId: socket.id, taskId });
-      });
-    });
-
-    logger.info('WebSocket service initialized');
-  }
-
-  /**
-   * Emit an event to all connected clients
-   * @param {string} event - Event name
-   * @param {Object} data - Event data
-   */
-  emit(event, data) {
-    if (!this.initialized || !this.io) {
-      logger.warn('WebSocket service not initialized, skipping emit', { event });
-      return;
+    constructor() {
+        this.io = null;
+        this.initialized = false;
     }
 
-    try {
-      this.io.emit(event, data);
-      logger.debug('WebSocket event emitted', { event, data });
-    } catch (error) {
-      logger.error('Failed to emit WebSocket event', { event, error: error.message });
-    }
-  }
+    /**
+     * Initialize WebSocket server with existing HTTP server
+     * @param {Object} httpServer - HTTP server instance from Express
+     */
+    initialize(httpServer) {
+        if (this.initialized) {
+            logger.warn('WebSocket service already initialized');
+            return;
+        }
 
-  /**
-   * Emit an event to a specific room
-   * @param {string} room - Room name
-   * @param {string} event - Event name
-   * @param {Object} data - Event data
-   */
-  emitToRoom(room, event, data) {
-    if (!this.initialized || !this.io) {
-      logger.warn('WebSocket service not initialized, skipping emit to room', { room, event });
-      return;
-    }
+        this.io = new Server(httpServer, {
+            cors: {
+                origin: '*',
+                methods: ['GET', 'POST']
+            },
+            path: '/ws'
+        });
 
-    try {
-      this.io.to(room).emit(event, data);
-      logger.debug('WebSocket event emitted to room', { room, event, data });
-    } catch (error) {
-      logger.error('Failed to emit WebSocket event to room', { room, event, error: error.message });
-    }
-  }
+        this.io.on('connection', (socket) => {
+            logger.info('Client connected', { socketId: socket.id });
 
-  /**
-   * Emit classification progress event
-   * @param {Object} progressData - Progress data
-   */
-  emitClassificationProgress(progressData) {
-    this.emitToRoom('classification_progress', 'classification_progress', progressData);
-  }
+            socket.on('disconnect', () => {
+                logger.debug('Client disconnected', { socketId: socket.id });
+            });
 
-  /**
-   * Emit classification progress for a specific task
-   * @param {number} taskId - Task ID
-   * @param {Object} progressData - Progress data
-   */
-  emitTaskProgress(taskId, progressData) {
-    this.emitToRoom(`task_${taskId}`, 'task_progress', progressData);
-  }
+            // Join task-specific room for targeted updates
+            socket.on('subscribe:task', (taskId) => {
+                socket.join(`task:${taskId}`);
+                logger.debug('Client subscribed to task', { socketId: socket.id, taskId });
+            });
 
-  /**
-   * Get connection stats
-   * @returns {Object} Connection statistics
-   */
-  getStats() {
-    if (!this.initialized || !this.io) {
-      return { connected: false, clientCount: 0 };
+            // Leave task room
+            socket.on('unsubscribe:task', (taskId) => {
+                socket.leave(`task:${taskId}`);
+                logger.debug('Client unsubscribed from task', { socketId: socket.id, taskId });
+            });
+
+            // Join activity room for all classification updates
+            socket.on('subscribe:activity', () => {
+                socket.join('activity');
+                logger.debug('Client subscribed to activity feed', { socketId: socket.id });
+            });
+        });
+
+        this.initialized = true;
+        logger.info('WebSocket service initialized');
     }
 
-    const sockets = this.io.sockets || this.io.of('/').sockets;
-    const clientCount = sockets ? sockets.size : 0;
+    /**
+     * Emit task progress update
+     * @param {number} taskId - Task ID
+     * @param {Object} data - Progress data
+     */
+    emitTaskProgress(taskId, data) {
+        if (!this.io) {
+            logger.debug('WebSocket not initialized, skipping emit');
+            return;
+        }
 
-    return {
-      connected: true,
-      clientCount,
-      rooms: this.io.sockets ? Object.keys(this.io.sockets.adapter.rooms) : []
-    };
-  }
+        // Emit to specific task room
+        this.io.to(`task:${taskId}`).emit('classification:progress', data);
+
+        // Also emit to activity room for global monitoring
+        this.io.to('activity').emit('classification:progress', data);
+
+        logger.debug('Emitted task progress', { taskId, phase: data.phase });
+    }
+
+    /**
+     * Emit classification completion event
+     * @param {number} taskId - Task ID
+     * @param {Object} result - Classification result
+     */
+    emitClassificationComplete(taskId, result) {
+        if (!this.io) return;
+
+        this.io.to(`task:${taskId}`).emit('classification:complete', { taskId, ...result });
+        this.io.to('activity').emit('classification:complete', { taskId, ...result });
+
+        logger.debug('Emitted classification complete', { taskId });
+    }
+
+    /**
+     * Emit general activity update
+     * @param {string} event - Event name
+     * @param {Object} data - Event data
+     */
+    emit(event, data) {
+        if (!this.io) return;
+        this.io.emit(event, data);
+    }
+
+    /**
+     * Broadcast to all connected clients
+     * @param {string} event - Event name
+     * @param {Object} data - Event data
+     */
+    broadcast(event, data) {
+        if (!this.io) return;
+        this.io.emit(event, data);
+    }
+
+    /**
+     * Get connection count
+     * @returns {number} Number of connected clients
+     */
+    getConnectionCount() {
+        if (!this.io) return 0;
+        return this.io.engine.clientsCount;
+    }
 }
 
 // Export singleton instance

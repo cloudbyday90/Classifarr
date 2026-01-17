@@ -36,7 +36,6 @@ const policyEngine = require('./policyEngine');
 const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
 const libraryProfileService = require('./libraryProfileService');
-const classificationPhaseService = require('./classificationPhaseService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -49,11 +48,8 @@ const logger = createLogger('classification');
 const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 
 class ClassificationService {
-  _currentTaskId = null; // Track current task ID for phase tracking
-
-  async classify(overseerrPayload, classificationTaskId = null) {
+  async classify(overseerrPayload) {
     const startTime = Date.now(); // Track processing time
-    this._currentTaskId = classificationTaskId; // Store for phase tracking
     try {
       // Record classification activity for idle detection
       idleDetector.recordActivity();
@@ -62,14 +58,6 @@ class ClassificationService {
       const { media_type, tmdbId, title, year, existingMetadata } = this.parseOverseerrPayload(overseerrPayload);
 
       logger.info(`Starting classification for ${media_type}: ${title} (TMDB: ${tmdbId || 'searching...'})`);
-
-      // Check if this is a source_library classification (skip progress tracking)
-      const isSourceLibrary = !!existingMetadata.source_library_id;
-      
-      // Phase 1: Queued - Set initial phase for non-source_library items
-      if (!isSourceLibrary && classificationTaskId) {
-        await classificationPhaseService.updatePhase(classificationTaskId, 'queued');
-      }
 
       let metadata;
 
@@ -91,22 +79,12 @@ class ClassificationService {
           source_library_name: existingMetadata.source_library_name,
         };
       } else if (tmdbId) {
-        // Phase 2: Metadata Fetch - TMDB lookup directly
-        if (!isSourceLibrary && classificationTaskId) {
-          await classificationPhaseService.updatePhase(classificationTaskId, 'metadata_fetch');
-        }
-        
         // We have TMDB ID - lookup directly
         metadata = await this.enrichWithTMDB(tmdbId, media_type);
         metadata.itemId = existingMetadata.itemId;
         metadata.source_library_id = existingMetadata.source_library_id;
         metadata.source_library_name = existingMetadata.source_library_name;
       } else if (title && title !== 'Unknown') {
-        // Phase 2: Metadata Fetch - TMDB search
-        if (!isSourceLibrary && classificationTaskId) {
-          await classificationPhaseService.updatePhase(classificationTaskId, 'metadata_fetch');
-        }
-        
         // No TMDB ID - search by title/year
         logger.info(`No TMDB ID found, searching TMDB for: ${title} (${year || 'any year'})`);
 
@@ -151,27 +129,9 @@ class ClassificationService {
         throw new Error('No TMDB ID or title provided for classification');
       }
 
-      // Phase 3: Policy Evaluation
-      if (!isSourceLibrary && taskId) {
-        await classificationPhaseService.updatePhase(taskId, 'policy_eval', { 
-          prevPhaseMetadata: { tmdb_id: metadata.tmdb_id } 
-        });
-      }
-
       // Run decision tree
       const result = await this.runDecisionTree(metadata, media_type);
 
-      // Phase 6: Decision
-      const currentTaskId = this.getCurrentTaskId();
-      if (currentTaskId && !isSourceLibrary) {
-        await classificationPhaseService.updatePhase(currentTaskId, 'decision', {
-          prevPhaseMetadata: {
-            rag_analysis: true,
-            signal_combine: true
-          }
-        });
-      }
-      
       // Log to database
       const classificationId = await this.logClassification(metadata, result, startTime);
 
@@ -202,19 +162,6 @@ class ClassificationService {
         await this.routeToArr(metadata, result.library);
       }
 
-      // Phase 7: Notification
-      const taskId = this.getCurrentTaskId();
-      if (taskId && !isSourceLibrary) {
-        await classificationPhaseService.updatePhase(taskId, 'notification', {
-          prevPhaseMetadata: {
-            rag_analysis: true,
-            signal_combine: true,
-            decision: true,
-            library: result?.library?.name
-          }
-        });
-      }
-      
       // Send Discord notification with confidence-based routing
       if (discordBot.isInitialized) {
         try {
@@ -244,19 +191,6 @@ class ClassificationService {
           });
         }
       }
-
-      // Complete phase tracking for non-source_library items
-      const currentTaskId = this.getCurrentTaskId();
-      if (currentTaskId && !isSourceLibrary) {
-        await classificationPhaseService.completeTracking(currentTaskId, {
-          library: result.library?.name,
-          confidence: result.confidence,
-          method: result.method
-        });
-      }
-      
-      // Clear current task ID
-      this._currentTaskId = null;
 
       // Enhanced AI metrics logging for monitoring and debugging
       logger.info('Classification completed', {
@@ -1070,17 +1004,6 @@ class ClassificationService {
     // and we keep this for backward compatibility and to generate ragContext for AI
     let ragContext = null;
     try {
-      // Phase 4: RAG Analysis
-      const taskId = this.getCurrentTaskId();
-      if (taskId && !isSourceLibrary) {
-        await classificationPhaseService.updatePhase(taskId, 'rag_analysis', {
-          prevPhaseMetadata: { 
-            policy_eval: true,
-            matched_policy: 'Policy evaluation completed'
-          }
-        });
-      }
-      
       const similarItems = await ragRetriever.semanticSearch(metadata, 5);
       if (similarItems && similarItems.length > 0) {
         const suggestedLibrary = ragRetriever.getSuggestedLibrary(similarItems);
@@ -1118,18 +1041,6 @@ class ClassificationService {
 
     // Load weights and calculate confidence
     await confidenceCalculator.loadWeights();
-    
-    // Phase 5: Signal Combination
-    const taskId = this.getCurrentTaskId();
-    if (taskId && !isSourceLibrary) {
-      await classificationPhaseService.updatePhase(taskId, 'signal_combine', {
-        prevPhaseMetadata: {
-          rag_analysis: true,
-          matched_library: result?.library?.name || 'Unknown'
-        }
-      });
-    }
-    
     const confidenceResult = confidenceCalculator.calculate(signalCollector.getSignals());
 
     // Generate AI context

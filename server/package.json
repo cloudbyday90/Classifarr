@@ -23,7 +23,7 @@
     "morgan": "^1.10.0",
     "node-cron": "^4.2.1",
     "pg": "^8.11.3",
-    "socket.io": "^4.7.2",
+    "socket.io": "^4.7.4",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0"
   },

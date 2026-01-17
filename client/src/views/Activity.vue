@@ -23,9 +23,6 @@
       </div>
     </div>
 
-    <!-- Global Progress Bar -->
-    <GlobalProgressBar :active-classifications="activeClassifications" />
-
     <!-- Stats Cards -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <!-- Classified Today -->
@@ -231,14 +228,6 @@
               
               <span class="text-sm text-gray-500">{{ formatTimeAgo(item.timestamp) }}</span>
             </div>
-            
-            <!-- Activity Item Progress (for active classifications) -->
-            <ActivityItemProgress
-              v-if="getItemProgress(item.id)"
-              :progress="getItemProgress(item.id)?.progress || 0"
-              :current-phase="getItemProgress(item.id)?.current_phase || 'queued'"
-              :show-phase-details="true"
-            />
           </div>
         </TransitionGroup>
       </div>
@@ -279,10 +268,7 @@ import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
 import Spinner from '@/components/common/Spinner.vue'
-import GlobalProgressBar from '@/components/GlobalProgressBar.vue'
-import ActivityItemProgress from '@/components/ActivityItemProgress.vue'
 import api from '@/api'
-import { useWebSocket } from '@/composables/useWebSocket'
 
 // Activity page polling interval in seconds (configurable in settings)
 const refreshInterval = ref(30) // Default 30 seconds
@@ -310,7 +296,6 @@ const ollamaStatus = ref({
 const activityFeed = ref([])
 const upNextQueue = ref([])
 const retryProcessing = ref(false)
-const activeClassifications = ref([])
 
 const healthStatus = computed(() => {
   if (stats.value.health.ai && stats.value.health.worker) return 'All Systems OK'
@@ -417,11 +402,6 @@ const processRetryQueue = async () => {
   }
 }
 
-const getItemProgress = (itemId) => {
-  // Find active classification for this item
-  return activeClassifications.value.find(ac => ac.media_item_id === itemId)
-}
-
 const formatMethod = (method) => {
   const methods = {
     // New standardized names
@@ -490,36 +470,6 @@ onMounted(async () => {
     }
   } catch (e) {
     // Use default if settings not available
-  }
-  
-  // Initialize WebSocket for real-time progress updates
-  const { onProgress, onComplete } = useWebSocket({
-    onProgress: (data) => {
-      // Update active classifications on progress updates
-      const index = activeClassifications.value.findIndex(ac => ac.id === data.taskId)
-      if (index !== -1) {
-        activeClassifications.value[index] = { ...activeClassifications.value[index], ...data }
-      } else {
-        activeClassifications.value.push(data)
-      }
-    },
-    onComplete: (data) => {
-      // Remove completed classification from active list
-      activeClassifications.value = activeClassifications.value.filter(ac => ac.id !== data.taskId)
-    },
-    onError: (error) => {
-      console.error('WebSocket error:', error)
-    }
-  })
-  
-  // Load initial active classifications
-  try {
-    const progressRes = await api.getProgress()
-    if (progressRes.data?.data) {
-      activeClassifications.value = progressRes.data.data
-    }
-  } catch (e) {
-    console.error('Failed to load progress data:', e)
   }
   
   refreshData()
