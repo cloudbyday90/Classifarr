@@ -614,7 +614,7 @@ async function checkQueueWorker() {
 
         return {
             name: 'Queue Worker',
-            status: status,
+            status,
             latency: 0,
             timestamp: new Date().toISOString(),
             metadata: {

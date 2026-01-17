@@ -265,14 +265,10 @@ router.get('/health/services', async (req, res) => {
     }
 
     const healthyCount = allServices.filter(s => s.status === 'healthy').length;
-    const degradedCount = allServices.filter(s => s.status === 'degraded').length;
     const totalCount = allServices.length;
 
-    // Calculate overall status - degraded if any service is degraded/unhealthy
-    let overallStatus = 'healthy';
-    if (degradedCount > 0 || healthyCount < totalCount) {
-      overallStatus = 'degraded';
-    }
+    // Calculate overall status
+    const overallStatus = healthyCount === totalCount ? 'healthy' : 'degraded';
 
     res.json({
       overall: overallStatus,
