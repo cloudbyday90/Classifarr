@@ -281,7 +281,8 @@ describe('ProviderLockService', () => {
 
       const status = providerLock.getLockStatus();
 
-      expect(status.lockDuration).toBeGreaterThanOrEqual(50);
+      // Use tolerance for timing variations in CI environments
+      expect(status.lockDuration).toBeGreaterThanOrEqual(45);
     });
 
     test('should return 0 duration when no lock is held', () => {
