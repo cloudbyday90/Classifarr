@@ -32,6 +32,10 @@ jest.mock('../services/jellyfin', () => ({
     getLibraries: jest.fn()
 }));
 
+jest.mock('../services/mediaSync', () => ({
+    syncLibrary: jest.fn().mockResolvedValue({})
+}));
+
 const db = require('../config/database');
 const mediaServerRouter = require('../routes/mediaServer');
 const syncStatus = require('../services/syncStatus');
@@ -53,7 +57,7 @@ describe('Media Server API', () => {
         db.pool.connect.mockResolvedValue(mockClient);
 
         jest.clearAllMocks();
-        
+
         // Reset syncStatus singleton to prevent cross-test contamination
         // This prevents timeouts when running tests in parallel with sync-lock.test.js
         syncStatus.reset();
@@ -219,8 +223,8 @@ describe('Media Server API', () => {
                 }]
             });
             // Mock: SELECT library IDs to delete
-            mockClient.query.mockResolvedValueOnce({ 
-                rows: [{ id: 10 }, { id: 11 }, { id: 12 }] 
+            mockClient.query.mockResolvedValueOnce({
+                rows: [{ id: 10 }, { id: 11 }, { id: 12 }]
             });
             // Mock: DELETE FROM media_server_sync_status
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
@@ -258,7 +262,7 @@ describe('Media Server API', () => {
             mockClient.query.mockResolvedValueOnce({});
             // Mock: COMMIT
             mockClient.query.mockResolvedValueOnce({});
-            
+
             // Mock error_log INSERTs from background sync failures (auto-sync tries to sync non-existent libraries)
             // The syncLibrary calls will fail and log errors, which try to INSERT into error_log
             mockClient.query.mockResolvedValue({ rows: [{ error_id: 1 }] });
@@ -308,8 +312,8 @@ describe('Media Server API', () => {
                 }]
             });
             // Mock: SELECT library IDs to delete (1 old library with OLD-lib-uuid-1)
-            mockClient.query.mockResolvedValueOnce({ 
-                rows: [{ id: 99 }] 
+            mockClient.query.mockResolvedValueOnce({
+                rows: [{ id: 99 }]
             });
             // Mock: DELETE FROM media_server_sync_status
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });

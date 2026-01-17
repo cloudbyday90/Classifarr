@@ -369,18 +369,20 @@ const error = ref(null)
 
 let statusInterval = null
 
-const loadStats = async () => {
+const loadStats = async (background = false) => {
   try {
-    loading.value = true
+    if (!background) {
+      loading.value = true
+    }
     error.value = null
 
     // Single API call for all statistics
-    const response = await api.get('/api/rag/detailed', { params: { hours: 24 } })
+    const response = await api.get('/rag/detailed', { params: { hours: 24 } })
 
     // Check if response has error property (API returned error with 200 status)
     if (response.data.error) {
       error.value = response.data.error
-      loading.value = false
+      if (!background) loading.value = false
       return
     }
 
@@ -388,7 +390,7 @@ const loadStats = async () => {
     if (!response.data.stats) {
       error.value = 'Invalid response structure from server'
       console.error('Invalid API response:', response.data)
-      loading.value = false
+      if (!background) loading.value = false
       return
     }
 
@@ -409,10 +411,14 @@ const loadStats = async () => {
     }
     backfillHistory.value = response.data.backfillHistory || []
   } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Unknown error'
+    if (!background) {
+      error.value = err.response?.data?.error || err.message || 'Unknown error'
+    }
     console.error('Failed to load stats:', err)
   } finally {
-    loading.value = false
+    if (!background) {
+      loading.value = false
+    }
   }
 }
 
@@ -422,7 +428,7 @@ const resetCircuitBreaker = async () => {
   }
 
   try {
-    await api.post('/api/rag/circuit-breaker/reset')
+    await api.post('/rag/circuit-breaker/reset')
     await loadStats()
   } catch (error) {
     console.error('Failed to reset circuit breaker:', error)
@@ -432,7 +438,7 @@ const resetCircuitBreaker = async () => {
 const warmupModel = async () => {
   warmingUp.value = true
   try {
-    const response = await api.post('/api/rag/warmup')
+    const response = await api.post('/rag/warmup')
     if (response.data.success) {
       alert(`Model warmed up successfully in ${response.data.duration}ms`)
       await loadStats()
@@ -447,7 +453,7 @@ const warmupModel = async () => {
 
 const exportConfig = async () => {
   try {
-    const response = await api.post('/api/rag/export/config')
+    const response = await api.post('/rag/export/config')
     downloadJSON(response.data, 'rag-config.json')
   } catch (error) {
     console.error('Failed to export config:', error)
@@ -456,16 +462,26 @@ const exportConfig = async () => {
 
 const exportLogs = async () => {
   try {
-    const response = await api.post('/api/rag/export/logs')
+    const response = await api.post('/rag/export/logs')
     downloadJSON(response.data, 'rag-logs.json')
   } catch (error) {
     console.error('Failed to export logs:', error)
   }
 }
 
+const metricsExport = async () => {
+  try {
+    const response = await api.post('/rag/export/metrics')
+    downloadJSON(response.data, 'rag-metrics.json')
+  } catch (error) {
+    console.error('Failed to export metrics:', error)
+  }
+}
+
+// Rename exportMetrics to avoid conflict if any (Wait, original function was exportMetrics, sticking to it)
 const exportMetrics = async () => {
   try {
-    const response = await api.post('/api/rag/export/metrics')
+    const response = await api.post('/rag/export/metrics')
     downloadJSON(response.data, 'rag-metrics.json')
   } catch (error) {
     console.error('Failed to export metrics:', error)
@@ -518,7 +534,7 @@ onMounted(() => {
   loadStats()
   
   statusInterval = setInterval(() => {
-    loadStats()
+    loadStats(true)
   }, 5000)
 })
 
