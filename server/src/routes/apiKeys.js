@@ -84,7 +84,7 @@ router.post('/', authenticateToken, apiKeyLimiter, async (req, res) => {
  *     summary: List all API keys
  *     description: Returns masked keys (prefix only)
  */
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, apiKeyLimiter, async (req, res) => {
   try {
     const keys = await apiKeyService.listApiKeys();
     res.json(keys);
