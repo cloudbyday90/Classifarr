@@ -64,7 +64,7 @@
         <Button @click="$router.push('/settings')" class="px-6 py-3">
           📺 Connect Media Server
         </Button>
-        <a href="https://github.com/cloudbyday90/Classifarr/wiki" target="_blank" rel="noopener noreferrer">
+        <a :href="GITHUB_WIKI_URL" target="_blank" rel="noopener noreferrer">
           <Button variant="secondary" class="px-6 py-3 w-full">
             📖 View Documentation
           </Button>
@@ -188,12 +188,12 @@
               <div class="text-sm font-semibold">Statistics</div>
             </router-link>
             
-            <a href="https://github.com/cloudbyday90/Classifarr/wiki" target="_blank" rel="noopener noreferrer" class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors">
+            <a :href="GITHUB_WIKI_URL" target="_blank" rel="noopener noreferrer" class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors">
               <div class="text-2xl mb-2">📖</div>
               <div class="text-sm font-semibold">Documentation</div>
             </a>
             
-            <a href="https://discord.gg/classifarr" target="_blank" rel="noopener noreferrer" class="p-4 bg-indigo-900/20 hover:bg-indigo-900/30 border border-indigo-700/30 rounded-lg text-center transition-colors">
+            <a :href="DISCORD_INVITE_URL" target="_blank" rel="noopener noreferrer" class="p-4 bg-indigo-900/20 hover:bg-indigo-900/30 border border-indigo-700/30 rounded-lg text-center transition-colors">
               <div class="text-2xl mb-2">💬</div>
               <div class="text-sm font-semibold">Discord</div>
             </a>
@@ -278,6 +278,11 @@ const router = useRouter()
 const librariesStore = useLibrariesStore()
 const visibility = useDocumentVisibility()
 
+// Constants
+const POLL_INTERVAL_MS = 5000
+const GITHUB_WIKI_URL = 'https://github.com/cloudbyday90/Classifarr/wiki'
+const DISCORD_INVITE_URL = 'https://discord.gg/classifarr'
+
 const stats = ref({})
 const loading = ref(false)
 const error = ref(null)
@@ -360,7 +365,7 @@ const startPolling = () => {
     if (visibility.value === 'visible') {
       loadQueueStats() // Only poll when tab is visible
     }
-  }, 5000)
+  }, POLL_INTERVAL_MS)
 }
 
 const loadQueueStats = async () => {
@@ -390,7 +395,11 @@ const getConfidenceVariant = (confidence) => {
 
 const viewDetails = (item) => {
   // Navigate to history with selected item
-  router.push({ name: 'History', query: { id: item.id } })
+  try {
+    router.push({ name: 'History', query: { id: item.id } })
+  } catch (err) {
+    console.error('Failed to navigate to history:', err)
+  }
 }
 
 // Method display helpers
