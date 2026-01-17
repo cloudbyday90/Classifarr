@@ -11,8 +11,12 @@ const queueService = require('../services/queueService');
 const ollamaService = require('../services/ollama');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
 
 const logger = createLogger('QueueRoutes');
+
+// Apply authentication to all queue routes
+router.use(authenticateTokenOrApiKey);
 
 /**
  * @swagger
@@ -222,7 +226,7 @@ router.get('/failed', async (req, res) => {
  *         schema:
  *           type: integer
  */
-router.post('/task/:id/retry', async (req, res) => {
+router.post('/task/:id/retry', requireReadWrite, async (req, res) => {
     try {
         const taskId = parseInt(req.params.id);
         const success = await queueService.retryTask(taskId);
@@ -245,7 +249,7 @@ router.post('/task/:id/retry', async (req, res) => {
  *         schema:
  *           type: integer
  */
-router.post('/task/:id/cancel', async (req, res) => {
+router.post('/task/:id/cancel', requireReadWrite, async (req, res) => {
     try {
         const taskId = parseInt(req.params.id);
         const success = await queueService.cancelTask(taskId);
@@ -262,7 +266,7 @@ router.post('/task/:id/cancel', async (req, res) => {
  *   post:
  *     summary: Clear all completed tasks
  */
-router.post('/clear-completed', async (req, res) => {
+router.post('/clear-completed', requireReadWrite, async (req, res) => {
     try {
         const count = await queueService.clearCompletedTasks();
         logger.info('Cleared completed tasks', { count });
@@ -279,7 +283,7 @@ router.post('/clear-completed', async (req, res) => {
  *   post:
  *     summary: Clear all failed tasks
  */
-router.post('/clear-failed', async (req, res) => {
+router.post('/clear-failed', requireReadWrite, async (req, res) => {
     try {
         const count = await queueService.clearFailedTasks();
         logger.info('Cleared failed tasks', { count });
@@ -296,7 +300,7 @@ router.post('/clear-failed', async (req, res) => {
  *   post:
  *     summary: Retry all failed tasks
  */
-router.post('/retry-all-failed', async (req, res) => {
+router.post('/retry-all-failed', requireReadWrite, async (req, res) => {
     try {
         const count = await queueService.retryAllFailedTasks();
         logger.info('Queued all failed tasks for retry', { count });
@@ -313,7 +317,7 @@ router.post('/retry-all-failed', async (req, res) => {
  *   post:
  *     summary: Cancel all pending tasks
  */
-router.post('/cancel-all-pending', async (req, res) => {
+router.post('/cancel-all-pending', requireReadWrite, async (req, res) => {
     try {
         const count = await queueService.cancelAllPendingTasks();
         logger.info('Cancelled all pending tasks', { count });
@@ -330,7 +334,7 @@ router.post('/cancel-all-pending', async (req, res) => {
  *   post:
  *     summary: Re-queue all completed classifications for reprocessing
  */
-router.post('/reprocess-completed', async (req, res) => {
+router.post('/reprocess-completed', requireReadWrite, async (req, res) => {
     try {
         const count = await queueService.reprocessCompleted();
         logger.info('Queued completed items for reprocessing', { count });
@@ -347,7 +351,7 @@ router.post('/reprocess-completed', async (req, res) => {
  *   post:
  *     summary: Clear all queue data and trigger fresh library sync
  */
-router.post('/clear-and-resync', async (req, res) => {
+router.post('/clear-and-resync', requireReadWrite, async (req, res) => {
     try {
         const result = await queueService.clearAndResync();
         logger.info('Cleared queue and triggered resync', result);
@@ -371,7 +375,7 @@ router.post('/clear-and-resync', async (req, res) => {
  *         schema:
  *           type: integer
  */
-router.post('/tasks/:id/classify', async (req, res) => {
+router.post('/tasks/:id/classify', requireReadWrite, async (req, res) => {
     try {
         const taskId = parseInt(req.params.id);
         const { library_id, resolved_by = 'admin' } = req.body;
@@ -510,7 +514,7 @@ router.get('/retry-stats', async (req, res) => {
  *       200:
  *         description: Processing result
  */
-router.post('/retry-process', async (req, res) => {
+router.post('/retry-process', requireReadWrite, async (req, res) => {
     try {
         const { limit = 50, enrichmentType = 'tavily' } = req.body;
         const enrichmentRetryService = require('../services/enrichmentRetryService');
@@ -531,7 +535,7 @@ router.post('/retry-process', async (req, res) => {
  *       200:
  *         description: Number of items queued
  */
-router.post('/retry-backfill', async (req, res) => {
+router.post('/retry-backfill', requireReadWrite, async (req, res) => {
     try {
         const enrichmentRetryService = require('../services/enrichmentRetryService');
         const result = await enrichmentRetryService.backfillRetryQueue();

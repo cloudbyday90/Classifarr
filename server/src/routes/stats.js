@@ -9,8 +9,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { authenticateTokenOrApiKey } = require('../middleware/apiKeyAuth');
 
 const logger = createLogger('StatsRoutes');
+
+// Apply authentication to all stats routes (read-only endpoints)
+router.use(authenticateTokenOrApiKey);
 
 // Alert thresholds configuration
 const ALERT_THRESHOLDS = {
