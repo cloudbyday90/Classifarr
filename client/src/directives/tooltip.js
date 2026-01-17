@@ -18,7 +18,7 @@ let tooltipElement = null
 
 function createTooltip(text) {
   const tooltip = document.createElement('div')
-  tooltip.className = 'fixed z-50 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-lg pointer-events-none transition-opacity duration-200'
+  tooltip.className = 'fixed z-50 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-lg pointer-events-none transition-opacity duration-200 whitespace-pre-line'
   tooltip.style.opacity = '0'
   tooltip.textContent = text
   document.body.appendChild(tooltip)

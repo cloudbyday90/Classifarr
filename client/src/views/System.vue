@@ -58,9 +58,9 @@
 
       <!-- Filter/Search Section -->
       <div class="flex gap-3 mb-4">
-        <input v-model="searchQuery" placeholder="Search services..."
+        <input v-model="searchQuery" placeholder="Search services..." aria-label="Search services"
                class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" />
-        <select v-model="statusFilter"
+        <select v-model="statusFilter" aria-label="Filter by status"
                 class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500">
           <option value="">All Status</option>
           <option value="healthy">Healthy Only</option>
@@ -125,6 +125,8 @@
             <button 
               @click="toggleInstanceDetails(service.key)"
               class="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              :aria-expanded="expandedServices.has(service.key)"
+              :aria-label="`${expandedServices.has(service.key) ? 'Collapse' : 'Expand'} ${service.instances.length} instance${service.instances.length > 1 ? 's' : ''}`"
             >
               {{ expandedServices.has(service.key) ? '▼' : '▶' }} 
               {{ service.instances.length }} instance{{ service.instances.length > 1 ? 's' : '' }}
@@ -142,7 +144,7 @@
                     {{ instance.status }}
                   </Badge>
                 </div>
-                <div v-if="instance.responseTime" :class="getLatencyClass(instance.responseTime)">
+                <div v-if="instance.responseTime != null" :class="getLatencyClass(instance.responseTime)">
                   {{ instance.responseTime }}ms
                 </div>
                 <div v-if="instance.error" class="text-red-400 mt-1">
@@ -395,7 +397,7 @@ const loadHealth = async (silent = false) => {
           key: 'queueWorker',
           status: normalizeStatus(statusMap.queueWorker), 
           description: 'Task processing',
-          responseTime: healthDetails.value.queueWorker?.latency || 0,
+          responseTime: healthDetails.value.queueWorker?.latency ?? null,
           lastCheck: healthDetails.value.queueWorker?.timestamp,
           error: healthDetails.value.queueWorker?.error,
           metadata: healthDetails.value.queueWorker?.metadata
@@ -496,7 +498,7 @@ const toggleInstanceDetails = (serviceKey) => {
 
 const getServiceTooltip = (service) => {
   let tooltip = `${service.name}\nStatus: ${getStatusConfig(service.status).label}`
-  if (service.responseTime) {
+  if (service.responseTime != null) {
     tooltip += `\nLatency: ${service.responseTime}ms`
   }
   if (service.lastCheck) {

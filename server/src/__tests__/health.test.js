@@ -139,7 +139,7 @@ describe('Health Endpoints', () => {
       healthCheckService.getHealthCache.mockReturnValue({
         database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 }
       });
-      healthCheckService.getUptime.mockReturnValue('3d 14h');
+      healthCheckService.getUptime.mockReturnValue(302400); // 3d 14h in seconds
       healthCheckService.checkQueueWorker.mockResolvedValue({
         status: 'connected',
         name: 'Queue Worker',
@@ -154,7 +154,7 @@ describe('Health Endpoints', () => {
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('healthy');
       expect(response.body.version).toBeDefined();
-      expect(response.body.uptime).toBe('3d 14h');
+      expect(response.body.uptime).toBe(302400);
       expect(response.body.database).toBe('connected');
       expect(response.body.timestamp).toBeDefined();
     });
@@ -163,7 +163,7 @@ describe('Health Endpoints', () => {
       healthCheckService.getHealthCache.mockReturnValue({
         database: { status: 'disconnected', lastCheck: new Date().toISOString(), error: 'Connection failed' }
       });
-      healthCheckService.getUptime.mockReturnValue('1h 5m');
+      healthCheckService.getUptime.mockReturnValue(3900); // 1h 5m in seconds
       healthCheckService.checkQueueWorker.mockResolvedValue({
         status: 'connected',
         name: 'Queue Worker',
@@ -184,7 +184,7 @@ describe('Health Endpoints', () => {
       healthCheckService.runAllHealthChecks.mockResolvedValue({
         database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 }
       });
-      healthCheckService.getUptime.mockReturnValue('2m 30s');
+      healthCheckService.getUptime.mockReturnValue(150); // 2m 30s in seconds
       healthCheckService.checkQueueWorker.mockResolvedValue({
         status: 'connected',
         name: 'Queue Worker',

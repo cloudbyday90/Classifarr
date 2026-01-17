@@ -81,7 +81,7 @@ export function getStatusConfig(status) {
  * @returns {string} CSS class for latency coloring
  */
 export function getLatencyClass(latency) {
-  if (latency == null || latency === undefined) return 'text-gray-500'
+  if (latency == null) return 'text-gray-500'
   if (latency < LATENCY_GOOD_THRESHOLD) return 'text-green-500'
   if (latency < LATENCY_WARNING_THRESHOLD) return 'text-yellow-500'
   return 'text-red-500'
