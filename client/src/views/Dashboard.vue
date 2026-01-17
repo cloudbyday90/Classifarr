@@ -181,12 +181,12 @@ const computedAvgConfidence = computed(() => {
   return 0
 })
 
-// Sort methods by count (descending)
+// Get methods from backend (already sorted by count descending)
 const sortedMethods = computed(() => {
   if (!stats.value.byMethod || !Array.isArray(stats.value.byMethod)) {
     return []
   }
-  return stats.value.byMethod.slice().sort((a, b) => b.count - a.count)
+  return stats.value.byMethod
 })
 const recentHistory = ref([])
 const queueStats = ref({ pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true })

@@ -632,7 +632,7 @@ async function getOverallStats() {
     ORDER BY count DESC
   `);
 
-  return { ...result.rows[0], byMethod: byMethod.rows };
+  return { ...(result.rows[0] || {}), byMethod: byMethod.rows };
 }
 
 async function getStatsByLibrary() {
