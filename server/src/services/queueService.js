@@ -1173,32 +1173,53 @@ class QueueService {
             // 3. Clear content_analysis_log first (references classification_history)
             await db.query('DELETE FROM content_analysis_log');
 
-            // 4. Clear classification history
+            // 4. Clear classification_embeddings BEFORE classification_history (FK dependency)
+            const embeddingsResult = await db.query('DELETE FROM classification_embeddings RETURNING id');
+
+            // 5. Clear classification history
             const historyResult = await db.query('DELETE FROM classification_history RETURNING id');
 
-            // 4. Clear learning patterns and corrections (full reset)
+            // 6. Clear learning patterns and corrections (full reset)
             const patternsResult = await db.query('DELETE FROM learning_patterns RETURNING id');
             const correctionsResult = await db.query('DELETE FROM classification_corrections RETURNING id');
 
-            // 5. Clear ALL library classification rules
+            // 7. Clear ALL library classification rules
             const rulesV2Result = await db.query('DELETE FROM library_rules_v2 RETURNING id');
             await db.query('DELETE FROM library_custom_rules');
 
-            // 5b. Clear library pattern suggestions (Available Library Filters)
+            // 8. Clear library pattern suggestions (Available Library Filters)
             await db.query('DELETE FROM library_pattern_suggestions');
 
-            // 6. DELETE all media_server_items entirely (sync will repopulate fresh)
-            // This removes duplicates and stale data - fresh sync is cleaner
-            const itemsResult = await db.query(`
-                DELETE FROM media_server_items RETURNING id
-            `);
+            // 9. Clear library_profiles (references libraries)
+            await db.query('DELETE FROM library_profiles');
 
-            // 6. Restart worker if it was running
+            // 10. Clear media_server_collections (references libraries)
+            const collectionsResult = await db.query('DELETE FROM media_server_collections RETURNING id');
+
+            // 11. Clear media_server_items (references libraries)
+            const itemsResult = await db.query('DELETE FROM media_server_items RETURNING id');
+
+            // 12. Clear libraries LAST (parent table)
+            const librariesResult = await db.query('DELETE FROM libraries RETURNING id');
+
+            logger.info('Cleared all synced data', {
+                queue: queueResult.rowCount,
+                embeddings: embeddingsResult.rowCount,
+                history: historyResult.rowCount,
+                patterns: patternsResult.rowCount,
+                corrections: correctionsResult.rowCount,
+                rules: rulesV2Result.rowCount,
+                collections: collectionsResult.rowCount,
+                items: itemsResult.rowCount,
+                libraries: librariesResult.rowCount
+            });
+
+            // 13. Restart worker if it was running
             if (wasRunning) {
                 this.startWorker();
             }
 
-            // 7. Trigger library sync to repopulate library_id on items
+            // 14. Trigger library sync to repopulate library_id on items
             // This runs in background so we don't block the response
             const mediaSyncService = require('./mediaSync');
             const scheduler = require('./scheduler'); // For gap analysis
@@ -1226,11 +1247,14 @@ class QueueService {
 
             const result = {
                 queueCleared: queueResult.rowCount,
+                embeddingsCleared: embeddingsResult.rowCount,
                 historyCleared: historyResult.rowCount,
                 patternsCleared: patternsResult.rowCount,
                 correctionsCleared: correctionsResult.rowCount,
                 rulesCleared: rulesV2Result.rowCount,
-                itemsReset: itemsResult.rowCount
+                collectionsCleared: collectionsResult.rowCount,
+                itemsReset: itemsResult.rowCount,
+                librariesCleared: librariesResult.rowCount
             };
 
             logger.info('Cleared queue and triggered resync', result);
