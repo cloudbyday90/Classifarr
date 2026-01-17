@@ -195,6 +195,45 @@ describe('IdleBackfillService', () => {
             // Should have reset isRunning despite error
             expect(idleBackfillService.isRunning).toBe(false);
         });
+
+        test('should clean up database record on startup errors after INSERT', async () => {
+            const runId = 123;
+            
+            // Mock idleDetector.isIdle to throw an error after INSERT but before inner try
+            const isIdleMock = jest.fn()
+                .mockImplementation(() => {
+                    throw new Error('Unexpected error checking idle state');
+                });
+            idleDetector.isIdle = isIdleMock;
+            
+            db.query
+                .mockResolvedValueOnce({ // loadConfig
+                    rows: [{
+                        rag_enabled: true,
+                        idle_backfill_enabled: true,
+                        idle_threshold: 30000,
+                        idle_batch_size: 10
+                    }]
+                })
+                .mockResolvedValueOnce({ // getPendingCount
+                    rows: [{ count: '5' }]
+                })
+                .mockResolvedValueOnce({ // INSERT backfill_runs
+                    rows: [{ id: runId }]
+                })
+                .mockResolvedValueOnce({ rows: [] }); // UPDATE to mark as failed
+
+            await idleBackfillService.startIdleBackfill();
+
+            // Should have reset isRunning
+            expect(idleBackfillService.isRunning).toBe(false);
+            
+            // Should have attempted to update the database record to failed
+            const lastCall = db.query.mock.calls[db.query.mock.calls.length - 1];
+            expect(lastCall[0]).toContain('UPDATE backfill_runs');
+            expect(lastCall[0]).toContain('failed');
+            expect(lastCall[1]).toEqual(expect.arrayContaining([expect.any(String), runId]));
+        });
     });
 
     describe('stopIdleBackfill', () => {

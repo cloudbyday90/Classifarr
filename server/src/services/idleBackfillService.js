@@ -120,6 +120,8 @@ class IdleBackfillService {
      * Start idle backfill process
      */
     async startIdleBackfill() {
+        let runId = null;
+        
         try {
             // Load latest config
             const config = await this.loadConfig();
@@ -152,17 +154,17 @@ class IdleBackfillService {
                 return;
             }
 
-            // Only set isRunning after all checks pass
-            this.isRunning = true;
-            logger.info('Starting idle backfill...', { pending: pendingCount });
-
-            // Create run record with total
+            // Create run record with total BEFORE setting isRunning
             const runResult = await db.query(`
                 INSERT INTO backfill_runs (type, status, total)
                 VALUES ('idle', 'running', $1)
                 RETURNING id
             `, [pendingCount]);
-            const runId = runResult.rows[0].id;
+            runId = runResult.rows[0].id;
+
+            // Only set isRunning after database record is successfully created
+            this.isRunning = true;
+            logger.info('Starting idle backfill...', { pending: pendingCount, runId });
 
             let totalProcessed = 0;
 
@@ -256,6 +258,21 @@ class IdleBackfillService {
         } catch (error) {
             logger.error('Idle backfill startup error', { error: error.message });
             this.isRunning = false;
+            
+            // Clean up database record if it was created
+            if (runId) {
+                try {
+                    await db.query(`
+                        UPDATE backfill_runs 
+                        SET status = 'failed', 
+                            completed_at = NOW(),
+                            error = $1
+                        WHERE id = $2
+                    `, [error.message, runId]);
+                } catch (dbError) {
+                    logger.error('Failed to update backfill run status', { error: dbError.message });
+                }
+            }
             return;
         }
     }
