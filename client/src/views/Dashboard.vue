@@ -13,7 +13,76 @@
     
     <!-- Arr Config Warning -->
     <ArrConfigWarning />
+
+    <!-- Header with Refresh and Timestamp -->
+    <div class="flex items-center justify-between">
+      <h1 class="text-3xl font-bold">Dashboard</h1>
+      
+      <div class="flex items-center gap-3">
+        <span v-if="lastUpdated" class="text-sm text-gray-400">
+          Updated {{ formatRelativeTime(lastUpdated) }}
+        </span>
+        <Button @click="loadDashboard" :disabled="loading" size="sm">
+          <span v-if="loading">🔄</span>
+          <span v-else>↻</span>
+          Refresh
+        </Button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading" class="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div v-for="i in 5" :key="i" class="bg-gray-800 p-4 rounded-lg border border-gray-700 animate-pulse">
+        <div class="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
+        <div class="h-8 bg-gray-600 rounded w-1/2"></div>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-900/30 border border-red-700 rounded-lg p-6">
+      <div class="flex items-start gap-3">
+        <span class="text-red-400 text-2xl">⚠️</span>
+        <div>
+          <h3 class="font-semibold text-red-300">Failed to Load Dashboard</h3>
+          <p class="text-sm text-red-400/80 mt-1">{{ error }}</p>
+          <Button @click="loadDashboard" variant="secondary" size="sm" class="mt-3">
+            🔄 Retry
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State - No Libraries -->
+    <div v-else-if="!loading && librariesStore.libraries.length === 0" class="bg-blue-900/20 border border-blue-700 rounded-lg p-8 text-center">
+      <div class="text-6xl mb-4">📚</div>
+      <h2 class="text-2xl font-bold text-blue-300 mb-2">Welcome to Classifarr!</h2>
+      <p class="text-blue-400/80 mb-6 max-w-2xl mx-auto">
+        To get started, you'll need to connect your media server (Plex, Emby, or Jellyfin) and sync your libraries.
+      </p>
+      
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <Button @click="$router.push('/settings')" class="px-6 py-3">
+          📺 Connect Media Server
+        </Button>
+        <a href="https://github.com/cloudbyday90/Classifarr/wiki" target="_blank" rel="noopener noreferrer">
+          <Button variant="secondary" class="px-6 py-3 w-full">
+            📖 View Documentation
+          </Button>
+        </a>
+      </div>
+      
+      <div class="mt-8 text-sm text-gray-400">
+        <p><strong>Next Steps:</strong></p>
+        <ol class="mt-2 text-left inline-block">
+          <li>1. Connect your media server</li>
+          <li>2. Sync your libraries</li>
+          <li>3. Configure Radarr/Sonarr connections</li>
+          <li>4. Set up classification policies</li>
+        </ol>
+      </div>
+    </div>
     
+    <template v-else>
     <!-- System Status Row -->
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
@@ -48,28 +117,42 @@
       <!-- Recent Classifications (2/3 width) -->
       <div class="lg:col-span-2">
         <Card title="Recent Classifications">
-          <div v-if="recentHistory.length === 0" class="text-center py-8 text-gray-400">
-            No classifications yet. Submit a request to get started!
+          <div v-if="recentHistory.length === 0" class="text-center py-8 text-gray-500">
+            No classifications yet
           </div>
           <div v-else class="space-y-2">
             <div
               v-for="item in recentHistory"
               :key="item.id"
-              class="flex items-center justify-between p-3 bg-background rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
+              @click="viewDetails(item)"
+              class="p-3 bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700 rounded-lg cursor-pointer transition-colors"
             >
-              <div class="flex items-center gap-3">
-                <span class="text-xl">{{ item.media_type === 'movie' ? '🎬' : '📺' }}</span>
-                <div>
-                  <div class="font-medium">{{ item.title }}</div>
-                  <div class="text-sm text-gray-400">
-                    <span v-if="item.status === 'awaiting_decision'">⏳ Awaiting Decision</span>
-                    <span v-else>→ {{ item.library_name }}</span>
+              <div class="flex items-start justify-between">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg">{{ item.media_type === 'movie' ? '🎬' : '📺' }}</span>
+                    <span class="font-semibold">{{ item.title }}</span>
+                    <span v-if="item.year" class="text-gray-500">({{ item.year }})</span>
+                  </div>
+                  
+                  <div class="flex items-center gap-3 mt-1 text-sm text-gray-400">
+                    <span class="flex items-center gap-1">
+                      {{ getMethodIcon(item.method) }}
+                      {{ formatMethodName(item.method) }}
+                    </span>
+                    <span>→</span>
+                    <span class="text-primary">{{ item.library_name }}</span>
+                    <span>•</span>
+                    <span>{{ formatRelativeTime(new Date(item.created_at)) }}</span>
                   </div>
                 </div>
+                
+                <div class="flex items-center gap-2">
+                  <Badge :variant="getConfidenceVariant(item.confidence)">
+                    {{ item.confidence }}%
+                  </Badge>
+                </div>
               </div>
-              <Badge :variant="getConfidenceVariant(item.confidence)">
-                {{ item.confidence }}%
-              </Badge>
             </div>
           </div>
           <div v-if="recentHistory.length > 0" class="mt-4 text-center">
@@ -84,16 +167,36 @@
       <div class="space-y-6">
         <!-- Quick Actions -->
         <Card title="Quick Actions">
-          <div class="space-y-3">
-            <Button @click="$router.push('/request')" class="w-full">
-              ➕ New Request
-            </Button>
-            <Button @click="$router.push('/libraries')" variant="secondary" class="w-full">
-              📚 Libraries
-            </Button>
-            <Button @click="$router.push('/queue')" variant="ghost" class="w-full">
-              📋 Queue Status
-            </Button>
+          <div class="grid grid-cols-2 gap-3">
+            <router-link to="/request" class="p-4 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-lg text-center transition-colors">
+              <div class="text-2xl mb-2">🎬</div>
+              <div class="text-sm font-semibold">Classify Media</div>
+            </router-link>
+            
+            <router-link to="/libraries" class="p-4 bg-green-900/20 hover:bg-green-900/30 border border-green-700/30 rounded-lg text-center transition-colors">
+              <div class="text-2xl mb-2">📚</div>
+              <div class="text-sm font-semibold">Manage Libraries</div>
+            </router-link>
+            
+            <router-link to="/settings" class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors">
+              <div class="text-2xl mb-2">⚙️</div>
+              <div class="text-sm font-semibold">Settings</div>
+            </router-link>
+            
+            <router-link to="/statistics" class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors">
+              <div class="text-2xl mb-2">📊</div>
+              <div class="text-sm font-semibold">Statistics</div>
+            </router-link>
+            
+            <a href="https://github.com/cloudbyday90/Classifarr/wiki" target="_blank" rel="noopener noreferrer" class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors">
+              <div class="text-2xl mb-2">📖</div>
+              <div class="text-sm font-semibold">Documentation</div>
+            </a>
+            
+            <a href="https://discord.gg/classifarr" target="_blank" rel="noopener noreferrer" class="p-4 bg-indigo-900/20 hover:bg-indigo-900/30 border border-indigo-700/30 rounded-lg text-center transition-colors">
+              <div class="text-2xl mb-2">💬</div>
+              <div class="text-sm font-semibold">Discord</div>
+            </a>
           </div>
         </Card>
 
@@ -155,11 +258,14 @@
         </Card>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useDocumentVisibility } from '@vueuse/core'
 import { useLibrariesStore } from '@/stores/libraries'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
@@ -168,9 +274,14 @@ import Badge from '@/components/common/Badge.vue'
 import SetupBanner from '@/components/SetupBanner.vue'
 import ArrConfigWarning from '@/components/settings/ArrConfigWarning.vue'
 
+const router = useRouter()
 const librariesStore = useLibrariesStore()
+const visibility = useDocumentVisibility()
 
 const stats = ref({})
+const loading = ref(false)
+const error = ref(null)
+const lastUpdated = ref(null)
 
 // Compute average confidence from backend all-time data
 const computedAvgConfidence = computed(() => {
@@ -194,40 +305,62 @@ const enrichmentStats = ref({ totalItems: 0, enriched: 0, tavilyEnriched: 0, pro
 const awaitingDecisionCount = ref(0)
 let pollInterval = null
 
+// Format relative time helper
+const formatRelativeTime = (date) => {
+  const seconds = Math.floor((new Date() - date) / 1000)
+  
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  return `${Math.floor(seconds / 86400)}d ago`
+}
+
 onMounted(async () => {
-  await loadData()
-  // Poll queue stats every 5 seconds
-  pollInterval = setInterval(loadQueueStats, 5000)
+  await loadDashboard()
+  startPolling()
 })
 
 onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval)
 })
 
-const loadData = async () => {
-  await librariesStore.fetchLibraries()
-  
+const loadDashboard = async () => {
   try {
-    const [statsRes, historyRes, queueRes] = await Promise.all([
+    loading.value = true
+    error.value = null
+    
+    await librariesStore.fetchLibraries()
+    
+    // Parallel fetch all required data including awaiting decision count
+    const [statsRes, historyRes, queueRes, pendingRes] = await Promise.all([
       api.getStats(),
       api.getHistory({ page: 1, limit: 8, excludeMethod: 'source_library' }),
-      api.getQueueStats()
+      api.getQueueStats(),
+      api.get('/classification/pending/count')
     ])
     
     stats.value = statsRes.data
     recentHistory.value = historyRes.data.data || []
     queueStats.value = queueRes // getQueueStats already extracts .data
+    awaitingDecisionCount.value = pendingRes.data.count || 0
     
-    // Load awaiting decision count
-    try {
-      const pendingRes = await api.get('/classification/pending/count')
-      awaitingDecisionCount.value = pendingRes.data.count || 0
-    } catch (e) {
-      console.error('Failed to load awaiting decision count:', e)
-    }
-  } catch (error) {
-    console.error('Failed to load dashboard data:', error)
+    lastUpdated.value = new Date()
+  } catch (err) {
+    console.error('Failed to load dashboard data:', err)
+    error.value = err.response?.data?.error || err.message || 'Unknown error'
+  } finally {
+    loading.value = false
   }
+}
+
+const startPolling = () => {
+  if (pollInterval) clearInterval(pollInterval)
+  
+  pollInterval = setInterval(() => {
+    if (visibility.value === 'visible') {
+      loadQueueStats() // Only poll when tab is visible
+    }
+  }, 5000)
 }
 
 const loadQueueStats = async () => {
@@ -253,6 +386,11 @@ const getConfidenceVariant = (confidence) => {
   if (confidence >= 70) return 'info'
   if (confidence >= 50) return 'warning'
   return 'error'
+}
+
+const viewDetails = (item) => {
+  // Navigate to history with selected item
+  router.push({ name: 'History', query: { id: item.id } })
 }
 
 // Method display helpers

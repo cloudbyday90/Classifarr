@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Dashboard UI/UX Polish and Efficiency Improvements** (Fixes #204)
+  - Added comprehensive loading states with animated skeleton cards during data fetch
+  - Added error state with retry button for failed API calls
+  - Implemented parallel API calls for dashboard data (stats, history, queue, awaiting decision) using Promise.all for improved performance
+  - Added page visibility detection using @vueuse/core to pause queue polling when tab is not active, reducing unnecessary API calls
+  - Added empty state with onboarding guidance when no libraries exist, guiding users through initial setup
+  - Expanded Quick Actions from 3 to 6 items: Classify Media, Manage Libraries, Settings, Statistics, Documentation, and Discord
+  - Added last updated timestamp with relative time display (e.g., "2m ago", "just now")
+  - Added manual refresh button with loading state in dashboard header
+  - Enhanced Recent Classifications to show classification method, timestamp, and made items clickable
+  - Recent Classifications now navigate to History view when clicked for detailed information
+  - Improved visual hierarchy and responsiveness across all dashboard sections
+  - All dashboard data now loads efficiently in parallel instead of sequential requests
+
 ### Fixed
 - **Idle Backfill Bug Fixes** (Fixes #203)
   - Fixed initial activity timestamp preventing immediate idle detection (system can now be idle immediately on start)
