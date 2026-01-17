@@ -496,6 +496,32 @@ class MediaSyncService {
   }
 
   /**
+   * Sync all libraries from media server (Plex/Emby/Jellyfin)
+   * Creates new library entries in database and syncs their content
+   * This is the recommended method for fresh sync after CARSA (Clear & Re-sync All)
+   * @returns {Promise<void>}
+   * @throws {Error} If no active media server is configured or sync fails
+   */
+  async syncAllLibraries() {
+    try {
+      logger.info('Starting fresh sync of all libraries from media server');
+
+      // Fetch libraries from media server and create new library entries
+      const syncedLibraries = await this.syncLibrariesFromMediaServer();
+
+      // Sync items for each library
+      for (const library of syncedLibraries) {
+        await this.syncLibrary(library.id);
+      }
+
+      logger.info('Fresh sync completed', { libraryCount: syncedLibraries.length });
+    } catch (error) {
+      logger.error('Failed to sync all libraries', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
    * Sync libraries from media server (discover/refresh library list)
    * @returns {Promise<Array<Object>>} Array of synced library objects with properties: id, media_server_id, external_id, name, media_type, arr_type
    * @throws {Error} If no active media server is configured or sync fails

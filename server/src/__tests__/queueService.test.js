@@ -42,7 +42,8 @@ jest.mock('../utils/rateLimiter', () => ({
 // Mock mediaSync and scheduler for clearAndResync tests
 jest.mock('../services/mediaSync', () => ({
     syncLibrary: jest.fn().mockResolvedValue({}),
-    syncLibrariesFromMediaServer: jest.fn().mockResolvedValue([])
+    syncLibrariesFromMediaServer: jest.fn().mockResolvedValue([]),
+    syncAllLibraries: jest.fn().mockResolvedValue()
 }), { virtual: true });
 
 jest.mock('../services/scheduler', () => ({
@@ -371,6 +372,58 @@ describe('QueueService', () => {
             expect(deletionOrder.indexOf('library_profiles')).toBeLessThan(librariesIndex);
             expect(deletionOrder.indexOf('media_server_collections')).toBeLessThan(librariesIndex);
             expect(deletionOrder.indexOf('media_server_items')).toBeLessThan(librariesIndex);
+        });
+
+        it('should clear in-memory caches before re-sync', async () => {
+            db.query.mockImplementation((query) => {
+                if (query.includes('DELETE FROM')) {
+                    return Promise.resolve({ rows: [{ id: 1 }], rowCount: 1 });
+                }
+                return Promise.resolve({ rows: [], rowCount: 0 });
+            });
+
+            // Set a cache flag
+            queueService.omdbLimitHit = true;
+
+            await queueService.clearAndResync();
+
+            // Verify cache was cleared
+            expect(queueService.omdbLimitHit).toBe(false);
+        });
+
+        it('should use syncAllLibraries for fresh sync', async () => {
+            const mediaSyncService = require('../services/mediaSync');
+            
+            db.query.mockImplementation((query) => {
+                if (query.includes('DELETE FROM')) {
+                    return Promise.resolve({ rows: [{ id: 1 }], rowCount: 1 });
+                }
+                return Promise.resolve({ rows: [], rowCount: 0 });
+            });
+
+            await queueService.clearAndResync();
+
+            // Wait for async background task to start
+            await new Promise(resolve => setImmediate(resolve));
+
+            // Verify syncAllLibraries is called (not individual library sync with old IDs)
+            expect(mediaSyncService.syncAllLibraries).toHaveBeenCalled();
+        });
+
+        it('should not query for old library IDs after clear', async () => {
+            db.query.mockImplementation((query) => {
+                if (query.includes('DELETE FROM')) {
+                    return Promise.resolve({ rows: [{ id: 1 }], rowCount: 1 });
+                }
+                // Should NOT query for library IDs from deleted libraries table
+                if (query.includes('SELECT id FROM libraries WHERE is_active')) {
+                    throw new Error('Should not query deleted libraries!');
+                }
+                return Promise.resolve({ rows: [], rowCount: 0 });
+            });
+
+            // Should complete without errors (not querying old library IDs)
+            await expect(queueService.clearAndResync()).resolves.toBeDefined();
         });
 
         it('should handle errors gracefully', async () => {

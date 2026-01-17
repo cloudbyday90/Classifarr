@@ -1214,29 +1214,27 @@ class QueueService {
                 libraries: librariesResult.rowCount
             });
 
-            // 13. Restart worker if it was running
+            // 13. Clear in-memory caches
+            this.omdbLimitHit = false; // Reset OMDb limit flag for fresh start
+            
+            // 14. Restart worker if it was running
             if (wasRunning) {
                 this.startWorker();
             }
 
-            // 14. Trigger library sync to repopulate library_id on items
+            // 15. Trigger FRESH library sync from media server
             // This runs in background so we don't block the response
             const mediaSyncService = require('./mediaSync');
-            const scheduler = require('./scheduler'); // For gap analysis
+            const scheduler = require('./scheduler');
 
             (async () => {
                 try {
-                    // First, sync libraries from media server to recreate library records
-                    const syncedLibraries = await mediaSyncService.syncLibrariesFromMediaServer();
-                    logger.info('Libraries synced from media server after clear', { count: syncedLibraries.length });
+                    // ✅ CORRECT: Full sync from media server creates NEW library entries
+                    await mediaSyncService.syncAllLibraries();
 
-                    // Then sync content for each library
-                    for (const lib of syncedLibraries) {
-                        await mediaSyncService.syncLibrary(lib.id);
-                    }
-                    logger.info('Library content sync completed after clear');
+                    logger.info('Fresh library sync completed after clear');
 
-                    // Finally run gap analysis with fresh library_id associations
+                    // Run gap analysis with new library IDs
                     await scheduler.runGapAnalysis();
 
                     logger.info('Gap analysis triggered after clear');

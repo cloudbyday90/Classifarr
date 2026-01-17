@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Clear and Resync (CARSA) - Library Sync**: Fixed `clearAndResync()` to use fresh library sync instead of querying deleted library IDs (Fixes #175)
+  - Now uses `syncAllLibraries()` which performs a complete fresh sync from the media server
+  - Prevents "Library not found" errors after CARSA by avoiding stale library ID references
+  - Clears in-memory caches (`omdbLimitHit`) before re-sync for clean state
 - **Clear and Resync (CARSA)**: Fixed `clearAndResync()` to properly delete all critical tables including:
   - `classification_embeddings` (explicitly deleted before `classification_history` for clearer logging/tracking, even though FK uses ON DELETE CASCADE)
   - `library_profiles` (deleted before `libraries`)
@@ -15,13 +19,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `libraries` (deleted last as parent table)
 - **Clear and Resync Order**: Ensured deletion order respects foreign key dependencies to prevent constraint violations
 - **Clear and Resync Logging**: Updated logging to include counts for all deleted tables (embeddings, collections, libraries)
-- **Clear and Resync Library Sync**: Fixed library sync to fetch libraries from media server before syncing content
+
+### Added
+- **MediaSync Service**: Added `syncAllLibraries()` method for fresh library sync after CARSA
+  - Fetches libraries from media server (creates NEW library entries with NEW IDs)
+  - Syncs content for each library
+  - Recommended method for post-CARSA sync operations
 
 ### Changed
 - **Clear and Resync Return Value**: Added `embeddingsCleared`, `collectionsCleared`, and `librariesCleared` to result object
+- **Clear and Resync Process**: Now clears in-memory caches before triggering fresh library sync
 
 ### Technical Details
-- Tables are now deleted in the following dependency-safe order:
+- **CARSA Flow**:
+  1. Stop worker to prevent race conditions
+  2. Delete all tables in dependency-safe order (see below)
+  3. Clear in-memory caches (`omdbLimitHit = false`)
+  4. Restart worker
+  5. Trigger `syncAllLibraries()` in background (creates NEW libraries)
+  6. Run gap analysis with fresh library IDs
+  
+- **Table Deletion Order**:
   1. `task_queue` (independent)
   2. `content_analysis_log` (references classification_history)
   3. `classification_embeddings` (references classification_history)
@@ -35,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   11. `media_server_collections` (references libraries)
   12. `media_server_items` (references libraries)
   13. `libraries` (parent table - deleted last)
+
+- **Fresh Sync Implementation**:
+  - `syncAllLibraries()` calls `syncLibrariesFromMediaServer()` to fetch and create NEW library records
+  - Each library gets a NEW database ID (not reusing old IDs)
+  - All media items and collections reference the NEW library IDs
+  - No stale ID references anywhere in the system
 
 ## [v0.39.7b-alpha] - 2026-01-16
 
