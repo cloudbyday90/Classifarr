@@ -209,7 +209,7 @@
             <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            You can view this key again later by clicking the eye icon. Store it securely.
+            This key is stored encrypted and can be retrieved later when logged in. However, store it securely for convenience.
           </div>
 
           <div>
@@ -366,7 +366,7 @@ const toggleKeyStatus = async (key) => {
   try {
     await api.updateApiKey(key.id, { is_active: !key.is_active })
     await loadApiKeys()
-    status.value = { type: 'success', message: `API key ${key.is_active ? 'deactivated' : 'activated'}` }
+    status.value = { type: 'success', message: `API key ${!key.is_active ? 'activated' : 'deactivated'}` }
     setTimeout(() => status.value = null, 3000)
   } catch (err) {
     console.error('Failed to update API key:', err)

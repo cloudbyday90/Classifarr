@@ -28,15 +28,30 @@ const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 // If not set, a random key will be generated on each restart, making old keys unrecoverable
 const ENCRYPTION_KEY = process.env.API_KEY_ENCRYPTION_KEY;
 
+let ENCRYPTION_KEY_BYTES;
+
 if (!ENCRYPTION_KEY) {
   console.warn('WARNING: API_KEY_ENCRYPTION_KEY not set in environment!');
   console.warn('Using a random key - all API keys will become invalid on server restart.');
   console.warn('Set API_KEY_ENCRYPTION_KEY to a 64-character hex string to persist keys.');
-}
+  ENCRYPTION_KEY_BYTES = crypto.randomBytes(32);
+} else {
+  const isValidLength = ENCRYPTION_KEY.length === 64;
+  const isHex = /^[0-9a-fA-F]+$/.test(ENCRYPTION_KEY);
 
-const ENCRYPTION_KEY_BYTES = ENCRYPTION_KEY 
-  ? Buffer.from(ENCRYPTION_KEY.slice(0, 64), 'hex')
-  : crypto.randomBytes(32);
+  if (!isValidLength || !isHex) {
+    const msg = 'API_KEY_ENCRYPTION_KEY must be a 64-character hex string.';
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(msg);
+    } else {
+      console.warn(`WARNING: ${msg}`);
+      console.warn('Falling back to a random key - all API keys will become invalid on server restart.');
+      ENCRYPTION_KEY_BYTES = crypto.randomBytes(32);
+    }
+  } else {
+    ENCRYPTION_KEY_BYTES = Buffer.from(ENCRYPTION_KEY, 'hex');
+  }
+}
 
 /**
  * Encrypt an API key for secure storage
@@ -166,6 +181,12 @@ async function validateApiKey(key) {
       }
     } catch (error) {
       // Decryption failed, try next key
+      console.warn(
+        'WARNING: Failed to decrypt stored API key with id %s. ' +
+        'This may indicate an invalid API_KEY_ENCRYPTION_KEY or data corruption: %s',
+        row.id,
+        error && error.message ? error.message : String(error)
+      );
       continue;
     }
   }

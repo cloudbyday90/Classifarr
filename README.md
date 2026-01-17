@@ -274,7 +274,7 @@ On first startup, Classifarr auto-generates a read-write API key named "Default 
 ✓ Auto-generated default API key
   Prefix: clf_abc1...
   Full key: clf_abc123xyz...
-  Save this key - it will not be shown again!
+  You can view this key again in Settings → Security.
 ```
 
 You can view this key again later in **Settings** → **Security** by clicking the eye icon.
