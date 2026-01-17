@@ -17,7 +17,7 @@
     </div>
     <div class="flex items-center gap-3">
       <template v-if="score > 0">
-        <span class="w-10 text-right font-mono">{{ score }}%</span>
+        <span class="w-10 text-right font-mono">{{ Math.round(score) }}%</span>
         <div class="w-24 bg-gray-700 rounded-full h-2">
           <div 
             class="h-2 rounded-full"
@@ -25,7 +25,7 @@
             :style="{ width: `${score}%` }"
           ></div>
         </div>
-        <span class="text-gray-500 text-xs w-12">(×{{ weight }})</span>
+        <span class="text-gray-500 text-xs w-12">(×{{ weight.toFixed(2) }})</span>
       </template>
       <template v-else>
         <span class="w-10 text-right font-mono">--</span>

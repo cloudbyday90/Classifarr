@@ -180,7 +180,7 @@
 
           <!-- Signal Breakdown -->
           <div 
-            v-if="selectedItem.method !== 'source_library' && signalScores" 
+            v-if="shouldShowSignalBreakdown" 
             class="bg-background rounded-lg p-4 border border-gray-700"
           >
             <h4 class="font-semibold mb-3 text-yellow-400">🔬 Classification Signals</h4>
@@ -380,6 +380,14 @@ const signalWeights = computed(() => {
   }
 })
 
+// Check if signal breakdown should be shown (only for policy engine methods with actual scores)
+const shouldShowSignalBreakdown = computed(() => {
+  if (!signalScores.value) return false
+  // Check if any signal has a non-zero score (indicating policy engine was used)
+  const hasNonZeroScore = Object.values(signalScores.value).some(score => score > 0)
+  return hasNonZeroScore
+})
+
 const methodDisplayNames = {
   'policy_engine': 'Policy Engine',
   'policy_auto': 'Policy Engine',
@@ -390,9 +398,12 @@ const methodDisplayNames = {
   'learned_pattern': 'Learned Pattern',
   'exact_match': 'Exact Match',
   'ai_fallback': 'AI Analysis',
+  'ai_verified': 'AI Verified',
+  'signal_calculation': 'Signal Calculation',
   'rule_match': 'Rule Match',
   'existing_media': 'Existing Media',
-  'holiday_detection': 'Holiday Detection'
+  'holiday_detection': 'Holiday Detection',
+  'queued_for_retry': 'Queued For Retry'
 }
 
 const getFriendlyMethodName = (method) => {

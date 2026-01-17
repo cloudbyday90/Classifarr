@@ -1759,7 +1759,6 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
     // Log content analysis if available
     if (enrichedMetadata.contentAnalysis && enrichedMetadata.contentAnalysis.bestMatch) {
-      const analysis = enrichedMetadata.contentAnalysis.bestMatch;
       await contentTypeAnalyzer.analyze(enrichedMetadata, classificationId);
     }
 
