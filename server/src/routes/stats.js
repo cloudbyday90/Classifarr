@@ -30,8 +30,11 @@ const ALERT_THRESHOLDS = {
  */
 router.get('/', async (req, res) => {
   try {
-    const stats = await getOverallStats();
-    res.json(stats);
+    const [overall, byMethod] = await Promise.all([
+      getOverallStats(),
+      getStatsByMethod()
+    ]);
+    res.json({ ...overall, byMethod });
   } catch (error) {
     logger.error('Failed to get stats', { error: error.message });
     res.status(500).json({ error: error.message });
@@ -646,6 +649,7 @@ async function getStatsByMethod() {
       COUNT(*) as count,
       ROUND(AVG(confidence)::numeric, 1) as avg_confidence
     FROM classification_history
+    WHERE method IS NOT NULL
     GROUP BY method
     ORDER BY count DESC
   `);

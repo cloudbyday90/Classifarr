@@ -2,6 +2,7 @@ const request = require('supertest');
 const express = require('express');
 const db = require('../../config/database');
 const statsRouter = require('../../routes/stats');
+const authService = require('../../services/auth');
 
 const app = express();
 app.use(express.json());
@@ -12,15 +13,23 @@ describe('Stats API Integration Tests', () => {
     let testPolicyId;
     let testMediaServerId;
     let testUserId;
+    let testToken;
 
     beforeAll(async () => {
         // Create test user
         const userRes = await db.query(`
-            INSERT INTO users (username, password_hash, role)
-            VALUES ('test-stats-user', 'hash', 'admin')
+            INSERT INTO users (username, password_hash, role, is_active)
+            VALUES ('test-stats-user', 'hash', 'admin', true)
             RETURNING id
         `);
         testUserId = userRes.rows[0].id;
+
+        // Generate JWT token for authentication
+        testToken = await authService.generateToken({
+            id: testUserId,
+            username: 'test-stats-user',
+            role: 'admin'
+        });
 
         // Create test media server
         const serverRes = await db.query(`
@@ -79,10 +88,23 @@ describe('Stats API Integration Tests', () => {
                 policy_id, suggestion_type, suggestion_config, confidence, status
             ) VALUES ($1, 'adjust_threshold', '{"threshold_type": "auto_classify"}', 75, 'pending')
         `, [testPolicyId]);
+
+        // Insert test classification history data for method stats
+        await db.query(`
+            INSERT INTO classification_history (
+                tmdb_id, media_type, title, library_id, confidence, method, status
+            ) VALUES
+            (11111, 'movie', 'Test Classification 1', $1, 95, 'exact_match', 'completed'),
+            (11112, 'movie', 'Test Classification 2', $1, 85, 'exact_match', 'completed'),
+            (11113, 'movie', 'Test Classification 3', $1, 75, 'learned_pattern', 'completed'),
+            (11114, 'movie', 'Test Classification 4', $1, 90, 'ai_fallback', 'completed'),
+            (11115, 'movie', 'Test Classification 5', $1, 80, 'rule_match', 'completed')
+        `, [testLibraryId]);
     });
 
     afterAll(async () => {
         // Clean up test data
+        await db.query('DELETE FROM classification_history WHERE library_id = $1', [testLibraryId]);
         await db.query('DELETE FROM policy_tuning_suggestions WHERE policy_id = $1', [testPolicyId]);
         await db.query('DELETE FROM discovered_patterns WHERE library_id = $1', [testLibraryId]);
         await db.query('DELETE FROM policy_learning_stats WHERE policy_id = $1', [testPolicyId]);
@@ -97,6 +119,7 @@ describe('Stats API Integration Tests', () => {
         it('should return global stats overview', async () => {
             const res = await request(app)
                 .get('/api/stats/overview')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(res.body).toHaveProperty('total_policies');
@@ -107,10 +130,43 @@ describe('Stats API Integration Tests', () => {
         });
     });
 
+    describe('GET /api/stats', () => {
+        it('should return overall stats with byMethod breakdown', async () => {
+            const res = await request(app)
+                .get('/api/stats')
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(200);
+
+            // Check overall stats
+            expect(res.body).toHaveProperty('total');
+            expect(res.body).toHaveProperty('avg_confidence');
+            expect(res.body).toHaveProperty('high_confidence');
+            expect(res.body).toHaveProperty('low_confidence');
+
+            // Check byMethod array exists and has correct structure
+            expect(res.body).toHaveProperty('byMethod');
+            expect(Array.isArray(res.body.byMethod)).toBe(true);
+            
+            if (res.body.byMethod.length > 0) {
+                const methodItem = res.body.byMethod[0];
+                expect(methodItem).toHaveProperty('method');
+                expect(methodItem).toHaveProperty('count');
+                expect(methodItem).toHaveProperty('avg_confidence');
+                
+                // Verify it's sorted by count (descending)
+                if (res.body.byMethod.length > 1) {
+                    expect(Number(res.body.byMethod[0].count))
+                        .toBeGreaterThanOrEqual(Number(res.body.byMethod[1].count));
+                }
+            }
+        });
+    });
+
     describe('GET /api/stats/policies/:id', () => {
         it('should return detailed stats for a policy', async () => {
             const res = await request(app)
                 .get(`/api/stats/policies/${testPolicyId}`)
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(res.body).toHaveProperty('policy_id', testPolicyId);
@@ -125,6 +181,7 @@ describe('Stats API Integration Tests', () => {
         it('should return 404 for non-existent policy', async () => {
             const res = await request(app)
                 .get('/api/stats/policies/999999')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(404);
 
             expect(res.body).toHaveProperty('error');
@@ -135,6 +192,7 @@ describe('Stats API Integration Tests', () => {
         it('should return recent activity feed', async () => {
             const res = await request(app)
                 .get('/api/stats/live-feed')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
@@ -151,6 +209,7 @@ describe('Stats API Integration Tests', () => {
         it('should respect limit parameter', async () => {
             const res = await request(app)
                 .get('/api/stats/live-feed?limit=2')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
@@ -162,6 +221,7 @@ describe('Stats API Integration Tests', () => {
         it('should return alerts for abnormal metrics', async () => {
             const res = await request(app)
                 .get('/api/stats/alerts')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
@@ -180,6 +240,7 @@ describe('Stats API Integration Tests', () => {
         it('should return period comparison data', async () => {
             const res = await request(app)
                 .get(`/api/stats/policies/${testPolicyId}/compare`)
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
@@ -205,6 +266,7 @@ describe('Stats API Integration Tests', () => {
         it('should return all policies with their stats', async () => {
             const res = await request(app)
                 .get('/api/stats/policies')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);

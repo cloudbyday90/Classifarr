@@ -135,22 +135,21 @@
 
         <!-- Classification Methods -->
         <Card title="Classification Methods">
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-gray-400">Exact Match</span>
-              <span class="text-green-400">{{ methodStats.exact || 0 }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-400">Learned</span>
-              <span class="text-blue-400">{{ methodStats.learned || 0 }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-400">Rule-Based</span>
-              <span class="text-purple-400">{{ methodStats.rule || 0 }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-gray-400">AI</span>
-              <span class="text-yellow-400">{{ methodStats.ai || 0 }}</span>
+          <div v-if="sortedMethods.length === 0" class="text-center py-4 text-gray-400 text-sm">
+            No classifications yet
+          </div>
+          <div v-else class="space-y-2 text-sm">
+            <div 
+              v-for="method in sortedMethods" 
+              :key="method.method" 
+              class="flex justify-between items-center"
+              :title="getMethodTooltip(method.method)"
+            >
+              <span class="flex items-center gap-2">
+                <span>{{ getMethodIcon(method.method) }}</span>
+                <span class="text-gray-400">{{ formatMethodName(method.method) }}</span>
+              </span>
+              <span :class="getMethodColor(method.method)">{{ method.count }}</span>
             </div>
           </div>
         </Card>
@@ -173,20 +172,25 @@ const librariesStore = useLibrariesStore()
 
 const stats = ref({})
 
-// Compute average confidence from the array of {method, avg_confidence}
+// Compute average confidence from backend all-time data
 const computedAvgConfidence = computed(() => {
-  const avgData = stats.value.avgConfidence
-  if (!avgData || !Array.isArray(avgData) || avgData.length === 0) {
-    return 0
+  // Use backend avg_confidence if available (all-time average)
+  if (stats.value.avg_confidence !== undefined && stats.value.avg_confidence !== null) {
+    return stats.value.avg_confidence
   }
-  // Calculate overall average from all methods
-  const total = avgData.reduce((sum, item) => sum + parseFloat(item.avg_confidence || 0), 0)
-  return Math.round(total / avgData.length)
+  return 0
+})
+
+// Get methods from backend (already sorted by count descending)
+const sortedMethods = computed(() => {
+  if (!stats.value.byMethod || !Array.isArray(stats.value.byMethod)) {
+    return []
+  }
+  return stats.value.byMethod
 })
 const recentHistory = ref([])
 const queueStats = ref({ pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true })
 const enrichmentStats = ref({ totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 })
-const methodStats = ref({})
 const awaitingDecisionCount = ref(0)
 let pollInterval = null
 
@@ -221,14 +225,6 @@ const loadData = async () => {
     } catch (e) {
       console.error('Failed to load awaiting decision count:', e)
     }
-    
-    // Calculate method stats from recent history
-    const methods = {}
-    recentHistory.value.forEach(item => {
-      const method = item.method || 'unknown'
-      methods[method] = (methods[method] || 0) + 1
-    })
-    methodStats.value = methods
   } catch (error) {
     console.error('Failed to load dashboard data:', error)
   }
@@ -257,5 +253,70 @@ const getConfidenceVariant = (confidence) => {
   if (confidence >= 70) return 'info'
   if (confidence >= 50) return 'warning'
   return 'error'
+}
+
+// Method display helpers
+const getMethodIcon = (method) => {
+  const icons = {
+    'policy_engine': '⚙️',
+    'source_library': '📚',
+    'manual_classification': '✋',
+    'learned_pattern': '🧠',
+    'exact_match': '🎯',
+    'ai_fallback': '🤖',
+    'rule_match': '📋',
+    'library_rule': '📋',
+    'existing_media': '🎬',
+    'holiday_detection': '🎄'
+  }
+  return icons[method] || '❓'
+}
+
+const formatMethodName = (method) => {
+  const names = {
+    'policy_engine': 'Policy Engine',
+    'source_library': 'Source Library',
+    'manual_classification': 'Manual',
+    'learned_pattern': 'Learned Pattern',
+    'exact_match': 'Exact Match',
+    'ai_fallback': 'AI Analysis',
+    'rule_match': 'Rule Match',
+    'library_rule': 'Rule Match',
+    'existing_media': 'Existing Media',
+    'holiday_detection': 'Holiday Detection'
+  }
+  return names[method] || method.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+const getMethodColor = (method) => {
+  const colors = {
+    'policy_engine': 'text-purple-400',
+    'source_library': 'text-blue-400',
+    'manual_classification': 'text-yellow-400',
+    'learned_pattern': 'text-cyan-400',
+    'exact_match': 'text-green-400',
+    'ai_fallback': 'text-orange-400',
+    'rule_match': 'text-indigo-400',
+    'library_rule': 'text-indigo-400',
+    'existing_media': 'text-pink-400',
+    'holiday_detection': 'text-red-400'
+  }
+  return colors[method] || 'text-gray-400'
+}
+
+const getMethodTooltip = (method) => {
+  const tooltips = {
+    'policy_engine': 'Classification via learned library policy patterns',
+    'source_library': 'Direct mapping from source library configuration',
+    'manual_classification': 'Manually classified by user',
+    'learned_pattern': 'Classification based on learned patterns',
+    'exact_match': 'Exact match found in database',
+    'ai_fallback': 'AI-powered classification when other methods fail',
+    'rule_match': 'Matched against defined rules',
+    'library_rule': 'Matched against library-specific rules',
+    'existing_media': 'Based on existing media in libraries',
+    'holiday_detection': 'Special holiday/seasonal content detected'
+  }
+  return tooltips[method] || 'Classification method'
 }
 </script>
