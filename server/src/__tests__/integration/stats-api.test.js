@@ -2,6 +2,7 @@ const request = require('supertest');
 const express = require('express');
 const db = require('../../config/database');
 const statsRouter = require('../../routes/stats');
+const authService = require('../../services/auth');
 
 const app = express();
 app.use(express.json());
@@ -12,15 +13,23 @@ describe('Stats API Integration Tests', () => {
     let testPolicyId;
     let testMediaServerId;
     let testUserId;
+    let testToken;
 
     beforeAll(async () => {
         // Create test user
         const userRes = await db.query(`
-            INSERT INTO users (username, password_hash, role)
-            VALUES ('test-stats-user', 'hash', 'admin')
+            INSERT INTO users (username, password_hash, role, is_active)
+            VALUES ('test-stats-user', 'hash', 'admin', true)
             RETURNING id
         `);
         testUserId = userRes.rows[0].id;
+
+        // Generate JWT token for authentication
+        testToken = await authService.generateToken({
+            id: testUserId,
+            username: 'test-stats-user',
+            role: 'admin'
+        });
 
         // Create test media server
         const serverRes = await db.query(`
@@ -110,6 +119,7 @@ describe('Stats API Integration Tests', () => {
         it('should return global stats overview', async () => {
             const res = await request(app)
                 .get('/api/stats/overview')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(res.body).toHaveProperty('total_policies');
@@ -124,6 +134,7 @@ describe('Stats API Integration Tests', () => {
         it('should return overall stats with byMethod breakdown', async () => {
             const res = await request(app)
                 .get('/api/stats')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             // Check overall stats
@@ -155,6 +166,7 @@ describe('Stats API Integration Tests', () => {
         it('should return detailed stats for a policy', async () => {
             const res = await request(app)
                 .get(`/api/stats/policies/${testPolicyId}`)
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(res.body).toHaveProperty('policy_id', testPolicyId);
@@ -169,6 +181,7 @@ describe('Stats API Integration Tests', () => {
         it('should return 404 for non-existent policy', async () => {
             const res = await request(app)
                 .get('/api/stats/policies/999999')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(404);
 
             expect(res.body).toHaveProperty('error');
@@ -179,6 +192,7 @@ describe('Stats API Integration Tests', () => {
         it('should return recent activity feed', async () => {
             const res = await request(app)
                 .get('/api/stats/live-feed')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
@@ -195,6 +209,7 @@ describe('Stats API Integration Tests', () => {
         it('should respect limit parameter', async () => {
             const res = await request(app)
                 .get('/api/stats/live-feed?limit=2')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
@@ -206,6 +221,7 @@ describe('Stats API Integration Tests', () => {
         it('should return alerts for abnormal metrics', async () => {
             const res = await request(app)
                 .get('/api/stats/alerts')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
@@ -224,6 +240,7 @@ describe('Stats API Integration Tests', () => {
         it('should return period comparison data', async () => {
             const res = await request(app)
                 .get(`/api/stats/policies/${testPolicyId}/compare`)
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
@@ -249,6 +266,7 @@ describe('Stats API Integration Tests', () => {
         it('should return all policies with their stats', async () => {
             const res = await request(app)
                 .get('/api/stats/policies')
+                .set('Authorization', `Bearer ${testToken}`)
                 .expect(200);
 
             expect(Array.isArray(res.body)).toBe(true);
