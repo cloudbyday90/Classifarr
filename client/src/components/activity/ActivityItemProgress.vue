@@ -132,7 +132,7 @@ function formatPhaseMetadata(phase) {
   if (metadata.matched_policy) {
     parts.push(`Matched: "${metadata.matched_policy}"`);
   }
-  if (metadata.embedding_count) {
+  if (metadata.embedding_count && typeof metadata.embedding_count === 'number') {
     parts.push(`Comparing to ${metadata.embedding_count.toLocaleString()} embeddings`);
   }
   if (metadata.library_id) {

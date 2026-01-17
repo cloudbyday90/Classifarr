@@ -515,9 +515,11 @@ class ClarificationService {
         // Create an exact_match pattern so this exact item is remembered
         
         // First, safely parse policy_question (may already be an object from JSONB)
-        const policyQuestion = typeof classification.policy_question === 'string'
-          ? JSON.parse(classification.policy_question)
-          : classification.policy_question;
+        const policyQuestion = classification.policy_question
+          ? (typeof classification.policy_question === 'string'
+              ? JSON.parse(classification.policy_question)
+              : classification.policy_question)
+          : null;
         
         const patternResult = await client.query(
           `INSERT INTO learning_patterns 
