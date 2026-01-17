@@ -17,6 +17,25 @@
  */
 
 const classificationService = require('../services/classification');
+const classificationPhaseService = require('../services/classificationPhaseService');
+const db = require('../config/database');
+const tmdbService = require('../services/tmdb');
+const policyEngine = require('../services/policyEngine');
+const confidenceCalculator = require('../services/confidenceCalculator');
+const contentTypeAnalyzer = require('../services/contentTypeAnalyzer');
+
+// Mock dependencies
+jest.mock('../services/classificationPhaseService');
+jest.mock('../config/database');
+jest.mock('../services/tmdb');
+jest.mock('../services/policyEngine');
+jest.mock('../services/confidenceCalculator');
+jest.mock('../services/ragRetriever');
+jest.mock('../services/signalCollector');
+jest.mock('../services/mediaSync');
+jest.mock('../services/libraryProfileService');
+jest.mock('../services/discordBot');
+jest.mock('../services/contentTypeAnalyzer');
 
 describe('ClassificationService', () => {
   describe('evaluateCustomRule', () => {
@@ -372,3 +391,75 @@ describe('ClassificationService', () => {
     });
   });
 });
+
+describe('Phase Tracking in classify()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Setup default mocks
+    db.query.mockResolvedValue({ rows: [] });
+    tmdbService.getMovieDetails.mockResolvedValue({ title: 'Test Movie', genres: [] });
+    tmdbService.getCertification.mockResolvedValue('PG');
+    policyEngine.evaluateItem.mockResolvedValue({ action: 'auto_classify', library: { library_id: 1 }, confidence: 95 });
+    confidenceCalculator.calculate.mockReturnValue({ confidence: 95, suggestedLibrary: { id: 1 } });
+    confidenceCalculator.toAIContext.mockReturnValue('');
+    contentTypeAnalyzer.analyze.mockResolvedValue({ analyzed: false });
+
+    classificationPhaseService.updatePhase.mockResolvedValue(true);
+    classificationPhaseService.completeTracking.mockResolvedValue(true);
+
+    // Mock libraries
+    db.query.mockImplementation((text, params) => {
+      const query = typeof text === 'string' ? text : '';
+      if (query.includes('FROM libraries')) {
+        return { rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] };
+      }
+      if (query.includes('INSERT INTO classification_history') || query.includes('INSERT INTO logs') || query.includes('INSERT INTO error_logs')) {
+        return { rows: [{ id: 12345, error_id: 67890 }] };
+      }
+      return { rows: [] };
+    });
+  });
+
+  test('should track phases when taskId is present', async () => {
+    const payload = {
+      media: { media_type: 'movie', tmdbId: 123 },
+      taskId: 'task-123'
+    };
+
+    await classificationService.classify(payload);
+
+    // Check for phase updates
+    expect(classificationPhaseService.updatePhase).toHaveBeenCalledWith('task-123', 'metadata_fetch', expect.anything());
+    expect(classificationPhaseService.updatePhase).toHaveBeenCalledWith('task-123', 'policy_eval');
+
+    // Tracking completion
+    expect(classificationPhaseService.completeTracking).toHaveBeenCalledWith('task-123', expect.anything());
+  });
+
+  test('should SKIP phase tracking when taskId is missing', async () => {
+    const payload = {
+      media: { media_type: 'movie', tmdbId: 123 }
+      // No taskId
+    };
+
+    await classificationService.classify(payload);
+
+    expect(classificationPhaseService.updatePhase).not.toHaveBeenCalled();
+    expect(classificationPhaseService.completeTracking).not.toHaveBeenCalled();
+  });
+
+  test('should SKIP phase tracking for source_library items', async () => {
+    const payload = {
+      media: { media_type: 'movie', tmdbId: 123 },
+      taskId: 'task-123',
+      source_library_id: 99
+    };
+
+    await classificationService.classify(payload);
+
+    expect(classificationPhaseService.updatePhase).not.toHaveBeenCalled();
+    expect(classificationPhaseService.completeTracking).not.toHaveBeenCalled();
+  });
+});
+
