@@ -19,6 +19,7 @@
 const express = require('express');
 const mediaSyncService = require('../services/mediaSync');
 const { createLogger } = require('../utils/logger');
+const syncStatus = require('../services/syncStatus');
 
 const router = express.Router();
 const logger = createLogger('mediaSync-routes');
@@ -32,6 +33,18 @@ router.post('/sync/:libraryId', async (req, res) => {
     const { libraryId } = req.params;
     const { incremental = false, batchSize = 100 } = req.body;
 
+    // Check if we can start sync
+    const canStart = syncStatus.canStartSync('library_sync');
+    if (!canStart.allowed) {
+      return res.status(409).json({
+        error: 'Sync already in progress',
+        message: canStart.reason,
+        progress: canStart.progress
+      });
+    }
+
+    syncStatus.start('library_sync');
+
     logger.info('Starting library sync', { libraryId, incremental });
 
     const result = await mediaSyncService.syncLibrary(parseInt(libraryId), {
@@ -39,9 +52,11 @@ router.post('/sync/:libraryId', async (req, res) => {
       batchSize,
     });
 
+    syncStatus.stop();
     res.json(result);
   } catch (error) {
     logger.error('Sync failed', { error: error.message });
+    syncStatus.stop();
     res.status(500).json({
       success: false,
       error: error.message,

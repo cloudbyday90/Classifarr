@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Sync Concurrency**: Prevented race conditions between "Sync Libraries" and "Clear & Re-sync All" operations (Fixes #176)
+  - Added central sync lock mechanism to prevent concurrent sync operations
+  - "Sync Libraries" now returns 409 status when another sync is already running
+  - "Clear & Re-sync All" (CARSA) can always run and interrupts any active sync first
+  - Added sync status tracking with progress updates
 - **Clear and Resync (CARSA) - Library Sync**: Fixed `clearAndResync()` to use fresh library sync instead of querying deleted library IDs (Fixes #175)
   - Now uses `syncAllLibraries()` which performs a complete fresh sync from the media server
   - Prevents "Library not found" errors after CARSA by avoiding stale library ID references
@@ -21,23 +26,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clear and Resync Logging**: Updated logging to include counts for all deleted tables (embeddings, collections, libraries)
 
 ### Added
+- **Sync Status Singleton**: New `syncStatus.js` service to track sync operations centrally
+  - Tracks sync type ('library_sync', 'full_resync', 'incremental')
+  - Reports sync progress and current library being processed
+  - Provides locking mechanism to prevent concurrent syncs
+  - Allows CARSA to always start (interrupts other syncs if needed)
+- **Sync Status API**: New `/api/sync/status` endpoint to retrieve current sync state
+  - Returns sync status including type, progress, duration, and whether sync can be interrupted
+  - Used by UI to show sync progress and enable/disable buttons
 - **MediaSync Service**: Added `syncAllLibraries()` method for fresh library sync after CARSA
   - Fetches libraries from media server (creates NEW library entries with NEW IDs)
   - Syncs content for each library
   - Recommended method for post-CARSA sync operations
 
 ### Changed
+- **Library Sync Endpoint**: Modified `/api/media-sync/sync/:libraryId` to check sync lock before starting
+  - Returns 409 Conflict if another sync is already running
+  - Tracks sync progress via `syncStatus` singleton
+  - Properly stops sync status on completion or error
+- **Clear and Resync**: Updated `clearAndResync()` to use sync status tracking
+  - Sets type to 'full_resync' with canInterrupt=false
+  - Force stops any active sync before starting CARSA
+  - Reports progress at each stage (0-100%)
+  - Properly stops sync status on completion or error
 - **Clear and Resync Return Value**: Added `embeddingsCleared`, `collectionsCleared`, and `librariesCleared` to result object
 - **Clear and Resync Process**: Now clears in-memory caches before triggering fresh library sync
 
 ### Technical Details
+- **Sync Lock Mechanism**:
+  - Singleton pattern ensures single source of truth for sync status
+  - `canStartSync(type)` method enforces locking rules:
+    - 'full_resync' (CARSA) can ALWAYS start
+    - Other sync types blocked if any sync is running
+  - `forceStop()` method allows CARSA to interrupt active syncs
+  - Progress tracking with `updateProgress(progress, currentLibrary)`
+  
 - **CARSA Flow**:
-  1. Stop worker to prevent race conditions
-  2. Delete all tables in dependency-safe order (see below)
-  3. Clear in-memory caches (`omdbLimitHit = false`)
-  4. Restart worker
-  5. Trigger `syncAllLibraries()` in background (creates NEW libraries)
-  6. Run gap analysis with fresh library IDs
+  1. Check and force stop any active sync
+  2. Start 'full_resync' sync status (progress: 0%)
+  3. Stop worker to prevent race conditions (progress: 10%)
+  4. Delete all tables in dependency-safe order (progress: 20-70%)
+  5. Clear in-memory caches (`omdbLimitHit = false`) (progress: 75%)
+  6. Restart worker (progress: 80%)
+  7. Trigger `syncAllLibraries()` in background (creates NEW libraries) (progress: 90%)
+  8. Run gap analysis with fresh library IDs (progress: 100%)
+  9. Stop sync status
   
 - **Table Deletion Order**:
   1. `task_queue` (independent)
