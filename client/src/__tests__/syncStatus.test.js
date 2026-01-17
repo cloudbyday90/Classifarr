@@ -96,12 +96,12 @@ describe('useSyncStatusStore', () => {
     expect(store.canSync).toBe(false)
   })
 
-  it('canSync getter returns true when full_resync is running', () => {
+  it('canSync getter returns false when full_resync is running', () => {
     const store = useSyncStatusStore()
     store.isRunning = true
     store.type = 'full_resync'
     
-    expect(store.canSync).toBe(true)
+    expect(store.canSync).toBe(false)
   })
 
   it('statusText returns correct text for idle state', () => {

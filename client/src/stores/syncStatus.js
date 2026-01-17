@@ -26,50 +26,80 @@ export const useSyncStatusStore = defineStore('syncStatus', {
     progress: 0,
     currentLibrary: null,
     startedAt: null,
-    pollInterval: null
+    pollInterval: null,
+    isPollingActive: false // Track if we're already in active polling mode
   }),
 
   actions: {
     async fetchStatus() {
       try {
         const response = await api.get('/sync/status')
+        const wasRunning = this.isRunning
         this.isRunning = response.data.isRunning
         this.type = response.data.type
         this.progress = response.data.progress
         this.currentLibrary = response.data.currentLibrary
         this.startedAt = response.data.startedAt
+        
+        // If sync just started and we're in slow polling mode, switch to fast polling
+        if (this.isRunning && !wasRunning && !this.isPollingActive) {
+          this.switchToActivePoll()
+        }
+        // If sync just finished and we're in fast polling mode, switch to slow polling
+        else if (!this.isRunning && wasRunning && this.isPollingActive) {
+          this.switchToIdlePoll()
+        }
       } catch (error) {
         console.error('Failed to fetch sync status', error)
       }
     },
 
-    startPolling() {
-      this.fetchStatus()
+    switchToActivePoll() {
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval)
+      }
+      this.isPollingActive = true
       this.pollInterval = setInterval(() => {
         this.fetchStatus()
-        // Smart polling: Only poll while sync is running, then reduce frequency
-        if (!this.isRunning && this.pollInterval) {
-          // If not running, slow down polling after first few checks
-          clearInterval(this.pollInterval)
-          this.pollInterval = setInterval(() => {
-            this.fetchStatus()
-          }, 10000) // Poll every 10s when idle instead of 2s
-        }
-      }, 2000)
+      }, 2000) // Fast polling when active
+    },
+
+    switchToIdlePoll() {
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval)
+      }
+      this.isPollingActive = false
+      this.pollInterval = setInterval(() => {
+        this.fetchStatus()
+      }, 10000) // Slow polling when idle
+    },
+
+    startPolling() {
+      this.fetchStatus()
+      // Start with fast polling initially
+      this.switchToActivePoll()
     },
 
     stopPolling() {
       if (this.pollInterval) {
         clearInterval(this.pollInterval)
         this.pollInterval = null
+        this.isPollingActive = false
       }
     }
   },
 
   getters: {
-    // CARSA (full_resync) can run while library_sync is active because it interrupts and takes over
-    // This allows admins to force a complete reset even during an ongoing sync
-    canSync: (state) => !state.isRunning || state.type === 'full_resync',
+    // CARSA (full_resync) can interrupt and replace an active library_sync
+    // However, we cannot start a sync if CARSA (full_resync) is already running
+    // This getter is used for the "Sync Libraries" button, not for CARSA
+    canSync: (state) => {
+      if (!state.isRunning) return true
+      // Can't sync if full_resync is running (CARSA has priority)
+      if (state.type === 'full_resync') return false
+      // Can't sync if library_sync is already running
+      return false
+    },
     statusText: (state) => {
       if (!state.isRunning) return 'Idle'
       if (state.type === 'full_resync') return 'Re-syncing...'
