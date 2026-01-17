@@ -39,6 +39,16 @@ jest.mock('../utils/rateLimiter', () => ({
     }
 }));
 
+// Mock mediaSync and scheduler for clearAndResync tests
+jest.mock('../services/mediaSync', () => ({
+    syncLibrary: jest.fn().mockResolvedValue({}),
+    syncLibrariesFromMediaServer: jest.fn().mockResolvedValue([])
+}), { virtual: true });
+
+jest.mock('../services/scheduler', () => ({
+    runGapAnalysis: jest.fn().mockResolvedValue({})
+}), { virtual: true });
+
 describe('QueueService', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
@@ -276,16 +286,6 @@ describe('QueueService', () => {
     });
 
     describe('clearAndResync', () => {
-        beforeEach(() => {
-            // Mock mediaSyncService and scheduler
-            jest.mock('../services/mediaSync', () => ({
-                syncLibrary: jest.fn().mockResolvedValue({})
-            }), { virtual: true });
-            jest.mock('../services/scheduler', () => ({
-                runGapAnalysis: jest.fn().mockResolvedValue({})
-            }), { virtual: true });
-        });
-
         it('should delete all required tables in correct order', async () => {
             // Mock all DELETE queries to return rowCount
             db.query.mockImplementation((query) => {

@@ -9,12 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Clear and Resync (CARSA)**: Fixed `clearAndResync()` to properly delete all critical tables including:
-  - `classification_embeddings` (deleted before `classification_history` to respect FK constraint)
+  - `classification_embeddings` (explicitly deleted before `classification_history` for clearer logging/tracking, even though FK uses ON DELETE CASCADE)
   - `library_profiles` (deleted before `libraries`)
   - `media_server_collections` (deleted before `libraries`)
   - `libraries` (deleted last as parent table)
 - **Clear and Resync Order**: Ensured deletion order respects foreign key dependencies to prevent constraint violations
 - **Clear and Resync Logging**: Updated logging to include counts for all deleted tables (embeddings, collections, libraries)
+- **Clear and Resync Library Sync**: Fixed library sync to fetch libraries from media server before syncing content
 
 ### Changed
 - **Clear and Resync Return Value**: Added `embeddingsCleared`, `collectionsCleared`, and `librariesCleared` to result object

@@ -1226,17 +1226,17 @@ class QueueService {
 
             (async () => {
                 try {
-                    // First, sync libraries from media server to reassociate items with library_id
-                    const librariesResult = await db.query(
-                        'SELECT id FROM libraries WHERE is_active = true'
-                    );
+                    // First, sync libraries from media server to recreate library records
+                    const syncedLibraries = await mediaSyncService.syncLibrariesFromMediaServer();
+                    logger.info('Libraries synced from media server after clear', { count: syncedLibraries.length });
 
-                    for (const lib of librariesResult.rows) {
+                    // Then sync content for each library
+                    for (const lib of syncedLibraries) {
                         await mediaSyncService.syncLibrary(lib.id);
                     }
-                    logger.info('Library sync completed after clear');
+                    logger.info('Library content sync completed after clear');
 
-                    // Then run gap analysis with fresh library_id associations
+                    // Finally run gap analysis with fresh library_id associations
                     await scheduler.runGapAnalysis();
 
                     logger.info('Gap analysis triggered after clear');
