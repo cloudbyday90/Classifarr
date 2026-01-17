@@ -239,6 +239,90 @@ router.get('/health', async (req, res) => {
 });
 
 /**
+ * GET /api/rag/detailed
+ * Get consolidated detailed RAG statistics (single source of truth)
+ * This endpoint aggregates all RAG-related metrics in one call
+ */
+router.get('/detailed', async (req, res) => {
+    try {
+        const { hours = 24 } = req.query;
+
+        // Helper function to get operation metrics
+        const getRAGMetrics = async (hours) => {
+            const operations = ['semantic_search', 'hybrid_search', 'embedding_generation', 'pattern_mining'];
+            const operationMetrics = {};
+
+            for (const operation of operations) {
+                operationMetrics[operation] = await ragLogger.getMetricsByOperation(operation, parseInt(hours));
+            }
+
+            return {
+                operationMetrics,
+                providerMetrics: embeddingProvider.getMetrics()
+            };
+        };
+
+        // Helper function to get backfill history
+        const getBackfillHistory = async () => {
+            const history = await db.query(`
+                SELECT * FROM backfill_runs 
+                ORDER BY created_at DESC 
+                LIMIT 20
+            `);
+            return history.rows;
+        };
+
+        // Parallel fetch all required data
+        const [
+            statsData,
+            metricsData,
+            circuitBreakerStatus,
+            backfillHistoryData,
+            config
+        ] = await Promise.all([
+            embeddingService.getStats(),
+            getRAGMetrics(parseInt(hours)),
+            embeddingProvider.circuitBreaker.getStatus(),
+            getBackfillHistory(),
+            embeddingRouter.getConfig()
+        ]);
+
+        // Get circuit breaker state history
+        const stateHistory = embeddingProvider.circuitBreaker.getStateHistory(20);
+
+        res.json({
+            stats: {
+                totalEmbeddings: statsData?.totalEmbeddings || statsData?.total || 0,
+                pendingCount: statsData?.pendingCount || 0,
+                failedCount: statsData?.failedCount || 0,
+                avgGenerationTime: statsData?.avgGenerationTime || 0,
+                lastEmbeddingTime: statsData?.lastEmbeddingTime || null
+            },
+            providerOnline: circuitBreakerStatus?.state === 'CLOSED',
+            operationMetrics: metricsData?.operationMetrics || {},
+            providerMetrics: metricsData?.providerMetrics || {},
+            circuitBreaker: {
+                state: circuitBreakerStatus?.state || 'unknown',
+                failureCount: circuitBreakerStatus?.failures || 0,
+                lastFailureTime: circuitBreakerStatus?.lastFailure || null,
+                stateHistory: stateHistory || [],
+                config: circuitBreakerStatus?.config || {}
+            },
+            backfillHistory: backfillHistoryData || [],
+            config: {
+                provider: config?.embedding_provider || 'unknown',
+                model: config?.embedding_model || config?.embedding_ollama_model || 'unknown',
+                dimensions: config?.embedding_dims || 0
+            },
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        logger.error('Failed to get detailed RAG stats', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * GET /api/rag/metrics
  * Get detailed metrics by operation type and provider metrics
  */
