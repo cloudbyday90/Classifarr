@@ -596,29 +596,25 @@ function isHeartbeatRunning() {
 async function checkQueueWorker() {
     try {
         const result = await db.query(
-            `SELECT COUNT(*) as processing 
-             FROM task_queue 
-             WHERE status = 'processing' 
-             AND started_at > NOW() - INTERVAL '5 minutes'`
-        );
-
-        // Check for stuck jobs (processing for more than 5 minutes)
-        const stuckJobs = await db.query(
-            `SELECT COUNT(*) as stuck
-             FROM task_queue
-             WHERE status = 'processing'
-             AND started_at < NOW() - INTERVAL '5 minutes'`
+            `SELECT
+                 SUM(CASE WHEN status = 'processing'
+                           AND started_at > NOW() - INTERVAL '5 minutes'
+                          THEN 1 ELSE 0 END) AS processing,
+                 SUM(CASE WHEN status = 'processing'
+                           AND started_at < NOW() - INTERVAL '5 minutes'
+                          THEN 1 ELSE 0 END) AS stuck
+             FROM task_queue`
         );
 
         const processingCount = parseInt(result.rows[0].processing) || 0;
-        const stuckCount = parseInt(stuckJobs.rows[0].stuck) || 0;
+        const stuckCount = parseInt(result.rows[0].stuck) || 0;
 
-        // Worker is healthy if there are no stuck jobs
-        const isHealthy = stuckCount === 0;
+        // Worker is degraded if there are stuck jobs
+        const status = stuckCount > 0 ? 'degraded' : 'connected';
 
         return {
             name: 'Queue Worker',
-            status: isHealthy ? 'healthy' : 'degraded',
+            status: status,
             latency: 0,
             timestamp: new Date().toISOString(),
             metadata: {
@@ -629,7 +625,7 @@ async function checkQueueWorker() {
     } catch (error) {
         return {
             name: 'Queue Worker',
-            status: 'unhealthy',
+            status: 'disconnected',
             latency: 0,
             error: error.message,
             timestamp: new Date().toISOString()

@@ -35,6 +35,14 @@ jest.mock('../services/healthCheckService', () => ({
   runAllHealthChecks: jest.fn()
 }));
 
+// Mock the auth middleware to avoid JWT dependency issues
+jest.mock('../middleware/auth', () => ({
+  authenticateToken: (req, res, next) => {
+    req.user = { userId: 1 };
+    next();
+  }
+}));
+
 describe('Health Endpoints', () => {
   let app;
 
@@ -122,10 +130,6 @@ describe('Health Endpoints', () => {
     const mockToken = 'valid-token';
 
     beforeEach(() => {
-      // Mock JWT verification to allow authentication
-      const jwt = require('jsonwebtoken');
-      jest.spyOn(jwt, 'verify').mockImplementation(() => ({ userId: 1 }));
-      
       // Mock database query for user lookup in auth middleware
       db.query.mockResolvedValue({ rows: [{ id: 1, username: 'testuser' }] });
     });
@@ -182,10 +186,6 @@ describe('Health Endpoints', () => {
     const mockToken = 'valid-token';
 
     beforeEach(() => {
-      // Mock JWT verification
-      const jwt = require('jsonwebtoken');
-      jest.spyOn(jwt, 'verify').mockImplementation(() => ({ userId: 1 }));
-      
       // Mock database query for user lookup
       db.query.mockResolvedValue({ rows: [{ id: 1, username: 'testuser' }] });
     });

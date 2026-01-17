@@ -9,7 +9,7 @@
 #### New Endpoints
 
 1. **`/api/system/health/live` - Liveness Probe**
-   - Fast response (&lt;10ms)
+   - Fast response (<10ms)
    - Returns 200 if application is running
    - Does NOT check external services
    - Perfect for Kubernetes liveness checks
