@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Classification Progress Indicator on Activity Page with Phase Tracking** (Fixes #192, v0.40.0-alpha)
+  - Real-time progress tracking for non-source_library classifications through 7 phases:
+    - Queued, Metadata Fetch, Policy Evaluation, RAG Analysis, Signal Combination, Decision, Notification
+  - Global progress bar at top of Activity page showing overall classification progress
+  - Individual progress indicators for each active classification item
+  - Phase timeline visualization with completion status for each stage
+  - WebSocket-based real-time updates (no polling required)
+  - Server restart recovery for in-progress classifications
+  - Database migration `068_add_classification_phase_tracking.sql` adds phase tracking to `task_queue` table
+  - New API endpoints: `/api/activity/progress` and `/api/activity/progress/:taskId`
+  - New components: `GlobalProgressBar.vue`, `ActivityItemProgress.vue`, `useWebSocket.js` composable
+  - source_library items skip progress tracking (instant classification)
+
 - **Classification Details Signal Breakdown** (Fixes #185, v0.40.0-alpha)
   - New `SignalRow.vue` component for displaying individual classification engine signals
   - Signal breakdown section in Classification Details popup showing all 5 engines (Preset, Profile, Pattern, RAG, History)

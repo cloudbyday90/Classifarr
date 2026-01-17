@@ -24,14 +24,18 @@ const morgan = require('morgan');
 const path = require('path');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 
 const db = require('./config/database');
 const apiRouter = require('./routes/api');
 const setupRouter = require('./routes/setup');
 const authRouter = require('./routes/auth');
 const systemRouter = require('./routes/system');
+const activityRouter = require('./routes/activity');
 const discordBot = require('./services/discordBot');
 const queueService = require('./services/queueService');
+const webSocketService = require('./services/webSocketService');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -70,6 +74,7 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api/setup', setupRouter);  // Setup routes (no auth required)
 app.use('/api/auth', authRouter);    // Auth routes
 app.use('/api/system', systemRouter); // System routes (auth required)
+app.use('/api/activity', activityRouter); // Activity routes (auth required)
 app.use('/api', apiRouter);
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -272,7 +277,21 @@ async function startServer() {
     await initializeServices();
 
     // Start listening
-    app.listen(PORT, '0.0.0.0', () => {
+    const httpServer = createServer(app);
+    
+    // Initialize WebSocket server
+    const io = new Server(httpServer, {
+      cors: {
+        origin: process.env.CLIENT_URL || '*',
+        methods: ['GET', 'POST']
+      }
+    });
+    
+    // Initialize WebSocket service
+    webSocketService.initialize(io);
+    console.log('WebSocket service initialized');
+    
+    httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`Classifarr server running on port ${PORT}`);
       console.log(`API Documentation: http://localhost:${PORT}/api/docs`);
       console.log(`Health Check: http://localhost:${PORT}/health`);

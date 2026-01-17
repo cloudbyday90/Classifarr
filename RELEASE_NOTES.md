@@ -2,6 +2,63 @@
 
 ## Unreleased
 
+### 📊 Classification Progress Indicator on Activity Page with Phase Tracking (#192)
+
+**Real-time progress tracking for non-source_library classifications**
+
+#### New Features
+
+- **7-Phase Progress Tracking**: Classifications now track progress through these stages:
+  1. **Queued** - Task waiting in queue
+  2. **Metadata Fetch** - Fetching TMDB/Omdb data
+  3. **Policy Evaluation** - Running policy engine
+  4. **RAG Analysis** - Semantic search with embeddings
+  5. **Signal Combination** - Combining all classification signals
+  6. **Decision** - Making final classification decision
+  7. **Notification** - Sending Discord/webhook notifications
+
+- **Global Progress Bar**: Sticky bar at top of Activity page showing:
+  - Total active classifications count
+  - Overall progress percentage
+  - Phase breakdown badges (e.g., "RAG: 3, Decision: 1")
+
+- **Individual Progress Indicators**: Each activity item shows:
+  - Current phase with icon
+  - Progress percentage
+  - Phase timeline with completion status
+
+- **WebSocket Real-Time Updates**: No polling required - instant updates via Socket.IO
+
+- **Server Restart Recovery**: In-progress classifications automatically resume after server restart
+
+#### Technical Details
+
+- **Database Migration**: `068_add_classification_phase_tracking.sql`
+  - Adds `current_phase`, `progress`, `phase_history` columns to `task_queue`
+  - `phase_history` stores JSONB array of phase transitions
+
+- **New API Endpoints**:
+  - `GET /api/activity/progress` - Get all active classifications
+  - `GET /api/activity/progress/:taskId` - Get specific task progress
+
+- **New Frontend Components**:
+  - `GlobalProgressBar.vue` - Overall progress display
+  - `ActivityItemProgress.vue` - Individual item progress
+  - `useWebSocket.js` - WebSocket composable for real-time updates
+
+- **Backend Services**:
+  - `webSocketService.js` - Singleton WebSocket service for broadcasting events
+  - `classificationPhaseService.js` - Phase tracking and progress management
+
+#### Behavior Notes
+
+- **source_library items** skip progress tracking (instant classification)
+- Progress is calculated based on current phase position (0% → 100%)
+- Phase history is preserved for debugging and analytics
+- WebSocket events: `classification:progress`, `classification:complete`
+
+---
+
 ### 🏥 Health Check Endpoints for Kubernetes/Docker (#183)
 
 **Comprehensive monitoring and health check endpoints for container orchestration**

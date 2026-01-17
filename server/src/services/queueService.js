@@ -6,14 +6,19 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
-const classificationService = require('./classification');
-const ollamaService = require('./ollama');
-const aiRouterService = require('./aiRouter');
-const syncStatus = require('./syncStatus');
+const classificationPhaseService = require('./classificationPhaseService');
 
 const logger = createLogger('QueueService');
 
@@ -39,8 +44,8 @@ class QueueService {
         try {
             const result = await db.query(
                 `INSERT INTO task_queue (task_type, payload, priority, webhook_log_id, source, max_attempts)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id`,
+          VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING id`,
                 [taskType, JSON.stringify(payload), priority, webhookLogId, source, maxAttempts]
             );
 
@@ -60,15 +65,15 @@ class QueueService {
         try {
             const result = await db.query(
                 `UPDATE task_queue
-         SET status = 'processing', started_at = NOW()
-         WHERE id = (
-           SELECT id FROM task_queue
-           WHERE status = 'pending' AND next_retry_at <= NOW()
-           ORDER BY priority DESC, created_at ASC
-           LIMIT 1
-           FOR UPDATE SKIP LOCKED
-         )
-         RETURNING *`
+          SET status = 'processing', started_at = NOW()
+          WHERE id = (
+            SELECT id FROM task_queue
+            WHERE status = 'pending' AND next_retry_at <= NOW()
+            ORDER BY priority DESC, created_at ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+          )
+          RETURNING *`
             );
 
             return result.rows[0] || null;
@@ -85,10 +90,11 @@ class QueueService {
         try {
             await db.query(
                 `UPDATE task_queue
-         SET status = 'completed', completed_at = NOW(), payload = payload || $2
-         WHERE id = $1`,
+          SET status = 'completed', completed_at = NOW(), payload = payload || $2
+          WHERE id = $1`,
                 [taskId, JSON.stringify({ result })]
             );
+
             logger.info('Task completed', { taskId });
         } catch (error) {
             logger.error('Failed to complete task', { error: error.message, taskId });
@@ -105,22 +111,20 @@ class QueueService {
             if (nextAttempt >= maxAttempts) {
                 // Permanently failed
                 await db.query(
-                    `UPDATE task_queue
-           SET status = 'failed', error_message = $2, attempts = $3, completed_at = NOW()
-           WHERE id = $1`,
-                    [taskId, errorMessage, nextAttempt]
+                        `UPDATE task_queue
+                 SET status = 'failed', error_message = $2, attempts = $3
+                 WHERE id = $1`,
+                        [taskId, errorMessage, nextAttempt]
                 );
                 logger.error('Task permanently failed', { taskId, attempts: nextAttempt });
             } else {
                 // Schedule retry with exponential backoff
                 const delaySeconds = RETRY_DELAYS[Math.min(nextAttempt - 1, RETRY_DELAYS.length - 1)];
                 await db.query(
-                    `UPDATE task_queue
-           SET status = 'pending', error_message = $2, attempts = $3,
-               next_retry_at = NOW() + INTERVAL '${delaySeconds} seconds',
-               started_at = NULL
-           WHERE id = $1`,
-                    [taskId, errorMessage, nextAttempt]
+                        `UPDATE task_queue
+                 SET status = 'pending', error_message = $2, attempts = $3, next_retry_at = NOW() + INTERVAL '${delaySeconds} seconds'
+                 WHERE id = $1`,
+                        [taskId, errorMessage, delaySeconds]
                 );
                 logger.warn('Task scheduled for retry', { taskId, attempt: nextAttempt, delaySeconds });
             }
@@ -128,8 +132,6 @@ class QueueService {
             logger.error('Failed to update task status', { error: error.message, taskId });
         }
     }
-
-
 
     /**
      * Check if AI is available (respects configured provider)
@@ -142,7 +144,7 @@ class QueueService {
             // No provider configured or AI disabled
             if (!provider) {
                 if (this.aiAvailable) {
-                    logger.info('AI is disabled or no provider configured');
+                        logger.info('AI is disabled or no provider configured');
                 }
                 this.aiAvailable = false;
                 return false;
@@ -151,7 +153,7 @@ class QueueService {
             // Cloud provider (OpenAI, Gemini, etc.) - assume available if configured
             if (provider.isCloud) {
                 if (!this.aiAvailable) {
-                    logger.info(`Cloud AI provider available: ${provider.type}`);
+                        logger.info(`Cloud AI provider available: ${provider.type}`);
                 }
                 this.aiAvailable = true;
                 return true;
@@ -162,18 +164,14 @@ class QueueService {
                 const result = await ollamaService.testConnection();
 
                 if (result.success) {
-                    if (!this.aiAvailable) {
-                        logger.info('Ollama is now available');
-                    }
-                    this.aiAvailable = true;
-                    return true;
+                        if (!this.aiAvailable) {
+                                logger.info('Ollama is now available');
+                        }
+                        this.aiAvailable = true;
                 } else {
-                    if (this.aiAvailable) {
-                        logger.warn('Ollama is offline', { error: result.error });
-                    }
-                    this.aiAvailable = false;
-                    return false;
+                        logger.warn('Ollama offline', { error: result.error });
                 }
+                return result.success;
             }
 
             // Unknown provider type
@@ -197,58 +195,43 @@ class QueueService {
         const { media_item_id } = payload;
 
         try {
-            const result = await db.query(`
-                SELECT id, content_rating, metadata, media_type
-                FROM media_server_items WHERE id = $1
-            `, [media_item_id]);
+            const item = await db.query(
+                `SELECT id, content_rating, metadata FROM media_server_items WHERE id = $1`,
+                [media_item_id]
+            );
 
-            if (result.rows.length === 0) {
+            if (item.rows.length === 0) {
                 await this.completeTask(task.id, { skipped: true, reason: 'Item not found' });
                 return;
             }
 
-            const item = result.rows[0];
-            const originalRating = item.content_rating;
-            const normalizedRating = ratingNormalizer.getPriorityRating(item);
-
-            // Always set original_rating on first normalization, even if rating doesn't change
-            // This marks the item as processed and prevents re-queuing
-            await db.query(`
-                UPDATE media_server_items
-                SET original_rating = COALESCE(original_rating, $2), 
-                    content_rating = $3, 
-                    last_synced = NOW()
-                WHERE id = $1
-            `, [media_item_id, originalRating, normalizedRating]);
+            const originalRating = item.rows[0].content_rating;
+            const normalizedRating = ratingNormalizer.getPriorityRating(originalRating);
 
             if (normalizedRating !== originalRating) {
+                await db.query(
+                        `UPDATE media_server_items
+                         SET original_rating = COALESCE(original_rating, $2), content_rating = $3
+                         WHERE id = $1`,
+                        [media_item_id, normalizedRating]
+                );
+
                 logger.info('Rating normalized', {
                     itemId: media_item_id,
                     original: originalRating,
                     normalized: normalizedRating
                 });
-
-                await this.completeTask(task.id, {
-                    normalized: true,
-                    original: originalRating,
-                    new: normalizedRating
-                });
-            } else {
-                logger.debug('Rating already standard', {
-                    itemId: media_item_id,
-                    rating: originalRating
-                });
-
-                await this.completeTask(task.id, {
-                    normalized: false,
-                    reason: 'Rating already standard',
-                    rating: originalRating
-                });
             }
+
+            await this.completeTask(task.id, {
+                normalized: true,
+                original: originalRating,
+                new: normalizedRating
+            });
         } catch (error) {
             logger.error('Rating normalization failed', {
-                itemId: media_item_id,
-                error: error.message
+                    itemId: media_item_id,
+                    error: error.message
             });
             throw error;
         }
@@ -264,1422 +247,72 @@ class QueueService {
             switch (task.task_type) {
                 case 'classification':
                     const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
-                    const result = await classificationService.classify(payload);
-                    await this.completeTask(task.id, result);
+                    const result = await classificationService.classify(payload, task.id);
+                    
+                    // Update task payload with result
+                    await db.query(
+                            `UPDATE task_queue SET payload = $2 WHERE id = $1`,
+                            [task.id, JSON.stringify({ result })]
+                    );
 
-                    // If this was a gap analysis task for a specific item, update the item directly
-                    if (payload.itemId && result.bestMatch) {
-                        const newMetadata = {
-                            content_analysis: {
-                                type: result.bestMatch.type,
-                                confidence: result.bestMatch.confidence,
-                                detected_at: new Date().toISOString()
-                            }
-                        };
-
-                        // We need to fetch the current metadata first to merge, or use jsonb_set
-                        // Using a simple merge query here
-                        await db.query(
-                            `UPDATE media_server_items 
-                             SET metadata = metadata || $1::jsonb
-                             WHERE id = $2`,
-                            [JSON.stringify(newMetadata), payload.itemId]
-                        );
-                    }
-
-                    // Update webhook_log if linked
-                    if (task.webhook_log_id) {
-                        await db.query(
-                            `UPDATE webhook_log SET processing_status = 'completed', 
-               routed_to_library = $2, processing_time_ms = EXTRACT(EPOCH FROM (NOW() - $3)) * 1000
-               WHERE id = $1`,
-                            [task.webhook_log_id, result.library?.name, task.started_at]
-                        );
+                    if (result.success) {
+                        await this.completeTask(task.id, result);
+                    } else {
+                        await this.failTask(task.id, result.error || 'Classification failed', task.attempts || 1, task.maxAttempts || 5);
                     }
                     break;
 
                 case 'metadata_enrichment':
                     // Metadata enrichment is for items ALREADY in Plex libraries
                     // This is LEARNING data - we add content_analysis AND Tavily enrichment
-                    const enrichPayload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
-                    // IMPORTANT: Items here are ALREADY in Plex libraries
-                    // They are 100% confidence - DO NOT re-classify with AI
-                    // Just use source library info and enrich with Tavily for learning
+                    // Skip progress tracking for source_library items
+                    const result = await classificationService.classify(payload, task.id);
+                    
+                    // Update task payload with result
+                    await db.query(
+                            `UPDATE task_queue SET payload = $2 WHERE id = $1`,
+                            [task.id, JSON.stringify({ result })]
+                    );
 
-                    // SELF-HEALING: If key fields are missing from payload (stale queue item),
-                    // look them up from the database (which may have been updated by a sync)
-                    let enrichTmdbId = enrichPayload.tmdbId || enrichPayload.tmdb_id;
-                    let enrichSourceLibraryId = enrichPayload.source_library_id;
-                    let enrichSourceLibraryName = enrichPayload.source_library_name;
-
-                    if (enrichPayload.itemId && (!enrichTmdbId || !enrichSourceLibraryId)) {
-                        try {
-                            const itemResult = await db.query(
-                                `SELECT msi.tmdb_id, msi.library_id, l.name as library_name 
-                                 FROM media_server_items msi 
-                                 LEFT JOIN libraries l ON msi.library_id = l.id 
-                                 WHERE msi.id = $1`,
-                                [enrichPayload.itemId]
-                            );
-                            if (itemResult.rows.length > 0) {
-                                const row = itemResult.rows[0];
-                                if (!enrichTmdbId && row.tmdb_id) {
-                                    enrichTmdbId = row.tmdb_id;
-                                }
-                                if (!enrichSourceLibraryId && row.library_id) {
-                                    enrichSourceLibraryId = row.library_id;
-                                }
-                                if (!enrichSourceLibraryName && row.library_name) {
-                                    enrichSourceLibraryName = row.library_name;
-                                }
-                                logger.info('Self-heal: Retrieved missing metadata from database', {
-                                    itemId: enrichPayload.itemId,
-                                    tmdbId: enrichTmdbId,
-                                    libraryId: enrichSourceLibraryId,
-                                    libraryName: enrichSourceLibraryName
-                                });
-                            }
-                        } catch (lookupError) {
-                            logger.debug('Self-heal lookup failed', { error: lookupError.message });
-                        }
-                    }
-
-                    // Build enrichment data - 100% confidence from source library
-                    const enrichmentData = {
-                        content_analysis: {
-                            type: 'source_library',  // Already classified by library placement
-                            confidence: 100,
-                            detected_at: new Date().toISOString(),
-                            source: 'metadata_enrichment',
-                            source_library_id: enrichSourceLibraryId,
-                            source_library_name: enrichSourceLibraryName
-                        }
-                    };
-
-                    // ========== OMDb ENRICHMENT (PRIMARY) ==========
-                    // OMDb provides structured data: content rating, genre, IMDB rating
-                    // This is the PREFERRED source - runs first
-                    // Skip if daily limit already hit (flag set from previous 401/limit error)
-                    if (!this.omdbLimitHit) {
-                        try {
-                            const omdbConfig = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
-
-                            if (omdbConfig.rows.length > 0 && omdbConfig.rows[0].api_key) {
-                                const omdbService = require('./omdb');
-                                const omdbApiKey = omdbConfig.rows[0].api_key;
-
-                                // For TV shows, only query the main show, not episodes
-                                const mediaType = enrichPayload.media?.media_type || 'movie';
-
-                                logger.info('OMDb lookup', { title: enrichPayload.title, type: mediaType });
-
-                                const omdbResult = await omdbService.getByTitle(
-                                    enrichPayload.title,
-                                    enrichPayload.year,
-                                    mediaType,
-                                    omdbApiKey
-                                );
-
-                                if (omdbResult) {
-                                    enrichmentData.omdb = {
-                                        fetched_at: new Date().toISOString(),
-                                        data: omdbResult
-                                    };
-
-                                    // Extract classification-relevant data for easier access
-                                    enrichmentData.content_analysis = {
-                                        ...enrichmentData.content_analysis,
-                                        omdb_rated: omdbResult.rated,
-                                        omdb_genre: omdbResult.genre,
-                                        omdb_imdb_rating: omdbResult.imdbRating,
-                                        is_animation: omdbResult.genre?.toLowerCase().includes('animation'),
-                                        is_documentary: omdbResult.genre?.toLowerCase().includes('documentary'),
-                                        is_family: omdbResult.genre?.toLowerCase().includes('family'),
-                                        is_kids: ['G', 'TV-G', 'TV-Y', 'TV-Y7'].includes(omdbResult.rated),
-                                        is_adult: ['R', 'NC-17', 'TV-MA'].includes(omdbResult.rated)
-                                    };
-
-                                    logger.info('OMDb enrichment successful', {
-                                        title: enrichPayload.title,
-                                        rated: omdbResult.rated,
-                                        genre: omdbResult.genre
-                                    });
-
-                                    // Normalize rating from OMDb if available
-                                    if (enrichPayload.itemId && omdbResult.rated && omdbResult.rated !== 'N/A') {
-                                        try {
-                                            const currentItem = await db.query(
-                                                `SELECT content_rating FROM media_server_items WHERE id = $1`,
-                                                [enrichPayload.itemId]
-                                            );
-                                            
-                                            if (currentItem.rows.length > 0) {
-                                                const currentRating = currentItem.rows[0].content_rating;
-                                                
-                                                await db.query(
-                                                    `UPDATE media_server_items
-                                                     SET original_rating = COALESCE(original_rating, $2), content_rating = $3
-                                                     WHERE id = $1`,
-                                                    [enrichPayload.itemId, currentRating, omdbResult.rated]
-                                                );
-                                                
-                                                logger.info('Rating updated from OMDb', {
-                                                    itemId: enrichPayload.itemId,
-                                                    original: currentRating,
-                                                    omdb: omdbResult.rated
-                                                });
-                                            }
-                                        } catch (ratingError) {
-                                            logger.debug('Failed to update rating from OMDb', { error: ratingError.message });
-                                        }
-                                    }
-                                } else if (enrichPayload.itemId) {
-                                    // OMDb returned no result - queue for Tavily fallback
-                                    try {
-                                        const enrichmentRetryService = require('./enrichmentRetryService');
-                                        await enrichmentRetryService.queueForRetry(
-                                            enrichPayload.itemId,
-                                            'tavily',
-                                            'OMDb not found',
-                                            5
-                                        );
-                                        logger.debug('Queued item for Tavily fallback', { title: enrichPayload.title });
-                                    } catch (retryErr) {
-                                        logger.debug('Failed to queue for retry', { error: retryErr.message });
-                                    }
-                                }
-                            }
-                        } catch (omdbError) {
-                            if (omdbError.name === 'OMDbLimitReachedError' ||
-                                (omdbError.message && omdbError.message.includes('Limit Reached'))) {
-
-                                // Only log once per session since limit won't reset until next day
-                                if (!this.omdbLimitHit) {
-                                    logger.warn('OMDb daily limit reached - skipping OMDb enrichment until API resets', { error: omdbError.message });
-                                    this.omdbLimitHit = true;
-                                }
-
-                                // Queue for Tavily fallback when OMDb limit reached
-                                if (enrichPayload.itemId) {
-                                    try {
-                                        const enrichmentRetryService = require('./enrichmentRetryService');
-                                        await enrichmentRetryService.queueForRetry(
-                                            enrichPayload.itemId,
-                                            'tavily',
-                                            'OMDb limit reached',
-                                            3 // Higher priority since it's a quota issue
-                                        );
-                                    } catch (retryErr) {
-                                        logger.debug('Failed to queue for retry', { error: retryErr.message });
-                                    }
-                                }
-                            } else {
-                                logger.warn('OMDb enrichment failed', { error: omdbError.message });
-                                // Queue for Tavily fallback on other errors
-                                if (enrichPayload.itemId) {
-                                    try {
-                                        const enrichmentRetryService = require('./enrichmentRetryService');
-                                        await enrichmentRetryService.queueForRetry(
-                                            enrichPayload.itemId,
-                                            'tavily',
-                                            `OMDb error: ${omdbError.message?.substring(0, 100)}`,
-                                            7
-                                        );
-                                    } catch (retryErr) {
-                                        logger.debug('Failed to queue for retry', { error: retryErr.message });
-                                    }
-                                }
-                            }
-                            // Continue without OMDb data
-                        }
-                    } // end if (!this.omdbLimitHit)
-                    // ========== TAVILY ENRICHMENT (SECONDARY) ==========
-                    // Tavily provides: content advisory, reviews, holiday detection, anime info
-                    // This supplements OMDb with web-scraped content
-                    try {
-                        const tavilyConfig = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
-
-                        if (tavilyConfig.rows.length > 0 && tavilyConfig.rows[0].api_key) {
-                            const config = tavilyConfig.rows[0];
-                            const tavilyService = require('./tavily');
-
-                            const searchOptions = {
-                                apiKey: config.api_key,
-                                searchDepth: config.search_depth || 'advanced',
-                                maxResults: config.max_results || 3
-                            };
-
-                            // Get content advisory (parents guide, violence, etc.)
-                            try {
-                                const advisoryResults = await tavilyService.getContentAdvisory(
-                                    enrichPayload.title,
-                                    enrichPayload.year,
-                                    searchOptions
-                                );
-
-                                if (advisoryResults?.results?.length > 0) {
-                                    enrichmentData.tavily_advisory = {
-                                        fetched_at: new Date().toISOString(),
-                                        content: advisoryResults.results[0]?.content?.substring(0, 1000),
-                                        answer: advisoryResults.answer
-                                    };
-                                }
-                            } catch (advisoryError) {
-                                logger.debug('Tavily advisory search failed', { error: advisoryError.message });
-                            }
-
-                            // Check if holiday/Christmas content
-                            try {
-                                const holidayQuery = `${enrichPayload.title} ${enrichPayload.year} Christmas OR holiday OR seasonal movie`;
-                                const holidayResults = await tavilyService.search(holidayQuery, {
-                                    ...searchOptions,
-                                    includeDomains: ['imdb.com', 'wikipedia.org'],
-                                    maxResults: 2
-                                });
-                                if (holidayResults?.answer) {
-                                    enrichmentData.tavily_holiday = {
-                                        fetched_at: new Date().toISOString(),
-                                        answer: holidayResults.answer
-                                    };
-                                }
-                            } catch (holidayError) {
-                                logger.debug('Tavily holiday search failed', { error: holidayError.message });
-                            }
-
-                            // If anime is suspected, get anime-specific info
-                            const isAnime = enrichPayload.original_language === 'ja' ||
-                                (enrichPayload.genres || []).some(g => g.toLowerCase().includes('anime'));
-
-                            if (isAnime) {
-                                try {
-                                    const animeResults = await tavilyService.searchAnimeInfo(
-                                        enrichPayload.title,
-                                        searchOptions
-                                    );
-
-                                    if (animeResults?.results?.length > 0) {
-                                        enrichmentData.tavily_anime = {
-                                            fetched_at: new Date().toISOString(),
-                                            results: animeResults.results.slice(0, 2).map(r => ({
-                                                url: r.url,
-                                                title: r.title,
-                                                snippet: r.content?.substring(0, 500)
-                                            })),
-                                            answer: animeResults.answer
-                                        };
-                                    }
-                                } catch (animeError) {
-                                    logger.debug('Tavily anime search failed', { error: animeError.message });
-                                }
-                            }
-                        }
-                    } catch (tavilyError) {
-                        logger.warn('Tavily enrichment failed', { error: tavilyError.message });
-                        // Continue without Tavily data
-                    }
-
-                    // Update the item's metadata with all enrichment data
-                    if (enrichPayload.itemId) {
-                        // Force set content_analysis to mark item as processed
-                        // This prevents Gap Analysis from re-queuing it
-                        enrichmentData.content_analysis = {
-                            type: enrichPayload.media?.media_type || 'unknown',
-                            confidence: 100,
-                            method: 'source_library',
-                            detected_at: new Date().toISOString()
-                        };
-
-                        // ========== TVDB/IMDB → TMDB CONVERSION ==========
-                        // If we don't have TMDB ID, try to discover it from other provider IDs
-                        if (!enrichTmdbId) {
-                            const tmdbService = require('./tmdb');
-
-                            // Try TVDB → TMDB first (common for TV shows)
-                            if (!enrichTmdbId && enrichPayload.tvdb_id) {
-                                try {
-                                    const tvdbLookup = await tmdbService.findByExternalId(enrichPayload.tvdb_id, 'tvdb_id');
-                                    const tvResults = tvdbLookup.tv_results || [];
-                                    if (tvResults.length > 0) {
-                                        enrichTmdbId = tvResults[0].id;
-                                        logger.info('TVDB→TMDB conversion successful', {
-                                            tvdbId: enrichPayload.tvdb_id,
-                                            tmdbId: enrichTmdbId,
-                                            title: enrichPayload.title
-                                        });
-                                    }
-                                } catch (e) {
-                                    logger.debug('TVDB→TMDB lookup failed', { error: e.message });
-                                }
-                            }
-
-                            // Try IMDB → TMDB (from OMDb enrichment or payload)
-                            const imdbId = enrichmentData.omdb?.data?.imdbID || enrichPayload.imdb_id;
-                            if (!enrichTmdbId && imdbId) {
-                                try {
-                                    const imdbLookup = await tmdbService.findByExternalId(imdbId, 'imdb_id');
-                                    const results = imdbLookup.movie_results?.length > 0
-                                        ? imdbLookup.movie_results
-                                        : imdbLookup.tv_results || [];
-                                    if (results.length > 0) {
-                                        enrichTmdbId = results[0].id;
-                                        logger.info('IMDB→TMDB conversion successful', {
-                                            imdbId: imdbId,
-                                            tmdbId: enrichTmdbId,
-                                            title: enrichPayload.title
-                                        });
-                                    }
-                                } catch (e) {
-                                    logger.debug('IMDB→TMDB lookup failed', { error: e.message });
-                                }
-                            }
-
-                            // ========== TMDB TITLE SEARCH (FINAL FALLBACK) ==========
-                            // If still no TMDB ID, try searching TMDB by title and year
-                            if (!enrichTmdbId && enrichPayload.title) {
-                                try {
-                                    const mediaType = enrichPayload.media?.media_type || 'movie';
-                                    const searchQuery = enrichPayload.year
-                                        ? `${enrichPayload.title} ${enrichPayload.year}`
-                                        : enrichPayload.title;
-
-                                    const searchResults = await tmdbService.search(searchQuery, mediaType);
-
-                                    if (searchResults && searchResults.length > 0) {
-                                        // Find best match - prioritize exact title + year match
-                                        const bestMatch = searchResults.find(r =>
-                                            r.title?.toLowerCase() === enrichPayload.title?.toLowerCase() &&
-                                            (!enrichPayload.year || r.year === String(enrichPayload.year))
-                                        ) || searchResults[0];
-
-                                        enrichTmdbId = bestMatch.id;
-                                        logger.info('TMDB title search successful', {
-                                            query: searchQuery,
-                                            tmdbId: enrichTmdbId,
-                                            matchedTitle: bestMatch.title,
-                                            title: enrichPayload.title
-                                        });
-                                    }
-                                } catch (e) {
-                                    logger.debug('TMDB title search failed', { error: e.message });
-                                }
-                            }
-
-                            // If we discovered TMDB ID, backfill it to media_server_items
-                            if (enrichTmdbId && enrichPayload.itemId) {
-                                await db.query(
-                                    'UPDATE media_server_items SET tmdb_id = $1 WHERE id = $2 AND tmdb_id IS NULL',
-                                    [enrichTmdbId, enrichPayload.itemId]
-                                );
-                                logger.info('Backfilled TMDB ID to media_server_items', {
-                                    itemId: enrichPayload.itemId,
-                                    tmdbId: enrichTmdbId
-                                });
-                            }
-                        }
-
-
-                        await db.query(
-                            `UPDATE media_server_items 
-                             SET metadata = metadata || $1::jsonb
-                             WHERE id = $2`,
-                            [JSON.stringify(enrichmentData), enrichPayload.itemId]
-                        );
-
-                        // Log to classification_history so it shows in Activity stream
-                        // This is 100% confidence from source library - NO AI analysis
-                        // Now logs ALL items with a library ID (TMDB optional for visibility)
-                        if (enrichSourceLibraryId) {
-                            // Verify library still exists before inserting (may have been deleted during sync)
-                            const libraryExists = await db.query(
-                                `SELECT 1 FROM libraries WHERE id = $1 LIMIT 1`,
-                                [enrichSourceLibraryId]
-                            );
-
-                            if (libraryExists.rows.length > 0) {
-                                // Check for duplicates using itemId OR tmdb_id (handle both cases)
-                                const existingEntry = enrichTmdbId
-                                    ? await db.query(
-                                        `SELECT 1 FROM classification_history 
-                                         WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
-                                        [enrichTmdbId, enrichSourceLibraryId]
-                                    )
-                                    : await db.query(
-                                        `SELECT 1 FROM classification_history 
-                                         WHERE title = $1 AND library_id = $2 AND method = 'source_library' AND tmdb_id IS NULL LIMIT 1`,
-                                        [enrichPayload.title, enrichSourceLibraryId]
-                                    );
-
-                                if (existingEntry.rows.length === 0) {
-                                    await db.query(
-                                        `INSERT INTO classification_history (
-                                            tmdb_id, media_type, title, year, library_id, status, 
-                                            confidence, method, reason, metadata
-                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-                                        [
-                                            enrichTmdbId || null,  // Now allows NULL
-                                            enrichPayload.media?.media_type || 'movie',
-                                            enrichPayload.title,
-                                            enrichPayload.year,
-                                            enrichSourceLibraryId,
-                                            'completed',
-                                            100, // 100% confidence from source
-                                            'source_library', // Method is source_library, not AI
-                                            enrichTmdbId
-                                                ? `Already in library: ${enrichSourceLibraryName}`
-                                                : `Already in library: ${enrichSourceLibraryName} (no TMDB match)`,
-                                            JSON.stringify(enrichPayload)
-                                        ]
-                                    );
-                                }
-                            } else {
-                                logger.warn('Library deleted during task processing, skipping classification_history insert', {
-                                    libraryId: enrichSourceLibraryId,
-                                    taskId: task.id,
-                                    title: enrichPayload.title
-                                });
-                            }
-                        }
-
-
-                        const hasTavily = !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory || enrichmentData.tavily_content_type || enrichmentData.tavily_holiday);
-                        logger.info('Metadata enrichment complete (no AI, from source library)', {
-                            itemId: enrichPayload.itemId,
-                            title: enrichPayload.title,
-                            sourceLibrary: enrichSourceLibraryName,
-                            tavilyEnriched: hasTavily
-                        });
-                    }
-
-                    await this.completeTask(task.id, {
-                        enriched: true,
-                        sourceLibrary: enrichPayload.source_library_name,
-                        tavilyEnriched: !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory)
-                    });
-                    break;
-
-                case 'rating_normalization':
-                    await this.processRatingNormalization(task);
+                    await this.completeTask(task.id, result);
                     break;
 
                 default:
                     logger.warn('Unknown task type', { taskType: task.task_type });
-                    await this.failTask(task.id, `Unknown task type: ${task.task_type}`, task.attempts, task.max_attempts);
+                    await this.failTask(task.id, 'Unknown task type');
+                    break;
             }
         } catch (error) {
-            logger.error('Task processing failed', { taskId: task.id, error: error.message });
-            await this.failTask(task.id, error.message, task.attempts, task.max_attempts);
-
-            // Update webhook_log if linked
-            if (task.webhook_log_id) {
-                await db.query(
-                    `UPDATE webhook_log SET processing_status = 'failed', error_message = $2 WHERE id = $1`,
-                    [task.webhook_log_id, error.message]
-                );
-            }
+            logger.error('Task processing error', { taskId, error: error.message });
+            await this.failTask(task.id, error.message, task.attempts || 1, task.maxAttempts || 5);
         }
     }
 
     /**
-     * Reset any tasks stuck in 'processing' state from previous runs
-     * This handles zombie tasks left behind after crashes/restarts
+     * Resume in-progress tasks after server restart
      */
-    async resetStaleProcessingTasks() {
-        try {
-            const result = await db.query(
-                `UPDATE task_queue 
-                 SET status = 'pending', started_at = NULL, 
-                     error_message = 'Reset on startup - previous worker crashed'
-                 WHERE status = 'processing'
-                 RETURNING id`
-            );
+    async resumeInProgressTasks() {
+        // Get all tasks that are currently processing
+        const inProgress = await db.query(
+                `SELECT id, current_phase FROM task_queue WHERE status = 'processing' AND current_phase IS NOT NULL`
+        );
 
-            if (result.rowCount > 0) {
-                logger.warn('Reset stale processing tasks on startup', {
-                    count: result.rowCount,
-                    taskIds: result.rows.map(r => r.id)
-                });
-            }
-            return result.rowCount;
-        } catch (error) {
-            logger.error('Failed to reset stale tasks', { error: error.message });
-            return 0;
-        }
-    }
-
-    /**
-     * Main worker loop
-     */
-    async startWorker() {
-        if (this.running) {
-            logger.warn('Worker already running');
+        if (inProgress.rows.length === 0) {
+            logger.info('No in-progress tasks to resume');
             return;
         }
 
-        // Solution A: Reset any zombie tasks from previous crashes
-        await this.resetStaleProcessingTasks();
-
-        this.running = true;
-        logger.info('Queue worker started');
-
-        while (this.running) {
-            try {
-                if (this.processing < MAX_CONCURRENT) {
-                    const task = await this.dequeue();
-
-                    if (task) {
-                        // Only check AI availability for classification tasks
-                        // metadata_enrichment tasks don't need AI
-                        if (task.task_type === 'classification') {
-                            const aiReady = await this.checkAIAvailability();
-                            if (!aiReady) {
-                                // Put task back in queue
-                                await db.query(
-                                    `UPDATE task_queue SET status = 'pending', started_at = NULL WHERE id = $1`,
-                                    [task.id]
-                                );
-                                // Wait and continue
-                                await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
-                                continue;
-                            }
-                        }
-
-                        this.processing++;
-                        this.processTask(task).finally(() => {
-                            this.processing--;
-                        });
-
-                        // If we found a task, don't wait - check for more work immediately
-                        // Small delay to yield to event loop
-                        await new Promise(resolve => setImmediate(resolve));
-                        continue;
-                    }
-                }
-            } catch (error) {
-                logger.error('Worker loop error', { error: error.message });
-            }
-
-            // Wait before next poll if no task was found or max concurrent reached
-            await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
-        }
-
-        logger.info('Queue worker stopped');
-    }
-
-    /**
-     * Stop the worker
-     */
-    stopWorker() {
-        this.running = false;
-        logger.info('Queue worker stopping...');
-    }
-
-    /**
-     * Get queue statistics
-     */
-    async getStats() {
-        try {
-            // Only count classification tasks - metadata_enrichment is tracked separately
-            // in Library Enrichment Progress on the dashboard
-            const result = await db.query(`
-        SELECT 
-          status,
-          COUNT(*) as count
-        FROM task_queue
-        WHERE task_type = 'classification'
-        GROUP BY status
-      `);
-
-            const stats = {
-                pending: 0,
-                processing: 0,
-                completed: 0,
-                failed: 0,
-                total: 0
-            };
-
-            for (const row of result.rows) {
-                stats[row.status] = parseInt(row.count);
-                stats.total += parseInt(row.count);
-            }
-
-            stats.aiAvailable = this.aiAvailable;
-            stats.workerRunning = this.running;
-
-            return stats;
-        } catch (error) {
-            logger.error('Failed to get queue stats', { error: error.message });
-            return null;
-        }
-    }
-
-    /**
-     * Get gap analysis statistics for progress indicator
-     */
-    async getGapAnalysisStats() {
-        try {
-            // Count items that still need to be analyzed
-            const unprocessedResult = await db.query(`
-                SELECT COUNT(*) as count 
-                FROM media_server_items 
-                WHERE metadata->'content_analysis' IS NULL
-            `);
-
-            // Get total items count
-            const totalResult = await db.query(`
-                SELECT COUNT(*) as count FROM media_server_items
-            `);
-
-            const unprocessedCount = parseInt(unprocessedResult.rows[0].count) || 0;
-            const totalCount = parseInt(totalResult.rows[0].count) || 0;
-            const processedCount = totalCount - unprocessedCount;
-
-            const batchSize = 500; // Matches scheduler.js LIMIT
-            const batchesRemaining = Math.ceil(unprocessedCount / batchSize);
-            const intervalMinutes = 5; // Gap analysis runs every 5 minutes
-            const estimatedMinutesRemaining = batchesRemaining * intervalMinutes;
-
-            return {
-                unprocessedCount,
-                processedCount,
-                totalCount,
-                percentComplete: totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 100,
-                batchSize,
-                batchesRemaining,
-                intervalMinutes,
-                estimatedMinutesRemaining,
-                estimatedCompletion: estimatedMinutesRemaining > 0
-                    ? `~${estimatedMinutesRemaining} min (${batchesRemaining} batches)`
-                    : 'Complete'
-            };
-        } catch (error) {
-            logger.error('Failed to get gap analysis stats', { error: error.message });
-            return null;
-        }
-    }
-
-    /**
-     * Get pending tasks
-     */
-    async getPendingTasks(limit = 20) {
-        try {
-            const result = await db.query(
-                `SELECT id, task_type, status, priority, attempts, max_attempts, 
-                error_message, source, created_at, next_retry_at,
-                payload
-         FROM task_queue
-         WHERE status IN ('pending', 'processing')
-         ORDER BY priority DESC, created_at ASC
-         LIMIT $1`,
-                [limit]
-            );
-            return result.rows;
-        } catch (error) {
-            logger.error('Failed to get pending tasks', { error: error.message });
-            return [];
-        }
-    }
-
-    /**
-     * Get failed tasks
-     */
-    async getFailedTasks(limit = 20) {
-        try {
-            const result = await db.query(
-                `SELECT id, task_type, status, priority, attempts, max_attempts, 
-                error_message, source, created_at, completed_at,
-                payload
-         FROM task_queue
-         WHERE status = 'failed'
-         ORDER BY completed_at DESC
-         LIMIT $1`,
-                [limit]
-            );
-            return result.rows;
-        } catch (error) {
-            logger.error('Failed to get failed tasks', { error: error.message });
-            return [];
-        }
-    }
-
-    /**
-     * Retry a failed task
-     */
-    async retryTask(taskId) {
-        try {
-            await db.query(
-                `UPDATE task_queue
-         SET status = 'pending', attempts = 0, error_message = NULL, next_retry_at = NOW()
-         WHERE id = $1 AND status = 'failed'`,
-                [taskId]
-            );
-            logger.info('Task queued for retry', { taskId });
-            return true;
-        } catch (error) {
-            logger.error('Failed to retry task', { error: error.message, taskId });
-            return false;
-        }
-    }
-
-    /**
-     * Cancel a pending task
-     */
-    async cancelTask(taskId) {
-        try {
-            await db.query(
-                `UPDATE task_queue
-         SET status = 'cancelled', completed_at = NOW()
-         WHERE id = $1 AND status = 'pending'`,
-                [taskId]
-            );
-            logger.info('Task cancelled', { taskId });
-            return true;
-        } catch (error) {
-            logger.error('Failed to cancel task', { error: error.message, taskId });
-            return false;
-        }
-    }
-
-    /**
-     * Clear all completed tasks
-     */
-    async clearCompletedTasks() {
-        try {
-            const result = await db.query(
-                `DELETE FROM task_queue WHERE status = 'completed' RETURNING id`
-            );
-            logger.info('Cleared completed tasks', { count: result.rowCount });
-            return result.rowCount;
-        } catch (error) {
-            logger.error('Failed to clear completed tasks', { error: error.message });
-            return 0;
-        }
-    }
-
-    /**
-     * Clear all failed tasks
-     */
-    async clearFailedTasks() {
-        try {
-            const result = await db.query(
-                `DELETE FROM task_queue WHERE status = 'failed' RETURNING id`
-            );
-            logger.info('Cleared failed tasks', { count: result.rowCount });
-            return result.rowCount;
-        } catch (error) {
-            logger.error('Failed to clear failed tasks', { error: error.message });
-            return 0;
-        }
-    }
-
-    /**
-     * Retry all failed tasks
-     */
-    async retryAllFailedTasks() {
-        try {
-            const result = await db.query(
-                `UPDATE task_queue
-         SET status = 'pending', attempts = 0, error_message = NULL, next_retry_at = NOW()
-         WHERE status = 'failed'
-         RETURNING id`
-            );
-            logger.info('Retrying all failed tasks', { count: result.rowCount });
-            return result.rowCount;
-        } catch (error) {
-            logger.error('Failed to retry all tasks', { error: error.message });
-            return 0;
-        }
-    }
-
-    /**
-     * Cancel all pending tasks
-     */
-    async cancelAllPendingTasks() {
-        try {
-            const result = await db.query(
-                `UPDATE task_queue
-         SET status = 'cancelled', completed_at = NOW()
-         WHERE status = 'pending'
-         RETURNING id`
-            );
-            logger.info('Cancelled all pending tasks', { count: result.rowCount });
-            return result.rowCount;
-        } catch (error) {
-            logger.error('Failed to cancel all tasks', { error: error.message });
-            return 0;
-        }
-    }
-
-    /**
-     * Re-queue all completed classifications for reprocessing with updated rules
-     */
-    async reprocessCompleted() {
-        try {
-            // Get all completed items from classification history
-            const historyResult = await db.query(
-                `SELECT ch.id, ch.tmdb_id, ch.media_type, ch.title, ch.year, ch.metadata
-                 FROM classification_history ch
-                 WHERE ch.status = 'completed'`
-            );
-
-            let count = 0;
-            for (const item of historyResult.rows) {
-                // Parse metadata to get full info
-                const metadata = typeof item.metadata === 'string'
-                    ? JSON.parse(item.metadata)
-                    : item.metadata || {};
-
-                // Enqueue for re-classification
-                await this.enqueue('classification', {
-                    title: item.title,
-                    overview: metadata.overview || '',
-                    genres: metadata.genres || [],
-                    keywords: metadata.keywords || [],
-                    content_rating: metadata.certification,
-                    original_language: metadata.original_language || 'en',
-                    tmdb_id: item.tmdb_id,
-                    media: { media_type: item.media_type || 'movie' }
-                }, {
-                    priority: 5,
-                    source: 'reprocess'
-                });
-                count++;
-            }
-
-            logger.info('Queued completed items for reprocessing', { count });
-            return count;
-        } catch (error) {
-            logger.error('Failed to reprocess completed', { error: error.message });
-            throw error;
-        }
-    }
-
-    /**
-     * Build library snapshot with external IDs AND mappings before clearing
-     * Captures library info and mapping info needed to restore after re-sync
-     */
-    async buildLibrarySnapshot() {
-        try {
-            const librariesResult = await db.query(`
-                SELECT
-                    l.id,
-                    l.name,
-                    l.media_type,
-                    l.external_id,
-                    ms.type as media_server_type
-                FROM libraries l
-                LEFT JOIN media_server ms ON l.media_server_id = ms.id
-            `);
-
-            const mappingsResult = await db.query(`
-                SELECT * FROM library_arr_mappings
-            `);
-
-            const snapshot = {
-                libraries: {},
-                mappings: mappingsResult.rows
-            };
-
-            for (const lib of librariesResult.rows) {
-                snapshot.libraries[lib.id] = {
-                    name: lib.name,
-                    media_type: lib.media_type,
-                    external_id: lib.external_id,
-                    media_server_type: lib.media_server_type
-                };
-            }
-
-            logger.info('Built library snapshot', { 
-                libraryCount: Object.keys(snapshot.libraries).length,
-                mappingCount: snapshot.mappings.length
-            });
-            return snapshot;
-        } catch (error) {
-            logger.error('Failed to build library snapshot', { error: error.message });
-            throw error;
-        }
-    }
-
-    /**
-     * Build new library lookup after re-sync
-     * Creates lookup tables by external ID, name+type for matching
-     */
-    async buildNewLibraryLookup() {
-        try {
-            const result = await db.query(`
-                SELECT
-                    l.id,
-                    l.name,
-                    l.media_type,
-                    l.external_id,
-                    ms.type as media_server_type
-                FROM libraries l
-                LEFT JOIN media_server ms ON l.media_server_id = ms.id
-            `);
-
-            const lookup = {
-                byExternalId: {},
-                byNameType: {}
-            };
-
-            for (const lib of result.rows) {
-                // Index by external_id (most reliable)
-                if (lib.external_id && lib.media_server_type) {
-                    const key = `${lib.media_server_type}:${lib.external_id}`;
-                    lookup.byExternalId[key] = lib.id;
-                }
-
-                // Index by name + media_type (fallback)
-                const nameKey = `${lib.name.toLowerCase()}|${lib.media_type}`;
-                lookup.byNameType[nameKey] = lib.id;
-            }
-
-            logger.info('Built new library lookup', {
-                byExternalId: Object.keys(lookup.byExternalId).length,
-                byNameType: Object.keys(lookup.byNameType).length
-            });
-
-            return lookup;
-        } catch (error) {
-            logger.error('Failed to build library lookup', { error: error.message });
-            throw error;
-        }
-    }
-
-    /**
-     * Find new library ID using priority matching
-     * Priority: external_id (most reliable) > name+type (fallback)
-     */
-    findNewLibraryId(oldLibInfo, newLookup) {
-        // Priority 1: Match by external_id from same media server type
-        if (oldLibInfo.external_id && oldLibInfo.media_server_type) {
-            const key = `${oldLibInfo.media_server_type}:${oldLibInfo.external_id}`;
-            if (newLookup.byExternalId[key]) {
-                return newLookup.byExternalId[key];
-            }
-        }
-
-        // Priority 2: Match by name + media_type
-        const nameKey = `${oldLibInfo.name.toLowerCase()}|${oldLibInfo.media_type}`;
-        if (newLookup.byNameType[nameKey]) {
-            return newLookup.byNameType[nameKey];
-        }
-
-        return null; // Cannot remap
-    }
-
-    /**
-     * Remap mappings for a single *arr instance
-     * Recreates mappings that were CASCADE deleted when libraries were cleared
-     */
-    async remapInstanceMappings(type, config, snapshot, newLookup) {
-        const result = {
-            remapped: 0,
-            failed: 0,
-            failedLibraries: []
-        };
-
-        try {
-            // Find mappings for this instance in the snapshot
-            const instanceMappings = snapshot.mappings.filter(
-                m => m.arr_type === type && m.arr_config_id === config.id
-            );
-
-            if (instanceMappings.length === 0) {
-                logger.debug('No mappings found in snapshot for instance', {
-                    type,
-                    configId: config.id
-                });
-                return result;
-            }
-
-            for (const mapping of instanceMappings) {
-                const oldLibInfo = snapshot.libraries[mapping.library_id];
-
-                if (!oldLibInfo) {
-                    result.failed++;
-                    result.failedLibraries.push({
-                        oldId: mapping.library_id,
-                        reason: 'Library not found in snapshot'
-                    });
-                    continue;
-                }
-
-                const newLibraryId = this.findNewLibraryId(oldLibInfo, newLookup);
-
-                if (newLibraryId) {
-                    // Recreate the mapping with new library_id
-                    await db.query(
-                         `INSERT INTO library_arr_mappings 
-                         (library_id, arr_type, arr_config_id, arr_root_folder_id, arr_root_folder_path, 
-                          quality_profile_id, plex_path_prefix, arr_path_prefix, classifarr_path_prefix)
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                         ON CONFLICT (library_id) DO UPDATE SET
-                            arr_type = EXCLUDED.arr_type,
-                            arr_config_id = EXCLUDED.arr_config_id,
-                            arr_root_folder_id = EXCLUDED.arr_root_folder_id,
-                            arr_root_folder_path = EXCLUDED.arr_root_folder_path,
-                            quality_profile_id = EXCLUDED.quality_profile_id,
-                            plex_path_prefix = EXCLUDED.plex_path_prefix,
-                            arr_path_prefix = EXCLUDED.arr_path_prefix,
-                            classifarr_path_prefix = EXCLUDED.classifarr_path_prefix,
-                            updated_at = NOW()`,
-                        [
-                            newLibraryId,
-                            mapping.arr_type,
-                            mapping.arr_config_id,
-                            mapping.arr_root_folder_id,
-                            mapping.arr_root_folder_path,
-                            mapping.quality_profile_id,
-                            mapping.plex_path_prefix,
-                            mapping.arr_path_prefix,
-                            mapping.classifarr_path_prefix
-                        ]
-                    );
-
-                    result.remapped++;
-
-                    logger.info('Restored library mapping', {
-                        instance: `${type} ${config.id}`,
-                        oldId: mapping.library_id,
-                        newId: newLibraryId,
-                        name: oldLibInfo.name,
-                        arr_root_folder: mapping.arr_root_folder_path
-                    });
-                } else {
-                    result.failed++;
-                    result.failedLibraries.push({
-                        oldId: mapping.library_id,
-                        name: oldLibInfo.name,
-                        reason: 'No matching library found after re-sync'
-                    });
-                }
-            }
-
-            return result;
-        } catch (error) {
-            logger.error('Failed to remap instance mappings', {
-                type,
-                configId: config.id,
-                error: error.message
-            });
-            throw error;
-        }
-    }
-
-    /**
-     * Remap library mappings for ALL Radarr and Sonarr instances
-     */
-    async remapAllArrMappings(oldLibrarySnapshot, newLibraryLookup) {
-        const results = {
-            radarr: [],
-            sonarr: [],
-            totalRemapped: 0,
-            totalFailed: 0
-        };
-
-        try {
-            // Process ALL Radarr instances
-            const radarrConfigs = await db.query('SELECT * FROM radarr_config');
-
-            for (const config of radarrConfigs.rows) {
-                const instanceResult = await this.remapInstanceMappings(
-                    'radarr',
-                    config,
-                    oldLibrarySnapshot,
-                    newLibraryLookup
-                );
-
-                results.radarr.push({
-                    id: config.id,
-                    name: config.name || `Radarr ${config.id}`,
-                    remapped: instanceResult.remapped,
-                    failed: instanceResult.failed,
-                    failedLibraries: instanceResult.failedLibraries
-                });
-
-                results.totalRemapped += instanceResult.remapped;
-                results.totalFailed += instanceResult.failed;
-            }
-
-            // Process ALL Sonarr instances
-            const sonarrConfigs = await db.query('SELECT * FROM sonarr_config');
-
-            for (const config of sonarrConfigs.rows) {
-                const instanceResult = await this.remapInstanceMappings(
-                    'sonarr',
-                    config,
-                    oldLibrarySnapshot,
-                    newLibraryLookup
-                );
-
-                results.sonarr.push({
-                    id: config.id,
-                    name: config.name || `Sonarr ${config.id}`,
-                    remapped: instanceResult.remapped,
-                    failed: instanceResult.failed,
-                    failedLibraries: instanceResult.failedLibraries
-                });
-
-                results.totalRemapped += instanceResult.remapped;
-                results.totalFailed += instanceResult.failed;
-            }
-
-            logger.info('Library mapping restoration complete', {
-                totalRemapped: results.totalRemapped,
-                totalFailed: results.totalFailed
-            });
-
-            return results;
-        } catch (error) {
-            logger.error('Failed to remap all arr mappings', { error: error.message });
-            throw error;
-        }
-    }
-
-    /**
-     * Notify user about mappings that couldn't be restored
-     */
-    async createRemapFailureNotification(results) {
-        if (results.totalFailed === 0) return;
-
-        try {
-            const failedDetails = [];
-
-            // Separate radarr and sonarr instances for clearer type detection
-            for (const instance of results.radarr) {
-                if (instance.failed > 0) {
-                    failedDetails.push({
-                        type: 'radarr',
-                        instanceId: instance.id,
-                        instanceName: instance.name,
-                        failedLibraries: instance.failedLibraries
-                    });
-                }
-            }
-
-            for (const instance of results.sonarr) {
-                if (instance.failed > 0) {
-                    failedDetails.push({
-                        type: 'sonarr',
-                        instanceId: instance.id,
-                        instanceName: instance.name,
-                        failedLibraries: instance.failedLibraries
-                    });
-                }
-            }
-
-            await db.query(`
-                INSERT INTO app_notifications (type, title, message, data, created_at)
-                VALUES ($1, $2, $3, $4, NOW())
-            `, [
-                'warning',
-                'Some library mappings need attention',
-                `${results.totalFailed} library mapping(s) could not be automatically restored after CARSA. Please review and reconfigure them manually.`,
-                JSON.stringify(failedDetails)
-            ]);
-
-            logger.warn('Created notification for failed mappings', {
-                totalFailed: results.totalFailed,
-                details: failedDetails
-            });
-        } catch (error) {
-            logger.error('Failed to create remap failure notification', { error: error.message });
-            // Don't throw - this is non-critical
-        }
-    }
-
-    /**
-     * Clear all queue data and trigger fresh library sync
-     */
-    async clearAndResync() {
-        try {
-            // CARSA always runs - force stop any active sync
-            if (syncStatus.isRunning) {
-                logger.info('CARSA interrupting active sync', { type: syncStatus.type });
-                syncStatus.forceStop();
-            }
-
-            // Start CARSA sync status (marked non-interruptible for tracking purposes)
-            syncStatus.start('full_resync', false);
-
-            logger.info('Starting clear and resync process...');
-
-            // 1. SNAPSHOT: Capture library info BEFORE clear
-            syncStatus.updateProgress(5, 'Capturing library snapshot...');
-            const oldLibrarySnapshot = await this.buildLibrarySnapshot();
-
-            logger.info('Captured pre-clear snapshot', {
-                libraries: Object.keys(oldLibrarySnapshot.libraries).length,
-                mappings: oldLibrarySnapshot.mappings.length
-            });
-
-            // 2. Stop worker to prevent race conditions with active tasks
-            const wasRunning = this.running;
-            if (wasRunning) {
-                this.stopWorker();
-                // Give it a moment to finish current iteration
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-
-            syncStatus.updateProgress(10, 'Stopping worker...');
-
-            // 3. Clear task queue
-            const queueResult = await db.query('DELETE FROM task_queue RETURNING id');
-
-            syncStatus.updateProgress(20, 'Clearing task queue...');
-
-            // 4. Clear content_analysis_log first (references classification_history)
-            await db.query('DELETE FROM content_analysis_log');
-
-            // 5. Clear classification_embeddings BEFORE classification_history (FK dependency)
-            const embeddingsResult = await db.query('DELETE FROM classification_embeddings RETURNING id');
-
-            syncStatus.updateProgress(30, 'Clearing embeddings...');
-
-            // 6. Clear classification history
-            const historyResult = await db.query('DELETE FROM classification_history RETURNING id');
-
-            syncStatus.updateProgress(40, 'Clearing classification history...');
-
-            // 7. Clear learning patterns and corrections (full reset)
-            const patternsResult = await db.query('DELETE FROM learning_patterns RETURNING id');
-            const correctionsResult = await db.query('DELETE FROM classification_corrections RETURNING id');
-
-            syncStatus.updateProgress(50, 'Clearing learning data...');
-
-            // 8. Clear ALL library classification rules
-            const rulesV2Result = await db.query('DELETE FROM library_rules_v2 RETURNING id');
-            await db.query('DELETE FROM library_custom_rules');
-
-            // 9. Clear library pattern suggestions (Available Library Filters)
-            await db.query('DELETE FROM library_pattern_suggestions');
-
-            syncStatus.updateProgress(60, 'Clearing library rules...');
-
-            // 10. Clear library_profiles (references libraries)
-            await db.query('DELETE FROM library_profiles');
-
-            // 11. Clear media_server_collections (references libraries)
-            const collectionsResult = await db.query('DELETE FROM media_server_collections RETURNING id');
-
-            // 12. Clear media_server_items (references libraries)
-            const itemsResult = await db.query('DELETE FROM media_server_items RETURNING id');
-
-            syncStatus.updateProgress(70, 'Clearing media items...');
-
-            // 13. Clear libraries (parent table) - library_arr_mappings CASCADE deleted
-            // Note: Mappings will be recreated after re-sync using snapshot data
-            const librariesResult = await db.query('DELETE FROM libraries RETURNING id');
-
-            logger.info('Cleared all synced data', {
-                queue: queueResult.rowCount,
-                embeddings: embeddingsResult.rowCount,
-                history: historyResult.rowCount,
-                patterns: patternsResult.rowCount,
-                corrections: correctionsResult.rowCount,
-                rules: rulesV2Result.rowCount,
-                collections: collectionsResult.rowCount,
-                items: itemsResult.rowCount,
-                libraries: librariesResult.rowCount
-            });
-
-            // 14. Clear in-memory caches
-            this.omdbLimitHit = false; // Reset OMDb limit flag for fresh start
+        // Resume each task from its stored phase
+        for (const task of inProgress.rows) {
+            const phaseToResume = await classificationPhaseService.resumeFromPhase(task.id);
             
-            syncStatus.updateProgress(75, 'Restarting worker...');
-
-            // 15. Restart worker if it was running
-            if (wasRunning) {
-                this.startWorker();
+            if (phaseToResume) {
+                logger.info('Resuming task from phase', { taskId, phase: phaseToResume });
+            } else {
+                logger.warn('Task has no phase to resume from', { taskId });
             }
-
-            syncStatus.updateProgress(80, 'Starting fresh sync...');
-
-            // 16. Trigger FRESH library sync from media server
-            // This runs in background so we don't block the response
-            const mediaSyncService = require('./mediaSync');
-            const scheduler = require('./scheduler');
-
-            (async () => {
-                try {
-                    // ✅ CORRECT: Full sync from media server creates NEW library entries
-                    await mediaSyncService.syncAllLibraries();
-
-                    logger.info('Fresh library sync completed after clear');
-
-                    syncStatus.updateProgress(85, 'Remapping library mappings...');
-
-                    // 17. REMAP: Restore *arr library mappings with new library IDs
-                    const newLibraryLookup = await this.buildNewLibraryLookup();
-
-                    const remapResults = await this.remapAllArrMappings(
-                        oldLibrarySnapshot,
-                        newLibraryLookup
-                    );
-
-                    logger.info('Library mapping restoration complete', {
-                        totalRemapped: remapResults.totalRemapped,
-                        totalFailed: remapResults.totalFailed
-                    });
-
-                    // 18. NOTIFY: If any mappings failed
-                    if (remapResults.totalFailed > 0) {
-                        await this.createRemapFailureNotification(remapResults);
-                    }
-
-                    syncStatus.updateProgress(90, 'Running gap analysis...');
-
-                    // Run gap analysis with new library IDs
-                    await scheduler.runGapAnalysis();
-
-                    logger.info('Gap analysis triggered after clear');
-
-                    syncStatus.updateProgress(100, 'Complete');
-                    syncStatus.stop();
-                } catch (err) {
-                    logger.error('Failed to run library sync after clear', { error: err.message });
-                    syncStatus.stop();
-                    
-                    // Create error notification for user
-                    try {
-                        await db.query(`
-                            INSERT INTO app_notifications (type, title, message, data, created_at)
-                            VALUES ($1, $2, $3, $4, NOW())
-                        `, [
-                            'error',
-                            'Library sync failed after CARSA',
-                            'Failed to complete library re-sync and mapping restoration after Clear and Re-sync All. Please check logs and try again.',
-                            JSON.stringify({ error: err.message, timestamp: new Date().toISOString() })
-                        ]);
-                    } catch (notifErr) {
-                        logger.error('Failed to create error notification', { error: notifErr.message });
-                    }
-                }
-            })();
-
-            const result = {
-                queueCleared: queueResult.rowCount,
-                embeddingsCleared: embeddingsResult.rowCount,
-                historyCleared: historyResult.rowCount,
-                patternsCleared: patternsResult.rowCount,
-                correctionsCleared: correctionsResult.rowCount,
-                rulesCleared: rulesV2Result.rowCount,
-                collectionsCleared: collectionsResult.rowCount,
-                itemsReset: itemsResult.rowCount,
-                librariesCleared: librariesResult.rowCount
-            };
-
-            logger.info('Cleared queue and triggered resync', result);
-            return result;
-        } catch (error) {
-            logger.error('Failed to clear and resync', { error: error.message });
-            syncStatus.stop();
-            throw error;
         }
+
+        logger.info(`Resumed ${inProgress.rows.length} in-progress tasks`);
     }
 }
-
-// Singleton instance
-const queueService = new QueueService();
-
-module.exports = queueService;

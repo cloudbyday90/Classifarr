@@ -498,6 +498,14 @@ export default {
   getQueueStats() {
     return apiClient.get('/queue/stats')
   },
+
+  // Activity Progress
+  getProgress() {
+    return apiClient.get('/activity/progress')
+  },
+  getTaskProgress(taskId) {
+    return apiClient.get(`/activity/progress/${taskId}`)
+  },
   getPendingTasks(limit = 20) {
     return apiClient.get('/queue/pending', { params: { limit } })
   },
