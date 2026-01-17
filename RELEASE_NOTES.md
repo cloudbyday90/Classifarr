@@ -1,12 +1,28 @@
 # Classifarr Release Notes
 
 ## Unreleased
-**Title: Fix Clear and Resync (CARSA) Orphaned Data Bug**
+**Title: Fix CARSA to Use Fresh Library Sync (Prevents Stale ID References)**
 
 ### What's Fixed
+- **"Library not found" errors after CARSA**: Fixed the system attempting to sync using OLD library IDs that were just deleted
 - **Clear and Resync (CARSA)** now properly deletes ALL tables with references to media server/library/classification data
-- Fixed "Library X no longer exists" errors after running CARSA
+- **Stale library references**: The system now performs a **fresh sync from the media server** instead of querying deleted library IDs
 - Fixed orphaned embeddings and collections that were not being cleaned up
+
+### What's New
+- **Fresh Sync Method**: Added `syncAllLibraries()` which creates NEW library entries from the media server (not reusing old IDs)
+- **Cache Clearing**: In-memory caches are now cleared before re-sync for a truly fresh start
+- **Complete Reset**: System now behaves as if freshly installed after CARSA
+
+### How It Works Now
+After running Clear and Resync:
+1. All library data is deleted (including the libraries themselves)
+2. In-memory caches are cleared
+3. **NEW** libraries are created by fetching from your media server (Plex/Emby/Jellyfin)
+4. Library content is synced using the **NEW** library IDs
+5. Gap analysis runs using fresh data
+
+**Example**: If your old libraries had IDs 100, 101, 102, after CARSA they'll have completely NEW IDs like 200, 201, 202. No stale references anywhere!
 
 ### What Changed
 The Clear and Resync function now deletes these additional tables:
@@ -18,7 +34,7 @@ The Clear and Resync function now deletes these additional tables:
 All deletions now happen in dependency-safe order to prevent foreign key constraint violations.
 
 ### For Users
-If you experienced "Library X no longer exists" errors or orphaned data after running Clear and Resync, this update resolves those issues. After updating, run Clear and Resync again for a complete fresh start.
+If you experienced "Library not found" errors or orphaned data after running Clear and Resync, this update resolves those issues. After updating, run Clear and Resync again for a complete fresh start. The system will create brand new library entries from your media server.
 
 ---
 
