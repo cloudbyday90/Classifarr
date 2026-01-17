@@ -1154,12 +1154,12 @@ class QueueService {
     }
 
     /**
-     * Build library snapshot with external IDs before clearing
-     * Captures library info needed to remap *arr library mappings after re-sync
+     * Build library snapshot with external IDs AND mappings before clearing
+     * Captures library info and mapping info needed to restore after re-sync
      */
     async buildLibrarySnapshot() {
         try {
-            const result = await db.query(`
+            const librariesResult = await db.query(`
                 SELECT
                     l.id,
                     l.name,
@@ -1170,9 +1170,17 @@ class QueueService {
                 LEFT JOIN media_server ms ON l.media_server_id = ms.id
             `);
 
-            const snapshot = {};
-            for (const lib of result.rows) {
-                snapshot[lib.id] = {
+            const mappingsResult = await db.query(`
+                SELECT * FROM library_arr_mappings
+            `);
+
+            const snapshot = {
+                libraries: {},
+                mappings: mappingsResult.rows
+            };
+
+            for (const lib of librariesResult.rows) {
+                snapshot.libraries[lib.id] = {
                     name: lib.name,
                     media_type: lib.media_type,
                     external_id: lib.external_id,
@@ -1180,7 +1188,10 @@ class QueueService {
                 };
             }
 
-            logger.info('Built library snapshot', { count: Object.keys(snapshot).length });
+            logger.info('Built library snapshot', { 
+                libraryCount: Object.keys(snapshot.libraries).length,
+                mappingCount: snapshot.mappings.length
+            });
             return snapshot;
         } catch (error) {
             logger.error('Failed to build library snapshot', { error: error.message });
@@ -1258,8 +1269,9 @@ class QueueService {
 
     /**
      * Remap mappings for a single *arr instance
+     * Recreates mappings that were CASCADE deleted when libraries were cleared
      */
-    async remapInstanceMappings(type, config, oldSnapshot, newLookup) {
+    async remapInstanceMappings(type, config, snapshot, newLookup) {
         const result = {
             remapped: 0,
             failed: 0,
@@ -1267,15 +1279,21 @@ class QueueService {
         };
 
         try {
-            // Get all library_arr_mappings for this arr instance
-            const mappingsResult = await db.query(
-                `SELECT * FROM library_arr_mappings 
-                 WHERE arr_type = $1 AND arr_config_id = $2`,
-                [type, config.id]
+            // Find mappings for this instance in the snapshot
+            const instanceMappings = snapshot.mappings.filter(
+                m => m.arr_type === type && m.arr_config_id === config.id
             );
 
-            for (const mapping of mappingsResult.rows) {
-                const oldLibInfo = oldSnapshot[mapping.library_id];
+            if (instanceMappings.length === 0) {
+                logger.debug('No mappings found in snapshot for instance', {
+                    type,
+                    configId: config.id
+                });
+                return result;
+            }
+
+            for (const mapping of instanceMappings) {
+                const oldLibInfo = snapshot.libraries[mapping.library_id];
 
                 if (!oldLibInfo) {
                     result.failed++;
@@ -1289,17 +1307,35 @@ class QueueService {
                 const newLibraryId = this.findNewLibraryId(oldLibInfo, newLookup);
 
                 if (newLibraryId) {
-                    // Update the mapping with new library_id
+                    // Recreate the mapping with new library_id
                     await db.query(
-                        `UPDATE library_arr_mappings 
-                         SET library_id = $1, updated_at = NOW()
-                         WHERE id = $2`,
-                        [newLibraryId, mapping.id]
+                        `INSERT INTO library_arr_mappings 
+                         (library_id, arr_type, arr_config_id, arr_root_folder_id, arr_root_folder_path, 
+                          quality_profile_id, plex_path_prefix, arr_path_prefix, classifarr_path_prefix)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                         ON CONFLICT (library_id) DO UPDATE SET
+                            arr_type = EXCLUDED.arr_type,
+                            arr_config_id = EXCLUDED.arr_config_id,
+                            arr_root_folder_id = EXCLUDED.arr_root_folder_id,
+                            arr_root_folder_path = EXCLUDED.arr_root_folder_path,
+                            quality_profile_id = EXCLUDED.quality_profile_id,
+                            updated_at = NOW()`,
+                        [
+                            newLibraryId,
+                            mapping.arr_type,
+                            mapping.arr_config_id,
+                            mapping.arr_root_folder_id,
+                            mapping.arr_root_folder_path,
+                            mapping.quality_profile_id,
+                            mapping.plex_path_prefix,
+                            mapping.arr_path_prefix,
+                            mapping.classifarr_path_prefix
+                        ]
                     );
 
                     result.remapped++;
 
-                    logger.info('Remapped library mapping', {
+                    logger.info('Restored library mapping', {
                         instance: `${type} ${config.id}`,
                         oldId: mapping.library_id,
                         newId: newLibraryId,

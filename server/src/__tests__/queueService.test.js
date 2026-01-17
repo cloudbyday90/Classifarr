@@ -435,7 +435,7 @@ describe('QueueService', () => {
 
     describe('Library Mapping Preservation', () => {
         describe('buildLibrarySnapshot', () => {
-            it('should capture library info with external IDs', async () => {
+            it('should capture library info and mappings with external IDs', async () => {
                 db.query.mockResolvedValueOnce({
                     rows: [
                         {
@@ -455,9 +455,16 @@ describe('QueueService', () => {
                     ]
                 });
 
+                db.query.mockResolvedValueOnce({
+                    rows: [
+                        { id: 10, library_id: 1, arr_type: 'radarr', arr_config_id: 1 },
+                        { id: 11, library_id: 2, arr_type: 'sonarr', arr_config_id: 1 }
+                    ]
+                });
+
                 const snapshot = await queueService.buildLibrarySnapshot();
 
-                expect(snapshot).toEqual({
+                expect(snapshot.libraries).toEqual({
                     1: {
                         name: 'Movies',
                         media_type: 'movie',
@@ -471,14 +478,18 @@ describe('QueueService', () => {
                         media_server_type: 'plex'
                     }
                 });
+
+                expect(snapshot.mappings).toHaveLength(2);
             });
 
             it('should handle empty library table', async () => {
                 db.query.mockResolvedValueOnce({ rows: [] });
+                db.query.mockResolvedValueOnce({ rows: [] });
 
                 const snapshot = await queueService.buildLibrarySnapshot();
 
-                expect(snapshot).toEqual({});
+                expect(snapshot.libraries).toEqual({});
+                expect(snapshot.mappings).toEqual([]);
             });
         });
 
@@ -577,79 +588,93 @@ describe('QueueService', () => {
         });
 
         describe('remapInstanceMappings', () => {
-            const oldSnapshot = {
-                1: {
-                    name: 'Movies',
-                    media_type: 'movie',
-                    external_id: 'plex-123',
-                    media_server_type: 'plex'
+            const snapshot = {
+                libraries: {
+                    1: {
+                        name: 'Movies',
+                        media_type: 'movie',
+                        external_id: 'plex-123',
+                        media_server_type: 'plex'
+                    },
+                    2: {
+                        name: 'TV Shows',
+                        media_type: 'tv',
+                        external_id: 'plex-456',
+                        media_server_type: 'plex'
+                    }
                 },
-                2: {
-                    name: 'TV Shows',
-                    media_type: 'tv',
-                    external_id: 'plex-456',
-                    media_server_type: 'plex'
-                }
+                mappings: [
+                    {
+                        id: 10,
+                        library_id: 1,
+                        arr_type: 'radarr',
+                        arr_config_id: 1,
+                        arr_root_folder_id: 1,
+                        arr_root_folder_path: '/movies/4k',
+                        quality_profile_id: null,
+                        plex_path_prefix: null,
+                        arr_path_prefix: null,
+                        classifarr_path_prefix: null
+                    }
+                ]
             };
 
             const newLookup = {
                 byExternalId: {
-                    'plex:plex-123': 10,
-                    'plex:plex-456': 20
+                    'plex:plex-123': 100,
+                    'plex:plex-456': 200
                 },
                 byNameType: {
-                    'movies|movie': 10,
-                    'tv shows|tv': 20
+                    'movies|movie': 100,
+                    'tv shows|tv': 200
                 }
             };
 
-            it('should remap all mappings for an instance', async () => {
+            it('should recreate all mappings for an instance', async () => {
                 const config = { id: 1, name: 'Radarr 4K' };
 
-                db.query.mockResolvedValueOnce({
-                    rows: [
-                        {
-                            id: 100,
-                            library_id: 1, // Old library ID
-                            arr_root_folder_path: '/movies/4k'
-                        }
-                    ]
-                });
-
-                db.query.mockResolvedValueOnce({ rowCount: 1 }); // UPDATE
+                db.query.mockResolvedValueOnce({ rowCount: 1 }); // INSERT
 
                 const result = await queueService.remapInstanceMappings(
                     'radarr',
                     config,
-                    oldSnapshot,
+                    snapshot,
                     newLookup
                 );
 
                 expect(result.remapped).toBe(1);
                 expect(result.failed).toBe(0);
                 expect(db.query).toHaveBeenCalledWith(
-                    expect.stringMatching(/UPDATE library_arr_mappings/),
-                    [10, 100] // New library ID, mapping ID
+                    expect.stringMatching(/INSERT INTO library_arr_mappings/),
+                    expect.arrayContaining([100]) // New library ID
                 );
             });
 
             it('should track failed mappings', async () => {
                 const config = { id: 1, name: 'Radarr 4K' };
 
-                db.query.mockResolvedValueOnce({
-                    rows: [
+                const snapshotWithUnknown = {
+                    libraries: {},
+                    mappings: [
                         {
-                            id: 100,
-                            library_id: 3, // Not in snapshot
-                            arr_root_folder_path: '/movies/4k'
+                            id: 99,
+                            library_id: 999, // Not in libraries
+                            arr_type: 'radarr',
+                            arr_config_id: 1,
+                            arr_root_folder_id: 1,
+                            arr_root_folder_path: '/movies/deleted',
+                            quality_profile_id: null,
+                            plex_path_prefix: null,
+                            arr_path_prefix: null,
+                            classifarr_path_prefix: null
                         }
                     ]
-                });
+                };
 
                 const result = await queueService.remapInstanceMappings(
                     'radarr',
                     config,
-                    oldSnapshot,
+                    snapshotWithUnknown,
                     newLookup
                 );
 
@@ -657,7 +682,7 @@ describe('QueueService', () => {
                 expect(result.failed).toBe(1);
                 expect(result.failedLibraries).toEqual([
                     {
-                        oldId: 3,
+                        oldId: 999,
                         reason: 'Library not found in snapshot'
                     }
                 ]);
@@ -665,13 +690,29 @@ describe('QueueService', () => {
         });
 
         describe('remapAllArrMappings', () => {
-            const oldSnapshot = {
-                1: {
-                    name: 'Movies',
-                    media_type: 'movie',
-                    external_id: 'plex-123',
-                    media_server_type: 'plex'
-                }
+            const snapshot = {
+                libraries: {
+                    1: {
+                        name: 'Movies',
+                        media_type: 'movie',
+                        external_id: 'plex-123',
+                        media_server_type: 'plex'
+                    }
+                },
+                mappings: [
+                    {
+                        id: 100,
+                        library_id: 1,
+                        arr_type: 'radarr',
+                        arr_config_id: 1,
+                        arr_root_folder_id: 1,
+                        arr_root_folder_path: '/movies',
+                        quality_profile_id: null,
+                        plex_path_prefix: null,
+                        arr_path_prefix: null,
+                        classifarr_path_prefix: null
+                    }
+                ]
             };
 
             const newLookup = {
@@ -685,27 +726,15 @@ describe('QueueService', () => {
                     rows: [{ id: 1, name: 'Radarr 4K' }]
                 });
 
-                // Mock Radarr mappings
-                db.query.mockResolvedValueOnce({
-                    rows: [
-                        {
-                            id: 100,
-                            library_id: 1,
-                            arr_root_folder_path: '/movies'
-                        }
-                    ]
-                });
-                db.query.mockResolvedValueOnce({ rowCount: 1 }); // UPDATE
+                // Mock INSERT for Radarr mapping
+                db.query.mockResolvedValueOnce({ rowCount: 1 });
 
                 // Mock Sonarr configs
                 db.query.mockResolvedValueOnce({
                     rows: [{ id: 2, name: 'Sonarr' }]
                 });
 
-                // Mock Sonarr mappings (empty)
-                db.query.mockResolvedValueOnce({ rows: [] });
-
-                const results = await queueService.remapAllArrMappings(oldSnapshot, newLookup);
+                const results = await queueService.remapAllArrMappings(snapshot, newLookup);
 
                 expect(results.totalRemapped).toBe(1);
                 expect(results.totalFailed).toBe(0);
@@ -777,6 +806,22 @@ describe('QueueService', () => {
                     })
                 );
 
+                // Mock mappings snapshot
+                db.query.mockImplementationOnce(() =>
+                    Promise.resolve({
+                        rows: [
+                            {
+                                id: 10,
+                                library_id: 1,
+                                arr_type: 'radarr',
+                                arr_config_id: 1,
+                                arr_root_folder_id: 1,
+                                arr_root_folder_path: '/movies'
+                            }
+                        ]
+                    })
+                );
+
                 // Mock all DELETE queries
                 db.query.mockImplementation((query) => {
                     if (query.includes('DELETE FROM')) {
@@ -787,9 +832,13 @@ describe('QueueService', () => {
 
                 const result = await queueService.clearAndResync();
 
-                // Verify snapshot was built
+                // Verify snapshot was built (both libraries and mappings queries)
                 expect(db.query).toHaveBeenCalledWith(
                     expect.stringMatching(/SELECT.*external_id.*FROM libraries/s)
+                );
+
+                expect(db.query).toHaveBeenCalledWith(
+                    expect.stringMatching(/SELECT \* FROM library_arr_mappings/)
                 );
 
                 expect(result).toHaveProperty('librariesCleared');
