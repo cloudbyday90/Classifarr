@@ -139,14 +139,35 @@ router.get('/health', async (req, res) => {
       }
     }
 
+    // Get Queue Worker status
+    const queueWorker = await healthCheckService.checkQueueWorker();
+
     const dbHealth = health.database;
     const isHealthy = dbHealth.status === 'connected';
 
     res.status(isHealthy ? 200 : 503).json({
-      status: isHealthy ? 'healthy' : 'unhealthy',
-      version: APP_VERSION,
-      uptime: healthCheckService.getUptime(),
       database: dbHealth.status,
+      mediaServer: health.mediaServer?.status || 'unknown',
+      radarr: health.radarr?.status || 'unknown',
+      sonarr: health.sonarr?.status || 'unknown',
+      ollama: health.ollama?.status || 'unknown',
+      tmdb: health.tmdb?.status || 'unknown',
+      omdb: health.omdb?.status || 'unknown',
+      discordBot: health.discordBot?.status || 'unknown',
+      tavily: health.tavily?.status || 'unknown',
+      queueWorker: queueWorker.status,
+      details: {
+        database: dbHealth,
+        mediaServer: health.mediaServer,
+        radarr: health.radarr,
+        sonarr: health.sonarr,
+        ollama: health.ollama,
+        tmdb: health.tmdb,
+        omdb: health.omdb,
+        discordBot: health.discordBot,
+        tavily: health.tavily,
+        queueWorker: queueWorker
+      },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -356,12 +377,12 @@ router.post('/heartbeat/stop', (req, res) => {
  */
 router.get('/status', async (req, res) => {
   try {
-    const uptime = process.uptime();
-    const version = process.env.npm_package_version || '1.0.0';
+    const uptime = healthCheckService.getUptime();
+    const version = packageJson.version;
 
     res.json({
       version,
-      uptime: Math.floor(uptime),
+      uptime,
       nodeVersion: process.version,
       platform: process.platform,
       arch: process.arch,
