@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.40.0-alpha] - 2026-01-17
+
+### Improved
+
+- **Queue Service Refactor**: Transitioned QueueService from singleton to factory pattern with Dependency Injection to improve test stability.
+- **Cleanup**: Removed deprecated test files.
+
+### Fixed
+
+- **CARSA Headers**: Fixed header handling in CARSA middleware.
+- **Service Stability**: Reverted unstable changes in classification service.
+
 ### Added
+
 - **Classification Details Signal Breakdown** (Fixes #185, v0.40.0-alpha)
   - New `SignalRow.vue` component for displaying individual classification engine signals
   - Signal breakdown section in Classification Details popup showing all 5 engines (Preset, Profile, Pattern, RAG, History)
@@ -37,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All dashboard data now loads efficiently in parallel instead of sequential requests
 
 ### Fixed
+
 - **Idle Backfill Bug Fixes** (Fixes #203)
   - Fixed initial activity timestamp preventing immediate idle detection (system can now be idle immediately on start)
   - Fixed `isRunning` state not being reset on early exit (config disabled, no pending items, etc.)
@@ -68,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Backend `/api/stats` endpoint now includes `byMethod` array with `method`, `count`, and `avg_confidence` for each classification method
 
 ### Added
+
 - **Health Check Endpoints for Kubernetes/Docker** (Fixes #183)
   - New `/api/system/health/live` endpoint for liveness probes (fast, no external checks)
   - New `/api/system/health/ready` endpoint for readiness probes (checks database connectivity)
@@ -129,6 +144,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive integration tests for migration and data operations
 
 ### Changed
+
 - **CARSA Process Enhanced**: Updated `clearAndResync()` to include library mapping preservation workflow:
   1. Snapshot libraries with external IDs before clear
   2. Clear all data as before
@@ -138,6 +154,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   6. Create notification if any mappings fail to restore
 
 ### Fixed
+
 - **Sync Concurrency**: Prevented race conditions between "Sync Libraries" and "Clear & Re-sync All" operations (Fixes #176)
   - Added central sync lock mechanism to prevent concurrent sync operations
   - "Sync Libraries" now returns 409 status when another sync is already running
@@ -156,6 +173,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clear and Resync Logging**: Updated logging to include counts for all deleted tables (embeddings, collections, libraries)
 
 ### Added (Previous)
+
 - **Sync Status Singleton**: New `syncStatus.js` service to track sync operations centrally
   - Tracks sync type ('library_sync', 'full_resync', 'incremental')
   - Reports sync progress and current library being processed
@@ -170,6 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Recommended method for post-CARSA sync operations
 
 ### Changed
+
 - **Library Sync Endpoint**: Modified `/api/media-sync/sync/:libraryId` to check sync lock before starting
   - Returns 409 Conflict if another sync is already running
   - Tracks sync progress via `syncStatus` singleton
@@ -184,6 +203,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clear and Resync Process**: Now clears in-memory caches before triggering fresh library sync
 
 ### Technical Details
+
 - **Sync Lock Mechanism**:
   - Singleton pattern ensures single source of truth for sync status
   - `tryStart(type)` method atomically checks and starts sync (prevents TOCTOU race conditions)
@@ -194,7 +214,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `forceStop()` method allows CARSA to interrupt active syncs
   - Progress tracking with `updateProgress(progress, currentLibrary)`
   - `canInterrupt` property is informational only; actual interruption logic is based on sync type
-  
 - **CARSA Flow** (API returns after step 6; steps 7-9 run in background):
   1. Check and force stop any active sync
   2. Start 'full_resync' sync status (progress: 0%)
@@ -205,7 +224,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   7. **[Background]** Trigger `syncAllLibraries()` (creates NEW libraries) (progress: 90%)
   8. **[Background]** Run gap analysis with fresh library IDs (progress: 100%)
   9. **[Background]** Stop sync status
-  
 - **Table Deletion Order**:
   1. `task_queue` (independent)
   2. `content_analysis_log` (references classification_history)
@@ -230,47 +248,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.39.7b-alpha] - 2026-01-16
 
 ### Removed
+
 - `preloadModel()` from OllamaService (used non-existent `/api/load` endpoint).
 - Model preloading logic from IdleBackfillService.
 
 ## [v0.39.7a-alpha] - 2026-01-16
 
 ### Fixed
+
 - PROFILE_SCORE weight calculation in signal-based confidence.
 - Fallback status handling when AI is unavailable.
 - Logger `error()` and `warn()` methods now handle DB persistence failures gracefully.
 
 ### Added
+
 - AI retry mechanism for classifications when AI is unavailable (migration 065).
 - `logger.test.js` with 15 tests for logger resilience.
 - `idleBackfillService.test.js` with 11 tests for model preloading.
 
 ### Removed
+
 - Deprecated `sendSmartSuggestionNotification()` from Discord bot.
 
 ## [v0.39.6-alpha] - 2026-01-16
 
 ### Added
+
 - Intelligent Model Swapping for Ollama to reduce reload overhead.
 - Smart preloading for idle batch processing.
 - Model affinity tracking in ProviderLockService.
 - `keep_alive` parameter support for embedding requests.
 
 ### Changed
+
 - Increased default provider lock wait time to 120s.
 
 ## [0.39.5b-alpha] - 2026-01-16
 
 ### Fixed
+
 - **RAG Overview Pending Count**: Fixed `getStats()` to count actual items without embeddings instead of retry queue
 - **Database Migration 064**: Removed invalid `updated_at = NOW()` from backfill migration (column doesn't exist)
 
 ### Added
+
 - **Database Resilience Tests**: New tests to prevent regression of Exit 255 crash bug
 
 ## [0.39.5a-alpha] - 2026-01-15
 
 ### Fixed
+
 - **CRITICAL: Container Crash**: Removed `process.exit(-1)` from database pool error handler in `database.js`
   - Transient idle client errors no longer kill the entire application
   - Connection pool now recovers naturally from temporary database issues
@@ -278,6 +305,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.39.5-alpha] - 2026-01-15
 
 ### Fixed
+
 - **CRITICAL: Sync Reconciliation Error**: Fixed `column "updated_at" of relation "classification_history" does not exist` error
   - Removed `updated_at = NOW()` from classification_history UPDATE query in reconciliation logic
   - Removed `updated_at = NOW()` from learned_corrections UPDATE query (column doesn't exist in either table)
@@ -293,11 +321,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added getPendingCount() method to idle backfill service
   - Idle backfill now sets total when creating backfill_runs record
 
-
-
 ## [0.39.4-alpha] - 2026-01-15
 
 ### Fixed
+
 - **Integration Test Stability**: Fixed `pgvector` missing extension errors in tests by upgrading test container
 - **RAG API Tests**: Refactored `rag-api.test.js` to use shared database pool, resolving `app.address` crashes
 - **AI Model Selection**: Fixed classification using wrong Ollama model (`qwen3:14b`) instead of configured model
@@ -313,6 +340,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.39.3-alpha] - 2026-01-15
 
 ### Fixed
+
 - **library_name Data Consistency**: Fixed `library_name` not being set when classifications are corrected
   - Updated classification correction endpoint to set both `library_id` and `library_name`
   - Updated Discord bot correction handler to set both `library_id` and `library_name`
@@ -359,6 +387,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `postUpgradeService.clearLogs()` now gracefully handles missing log directories
 
 ### Added
+
 - **Post-Upgrade Task System**: Introduced reusable system for version-specific maintenance operations
   - Created `post_upgrade_tasks` table to track executed tasks
   - Created `postUpgradeService` to manage task execution
@@ -370,22 +399,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.39.2c-alpha] - 2026-01-15
 
 ### Fixed
+
 - **Database Auto-Healing**: Added logic to automatically detecting dimension mismatches (e.g., "expected 2000, not 768") and resize the vector column on the fly.
 - Increased embedding generation timeout to 5 minutes.
 
 ## [0.39.2b-alpha] - 2026-01-15
 
 ### Fixed
+
 - Saving RAG embedding configuration now automatically enables `rag_enabled` flag - fixes "RAG is not enabled" error when starting backfill
 
 ## [0.39.2a-alpha] - 2026-01-15
 
 ### Fixed
+
 - Sidebar version display now shows correct version (was stuck on v0.38.4-alpha)
 
 ## [0.39.2-alpha] - 2026-01-15
 
 ### Fixed
+
 - **Settings Preservation**: PUT `/settings/ai` now uses nullish coalescing to preserve existing values when fields are undefined - fixes bug where saving RAG config would reset AI provider to 'none'
 - **Accurate RAG Status**: Provider status now correctly shows "Offline" when AI provider is not configured in "Same as Classification" mode
 - **Backfill RAG Check**: Idle, Scheduled, and Manual backfill services now verify `rag_enabled` before attempting embedding generation
@@ -393,6 +426,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.39.0-alpha] - 2026-01-14
 
 ### Added
+
 - **RAG & Embeddings Settings Consolidation** (#154, part of Epic #136)
   - Consolidated RAG & Embeddings settings under Classification section in settings sidebar
   - Added independent scroll to settings sidebar navigation
@@ -465,19 +499,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **AI Prompt Enrichment**: Library profile statistics now injected into AI classification prompts (#142)
   - Certification/rating distribution
-  - Genre distribution  
+  - Genre distribution
   - Top studios
   - Language distribution
-  
 - **Library Profile Panel**: New UI component in classification history detail (#142)
   - Visual distribution bars for ratings and genres
   - Profile snapshot from classification time
   - Top studios and language distribution display
-  
 - **Profile Snapshot Storage**: Classification history now stores library profile at decision time (#142)
   - New `profile_snapshot` column in `classification_history` table
   - Enables transparency into what profile data influenced AI decisions
-  
 - **API Endpoints**: New endpoints for library profile statistics (#142)
   - `GET /api/history/:id/profile` - Get profile used for specific classification
   - Profile endpoints already exist in `/api/libraries/:id/profile`
@@ -533,7 +564,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Database migration (056) for backfill configuration and run history tracking
   - New services: `idleBackfillService`, `scheduledBackfillService`, `manualBackfillService`, `backfillOrchestrator`
   - New utility: `idleDetector` for monitoring classification activity
-  - API endpoints: 
+  - API endpoints:
     - Manual backfill: POST `/api/rag/backfill/manual/{start,pause,resume,clear}`, GET `/api/rag/backfill/status`
     - Schedule config: GET/PUT `/api/rag/backfill/schedule`
     - Idle config: GET/PUT `/api/rag/backfill/idle`
@@ -569,6 +600,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Backward compatible - existing 'same as classification' behavior preserved as default
 
 ### Removed
+
 - Standalone `/settings/rag` route (now integrated into Settings panel)
 - Duplicate Semantic Search (RAG) configuration card from AI settings
 - Separate RAG & Embeddings section in settings sidebar
@@ -582,6 +614,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Navigation updated to remove Rules tab from Settings
 
 ### Changed
+
 - Settings sidebar now scrolls independently from main content
 - Removed duplicate embedding provider settings from AI settings panel
 - Heartbeat settings moved from General section to RAG → Backfill tab
@@ -590,7 +623,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Prompt Builder**: Enhanced with library profile injection for AI context (#142)
   - New `buildClassificationPrompt()` method
   - `formatItemForPrompt()` helper for consistent item formatting
-  
 - **Classification Service**: Automatically captures and stores profile snapshots (#142)
   - Profile stats captured at classification time for completed items
   - Provides historical record of library composition
@@ -603,6 +635,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Embedding operations now respect provider lock when using same Ollama instance
 
 ### Fixed
+
 - **Pending Classifications API Crash**: Fixed `/api/classification/pending` throwing "is not valid JSON" error
   - `policy_question` column is JSONB in PostgreSQL (already parsed as object by pg driver)
   - Code was incorrectly calling `JSON.parse()` on an object, causing "[object Object] is not valid JSON" error
@@ -655,6 +688,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - File updated: `client/src/views/rag/OverviewTab.vue`
 
 ### Technical Details
+
 - Route `/api/classification/pending` now safely handles both string and JSONB formats for `policy_question`
 - Classification service `logClassification` method conditionally sets `library_id` and `library_name` based on status
 - When `status === 'awaiting_decision'`, both fields are NULL; when `status === 'completed'`, fields are populated
@@ -668,6 +702,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.38.4-alpha] - 2026-01-14
 
 ### Fixed
+
 - **Quality Profile Dropdown Auto-Loading**: Fixed issue where quality profiles didn't load when editing existing Radarr/Sonarr configurations
   - Clicking "Change Settings" on existing configs now automatically loads quality profiles
   - Added `loadingProfiles` state to show loading indicator while fetching profiles
@@ -684,6 +719,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Logs tier lookup results, initialization status, and skip reasons
 
 ### Added
+
 - **Incomplete Configuration Warnings**: New warning system for missing required fields
   - New `ArrConfigWarning.vue` component displays warning banner on Dashboard
   - Warning shown when Radarr/Sonarr configs missing `quality_profile_id`
@@ -692,6 +728,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Warning can be dismissed by user (session-only, reappears on refresh if still incomplete)
 
 ### Technical Details
+
 - Radarr availability options hardcoded: `announced`, `inCinemas`, `released`, `preDB`
 - Sonarr series type options hardcoded: `standard`, `daily`, `anime`
 - Sonarr monitoring options hardcoded: `all`, `future`, `missing`, `existing`, `first`, `latest`, `none`
@@ -703,6 +740,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.38.3-alpha] - 2026-01-14
 
 ### Added
+
 - **Rating Normalization System**: Comprehensive system to standardize age-based and international ratings to MPAA/TV standards
   - New `ratingNormalizer.js` utility with priority-based rating selection
   - Priority system: 1) OMDb rated field (most reliable), 2) TMDB US certification, 3) Normalized age-based rating, 4) "NR" for unknowns
@@ -754,12 +792,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Logs activity for audit trail
 
 ### Changed
+
 - **Metadata Enrichment**: Now normalizes ratings when OMDb data is available
   - OMDb rated field takes precedence over existing content_rating
   - Original rating preserved before update
   - Ensures library items get most authoritative rating (from IMDb via OMDb)
 
 ### Technical Details
+
 - New database column `original_rating` stores pre-normalization ratings
 - Index on `original_rating` for efficient queries
 - Conditional index on `content_rating WHERE original_rating IS NULL` for finding items needing normalization
@@ -773,6 +813,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.38.2-alpha] - 2026-01-14
 
 ### Fixed
+
 - **PolicyEngine Now Uses Library Profiles**: Added `profile` scoring to PolicyEngine evaluation
   - Library profiles (statistical snapshots of library content) now contribute to classification confidence
   - New `scoreProfile()` method calls `libraryProfileService.getProfileScore()`
@@ -796,7 +837,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Helps diagnose why RAG isn't contributing to classifications
 
 - **AI Prompt Anime Bias**: Neutralized anime-specific examples in AI classification prompt
-  - Replaced "Japanese animation with anime keywords" example with generic "Action movie with mainstream studio" 
+  - Replaced "Japanese animation with anime keywords" example with generic "Action movie with mainstream studio"
   - Replaced "Anime vs Kids conflict" clarification example with "Genre ambiguity" example
   - Prevents LLM from being primed to suggest Anime for unrelated content
 
@@ -806,6 +847,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prevents specialty libraries from catching all uncertain classifications
 
 ### Changed
+
 - **PolicyEngine Weights**: Adjusted default weights to accommodate profile scoring
   - Preset: 35% (was 40%)
   - Profile: 25% (NEW)
@@ -817,6 +859,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Signal Collection Logging**: Enhanced logging in SignalCollector to show collection summary with total signals and signal types collected
 
 ### Technical Details
+
 - Library profiles are statistical snapshots showing rating distribution, genre distribution, studio distribution, and exclusions
 - Profile scoring returns 0-100 where 50 is neutral, >50 is positive match, <50 is negative match
 - PolicyEngine now evaluates 5 signal types: preset, profile, pattern, rag, history
@@ -828,6 +871,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.38.1-alpha] - 2026-01-14
 
 ### Changed
+
 - **Unified Policy Configuration Modal**: Consolidated `PolicyBuilderModal` and `PresetSelectionModal` into single modal
   - Preset selection UI (suggestions, categories, search, grid) now inline in policy modal
   - Removed nested modal experience
@@ -842,12 +886,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reduces visual clutter while still providing access to advanced features
 
 ### Removed
+
 - **Nested PresetSelectionModal**: No longer opens as separate popup from PolicyBuilderModal (UI integrated inline)
 - **Unused state in PolicyList.vue**: Removed legacy preset selector code (no longer needed)
 
 ## [0.38.0-alpha] - 2026-01-13
 
 ### Added
+
 - **Preset Viewer UX Improvements**: Reimagined system preset viewing experience
   - New `PresetSummaryModal.vue` component displaying clean read-only summary (badges/chips instead of disabled form inputs)
   - "Customize" button to clone system presets as custom presets
@@ -890,6 +936,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated default emoji from 📦 (package) to 🎬 (clapperboard)
 
 ### Changed
+
 - **Color Consistency**: Standardized on primary blue (#3b82f6) and success green (#22c55e)
 - **Modal Styling**: Updated close button with blue accent for better visual hierarchy
 - **Category Pills**: Updated from background-light to gray-700 for unselected state
@@ -898,35 +945,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.37.8e-alpha] - 2026-01-13
 
 ### Fixed
+
 - **Classification Status Constraint**: Added `awaiting_decision` and `pending` status values to `classification_history_status_check` constraint
 
 ## [0.37.8d-alpha] - 2026-01-12
 
 ### Fixed
+
 - **Classification Method Constraint**: Added all current and legacy methods to `classification_history_method_check` constraint
 - **Learned Corrections Query**: Fixed `ORDER BY updated_at` to use `created_at` (column doesn't exist)
 - **Ollama Timeout**: Extended initial timeout from 60s to 120s for model loading, with 60s heartbeat for subsequent chunks
 
 ### Removed
+
 - **Deprecated Code Paths**: Removed `checkLibraryRules()` and `matchRules()` - PolicyEngine now handles all rule-based classification
 - **Legacy Signal Collection**: Removed `custom_rule` signal types from classification flow
 
 ### Changed
+
 - **Hard Timeout**: Extended from 3 minutes to 5 minutes for complex classifications
 
 ## [0.37.8c-alpha] - 2026-01-12
 
 ### Changed
+
 - **Overseerr/Jellyseerr Webhook Payload**: Enhanced JSON payload template with explicit TMDb ID, TVDB ID, media status, and request details
 - **Webhook Parser**: Updated `parsePayload()` to handle new explicit field format while maintaining backward compatibility
 
 ### Improved
+
 - **Metadata Enrichment**: Direct TMDb/TVDB ID lookup for faster, more accurate classification
 - **Request Tracking**: Better user information capture from request payload
 
 ## [0.37.8b-alpha] - 2026-01-12
 
 ### Fixed
+
 - **Discord Configuration Persistence Issue**:
   - Backend: Modified `loadConfig()` method in `discordBot.js` to accept `ignoreEnabledStatus` parameter
   - Backend: Updated `getChannelDetails()`, `getServers()`, `getChannels()`, and `testConnection()` to fetch config regardless of enabled status
@@ -937,14 +991,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Server and channel names now display correctly after save
 
 ### Changed
+
 - **Discord API Configuration Loading**: `loadConfig()` now supports fetching bot token for API authentication even when bot is disabled
 - **Frontend Discord Settings**: Save now shows success status with channel and server information
 - **Test Connection Feedback**: Now displays clear success message with test notification delivery status in edit mode
 
 ### Added
+
 - **ConnectionStatus Component**: Added support for 'warning' status to display non-critical issues
 
 ### Changed
+
 - **Build Tooling**: Upgraded Vite from v5.0.8 to v7.3.1
 - **Vue Plugin**: Upgraded @vitejs/plugin-vue from v4.5.2 to v6.0.3
 - **Test Infrastructure**: Integration tests now use cross-platform temp file paths for Windows compatibility
@@ -952,6 +1009,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.37.8a-alpha] - 2026-01-12
 
 ### Fixed
+
 - **Discord Channel Details Error Handling**:
   - Backend: Added 10-second timeout to Discord client login to prevent indefinite hangs
   - Backend: Changed `/api/settings/discord/channel/:channelId` route from returning 500 errors to 400 with fallback data
@@ -961,12 +1019,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prevents "Unknown" from appearing for server and channel names after saving configuration
 
 ### Changed
+
 - **Discord Error Responses**: API now returns structured error response with fallback data instead of generic 500 errors
 - **Discord Logging**: Added debug logging for channel fetch operations (`[Discord]` prefix)
 
 ## [0.37.8-alpha] - 2026-01-12
 
 ### Added
+
 - **Discord Integration Enhancements**:
   - Test connection now sends actual notification to verify bot setup
   - Permission validation for all required Discord bot permissions (Send Messages, Embed Links, Attach Files, Read Message History, Use External Emojis, Add Reactions)
@@ -974,42 +1034,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced API endpoint `/api/settings/discord/test` to accept `channel_id` parameter
 
 ### Fixed
+
 - **Discord Health Status**: Now shows 'not configured' instead of 'error' when Discord is not set up
 - **Discord Channel/Server Display**: Fixed issue where server and channel names displayed as "unknown" after saving configuration
 - **Discord Test Connection**: Now sends actual test notification embed to Discord channel for verification
 
 ### Changed
+
 - **Discord Bot Service**: `testConnection()` method enhanced with permission checking and test notification sending
 
 ## [0.37.7-alpha] - 2026-01-12
 
 ### Added
+
 - **Startup Profile Generation**: Library profiles auto-generate on server startup for all libraries with items
 
 ### Changed
+
 - **Test Coverage**: Enhanced tests documenting startup and 404 fallback profile generation behaviors
 - **Discord Settings UI**: Improved error messaging to display specific permission issues and notification delivery status
 
 ## [0.37.6-alpha] - 2026-01-12
 
 ### Fixed
+
 - **Library Profile Auto-Generation**: Profiles now auto-generate on first page load instead of requiring manual refresh
 - Fixed 404 handling in LibraryProfile.vue to trigger profile generation
 
 ### Changed
+
 - **Test Coverage**: Enhanced regression test for library profile 404 response with JSDoc documentation
 
 ## [0.37.5a-alpha] - 2026-01-12
 
 ### Changed
+
 - **Dependencies**: Upgraded supertest from 7.1.4 to 7.2.2 in server
 
 ## [0.37.5-alpha] - 2026-01-11
 
 ### Added
+
 - **Library Profiles**: New statistical system replacing Pattern Discovery.
   - Generates profiles based on rating, genre, and studio distributions.
-  - Automatically identifies exclusions (what's *not* in your library).
+  - Automatically identifies exclusions (what's _not_ in your library).
   - New API endpoints for profile generation and retrieval.
 - **Profile Visualization**: Added `LibraryProfile` component to view library statistics.
 - **Policy Engine**: Integrated `PROFILE_SCORE` signal type for better accuracy.
@@ -1019,15 +1087,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GET /api/settings/tavily/health` - Tavily API health with SSL status.
 
 ### Changed
+
 - **Scoring**: `FormulaEngine` now uses library profiles instead of patterns.
 - **Frontend**: Replaced "Learned Patterns" widget with "Library Profile" in Library Detail view.
 
 ### Fixed
+
 - **Stats Alerts 500 Error**: Added defensive error handling to `/api/stats/alerts` endpoint.
 - **OMDb SSL Errors**: OMDb service now gracefully handles SSL certificate expiration.
 - **Integration Tests**: Fixed preset scoring tests to match actual scoring implementation.
 
 ### Deprecated
+
 - **Pattern Experience**: The "Pattern Discovery" system is deprecated and replaced by Library Profiles.
 - **Routes**: Removed `/patterns` and `/rule-builder` routes.
 - **Database**: `discovered_patterns` table is now considered legacy.
@@ -1035,6 +1106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.37.2-alpha] - 2026-01-11
 
 ### Added
+
 - **Inline Preset Customization:** Customize preset signals directly in the Policy Builder without leaving the modal
   - "Customize" button expands each selected preset to show editable signals
   - Remove base preset signals with ✕ button (crossed-out with ↩ to restore)
@@ -1053,6 +1125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Stores signal customizations including additions and removals
 
 ### Fixed
+
 - **PresetCard Checkbox:** Fixed checkbox not triggering toggle when clicked directly (was only working on card click)
 - **Pattern Mining Library Name Bug:** Fixed `library_name` null error when upserting discovered patterns
   - Now looks up library name from `libraries` table if missing from classification history
@@ -1061,6 +1134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.37.1-alpha] - 2026-01-11
 
 ### Fixed
+
 - **Media Sync FK constraint fix:** Fixed `upsertMediaItem` and `upsertCollection` failing when library was deleted during re-sync
   - Added library existence check before insert to prevent FK violation on `media_server_items.library_id`
   - Gracefully skips items/collections if library no longer exists (logs warning instead of error)
@@ -1072,6 +1146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Now correctly accesses `searchResult.results` before passing to `extractImdbData`
 
 ### Added
+
 - **Regression tests:** `v037.1-regression.test.js` - Tests for all v0.37.1 fixes
   - Scheduler module import verification (runGapAnalysis vs runPatternAnalysis)
   - Tavily result parsing with extractImdbData
@@ -1086,6 +1161,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 ### Added
 
 #### AI Optimization - Skip AI for Confident PolicyEngine Results (#98)
+
 - **Smart AI bypass:** AI calls are now skipped when PolicyEngine has high confidence
   - **auto_classify (≥85%):** Skip AI entirely, trust PolicyEngine result
   - **prompt_confirm (60-84%):** Skip AI, prompt user via Discord with PolicyEngine breakdown
@@ -1107,6 +1183,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - PolicyResult propagation verification
 
 #### Event Detection Migration to PolicyEngine Presets (#98)
+
 - **Event presets:** Event detection migrated from hardcoded `detectEventContent()` to 6 PolicyEngine presets
   - `event_holiday`: Christmas, Halloween, and seasonal content (95% base confidence)
   - `event_sports`: Sports events, documentaries, athletics (92% base confidence)
@@ -1133,6 +1210,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Transparent (full scoring breakdown in logs)
 
 #### Comprehensive Documentation (#98)
+
 - **Architecture documentation:** `docs/architecture/policy-engine.md`
   - Complete PolicyEngine architecture overview
   - Component diagrams and data flow
@@ -1154,6 +1232,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Troubleshooting common issues
 
 #### Legacy Rule Migration Service (#103)
+
 - **New service:** `server/src/services/legacyMigration.js` - Migrates legacy `library_custom_rules` to policy system
   - **Migration status:** `getMigrationStatus()` - Returns counts of pending/migrated rules
   - **Library listing:** `getLibrariesWithLegacyRules()` - Lists libraries with unmigrated rules
@@ -1211,6 +1290,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - **v0.39+:** Legacy rule system removed, policies required
 
 #### Policy Stats Dashboard (#113)
+
 - **New view:** `client/src/views/PolicyStatsDashboard.vue` - Live policy statistics dashboard
   - **Overview cards:** Display global metrics (total decisions, average accuracy, auto-classify rate, improving policies)
   - **Policy performance grid:** Individual policy cards with trend indicators and key metrics
@@ -1236,6 +1316,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 - **Integration tests:** `server/src/__tests__/integration/stats-api.test.js` - Comprehensive API endpoint testing
 
 #### PolicyEngine Service
+
 - **New service:** `server/src/services/policyEngine.js` - Core classification engine with comprehensive signal evaluation
   - **Main entry point:** `evaluateItem(item)` - Evaluates media items against all active policies
   - **Authoritative signals:** `checkAuthoritativeSignals(item)` - 100% confidence source library matching
@@ -1267,6 +1348,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
     - All weights configurable per-policy or use global defaults
 
 #### FeedbackAnalysis Service
+
 - **New service:** `server/src/services/feedbackAnalysis.js` - Feedback analysis & pattern learning loop service
   - **Feedback recording:** `recordFeedback(feedbackData)` - Records user classification decisions into policy_feedback_log
   - **Policy analysis:** `analyzePolicy(policyId, options)` - Analyzes feedback to detect patterns and generate suggestions
@@ -1308,6 +1390,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
     - `extractSignificantPatterns(groups, type, minCount)` - Filters patterns by significance threshold
 
 #### Policy Builder UI
+
 - **New Vue components:**
   - `client/src/views/PolicyList.vue` - Main policy management page showing all policies grouped by library
   - `client/src/components/policies/PolicyCard.vue` - Individual policy card with threshold and weight display
@@ -1339,6 +1422,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Category filtering and search validation
 
 #### Policy Tuning Dashboard UI
+
 - **New Vue components:**
   - `client/src/views/TuningSuggestionsDashboard.vue` - Main tuning suggestions dashboard with filtering and summary stats
   - `client/src/components/suggestions/SuggestionCard.vue` - Individual suggestion card displaying type, confidence, and impact estimate
@@ -1375,6 +1459,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Summary statistics testing
 
 #### PromptBuilder Service
+
 - **New service:** `server/src/services/promptBuilder.js` - Context-rich prompt generation for Discord and web UI
   - **Main entry point:** `buildPrompt(item, evaluationResult)` - Generates intelligent prompts with explanations
   - **Prompt type determination:** `determinePromptType(evaluationResult)` - Selects appropriate prompt type based on context
@@ -1398,6 +1483,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - **Impact description:** Explains how user choices affect future classifications
 
 #### PromptBuilder API Routes
+
 - **New routes:** `server/src/routes/prompts.js` - API endpoints for prompt queue and response handling
   - `GET /api/prompts/pending` - Get pending classification prompts queue with pagination
   - `GET /api/prompts/:id` - Get specific prompt details with rich context and explanations
@@ -1410,6 +1496,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 - **Integration:** Registered prompts router in `server/src/routes/api.js`
 
 #### FeedbackAnalysis API Routes
+
 - **New routes:** `server/src/routes/feedback.js` - API endpoints for feedback and policy learning
   - `POST /api/feedback` - Record a feedback event (requires authenticated user with valid userId)
   - `GET /api/feedback/policies/:id/suggestions` - Get pending suggestions for a policy (requires authentication)
@@ -1422,6 +1509,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - **Note:** These endpoints should be protected with JWT auth middleware and admin-level authorization where appropriate in production deployments
 
 #### Classification Integration
+
 - **Updated:** `server/src/services/classification.js` to integrate PolicyEngine
   - Added as Step 3.5 in decision tree (after high-confidence matches, before legacy signals)
   - Auto-classifies when policy confidence meets threshold (default 85%)
@@ -1430,6 +1518,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Logs policy decisions for observability
 
 #### Testing
+
 - **New test suite:** `server/src/__tests__/integration/prompt-builder.test.js` - Comprehensive tests for prompt generation
   - **Prompt type determination:** Tests for all 6 prompt types (low_confidence, ai_rejection, close_race, new_discovery, confirmation, standard)
   - **Prompt building:** Tests for each prompt type with realistic data
@@ -1448,6 +1537,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 ### Database Schema (from PRs #105, #106, #107)
 
 #### Database Schema (Migration 042)
+
 - **`library_policies` table:** Core policy definition with multi-policy support per library
   - Policy-level thresholds (auto-classify, prompt, AI validation)
   - Trust settings for patterns, RAG, and history
@@ -1495,6 +1585,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Indexed on policy, change type, and date
 
 #### Schema Enhancements
+
 - **Deprecation support in `library_custom_rules`:**
   - Added `deprecated` boolean column (default false)
   - Added `migrated_to_policy_id` foreign key to `library_policies`
@@ -1508,6 +1599,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Ensures data integrity when policies or libraries are deleted
 
 #### Testing
+
 - **New test suite:** `feedback-analysis.test.js` with comprehensive integration tests
   - **recordFeedback:** Validates feedback recording with all metadata fields
   - **updateLearningStats:** Tests accuracy calculations, trend detection, and stats aggregation
@@ -1547,6 +1639,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Edge cases and boundary conditions
 
 ### Fixed
+
 - **Migration 046 ON CONFLICT fix:** Fixed `046_event_detection_presets.sql` migration failing with "no unique or exclusion constraint matching the ON CONFLICT specification"
   - Changed `ON CONFLICT (key)` to `ON CONFLICT (key, user_id)` to match the unique constraint on `content_presets` table
   - Added `updated_at = NOW()` to the UPDATE clause for consistency with other preset migrations
@@ -1589,9 +1682,11 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - Improved workflow by grouping related features together
 
 ### Changed
+
 - Migration numbering: New migration is `042_policy_driven_schema.sql` (follows `041_formula_engine_weights.sql`)
 
 ### Technical Details
+
 - All new tables use `TIMESTAMP WITH TIME ZONE` for proper timezone handling
 - JSONB columns for flexible schema evolution
 - Idempotent migration using `IF NOT EXISTS` for all DDL statements
@@ -1599,6 +1694,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 - Follows existing migration patterns and conventions
 
 #### Content Presets Seed Data (Migration 043)
+
 - **46 system content presets** covering all major classification categories:
   - **Audience (4 presets):** family_friendly, kids_only, teen, adult_only
   - **Genre (15 presets):** animated, anime, action_adventure, comedy, horror_scary, drama, romance, scifi, fantasy, documentary, crime_mystery, western, musical, sports, war
@@ -1610,6 +1706,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - **TV-Specific (6 presets):** tv_sitcom, tv_drama, tv_reality, tv_animated, tv_anime, tv_miniseries
 
 #### Content Presets Expansion (Migration 044)
+
 - **Expanded from 46 to 168 system content presets** covering all real-world classification scenarios:
   - **Audience (+4 new, 8 total):** kids_older, young_adult, date_night, background
   - **Genre Core (+5 new):** action, thriller, mystery, history, biographical
@@ -1636,6 +1733,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 - **Display ordering** by category with logical grouping (1-4, 10-24, 40-44, etc.)
 
 #### Testing
+
 - **Updated test suite:** `content-presets.test.js` now validates 168 system presets
   - All 74 tests passing (30 original + 2 updated for new display_order ranges)
   - Verification of 168 total system presets (46 original + 122 new)
@@ -1652,6 +1750,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
   - All JSONB signal validation, query operations, and idempotency tests continue to pass
 
 ### Related
+
 - Closes #91 (Policy-Driven Schema Implementation)
 - Closes #95 (Content Presets Seed Data)
 - Part of #82 (v0.37.0 Formula-Based Classification Engine Epic)
@@ -1660,6 +1759,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 ## [0.36.3a-alpha] - 2026-01-07
 
 ### Fixed
+
 - **CI/CD Pipeline:** Fixed test failures in `mediaServer.test.js` caused by missing mock for `DELETE FROM classification_history`
 - **Test Mocks:** Updated test mocks to align with cascading delete sequence implemented in v0.36.3-alpha
 - No production code changes—only test infrastructure updates
@@ -1667,6 +1767,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 ## [0.36.3-alpha] - 2026-01-07
 
 ### Fixed
+
 - **CI/CD Pipeline:** Fixed 77+ consecutive test failures in `mediaServer.test.js`
 - **Test Mocks:** Updated test mocks to match cascading delete query sequence from v0.36.1 and v0.36.2
 - **Classification History FK (Insert):** Fixed violation when library is deleted during task processing (Queue tasks verify library exists)
@@ -1676,6 +1777,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 ## [0.36.2-alpha] - 2026-01-07
 
 ### Fixed
+
 - **OMDb Log Spam:** Limit warning now logs once per session, skips API calls when limit hit
 - **Task Queue Cleanup:** Pending tasks cleared on library re-sync to prevent failures
 - **Enrichment Retry Queue:** Cleared before media_server_items to prevent FK constraint violations
@@ -1683,6 +1785,7 @@ This release implements the complete Policy-Driven Classification Engine, replac
 ## [0.36.1-alpha] - 2026-01-07
 
 ### Fixed
+
 - **Library Sync:** Fixed unique constraint violation when syncing libraries after media server database rebuild
 - Sync now properly clears all related tables before inserting fresh library records
 
@@ -1695,12 +1798,14 @@ This release activates pattern-based classification, introduces hybrid pattern m
 ### Added
 
 #### Pattern-Based Classification
+
 - **Pattern Signal Collection:** Use discovered patterns (studio, franchise, genre, certification) as first-pass classification signals
 - **Reinforcement Learning:** Patterns learn from user corrections, auto-adjust confidence (+5% correct, -5% incorrect)
 - **Conflict Resolution:** Auto-resolve conflicting patterns (highest confidence wins), with manual override option
 - **AI Cost Optimization:** High-confidence patterns (≥90%) skip AI calls entirely, saving 60-85% on API costs
 
 #### Hybrid Pattern Management UI
+
 - **Per-Library Patterns:** "Learned Patterns" section added to each library detail page
   - Shows only patterns routing TO that specific library
   - Approve/Reject/Details actions inline
@@ -1714,6 +1819,7 @@ This release activates pattern-based classification, introduces hybrid pattern m
   - System-wide discovery and stats
 
 #### Settings Sidebar Reorganization
+
 - **GENERAL:** General, Scheduler, Queue
 - **CONNECTIONS:** Media Server, Radarr, Sonarr
 - **METADATA:** TMDB, OMDb, Tavily
@@ -1722,17 +1828,20 @@ This release activates pattern-based classification, introduces hybrid pattern m
 - **SYSTEM:** Backup, SSL/HTTPS, Logs
 
 #### AI Settings Page Restructure
+
 - **🤖 AI Provider:** Classification provider, model, API key, embedding config (always shown)
 - **🔍 Semantic Search (RAG):** Enable toggle, similarity threshold, min history count (always shown)
 - **🧩 Pattern-Based Classification:** Enable, priority, auto-discovery, "Manage Patterns" link (always shown)
 - **💰 API Cost Management:** Skip threshold, budget alert, cost stats (API providers only)
 
 #### New API Endpoints
+
 - `GET /api/patterns/library/:libraryId` - Get patterns for specific library
 - `POST /api/patterns/discover/:libraryId` - Discover patterns for specific library
 - `GET /api/patterns/cost-summary` - Monthly cost and savings statistics
 
 ### Changed
+
 - Confidence settings moved from GENERAL to CLASSIFICATION section
 - Tavily moved from AI & DATA to METADATA section (metadata enrichment)
 - "Patterns" removed from Settings sidebar (now top-level nav only)
@@ -1740,6 +1849,7 @@ This release activates pattern-based classification, introduces hybrid pattern m
 - API cost controls only shown for API-based providers (OpenAI, Anthropic, etc.)
 
 ### Fixed
+
 - Duplicate "Patterns" navigation (was in both Settings and top-level)
 - AI Skip Threshold was in wrong section (moved to API Cost Management)
 
@@ -1752,12 +1862,14 @@ Introduces automated pattern detection from classification history—identifying
 ### Added
 
 #### Pattern Types
+
 - **Studio Patterns:** "All Pixar Animation Studios → Kids Movies"
 - **Franchise Patterns:** "All Marvel Cinematic Universe → Superhero Movies"
 - **Genre Patterns:** "All Animation + Family → Kids Movies"
 - **Certification Patterns:** "All G-rated → Kids Movies"
 
 #### Pattern Discovery UI
+
 - **Patterns Page:** New top-level navigation item
   - Discovered patterns table with type, value, target library, confidence, status
   - Confidence shown as percentage with color coding (green ≥80%, yellow ≥60%, red <60%)
@@ -1767,16 +1879,19 @@ Introduces automated pattern detection from classification history—identifying
   - "Discover Patterns" button to run discovery manually
 
 #### Discovery Engine
+
 - Analyzes classification history for routing patterns
 - Minimum 3 occurrences required for pattern detection
 - Calculates confidence based on consistency (matches / total occurrences)
 - Deduplication: Won't create pattern if identical one exists
 
 #### Database Schema
+
 - New `patterns` table: id, type, value, targetLibraryId, confidence, status, occurrences, timestamps
 - Indexes on type, status, targetLibraryId for efficient querying
 
 #### API Endpoints
+
 - `GET /api/patterns` - List all patterns (with filters)
 - `POST /api/patterns/discover` - Run pattern discovery
 - `PATCH /api/patterns/:id/approve` - Approve a pattern
@@ -1784,6 +1899,7 @@ Introduces automated pattern detection from classification history—identifying
 - `DELETE /api/patterns/:id` - Delete a pattern
 
 ### Technical Notes
+
 - Patterns are discovered but NOT yet used for classification (next release)
 - Discovery runs on-demand only (no automatic scheduling yet)
 - Studio/franchise data requires TMDB metadata to be populated
@@ -1797,6 +1913,7 @@ Adds the ability for users to manually override AI classifications and control c
 ### Added
 
 #### Manual Override System
+
 - **Override Modal:** Click any media item to open override dialog
   - Current classification shown with confidence
   - Dropdown to select different target library
@@ -1807,6 +1924,7 @@ Adds the ability for users to manually override AI classifications and control c
   - Original AI suggestion preserved for comparison
 
 #### Confidence Threshold Settings
+
 - **Settings → General → Confidence Thresholds**
   - Auto-Accept Threshold (default: 85%): Items above this are auto-processed
   - Review Threshold (default: 60%): Items between review and auto-accept need manual review
@@ -1817,15 +1935,18 @@ Adds the ability for users to manually override AI classifications and control c
   - Low confidence items: Red flag, manual classification required
 
 #### Queue Improvements
+
 - Confidence column with color-coded badges
 - "Needs Review" filter to show only medium/low confidence items
 - Bulk actions respect confidence thresholds
 
 ### Changed
+
 - Classification results now include `requiresReview` boolean
 - Queue default sort changed to confidence ascending (lowest first)
 
 ### Fixed
+
 - Queue pagination resetting when applying filters
 
 ## [0.33.0-alpha] - 2025-12-28
@@ -1837,6 +1958,7 @@ Introduces the core AI classification engine using Retrieval-Augmented Generatio
 ### Added
 
 #### AI Classification Engine
+
 - **Provider Support:** OpenAI (GPT-4, GPT-3.5), Anthropic (Claude), Ollama (local models)
 - **RAG Pipeline:**
   1. Embed media metadata (title, overview, genres, cast, crew)
@@ -1845,17 +1967,20 @@ Introduces the core AI classification engine using Retrieval-Augmented Generatio
   4. Return target library with confidence score
 
 #### Vector Store Integration
+
 - **ChromaDB** for vector storage (runs as sidecar container)
 - Automatic embedding of classification history
 - Similarity search for RAG context retrieval
 - Configurable similarity threshold (default: 0.7)
 
 #### Classification History
+
 - Track all classifications with metadata
 - Store: mediaId, mediaType, title, targetLibrary, confidence, aiProvider, timestamp
 - Used for RAG context and pattern discovery (future)
 
 #### Settings Pages
+
 - **Settings → AI & Data → AI Settings**
   - Provider selection (OpenAI, Anthropic, Ollama)
   - Model selection per provider
@@ -1868,12 +1993,14 @@ Introduces the core AI classification engine using Retrieval-Augmented Generatio
   - Minimum history count for RAG (default: 10)
 
 #### API Endpoints
+
 - `POST /api/classify` - Classify single media item
 - `POST /api/classify/bulk` - Classify multiple items
 - `GET /api/classification-history` - Get classification history
 - `POST /api/embeddings/rebuild` - Rebuild vector store
 
 ### Technical Notes
+
 - Ollama requires separate installation and model pull
 - ChromaDB data persisted in Docker volume
 - API keys encrypted at rest using AES-256
@@ -1881,21 +2008,25 @@ Introduces the core AI classification engine using Retrieval-Augmented Generatio
 ## [0.32.0-alpha] - 2025-12-20
 
 ### Added
+
 - Media server connection (Plex, Jellyfin, Emby)
 - Library discovery and mapping
-- Radarr/Sonarr integration for *arr users
+- Radarr/Sonarr integration for \*arr users
 - Basic queue system for pending classifications
 
 ### Changed
+
 - Complete UI redesign with new navigation structure
 - Settings reorganized into logical sections
 
 ### Fixed
+
 - Docker compose health checks timing out
 
 ## [0.31.0-alpha] - 2025-12-15
 
 ### Added
+
 - Initial project structure
 - Docker containerization
 - Basic Express API server
