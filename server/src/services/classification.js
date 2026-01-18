@@ -37,6 +37,8 @@ const policyEngine = require('./policyEngine');
 const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
 const libraryProfileService = require('./libraryProfileService');
+const aiPromptBuilder = require('./aiPromptBuilder');
+const aiResponseParser = require('./aiResponseParser');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -1401,25 +1403,20 @@ class ClassificationService {
       return generalLib || libraries[libraries.length - 1];
     };
 
-    // Build prompt for AI - VERIFICATION ROLE
-    // AI receives pre-calculated confidence and must verify or request clarification
-    let prompt = `You are a media classification VERIFIER for a home media server. Your role is to VERIFY a pre-calculated classification decision.
+    // Build context for AI prompt builder
+    const promptContext = {
+      metadata: metadata,
+      libraries: libraries,
+      signalContext: signalContext,
+      policySignals: signalContext, // Policy engine signals
+    };
 
-CRITICAL RULES:
-1. You CANNOT override the calculated confidence score.
-2. Your job is to VERIFY the suggested library makes sense, OR request clarification if there are conflicts.
-3. If the calculated confidence is high and signals align, CONFIRM the decision.
-4. If signals conflict or you see a potential error, REQUEST CLARIFICATION.
-`;
-
-    // Add library profile statistics if we have a suggested library
+    // Add library profile if we have a suggested library
     if (signalContext && signalContext.suggestedLibrary) {
       try {
         const profileStats = await libraryProfileService.getProfileStats(signalContext.suggestedLibrary.id);
         if (profileStats.totalItems > 0) {
-          prompt += '\n';
-          prompt += libraryProfileService.formatForPrompt(profileStats);
-          prompt += '\n';
+          promptContext.libraryProfile = profileStats;
         }
       } catch (error) {
         logger.warn('Failed to load library profile for AI prompt', {
@@ -1429,34 +1426,24 @@ CRITICAL RULES:
       }
     }
 
-    prompt += `
---- MEDIA INFORMATION ---
-Title: ${metadata.title}
-Year: ${metadata.year || 'Unknown'}
-Genres: ${metadata.genres.join(', ') || 'None'}
-Certification: ${metadata.certification || 'Unknown'}
-Keywords: ${metadata.keywords.slice(0, 15).join(', ') || 'None'}
-Original Language: ${metadata.original_language || 'Unknown'}
-Overview: ${metadata.overview || 'No overview available'}
-`;
+    // Determine mode: verify if we have signalContext, otherwise classify
+    const mode = signalContext ? 'verify' : 'classify';
 
-    // Add content analysis if available
-    if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {
-      prompt += `\nContent Analysis Detection: ${metadata.contentAnalysis.bestMatch.type} (${metadata.contentAnalysis.bestMatch.confidence}% confident)`;
-    }
+    // Build prompt using modular AI prompt builder
+    let prompt = `You are a media classification ${mode === 'verify' ? 'VERIFIER' : 'AI'} for a home media server. ${mode === 'verify' ? 'Your role is to VERIFY a pre-calculated classification decision.' : 'Your role is to classify media items into the appropriate library.'}
 
-    // Add signal context if provided (v0.33 verification mode)
-    if (signalContext) {
-      prompt += `\n\n--- SIGNAL ANALYSIS (pre-calculated) ---
-${signalContext.aiContext}
+${mode === 'verify' ? `CRITICAL RULES:
+1. You CANNOT override the calculated confidence score.
+2. Your job is to VERIFY the suggested library makes sense, OR request clarification if there are conflicts.
+3. If the calculated confidence is high and signals align, CONFIRM the decision.
+4. If signals conflict or you see a potential error, REQUEST CLARIFICATION.
+` : ''}`;
 
-SUGGESTED LIBRARY: "${signalContext.suggestedLibrary?.name || 'Unknown'}"
-CALCULATED CONFIDENCE: ${signalContext.confidence}%
-${signalContext.hasConflict ? '⚠️ CONFLICT DETECTED - Multiple libraries have similar scores' : ''}
-`;
-    }
+    // Use aiPromptBuilder to compose signal sections
+    const signalSections = await aiPromptBuilder.buildPrompt(promptContext, { mode });
+    prompt += '\n\n' + signalSections;
 
-    // Add web search results if available
+    // Add web search results if available (not yet in aiPromptBuilder)
     if (webSearchResults) {
       prompt += `\n\n--- ADDITIONAL WEB RESEARCH ---`;
 
@@ -1473,38 +1460,8 @@ ${signalContext.hasConflict ? '⚠️ CONFLICT DETECTED - Multiple libraries hav
       }
     }
 
-    prompt += `\n\n--- AVAILABLE LIBRARIES ---
-${libraries.map((lib, i) => `${i + 1}. "${lib.name}" (${lib.media_type})`).join('\n')}
-
---- YOUR RESPONSE ---
-${signalContext ? `
-VERIFICATION MODE: The system has pre-calculated confidence of ${signalContext.confidence}% for library "${signalContext.suggestedLibrary?.name}".
-
-Respond in ONE of these two formats:
-
-FORMAT 1 - CONFIRM the suggested library (if signals align and decision makes sense):
-CONFIRM|<library_number>|<brief_verification_reason>
-
-Example: CONFIRM|2|Signals align correctly - Action movie with mainstream studio and PG-13 rating confirms Movies library
-
-FORMAT 2 - REQUEST CLARIFICATION (if signals conflict or you see a potential error):
-CLARIFY|<problem_summary>|<why_uncertain>|<question_to_ask>|<option1>|<option2>|<option3_optional>
-
-Example: CLARIFY|Genre ambiguity|Content has both Documentary and Drama genres|Is this primarily a documentary or a drama film?|Documentaries|Movies|Review manually
-` : `
-Analyze the media and respond in ONE of these two formats:
-
-FORMAT 1 - If you are confident (can determine the correct library from the data):
-CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>
-
-Example: CONFIDENT|2|88|Action movie with mainstream studio and PG-13 rating, clearly belongs in Movies library
-
-FORMAT 2 - If you need clarification (conflicting signals, ambiguous data, or uncertain):
-CLARIFY|<problem_summary>|<why_uncertain>|<question_to_ask>|<option1>|<option2>|<option3_optional>
-
-Example: CLARIFY|Genre ambiguity|Content has both Documentary and Drama genres|Is this primarily a documentary or a drama film?|Documentaries|Movies|Neither
-`}
-IMPORTANT FOR CLARIFICATION:
+    // Add critical guidance
+    prompt += `\n\nIMPORTANT FOR CLARIFICATION:
 - The problem_summary should be SHORT (max 50 chars)
 - The why_uncertain should explain WHAT DATA conflicts and WHY you can't decide
 - The question should be SPECIFIC and help the user understand what choosing each option means
@@ -1579,133 +1536,14 @@ Think step by step, then respond with ONLY one of the formats above.`;
       providerLock.releaseLock('classification');
     }
 
-    // Parse AI response - check for CONFIRM format (verification mode)
-    const confirmMatch = response.match(/CONFIRM\|(\d+)\|(.+)/);
-    if (confirmMatch && signalContext) {
-      const libraryIndex = parseInt(confirmMatch[1]) - 1;
-      const reason = confirmMatch[2].trim();
-
-      if (libraryIndex >= 0 && libraryIndex < libraries.length) {
-        logger.info('AI confirmed classification', {
-          title: metadata.title,
-          library: libraries[libraryIndex].name,
-          originalConfidence: signalContext.confidence
-        });
-        return {
-          library: libraries[libraryIndex],
-          confidence: signalContext.confidence, // Use the pre-calculated confidence
-          reason: `AI verified: ${reason}`,
-          needs_clarification: false,
-          verified_by_ai: true,
-        };
-      }
-    }
-
-    // Parse AI response - check for CONFIDENT format (legacy/fallback mode)
-    const confidentMatch = response.match(/CONFIDENT\|(\d+)\|(\d+)\|(.+)/);
-    if (confidentMatch) {
-      const libraryIndex = parseInt(confidentMatch[1]) - 1;
-      const confidence = Math.min(95, Math.max(50, parseInt(confidentMatch[2]))); // Clamp 50-95
-      const reason = confidentMatch[3].trim();
-
-      if (libraryIndex >= 0 && libraryIndex < libraries.length) {
-        return {
-          library: libraries[libraryIndex],
-          confidence: confidence,
-          reason: `AI: ${reason}`,
-          needs_clarification: false,
-        };
-      }
-    }
-
-    // Parse AI response - check for CLARIFY format
-    const clarifyMatch = response.match(/CLARIFY\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)(?:\|([^|]+))?/);
-    if (clarifyMatch) {
-      const problemSummary = clarifyMatch[1].trim();
-      const whyUncertain = clarifyMatch[2].trim();
-      const question = clarifyMatch[3].trim();
-      const optionTexts = [clarifyMatch[4].trim(), clarifyMatch[5].trim()];
-      if (clarifyMatch[6]) {
-        optionTexts.push(clarifyMatch[6].trim());
-      }
-
-      // Try to match options to actual libraries
-      const options = optionTexts.map((opt, idx) => {
-        // Find library that matches this option text
-        const matchedLibrary = libraries.find(lib =>
-          opt.toLowerCase().includes(lib.name.toLowerCase()) ||
-          lib.name.toLowerCase().includes(opt.toLowerCase().replace(/\s*(library|content|media)\s*/gi, ''))
-        );
-
-        return {
-          label: opt,
-          value: opt.toLowerCase().replace(/\s+/g, '_').substring(0, 30),
-          library_id: matchedLibrary?.id || null,
-          library_name: matchedLibrary?.name || null,
-        };
-      });
-
-      logger.info('AI requests clarification (policy question)', {
-        title: metadata.title,
-        problem: problemSummary,
-        options: options.map(o => o.label),
-        hasSignalContext: !!signalContext,
-        suggestedLibrary: signalContext?.suggestedLibrary?.name
-      });
-
-      // Log full signal breakdown for debugging
-      if (signalContext) {
-        logger.debug('Signal breakdown with AI CLARIFY', {
-          title: metadata.title,
-          confidence: signalContext.confidence,
-          suggestedLibrary: signalContext.suggestedLibrary?.name,
-          breakdown: signalContext.breakdown,
-          hasConflict: signalContext.hasConflict
-        });
-      }
-
-      // Build policy question object for pending queue storage
-      const policyQuestion = {
-        problem_summary: problemSummary,
-        why_uncertain: whyUncertain,
-        question: question,
-        options: options,
-        generated_at: new Date().toISOString(),
-        signal_breakdown: signalContext?.breakdown || [],
-        calculated_confidence: signalContext?.confidence || null,
-      };
-
-      return {
-        library: signalContext?.suggestedLibrary || getDefaultLibrary(libraries, metadata.media_type),
-        confidence: signalContext?.confidence || 55, // Use calculated confidence or low default
-        reason: `Needs clarification: ${problemSummary}`,
-        needs_clarification: true,
-        clarification: policyQuestion, // Enhanced policy question object
-        pending_reason: problemSummary,
-        policy_question: policyQuestion, // For database storage
-        libraries: libraries, // Include libraries array for Discord dropdown
-      };
-    }
-
-    // Fallback if AI response is malformed - treat as needing clarification
-    logger.warn('AI response malformed, treating as uncertain', { response: response.substring(0, 200) });
-    return {
-      library: getDefaultLibrary(libraries, metadata.media_type),
-      confidence: 50,
-      reason: 'AI could not determine classification - manual review needed',
-      needs_clarification: true,
-      clarification: {
-        problem_summary: 'Unable to auto-classify',
-        why_uncertain: 'The AI classification returned an unexpected format. Manual review is recommended.',
-        question: `Which library should "${metadata.title}" be added to?`,
-        options: libraries.slice(0, 4).map(lib => ({
-          label: lib.name,
-          value: `library_${lib.id}`,
-          library_id: lib.id,
-        })),
-      },
-      libraries: libraries, // Include libraries array for Discord dropdown
+    // Use aiResponseParser to parse AI response in modular, testable way
+    const parseContext = {
+      libraries: libraries,
+      signalContext: signalContext,
+      metadata: metadata
     };
+
+    return aiResponseParser.parse(response, parseContext);
   }
 
   async logClassification(metadata, result, startTime = null) {
