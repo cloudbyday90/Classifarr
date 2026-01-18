@@ -56,11 +56,11 @@ class AIResponseParser {
     /**
      * Parse AI response and return structured result
      * @param {string} response - Raw AI response text
-     * @param {object} context - Context for parsing (libraries, signalContext, metadata)
+     * @param {object} context - Context for parsing (libraries, metadata)
      * @returns {object} Parsed result with library, confidence, reason, etc.
      */
     parse(response, context) {
-        const { libraries, signalContext, metadata } = context;
+        const { libraries, metadata } = context;
 
         if (!response || typeof response !== 'string') {
             logger.warn('Invalid AI response', { response: String(response).substring(0, 100) });

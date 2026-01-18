@@ -259,7 +259,6 @@ class AIPromptBuilder {
             lines.push('Signal Breakdown:');
             for (const signal of data.breakdown) {
                 const weight = signal.weight || 0;
-                const library = signal.library || 'N/A';
                 lines.push(`  ${signal.type}: score ${signal.score || 0} (weight: ${weight})`);
             }
         }
