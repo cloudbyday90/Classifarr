@@ -111,7 +111,7 @@ describe('Classification Routes - Pending Resolution', () => {
       // Verify status was updated to 'routed'
       expect(db.query).toHaveBeenCalledWith(
         'UPDATE classification_history SET status = $1 WHERE id = $2',
-        ['routed', '1']
+        ['routed', 1]
       );
     });
 

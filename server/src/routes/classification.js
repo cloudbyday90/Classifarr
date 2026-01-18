@@ -482,9 +482,12 @@ router.post('/pending/:id/resolve', async (req, res) => {
       return res.status(400).json({ error: 'library_id is required' });
     }
 
+    const classificationId = parseInt(id);
+    const libraryId = parseInt(library_id);
+
     const result = await clarificationService.resolvePolicyQuestion(
-      parseInt(id),
-      parseInt(library_id),
+      classificationId,
+      libraryId,
       selected_option || 'Manual selection',
       resolved_by,
       generate_rule
@@ -501,7 +504,7 @@ router.post('/pending/:id/resolve', async (req, res) => {
            FROM classification_history ch
            JOIN libraries l ON l.id = $2
            WHERE ch.id = $1`,
-          [id, result.libraryId]
+          [classificationId, result.libraryId]
         );
 
         if (classResult.rows.length > 0) {
@@ -523,12 +526,12 @@ router.post('/pending/:id/resolve', async (req, res) => {
             // Update status to 'routed'
             await db.query(
               'UPDATE classification_history SET status = $1 WHERE id = $2',
-              ['routed', id]
+              ['routed', classificationId]
             );
 
             wasRouted = true;
             logger.info('Routed after resolution', {
-              classificationId: id,
+              classificationId,
               title: parsedMeta.title,
               library: row.library_name
             });
@@ -537,7 +540,7 @@ router.post('/pending/:id/resolve', async (req, res) => {
       } catch (err) {
         routeError = err;
         logger.error('Failed to route after resolution', {
-          classificationId: id,
+          classificationId,
           error: err.message
         });
         // Don't fail the resolution - classification is still resolved
