@@ -536,6 +536,11 @@ router.post('/pending/:id/resolve', async (req, res) => {
               library: row.library_name
             });
           }
+        } else {
+          logger.warn('No classification/library record found for routing after resolution', {
+            classificationId,
+            libraryId: result.libraryId
+          });
         }
       } catch (err) {
         routeError = err;
