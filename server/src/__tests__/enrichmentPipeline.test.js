@@ -46,10 +46,29 @@ const queueService = require('../services/queueService');
 
 describe('Enrichment Pipeline Integration', () => {
     beforeEach(() => {
-        jest.restoreAllMocks();
+        // Clear mock call history
+        jest.clearAllMocks();
+        // Reset mock implementations to ensure clean state
+        db.query.mockReset();
+        omdbService.getByTitle.mockReset();
+        tavilyService.getContentAdvisory.mockReset();
+        tavilyService.search.mockReset();
+        tmdbService.findByExternalId.mockReset();
+        tmdbService.search.mockReset();
+        // Reset service state
+        queueService.processing = 0;
+        queueService.running = false;
+        queueService.omdbLimitHit = false;  // Reset OMDb limit flag
+        queueService.aiAvailable = true;     // Reset AI availability flag
+    });
+
+    afterEach(() => {
+        // Ensure complete cleanup after each test
         jest.clearAllMocks();
         queueService.processing = 0;
         queueService.running = false;
+        queueService.omdbLimitHit = false;  // Reset OMDb limit flag
+        queueService.aiAvailable = true;     // Reset AI availability flag
     });
 
     describe('TVDB to TMDB Conversion', () => {
@@ -74,7 +93,7 @@ describe('Enrichment Pipeline Integration', () => {
             };
 
             // Mock TMDB findByExternalId response
-            tmdbService.findByExternalId.mockResolvedValueOnce({
+            tmdbService.findByExternalId.mockResolvedValue({
                 tv_results: [{ id: 1396, name: 'Breaking Bad' }],
                 movie_results: []
             });
@@ -112,6 +131,11 @@ describe('Enrichment Pipeline Integration', () => {
 
     describe('IMDB to TMDB Conversion', () => {
         it('should convert IMDB ID to TMDB ID from OMDb response', async () => {
+            // Ensure clean mock state for this test
+            db.query.mockReset();
+            omdbService.getByTitle.mockReset();
+            tmdbService.findByExternalId.mockReset();
+            
             const taskPayload = {
                 title: 'The Shawshank Redemption',
                 year: 1994,
@@ -142,7 +166,7 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            omdbService.getByTitle.mockResolvedValueOnce({
+            omdbService.getByTitle.mockResolvedValue({
                 imdbID: 'tt0111161',
                 Title: 'The Shawshank Redemption',
                 rated: 'R',
@@ -150,7 +174,7 @@ describe('Enrichment Pipeline Integration', () => {
             });
 
             // Mock TMDB find by IMDB
-            tmdbService.findByExternalId.mockResolvedValueOnce({
+            tmdbService.findByExternalId.mockResolvedValue({
                 movie_results: [{ id: 278, title: 'The Shawshank Redemption' }],
                 tv_results: []
             });
@@ -193,7 +217,7 @@ describe('Enrichment Pipeline Integration', () => {
             });
 
             // Mock TMDB title search
-            tmdbService.search.mockResolvedValueOnce([
+            tmdbService.search.mockResolvedValue([
                 { id: 771, title: 'Home Alone', year: '1990' }
             ]);
 
@@ -227,7 +251,7 @@ describe('Enrichment Pipeline Integration', () => {
             db.query.mockImplementation(() => Promise.resolve({ rows: [] }));
 
             // Return multiple results
-            tmdbService.search.mockResolvedValueOnce([
+            tmdbService.search.mockResolvedValue([
                 { id: 999, title: 'Home Alone 2', year: '1992' },
                 { id: 771, title: 'Home Alone', year: '1990' },  // Exact match
                 { id: 888, title: 'Home Alone 3', year: '1997' }
@@ -306,7 +330,7 @@ describe('Enrichment Pipeline Integration', () => {
             };
 
             // TMDB search returns nothing - no match found
-            tmdbService.search.mockResolvedValueOnce([]);
+            tmdbService.search.mockResolvedValue([]);
 
             const classificationInsertCalled = jest.fn();
             let capturedInsertParams = null;
@@ -459,7 +483,7 @@ describe('Enrichment Pipeline Integration', () => {
             };
 
             // Mock TVDB→TMDB conversion
-            tmdbService.findByExternalId.mockResolvedValueOnce({
+            tmdbService.findByExternalId.mockResolvedValue({
                 tv_results: [{ id: 1399, name: 'Game of Thrones' }],
                 movie_results: []
             });

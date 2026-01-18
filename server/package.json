@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "jest",
+    "test": "jest --runInBand",
     "test:integration": "jest -c jest.integration.config.js",
     "test:watch": "jest --watch"
   },

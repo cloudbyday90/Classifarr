@@ -473,7 +473,7 @@ class DiscordBotService {
       }
 
       const embed = new EmbedBuilder()
-        .setTitle(`${metadata.title} (${metadata.year || 'N/A'})`)
+        .setTitle(`${this.getMediaTypeEmoji(metadata.media_type)} ${metadata.title} (${metadata.year || 'N/A'})`)
         .setDescription(`Classified as: **${result.library_name}**`)
         .setColor(this.getColorForConfidence(result.confidence))
         .setTimestamp();
@@ -656,6 +656,15 @@ class DiscordBotService {
     }
   }
 
+  /**
+   * Get emoji for media type
+   * @param {string} mediaType - 'movie' or 'tv'
+   * @returns {string} Emoji for media type
+   */
+  getMediaTypeEmoji(mediaType) {
+    return mediaType === 'movie' ? '🎬' : '📺';
+  }
+
   createTieredEmbed(metadata, result, tier, requireAllConfirmations = false, hasClarification = false) {
     const colors = {
       auto: 0x00ff00,      // Green
@@ -676,19 +685,25 @@ class DiscordBotService {
     // Use clarification styling if AI needs help
     const effectiveTier = hasClarification ? 'clarification' : tier.tier;
 
+    // Use media type emoji for title instead of tier icon when showing clarification
+    const titleEmoji = hasClarification 
+      ? this.getMediaTypeEmoji(metadata.media_type)
+      : icons[effectiveTier];
+
     const embed = new EmbedBuilder()
-      .setTitle(`${icons[effectiveTier]} ${metadata.title} (${metadata.year || 'N/A'})`)
+      .setTitle(`${titleEmoji} ${metadata.title} (${metadata.year || 'N/A'})`)
       .setColor(colors[effectiveTier])
       .setTimestamp();
 
     // AI Clarification - special format with context
     if (hasClarification && result.clarification) {
       const clarification = result.clarification;
+      const mediaTypeLabel = metadata.media_type === 'movie' ? 'movie' : 'TV show';
       embed.setDescription(
-        `🤔 **I need your help classifying this ${metadata.media_type}**\n\n` +
-        `**Problem:** ${clarification.problem_summary}\n\n` +
-        `**Why I'm asking:** ${clarification.why_uncertain}\n\n` +
-        `**Question:** ${clarification.question}`
+        `🤔 **I need your help classifying this ${mediaTypeLabel}**\n\n` +
+        `⚠️ **Problem:** ${clarification.problem_summary}\n\n` +
+        `💭 **Why I'm asking:** ${clarification.why_uncertain}\n\n` +
+        `📁 **Question:** ${clarification.question}`
       );
     } else if (tier.tier === 'auto' && !requireAllConfirmations) {
       embed.setDescription(`✅ **Automatically routed to: ${result.library_name}**\n${tier.description}`);

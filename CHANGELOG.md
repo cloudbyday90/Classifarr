@@ -47,6 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added comprehensive integration tests for all edge cases (12 tests)
   - Idle backfill now reliably starts within idle threshold time after restart
 
+- **Discord Notification Emoji Redesign** (Fixes #203)
+  - Eliminated duplicate emoji usage in Discord notifications
+  - Movie titles now use 🎬 emoji, TV show titles use 📺 emoji
+  - "Help needed" messages use 🤔 emoji (no longer duplicated in title)
+  - Problem/warning sections use ⚠️ emoji
+  - Reasoning/explanation sections use 💭 emoji
+  - Question sections use 📁 emoji
+  - Each emoji now has a unique, clear purpose per notification
+
 - **Dashboard Classification Methods Section** (Fixes #190)
   - Fixed Dashboard 'Classification Methods' section to show accurate all-time statistics instead of only recent 8 items
   - Methods are now dynamically loaded from backend with actual counts from `classification_history` table
