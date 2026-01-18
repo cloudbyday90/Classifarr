@@ -164,9 +164,6 @@ describe('Enrichment Pipeline Integration', () => {
 
             await queueService.processTask(task);
 
-            if (tmdbService.findByExternalId.mock.calls.length > 0) {
-            }
-
             // Verify IMDB→TMDB conversion was attempted
             expect(tmdbService.findByExternalId).toHaveBeenCalledWith('tt0111161', 'imdb_id');
         });
