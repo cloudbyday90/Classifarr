@@ -38,6 +38,7 @@ const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
 const libraryProfileService = require('./libraryProfileService');
 const aiPromptBuilder = require('./aiPromptBuilder');
+const aiResponseParser = require('./aiResponseParser');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -1535,133 +1536,14 @@ Think step by step, then respond with ONLY one of the formats above.`;
       providerLock.releaseLock('classification');
     }
 
-    // Parse AI response - check for CONFIRM format (verification mode)
-    const confirmMatch = response.match(/CONFIRM\|(\d+)\|(.+)/);
-    if (confirmMatch && signalContext) {
-      const libraryIndex = parseInt(confirmMatch[1]) - 1;
-      const reason = confirmMatch[2].trim();
-
-      if (libraryIndex >= 0 && libraryIndex < libraries.length) {
-        logger.info('AI confirmed classification', {
-          title: metadata.title,
-          library: libraries[libraryIndex].name,
-          originalConfidence: signalContext.confidence
-        });
-        return {
-          library: libraries[libraryIndex],
-          confidence: signalContext.confidence, // Use the pre-calculated confidence
-          reason: `AI verified: ${reason}`,
-          needs_clarification: false,
-          verified_by_ai: true,
-        };
-      }
-    }
-
-    // Parse AI response - check for CONFIDENT format (legacy/fallback mode)
-    const confidentMatch = response.match(/CONFIDENT\|(\d+)\|(\d+)\|(.+)/);
-    if (confidentMatch) {
-      const libraryIndex = parseInt(confidentMatch[1]) - 1;
-      const confidence = Math.min(95, Math.max(50, parseInt(confidentMatch[2]))); // Clamp 50-95
-      const reason = confidentMatch[3].trim();
-
-      if (libraryIndex >= 0 && libraryIndex < libraries.length) {
-        return {
-          library: libraries[libraryIndex],
-          confidence: confidence,
-          reason: `AI: ${reason}`,
-          needs_clarification: false,
-        };
-      }
-    }
-
-    // Parse AI response - check for CLARIFY format
-    const clarifyMatch = response.match(/CLARIFY\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)(?:\|([^|]+))?/);
-    if (clarifyMatch) {
-      const problemSummary = clarifyMatch[1].trim();
-      const whyUncertain = clarifyMatch[2].trim();
-      const question = clarifyMatch[3].trim();
-      const optionTexts = [clarifyMatch[4].trim(), clarifyMatch[5].trim()];
-      if (clarifyMatch[6]) {
-        optionTexts.push(clarifyMatch[6].trim());
-      }
-
-      // Try to match options to actual libraries
-      const options = optionTexts.map((opt, idx) => {
-        // Find library that matches this option text
-        const matchedLibrary = libraries.find(lib =>
-          opt.toLowerCase().includes(lib.name.toLowerCase()) ||
-          lib.name.toLowerCase().includes(opt.toLowerCase().replace(/\s*(library|content|media)\s*/gi, ''))
-        );
-
-        return {
-          label: opt,
-          value: opt.toLowerCase().replace(/\s+/g, '_').substring(0, 30),
-          library_id: matchedLibrary?.id || null,
-          library_name: matchedLibrary?.name || null,
-        };
-      });
-
-      logger.info('AI requests clarification (policy question)', {
-        title: metadata.title,
-        problem: problemSummary,
-        options: options.map(o => o.label),
-        hasSignalContext: !!signalContext,
-        suggestedLibrary: signalContext?.suggestedLibrary?.name
-      });
-
-      // Log full signal breakdown for debugging
-      if (signalContext) {
-        logger.debug('Signal breakdown with AI CLARIFY', {
-          title: metadata.title,
-          confidence: signalContext.confidence,
-          suggestedLibrary: signalContext.suggestedLibrary?.name,
-          breakdown: signalContext.breakdown,
-          hasConflict: signalContext.hasConflict
-        });
-      }
-
-      // Build policy question object for pending queue storage
-      const policyQuestion = {
-        problem_summary: problemSummary,
-        why_uncertain: whyUncertain,
-        question: question,
-        options: options,
-        generated_at: new Date().toISOString(),
-        signal_breakdown: signalContext?.breakdown || [],
-        calculated_confidence: signalContext?.confidence || null,
-      };
-
-      return {
-        library: signalContext?.suggestedLibrary || getDefaultLibrary(libraries, metadata.media_type),
-        confidence: signalContext?.confidence || 55, // Use calculated confidence or low default
-        reason: `Needs clarification: ${problemSummary}`,
-        needs_clarification: true,
-        clarification: policyQuestion, // Enhanced policy question object
-        pending_reason: problemSummary,
-        policy_question: policyQuestion, // For database storage
-        libraries: libraries, // Include libraries array for Discord dropdown
-      };
-    }
-
-    // Fallback if AI response is malformed - treat as needing clarification
-    logger.warn('AI response malformed, treating as uncertain', { response: response.substring(0, 200) });
-    return {
-      library: getDefaultLibrary(libraries, metadata.media_type),
-      confidence: 50,
-      reason: 'AI could not determine classification - manual review needed',
-      needs_clarification: true,
-      clarification: {
-        problem_summary: 'Unable to auto-classify',
-        why_uncertain: 'The AI classification returned an unexpected format. Manual review is recommended.',
-        question: `Which library should "${metadata.title}" be added to?`,
-        options: libraries.slice(0, 4).map(lib => ({
-          label: lib.name,
-          value: `library_${lib.id}`,
-          library_id: lib.id,
-        })),
-      },
-      libraries: libraries, // Include libraries array for Discord dropdown
+    // Use aiResponseParser to parse AI response in modular, testable way
+    const parseContext = {
+      libraries: libraries,
+      signalContext: signalContext,
+      metadata: metadata
     };
+
+    return aiResponseParser.parse(response, parseContext);
   }
 
   async logClassification(metadata, result, startTime = null) {
