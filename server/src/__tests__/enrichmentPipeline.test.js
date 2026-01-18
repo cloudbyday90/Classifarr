@@ -4,9 +4,28 @@
  *
  * Integration tests for metadata enrichment pipeline
  * Tests the full flow: TVDB→TMDB, IMDB→TMDB, title search, classification_history
+ * 
+ * ============================================================================
+ * DEPENDENCY INJECTION PATTERN FOR TESTS
+ * ============================================================================
+ * 
+ * This test uses dependency injection (DI) to create isolated QueueService
+ * instances, preventing singleton pollution from other test files.
+ * 
+ * IMPORTANT: If you add new external dependencies to QueueService, you MUST:
+ * 1. Add them to the jest.mock() calls below
+ * 2. Import the mocked module
+ * 3. Add them to the QueueService constructor call in beforeEach()
+ * 
+ * This ensures tests are fully isolated and won't have flaky failures.
+ * See queueService.js header for full DI documentation.
+ * 
+ * ============================================================================
+ * 
+ * @jest-environment node
  */
 
-// Mock all external dependencies
+// Mock all external dependencies BEFORE any requires
 jest.mock('../config/database', () => ({
     query: jest.fn()
 }));
@@ -29,6 +48,24 @@ jest.mock('../services/contentTypeAnalyzer', () => ({
     analyze: jest.fn()
 }));
 
+jest.mock('../services/classification', () => ({
+    classify: jest.fn()
+}));
+
+jest.mock('../services/ollama', () => ({
+    isAvailable: jest.fn().mockResolvedValue(true)
+}));
+
+jest.mock('../services/aiRouter', () => ({
+    checkAvailability: jest.fn().mockResolvedValue(true)
+}));
+
+jest.mock('../services/syncStatus', () => ({
+    start: jest.fn(),
+    stop: jest.fn(),
+    update: jest.fn()
+}));
+
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
@@ -38,37 +75,56 @@ jest.mock('../utils/logger', () => ({
     })
 }));
 
+// Import mocked modules
 const db = require('../config/database');
 const omdbService = require('../services/omdb');
 const tavilyService = require('../services/tavily');
 const tmdbService = require('../services/tmdb');
-const queueService = require('../services/queueService');
+const classificationService = require('../services/classification');
+const ollamaService = require('../services/ollama');
+const aiRouterService = require('../services/aiRouter');
+const syncStatus = require('../services/syncStatus');
+const { createLogger } = require('../utils/logger');
+
+// Import QueueService class for DI
+const { QueueService } = require('../services/queueService');
+
+// Create a fresh queueService instance for each test
+let queueService;
 
 describe('Enrichment Pipeline Integration', () => {
     beforeEach(() => {
-        // Clear mock call history
-        jest.clearAllMocks();
-        // Reset mock implementations to ensure clean state
-        db.query.mockReset();
-        omdbService.getByTitle.mockReset();
-        tavilyService.getContentAdvisory.mockReset();
-        tavilyService.search.mockReset();
-        tmdbService.findByExternalId.mockReset();
-        tmdbService.search.mockReset();
-        // Reset service state
-        queueService.processing = 0;
-        queueService.running = false;
-        queueService.omdbLimitHit = false;  // Reset OMDb limit flag
-        queueService.aiAvailable = true;     // Reset AI availability flag
+        // Reset ALL mocks completely
+        jest.resetAllMocks();
+
+        // Create a fresh QueueService instance with mocked dependencies
+        // This ensures complete isolation from other tests
+        queueService = new QueueService({
+            db: db,
+            classificationService: classificationService,
+            ollamaService: ollamaService,
+            aiRouterService: aiRouterService,
+            syncStatus: syncStatus,
+            tmdbService: tmdbService,
+            omdbService: omdbService,
+            logger: createLogger('QueueService-Test')
+        });
+
+        // Restore default mock implementations
+        db.query.mockImplementation(() => Promise.resolve({ rows: [] }));
+        omdbService.getByTitle.mockImplementation(() => Promise.resolve(null));
+        tavilyService.getContentAdvisory.mockImplementation(() => Promise.resolve(null));
+        tavilyService.search.mockImplementation(() => Promise.resolve(null));
+        tmdbService.findByExternalId.mockImplementation(() => Promise.resolve({ movie_results: [], tv_results: [] }));
+        tmdbService.search.mockImplementation(() => Promise.resolve([]));
     });
 
     afterEach(() => {
-        // Ensure complete cleanup after each test
         jest.clearAllMocks();
-        queueService.processing = 0;
-        queueService.running = false;
-        queueService.omdbLimitHit = false;  // Reset OMDb limit flag
-        queueService.aiAvailable = true;     // Reset AI availability flag
+    });
+
+    afterAll(() => {
+        jest.restoreAllMocks();
     });
 
     describe('TVDB to TMDB Conversion', () => {
@@ -135,7 +191,7 @@ describe('Enrichment Pipeline Integration', () => {
             db.query.mockReset();
             omdbService.getByTitle.mockReset();
             tmdbService.findByExternalId.mockReset();
-            
+
             const taskPayload = {
                 title: 'The Shawshank Redemption',
                 year: 1994,

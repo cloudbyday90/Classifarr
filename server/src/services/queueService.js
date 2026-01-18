@@ -6,16 +6,43 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+ * 
+ * ============================================================================
+ * DEPENDENCY INJECTION PATTERN
+ * ============================================================================
+ * 
+ * This service uses dependency injection (DI) for testability and isolation.
+ * 
+ * WHY: Previously, this was a singleton with module-level requires. This caused
+ * test pollution where mocked dependencies would bleed between test files,
+ * resulting in flaky tests (~50% failure rate in enrichmentPipeline.test.js).
+ * 
+ * HOW IT WORKS:
+ * - Default dependencies are loaded at module level (for production use)
+ * - Constructor accepts an optional `deps` object to override any dependency
+ * - The singleton export uses all defaults (backward compatible)
+ * - Tests can import `QueueService` class and inject mocked dependencies
+ * 
+ * USAGE IN TESTS:
+ *   const { QueueService } = require('../services/queueService');
+ *   const mockDb = { query: jest.fn() };
+ *   const queueService = new QueueService({ db: mockDb, tmdbService: mockTmdb });
+ * 
+ * USAGE IN PRODUCTION (unchanged):
+ *   const queueService = require('./queueService'); // Uses default singleton
+ * 
+ * ============================================================================
  */
 
-const db = require('../config/database');
+// Default dependencies - loaded at module level for DI support
+const defaultDb = require('../config/database');
 const { createLogger } = require('../utils/logger');
-const classificationService = require('./classification');
-const ollamaService = require('./ollama');
-const aiRouterService = require('./aiRouter');
-const syncStatus = require('./syncStatus');
-
-const logger = createLogger('QueueService');
+const defaultClassificationService = require('./classification');
+const defaultOllamaService = require('./ollama');
+const defaultAiRouterService = require('./aiRouter');
+const defaultSyncStatus = require('./syncStatus');
+const defaultTmdbService = require('./tmdb');
+const defaultOmdbService = require('./omdb');
 
 // Configuration
 const POLL_INTERVAL_MS = 1000;  // Check queue every 1 second when idle
@@ -23,7 +50,30 @@ const MAX_CONCURRENT = 5;       // Process up to 5 tasks concurrently
 const RETRY_DELAYS = [30, 60, 120, 300, 600]; // Seconds: 30s, 1m, 2m, 5m, 10m
 
 class QueueService {
-    constructor() {
+    /**
+     * Create a new QueueService instance
+     * @param {Object} deps - Optional dependencies for testing
+     * @param {Object} deps.db - Database service
+     * @param {Object} deps.classificationService - Classification service
+     * @param {Object} deps.ollamaService - Ollama AI service
+     * @param {Object} deps.aiRouterService - AI Router service
+     * @param {Object} deps.syncStatus - Sync status service
+     * @param {Object} deps.tmdbService - TMDB API service
+     * @param {Object} deps.omdbService - OMDb API service
+     * @param {Object} deps.logger - Logger instance
+     */
+    constructor(deps = {}) {
+        // Inject dependencies with defaults for production use
+        this.db = deps.db || defaultDb;
+        this.classificationService = deps.classificationService || defaultClassificationService;
+        this.ollamaService = deps.ollamaService || defaultOllamaService;
+        this.aiRouterService = deps.aiRouterService || defaultAiRouterService;
+        this.syncStatus = deps.syncStatus || defaultSyncStatus;
+        this.tmdbService = deps.tmdbService || defaultTmdbService;
+        this.omdbService = deps.omdbService || defaultOmdbService;
+        this.logger = deps.logger || createLogger('QueueService');
+
+        // Instance state
         this.running = false;
         this.processing = 0;
         this.aiAvailable = true;
@@ -37,7 +87,7 @@ class QueueService {
         const { priority = 0, webhookLogId = null, source = 'webhook', maxAttempts = 5 } = options;
 
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 `INSERT INTO task_queue (task_type, payload, priority, webhook_log_id, source, max_attempts)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id`,
@@ -45,10 +95,10 @@ class QueueService {
             );
 
             const taskId = result.rows[0].id;
-            logger.info('Task enqueued', { taskId, taskType, source });
+            this.logger.info('Task enqueued', { taskId, taskType, source });
             return taskId;
         } catch (error) {
-            logger.error('Failed to enqueue task', { error: error.message, taskType });
+            this.logger.error('Failed to enqueue task', { error: error.message, taskType });
             throw error;
         }
     }
@@ -58,7 +108,7 @@ class QueueService {
      */
     async dequeue() {
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 `UPDATE task_queue
          SET status = 'processing', started_at = NOW()
          WHERE id = (
@@ -73,7 +123,7 @@ class QueueService {
 
             return result.rows[0] || null;
         } catch (error) {
-            logger.error('Failed to dequeue task', { error: error.message });
+            this.logger.error('Failed to dequeue task', { error: error.message });
             return null;
         }
     }
@@ -83,15 +133,15 @@ class QueueService {
      */
     async completeTask(taskId, result = {}) {
         try {
-            await db.query(
+            await this.db.query(
                 `UPDATE task_queue
          SET status = 'completed', completed_at = NOW(), payload = payload || $2
          WHERE id = $1`,
                 [taskId, JSON.stringify({ result })]
             );
-            logger.info('Task completed', { taskId });
+            this.logger.info('Task completed', { taskId });
         } catch (error) {
-            logger.error('Failed to complete task', { error: error.message, taskId });
+            this.logger.error('Failed to complete task', { error: error.message, taskId });
         }
     }
 
@@ -104,17 +154,17 @@ class QueueService {
         try {
             if (nextAttempt >= maxAttempts) {
                 // Permanently failed
-                await db.query(
+                await this.db.query(
                     `UPDATE task_queue
            SET status = 'failed', error_message = $2, attempts = $3, completed_at = NOW()
            WHERE id = $1`,
                     [taskId, errorMessage, nextAttempt]
                 );
-                logger.error('Task permanently failed', { taskId, attempts: nextAttempt });
+                this.logger.error('Task permanently failed', { taskId, attempts: nextAttempt });
             } else {
                 // Schedule retry with exponential backoff
                 const delaySeconds = RETRY_DELAYS[Math.min(nextAttempt - 1, RETRY_DELAYS.length - 1)];
-                await db.query(
+                await this.db.query(
                     `UPDATE task_queue
            SET status = 'pending', error_message = $2, attempts = $3,
                next_retry_at = NOW() + INTERVAL '${delaySeconds} seconds',
@@ -122,10 +172,10 @@ class QueueService {
            WHERE id = $1`,
                     [taskId, errorMessage, nextAttempt]
                 );
-                logger.warn('Task scheduled for retry', { taskId, attempt: nextAttempt, delaySeconds });
+                this.logger.warn('Task scheduled for retry', { taskId, attempt: nextAttempt, delaySeconds });
             }
         } catch (error) {
-            logger.error('Failed to update task status', { error: error.message, taskId });
+            this.logger.error('Failed to update task status', { error: error.message, taskId });
         }
     }
 
@@ -137,12 +187,12 @@ class QueueService {
     async checkAIAvailability() {
         try {
             // Get the configured AI provider
-            const provider = await aiRouterService.getProvider('classification');
+            const provider = await this.aiRouterService.getProvider('classification');
 
             // No provider configured or AI disabled
             if (!provider) {
                 if (this.aiAvailable) {
-                    logger.info('AI is disabled or no provider configured');
+                    this.logger.info('AI is disabled or no provider configured');
                 }
                 this.aiAvailable = false;
                 return false;
@@ -151,7 +201,7 @@ class QueueService {
             // Cloud provider (OpenAI, Gemini, etc.) - assume available if configured
             if (provider.isCloud) {
                 if (!this.aiAvailable) {
-                    logger.info(`Cloud AI provider available: ${provider.type}`);
+                    this.logger.info(`Cloud AI provider available: ${provider.type}`);
                 }
                 this.aiAvailable = true;
                 return true;
@@ -159,17 +209,17 @@ class QueueService {
 
             // Ollama provider - need to check connection
             if (provider.type === 'ollama') {
-                const result = await ollamaService.testConnection();
+                const result = await this.ollamaService.testConnection();
 
                 if (result.success) {
                     if (!this.aiAvailable) {
-                        logger.info('Ollama is now available');
+                        this.logger.info('Ollama is now available');
                     }
                     this.aiAvailable = true;
                     return true;
                 } else {
                     if (this.aiAvailable) {
-                        logger.warn('Ollama is offline', { error: result.error });
+                        this.logger.warn('Ollama is offline', { error: result.error });
                     }
                     this.aiAvailable = false;
                     return false;
@@ -177,11 +227,11 @@ class QueueService {
             }
 
             // Unknown provider type
-            logger.warn('Unknown AI provider type', { type: provider.type });
+            this.logger.warn('Unknown AI provider type', { type: provider.type });
             return false;
         } catch (error) {
             if (this.aiAvailable) {
-                logger.warn('AI availability check failed', { error: error.message });
+                this.logger.warn('AI availability check failed', { error: error.message });
             }
             this.aiAvailable = false;
             return false;
@@ -197,7 +247,7 @@ class QueueService {
         const { media_item_id } = payload;
 
         try {
-            const result = await db.query(`
+            const result = await this.db.query(`
                 SELECT id, content_rating, metadata, media_type
                 FROM media_server_items WHERE id = $1
             `, [media_item_id]);
@@ -213,7 +263,7 @@ class QueueService {
 
             // Always set original_rating on first normalization, even if rating doesn't change
             // This marks the item as processed and prevents re-queuing
-            await db.query(`
+            await this.db.query(`
                 UPDATE media_server_items
                 SET original_rating = COALESCE(original_rating, $2), 
                     content_rating = $3, 
@@ -222,7 +272,7 @@ class QueueService {
             `, [media_item_id, originalRating, normalizedRating]);
 
             if (normalizedRating !== originalRating) {
-                logger.info('Rating normalized', {
+                this.logger.info('Rating normalized', {
                     itemId: media_item_id,
                     original: originalRating,
                     normalized: normalizedRating
@@ -234,7 +284,7 @@ class QueueService {
                     new: normalizedRating
                 });
             } else {
-                logger.debug('Rating already standard', {
+                this.logger.debug('Rating already standard', {
                     itemId: media_item_id,
                     rating: originalRating
                 });
@@ -246,7 +296,7 @@ class QueueService {
                 });
             }
         } catch (error) {
-            logger.error('Rating normalization failed', {
+            this.logger.error('Rating normalization failed', {
                 itemId: media_item_id,
                 error: error.message
             });
@@ -258,13 +308,13 @@ class QueueService {
      * Process a single task
      */
     async processTask(task) {
-        logger.info('Processing task', { taskId: task.id, taskType: task.task_type });
+        this.logger.info('Processing task', { taskId: task.id, taskType: task.task_type });
 
         try {
             switch (task.task_type) {
                 case 'classification':
                     const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
-                    const result = await classificationService.classify({ ...payload, taskId: task.id });
+                    const result = await this.classificationService.classify({ ...payload, taskId: task.id });
                     await this.completeTask(task.id, result);
 
                     // If this was a gap analysis task for a specific item, update the item directly
@@ -279,7 +329,7 @@ class QueueService {
 
                         // We need to fetch the current metadata first to merge, or use jsonb_set
                         // Using a simple merge query here
-                        await db.query(
+                        await this.db.query(
                             `UPDATE media_server_items 
                              SET metadata = metadata || $1::jsonb
                              WHERE id = $2`,
@@ -289,7 +339,7 @@ class QueueService {
 
                     // Update webhook_log if linked
                     if (task.webhook_log_id) {
-                        await db.query(
+                        await this.db.query(
                             `UPDATE webhook_log SET processing_status = 'completed', 
                routed_to_library = $2, processing_time_ms = EXTRACT(EPOCH FROM (NOW() - $3)) * 1000
                WHERE id = $1`,
@@ -314,7 +364,7 @@ class QueueService {
 
                     if (enrichPayload.itemId && (!enrichTmdbId || !enrichSourceLibraryId)) {
                         try {
-                            const itemResult = await db.query(
+                            const itemResult = await this.db.query(
                                 `SELECT msi.tmdb_id, msi.library_id, l.name as library_name 
                                  FROM media_server_items msi 
                                  LEFT JOIN libraries l ON msi.library_id = l.id 
@@ -332,7 +382,7 @@ class QueueService {
                                 if (!enrichSourceLibraryName && row.library_name) {
                                     enrichSourceLibraryName = row.library_name;
                                 }
-                                logger.info('Self-heal: Retrieved missing metadata from database', {
+                                this.logger.info('Self-heal: Retrieved missing metadata from database', {
                                     itemId: enrichPayload.itemId,
                                     tmdbId: enrichTmdbId,
                                     libraryId: enrichSourceLibraryId,
@@ -340,7 +390,7 @@ class QueueService {
                                 });
                             }
                         } catch (lookupError) {
-                            logger.debug('Self-heal lookup failed', { error: lookupError.message });
+                            this.logger.debug('Self-heal lookup failed', { error: lookupError.message });
                         }
                     }
 
@@ -362,18 +412,18 @@ class QueueService {
                     // Skip if daily limit already hit (flag set from previous 401/limit error)
                     if (!this.omdbLimitHit) {
                         try {
-                            const omdbConfig = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
+                            const omdbConfig = await this.db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
 
                             if (omdbConfig.rows.length > 0 && omdbConfig.rows[0].api_key) {
-                                const omdbService = require('./omdb');
+                                // Using injected this.omdbService
                                 const omdbApiKey = omdbConfig.rows[0].api_key;
 
                                 // For TV shows, only query the main show, not episodes
                                 const mediaType = enrichPayload.media?.media_type || 'movie';
 
-                                logger.info('OMDb lookup', { title: enrichPayload.title, type: mediaType });
+                                this.logger.info('OMDb lookup', { title: enrichPayload.title, type: mediaType });
 
-                                const omdbResult = await omdbService.getByTitle(
+                                const omdbResult = await this.omdbService.getByTitle(
                                     enrichPayload.title,
                                     enrichPayload.year,
                                     mediaType,
@@ -399,7 +449,7 @@ class QueueService {
                                         is_adult: ['R', 'NC-17', 'TV-MA'].includes(omdbResult.rated)
                                     };
 
-                                    logger.info('OMDb enrichment successful', {
+                                    this.logger.info('OMDb enrichment successful', {
                                         title: enrichPayload.title,
                                         rated: omdbResult.rated,
                                         genre: omdbResult.genre
@@ -408,7 +458,7 @@ class QueueService {
                                     // Normalize rating from OMDb if available
                                     if (enrichPayload.itemId && omdbResult.rated && omdbResult.rated !== 'N/A') {
                                         try {
-                                            const currentItem = await db.query(
+                                            const currentItem = await this.db.query(
                                                 `SELECT content_rating FROM media_server_items WHERE id = $1`,
                                                 [enrichPayload.itemId]
                                             );
@@ -416,21 +466,21 @@ class QueueService {
                                             if (currentItem.rows.length > 0) {
                                                 const currentRating = currentItem.rows[0].content_rating;
 
-                                                await db.query(
+                                                await this.db.query(
                                                     `UPDATE media_server_items
                                                      SET original_rating = COALESCE(original_rating, $2), content_rating = $3
                                                      WHERE id = $1`,
                                                     [enrichPayload.itemId, currentRating, omdbResult.rated]
                                                 );
 
-                                                logger.info('Rating updated from OMDb', {
+                                                this.logger.info('Rating updated from OMDb', {
                                                     itemId: enrichPayload.itemId,
                                                     original: currentRating,
                                                     omdb: omdbResult.rated
                                                 });
                                             }
                                         } catch (ratingError) {
-                                            logger.debug('Failed to update rating from OMDb', { error: ratingError.message });
+                                            this.logger.debug('Failed to update rating from OMDb', { error: ratingError.message });
                                         }
                                     }
                                 } else if (enrichPayload.itemId) {
@@ -443,9 +493,9 @@ class QueueService {
                                             'OMDb not found',
                                             5
                                         );
-                                        logger.debug('Queued item for Tavily fallback', { title: enrichPayload.title });
+                                        this.logger.debug('Queued item for Tavily fallback', { title: enrichPayload.title });
                                     } catch (retryErr) {
-                                        logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                        this.logger.debug('Failed to queue for retry', { error: retryErr.message });
                                     }
                                 }
                             }
@@ -455,7 +505,7 @@ class QueueService {
 
                                 // Only log once per session since limit won't reset until next day
                                 if (!this.omdbLimitHit) {
-                                    logger.warn('OMDb daily limit reached - skipping OMDb enrichment until API resets', { error: omdbError.message });
+                                    this.logger.warn('OMDb daily limit reached - skipping OMDb enrichment until API resets', { error: omdbError.message });
                                     this.omdbLimitHit = true;
                                 }
 
@@ -470,11 +520,11 @@ class QueueService {
                                             3 // Higher priority since it's a quota issue
                                         );
                                     } catch (retryErr) {
-                                        logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                        this.logger.debug('Failed to queue for retry', { error: retryErr.message });
                                     }
                                 }
                             } else {
-                                logger.warn('OMDb enrichment failed', { error: omdbError.message });
+                                this.logger.warn('OMDb enrichment failed', { error: omdbError.message });
                                 // Queue for Tavily fallback on other errors
                                 if (enrichPayload.itemId) {
                                     try {
@@ -486,7 +536,7 @@ class QueueService {
                                             7
                                         );
                                     } catch (retryErr) {
-                                        logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                        this.logger.debug('Failed to queue for retry', { error: retryErr.message });
                                     }
                                 }
                             }
@@ -497,7 +547,7 @@ class QueueService {
                     // Tavily provides: content advisory, reviews, holiday detection, anime info
                     // This supplements OMDb with web-scraped content
                     try {
-                        const tavilyConfig = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
+                        const tavilyConfig = await this.db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
 
                         if (tavilyConfig.rows.length > 0 && tavilyConfig.rows[0].api_key) {
                             const config = tavilyConfig.rows[0];
@@ -525,7 +575,7 @@ class QueueService {
                                     };
                                 }
                             } catch (advisoryError) {
-                                logger.debug('Tavily advisory search failed', { error: advisoryError.message });
+                                this.logger.debug('Tavily advisory search failed', { error: advisoryError.message });
                             }
 
                             // Check if holiday/Christmas content
@@ -543,7 +593,7 @@ class QueueService {
                                     };
                                 }
                             } catch (holidayError) {
-                                logger.debug('Tavily holiday search failed', { error: holidayError.message });
+                                this.logger.debug('Tavily holiday search failed', { error: holidayError.message });
                             }
 
                             // If anime is suspected, get anime-specific info
@@ -569,12 +619,12 @@ class QueueService {
                                         };
                                     }
                                 } catch (animeError) {
-                                    logger.debug('Tavily anime search failed', { error: animeError.message });
+                                    this.logger.debug('Tavily anime search failed', { error: animeError.message });
                                 }
                             }
                         }
                     } catch (tavilyError) {
-                        logger.warn('Tavily enrichment failed', { error: tavilyError.message });
+                        this.logger.warn('Tavily enrichment failed', { error: tavilyError.message });
                         // Continue without Tavily data
                     }
 
@@ -592,23 +642,23 @@ class QueueService {
                         // ========== TVDB/IMDB → TMDB CONVERSION ==========
                         // If we don't have TMDB ID, try to discover it from other provider IDs
                         if (!enrichTmdbId) {
-                            const tmdbService = require('./tmdb');
+                            // Using injected this.tmdbService
 
                             // Try TVDB → TMDB first (common for TV shows)
                             if (!enrichTmdbId && enrichPayload.tvdb_id) {
                                 try {
-                                    const tvdbLookup = await tmdbService.findByExternalId(enrichPayload.tvdb_id, 'tvdb_id');
+                                    const tvdbLookup = await this.tmdbService.findByExternalId(enrichPayload.tvdb_id, 'tvdb_id');
                                     const tvResults = tvdbLookup.tv_results || [];
                                     if (tvResults.length > 0) {
                                         enrichTmdbId = tvResults[0].id;
-                                        logger.info('TVDB→TMDB conversion successful', {
+                                        this.logger.info('TVDB→TMDB conversion successful', {
                                             tvdbId: enrichPayload.tvdb_id,
                                             tmdbId: enrichTmdbId,
                                             title: enrichPayload.title
                                         });
                                     }
                                 } catch (e) {
-                                    logger.debug('TVDB→TMDB lookup failed', { error: e.message });
+                                    this.logger.debug('TVDB→TMDB lookup failed', { error: e.message });
                                 }
                             }
 
@@ -616,20 +666,20 @@ class QueueService {
                             const imdbId = enrichmentData.omdb?.data?.imdbID || enrichPayload.imdb_id;
                             if (!enrichTmdbId && imdbId) {
                                 try {
-                                    const imdbLookup = await tmdbService.findByExternalId(imdbId, 'imdb_id');
+                                    const imdbLookup = await this.tmdbService.findByExternalId(imdbId, 'imdb_id');
                                     const results = imdbLookup.movie_results?.length > 0
                                         ? imdbLookup.movie_results
                                         : imdbLookup.tv_results || [];
                                     if (results.length > 0) {
                                         enrichTmdbId = results[0].id;
-                                        logger.info('IMDB→TMDB conversion successful', {
+                                        this.logger.info('IMDB→TMDB conversion successful', {
                                             imdbId: imdbId,
                                             tmdbId: enrichTmdbId,
                                             title: enrichPayload.title
                                         });
                                     }
                                 } catch (e) {
-                                    logger.debug('IMDB→TMDB lookup failed', { error: e.message });
+                                    this.logger.debug('IMDB→TMDB lookup failed', { error: e.message });
                                 }
                             }
 
@@ -642,7 +692,7 @@ class QueueService {
                                         ? `${enrichPayload.title} ${enrichPayload.year}`
                                         : enrichPayload.title;
 
-                                    const searchResults = await tmdbService.search(searchQuery, mediaType);
+                                    const searchResults = await this.tmdbService.search(searchQuery, mediaType);
 
                                     if (searchResults && searchResults.length > 0) {
                                         // Find best match - prioritize exact title + year match
@@ -652,7 +702,7 @@ class QueueService {
                                         ) || searchResults[0];
 
                                         enrichTmdbId = bestMatch.id;
-                                        logger.info('TMDB title search successful', {
+                                        this.logger.info('TMDB title search successful', {
                                             query: searchQuery,
                                             tmdbId: enrichTmdbId,
                                             matchedTitle: bestMatch.title,
@@ -660,17 +710,17 @@ class QueueService {
                                         });
                                     }
                                 } catch (e) {
-                                    logger.debug('TMDB title search failed', { error: e.message });
+                                    this.logger.debug('TMDB title search failed', { error: e.message });
                                 }
                             }
 
                             // If we discovered TMDB ID, backfill it to media_server_items
                             if (enrichTmdbId && enrichPayload.itemId) {
-                                await db.query(
+                                await this.db.query(
                                     'UPDATE media_server_items SET tmdb_id = $1 WHERE id = $2 AND tmdb_id IS NULL',
                                     [enrichTmdbId, enrichPayload.itemId]
                                 );
-                                logger.info('Backfilled TMDB ID to media_server_items', {
+                                this.logger.info('Backfilled TMDB ID to media_server_items', {
                                     itemId: enrichPayload.itemId,
                                     tmdbId: enrichTmdbId
                                 });
@@ -678,7 +728,7 @@ class QueueService {
                         }
 
 
-                        await db.query(
+                        await this.db.query(
                             `UPDATE media_server_items 
                              SET metadata = metadata || $1::jsonb
                              WHERE id = $2`,
@@ -690,7 +740,7 @@ class QueueService {
                         // Now logs ALL items with a library ID (TMDB optional for visibility)
                         if (enrichSourceLibraryId) {
                             // Verify library still exists before inserting (may have been deleted during sync)
-                            const libraryExists = await db.query(
+                            const libraryExists = await this.db.query(
                                 `SELECT 1 FROM libraries WHERE id = $1 LIMIT 1`,
                                 [enrichSourceLibraryId]
                             );
@@ -698,19 +748,19 @@ class QueueService {
                             if (libraryExists.rows.length > 0) {
                                 // Check for duplicates using itemId OR tmdb_id (handle both cases)
                                 const existingEntry = enrichTmdbId
-                                    ? await db.query(
+                                    ? await this.db.query(
                                         `SELECT 1 FROM classification_history 
                                          WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
                                         [enrichTmdbId, enrichSourceLibraryId]
                                     )
-                                    : await db.query(
+                                    : await this.db.query(
                                         `SELECT 1 FROM classification_history 
                                          WHERE title = $1 AND library_id = $2 AND method = 'source_library' AND tmdb_id IS NULL LIMIT 1`,
                                         [enrichPayload.title, enrichSourceLibraryId]
                                     );
 
                                 if (existingEntry.rows.length === 0) {
-                                    await db.query(
+                                    await this.db.query(
                                         `INSERT INTO classification_history (
                                             tmdb_id, media_type, title, year, library_id, status, 
                                             confidence, method, reason, metadata
@@ -732,7 +782,7 @@ class QueueService {
                                     );
                                 }
                             } else {
-                                logger.warn('Library deleted during task processing, skipping classification_history insert', {
+                                this.logger.warn('Library deleted during task processing, skipping classification_history insert', {
                                     libraryId: enrichSourceLibraryId,
                                     taskId: task.id,
                                     title: enrichPayload.title
@@ -742,7 +792,7 @@ class QueueService {
 
 
                         const hasTavily = !!(enrichmentData.tavily_imdb || enrichmentData.tavily_advisory || enrichmentData.tavily_content_type || enrichmentData.tavily_holiday);
-                        logger.info('Metadata enrichment complete (no AI, from source library)', {
+                        this.logger.info('Metadata enrichment complete (no AI, from source library)', {
                             itemId: enrichPayload.itemId,
                             title: enrichPayload.title,
                             sourceLibrary: enrichSourceLibraryName,
@@ -762,16 +812,16 @@ class QueueService {
                     break;
 
                 default:
-                    logger.warn('Unknown task type', { taskType: task.task_type });
+                    this.logger.warn('Unknown task type', { taskType: task.task_type });
                     await this.failTask(task.id, `Unknown task type: ${task.task_type}`, task.attempts, task.max_attempts);
             }
         } catch (error) {
-            logger.error('Task processing failed', { taskId: task.id, error: error.message });
+            this.logger.error('Task processing failed', { taskId: task.id, error: error.message });
             await this.failTask(task.id, error.message, task.attempts, task.max_attempts);
 
             // Update webhook_log if linked
             if (task.webhook_log_id) {
-                await db.query(
+                await this.db.query(
                     `UPDATE webhook_log SET processing_status = 'failed', error_message = $2 WHERE id = $1`,
                     [task.webhook_log_id, error.message]
                 );
@@ -785,7 +835,7 @@ class QueueService {
      */
     async resetStaleProcessingTasks() {
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 `UPDATE task_queue 
                  SET status = 'pending', started_at = NULL, 
                      error_message = 'Reset on startup - previous worker crashed'
@@ -794,14 +844,14 @@ class QueueService {
             );
 
             if (result.rowCount > 0) {
-                logger.warn('Reset stale processing tasks on startup', {
+                this.logger.warn('Reset stale processing tasks on startup', {
                     count: result.rowCount,
                     taskIds: result.rows.map(r => r.id)
                 });
             }
             return result.rowCount;
         } catch (error) {
-            logger.error('Failed to reset stale tasks', { error: error.message });
+            this.logger.error('Failed to reset stale tasks', { error: error.message });
             return 0;
         }
     }
@@ -811,7 +861,7 @@ class QueueService {
      */
     async startWorker() {
         if (this.running) {
-            logger.warn('Worker already running');
+            this.logger.warn('Worker already running');
             return;
         }
 
@@ -819,7 +869,7 @@ class QueueService {
         await this.resetStaleProcessingTasks();
 
         this.running = true;
-        logger.info('Queue worker started');
+        this.logger.info('Queue worker started');
 
         while (this.running) {
             try {
@@ -833,7 +883,7 @@ class QueueService {
                             const aiReady = await this.checkAIAvailability();
                             if (!aiReady) {
                                 // Put task back in queue
-                                await db.query(
+                                await this.db.query(
                                     `UPDATE task_queue SET status = 'pending', started_at = NULL WHERE id = $1`,
                                     [task.id]
                                 );
@@ -855,14 +905,14 @@ class QueueService {
                     }
                 }
             } catch (error) {
-                logger.error('Worker loop error', { error: error.message });
+                this.logger.error('Worker loop error', { error: error.message });
             }
 
             // Wait before next poll if no task was found or max concurrent reached
             await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
         }
 
-        logger.info('Queue worker stopped');
+        this.logger.info('Queue worker stopped');
     }
 
     /**
@@ -870,7 +920,7 @@ class QueueService {
      */
     stopWorker() {
         this.running = false;
-        logger.info('Queue worker stopping...');
+        this.logger.info('Queue worker stopping...');
     }
 
     /**
@@ -880,7 +930,7 @@ class QueueService {
         try {
             // Only count classification tasks - metadata_enrichment is tracked separately
             // in Library Enrichment Progress on the dashboard
-            const result = await db.query(`
+            const result = await this.db.query(`
         SELECT 
           status,
           COUNT(*) as count
@@ -907,7 +957,7 @@ class QueueService {
 
             return stats;
         } catch (error) {
-            logger.error('Failed to get queue stats', { error: error.message });
+            this.logger.error('Failed to get queue stats', { error: error.message });
             return null;
         }
     }
@@ -918,14 +968,14 @@ class QueueService {
     async getGapAnalysisStats() {
         try {
             // Count items that still need to be analyzed
-            const unprocessedResult = await db.query(`
+            const unprocessedResult = await this.db.query(`
                 SELECT COUNT(*) as count 
                 FROM media_server_items 
                 WHERE metadata->'content_analysis' IS NULL
             `);
 
             // Get total items count
-            const totalResult = await db.query(`
+            const totalResult = await this.db.query(`
                 SELECT COUNT(*) as count FROM media_server_items
             `);
 
@@ -952,7 +1002,7 @@ class QueueService {
                     : 'Complete'
             };
         } catch (error) {
-            logger.error('Failed to get gap analysis stats', { error: error.message });
+            this.logger.error('Failed to get gap analysis stats', { error: error.message });
             return null;
         }
     }
@@ -962,7 +1012,7 @@ class QueueService {
      */
     async getPendingTasks(limit = 20) {
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 `SELECT id, task_type, status, priority, attempts, max_attempts, 
                 error_message, source, created_at, next_retry_at,
                 payload
@@ -974,7 +1024,7 @@ class QueueService {
             );
             return result.rows;
         } catch (error) {
-            logger.error('Failed to get pending tasks', { error: error.message });
+            this.logger.error('Failed to get pending tasks', { error: error.message });
             return [];
         }
     }
@@ -984,7 +1034,7 @@ class QueueService {
      */
     async getFailedTasks(limit = 20) {
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 `SELECT id, task_type, status, priority, attempts, max_attempts, 
                 error_message, source, created_at, completed_at,
                 payload
@@ -996,7 +1046,7 @@ class QueueService {
             );
             return result.rows;
         } catch (error) {
-            logger.error('Failed to get failed tasks', { error: error.message });
+            this.logger.error('Failed to get failed tasks', { error: error.message });
             return [];
         }
     }
@@ -1006,16 +1056,16 @@ class QueueService {
      */
     async retryTask(taskId) {
         try {
-            await db.query(
+            await this.db.query(
                 `UPDATE task_queue
          SET status = 'pending', attempts = 0, error_message = NULL, next_retry_at = NOW()
          WHERE id = $1 AND status = 'failed'`,
                 [taskId]
             );
-            logger.info('Task queued for retry', { taskId });
+            this.logger.info('Task queued for retry', { taskId });
             return true;
         } catch (error) {
-            logger.error('Failed to retry task', { error: error.message, taskId });
+            this.logger.error('Failed to retry task', { error: error.message, taskId });
             return false;
         }
     }
@@ -1025,16 +1075,16 @@ class QueueService {
      */
     async cancelTask(taskId) {
         try {
-            await db.query(
+            await this.db.query(
                 `UPDATE task_queue
          SET status = 'cancelled', completed_at = NOW()
          WHERE id = $1 AND status = 'pending'`,
                 [taskId]
             );
-            logger.info('Task cancelled', { taskId });
+            this.logger.info('Task cancelled', { taskId });
             return true;
         } catch (error) {
-            logger.error('Failed to cancel task', { error: error.message, taskId });
+            this.logger.error('Failed to cancel task', { error: error.message, taskId });
             return false;
         }
     }
@@ -1044,13 +1094,13 @@ class QueueService {
      */
     async clearCompletedTasks() {
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 `DELETE FROM task_queue WHERE status = 'completed' RETURNING id`
             );
-            logger.info('Cleared completed tasks', { count: result.rowCount });
+            this.logger.info('Cleared completed tasks', { count: result.rowCount });
             return result.rowCount;
         } catch (error) {
-            logger.error('Failed to clear completed tasks', { error: error.message });
+            this.logger.error('Failed to clear completed tasks', { error: error.message });
             return 0;
         }
     }
@@ -1060,13 +1110,13 @@ class QueueService {
      */
     async clearFailedTasks() {
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 `DELETE FROM task_queue WHERE status = 'failed' RETURNING id`
             );
-            logger.info('Cleared failed tasks', { count: result.rowCount });
+            this.logger.info('Cleared failed tasks', { count: result.rowCount });
             return result.rowCount;
         } catch (error) {
-            logger.error('Failed to clear failed tasks', { error: error.message });
+            this.logger.error('Failed to clear failed tasks', { error: error.message });
             return 0;
         }
     }
@@ -1076,16 +1126,16 @@ class QueueService {
      */
     async retryAllFailedTasks() {
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 `UPDATE task_queue
          SET status = 'pending', attempts = 0, error_message = NULL, next_retry_at = NOW()
          WHERE status = 'failed'
          RETURNING id`
             );
-            logger.info('Retrying all failed tasks', { count: result.rowCount });
+            this.logger.info('Retrying all failed tasks', { count: result.rowCount });
             return result.rowCount;
         } catch (error) {
-            logger.error('Failed to retry all tasks', { error: error.message });
+            this.logger.error('Failed to retry all tasks', { error: error.message });
             return 0;
         }
     }
@@ -1095,16 +1145,16 @@ class QueueService {
      */
     async cancelAllPendingTasks() {
         try {
-            const result = await db.query(
+            const result = await this.db.query(
                 `UPDATE task_queue
          SET status = 'cancelled', completed_at = NOW()
          WHERE status = 'pending'
          RETURNING id`
             );
-            logger.info('Cancelled all pending tasks', { count: result.rowCount });
+            this.logger.info('Cancelled all pending tasks', { count: result.rowCount });
             return result.rowCount;
         } catch (error) {
-            logger.error('Failed to cancel all tasks', { error: error.message });
+            this.logger.error('Failed to cancel all tasks', { error: error.message });
             return 0;
         }
     }
@@ -1115,7 +1165,7 @@ class QueueService {
     async reprocessCompleted() {
         try {
             // Get all completed items from classification history
-            const historyResult = await db.query(
+            const historyResult = await this.db.query(
                 `SELECT ch.id, ch.tmdb_id, ch.media_type, ch.title, ch.year, ch.metadata
                  FROM classification_history ch
                  WHERE ch.status = 'completed'`
@@ -1145,10 +1195,10 @@ class QueueService {
                 count++;
             }
 
-            logger.info('Queued completed items for reprocessing', { count });
+            this.logger.info('Queued completed items for reprocessing', { count });
             return count;
         } catch (error) {
-            logger.error('Failed to reprocess completed', { error: error.message });
+            this.logger.error('Failed to reprocess completed', { error: error.message });
             throw error;
         }
     }
@@ -1159,7 +1209,7 @@ class QueueService {
      */
     async buildLibrarySnapshot() {
         try {
-            const librariesResult = await db.query(`
+            const librariesResult = await this.db.query(`
                 SELECT
                     l.id,
                     l.name,
@@ -1170,7 +1220,7 @@ class QueueService {
                 LEFT JOIN media_server ms ON l.media_server_id = ms.id
             `);
 
-            const mappingsResult = await db.query(`
+            const mappingsResult = await this.db.query(`
                 SELECT * FROM library_arr_mappings
             `);
 
@@ -1188,13 +1238,13 @@ class QueueService {
                 };
             }
 
-            logger.info('Built library snapshot', {
+            this.logger.info('Built library snapshot', {
                 libraryCount: Object.keys(snapshot.libraries).length,
                 mappingCount: snapshot.mappings.length
             });
             return snapshot;
         } catch (error) {
-            logger.error('Failed to build library snapshot', { error: error.message });
+            this.logger.error('Failed to build library snapshot', { error: error.message });
             throw error;
         }
     }
@@ -1205,7 +1255,7 @@ class QueueService {
      */
     async buildNewLibraryLookup() {
         try {
-            const result = await db.query(`
+            const result = await this.db.query(`
                 SELECT
                     l.id,
                     l.name,
@@ -1233,14 +1283,14 @@ class QueueService {
                 lookup.byNameType[nameKey] = lib.id;
             }
 
-            logger.info('Built new library lookup', {
+            this.logger.info('Built new library lookup', {
                 byExternalId: Object.keys(lookup.byExternalId).length,
                 byNameType: Object.keys(lookup.byNameType).length
             });
 
             return lookup;
         } catch (error) {
-            logger.error('Failed to build library lookup', { error: error.message });
+            this.logger.error('Failed to build library lookup', { error: error.message });
             throw error;
         }
     }
@@ -1285,7 +1335,7 @@ class QueueService {
             );
 
             if (instanceMappings.length === 0) {
-                logger.debug('No mappings found in snapshot for instance', {
+                this.logger.debug('No mappings found in snapshot for instance', {
                     type,
                     configId: config.id
                 });
@@ -1308,7 +1358,7 @@ class QueueService {
 
                 if (newLibraryId) {
                     // Recreate the mapping with new library_id
-                    await db.query(
+                    await this.db.query(
                         `INSERT INTO library_arr_mappings 
                          (library_id, arr_type, arr_config_id, arr_root_folder_id, arr_root_folder_path, 
                           quality_profile_id, plex_path_prefix, arr_path_prefix, classifarr_path_prefix)
@@ -1338,7 +1388,7 @@ class QueueService {
 
                     result.remapped++;
 
-                    logger.info('Restored library mapping', {
+                    this.logger.info('Restored library mapping', {
                         instance: `${type} ${config.id}`,
                         oldId: mapping.library_id,
                         newId: newLibraryId,
@@ -1357,7 +1407,7 @@ class QueueService {
 
             return result;
         } catch (error) {
-            logger.error('Failed to remap instance mappings', {
+            this.logger.error('Failed to remap instance mappings', {
                 type,
                 configId: config.id,
                 error: error.message
@@ -1379,7 +1429,7 @@ class QueueService {
 
         try {
             // Process ALL Radarr instances
-            const radarrConfigs = await db.query('SELECT * FROM radarr_config');
+            const radarrConfigs = await this.db.query('SELECT * FROM radarr_config');
 
             for (const config of radarrConfigs.rows) {
                 const instanceResult = await this.remapInstanceMappings(
@@ -1402,7 +1452,7 @@ class QueueService {
             }
 
             // Process ALL Sonarr instances
-            const sonarrConfigs = await db.query('SELECT * FROM sonarr_config');
+            const sonarrConfigs = await this.db.query('SELECT * FROM sonarr_config');
 
             for (const config of sonarrConfigs.rows) {
                 const instanceResult = await this.remapInstanceMappings(
@@ -1424,14 +1474,14 @@ class QueueService {
                 results.totalFailed += instanceResult.failed;
             }
 
-            logger.info('Library mapping restoration complete', {
+            this.logger.info('Library mapping restoration complete', {
                 totalRemapped: results.totalRemapped,
                 totalFailed: results.totalFailed
             });
 
             return results;
         } catch (error) {
-            logger.error('Failed to remap all arr mappings', { error: error.message });
+            this.logger.error('Failed to remap all arr mappings', { error: error.message });
             throw error;
         }
     }
@@ -1468,7 +1518,7 @@ class QueueService {
                 }
             }
 
-            await db.query(`
+            await this.db.query(`
                 INSERT INTO app_notifications (type, title, message, data, created_at)
                 VALUES ($1, $2, $3, $4, NOW())
             `, [
@@ -1478,12 +1528,12 @@ class QueueService {
                 JSON.stringify(failedDetails)
             ]);
 
-            logger.warn('Created notification for failed mappings', {
+            this.logger.warn('Created notification for failed mappings', {
                 totalFailed: results.totalFailed,
                 details: failedDetails
             });
         } catch (error) {
-            logger.error('Failed to create remap failure notification', { error: error.message });
+            this.logger.error('Failed to create remap failure notification', { error: error.message });
             // Don't throw - this is non-critical
         }
     }
@@ -1494,21 +1544,21 @@ class QueueService {
     async clearAndResync() {
         try {
             // CARSA always runs - force stop any active sync
-            if (syncStatus.isRunning) {
-                logger.info('CARSA interrupting active sync', { type: syncStatus.type });
-                syncStatus.forceStop();
+            if (this.syncStatus.isRunning) {
+                this.logger.info('CARSA interrupting active sync', { type: this.syncStatus.type });
+                this.syncStatus.forceStop();
             }
 
             // Start CARSA sync status (marked non-interruptible for tracking purposes)
-            syncStatus.start('full_resync', false);
+            this.syncStatus.start('full_resync', false);
 
-            logger.info('Starting clear and resync process...');
+            this.logger.info('Starting clear and resync process...');
 
             // 1. SNAPSHOT: Capture library info BEFORE clear
-            syncStatus.updateProgress(5, 'Capturing library snapshot...');
+            this.syncStatus.updateProgress(5, 'Capturing library snapshot...');
             const oldLibrarySnapshot = await this.buildLibrarySnapshot();
 
-            logger.info('Captured pre-clear snapshot', {
+            this.logger.info('Captured pre-clear snapshot', {
                 libraries: Object.keys(oldLibrarySnapshot.libraries).length,
                 mappings: oldLibrarySnapshot.mappings.length
             });
@@ -1521,57 +1571,57 @@ class QueueService {
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
-            syncStatus.updateProgress(10, 'Stopping worker...');
+            this.syncStatus.updateProgress(10, 'Stopping worker...');
 
             // 3. Clear task queue
-            const queueResult = await db.query('DELETE FROM task_queue RETURNING id');
+            const queueResult = await this.db.query('DELETE FROM task_queue RETURNING id');
 
-            syncStatus.updateProgress(20, 'Clearing task queue...');
+            this.syncStatus.updateProgress(20, 'Clearing task queue...');
 
             // 4. Clear content_analysis_log first (references classification_history)
-            await db.query('DELETE FROM content_analysis_log');
+            await this.db.query('DELETE FROM content_analysis_log');
 
             // 5. Clear classification_embeddings BEFORE classification_history (FK dependency)
-            const embeddingsResult = await db.query('DELETE FROM classification_embeddings RETURNING id');
+            const embeddingsResult = await this.db.query('DELETE FROM classification_embeddings RETURNING id');
 
-            syncStatus.updateProgress(30, 'Clearing embeddings...');
+            this.syncStatus.updateProgress(30, 'Clearing embeddings...');
 
             // 6. Clear classification history
-            const historyResult = await db.query('DELETE FROM classification_history RETURNING id');
+            const historyResult = await this.db.query('DELETE FROM classification_history RETURNING id');
 
-            syncStatus.updateProgress(40, 'Clearing classification history...');
+            this.syncStatus.updateProgress(40, 'Clearing classification history...');
 
             // 7. Clear learning patterns and corrections (full reset)
-            const patternsResult = await db.query('DELETE FROM learning_patterns RETURNING id');
-            const correctionsResult = await db.query('DELETE FROM classification_corrections RETURNING id');
+            const patternsResult = await this.db.query('DELETE FROM learning_patterns RETURNING id');
+            const correctionsResult = await this.db.query('DELETE FROM classification_corrections RETURNING id');
 
-            syncStatus.updateProgress(50, 'Clearing learning data...');
+            this.syncStatus.updateProgress(50, 'Clearing learning data...');
 
             // 8. Clear ALL library classification rules
-            const rulesV2Result = await db.query('DELETE FROM library_rules_v2 RETURNING id');
-            await db.query('DELETE FROM library_custom_rules');
+            const rulesV2Result = await this.db.query('DELETE FROM library_rules_v2 RETURNING id');
+            await this.db.query('DELETE FROM library_custom_rules');
 
             // 9. Clear library pattern suggestions (Available Library Filters)
-            await db.query('DELETE FROM library_pattern_suggestions');
+            await this.db.query('DELETE FROM library_pattern_suggestions');
 
-            syncStatus.updateProgress(60, 'Clearing library rules...');
+            this.syncStatus.updateProgress(60, 'Clearing library rules...');
 
             // 10. Clear library_profiles (references libraries)
-            await db.query('DELETE FROM library_profiles');
+            await this.db.query('DELETE FROM library_profiles');
 
             // 11. Clear media_server_collections (references libraries)
-            const collectionsResult = await db.query('DELETE FROM media_server_collections RETURNING id');
+            const collectionsResult = await this.db.query('DELETE FROM media_server_collections RETURNING id');
 
             // 12. Clear media_server_items (references libraries)
-            const itemsResult = await db.query('DELETE FROM media_server_items RETURNING id');
+            const itemsResult = await this.db.query('DELETE FROM media_server_items RETURNING id');
 
-            syncStatus.updateProgress(70, 'Clearing media items...');
+            this.syncStatus.updateProgress(70, 'Clearing media items...');
 
             // 13. Clear libraries (parent table) - library_arr_mappings CASCADE deleted
             // Note: Mappings will be recreated after re-sync using snapshot data
-            const librariesResult = await db.query('DELETE FROM libraries RETURNING id');
+            const librariesResult = await this.db.query('DELETE FROM libraries RETURNING id');
 
-            logger.info('Cleared all synced data', {
+            this.logger.info('Cleared all synced data', {
                 queue: queueResult.rowCount,
                 embeddings: embeddingsResult.rowCount,
                 history: historyResult.rowCount,
@@ -1586,14 +1636,14 @@ class QueueService {
             // 14. Clear in-memory caches
             this.omdbLimitHit = false; // Reset OMDb limit flag for fresh start
 
-            syncStatus.updateProgress(75, 'Restarting worker...');
+            this.syncStatus.updateProgress(75, 'Restarting worker...');
 
             // 15. Restart worker if it was running
             if (wasRunning) {
                 this.startWorker();
             }
 
-            syncStatus.updateProgress(80, 'Starting fresh sync...');
+            this.syncStatus.updateProgress(80, 'Starting fresh sync...');
 
             // 16. Trigger FRESH library sync from media server
             // This runs in background so we don't block the response
@@ -1605,9 +1655,9 @@ class QueueService {
                     // ✅ CORRECT: Full sync from media server creates NEW library entries
                     await mediaSyncService.syncAllLibraries();
 
-                    logger.info('Fresh library sync completed after clear');
+                    this.logger.info('Fresh library sync completed after clear');
 
-                    syncStatus.updateProgress(85, 'Remapping library mappings...');
+                    this.syncStatus.updateProgress(85, 'Remapping library mappings...');
 
                     // 17. REMAP: Restore *arr library mappings with new library IDs
                     const newLibraryLookup = await this.buildNewLibraryLookup();
@@ -1617,7 +1667,7 @@ class QueueService {
                         newLibraryLookup
                     );
 
-                    logger.info('Library mapping restoration complete', {
+                    this.logger.info('Library mapping restoration complete', {
                         totalRemapped: remapResults.totalRemapped,
                         totalFailed: remapResults.totalFailed
                     });
@@ -1627,22 +1677,22 @@ class QueueService {
                         await this.createRemapFailureNotification(remapResults);
                     }
 
-                    syncStatus.updateProgress(90, 'Running gap analysis...');
+                    this.syncStatus.updateProgress(90, 'Running gap analysis...');
 
                     // Run gap analysis with new library IDs
                     await scheduler.runGapAnalysis();
 
-                    logger.info('Gap analysis triggered after clear');
+                    this.logger.info('Gap analysis triggered after clear');
 
-                    syncStatus.updateProgress(100, 'Complete');
-                    syncStatus.stop();
+                    this.syncStatus.updateProgress(100, 'Complete');
+                    this.syncStatus.stop();
                 } catch (err) {
-                    logger.error('Failed to run library sync after clear', { error: err.message });
-                    syncStatus.stop();
+                    this.logger.error('Failed to run library sync after clear', { error: err.message });
+                    this.syncStatus.stop();
 
                     // Create error notification for user
                     try {
-                        await db.query(`
+                        await this.db.query(`
                             INSERT INTO app_notifications (type, title, message, data, created_at)
                             VALUES ($1, $2, $3, $4, NOW())
                         `, [
@@ -1652,7 +1702,7 @@ class QueueService {
                             JSON.stringify({ error: err.message, timestamp: new Date().toISOString() })
                         ]);
                     } catch (notifErr) {
-                        logger.error('Failed to create error notification', { error: notifErr.message });
+                        this.logger.error('Failed to create error notification', { error: notifErr.message });
                     }
                 }
             })();
@@ -1669,17 +1719,21 @@ class QueueService {
                 librariesCleared: librariesResult.rowCount
             };
 
-            logger.info('Cleared queue and triggered resync', result);
+            this.logger.info('Cleared queue and triggered resync', result);
             return result;
         } catch (error) {
-            logger.error('Failed to clear and resync', { error: error.message });
-            syncStatus.stop();
+            this.logger.error('Failed to clear and resync', { error: error.message });
+            this.syncStatus.stop();
             throw error;
         }
     }
 }
 
-// Singleton instance
+// Default singleton instance for production use
 const queueService = new QueueService();
 
+// Export singleton for backward compatibility
 module.exports = queueService;
+
+// Export class for dependency injection in tests
+module.exports.QueueService = QueueService;
