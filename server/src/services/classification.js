@@ -37,6 +37,7 @@ const policyEngine = require('./policyEngine');
 const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
 const libraryProfileService = require('./libraryProfileService');
+const aiPromptBuilder = require('./aiPromptBuilder');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('classification');
@@ -1401,25 +1402,20 @@ class ClassificationService {
       return generalLib || libraries[libraries.length - 1];
     };
 
-    // Build prompt for AI - VERIFICATION ROLE
-    // AI receives pre-calculated confidence and must verify or request clarification
-    let prompt = `You are a media classification VERIFIER for a home media server. Your role is to VERIFY a pre-calculated classification decision.
+    // Build context for AI prompt builder
+    const promptContext = {
+      metadata: metadata,
+      libraries: libraries,
+      signalContext: signalContext,
+      policySignals: signalContext, // Policy engine signals
+    };
 
-CRITICAL RULES:
-1. You CANNOT override the calculated confidence score.
-2. Your job is to VERIFY the suggested library makes sense, OR request clarification if there are conflicts.
-3. If the calculated confidence is high and signals align, CONFIRM the decision.
-4. If signals conflict or you see a potential error, REQUEST CLARIFICATION.
-`;
-
-    // Add library profile statistics if we have a suggested library
+    // Add library profile if we have a suggested library
     if (signalContext && signalContext.suggestedLibrary) {
       try {
         const profileStats = await libraryProfileService.getProfileStats(signalContext.suggestedLibrary.id);
         if (profileStats.totalItems > 0) {
-          prompt += '\n';
-          prompt += libraryProfileService.formatForPrompt(profileStats);
-          prompt += '\n';
+          promptContext.libraryProfile = profileStats;
         }
       } catch (error) {
         logger.warn('Failed to load library profile for AI prompt', {
@@ -1429,34 +1425,24 @@ CRITICAL RULES:
       }
     }
 
-    prompt += `
---- MEDIA INFORMATION ---
-Title: ${metadata.title}
-Year: ${metadata.year || 'Unknown'}
-Genres: ${metadata.genres.join(', ') || 'None'}
-Certification: ${metadata.certification || 'Unknown'}
-Keywords: ${metadata.keywords.slice(0, 15).join(', ') || 'None'}
-Original Language: ${metadata.original_language || 'Unknown'}
-Overview: ${metadata.overview || 'No overview available'}
-`;
+    // Determine mode: verify if we have signalContext, otherwise classify
+    const mode = signalContext ? 'verify' : 'classify';
 
-    // Add content analysis if available
-    if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {
-      prompt += `\nContent Analysis Detection: ${metadata.contentAnalysis.bestMatch.type} (${metadata.contentAnalysis.bestMatch.confidence}% confident)`;
-    }
+    // Build prompt using modular AI prompt builder
+    let prompt = `You are a media classification ${mode === 'verify' ? 'VERIFIER' : 'AI'} for a home media server. ${mode === 'verify' ? 'Your role is to VERIFY a pre-calculated classification decision.' : 'Your role is to classify media items into the appropriate library.'}
 
-    // Add signal context if provided (v0.33 verification mode)
-    if (signalContext) {
-      prompt += `\n\n--- SIGNAL ANALYSIS (pre-calculated) ---
-${signalContext.aiContext}
+${mode === 'verify' ? `CRITICAL RULES:
+1. You CANNOT override the calculated confidence score.
+2. Your job is to VERIFY the suggested library makes sense, OR request clarification if there are conflicts.
+3. If the calculated confidence is high and signals align, CONFIRM the decision.
+4. If signals conflict or you see a potential error, REQUEST CLARIFICATION.
+` : ''}`;
 
-SUGGESTED LIBRARY: "${signalContext.suggestedLibrary?.name || 'Unknown'}"
-CALCULATED CONFIDENCE: ${signalContext.confidence}%
-${signalContext.hasConflict ? '⚠️ CONFLICT DETECTED - Multiple libraries have similar scores' : ''}
-`;
-    }
+    // Use aiPromptBuilder to compose signal sections
+    const signalSections = await aiPromptBuilder.buildPrompt(promptContext, { mode });
+    prompt += '\n\n' + signalSections;
 
-    // Add web search results if available
+    // Add web search results if available (not yet in aiPromptBuilder)
     if (webSearchResults) {
       prompt += `\n\n--- ADDITIONAL WEB RESEARCH ---`;
 
@@ -1473,38 +1459,8 @@ ${signalContext.hasConflict ? '⚠️ CONFLICT DETECTED - Multiple libraries hav
       }
     }
 
-    prompt += `\n\n--- AVAILABLE LIBRARIES ---
-${libraries.map((lib, i) => `${i + 1}. "${lib.name}" (${lib.media_type})`).join('\n')}
-
---- YOUR RESPONSE ---
-${signalContext ? `
-VERIFICATION MODE: The system has pre-calculated confidence of ${signalContext.confidence}% for library "${signalContext.suggestedLibrary?.name}".
-
-Respond in ONE of these two formats:
-
-FORMAT 1 - CONFIRM the suggested library (if signals align and decision makes sense):
-CONFIRM|<library_number>|<brief_verification_reason>
-
-Example: CONFIRM|2|Signals align correctly - Action movie with mainstream studio and PG-13 rating confirms Movies library
-
-FORMAT 2 - REQUEST CLARIFICATION (if signals conflict or you see a potential error):
-CLARIFY|<problem_summary>|<why_uncertain>|<question_to_ask>|<option1>|<option2>|<option3_optional>
-
-Example: CLARIFY|Genre ambiguity|Content has both Documentary and Drama genres|Is this primarily a documentary or a drama film?|Documentaries|Movies|Review manually
-` : `
-Analyze the media and respond in ONE of these two formats:
-
-FORMAT 1 - If you are confident (can determine the correct library from the data):
-CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>
-
-Example: CONFIDENT|2|88|Action movie with mainstream studio and PG-13 rating, clearly belongs in Movies library
-
-FORMAT 2 - If you need clarification (conflicting signals, ambiguous data, or uncertain):
-CLARIFY|<problem_summary>|<why_uncertain>|<question_to_ask>|<option1>|<option2>|<option3_optional>
-
-Example: CLARIFY|Genre ambiguity|Content has both Documentary and Drama genres|Is this primarily a documentary or a drama film?|Documentaries|Movies|Neither
-`}
-IMPORTANT FOR CLARIFICATION:
+    // Add critical guidance
+    prompt += `\n\nIMPORTANT FOR CLARIFICATION:
 - The problem_summary should be SHORT (max 50 chars)
 - The why_uncertain should explain WHAT DATA conflicts and WHY you can't decide
 - The question should be SPECIFIC and help the user understand what choosing each option means
