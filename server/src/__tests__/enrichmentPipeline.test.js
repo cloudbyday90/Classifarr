@@ -46,10 +46,20 @@ const queueService = require('../services/queueService');
 
 describe('Enrichment Pipeline Integration', () => {
     beforeEach(() => {
-        // Clear mock call history but keep implementations
+        // Clear mock call history
         jest.clearAllMocks();
+        // Reset mock implementations to ensure clean state
+        db.query.mockReset();
+        omdbService.getByTitle.mockReset();
+        tavilyService.getContentAdvisory.mockReset();
+        tavilyService.search.mockReset();
+        tmdbService.findByExternalId.mockReset();
+        tmdbService.search.mockReset();
+        // Reset service state
         queueService.processing = 0;
         queueService.running = false;
+        queueService.omdbLimitHit = false;  // Reset OMDb limit flag
+        queueService.aiAvailable = true;     // Reset AI availability flag
     });
 
     afterEach(() => {
@@ -57,6 +67,8 @@ describe('Enrichment Pipeline Integration', () => {
         jest.clearAllMocks();
         queueService.processing = 0;
         queueService.running = false;
+        queueService.omdbLimitHit = false;  // Reset OMDb limit flag
+        queueService.aiAvailable = true;     // Reset AI availability flag
     });
 
     describe('TVDB to TMDB Conversion', () => {
@@ -119,6 +131,11 @@ describe('Enrichment Pipeline Integration', () => {
 
     describe('IMDB to TMDB Conversion', () => {
         it('should convert IMDB ID to TMDB ID from OMDb response', async () => {
+            // Ensure clean mock state for this test
+            db.query.mockReset();
+            omdbService.getByTitle.mockReset();
+            tmdbService.findByExternalId.mockReset();
+            
             const taskPayload = {
                 title: 'The Shawshank Redemption',
                 year: 1994,
