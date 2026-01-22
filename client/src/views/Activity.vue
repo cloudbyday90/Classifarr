@@ -518,14 +518,28 @@ onMounted(async () => {
   
   refreshData()
   
-  // Setup WebSocket for real-time progress
-  socket = io();
+  // Setup WebSocket for real-time progress (server uses /ws path)
+  socket = io({ path: '/ws' });
   
   socket.on('connect', () => {
     console.log('Connected to WebSocket');
+    // Subscribe to activity feed for classification updates
+    socket.emit('subscribe:activity');
   });
 
-  socket.on('task:progress', (data) => {
+  // Listen for classification progress (server emits classification:progress, not task:progress)
+  socket.on('classification:progress', (data) => {
+    // Validate incoming data - reject ghost/invalid tasks
+    if (!data.title || data.title === '' || data.title === 'Unknown') {
+      console.debug('Ignoring ghost task with empty title:', data.taskId);
+      return;
+    }
+    // Filter out source_library tasks on client side as additional safety
+    if (data.method === 'source_library' || data.source_library_id) {
+      console.debug('Ignoring source_library task:', data.taskId);
+      return;
+    }
+    
     const existingIndex = activeClassifications.value.findIndex(t => t.taskId === data.taskId);
     if (existingIndex !== -1) {
       // Update existing
@@ -536,7 +550,8 @@ onMounted(async () => {
     }
   });
 
-  socket.on('task:completed', (data) => {
+  // Listen for task completion (also uses classification: prefix)
+  socket.on('classification:complete', (data) => {
     // Remove from active list
     activeClassifications.value = activeClassifications.value.filter(t => t.taskId !== data.taskId);
     // Refresh feed to show completed item

@@ -95,13 +95,14 @@ app.get('/health', async (req, res) => {
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Fallback to index.html for client-side routing
+// Classification progress API route (must be before catch-all)
+const classificationProgressRouter = require('./routes/classificationProgress');
+app.use('/api/classification/progress', classificationProgressRouter);
+
+// Fallback to index.html for client-side routing (MUST BE LAST)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
-
-const classificationProgressRouter = require('./routes/classificationProgress');
-app.use('/api/classification/progress', classificationProgressRouter);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

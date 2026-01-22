@@ -119,7 +119,10 @@ class ClassificationPhaseService {
             // Emit WebSocket event for real-time updates
             this.emitProgressEvent(taskId, phase, phaseIndex, {
                 ...metadata,
-                title: payload?.title || 'Unknown'
+                title: payload?.title || 'Unknown',
+                // Important: Pass filtering fields from payload to ensure emitProgressEvent can filter source_library
+                source_library_id: payload?.source_library_id,
+                method: payload?.method
             });
 
             return { taskId, phase, phaseIndex, history };
@@ -180,6 +183,8 @@ class ClassificationPhaseService {
          FROM task_queue 
          WHERE status = 'processing' 
            AND current_phase IS NOT NULL
+           AND (payload::jsonb->>'source_library_id') IS NULL
+           AND (payload::jsonb->>'method') IS DISTINCT FROM 'source_library'
          ORDER BY created_at DESC
          LIMIT 50`
             );
@@ -361,6 +366,11 @@ class ClassificationPhaseService {
     emitProgressEvent(taskId, phase, phaseIndex, metadata = {}) {
         if (!this.webSocketService) {
             logger.debug('WebSocket service not available, skipping emit');
+            return;
+        }
+
+        // Filter out source_library tasks to prevent dashboard clutter
+        if (metadata.source_library_id || metadata.method === 'source_library') {
             return;
         }
 

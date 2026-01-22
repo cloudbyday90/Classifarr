@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## v0.40.2-alpha
+
+**Title: Activity Dashboard Ghost Tasks Fix**
+
+### Fixes
+
+- **Fixed Ghost Tasks in Activity Dashboard**: Resolved critical issue where 793 ghost tasks (empty progress bars) appeared in the Activity page.
+  - **Root Cause**: Express route ordering bug - the `/api/classification/progress` endpoint was registered AFTER the `*` catch-all, causing API to return HTML instead of JSON.
+  - The frontend iterated over the 794-character HTML string as an array, creating empty task items.
+- **Source Library Filtering**: Added SQL and WebSocket filters to hide `source_library` sync tasks from the Activity dashboard.
+- **Socket.IO Path Fix**: Fixed socket.io path mismatch (client used default `/socket.io`, server used `/ws`).
+- **Dockerfile Build Fix**: Changed pgvector installation from `git clone` to `curl` download to resolve network issues.
+
+### Improvements
+
+- **Event Name Alignment**: Fixed event listener names to match server events (`classification:progress` instead of `task:progress`).
+- **Activity Room Subscription**: Added proper subscription to `activity` WebSocket room on connect.
+- **Client-Side Validation**: Added rejection of ghost tasks (empty titles) and source_library tasks in the frontend.
+
+---
+
 ## v0.40.1a-alpha
 
 **Title: CI/CD Build Fixes**

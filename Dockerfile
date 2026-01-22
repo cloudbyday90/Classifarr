@@ -61,12 +61,13 @@ RUN apk add --no-cache \
 
 # Build pgvector extension for PostgreSQL 17
 # Use PG17-specific pg_config to ensure compatibility
-RUN apk add --no-cache --virtual .build-deps git make gcc musl-dev \
-    && git clone --branch v0.8.0 https://github.com/pgvector/pgvector.git /tmp/pgvector \
-    && cd /tmp/pgvector \
+RUN apk add --no-cache --virtual .build-deps make gcc musl-dev \
+    && curl -L https://github.com/pgvector/pgvector/archive/refs/tags/v0.8.0.tar.gz -o pgvector.tar.gz \
+    && tar -xzf pgvector.tar.gz \
+    && cd pgvector-0.8.0 \
     && make PG_CONFIG=/usr/libexec/postgresql17/pg_config \
     && make install PG_CONFIG=/usr/libexec/postgresql17/pg_config \
-    && cd / && rm -rf /tmp/pgvector \
+    && cd / && rm -rf pgvector-0.8.0 pgvector.tar.gz \
     && apk del .build-deps
 
 # Create non-root user for security
