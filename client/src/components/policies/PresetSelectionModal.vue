@@ -27,7 +27,7 @@
           <button
             v-if="suggestedPresets.length > 0"
             @click="addAllSuggested"
-            class="text-xs px-2 py-1 bg-primary bg-opacity-20 text-primary rounded-sm hover:bg-opacity-30 transition-colors"
+            class="text-xs px-2 py-1 bg-blue-500/20 text-primary rounded-sm hover:bg-blue-500/30 transition-colors"
           >
             + Add All
           </button>
@@ -39,8 +39,8 @@
             @click="togglePreset(preset)"
             class="flex items-center gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
             :class="isSelected(preset.id) 
-              ? 'bg-success bg-opacity-10 border-success' 
-              : 'bg-primary bg-opacity-10 border-primary'"
+              ? 'bg-green-500/10 border-success' 
+              : 'bg-blue-500/10 border-primary'"
           >
             <div v-if="isSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
               <span class="text-white text-xs font-bold">✓</span>
@@ -93,7 +93,7 @@
           @click="togglePreset(preset)"
           class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-800"
           :class="isSelected(preset.id) 
-            ? 'bg-success bg-opacity-10 border-success' 
+            ? 'bg-green-500/10 border-success' 
             : 'bg-background-light border-gray-700'"
         >
           <div v-if="isSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
@@ -109,7 +109,7 @@
           </div>
           <span 
             v-if="preset.source === 'custom'" 
-            class="text-xs px-1.5 py-0.5 bg-blue-900 bg-opacity-50 text-blue-300 rounded-sm"
+            class="text-xs px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded-sm"
           >
             Custom
           </span>
@@ -126,7 +126,7 @@
         <span 
           v-for="preset in selectedPresets" 
           :key="'sel-' + preset.id"
-          class="inline-flex items-center gap-1 px-2 py-1 bg-success bg-opacity-20 text-success rounded-sm text-sm"
+          class="inline-flex items-center gap-1 px-2 py-1 bg-green-500/20 text-success rounded-sm text-sm"
         >
           {{ preset.icon }} {{ preset.name }}
           <button @click="togglePreset(preset)" class="hover:text-white">×</button>

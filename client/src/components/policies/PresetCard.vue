@@ -10,7 +10,7 @@
   <div 
     class="preset-card border rounded-lg p-4 cursor-pointer transition-all"
     :class="{ 
-      'border-primary bg-primary bg-opacity-10': selected,
+      'border-primary bg-blue-500/10': selected,
       'border-gray-800 hover:border-gray-700': !selected
     }"
     @click="$emit('toggle')"

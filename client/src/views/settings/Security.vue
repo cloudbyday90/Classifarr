@@ -115,7 +115,7 @@
     </div>
 
     <!-- Create API Key Dialog -->
-    <div v-if="showCreateDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div v-if="showCreateDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
         <h3 class="text-xl font-semibold mb-4">Create New API Key</h3>
         
@@ -170,7 +170,7 @@
     <!-- Show API Key Dialog (after creation or reveal) -->
     <!-- NOTE: Users can view full keys again - this is intentional for usability -->
     <!-- Keys are stored encrypted so they can be retrieved when needed -->
-    <div v-if="showKeyDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div v-if="showKeyDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
         <h3 class="text-xl font-semibold mb-4">
           {{ revealedKey.justCreated ? 'API Key Created' : 'API Key' }}
@@ -225,7 +225,7 @@
     </div>
 
     <!-- Delete Confirmation Dialog -->
-    <div v-if="showDeleteDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div v-if="showDeleteDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
         <h3 class="text-xl font-semibold mb-4">Revoke API Key</h3>
         

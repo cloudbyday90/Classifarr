@@ -26,7 +26,7 @@
           </h3>
           <button
             @click="addAllSuggested"
-            class="text-xs px-2 py-1 bg-primary bg-opacity-20 text-primary rounded-sm hover:bg-opacity-30 transition-colors"
+            class="text-xs px-2 py-1 bg-blue-500/20 text-primary rounded-sm hover:bg-blue-500/30 transition-colors"
           >
             + Add All
           </button>
@@ -38,8 +38,8 @@
             @click="togglePresetSelection(preset)"
             class="flex items-center gap-3 p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:bg-gray-800"
             :class="isPresetSelected(preset.id) 
-              ? 'bg-success bg-opacity-10 border-success' 
-              : 'bg-primary bg-opacity-10 border-primary'"
+              ? 'bg-green-500/10 border-success' 
+              : 'bg-blue-500/10 border-primary'"
           >
             <div v-if="isPresetSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
               <span class="text-white text-xs font-bold">✓</span>
@@ -92,7 +92,7 @@
           @click="togglePresetSelection(preset)"
           class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-800"
           :class="isPresetSelected(preset.id) 
-            ? 'bg-success bg-opacity-10 border-success' 
+            ? 'bg-green-500/10 border-success' 
             : 'bg-background-light border-gray-700'"
         >
           <div v-if="isPresetSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
@@ -108,7 +108,7 @@
           </div>
           <span 
             v-if="preset.source === 'custom'" 
-            class="text-xs px-1.5 py-0.5 bg-blue-900 bg-opacity-50 text-blue-300 rounded-sm"
+            class="text-xs px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded-sm"
           >
             Custom
           </span>
@@ -170,7 +170,7 @@
                     <span 
                       v-for="cert in getPresetBaseSignals(sp, 'certifications', 'include')" 
                       :key="'base-inc-'+cert"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900 bg-opacity-30 text-green-400 rounded-sm"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'certifications', 'include', cert)}"
                     >
                       {{ cert }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
@@ -181,7 +181,7 @@
                     <span 
                       v-for="cert in getCustomSignalList(sp, 'certifications', 'include')" 
                       :key="'cust-inc-'+cert"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900 bg-opacity-30 text-blue-400 rounded-sm"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm"
                     >
                       + {{ cert }}
                       <button @click="removeCustomSignal(sp, 'certifications', 'include', cert)" class="hover:text-red-400">×</button>
@@ -203,7 +203,7 @@
                     <span 
                       v-for="g in getPresetBaseSignals(sp, 'genres', 'prefer')" 
                       :key="'base-pref-'+g"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900 bg-opacity-30 text-blue-400 rounded-sm"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm"
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'genres', 'prefer', g)}"
                     >
                       {{ g }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
@@ -214,7 +214,7 @@
                     <span 
                       v-for="g in getPresetBaseSignals(sp, 'genres', 'exclude')" 
                       :key="'base-exc-'+g"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900 bg-opacity-30 text-red-400 rounded-sm"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm"
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'genres', 'exclude', g)}"
                     >
                       ✕ {{ g }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
@@ -225,7 +225,7 @@
                     <span 
                       v-for="g in getCustomSignalList(sp, 'genres', 'prefer')" 
                       :key="'cust-pref-'+g"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900 bg-opacity-30 text-green-400 rounded-sm"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
                     >
                       + {{ g }}
                       <button @click="removeCustomSignal(sp, 'genres', 'prefer', g)" class="hover:text-red-400">×</button>
@@ -250,7 +250,7 @@
                     <span 
                       v-for="k in getPresetBaseSignals(sp, 'keywords', 'exclude')" 
                       :key="'base-exc-'+k"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900 bg-opacity-30 text-red-400 rounded-sm"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm"
                       :class="{'opacity-40 line-through': isSignalRemoved(sp, 'keywords', 'exclude', k)}"
                     >
                       ✕ {{ k }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
@@ -261,7 +261,7 @@
                     <span 
                       v-for="k in getCustomSignalList(sp, 'keywords', 'require_any')" 
                       :key="'cust-req-'+k"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900 bg-opacity-30 text-green-400 rounded-sm"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
                     >
                       + {{ k }}
                       <button @click="removeCustomSignal(sp, 'keywords', 'require_any', k)" class="hover:text-red-400">×</button>
@@ -294,7 +294,7 @@
                 <span 
                   v-for="item in combinedSignals.certifications.include" 
                   :key="'comb-cert-'+item.value"
-                  class="px-2 py-0.5 bg-green-900 bg-opacity-30 text-green-400 rounded-sm text-xs"
+                  class="px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm text-xs"
                   :title="'From: ' + item.sources.join(', ')"
                 >
                   {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
@@ -309,7 +309,7 @@
                 <span 
                   v-for="item in combinedSignals.genres.prefer" 
                   :key="'comb-genre-'+item.value"
-                  class="px-2 py-0.5 bg-blue-900 bg-opacity-30 text-blue-400 rounded-sm text-xs"
+                  class="px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm text-xs"
                   :title="'From: ' + item.sources.join(', ')"
                 >
                   {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
@@ -324,7 +324,7 @@
                 <span 
                   v-for="item in combinedSignals.genres.exclude" 
                   :key="'comb-exc-'+item.value"
-                  class="px-2 py-0.5 bg-red-900 bg-opacity-30 text-red-400 rounded-sm text-xs"
+                  class="px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm text-xs"
                   :title="'From: ' + item.sources.join(', ')"
                 >
                   ✕ {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
@@ -340,7 +340,7 @@
                 <span 
                   v-for="item in combinedSignals.keywords.prefer" 
                   :key="'comb-pref-'+item.value"
-                  class="px-2 py-0.5 bg-blue-900 bg-opacity-30 text-blue-400 rounded-sm text-xs"
+                  class="px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm text-xs"
                   :title="'From: ' + item.sources.join(', ')"
                 >
                   {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
@@ -355,7 +355,7 @@
                 <span 
                   v-for="item in combinedSignals.keywords.exclude" 
                   :key="'comb-kw-'+item.value"
-                  class="px-2 py-0.5 bg-red-900 bg-opacity-30 text-red-400 rounded-sm text-xs"
+                  class="px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm text-xs"
                   :title="'From: ' + item.sources.join(', ')"
                 >
                   ✕ {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
@@ -370,7 +370,7 @@
                 <span 
                   v-for="item in combinedSignals.keywords.require_any" 
                   :key="'comb-req-'+item.value"
-                  class="px-2 py-0.5 bg-green-900 bg-opacity-30 text-green-400 rounded-sm text-xs"
+                  class="px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm text-xs"
                   :title="'From: ' + item.sources.join(', ')"
                 >
                   {{ item.value }} <span class="text-gray-500">({{ item.sources.length }})</span>
@@ -457,7 +457,7 @@
             
             <div 
               class="text-sm p-3 rounded-lg"
-              :class="Math.abs(totalWeight - 1) > 0.001 ? 'bg-yellow-900 bg-opacity-20 text-yellow-400' : 'bg-green-900 bg-opacity-20 text-green-400'"
+              :class="Math.abs(totalWeight - 1) > 0.001 ? 'bg-yellow-900/20 text-yellow-400' : 'bg-green-900/20 text-green-400'"
             >
               Total: {{ Math.round(totalWeight * 100) }}% 
               <span v-if="Math.abs(totalWeight - 1) > 0.001">(should equal 100%)</span>

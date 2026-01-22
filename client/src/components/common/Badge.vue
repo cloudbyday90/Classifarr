@@ -27,11 +27,11 @@ const props = defineProps({
 
 const badgeClasses = computed(() => {
   const variants = {
-    default: 'bg-gray-700 text-gray-200',
-    success: 'bg-success bg-opacity-20 text-success',
-    warning: 'bg-warning bg-opacity-20 text-warning',
-    error: 'bg-error bg-opacity-20 text-error',
-    info: 'bg-primary bg-opacity-20 text-primary',
+    default: 'bg-gray-700/50 text-gray-300 border border-gray-600',
+    success: 'bg-green-500/20 text-success',
+    warning: 'bg-yellow-500/20 text-warning',
+    error: 'bg-red-500/20 text-error',
+    info: 'bg-blue-500/20 text-primary',
   }
   return variants[props.variant] || variants.default
 })

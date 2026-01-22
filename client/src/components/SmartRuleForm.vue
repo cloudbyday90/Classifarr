@@ -486,7 +486,7 @@
     <!-- Pattern Selection Modal -->
     <div 
       v-if="showPatternModal" 
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/75"
       @click.self="cancelPatternSelection"
     >
       <div class="bg-background border border-gray-700 rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">

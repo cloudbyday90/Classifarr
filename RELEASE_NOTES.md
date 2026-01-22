@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## v0.40.2a-alpha
+
+**Title: UI Color Opacity Fix**
+
+### Fixes
+
+- **Tailwind v4 Opacity Issue**: Fixed widespread issue where badges, modals, and overlays appeared as solid "blobs" with invisible text.
+  - Migrated 30+ instances of legacy `bg-opacity-{value}` utilities to modern slash syntax (e.g., `bg-green-500/20`).
+  - Affected components: Badges, Modal Overlays, Policy Builder, Preset Cards, and Security Settings.
+  - Text in badges is now visible, and modal backdrops are correctly transparent.
+
+---
+
 ## v0.40.2-alpha
 
 **Title: Activity Dashboard Ghost Tasks Fix**

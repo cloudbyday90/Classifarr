@@ -110,7 +110,7 @@
               <span
                 v-for="keyword in preset.signals.keywords.prefer"
                 :key="keyword"
-                class="px-3 py-1 bg-success bg-opacity-20 text-success rounded-full text-sm"
+                class="px-3 py-1 bg-green-500/20 text-success rounded-full text-sm"
               >
                 {{ keyword }}
               </span>
@@ -122,7 +122,7 @@
               <span
                 v-for="keyword in preset.signals.keywords.exclude"
                 :key="keyword"
-                class="px-3 py-1 bg-error bg-opacity-20 text-error rounded-full text-sm"
+                class="px-3 py-1 bg-red-500/20 text-error rounded-full text-sm"
               >
                 {{ keyword }}
               </span>
