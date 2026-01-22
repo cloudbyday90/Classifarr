@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.1a-alpha] - 2026-01-22
+
+### Fixed
+
+- **TailwindCSS v4 Compatibility**: Added `@reference "../../style.css"` to `Sidebar.vue` scoped styles for proper theme access.
+- **PasswordInput Toggle**: Fixed invalid JavaScript `visible = visible!` → `visible = !visible`.
+
 ## [0.40.1-alpha] - 2026-01-22
 
 ### Added

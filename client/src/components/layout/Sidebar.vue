@@ -116,7 +116,7 @@
     </div>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.40.1-alpha</div>
+      <div>v0.40.1a-alpha</div>
     </div>
   </aside>
 </template>
@@ -195,6 +195,8 @@ const isActive = (path) => {
 </script>
 
 <style scoped>
+@reference "../../style.css";
+
 .section-header {
   @apply text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-2 mt-2;
 }

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## v0.40.1a-alpha
+
+**Title: CI/CD Build Fixes**
+
+### Fixes
+
+- **TailwindCSS v4 Compatibility**: Added `@reference` directive to `Sidebar.vue` scoped styles to fix build failures with TailwindCSS v4.
+  - Scoped styles using `@apply` now correctly reference the theme CSS file.
+- **Password Visibility Toggle**: Fixed JavaScript syntax error in `PasswordInput.vue` where `visible = visible!` was invalid (corrected to `visible = !visible`).
+
+---
+
 ## v0.40.1-alpha
 
 **Title: SWR Persistence & Modernization**
