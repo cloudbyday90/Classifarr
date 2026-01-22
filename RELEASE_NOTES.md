@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+## v0.40.3-alpha
+
+**Title: Polished Branding & Smarter Sync**
+
+> [!IMPORTANT]
+> This release includes a fix for media server connection issues. If you previously encountered a "duplicate key" error when changing servers, this update resolves it.
+
+### New Features
+
+- **New Logo & Favicon**: Updated application branding with a modern, flush logo and optimized favicon.
+- **Differential Library Sync**: Changing your Media Server IP/URL (for the same server) no longer wipes your classification history. The system now intelligently matches libraries by external ID.
+
+### Fixes
+
+- **Change Server Error**: Fixed a database constraint violation that prevented changing media servers if separate libraries had the same name (e.g. "Movies").
+- **Connect & Save Button**: Clarified UI feedback when saving server configurations.
+
+### Improvements
+
+- **Test Suite**: comprehensive test coverage for backend API and frontend components.
+
+---
+
 ## v0.40.2a-alpha
 
 **Title: UI Color Opacity Fix**
