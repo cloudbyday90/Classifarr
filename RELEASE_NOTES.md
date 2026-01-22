@@ -11,19 +11,31 @@
 
 ### New Features
 
-- **SWR Caching**: Instant data loading for Dashboard and Statistics pages.
-- **Circuit Breaker**: Robust offline handling for Ollama connection issues.
+- **SWR (Stale-While-Revalidate) Caching for Dashboard and Statistics**:
+  - New `useSWR` composable for instant data display from localStorage cache while fetching fresh data in background
+  - Dashboard now shows cached data immediately on page load with "⏳ Updating..." indicator during refresh
+  - Classification Stats page integrated with SWR for instant statistics display
+  - RAG Stats page integrated with SWR while maintaining 5-second polling for real-time updates
+  - Offline support: Displays cached data with "📡 Offline" indicator when network unavailable
+  - Cross-tab synchronization: Data updates in one tab automatically reflect in others
+  - Auto-retry with exponential backoff (1s → 3s → 10s) for failed requests
+  - Separate cache management for queue stats (30s TTL with 5s polling) vs main dashboard data (60s TTL)
+  - New `CACHE_KEYS` and `CACHE_TTL` constants for centralized cache configuration
+  - Comprehensive test suite with 29 unit tests for the SWR composable
+- **Circuit Breaker**: Added strict offline handling for Ollama embeddings to prevent log spam.
+- **Tailwind CSS v4**: Migrated client to Tailwind CSS v4 for better performance and modern features.
 
 ### Improvements
 
 - **Performance**: Significant frontend performance boost from Tailwind v4.
 - **Dependencies**: Updated Core Stack (Vue 3.5, Pinia 3.0, Jest 30, pg 8.17).
 - **UI**: Cleaner Dashboard without manual refresh button.
+- **Backfill**: Idle backfill now pauses intelligently when provider is offline.
 
 ### Fixes
 
-- Suppressed Ollama connection error logs.
-- Fixed Dashboard integration tests.
+- Fixed integration tests for Dashboard component.
+- Fixed `localStorage` environment issues in tests.
 
 ---
 
