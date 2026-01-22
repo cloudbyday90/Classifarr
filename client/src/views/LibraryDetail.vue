@@ -95,7 +95,7 @@
                     <span 
                       v-for="keyword in getEventKeywords(library.event_detection_type, library.event_sub_type)" 
                       :key="keyword"
-                      class="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded"
+                      class="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded-sm"
                     >
                       {{ keyword }}
                     </span>
@@ -190,7 +190,7 @@
                   :id="`tag-${tag.id}`"
                   :value="tag.id"
                   v-model="radarrSettings.tags"
-                  class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                  class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded-sm focus:ring-blue-500"
                 />
                 <label :for="`tag-${tag.id}`" class="ml-2 text-sm text-gray-300">
                   {{ tag.label }}
@@ -263,7 +263,7 @@
                   :id="`tag-${tag.id}`"
                   :value="tag.id"
                   v-model="sonarrSettings.tags"
-                  class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                  class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded-sm focus:ring-blue-500"
                 />
                 <label :for="`tag-${tag.id}`" class="ml-2 text-sm text-gray-300">
                   {{ tag.label }}
@@ -326,7 +326,7 @@
               <span class="text-blue-400 font-medium">📊 Suggested Rules (based on {{ suggestionsItemCount }} items)</span>
               <button @click="suggestions = []" class="text-gray-400 hover:text-white text-sm">✕ Dismiss</button>
             </div>
-            <div v-for="(suggestion, idx) in suggestions" :key="idx" class="flex items-center gap-3 bg-dark-600 rounded p-3">
+            <div v-for="(suggestion, idx) in suggestions" :key="idx" class="flex items-center gap-3 bg-dark-600 rounded-sm p-3">
               <div class="flex-1">
                 <div class="text-sm font-medium text-gray-200">{{ suggestion.description }}</div>
                 <div class="text-xs text-gray-500 mt-1">{{ suggestion.rule_type }}: {{ suggestion.value }}</div>

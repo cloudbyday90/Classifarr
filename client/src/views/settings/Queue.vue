@@ -90,7 +90,7 @@
           <p class="text-sm text-gray-400 mb-2">Number of tasks to process simultaneously</p>
           <select
             v-model="settings.concurrentWorkers"
-            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-32"
+            class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-32"
           >
             <option :value="1">1</option>
             <option :value="2">2</option>
@@ -105,7 +105,7 @@
           <p class="text-sm text-gray-400 mb-2">How often the Activity page polls for updates (reduces log noise)</p>
           <select
             v-model="settings.activityRefreshInterval"
-            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-40"
+            class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-40"
           >
             <option :value="5">5 seconds</option>
             <option :value="10">10 seconds</option>
@@ -128,7 +128,7 @@
           <p class="text-sm text-gray-400 mb-2">How many times to retry failed tasks before giving up</p>
           <select
             v-model="settings.maxRetryAttempts"
-            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-32"
+            class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-32"
           >
             <option :value="3">3</option>
             <option :value="5">5 (default)</option>
@@ -143,7 +143,7 @@
           <p class="text-sm text-gray-400 mb-2">How to space out retry attempts</p>
           <select
             v-model="settings.retryStrategy"
-            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-48"
+            class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-48"
           >
             <option value="exponential">Exponential Backoff</option>
             <option value="linear">Linear (fixed delay)</option>
@@ -177,7 +177,7 @@
           </div>
           <select
             v-model="settings.autoDeleteCompleted"
-            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-40"
+            class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-40"
           >
             <option value="never">Never</option>
             <option value="1d">After 1 day</option>
@@ -195,7 +195,7 @@
           </div>
           <select
             v-model="settings.autoDeleteFailed"
-            class="bg-gray-700 border border-gray-600 rounded px-3 py-2 w-40"
+            class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-40"
           >
             <option value="never">Never (default)</option>
             <option value="7d">After 7 days</option>
@@ -218,7 +218,7 @@
         <button
           @click="saveSettings"
           :disabled="saving"
-          class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded font-medium transition-colors disabled:opacity-50"
+          class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-sm font-medium transition-colors disabled:opacity-50"
         >
           {{ saving ? 'Saving...' : 'Save Settings' }}
         </button>
@@ -234,7 +234,7 @@
           @click="clearCompleted"
           :disabled="actionLoading || stats.completed === 0"
           title="Removes completed entries from the queue list (does not affect classification history)"
-          class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           🧹 Clear Completed ({{ stats.completed }})
         </button>
@@ -242,7 +242,7 @@
           @click="clearFailed"
           :disabled="actionLoading || stats.failed === 0"
           title="Removes permanently failed entries from the queue list"
-          class="px-4 py-2 bg-red-900/50 hover:bg-red-800/50 text-red-300 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-4 py-2 bg-red-900/50 hover:bg-red-800/50 text-red-300 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           ❌ Clear Failed ({{ stats.failed }})
         </button>
@@ -250,7 +250,7 @@
           @click="retryAllFailed"
           :disabled="actionLoading || stats.failed === 0"
           title="Re-queues all failed tasks to try again"
-          class="px-4 py-2 bg-blue-900/50 hover:bg-blue-800/50 text-blue-300 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-4 py-2 bg-blue-900/50 hover:bg-blue-800/50 text-blue-300 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           🔄 Retry All Failed ({{ stats.failed }})
         </button>
@@ -258,7 +258,7 @@
           @click="cancelAllPending"
           :disabled="actionLoading || stats.pending === 0"
           title="Cancels all pending tasks in the queue"
-          class="px-4 py-2 bg-yellow-900/50 hover:bg-yellow-800/50 text-yellow-300 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-4 py-2 bg-yellow-900/50 hover:bg-yellow-800/50 text-yellow-300 rounded-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           ⏹ Cancel All Pending ({{ stats.pending }})
         </button>
@@ -278,20 +278,20 @@
         <button
           @click="reprocessCompleted"
           :disabled="actionLoading"
-          class="px-4 py-2 bg-purple-900/50 hover:bg-purple-800/50 text-purple-300 rounded transition-colors disabled:opacity-50"
+          class="px-4 py-2 bg-purple-900/50 hover:bg-purple-800/50 text-purple-300 rounded-sm transition-colors disabled:opacity-50"
         >
           🔄 Reprocess All Completed
         </button>
         <button
           @click="showCarsaDialog"
           :disabled="actionLoading"
-          class="px-4 py-2 bg-orange-900/50 hover:bg-orange-800/50 text-orange-300 rounded transition-colors disabled:opacity-50"
+          class="px-4 py-2 bg-orange-900/50 hover:bg-orange-800/50 text-orange-300 rounded-sm transition-colors disabled:opacity-50"
         >
           🗑️ Clear & Re-sync All
         </button>
       </div>
       
-      <div class="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded text-sm">
+      <div class="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-sm text-sm">
         <p class="text-yellow-300 font-medium">⚠️ About these actions:</p>
         <ul class="text-yellow-200/80 mt-1 ml-4 list-disc space-y-1">
           <li><strong>Reprocess Completed</strong>: Re-queues all completed classifications using updated rules</li>

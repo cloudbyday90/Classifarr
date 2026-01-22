@@ -8,9 +8,14 @@
 
 <template>
   <div class="space-y-6">
-    <!-- Loading -->
-    <div v-if="loading" class="text-center py-8 text-gray-400">
+    <!-- Loading (only when no cached data) -->
+    <div v-if="loading && !stats" class="text-center py-8 text-gray-400">
       Loading statistics...
+    </div>
+    
+    <!-- Updating indicator when showing stale data -->
+    <div v-else-if="isStale" class="text-center py-2">
+      <span class="text-xs text-gray-400 animate-pulse">⏳ Updating...</span>
     </div>
 
     <div v-else class="space-y-6">
@@ -173,22 +178,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { computed } from 'vue'
+import { useSWR } from '@/composables/useSWR'
+import { CACHE_KEYS, CACHE_TTL } from '@/constants/cacheKeys'
 import api from '@/api'
 
-const loading = ref(true)
-const stats = ref({})
-
-onMounted(async () => {
-  try {
+// SWR: Classification stats with 60s cache
+const {
+  data: statsData,
+  isLoading,
+  isStale,
+  error
+} = useSWR(
+  CACHE_KEYS.STATS_CLASSIFICATION,
+  async () => {
     const response = await api.getDetailedStats()
-    stats.value = response.data
-  } catch (error) {
-    console.error('Failed to load stats:', error)
-  } finally {
-    loading.value = false
-  }
-})
+    return response.data
+  },
+  { ttl: CACHE_TTL.MEDIUM, initialData: {} }
+)
+
+// Computed for template compatibility
+const loading = computed(() => isLoading.value && !statsData.value)
+const stats = computed(() => statsData.value || {})
 
 const maxDaily = computed(() => {
   if (!stats.value.daily?.length) return 1

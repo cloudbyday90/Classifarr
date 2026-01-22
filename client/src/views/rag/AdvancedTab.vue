@@ -19,7 +19,7 @@
             type="number"
             min="0"
             max="10"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
           <p class="mt-1 text-xs text-gray-500">Number of retry attempts on failure (default: 3)</p>
         </div>
@@ -32,7 +32,7 @@
             min="100"
             max="10000"
             step="100"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
           <p class="mt-1 text-xs text-gray-500">Delay between retries (default: 1000)</p>
         </div>
@@ -45,7 +45,7 @@
             min="5000"
             max="120000"
             step="1000"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
           <p class="mt-1 text-xs text-gray-500">Timeout for embedding requests (default: 30000)</p>
         </div>
@@ -65,7 +65,7 @@
             min="10000"
             max="600000"
             step="1000"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
           <p class="mt-1 text-xs text-gray-500">Extended timeout for cold model (default: 120000ms / 120s)</p>
         </div>
@@ -78,7 +78,7 @@
             min="5000"
             max="300000"
             step="1000"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
           <p class="mt-1 text-xs text-gray-500">Normal timeout for warm model (default: 30000ms / 30s)</p>
         </div>
@@ -91,7 +91,7 @@
             min="1"
             max="5"
             step="0.1"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
           <p class="mt-1 text-xs text-gray-500">Exponential backoff multiplier (default: 2.0)</p>
         </div>
@@ -104,7 +104,7 @@
             min="0"
             max="1"
             step="0.01"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           />
           <p class="mt-1 text-xs text-gray-500">Randomization factor (0-1, default: 0.3 for ±30%)</p>
         </div>
@@ -116,9 +116,9 @@
         <div class="space-y-2">
           <div v-for="(delay, i) in exampleBackoffSequence" :key="i" class="flex items-center gap-2 text-sm">
             <span class="text-gray-500 w-20">Attempt {{ i + 1 }}:</span>
-            <div class="flex-1 bg-gray-700 rounded h-2 relative overflow-hidden">
+            <div class="flex-1 bg-gray-700 rounded-sm h-2 relative overflow-hidden">
               <div 
-                class="bg-blue-500 h-full rounded"
+                class="bg-blue-500 h-full rounded-sm"
                 :style="{ width: (delay / maxExampleDelay * 100) + '%' }"
               ></div>
             </div>
@@ -153,7 +153,7 @@
             type="checkbox"
             class="sr-only peer"
           />
-          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
         </label>
       </div>
 
@@ -164,7 +164,7 @@
           type="number"
           min="1"
           max="168"
-          class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
         />
         <p class="mt-1 text-xs text-gray-500">How long to cache embeddings (default: 24 hours)</p>
       </div>
@@ -185,7 +185,7 @@
               type="checkbox"
               class="sr-only peer"
             />
-            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
           </label>
         </div>
 
@@ -200,7 +200,7 @@
               type="checkbox"
               class="sr-only peer"
             />
-            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
           </label>
         </div>
       </div>

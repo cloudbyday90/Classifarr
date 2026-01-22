@@ -63,7 +63,7 @@
           <div 
             v-for="lib in unmappedLibraries" 
             :key="lib.id"
-            class="flex items-center justify-between bg-gray-800/50 rounded p-3"
+            class="flex items-center justify-between bg-gray-800/50 rounded-sm p-3"
           >
             <div>
               <span class="font-medium">{{ lib.name }}</span>
@@ -71,7 +71,7 @@
             </div>
             <button 
               @click="openMappingModal(lib)"
-              class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+              class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-sm text-sm"
             >
               Configure
             </button>
@@ -104,7 +104,7 @@
                 <span class="text-sm">{{ mapping.arr_type === 'radarr' ? '🎬' : '📺' }} {{ mapping.arr_type }}</span>
               </td>
               <td class="p-3">
-                <code class="text-xs bg-gray-900 px-2 py-1 rounded">{{ mapping.arr_root_folder_path }}</code>
+                <code class="text-xs bg-gray-900 px-2 py-1 rounded-sm">{{ mapping.arr_root_folder_path }}</code>
               </td>
               <td class="p-3 flex gap-2">
                 <button 
@@ -219,7 +219,7 @@
     </div>
 
     <!-- Folder Browser Modal -->
-    <div v-if="showFolderBrowser" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" @click.self="closeFolderBrowser">
+    <div v-if="showFolderBrowser" class="fixed inset-0 bg-black/50 flex items-center justify-center z-60" @click.self="closeFolderBrowser">
       <div class="bg-gray-800 rounded-lg border border-gray-700 max-w-lg w-full mx-4 max-h-[80vh] flex flex-col">
         <div class="p-4 border-b border-gray-700 flex items-center justify-between">
           <h3 class="text-lg font-medium">Browse Folders</h3>
@@ -231,11 +231,11 @@
             <button 
               v-if="browsingPath !== '/'"
               @click="browseTo(browsingPath.split('/').slice(0, -1).join('/') || '/')"
-              class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+              class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-sm text-sm"
             >
               ⬆️ Up
             </button>
-            <code class="flex-1 text-sm bg-gray-900 px-3 py-2 rounded overflow-hidden text-ellipsis">{{ browsingPath }}</code>
+            <code class="flex-1 text-sm bg-gray-900 px-3 py-2 rounded-sm overflow-hidden text-ellipsis">{{ browsingPath }}</code>
           </div>
         </div>
         
@@ -251,7 +251,7 @@
               v-for="folder in browserFolders" 
               :key="folder.path"
               @click="browseTo(folder.path)"
-              class="w-full text-left px-3 py-2 hover:bg-gray-700 rounded flex items-center gap-2"
+              class="w-full text-left px-3 py-2 hover:bg-gray-700 rounded-sm flex items-center gap-2"
             >
               <span>📁</span>
               <span>{{ folder.name }}</span>

@@ -108,14 +108,23 @@
       </div>
     </nav>
 
+    <!-- Offline Banner -->
+    <div v-if="isOffline" class="mx-2 mb-2 px-3 py-2 bg-yellow-900/30 border border-yellow-700/50 rounded-lg text-center">
+      <span class="text-xs text-yellow-400 flex items-center justify-center gap-1">
+        📡 Offline - Using cached data
+      </span>
+    </div>
+
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.40.0-alpha</div>
+      <div>v0.40.1-alpha</div>
     </div>
   </aside>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useOnline } from '@vueuse/core'
 import {
   HomeIcon,
   FolderIcon,
@@ -145,6 +154,8 @@ defineProps({
 defineEmits(['close'])
 
 const route = useRoute()
+const online = useOnline()
+const isOffline = computed(() => !online.value)
 
 // Media section
 const mediaMenuItems = [

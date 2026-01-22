@@ -89,7 +89,7 @@
             @click="startBackfill"
             :disabled="isProcessing || stats.needsNormalization === 0"
             :class="[
-              'px-4 py-2 rounded font-medium transition-colors',
+              'px-4 py-2 rounded-sm font-medium transition-colors',
               isProcessing || stats.needsNormalization === 0
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -109,7 +109,7 @@
             @click="fetchStats"
             :disabled="isRefreshing"
             :class="[
-              'px-4 py-2 rounded font-medium transition-colors',
+              'px-4 py-2 rounded-sm font-medium transition-colors',
               isRefreshing
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : 'bg-gray-700 hover:bg-gray-600 text-white'
@@ -129,7 +129,7 @@
             @click="finalize"
             :disabled="isFinalizing"
             :class="[
-              'px-4 py-2 rounded font-medium transition-colors',
+              'px-4 py-2 rounded-sm font-medium transition-colors',
               isFinalizing
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : 'bg-green-600 hover:bg-green-700 text-white'
@@ -147,7 +147,7 @@
       <p class="text-sm text-gray-400 mb-4">Examples of how ratings are normalized:</p>
       
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="bg-gray-700/50 rounded p-3">
+        <div class="bg-gray-700/50 rounded-sm p-3">
           <div class="text-xs text-gray-400 mb-1">Age-based (Movies)</div>
           <div class="flex items-center gap-2">
             <span class="text-yellow-400 font-mono">13</span>
@@ -161,7 +161,7 @@
           </div>
         </div>
 
-        <div class="bg-gray-700/50 rounded p-3">
+        <div class="bg-gray-700/50 rounded-sm p-3">
           <div class="text-xs text-gray-400 mb-1">UK Ratings</div>
           <div class="flex items-center gap-2">
             <span class="text-yellow-400 font-mono">U</span>
@@ -175,7 +175,7 @@
           </div>
         </div>
 
-        <div class="bg-gray-700/50 rounded p-3">
+        <div class="bg-gray-700/50 rounded-sm p-3">
           <div class="text-xs text-gray-400 mb-1">German (FSK)</div>
           <div class="flex items-center gap-2">
             <span class="text-yellow-400 font-mono">FSK 12</span>

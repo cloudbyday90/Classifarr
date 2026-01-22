@@ -26,25 +26,25 @@
     <!-- Stats Cards -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <!-- Classified Today -->
-      <div class="bg-gradient-to-br from-blue-600/20 to-blue-800/20 border border-blue-500/30 rounded-xl p-4">
+      <div class="bg-linear-to-br from-blue-600/20 to-blue-800/20 border border-blue-500/30 rounded-xl p-4">
         <div class="text-3xl font-bold text-blue-400">{{ stats.classifiedToday }}</div>
         <div class="text-sm text-gray-400">Classified Today</div>
       </div>
 
       <!-- Average Confidence -->
-      <div class="bg-gradient-to-br from-green-600/20 to-green-800/20 border border-green-500/30 rounded-xl p-4">
+      <div class="bg-linear-to-br from-green-600/20 to-green-800/20 border border-green-500/30 rounded-xl p-4">
         <div class="text-3xl font-bold text-green-400">{{ stats.avgConfidence }}%</div>
         <div class="text-sm text-gray-400">Avg Confidence</div>
       </div>
 
       <!-- Queue Pending -->
-      <div class="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 border border-yellow-500/30 rounded-xl p-4">
+      <div class="bg-linear-to-br from-yellow-600/20 to-yellow-800/20 border border-yellow-500/30 rounded-xl p-4">
         <div class="text-3xl font-bold text-yellow-400">{{ stats.queuePending }}</div>
         <div class="text-sm text-gray-400">Queue Pending</div>
       </div>
 
       <!-- System Health -->
-      <div class="bg-gradient-to-br from-purple-600/20 to-purple-800/20 border border-purple-500/30 rounded-xl p-4">
+      <div class="bg-linear-to-br from-purple-600/20 to-purple-800/20 border border-purple-500/30 rounded-xl p-4">
         <div class="flex items-center space-x-2">
           <span v-if="stats.health.ai && stats.health.worker" class="text-2xl">✅</span>
           <span v-else-if="stats.health.ai || stats.health.worker" class="text-2xl">⚠️</span>
@@ -68,7 +68,7 @@
         <!-- Progress Bar -->
         <div class="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
           <div 
-            class="h-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
+            class="h-4 rounded-full bg-linear-to-r from-blue-500 to-purple-500 transition-all duration-500"
             :style="{ width: `${stats.gapAnalysis.progressPercent}%` }"
           ></div>
         </div>
@@ -102,7 +102,7 @@
         <!-- Progress Bar -->
         <div class="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
           <div 
-            class="h-4 rounded-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-500"
+            class="h-4 rounded-full bg-linear-to-r from-green-500 to-blue-500 transition-all duration-500"
             :style="{ width: `${stats.enrichment.progress}%` }"
           ></div>
         </div>
@@ -130,7 +130,7 @@
             <button 
               @click="processRetryQueue" 
               :disabled="retryProcessing"
-              class="px-3 py-1 text-xs bg-orange-600 hover:bg-orange-500 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="px-3 py-1 text-xs bg-orange-600 hover:bg-orange-500 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {{ retryProcessing ? 'Processing...' : 'Process Queue' }}
             </button>
@@ -157,7 +157,7 @@
         </div>
       </template>
       
-      <div class="flex items-center justify-between p-3 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-lg">
+      <div class="flex items-center justify-between p-3 bg-linear-to-r from-purple-900/30 to-blue-900/30 rounded-lg">
         <div class="space-y-1">
           <div class="font-medium text-purple-300">{{ ollamaStatus.itemTitle }}</div>
           <div class="text-sm text-gray-400">

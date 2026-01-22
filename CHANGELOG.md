@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.1-alpha] - 2026-01-22
+
+### Added
+
+- **Circuit Breaker**: Added strict offline handling for Ollama embeddings.
+- **Tailwind CSS v4**: Migrated to Tailwind CSS v4.
+- **SWR (Stale-While-Revalidate) Caching for Dashboard and Statistics**
+  - New `useSWR` composable for instant data display from localStorage cache while fetching fresh data in background
+  - Dashboard now shows cached data immediately on page load with "⏳ Updating..." indicator during refresh
+  - Classification Stats page integrated with SWR for instant statistics display
+  - RAG Stats page integrated with SWR while maintaining 5-second polling for real-time updates
+  - Offline support: Displays cached data with "📡 Offline" indicator when network unavailable
+  - Cross-tab synchronization: Data updates in one tab automatically reflect in others
+  - Auto-retry with exponential backoff (1s → 3s → 10s) for failed requests
+  - Separate cache management for queue stats (30s TTL with 5s polling) vs main dashboard data (60s TTL)
+  - New `CACHE_KEYS` and `CACHE_TTL` constants for centralized cache configuration
+  - Comprehensive test suite with 29 unit tests for the SWR composable
+
+### Changed
+
+- **Dependencies**: Updated `vue` (v3.5.27), `pinia` (v3.0.4), `pg` (v8.17.1), `bcrypt` (v6.0.0), `jest` (v30.2.0).
+- **Dashboard**: Removed manual refresh button in favor of automatic background revalidation.
+- **Backfill**: Idle backfill now pauses intelligently when provider is offline.
+
+### Fixed
+
+- Fixed integration tests for Dashboard component.
+- Fixed `localStorage` environment issues in tests.
+
 ## [v0.40.0-alpha] - 2026-01-17
 
 ### Improved

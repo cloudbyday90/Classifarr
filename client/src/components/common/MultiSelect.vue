@@ -21,7 +21,7 @@
         <span
           v-for="value in modelValue"
           :key="value"
-          class="inline-flex items-center gap-1 px-2 py-1 bg-primary/20 text-primary text-sm rounded"
+          class="inline-flex items-center gap-1 px-2 py-1 bg-primary/20 text-primary text-sm rounded-sm"
         >
           {{ getLabel(value) }}
           <button @click.stop="remove(value)" class="hover:text-white">×</button>
@@ -39,7 +39,7 @@
           @click="select(option.value)"
           class="px-4 py-2 hover:bg-primary/20 cursor-pointer flex items-center gap-2"
         >
-          <span class="w-4 h-4 border border-gray-600 rounded flex items-center justify-center"
+          <span class="w-4 h-4 border border-gray-600 rounded-sm flex items-center justify-center"
                 :class="isSelected(option.value) ? 'bg-primary border-primary' : ''">
             <span v-if="isSelected(option.value)" class="text-white text-xs">✓</span>
           </span>

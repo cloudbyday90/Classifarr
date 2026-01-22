@@ -19,22 +19,27 @@
       <h1 class="text-3xl font-bold">Dashboard</h1>
       
       <div class="flex items-center gap-3">
+        <!-- Offline indicator -->
+        <span v-if="isOffline" class="text-xs text-yellow-500 flex items-center gap-1">
+          📡 Offline
+        </span>
+        
+        <!-- Updating indicator (when showing stale cached data) -->
+        <span v-else-if="isStale" class="text-xs text-gray-400 animate-pulse">
+          ⏳ Updating...
+        </span>
+        
         <span v-if="lastUpdated" class="text-sm text-gray-400">
           Updated {{ formatRelativeTime(lastUpdated) }}
         </span>
-        <Button @click="loadDashboard" :disabled="loading" size="sm">
-          <span v-if="loading">🔄</span>
-          <span v-else>↻</span>
-          Refresh
-        </Button>
       </div>
     </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="grid grid-cols-2 md:grid-cols-5 gap-4">
       <div v-for="i in 5" :key="i" class="bg-gray-800 p-4 rounded-lg border border-gray-700 animate-pulse">
-        <div class="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
-        <div class="h-8 bg-gray-600 rounded w-1/2"></div>
+        <div class="h-4 bg-gray-700 rounded-sm w-3/4 mb-2"></div>
+        <div class="h-8 bg-gray-600 rounded-sm w-1/2"></div>
       </div>
     </div>
 
@@ -267,6 +272,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDocumentVisibility } from '@vueuse/core'
 import { useLibrariesStore } from '@/stores/libraries'
+import { useSWR } from '@/composables/useSWR'
+import { CACHE_KEYS, CACHE_TTL, POLL_INTERVALS } from '@/constants/cacheKeys'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -279,18 +286,79 @@ const librariesStore = useLibrariesStore()
 const visibility = useDocumentVisibility()
 
 // Constants
-const POLL_INTERVAL_MS = 5000
 const GITHUB_WIKI_URL = 'https://github.com/cloudbyday90/Classifarr/wiki'
 const DISCORD_INVITE_URL = 'https://discord.gg/classifarr'
 
-const stats = ref({})
-const loading = ref(false)
-const error = ref(null)
-const lastUpdated = ref(null)
+// ============================================
+// SWR: Main dashboard data (cached, instant load)
+// ============================================
+const {
+  data: dashboardData,
+  isLoading: dashboardLoading,
+  isStale,
+  error: dashboardError,
+  refresh: refreshDashboard,
+  isOffline,
+  cacheTimestamp
+} = useSWR(
+  CACHE_KEYS.DASHBOARD_MAIN,
+  async () => {
+    await librariesStore.fetchLibraries()
+    const [statsRes, historyRes, pendingRes] = await Promise.all([
+      api.getStats(),
+      api.getHistory({ page: 1, limit: 8, excludeMethod: 'source_library' }),
+      api.get('/classification/pending/count')
+    ])
+    return {
+      stats: statsRes.data,
+      recentHistory: historyRes.data.data || [],
+      awaitingDecisionCount: pendingRes.data.count || 0
+    }
+  },
+  { ttl: CACHE_TTL.MEDIUM }
+)
+
+// ============================================
+// Queue stats: Separate SWR with faster polling
+// ============================================
+const {
+  data: queueData,
+  refresh: refreshQueue
+} = useSWR(
+  CACHE_KEYS.DASHBOARD_QUEUE,
+  async () => {
+    try {
+      const liveRes = await api.getLiveStats()
+      if (liveRes?.data) {
+        return {
+          queueStats: liveRes.data.queue || { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true },
+          enrichmentStats: liveRes.data.enrichment || { totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 }
+        }
+      }
+    } catch {
+      // Fallback to basic queue stats
+      const res = await api.getQueueStats()
+      return { queueStats: res, enrichmentStats: null }
+    }
+    return { queueStats: { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true }, enrichmentStats: null }
+  },
+  { ttl: CACHE_TTL.SHORT, pollInterval: POLL_INTERVALS.FAST, pollOnlyWhenVisible: true }
+)
+
+// ============================================
+// Computed: Template compatibility + derived state
+// ============================================
+const loading = computed(() => dashboardLoading.value && !dashboardData.value)
+const error = computed(() => dashboardError.value?.message || null)
+const stats = computed(() => dashboardData.value?.stats || {})
+const recentHistory = computed(() => dashboardData.value?.recentHistory || [])
+const awaitingDecisionCount = computed(() => dashboardData.value?.awaitingDecisionCount || 0)
+const queueStats = computed(() => queueData.value?.queueStats || { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true })
+const enrichmentStats = computed(() => queueData.value?.enrichmentStats || { totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 })
+const lastUpdated = computed(() => cacheTimestamp.value ? new Date(cacheTimestamp.value) : null)
 
 // Compute average confidence from backend all-time data
 const computedAvgConfidence = computed(() => {
-  // Use backend avg_confidence if available (all-time average)
   if (stats.value.avg_confidence !== undefined && stats.value.avg_confidence !== null) {
     return stats.value.avg_confidence
   }
@@ -304,11 +372,6 @@ const sortedMethods = computed(() => {
   }
   return stats.value.byMethod
 })
-const recentHistory = ref([])
-const queueStats = ref({ pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true })
-const enrichmentStats = ref({ totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 })
-const awaitingDecisionCount = ref(0)
-let pollInterval = null
 
 // Format relative time helper
 const formatRelativeTime = (date) => {
@@ -320,70 +383,10 @@ const formatRelativeTime = (date) => {
   return `${Math.floor(seconds / 86400)}d ago`
 }
 
-onMounted(async () => {
-  await loadDashboard()
-  startPolling()
-})
-
-onUnmounted(() => {
-  if (pollInterval) clearInterval(pollInterval)
-})
-
-const loadDashboard = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    
-    await librariesStore.fetchLibraries()
-    
-    // Parallel fetch all required data including awaiting decision count
-    const [statsRes, historyRes, queueRes, pendingRes] = await Promise.all([
-      api.getStats(),
-      api.getHistory({ page: 1, limit: 8, excludeMethod: 'source_library' }),
-      api.getQueueStats(),
-      api.get('/classification/pending/count')
-    ])
-    
-    stats.value = statsRes.data
-    recentHistory.value = historyRes.data.data || []
-    queueStats.value = queueRes // getQueueStats already extracts .data
-    awaitingDecisionCount.value = pendingRes.data.count || 0
-    
-    lastUpdated.value = new Date()
-  } catch (err) {
-    console.error('Failed to load dashboard data:', err)
-    error.value = err.response?.data?.error || err.message || 'Unknown error'
-  } finally {
-    loading.value = false
-  }
-}
-
-const startPolling = () => {
-  if (pollInterval) clearInterval(pollInterval)
-  
-  pollInterval = setInterval(() => {
-    if (visibility.value === 'visible') {
-      loadQueueStats() // Only poll when tab is visible
-    }
-  }, POLL_INTERVAL_MS)
-}
-
-const loadQueueStats = async () => {
-  try {
-    const liveRes = await api.getLiveStats()
-    if (liveRes?.data) {
-      queueStats.value = liveRes.data.queue || queueStats.value
-      if (liveRes.data.enrichment) {
-        enrichmentStats.value = liveRes.data.enrichment
-      }
-    } else {
-      // Fallback to basic queue stats
-      const res = await api.getQueueStats()
-      queueStats.value = res
-    }
-  } catch (error) {
-    console.error('Failed to load queue stats:', error)
-  }
+// Manual refresh function for button
+const loadDashboard = () => {
+  refreshDashboard()
+  refreshQueue()
 }
 
 const getConfidenceVariant = (confidence) => {

@@ -8,12 +8,17 @@
 
 <template>
   <div class="space-y-6">
-    <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <!-- Loading State (only when no cached data) -->
+    <div v-if="loading && !ragData" class="flex items-center justify-center py-12">
       <div class="flex flex-col items-center gap-4">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         <p class="text-gray-400">Loading RAG statistics...</p>
       </div>
+    </div>
+    
+    <!-- Updating indicator when showing stale data -->
+    <div v-else-if="isStale" class="text-center py-2">
+      <span class="text-xs text-gray-400 animate-pulse">⏳ Updating...</span>
     </div>
 
     <!-- Error State -->
@@ -219,7 +224,7 @@
               <td class="px-4 py-2 text-gray-300">{{ err.latency }}ms</td>
               <td class="px-4 py-2">
                 <span :class="[
-                  'px-2 py-1 rounded text-xs',
+                  'px-2 py-1 rounded-sm text-xs',
                   err.retryable ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
                 ]">
                   {{ err.retryable ? 'Yes' : 'No' }}
@@ -287,7 +292,7 @@
               <td class="px-4 py-2 text-white">{{ run.type }}</td>
               <td class="px-4 py-2">
                 <span :class="[
-                  'px-2 py-1 rounded text-xs',
+                  'px-2 py-1 rounded-sm text-xs',
                   run.status === 'completed' ? 'bg-green-500/20 text-green-400' :
                   run.status === 'failed' ? 'bg-red-500/20 text-red-400' :
                   run.status === 'running' ? 'bg-blue-500/20 text-blue-400' :
@@ -334,26 +339,68 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
+import { useSWR } from '@/composables/useSWR'
+import { CACHE_KEYS, CACHE_TTL, POLL_INTERVALS } from '@/constants/cacheKeys'
 import api from '@/api'
 
-const stats = ref({
+// ============================================
+// SWR: RAG stats with 5s polling
+// ============================================
+const {
+  data: ragData,
+  isLoading,
+  isStale,
+  error: swrError,
+  refresh
+} = useSWR(
+  CACHE_KEYS.STATS_RAG,
+  async () => {
+    const response = await api.get('/rag/detailed', { params: { hours: 24 } })
+    
+    if (response.data.error) {
+      throw new Error(response.data.error)
+    }
+    
+    if (!response.data.stats) {
+      throw new Error('Invalid response structure from server')
+    }
+    
+    return {
+      stats: {
+        totalEmbeddings: response.data.stats.totalEmbeddings || 0,
+        pendingCount: response.data.stats.pendingCount || 0,
+        failed24h: response.data.stats.failedCount || 0,
+        avgGenerationTime: response.data.stats.avgGenerationTime || 0
+      },
+      providerOnline: response.data.providerOnline || false,
+      providerMetrics: response.data.providerMetrics || {},
+      circuitBreaker: response.data.circuitBreaker || {
+        state: 'CLOSED',
+        failureCount: 0,
+        config: { failureThreshold: 5 },
+        lastFailureTime: null,
+        stateHistory: []
+      },
+      backfillHistory: response.data.backfillHistory || []
+    }
+  },
+  { ttl: CACHE_TTL.SHORT, pollInterval: POLL_INTERVALS.FAST, pollOnlyWhenVisible: true }
+)
+
+// ============================================
+// Computed: Template compatibility
+// ============================================
+const loading = computed(() => isLoading.value && !ragData.value)
+const error = computed(() => swrError.value?.message || null)
+const stats = computed(() => ragData.value?.stats || {
   totalEmbeddings: 0,
   pendingCount: 0,
   failed24h: 0,
   avgGenerationTime: 0
 })
-
-const providerOnline = ref(false)
-const backfillHistory = ref([])
-const circuitBreaker = ref({
-  state: 'CLOSED',
-  failureCount: 0,
-  config: { failureThreshold: 5 },
-  lastFailureTime: null,
-  stateHistory: []
-})
-const providerMetrics = ref({
+const providerOnline = computed(() => ragData.value?.providerOnline || false)
+const providerMetrics = computed(() => ragData.value?.providerMetrics || {
   totalRequests: 0,
   successfulRequests: 0,
   failedRequests: 0,
@@ -363,64 +410,19 @@ const providerMetrics = ref({
   errorHistory: [],
   retryHistory: []
 })
+const circuitBreaker = computed(() => ragData.value?.circuitBreaker || {
+  state: 'CLOSED',
+  failureCount: 0,
+  config: { failureThreshold: 5 },
+  lastFailureTime: null,
+  stateHistory: []
+})
+const backfillHistory = computed(() => ragData.value?.backfillHistory || [])
+
+// ============================================
+// Local state for actions
+// ============================================
 const warmingUp = ref(false)
-const loading = ref(true)
-const error = ref(null)
-
-let statusInterval = null
-
-const loadStats = async (background = false) => {
-  try {
-    if (!background) {
-      loading.value = true
-    }
-    error.value = null
-
-    // Single API call for all statistics
-    const response = await api.get('/rag/detailed', { params: { hours: 24 } })
-
-    // Check if response has error property (API returned error with 200 status)
-    if (response.data.error) {
-      error.value = response.data.error
-      if (!background) loading.value = false
-      return
-    }
-
-    // Validate response structure
-    if (!response.data.stats) {
-      error.value = 'Invalid response structure from server'
-      console.error('Invalid API response:', response.data)
-      if (!background) loading.value = false
-      return
-    }
-
-    stats.value = {
-      totalEmbeddings: response.data.stats.totalEmbeddings || 0,
-      pendingCount: response.data.stats.pendingCount || 0,
-      failed24h: response.data.stats.failedCount || 0,
-      avgGenerationTime: response.data.stats.avgGenerationTime || 0
-    }
-    providerOnline.value = response.data.providerOnline || false
-    providerMetrics.value = response.data.providerMetrics || {}
-    circuitBreaker.value = response.data.circuitBreaker || {
-      state: 'CLOSED',
-      failureCount: 0,
-      config: { failureThreshold: 5 },
-      lastFailureTime: null,
-      stateHistory: []
-    }
-    backfillHistory.value = response.data.backfillHistory || []
-  } catch (err) {
-    if (!background) {
-      error.value = err.response?.data?.error || err.message || 'Unknown error'
-    }
-    console.error('Failed to load stats:', err)
-  } finally {
-    if (!background) {
-      loading.value = false
-    }
-  }
-}
 
 const resetCircuitBreaker = async () => {
   if (!confirm('Are you sure you want to reset the circuit breaker?')) {
@@ -429,9 +431,9 @@ const resetCircuitBreaker = async () => {
 
   try {
     await api.post('/rag/circuit-breaker/reset')
-    await loadStats()
-  } catch (error) {
-    console.error('Failed to reset circuit breaker:', error)
+    await refresh()
+  } catch (err) {
+    console.error('Failed to reset circuit breaker:', err)
   }
 }
 
@@ -441,11 +443,11 @@ const warmupModel = async () => {
     const response = await api.post('/rag/warmup')
     if (response.data.success) {
       alert(`Model warmed up successfully in ${response.data.duration}ms`)
-      await loadStats()
+      await refresh()
     }
-  } catch (error) {
-    console.error('Failed to warmup model:', error)
-    alert('Failed to warmup model: ' + (error.response?.data?.error || error.message))
+  } catch (err) {
+    console.error('Failed to warmup model:', err)
+    alert('Failed to warmup model: ' + (err.response?.data?.error || err.message))
   } finally {
     warmingUp.value = false
   }
@@ -529,18 +531,4 @@ const formatDuration = (start, end) => {
   const hours = Math.floor(minutes / 60)
   return `${hours}h ${minutes % 60}m`
 }
-
-onMounted(() => {
-  loadStats()
-  
-  statusInterval = setInterval(() => {
-    loadStats(true)
-  }, 5000)
-})
-
-onUnmounted(() => {
-  if (statusInterval) {
-    clearInterval(statusInterval)
-  }
-})
 </script>

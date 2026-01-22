@@ -38,7 +38,7 @@
             min="0.1" 
             max="2" 
             step="0.1"
-            class="w-20 px-2 py-1 text-xs bg-background border border-gray-700 rounded"
+            class="w-20 px-2 py-1 text-xs bg-background border border-gray-700 rounded-sm"
           />
         </div>
       </div>

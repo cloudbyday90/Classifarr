@@ -59,9 +59,9 @@
       <!-- Filter/Search Section -->
       <div class="flex gap-3 mb-4">
         <input v-model="searchQuery" placeholder="Search services..." aria-label="Search services"
-               class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" />
+               class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-hidden focus:border-blue-500" />
         <select v-model="statusFilter" aria-label="Filter by status"
-                class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500">
+                class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-hidden focus:border-blue-500">
           <option value="">All Status</option>
           <option value="healthy">Healthy Only</option>
           <option value="degraded">Degraded Only</option>
@@ -73,9 +73,9 @@
       <!-- Loading Skeleton -->
       <div v-if="loadingHealth && !healthServices.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div v-for="i in 9" :key="i" class="p-4 bg-background-light rounded-lg border border-gray-700 animate-pulse">
-          <div class="h-4 bg-gray-700 rounded w-3/4 mb-3"></div>
-          <div class="h-3 bg-gray-800 rounded w-1/2 mb-2"></div>
-          <div class="h-3 bg-gray-800 rounded w-2/3"></div>
+          <div class="h-4 bg-gray-700 rounded-sm w-3/4 mb-3"></div>
+          <div class="h-3 bg-gray-800 rounded-sm w-1/2 mb-2"></div>
+          <div class="h-3 bg-gray-800 rounded-sm w-2/3"></div>
         </div>
       </div>
 
@@ -116,7 +116,7 @@
           </div>
 
           <!-- Error Details -->
-          <div v-if="service.error" class="mt-2 p-2 bg-red-900/20 border border-red-800 rounded text-xs text-red-400">
+          <div v-if="service.error" class="mt-2 p-2 bg-red-900/20 border border-red-800 rounded-sm text-xs text-red-400">
             {{ service.error }}
           </div>
 
@@ -136,7 +136,7 @@
               <div 
                 v-for="instance in service.instances" 
                 :key="instance.id"
-                class="p-2 bg-gray-800 rounded border border-gray-700 text-xs"
+                class="p-2 bg-gray-800 rounded-sm border border-gray-700 text-xs"
               >
                 <div class="flex items-center justify-between mb-1">
                   <span class="font-medium">{{ instance.name }}</span>

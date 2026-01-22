@@ -114,7 +114,7 @@
             <td class="px-4 py-3">
               <span
                 :class="[
-                  'px-2 py-1 rounded text-xs font-medium',
+                  'px-2 py-1 rounded-sm text-xs font-medium',
                   log.level === 'ERROR' ? 'bg-red-900/30 text-red-400' : 'bg-yellow-900/30 text-yellow-400'
                 ]"
               >
@@ -127,7 +127,7 @@
             <td class="px-4 py-3">
               <span
                 :class="[
-                  'px-2 py-1 rounded text-xs',
+                  'px-2 py-1 rounded-sm text-xs',
                   log.resolved ? 'bg-green-900/30 text-green-400' : 'bg-gray-700 text-gray-400'
                 ]"
               >
@@ -206,7 +206,7 @@
                 <div>
                   <span
                     :class="[
-                      'px-2 py-1 rounded text-xs',
+                      'px-2 py-1 rounded-sm text-xs',
                       selectedLog.level === 'ERROR' ? 'bg-red-900/30 text-red-400' : 'bg-yellow-900/30 text-yellow-400'
                     ]"
                   >
@@ -223,31 +223,31 @@
             <!-- Message -->
             <div>
               <div class="text-sm text-gray-400 mb-2">Message</div>
-              <div class="bg-gray-900 p-3 rounded">{{ selectedLog.message }}</div>
+              <div class="bg-gray-900 p-3 rounded-sm">{{ selectedLog.message }}</div>
             </div>
 
             <!-- Stack Trace -->
             <div v-if="selectedLog.stack_trace">
               <div class="text-sm text-gray-400 mb-2">Stack Trace</div>
-              <pre class="bg-gray-900 p-3 rounded text-xs overflow-x-auto">{{ selectedLog.stack_trace }}</pre>
+              <pre class="bg-gray-900 p-3 rounded-sm text-xs overflow-x-auto">{{ selectedLog.stack_trace }}</pre>
             </div>
 
             <!-- Request Context -->
             <div v-if="selectedLog.request_context">
               <div class="text-sm text-gray-400 mb-2">Request Context</div>
-              <pre class="bg-gray-900 p-3 rounded text-xs overflow-x-auto">{{ JSON.stringify(selectedLog.request_context, null, 2) }}</pre>
+              <pre class="bg-gray-900 p-3 rounded-sm text-xs overflow-x-auto">{{ JSON.stringify(selectedLog.request_context, null, 2) }}</pre>
             </div>
 
             <!-- System Context -->
             <div v-if="selectedLog.system_context">
               <div class="text-sm text-gray-400 mb-2">System Context</div>
-              <pre class="bg-gray-900 p-3 rounded text-xs overflow-x-auto">{{ JSON.stringify(selectedLog.system_context, null, 2) }}</pre>
+              <pre class="bg-gray-900 p-3 rounded-sm text-xs overflow-x-auto">{{ JSON.stringify(selectedLog.system_context, null, 2) }}</pre>
             </div>
 
             <!-- Metadata -->
             <div v-if="selectedLog.metadata">
               <div class="text-sm text-gray-400 mb-2">Additional Data</div>
-              <pre class="bg-gray-900 p-3 rounded text-xs overflow-x-auto">{{ JSON.stringify(selectedLog.metadata, null, 2) }}</pre>
+              <pre class="bg-gray-900 p-3 rounded-sm text-xs overflow-x-auto">{{ JSON.stringify(selectedLog.metadata, null, 2) }}</pre>
             </div>
 
             <!-- Actions -->

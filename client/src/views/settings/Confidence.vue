@@ -123,14 +123,14 @@
           <div class="grid md:grid-cols-2 gap-6">
             <div class="space-y-4 text-sm">
               <div class="flex gap-3">
-                <div class="text-xl bg-gray-700 w-8 h-8 rounded flex items-center justify-center flex-none">1️⃣</div>
+                <div class="text-xl bg-gray-700 w-8 h-8 rounded-sm flex items-center justify-center flex-none">1️⃣</div>
                 <div>
                   <div class="font-medium text-white">Analysis</div>
                   <div class="text-gray-400 mt-0.5">AI examines TMDB data (genres, keywords, language).</div>
                 </div>
               </div>
               <div class="flex gap-3">
-                <div class="text-xl bg-gray-700 w-8 h-8 rounded flex items-center justify-center flex-none">2️⃣</div>
+                <div class="text-xl bg-gray-700 w-8 h-8 rounded-sm flex items-center justify-center flex-none">2️⃣</div>
                 <div>
                   <div class="font-medium text-white">Ambiguity Detection</div>
                   <div class="text-gray-400 mt-0.5">Using your threshold ({{config.clarification_threshold}}%), it decides if it's unsure.</div>
@@ -139,14 +139,14 @@
             </div>
             <div class="space-y-4 text-sm">
               <div class="flex gap-3">
-                <div class="text-xl bg-gray-700 w-8 h-8 rounded flex items-center justify-center flex-none">3️⃣</div>
+                <div class="text-xl bg-gray-700 w-8 h-8 rounded-sm flex items-center justify-center flex-none">3️⃣</div>
                 <div>
                   <div class="font-medium text-white">Targeted Question</div>
                   <div class="text-gray-400 mt-0.5">Discord bot asks a specific question to resolve the conflict.</div>
                 </div>
               </div>
               <div class="flex gap-3">
-                <div class="text-xl bg-gray-700 w-8 h-8 rounded flex items-center justify-center flex-none">4️⃣</div>
+                <div class="text-xl bg-gray-700 w-8 h-8 rounded-sm flex items-center justify-center flex-none">4️⃣</div>
                 <div>
                   <div class="font-medium text-white">Learning</div>
                   <div class="text-gray-400 mt-0.5">Your answer routes the media and trains the decision model.</div>
@@ -162,7 +162,7 @@
         <Card>
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-medium">Configuration</h3>
-            <span class="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded border border-blue-500/30">
+            <span class="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-sm border border-blue-500/30">
               Editing
             </span>
           </div>
@@ -224,7 +224,7 @@
                 <div>
                   <h4 class="font-medium mb-1 flex items-center gap-2">
                     ⚖️ Signal Weights
-                    <span class="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Advanced</span>
+                    <span class="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-sm">Advanced</span>
                   </h4>
                   <p class="text-sm text-gray-400">
                     Adjust how much each signal type influences confidence calculations.

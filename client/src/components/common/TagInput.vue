@@ -16,7 +16,7 @@
       <span
         v-for="tag in modelValue"
         :key="tag"
-        class="inline-flex items-center gap-1 px-2 py-1 bg-primary/20 text-primary text-sm rounded"
+        class="inline-flex items-center gap-1 px-2 py-1 bg-primary/20 text-primary text-sm rounded-sm"
       >
         {{ tag }}
         <button @click.stop="remove(tag)" class="hover:text-white">×</button>
@@ -29,7 +29,7 @@
         @blur="addTag"
         type="text"
         :placeholder="modelValue.length === 0 ? placeholder : ''"
-        class="bg-transparent border-none outline-none text-white placeholder-gray-500 flex-grow min-w-[120px]"
+        class="bg-transparent border-none outline-hidden text-white placeholder-gray-500 grow min-w-[120px]"
       />
     </div>
   </div>

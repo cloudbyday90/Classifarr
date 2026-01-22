@@ -74,7 +74,7 @@
           <select
             v-model="config.mode"
             @change="saveConfig"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             <option value="same">Same as Classification</option>
             <option value="separate_ollama">Separate Ollama Instance</option>
@@ -87,7 +87,7 @@
           <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Model</label>
           <select
             v-model="config.embedding_model"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
             <option v-for="model in recommendedModels" :key="model.name" :value="model.name">
               {{ model.name }} - {{ model.description }}
@@ -106,7 +106,7 @@
                 v-model="config.ollama_host"
                 type="text"
                 placeholder="192.168.1.100"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -115,14 +115,14 @@
                 v-model.number="config.ollama_port"
                 type="number"
                 placeholder="11434"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
               <select
                 v-model="config.ollama_model"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option v-for="model in recommendedModels" :key="model.name" :value="model.name">
                   {{ model.name }} - {{ model.description }}
@@ -140,7 +140,7 @@
               <label class="block text-sm font-medium text-gray-300 mb-2">Provider</label>
               <select
                 v-model="config.cloud_provider"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select provider</option>
                 <option value="openai">OpenAI</option>
@@ -156,7 +156,7 @@
                 v-model="config.cloud_api_key"
                 type="password"
                 placeholder="Enter API key"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -165,7 +165,7 @@
                 v-model="config.cloud_model"
                 type="text"
                 placeholder="text-embedding-3-small"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -215,13 +215,13 @@
           class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg"
         >
           <span :class="[
-            'w-2 h-2 rounded-full flex-shrink-0',
+            'w-2 h-2 rounded-full shrink-0',
             item.level === 'error' ? 'bg-red-500' : item.level === 'warning' ? 'bg-yellow-500' : 'bg-green-500'
           ]"></span>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="text-xs text-gray-400">{{ formatTimestamp(item.created_at) }}</span>
-              <span class="text-xs px-2 py-0.5 bg-gray-600 rounded">{{ item.type }}</span>
+              <span class="text-xs px-2 py-0.5 bg-gray-600 rounded-sm">{{ item.type }}</span>
             </div>
             <p class="text-sm text-white truncate">{{ item.message }}</p>
           </div>

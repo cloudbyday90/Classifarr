@@ -3,7 +3,7 @@
     <div class="px-6 py-4 bg-slate-900/50 border-b border-slate-700/50 flex justify-between items-center">
       <div class="flex items-center space-x-3">
         <div class="animate-pulse relative">
-          <div class="absolute inset-0 bg-blue-500 rounded-full opacity-20 blur-sm"></div>
+          <div class="absolute inset-0 bg-blue-500 rounded-full opacity-20 blur-xs"></div>
           <span class="relative text-2xl">🎬</span>
         </div>
         <div>
@@ -32,7 +32,7 @@
         <!-- Connecting Line -->
         <div class="absolute top-1/2 left-0 w-full h-1 bg-slate-700 -translate-y-1/2 rounded-full z-0"></div>
         <div 
-          class="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-blue-600 to-cyan-500 -translate-y-1/2 rounded-full z-0 transition-all duration-500 ease-out"
+          class="absolute top-1/2 left-0 h-1 bg-linear-to-r from-blue-600 to-cyan-500 -translate-y-1/2 rounded-full z-0 transition-all duration-500 ease-out"
           :style="{ width: `${Math.max(0, (task.progress - 5))}%` }"
         ></div>
 
@@ -53,7 +53,7 @@
             </div>
             
             <div 
-              class="absolute mt-12 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl z-20"
+              class="absolute mt-12 px-2 py-1 rounded-sm bg-slate-900 border border-slate-700 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl z-20"
               :class="{ 'opacity-100 font-bold text-blue-300 border-blue-500/30': isCurrent(phase.id) }"
             >
               {{ phase.label }}

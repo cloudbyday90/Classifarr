@@ -4,7 +4,7 @@
       <div class="flex items-center space-x-2">
         <button
           @click="toggleExpanded"
-          class="text-slate-400 hover:text-slate-200 transition-colors focus:outline-none"
+          class="text-slate-400 hover:text-slate-200 transition-colors focus:outline-hidden"
           :aria-label="expanded ? 'Collapse phase details' : 'Expand phase details'"
         >
           <svg
@@ -28,7 +28,7 @@
     
     <div class="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
       <div 
-        class="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all duration-300 ease-out"
+        class="h-1.5 rounded-full bg-linear-to-r from-blue-500 to-cyan-500 transition-all duration-300 ease-out"
         :style="{ width: `${task.progress}%` }"
       ></div>
     </div>
@@ -45,7 +45,7 @@
         :key="phase.name"
         class="flex items-start space-x-2 text-xs"
       >
-        <span class="flex-shrink-0 mt-0.5">
+        <span class="shrink-0 mt-0.5">
           <span v-if="phase.status === 'complete'" class="text-green-400">✓</span>
           <span v-else-if="phase.status === 'in_progress'" class="text-blue-400">●</span>
           <span v-else class="text-slate-600">○</span>

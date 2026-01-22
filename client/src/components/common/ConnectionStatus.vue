@@ -23,7 +23,7 @@
       <div class="flex-1">
         <div class="font-medium">Testing Connection...</div>
         <div class="text-sm">Connecting to {{ serviceName }}</div>
-        <div class="mt-2 h-1 bg-gray-700 rounded overflow-hidden">
+        <div class="mt-2 h-1 bg-gray-700 rounded-sm overflow-hidden">
           <div class="h-full bg-blue-500 animate-pulse" style="width: 60%"></div>
         </div>
       </div>

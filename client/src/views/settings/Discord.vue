@@ -74,7 +74,7 @@
           <span class="font-medium flex items-center gap-2">
             <span>📚</span>
             <span>How to Set Up Discord Bot</span>
-            <span v-if="!config.bot_token" class="text-xs bg-yellow-900/30 text-yellow-400 px-2 py-0.5 rounded">New? Start here</span>
+            <span v-if="!config.bot_token" class="text-xs bg-yellow-900/30 text-yellow-400 px-2 py-0.5 rounded-sm">New? Start here</span>
           </span>
           <span :class="['transition-transform', showSetupGuide ? 'rotate-180' : '']">▼</span>
         </button>
@@ -82,7 +82,7 @@
         <div v-if="showSetupGuide" class="px-4 pb-4 border-t border-gray-700 mt-0 pt-4">
           <div class="space-y-4 text-sm">
             <div class="flex gap-3">
-              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">1</span>
+              <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">1</span>
               <div>
                 <p class="font-medium">Create a Discord Application</p>
                 <p class="text-gray-400">Go to <a href="https://discord.com/developers/applications" target="_blank" class="text-blue-400 hover:underline">Discord Developer Portal</a> and click "New Application"</p>
@@ -90,7 +90,7 @@
             </div>
             
             <div class="flex gap-3">
-              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">2</span>
+              <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">2</span>
               <div>
                 <p class="font-medium">Create the Bot</p>
                 <p class="text-gray-400">Go to "Bot" tab → Click "Add Bot" → Enable "Message Content Intent"</p>
@@ -98,7 +98,7 @@
             </div>
             
             <div class="flex gap-3">
-              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">3</span>
+              <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">3</span>
               <div>
                 <p class="font-medium">Get Your Bot Token</p>
                 <p class="text-gray-400">In Bot tab → Click "Reset Token" → Copy and paste below</p>
@@ -107,7 +107,7 @@
             </div>
             
             <div class="flex gap-3">
-              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">4</span>
+              <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">4</span>
               <div>
                 <p class="font-medium">Invite Bot to Server</p>
                 <p class="text-gray-400">Go to OAuth2 → URL Generator → Select "bot" scope → Select permissions: Send Messages, Embed Links, Attach Files, Read Message History</p>
@@ -115,7 +115,7 @@
             </div>
             
             <div class="flex gap-3">
-              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">5</span>
+              <span class="shrink-0 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">5</span>
               <div>
                 <p class="font-medium">Configure Below</p>
                 <p class="text-gray-400">Enter your bot token, click "Test Connection" to load servers, then select your server and channel</p>
@@ -213,19 +213,19 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="space-y-2">
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.enabled" class="w-4 h-4 rounded" />
+            <input type="checkbox" v-model="config.enabled" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Enable Discord Notifications</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.notify_on_classification" class="w-4 h-4 rounded" />
+            <input type="checkbox" v-model="config.notify_on_classification" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Notify on Classification</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.notify_on_error" class="w-4 h-4 rounded" />
+            <input type="checkbox" v-model="config.notify_on_error" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Notify on Error</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.notify_on_correction" class="w-4 h-4 rounded" />
+            <input type="checkbox" v-model="config.notify_on_correction" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Notify on Correction</span>
           </label>
         </div>
@@ -233,19 +233,19 @@
         <div class="space-y-2">
           <h4 class="text-sm font-medium text-gray-400 mb-2">Display Options</h4>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.show_poster" class="w-4 h-4 rounded" />
+            <input type="checkbox" v-model="config.show_poster" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Show Poster Image</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.show_confidence" class="w-4 h-4 rounded" />
+            <input type="checkbox" v-model="config.show_confidence" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Show Confidence Score</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.show_method" class="w-4 h-4 rounded" />
+            <input type="checkbox" v-model="config.show_method" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Show Classification Method</span>
           </label>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.show_reason" class="w-4 h-4 rounded" />
+            <input type="checkbox" v-model="config.show_reason" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Show Reason</span>
           </label>
         </div>
@@ -256,7 +256,7 @@
       <h3 class="text-lg font-medium mb-3">Correction Controls</h3>
       <div class="space-y-4">
         <label class="flex items-center gap-2">
-          <input type="checkbox" v-model="config.enable_corrections" class="w-4 h-4 rounded" />
+          <input type="checkbox" v-model="config.enable_corrections" class="w-4 h-4 rounded-sm" />
           <span class="text-sm">Enable Correction Buttons</span>
         </label>
         <div v-if="config.enable_corrections" class="pl-6 space-y-4">
@@ -273,7 +273,7 @@
             />
           </div>
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="config.include_library_dropdown" class="w-4 h-4 rounded" />
+            <input type="checkbox" v-model="config.include_library_dropdown" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Include Library Dropdown</span>
           </label>
         </div>

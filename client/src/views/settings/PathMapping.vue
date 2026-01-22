@@ -64,12 +64,12 @@
               class="border-b border-gray-800 hover:bg-gray-800/50"
             >
               <td class="py-3 pr-4">
-                <code class="text-blue-400 bg-gray-800 px-2 py-1 rounded text-sm">
+                <code class="text-blue-400 bg-gray-800 px-2 py-1 rounded-sm text-sm">
                   {{ mapping.arr_path }}
                 </code>
               </td>
               <td class="py-3 pr-4">
-                <code class="text-green-400 bg-gray-800 px-2 py-1 rounded text-sm">
+                <code class="text-green-400 bg-gray-800 px-2 py-1 rounded-sm text-sm">
                   {{ mapping.local_path }}
                 </code>
               </td>

@@ -20,6 +20,7 @@ class EmbeddingService {
     constructor() {
         // Embedding format version for migration tracking
         this.EMBEDDING_FORMAT_VERSION = 2;
+        this.isProviderOffline = false;
     }
 
     /**
@@ -205,6 +206,12 @@ class EmbeddingService {
             // Generate embedding
             const result = await embeddingRouter.embed(text);
 
+            // Reset offline state if successful
+            if (this.isProviderOffline) {
+                logger.info('Embedding provider detected as back online');
+                this.isProviderOffline = false;
+            }
+
             // Store embedding
             const stored = await this.storeEmbedding(classificationId, result);
 
@@ -217,12 +224,29 @@ class EmbeddingService {
 
             return stored;
         } catch (error) {
+            // Check for connection refusal (provider offline)
+            const isConnectionError = error.message.includes('ECONNREFUSED') || 
+                                     error.message.includes('ETIMEDOUT') ||
+                                     error.message.includes('fetch failed');
+
+            if (isConnectionError) {
+                // Only log the first time we detect it's offline
+                if (!this.isProviderOffline) {
+                    logger.error('Embedding provider is offline', { error: error.message });
+                    this.isProviderOffline = true;
+                }
+                
+                // Propagate specific error so caller can back off
+                throw new Error('PROVIDER_OFFLINE');
+            }
+
+            // For other errors, log normally
             logger.error('Failed to generate embedding', {
                 classificationId,
                 error: error.message
             });
 
-            // Add to retry queue
+            // Add to retry queue only for non-connection errors
             await this.addToRetryQueue(classificationId, error.message);
             return null;
         }

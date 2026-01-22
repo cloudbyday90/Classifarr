@@ -227,7 +227,7 @@
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1">
               <h3 class="font-medium text-gray-200">Enable Pattern Mining</h3>
-              <span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Standard</span>
+              <span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-sm">Standard</span>
             </div>
             <div class="text-sm text-gray-400">
               Automatically discover patterns from classification history (studios, genres, franchises) to predict library routing. Now enabled by default as part of the v0.37.0 formula engine.

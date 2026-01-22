@@ -30,7 +30,7 @@
           <div>
             <select
               v-model="itemTargets[item.id]"
-              class="bg-background border border-gray-700 rounded px-2 py-1 text-sm"
+              class="bg-background border border-gray-700 rounded-sm px-2 py-1 text-sm"
             >
               <option value="" disabled>Select library...</option>
               <option
@@ -51,7 +51,7 @@
           type="checkbox"
           id="pauseOnError"
           v-model="pauseOnError"
-          class="w-4 h-4 rounded"
+          class="w-4 h-4 rounded-sm"
         />
         <label for="pauseOnError" class="text-sm text-gray-400">
           Pause on error (recommended)

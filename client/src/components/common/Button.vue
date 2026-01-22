@@ -42,7 +42,7 @@ const buttonClasses = computed(() => ({
   'warning': 'bg-warning hover:bg-yellow-600 text-white',
   'error': 'bg-error hover:bg-red-600 text-white',
   'ghost': 'bg-transparent hover:bg-gray-800 text-gray-300',
-  'outline': 'bg-transparent border border-gray-600 hover:border-gray-500 text-gray-300'
+  'outline-solid': 'bg-transparent border border-gray-600 hover:border-gray-500 text-gray-300'
 }[props.variant]))
 
 const sizeClasses = computed(() => ({

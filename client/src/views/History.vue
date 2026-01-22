@@ -39,7 +39,7 @@
                   type="checkbox" 
                   :checked="isAllSelected" 
                   @change="toggleSelectAll"
-                  class="w-4 h-4 rounded"
+                  class="w-4 h-4 rounded-sm"
                 />
               </th>
               <th class="pb-3">Title</th>
@@ -62,7 +62,7 @@
                   type="checkbox" 
                   :checked="isSelected(item.id)" 
                   @change="toggleSelection(item)"
-                  class="w-4 h-4 rounded"
+                  class="w-4 h-4 rounded-sm"
                 />
               </td>
               <td class="py-3" @click="openDetail(item)">

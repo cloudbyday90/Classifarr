@@ -21,7 +21,7 @@
             type="text"
             required
             placeholder="e.g., Family Friendly Animation"
-            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none"
+            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden"
           />
         </div>
 
@@ -31,7 +31,7 @@
             v-model="form.description"
             rows="2"
             placeholder="Brief description of this preset's purpose..."
-            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none"
+            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden"
           ></textarea>
         </div>
 
@@ -39,7 +39,7 @@
           <label class="block text-sm font-medium mb-2">Icon</label>
           <select
             v-model="form.icon"
-            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-lg"
+            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden text-lg"
           >
             <optgroup v-for="group in EMOJI_OPTIONS" :key="group.label" :label="group.label">
               <option v-for="emoji in group.emojis" :key="emoji.value" :value="emoji.value">
@@ -53,7 +53,7 @@
           <label class="block text-sm font-medium mb-2">Category</label>
           <select
             v-model="form.category"
-            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none"
+            class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden"
           >
             <option value="general">General</option>
             <option value="genre">Genre</option>
@@ -92,7 +92,7 @@
           <div v-if="form.signals.certifications.mode === 'include'">
             <label class="block text-sm text-gray-400 mb-2">Allowed Ratings</label>
             <div class="flex flex-wrap gap-2">
-              <label v-for="rating in availableRatings" :key="rating" class="flex items-center gap-2 px-3 py-2 bg-background-light rounded border border-gray-700 text-sm">
+              <label v-for="rating in availableRatings" :key="rating" class="flex items-center gap-2 px-3 py-2 bg-background-light rounded-sm border border-gray-700 text-sm">
                 <input
                   type="checkbox"
                   :value="rating"
@@ -106,7 +106,7 @@
           <div v-else-if="form.signals.certifications.mode === 'exclude'">
             <label class="block text-sm text-gray-400 mb-2">Excluded Ratings</label>
             <div class="flex flex-wrap gap-2">
-              <label v-for="rating in availableRatings" :key="rating" class="flex items-center gap-2 px-3 py-2 bg-background-light rounded border border-gray-700 text-sm">
+              <label v-for="rating in availableRatings" :key="rating" class="flex items-center gap-2 px-3 py-2 bg-background-light rounded-sm border border-gray-700 text-sm">
                 <input
                   type="checkbox"
                   :value="rating"
@@ -137,7 +137,7 @@
           <div>
             <label class="block text-sm text-gray-400 mb-2">Preferred Genres (boost score)</label>
             <div class="flex flex-wrap gap-2">
-              <label v-for="genre in availableGenres" :key="genre" class="flex items-center gap-2 px-3 py-2 bg-background-light rounded border border-gray-700 text-sm">
+              <label v-for="genre in availableGenres" :key="genre" class="flex items-center gap-2 px-3 py-2 bg-background-light rounded-sm border border-gray-700 text-sm">
                 <input
                   type="checkbox"
                   :value="genre"
@@ -151,7 +151,7 @@
           <div>
             <label class="block text-sm text-gray-400 mb-2">Excluded Genres (penalize score)</label>
             <div class="flex flex-wrap gap-2">
-              <label v-for="genre in availableGenres" :key="genre" class="flex items-center gap-2 px-3 py-2 bg-background-light rounded border border-gray-700 text-sm">
+              <label v-for="genre in availableGenres" :key="genre" class="flex items-center gap-2 px-3 py-2 bg-background-light rounded-sm border border-gray-700 text-sm">
                 <input
                   type="checkbox"
                   :value="genre"

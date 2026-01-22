@@ -9,7 +9,7 @@
         <!-- Library Name (read-only) -->
         <div>
           <label class="block text-sm font-medium text-gray-400 mb-1">Library</label>
-          <div class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white opacity-75 cursor-not-allowed">
+          <div class="bg-gray-800 border border-gray-600 rounded-sm px-3 py-2 text-white opacity-75 cursor-not-allowed">
             {{ libraryName || 'Loading...' }}
           </div>
         </div>
@@ -55,14 +55,14 @@
           <div 
             v-for="(pattern, idx) in libraryPatterns" 
             :key="idx"
-            class="bg-background-light p-4 rounded border"
+            class="bg-background-light p-4 rounded-sm border"
             :class="pattern.selected ? 'border-primary' : 'border-gray-700'"
           >
             <div class="flex items-start gap-3">
               <input 
                 type="checkbox" 
                 v-model="pattern.selected"
-                class="mt-1 w-5 h-5 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
+                class="mt-1 w-5 h-5 rounded-sm border-gray-600 bg-gray-800 text-primary focus:ring-primary"
               />
               <div class="flex-1">
                 <div class="flex justify-between items-start mb-2">
@@ -83,11 +83,11 @@
                 </div>
 
                 <div class="flex gap-3 flex-wrap">
-                  <div class="flex-shrink-0">
+                  <div class="shrink-0">
                     <label class="block text-xs text-gray-400 mb-1">Operator</label>
                     <select 
                       v-model="pattern.operator"
-                      class="bg-gray-900 border border-gray-600 rounded px-3 py-1 text-sm text-white focus:outline-none focus:border-primary"
+                      class="bg-gray-900 border border-gray-600 rounded-sm px-3 py-1 text-sm text-white focus:outline-hidden focus:border-primary"
                     >
                       <option value="equals">Equals</option>
                       <option value="not_equals">Not Equals</option>
@@ -101,7 +101,7 @@
                       <span 
                         v-for="value in pattern.values.slice(0, 10)" 
                         :key="value"
-                        class="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-800 text-gray-300"
+                        class="inline-flex items-center px-2 py-1 rounded-sm text-xs bg-gray-800 text-gray-300"
                       >
                         {{ formatRatingLabel(pattern.field, value) }}
                         <span class="ml-1 text-gray-500">
@@ -135,7 +135,7 @@
           <div 
             v-for="dp in dismissedPatterns" 
             :key="`${dp.pattern_type}-${dp.pattern_value}`"
-            class="flex items-center justify-between bg-gray-900/50 p-3 rounded border border-gray-700"
+            class="flex items-center justify-between bg-gray-900/50 p-3 rounded-sm border border-gray-700"
           >
             <div>
               <span class="text-gray-400 capitalize">{{ dp.pattern_type.replace('_', ' ') }}:</span>
@@ -206,7 +206,7 @@
           </span>
         </div>
         
-        <div v-for="(suggestion, idx) in smartSuggestions" :key="idx" class="bg-background-light p-4 rounded border border-gray-700 hover:border-primary transition-colors">
+        <div v-for="(suggestion, idx) in smartSuggestions" :key="idx" class="bg-background-light p-4 rounded-sm border border-gray-700 hover:border-primary transition-colors">
           <div class="flex justify-between items-start mb-2">
             <div>
               <h4 class="font-medium text-white">{{ suggestion.name }}</h4>
@@ -256,13 +256,13 @@
         <div 
           v-for="(condition, index) in conditions" 
           :key="index"
-          class="flex flex-col md:flex-row gap-3 items-start md:items-end bg-background-light p-3 rounded border border-gray-700"
+          class="flex flex-col md:flex-row gap-3 items-start md:items-end bg-background-light p-3 rounded-sm border border-gray-700"
         >
           <div class="w-full md:w-1/4">
             <label class="block text-xs text-gray-400 mb-1">Field</label>
             <select 
               v-model="condition.field"
-              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary [&>option]:bg-gray-800 [&>option]:text-white"
+              class="w-full bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary [&>option]:bg-gray-800 [&>option]:text-white"
             >
               <option value="content_type">Content Type</option>
               <option value="event_type">Event Type</option>
@@ -278,7 +278,7 @@
             <label class="block text-xs text-gray-400 mb-1">Operator</label>
             <select 
               v-model="condition.operator"
-              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary [&>option]:bg-gray-800 [&>option]:text-white"
+              class="w-full bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary [&>option]:bg-gray-800 [&>option]:text-white"
             >
               <option value="equals">Equals</option>
               <option value="not_equals">Does not equal</option>
@@ -300,7 +300,7 @@
               v-if="condition.field === 'content_type'"
               v-model="condition.value"
               :multiple="condition.operator === 'is_one_of'"
-              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+              class="w-full bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary"
               :class="{ 'h-32': condition.operator === 'is_one_of' }"
             >
               <option value="holiday">Holiday</option>
@@ -318,7 +318,7 @@
             <div v-else-if="condition.field === 'event_type'" class="w-full space-y-2">
               <select 
                 v-model="condition.value"
-                class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+                class="w-full bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary"
               >
                 <option value="">Select event category...</option>
                 <option value="holiday">🎄 Holiday</option>
@@ -333,7 +333,7 @@
               <select 
                 v-if="condition.value === 'holiday'"
                 v-model="condition.subType"
-                class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary text-sm"
+                class="w-full bg-gray-800 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary text-sm"
               >
                 <option value="">All holidays (generic)</option>
                 <option value="christmas">🎄 Christmas/Xmas</option>
@@ -349,7 +349,7 @@
               <select 
                 v-if="condition.value === 'sports'"
                 v-model="condition.subType"
-                class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary text-sm"
+                class="w-full bg-gray-800 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary text-sm"
               >
                 <option value="">All sports (generic)</option>
                 <option value="football">🏈 Football/NFL</option>
@@ -365,7 +365,7 @@
               <select 
                 v-if="condition.value === 'ppv'"
                 v-model="condition.subType"
-                class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary text-sm"
+                class="w-full bg-gray-800 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary text-sm"
               >
                 <option value="">All combat sports</option>
                 <option value="ufc">🥊 UFC/MMA</option>
@@ -383,7 +383,7 @@
               v-else-if="condition.field === 'certification'"
               v-model="condition.value"
               :multiple="condition.operator === 'is_one_of'"
-              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+              class="w-full bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary"
               :class="{ 'h-32': condition.operator === 'is_one_of' }"
             >
               <option value="G">G / TV-G</option>
@@ -402,7 +402,7 @@
               <input 
                 v-model="condition.value"
                 type="number"
-                class="w-24 bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+                class="w-24 bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary"
                 placeholder="1990"
                 min="1900"
                 max="2100"
@@ -411,7 +411,7 @@
               <input 
                 v-model="condition.value2"
                 type="number"
-                class="w-24 bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+                class="w-24 bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary"
                 placeholder="1999"
                 min="1900"
                 max="2100"
@@ -423,7 +423,7 @@
               v-else
               v-model="condition.value"
               type="text"
-              class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-primary"
+              class="w-full bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary"
               :placeholder="getValuePlaceholder(condition.field)"
             />
           </div>
@@ -512,14 +512,14 @@
             <div 
               v-for="(pattern, idx) in detectedPatterns" 
               :key="idx"
-              class="bg-background-light p-4 rounded border"
+              class="bg-background-light p-4 rounded-sm border"
               :class="pattern.selected ? 'border-primary' : 'border-gray-700'"
             >
               <div class="flex items-start gap-3">
                 <input 
                   type="checkbox" 
                   v-model="pattern.selected"
-                  class="mt-1 w-5 h-5 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
+                  class="mt-1 w-5 h-5 rounded-sm border-gray-600 bg-gray-800 text-primary focus:ring-primary"
                 />
                 <div class="flex-1">
                   <div class="flex justify-between items-start mb-2">
@@ -530,17 +530,17 @@
                         ({{ pattern.matchPercentage }}%)
                       </p>
                     </div>
-                    <div v-if="pattern.preSelected" class="text-xs bg-green-900/50 text-green-400 px-2 py-1 rounded">
+                    <div v-if="pattern.preSelected" class="text-xs bg-green-900/50 text-green-400 px-2 py-1 rounded-sm">
                       Recommended
                     </div>
                   </div>
 
                   <div class="flex gap-3">
-                    <div class="flex-shrink-0">
+                    <div class="shrink-0">
                       <label class="block text-xs text-gray-400 mb-1">Operator</label>
                       <select 
                         v-model="pattern.operator"
-                        class="bg-gray-900 border border-gray-600 rounded px-3 py-1 text-sm text-white focus:outline-none focus:border-primary"
+                        class="bg-gray-900 border border-gray-600 rounded-sm px-3 py-1 text-sm text-white focus:outline-hidden focus:border-primary"
                       >
                         <option value="equals">Equals</option>
                         <option value="not_equals">Not Equals</option>
@@ -554,7 +554,7 @@
                         <span 
                           v-for="value in pattern.values" 
                           :key="value"
-                          class="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-800 text-gray-300"
+                          class="inline-flex items-center px-2 py-1 rounded-sm text-xs bg-gray-800 text-gray-300"
                         >
                           {{ value }}
                           <span class="ml-2 text-gray-500">({{ pattern.valueCounts[value] }})</span>

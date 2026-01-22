@@ -14,7 +14,7 @@
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"
-      class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
+      class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
       @input="$emit('update:modelValue', $event.target.value)"
     />
     <span v-if="error" class="text-sm text-error">{{ error }}</span>

@@ -10,7 +10,7 @@
   <Card class="relative hover:border-gray-600 transition-colors">
     <div class="flex items-start gap-4">
       <!-- Icon -->
-      <div class="text-4xl flex-shrink-0">
+      <div class="text-4xl shrink-0">
         {{ preset.icon || DEFAULT_EMOJI }}
       </div>
 

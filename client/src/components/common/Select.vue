@@ -12,7 +12,7 @@
     <select
       :value="modelValue"
       :disabled="disabled"
-      class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
+      class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
       @change="$emit('update:modelValue', $event.target.value)"
     >
       <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>

@@ -9,7 +9,7 @@
 <template>
   <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-200px)]">
     <!-- Sidebar Navigation - Horizontal scroll on mobile, vertical on desktop -->
-    <nav class="lg:w-56 flex-shrink-0">
+    <nav class="lg:w-56 shrink-0">
       <!-- Mobile: Horizontal scrollable tabs -->
       <div class="lg:hidden overflow-x-auto pb-2 -mx-4 px-4">
         <div class="flex gap-2 min-w-max">

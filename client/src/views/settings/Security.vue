@@ -58,7 +58,7 @@
                 v-model="editingName"
                 @keyup.enter="saveKeyName(key)"
                 @keyup.esc="editingKey = null"
-                class="px-2 py-1 bg-gray-700 border border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
+                class="px-2 py-1 bg-gray-700 border border-gray-600 rounded-sm focus:ring-2 focus:ring-blue-500"
                 autofocus
               />
               <span v-else @dblclick="startEditName(key)" class="cursor-pointer hover:text-blue-400">

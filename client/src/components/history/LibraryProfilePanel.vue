@@ -90,7 +90,7 @@
         <span 
           v-for="lang in profileStats.languageDistribution" 
           :key="lang.language"
-          class="language-tag px-2 py-1 bg-gray-800 text-gray-300 rounded text-sm"
+          class="language-tag px-2 py-1 bg-gray-800 text-gray-300 rounded-sm text-sm"
         >
           {{ lang.language }}: {{ lang.percentage }}%
         </span>

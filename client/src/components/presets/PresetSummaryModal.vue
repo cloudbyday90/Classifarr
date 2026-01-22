@@ -11,7 +11,7 @@
     <div v-if="preset" class="space-y-6">
       <!-- Header Section -->
       <div class="flex items-start gap-4">
-        <div class="text-5xl flex-shrink-0">
+        <div class="text-5xl shrink-0">
           {{ preset.icon || '🎬' }}
         </div>
         <div class="flex-1">

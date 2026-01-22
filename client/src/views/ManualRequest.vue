@@ -62,9 +62,9 @@
             v-if="item.poster_path"
             :src="item.poster_path"
             :alt="item.title"
-            class="w-16 h-24 object-cover rounded"
+            class="w-16 h-24 object-cover rounded-sm"
           />
-          <div v-else class="w-16 h-24 bg-gray-700 rounded flex items-center justify-center text-2xl">
+          <div v-else class="w-16 h-24 bg-gray-700 rounded-sm flex items-center justify-center text-2xl">
             {{ item.media_type === 'movie' ? '🎬' : '📺' }}
           </div>
           <div class="flex-1">
@@ -72,7 +72,7 @@
               <span class="font-medium text-lg">{{ item.title }}</span>
               <span v-if="item.year" class="text-gray-400">({{ item.year }})</span>
               <span 
-                :class="['text-xs px-2 py-0.5 rounded', item.media_type === 'movie' ? 'bg-blue-900/30 text-blue-400' : 'bg-purple-900/30 text-purple-400']"
+                :class="['text-xs px-2 py-0.5 rounded-sm', item.media_type === 'movie' ? 'bg-blue-900/30 text-blue-400' : 'bg-purple-900/30 text-purple-400']"
               >
                 {{ item.media_type === 'movie' ? 'Movie' : 'TV' }}
               </span>
@@ -125,7 +125,7 @@
             <div class="flex items-center gap-2">
               <span class="font-medium">{{ request.media_title }}</span>
               <span 
-                :class="['text-xs px-2 py-0.5 rounded', request.media_type === 'movie' ? 'bg-blue-900/30 text-blue-400' : 'bg-purple-900/30 text-purple-400']"
+                :class="['text-xs px-2 py-0.5 rounded-sm', request.media_type === 'movie' ? 'bg-blue-900/30 text-blue-400' : 'bg-purple-900/30 text-purple-400']"
               >
                 {{ request.media_type }}
               </span>
@@ -138,7 +138,7 @@
           </div>
           <span
             :class="[
-              'px-2 py-1 text-xs rounded',
+              'px-2 py-1 text-xs rounded-sm',
               request.processing_status === 'completed' ? 'bg-green-900/30 text-green-400' :
               request.processing_status === 'failed' ? 'bg-red-900/30 text-red-400' :
               request.processing_status === 'queued' ? 'bg-yellow-900/30 text-yellow-400' :

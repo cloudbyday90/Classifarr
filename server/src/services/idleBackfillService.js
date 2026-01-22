@@ -217,6 +217,16 @@ class IdleBackfillService {
                                 [totalProcessed, runId]
                             );
                         } catch (error) {
+                            if (error.message === 'PROVIDER_OFFLINE') {
+                                logger.warn('Provider offline detected - pausing idle backfill for 5 minutes');
+                                await this.sleep(300000); // Wait 5 minutes
+                                
+                                // Reset idle check so we don't immediately exit if user moved mouse during sleep
+                                // but logic will check isIdle() at loop start anyway.
+                                // Breaking the inner loop to re-evaluate conditions
+                                break; 
+                            }
+
                             logger.error('Failed to generate embedding in idle backfill', {
                                 id: item.id,
                                 title: item.title,

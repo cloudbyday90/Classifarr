@@ -27,7 +27,7 @@
           <button
             v-if="suggestedPresets.length > 0"
             @click="addAllSuggested"
-            class="text-xs px-2 py-1 bg-primary bg-opacity-20 text-primary rounded hover:bg-opacity-30 transition-colors"
+            class="text-xs px-2 py-1 bg-primary bg-opacity-20 text-primary rounded-sm hover:bg-opacity-30 transition-colors"
           >
             + Add All
           </button>
@@ -42,10 +42,10 @@
               ? 'bg-success bg-opacity-10 border-success' 
               : 'bg-primary bg-opacity-10 border-primary'"
           >
-            <div v-if="isSelected(preset.id)" class="flex-shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+            <div v-if="isSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
               <span class="text-white text-xs font-bold">✓</span>
             </div>
-            <div v-else class="flex-shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+            <div v-else class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
               <span class="text-gray-500 text-xs">+</span>
             </div>
             <span class="text-lg">{{ preset.icon || '📦' }}</span>
@@ -81,7 +81,7 @@
           v-model="searchQuery"
           type="search"
           placeholder="Search presets..."
-          class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white placeholder-gray-500"
+          class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden text-white placeholder-gray-500"
         />
       </div>
 
@@ -96,10 +96,10 @@
             ? 'bg-success bg-opacity-10 border-success' 
             : 'bg-background-light border-gray-700'"
         >
-          <div v-if="isSelected(preset.id)" class="flex-shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+          <div v-if="isSelected(preset.id)" class="shrink-0 w-5 h-5 rounded-full bg-success flex items-center justify-center">
             <span class="text-white text-xs font-bold">✓</span>
           </div>
-          <div v-else class="flex-shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
+          <div v-else class="shrink-0 w-5 h-5 rounded-full border-2 border-gray-600 flex items-center justify-center hover:border-primary">
             <span class="text-gray-500 text-xs">+</span>
           </div>
           <span class="text-lg">{{ preset.icon || '📦' }}</span>
@@ -109,7 +109,7 @@
           </div>
           <span 
             v-if="preset.source === 'custom'" 
-            class="text-xs px-1.5 py-0.5 bg-blue-900 bg-opacity-50 text-blue-300 rounded"
+            class="text-xs px-1.5 py-0.5 bg-blue-900 bg-opacity-50 text-blue-300 rounded-sm"
           >
             Custom
           </span>
@@ -126,7 +126,7 @@
         <span 
           v-for="preset in selectedPresets" 
           :key="'sel-' + preset.id"
-          class="inline-flex items-center gap-1 px-2 py-1 bg-success bg-opacity-20 text-success rounded text-sm"
+          class="inline-flex items-center gap-1 px-2 py-1 bg-success bg-opacity-20 text-success rounded-sm text-sm"
         >
           {{ preset.icon }} {{ preset.name }}
           <button @click="togglePreset(preset)" class="hover:text-white">×</button>

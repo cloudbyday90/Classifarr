@@ -180,12 +180,12 @@
                       {{ conn.relay ? '🌐 Relay' : (conn.local ? '🏠 Local' : '🌍 Remote') }}
                     </span>
                     <span :class="[
-                      'text-xs px-1.5 py-0.5 rounded',
+                      'text-xs px-1.5 py-0.5 rounded-sm',
                       conn.protocol === 'https' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'
                     ]">
                       {{ conn.protocol.toUpperCase() }}
                     </span>
-                    <span v-if="!conn.local && !conn.relay && conn.protocol === 'https'" class="text-xs px-1.5 py-0.5 rounded bg-blue-900/30 text-blue-400">
+                    <span v-if="!conn.local && !conn.relay && conn.protocol === 'https'" class="text-xs px-1.5 py-0.5 rounded-sm bg-blue-900/30 text-blue-400">
                       Recommended
                     </span>
                     <span v-if="conn.local" class="text-xs text-gray-500">
@@ -199,7 +199,7 @@
                   <button
                     @click.stop="testSingleConnection(conn)"
                     :disabled="testingConnection === conn.uri || testingAllConnections"
-                    class="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded"
+                    class="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded-sm"
                   >
                     {{ testingConnection === conn.uri ? 'Testing...' : 'Test' }}
                   </button>
@@ -259,7 +259,7 @@
               <div class="font-medium">{{ config.name || 'Plex Server' }}</div>
               <div class="text-sm text-gray-400">{{ config.url }}</div>
             </div>
-            <span class="px-2 py-1 bg-green-600/20 text-green-400 text-sm rounded">Connected</span>
+            <span class="px-2 py-1 bg-green-600/20 text-green-400 text-sm rounded-sm">Connected</span>
           </div>
           
           <div class="flex gap-2 items-center">
@@ -451,7 +451,7 @@
               <div class="font-medium">{{ config.name || 'Jellyfin Server' }}</div>
               <div class="text-sm text-gray-400">{{ config.url }}</div>
             </div>
-            <span class="px-2 py-1 bg-purple-600/20 text-purple-400 text-sm rounded">Connected</span>
+            <span class="px-2 py-1 bg-purple-600/20 text-purple-400 text-sm rounded-sm">Connected</span>
           </div>
           
           <button @click="resetJellyfinAuth" class="text-sm text-gray-400 hover:text-gray-300">
@@ -545,7 +545,7 @@
               <div class="font-medium">{{ config.name || 'Emby Server' }}</div>
               <div class="text-sm text-gray-400">{{ config.url }}</div>
             </div>
-            <span class="px-2 py-1 bg-green-600/20 text-green-400 text-sm rounded">Connected</span>
+            <span class="px-2 py-1 bg-green-600/20 text-green-400 text-sm rounded-sm">Connected</span>
           </div>
           
           <button @click="resetEmbyAuth" class="text-sm text-gray-400 hover:text-gray-300">

@@ -25,7 +25,7 @@
           v-model="searchQuery"
           type="text"
           placeholder="Search presets..."
-          class="w-full px-4 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white placeholder-gray-500"
+          class="w-full px-4 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden text-white placeholder-gray-500"
         />
       </div>
       <div>
@@ -33,7 +33,7 @@
         <select
           id="category-filter"
           v-model="categoryFilter"
-          class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-white"
+          class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden text-white"
         >
           <option value="">All Categories</option>
           <option v-for="category in categories" :key="category" :value="category">

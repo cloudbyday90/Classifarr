@@ -139,12 +139,12 @@
       <div class="text-sm text-gray-400 space-y-2">
         <p><strong>Docker environments</strong> use different paths for the same files:</p>
         <ul class="list-disc ml-6 space-y-1">
-          <li><strong>Plex path:</strong> e.g., <code class="bg-gray-900 px-1 rounded">/media/movies</code></li>
-          <li><strong>Radarr path:</strong> e.g., <code class="bg-gray-900 px-1 rounded">/movies</code></li>
-          <li><strong>Classifarr path:</strong> e.g., <code class="bg-gray-900 px-1 rounded">/data/movies</code></li>
+          <li><strong>Plex path:</strong> e.g., <code class="bg-gray-900 px-1 rounded-sm">/media/movies</code></li>
+          <li><strong>Radarr path:</strong> e.g., <code class="bg-gray-900 px-1 rounded-sm">/movies</code></li>
+          <li><strong>Classifarr path:</strong> e.g., <code class="bg-gray-900 px-1 rounded-sm">/data/movies</code></li>
         </ul>
-        <p class="mt-4">Configure in <code class="bg-gray-900 px-1 rounded">docker-compose.yml</code>:</p>
-        <pre class="bg-gray-900 p-2 rounded mt-2 text-xs overflow-x-auto">volumes:
+        <p class="mt-4">Configure in <code class="bg-gray-900 px-1 rounded-sm">docker-compose.yml</code>:</p>
+        <pre class="bg-gray-900 p-2 rounded-sm mt-2 text-xs overflow-x-auto">volumes:
   - /your/host/media:/data/media:ro</pre>
       </div>
     </div>

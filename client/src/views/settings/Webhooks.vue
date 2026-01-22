@@ -15,7 +15,7 @@
     </div>
 
     <!-- Setup Guide Modal -->
-    <div v-if="showSetupHelp" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div v-if="showSetupHelp" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
       <div class="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-xl">
         <div class="p-6 border-b border-gray-700 flex justify-between items-center">
           <h3 class="text-lg font-medium">How to Configure Overseerr/Jellyseerr</h3>
@@ -44,7 +44,7 @@
               <div>
                 <h4 class="font-medium text-white mb-1">Set JSON Payload</h4>
                 <p class="text-sm mb-2">Copy the <strong>JSON Payload</strong> template from this page and paste it into the <strong>JSON Payload</strong> field in Overseerr.</p>
-                <div class="text-xs bg-yellow-900/20 text-yellow-500 p-2 rounded border border-yellow-900/30">
+                <div class="text-xs bg-yellow-900/20 text-yellow-500 p-2 rounded-sm border border-yellow-900/30">
                   ⚠️ This is critical. Without the correct payload, Classifarr cannot read the request data.
                 </div>
               </div>
@@ -117,7 +117,7 @@
           <div class="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50 mb-6">
             <label class="block text-xs text-gray-500 uppercase tracking-widest mb-2">Webhook Endpoint</label>
             <div class="flex gap-2">
-              <code class="flex-1 bg-gray-950 px-3 py-2 rounded text-gray-300 font-mono text-sm overflow-x-auto whitespace-nowrap">
+              <code class="flex-1 bg-gray-950 px-3 py-2 rounded-sm text-gray-300 font-mono text-sm overflow-x-auto whitespace-nowrap">
                 {{ webhookUrl }}
               </code>
               <Button @click="copyUrl" variant="secondary" size="sm">
@@ -131,10 +131,10 @@
                  Paste this into the "JSON Payload" field in your Overseerr/Jellyseerr Webhook settings:
                </p>
                <div class="relative group">
-                 <pre class="bg-gray-950 p-3 rounded text-gray-300 font-mono text-xs overflow-x-auto">{{ jsonPayload }}</pre>
+                 <pre class="bg-gray-950 p-3 rounded-sm text-gray-300 font-mono text-xs overflow-x-auto">{{ jsonPayload }}</pre>
                  <button 
                   @click="copyPayload" 
-                  class="absolute top-2 right-2 p-1.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="absolute top-2 right-2 p-1.5 bg-gray-800 hover:bg-gray-700 rounded-sm text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Copy JSON"
                  >
                    📋
@@ -193,7 +193,7 @@
                     <span class="font-medium">{{ log.media_title || 'Unknown' }}</span>
                     <span
                       v-if="log.media_type"
-                      class="px-2 py-0.5 bg-blue-900/30 text-blue-400 text-xs rounded"
+                      class="px-2 py-0.5 bg-blue-900/30 text-blue-400 text-xs rounded-sm"
                     >
                       {{ log.media_type }}
                     </span>
@@ -204,7 +204,7 @@
                 </div>
                 <span
                   :class="[
-                    'px-2 py-1 rounded text-xs font-medium',
+                    'px-2 py-1 rounded-sm text-xs font-medium',
                     log.processing_status === 'completed' ? 'bg-green-900/30 text-green-400' :
                     log.processing_status === 'failed' ? 'bg-red-900/30 text-red-400' :
                     log.processing_status === 'skipped' ? 'bg-yellow-900/30 text-yellow-400' :
@@ -221,7 +221,7 @@
                 <span v-if="log.processing_time_ms">{{ log.processing_time_ms }}ms</span>
               </div>
 
-              <div v-if="log.error_message" class="mt-2 text-xs text-red-400 bg-red-900/20 p-2 rounded">
+              <div v-if="log.error_message" class="mt-2 text-xs text-red-400 bg-red-900/20 p-2 rounded-sm">
                 {{ log.error_message }}
               </div>
             </div>
@@ -309,9 +309,9 @@
                 <div>
                   <div class="flex items-center gap-2">
                     <span class="font-medium">{{ source.name || 'Unnamed' }}</span>
-                    <span v-if="source.is_primary" class="text-xs bg-blue-600 px-1.5 py-0.5 rounded">Primary</span>
+                    <span v-if="source.is_primary" class="text-xs bg-blue-600 px-1.5 py-0.5 rounded-sm">Primary</span>
                     <span 
-                      :class="['text-xs px-1.5 py-0.5 rounded', source.enabled ? 'bg-green-900/30 text-green-400' : 'bg-gray-900 text-gray-500']"
+                      :class="['text-xs px-1.5 py-0.5 rounded-sm', source.enabled ? 'bg-green-900/30 text-green-400' : 'bg-gray-900 text-gray-500']"
                     >
                       {{ source.enabled ? 'Active' : 'Disabled' }}
                     </span>
@@ -323,7 +323,7 @@
                 <button
                   v-if="!source.is_primary"
                   @click="setPrimary(source.id)"
-                  class="px-2 py-1 text-xs bg-gray-700 hover:bg-blue-600 rounded transition-colors"
+                  class="px-2 py-1 text-xs bg-gray-700 hover:bg-blue-600 rounded-sm transition-colors"
                   title="Set as primary"
                 >
                   ★ Set Primary
@@ -331,7 +331,7 @@
                 <button
                   v-if="sources.length > 1"
                   @click="deleteSource(source.id)"
-                  class="px-2 py-1 text-xs bg-gray-700 hover:bg-red-600 rounded transition-colors"
+                  class="px-2 py-1 text-xs bg-gray-700 hover:bg-red-600 rounded-sm transition-colors"
                   title="Delete"
                 >
                   ✕
@@ -399,7 +399,7 @@
                     </Button>
                   </div>
                   <p class="text-xs text-gray-500 mt-2">
-                    Adds <code class="bg-gray-800 px-1 rounded">?key=YOUR_KEY</code> to the URL
+                    Adds <code class="bg-gray-800 px-1 rounded-sm">?key=YOUR_KEY</code> to the URL
                   </p>
                 </div>
               </div>
