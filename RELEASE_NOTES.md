@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## v0.40.3a-alpha
+
+**Hotfix: Broken Onboarding Link**
+
+### Fixes
+
+- **Dashboard Onboarding**: Fixed "Connect Media Server" button linking to a non-existent page (404). Now correctly directs to the Media Server settings tab.
+
+---
+
 ## v0.40.3-alpha
 
 **Title: Polished Branding & Smarter Sync**

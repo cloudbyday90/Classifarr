@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.3a-alpha] - 2026-01-22
+
+### Fixed
+
+- "Connect Media Server" button in dashboard onboarding linking to invalid URL.
+
 ## [0.40.3-alpha] - 2026-01-22
 
 ### Added
