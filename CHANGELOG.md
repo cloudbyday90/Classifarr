@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.3-alpha] - 2026-01-22
+
+### Added
+
+- New flush application logo and optimized favicon.
+- Differential library sync logic to preserve data when updating server connection details.
+
+### Fixed
+
+- "Duplicate key value" error when changing media servers due to global unique constraint on library names.
+- Media Server "Connect & Save" button state confusion.
+
 ## [0.40.1a-alpha] - 2026-01-22
 
 ### Fixed
@@ -431,7 +443,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Supports tasks like clearing logs, rebuilding embeddings, and data backfills
   - Eliminates need for manual migrations for one-time maintenance tasks
   - Added `clear_stale_retry_queue` task for v0.39.3
-
 
 ---
 
