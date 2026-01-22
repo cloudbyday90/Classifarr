@@ -224,26 +224,12 @@ describe('Media Server API', () => {
             });
             // Mock: SELECT library IDs to delete
             mockClient.query.mockResolvedValueOnce({
-                rows: [{ id: 10 }, { id: 11 }, { id: 12 }]
+                rows: [{ id: 10, external_id: 'old-1' }, { id: 11, external_id: 'old-2' }, { id: 12, external_id: 'old-3' }]
             });
             // Mock: DELETE FROM media_server_sync_status
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             // Mock: DELETE FROM enrichment_retry_queue
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM media_server_items
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM media_server_collections
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM library_labels
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM library_pattern_suggestions
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM classification_history
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM scheduled_tasks
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM task_queue
-            mockClient.query.mockResolvedValueOnce({ rowCount: 5 });
             // Mock: DELETE FROM libraries
             mockClient.query.mockResolvedValueOnce({ rowCount: 3 });
             // Mock: INSERT library 1
@@ -278,7 +264,8 @@ describe('Media Server API', () => {
                 call[0] && call[0].includes('DELETE FROM libraries')
             );
             expect(deleteCall).toBeDefined();
-            expect(deleteCall[1]).toEqual([serverId]);
+            // Expect deletion by IDs, not server ID
+            expect(deleteCall[1]).toEqual([[10, 11, 12]]);
 
             // Verify INSERT was used (not ON CONFLICT upsert)
             const insertCalls = mockClient.query.mock.calls.filter(call =>
@@ -313,26 +300,12 @@ describe('Media Server API', () => {
             });
             // Mock: SELECT library IDs to delete (1 old library with OLD-lib-uuid-1)
             mockClient.query.mockResolvedValueOnce({
-                rows: [{ id: 99 }]
+                rows: [{ id: 99, external_id: 'OLD-lib-uuid-1' }]
             });
             // Mock: DELETE FROM media_server_sync_status
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
             // Mock: DELETE FROM enrichment_retry_queue
             mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM media_server_items
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM media_server_collections
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM library_labels
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM library_pattern_suggestions
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM classification_history
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM scheduled_tasks
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            // Mock: DELETE FROM task_queue
-            mockClient.query.mockResolvedValueOnce({ rowCount: 2 });
             // Mock: DELETE FROM libraries
             mockClient.query.mockResolvedValueOnce({ rowCount: 1 });
             // Mock: INSERT with new external_id (this would have failed before the fix!)

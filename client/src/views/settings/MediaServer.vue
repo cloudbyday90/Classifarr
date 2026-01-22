@@ -556,12 +556,16 @@
     </div>
 
     <!-- Actions -->
-    <div class="flex gap-3">
-      <button @click="testConnection" :disabled="loading" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded-lg">
-        {{ loading ? 'Testing...' : 'Test Connection' }}
-      </button>
-      <button @click="saveSettings" :disabled="saving" class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg">
-        {{ saving ? 'Saving...' : 'Save' }}
+    <!-- Actions -->
+    <div class="flex gap-3 justify-end">
+      <button 
+        @click="saveSettings" 
+        :disabled="saving || !canSavePayload" 
+        class="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed rounded-lg font-medium transition-all flex items-center gap-2"
+      >
+        <span v-if="saving" class="animate-spin">⏳</span>
+        <span v-else>💾</span>
+        <span>{{ saving ? 'Connecting & Saving...' : 'Connect & Save' }}</span>
       </button>
     </div>
 
@@ -1001,6 +1005,23 @@ const confirmPlexServer = async () => {
       toast.error('Could not determine server connection URL')
       return
     }
+
+    // TEST CONNECTION BEFORE SAVING
+    try {
+        const testResponse = await api.testMediaServerConnection({
+            type: 'plex',
+            url: connectionUrl,
+            api_key: server.accessToken
+        })
+
+        if (!testResponse.data.success) {
+            throw new Error(testResponse.data.error?.message || 'Connection test failed')
+        }
+    } catch (testError) {
+        toast.error(`Connection failed: ${testError.message}`)
+        confirmingServer.value = false
+        return
+    }
     
     // Save the server
     await api.savePlexServer(server.name, connectionUrl, server.accessToken)
@@ -1010,12 +1031,15 @@ const confirmPlexServer = async () => {
     config.value.url = connectionUrl
     config.value.api_key = server.accessToken
     
-    toast.success(`Connected to ${server.name}!`)
+    toast.success(`Connected to ${server.name}! Syncing libraries...`)
     
     // Reset selection state but keep the connection visible
     plexAuthToken.value = null
     selectedServer.value = null
     plexServers.value = []
+
+    // Trigger explicit sync
+    await syncLibraries()
     
   } catch (error) {
     console.error('Failed to save Plex server:', error)
@@ -1037,6 +1061,11 @@ const resetPlexAuth = () => {
   selectedConnection.value = null
   testingConnection.value = null
   connectionTestResults.value = {}
+
+  // Explicitly clear configured URL to return to selection screen
+  config.value.url = ''
+  config.value.api_key = ''
+  config.value.name = ''
   
   if (pollInterval.value) {
     clearInterval(pollInterval.value)
@@ -1045,6 +1074,58 @@ const resetPlexAuth = () => {
   
   plexAuthLoading.value = false
 }
+
+// ... (Jellyfin/Emby Auth sections omitted for brevity, logic is similar but focusing on Plex/General Save first) ...
+
+// Updated Save Settings (General / Manual)
+const saveSettings = async () => {
+  saving.value = true
+  
+  try {
+     // Validate before saving
+     if (config.value.url && config.value.api_key) {
+        try {
+            const testResponse = await api.testMediaServerConnection(config.value)
+            if (!testResponse.data.success) {
+                throw new Error(testResponse.data.error?.message || 'Connection test failed')
+            }
+        } catch (testError) {
+            toast.error(`Connection failed: ${testError.message}. Settings NOT saved.`)
+            saving.value = false
+            return
+        }
+     }
+
+    await api.updateMediaServerConfig(config.value)
+    toast.success('Media server connected & saved! Syncing...')
+    
+    // Trigger sync if we have a valid config
+    if (config.value.url) {
+        await syncLibraries()
+    }
+
+  } catch (error) {
+    console.error('Failed to save media server config:', error)
+    toast.error('Failed to save configuration')
+  } finally {
+    saving.value = false
+  }
+}
+
+// Computeds for Disabling Save
+const canSavePayload = computed(() => {
+    // For Manual Entry or General Save
+    if (showManualEntry.value) {
+        return config.value.url && config.value.api_key && config.value.name
+    }
+    // For Plex Wizard
+    if (config.value.type === 'plex' && selectedServer.value) {
+        return !!selectedConnection.value // Require explicit connection selection? Or allow auto? 
+        // Plan said: selectedServer && selectedConnection
+    }
+    return false
+})
+
 
 // ==================== JELLYFIN AUTH ====================
 
@@ -1302,103 +1383,6 @@ const getTokenHelp = () => {
   }
 }
 
-const testConnection = async () => {
-  loading.value = true
-  
-  // Determine what to test: selected connection during OAuth flow, or saved config
-  let testConfig = null
-  
-  if (selectedConnection.value && selectedServer.value) {
-    // User is in Plex OAuth flow and has selected a connection - test that
-    testConfig = {
-      type: 'plex',
-      url: selectedConnection.value.uri,
-      api_key: selectedServer.value.accessToken
-    }
-  } else if (config.value.url && config.value.api_key) {
-    // Fall back to saved database config
-    testConfig = config.value
-  } else {
-    // Nothing to test
-    loading.value = false
-    connectionStatus.value = {
-      status: 'error',
-      serviceName: capitalizeFirst(config.value.type || 'plex'),
-      details: null,
-      error: {
-        message: 'No connection selected',
-        troubleshooting: [
-          'Select a connection from the list above first',
-          'Or configure a media server and save it'
-        ]
-      },
-      lastChecked: new Date()
-    }
-    toast.error('No connection to test - select one from the list first')
-    return
-  }
-  
-  connectionStatus.value = {
-    status: 'testing',
-    serviceName: capitalizeFirst(testConfig.type),
-    details: null,
-    error: null,
-    lastChecked: null
-  }
-
-  try {
-    const response = await api.testMediaServerConnection(testConfig)
-    
-    if (response.data.success) {
-      connectionStatus.value = {
-        status: 'success',
-        serviceName: capitalizeFirst(testConfig.type),
-        details: response.data.details || {
-          serverName: capitalizeFirst(testConfig.type),
-          status: 'Connected'
-        },
-        error: null,
-        lastChecked: new Date()
-      }
-      toast.success(`Successfully connected to ${capitalizeFirst(testConfig.type)}`)
-    } else {
-      connectionStatus.value = {
-        status: 'error',
-        serviceName: capitalizeFirst(testConfig.type),
-        details: null,
-        error: response.data.error || {
-          message: 'Connection failed',
-          troubleshooting: [
-            `Check that ${capitalizeFirst(testConfig.type)} is running`,
-            'Verify the URL is correct',
-            'Ensure the API key/token is valid'
-          ]
-        },
-        lastChecked: new Date()
-      }
-      toast.error('Connection test failed')
-    }
-  } catch (error) {
-    connectionStatus.value = {
-      status: 'error',
-      serviceName: capitalizeFirst(testConfig.type),
-      details: null,
-      error: {
-        message: error.response?.data?.error || error.message,
-        troubleshooting: [
-          `Check that ${capitalizeFirst(testConfig.type)} is running`,
-          'Verify the URL is correct',
-          'Ensure the API key/token is valid'
-        ]
-      },
-      lastChecked: new Date()
-    }
-    toast.error('Connection test failed')
-  } finally {
-    loading.value = false
-  }
-}
-
 const syncLibraries = async () => {
   syncing.value = true
   
@@ -1407,6 +1391,9 @@ const syncLibraries = async () => {
     
     if (response.data.success) {
       toast.success(`Synced ${response.data.libraries?.length || 0} libraries. Content sync started in background.`)
+      // TRIGGER RE-INGESTION (Classification Queue)
+      // This ensures tasks start processing immediately without restart
+      await api.triggerIngestion()
     } else {
       toast.error('Failed to sync libraries')
     }
@@ -1419,17 +1406,4 @@ const syncLibraries = async () => {
   }
 }
 
-const saveSettings = async () => {
-  saving.value = true
-  
-  try {
-    await api.updateMediaServerConfig(config.value)
-    toast.success('Media server configuration saved successfully')
-  } catch (error) {
-    console.error('Failed to save media server config:', error)
-    toast.error('Failed to save configuration')
-  } finally {
-    saving.value = false
-  }
-}
 </script>

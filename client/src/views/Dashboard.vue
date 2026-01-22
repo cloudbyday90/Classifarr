@@ -66,7 +66,7 @@
       </p>
       
       <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button @click="$router.push('/settings')" class="px-6 py-3">
+        <Button @click="$router.push('/settings/media-server')" class="px-6 py-3">
           📺 Connect Media Server
         </Button>
         <a :href="GITHUB_WIKI_URL" target="_blank" rel="noopener noreferrer">

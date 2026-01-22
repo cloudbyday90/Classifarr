@@ -161,66 +161,9 @@ class SchedulerService {
      */
     async runGapAnalysis() {
         try {
-            // Find items that have NO content analysis AND are not already queued
-            // Limit to 500 at a time to prevent flooding the queue
-            // Find items that need enrichment:
-            // 1. Completely unanalyzed items (content_analysis IS NULL)
-            // 2. Analyzed items (from Sync or AI) that haven't been through enrichment pipeline (source != metadata_enrichment)
-            //    AND are missing OMDb data.
-            const result = await db.query(
-                `SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, 
-                        msi.tmdb_id, msi.tvdb_id, msi.imdb_id, msi.year,
-                        msi.library_id, l.name as library_name, l.media_type
-         FROM media_server_items msi
-         LEFT JOIN libraries l ON msi.library_id = l.id
-         WHERE (
-             msi.metadata->'content_analysis' IS NULL
-             OR (
-                 msi.metadata->'omdb' IS NULL
-                 AND msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'
-             )
-         )
-         AND NOT EXISTS (
-             SELECT 1 FROM task_queue tq 
-             WHERE tq.task_type = 'metadata_enrichment' 
-             AND tq.status IN ('pending', 'processing')
-             AND (tq.payload::json->>'itemId')::int = msi.id
-         )
-         LIMIT 5000`
-            );
-
-            if (result.rows.length === 0) {
-                logger.debug('Gap analysis: No unanalyzed items found');
-                return;
-            }
-
-            logger.info(`Gap analysis: Found ${result.rows.length} unanalyzed items. Queueing for metadata enrichment (NOT classification)...`);
-
-            for (const item of result.rows) {
-                // Use 'metadata_enrichment' for existing Plex content (learning data)
-                // Classification is ONLY for new incoming requests (Overseerr, etc.)
-                await queueService.enqueue('metadata_enrichment', {
-                    title: item.title,
-                    year: item.year,
-                    overview: item.metadata?.summary || '',
-                    genres: typeof item.genres === 'string' ? JSON.parse(item.genres) : (item.genres || []),
-                    keywords: typeof item.tags === 'string' ? JSON.parse(item.tags) : (item.tags || []),
-                    content_rating: item.content_rating,
-                    original_language: 'en',
-                    tmdb_id: item.tmdb_id,
-                    tvdb_id: item.tvdb_id,  // Pass for TVDB→TMDB conversion
-                    imdb_id: item.imdb_id,  // Pass for IMDB→TMDB conversion
-                    itemId: item.id, // Pass internal ID for efficient updating
-                    source_library_id: item.library_id, // Already in this library - just enriching
-                    source_library_name: item.library_name,
-                    media: { media_type: item.media_type || 'movie' }
-                }, {
-                    priority: 5, // Lower priority than user actions
-                    source: 'gap_analysis'
-                });
-            }
-
-
+            // Delegate to QueueService which now holds the logic
+            // This allows triggering from both scheduler and API (manual ingestion)
+            await queueService.refillQueue();
         } catch (error) {
             logger.error('Error running gap analysis', { error: error.message });
         }

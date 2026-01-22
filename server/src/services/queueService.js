@@ -1727,6 +1727,78 @@ class QueueService {
             throw error;
         }
     }
+    /**
+     * Finds items that need analysis and adds them to the queue
+     * This is used by the scheduler (gap analysis) and manual ingestion triggers
+     */
+    async refillQueue() {
+        try {
+            // Find items that have NO content analysis AND are not already queued
+            // Limit to 500 at a time to prevent flooding the queue
+            // Find items that need enrichment:
+            // 1. Completely unanalyzed items (content_analysis IS NULL)
+            // 2. Analyzed items (from Sync or AI) that haven't been through enrichment pipeline (source != metadata_enrichment)
+            //    AND are missing OMDb data.
+            const result = await this.db.query(
+                `SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, 
+                        msi.tmdb_id, msi.tvdb_id, msi.imdb_id, msi.year,
+                        msi.library_id, l.name as library_name, l.media_type
+                 FROM media_server_items msi
+                 LEFT JOIN libraries l ON msi.library_id = l.id
+                 WHERE (
+                     msi.metadata->'content_analysis' IS NULL
+                     OR (
+                         msi.metadata->'omdb' IS NULL
+                         AND msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'
+                     )
+                 )
+                 AND NOT EXISTS (
+                     SELECT 1 FROM task_queue tq 
+                     WHERE tq.task_type = 'metadata_enrichment' 
+                     AND tq.status IN ('pending', 'processing')
+                     AND (tq.payload::json->>'itemId')::int = msi.id
+                 )
+                 LIMIT 5000`
+            );
+
+            if (result.rows.length === 0) {
+                this.logger.debug('Refill queue: No unanalyzed items found');
+                return { queued: 0 };
+            }
+
+            this.logger.info(`Refill queue: Found ${result.rows.length} unanalyzed items. Queueing for metadata enrichment...`);
+            let queuedCount = 0;
+
+            for (const item of result.rows) {
+                // Use 'metadata_enrichment' for existing Plex content (learning data)
+                await this.enqueue('metadata_enrichment', {
+                    title: item.title,
+                    year: item.year,
+                    overview: item.metadata?.summary || '',
+                    genres: typeof item.genres === 'string' ? JSON.parse(item.genres) : (item.genres || []),
+                    keywords: typeof item.tags === 'string' ? JSON.parse(item.tags) : (item.tags || []),
+                    content_rating: item.content_rating,
+                    original_language: 'en',
+                    tmdb_id: item.tmdb_id,
+                    tvdb_id: item.tvdb_id,  // Pass for TVDB→TMDB conversion
+                    imdb_id: item.imdb_id,  // Pass for IMDB→TMDB conversion
+                    itemId: item.id, // Pass internal ID for efficient updating
+                    source_library_id: item.library_id, // Already in this library - just enriching
+                    source_library_name: item.library_name,
+                    media: { media_type: item.media_type || 'movie' }
+                }, {
+                    priority: 5, // Lower priority than user actions
+                    source: 'gap_analysis'
+                });
+                queuedCount++;
+            }
+
+            return { queued: queuedCount };
+        } catch (error) {
+            this.logger.error('Error refilling queue', { error: error.message });
+            throw error;
+        }
+    }
 }
 
 // Default singleton instance for production use

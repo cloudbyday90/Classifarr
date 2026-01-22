@@ -90,6 +90,9 @@ export default {
   syncMediaServer() {
     return apiClient.post('/media-server/sync')
   },
+  triggerIngestion() {
+    return apiClient.post('/media-server/ingest')
+  },
   // Returns all media servers as an array (currently max 1 is active)
   async getMediaServers() {
     const response = await apiClient.get('/media-server')
