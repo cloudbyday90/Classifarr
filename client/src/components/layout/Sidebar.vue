@@ -9,14 +9,14 @@
 <template>
   <!-- Desktop: Always visible sidebar -->
   <!-- Mobile: Slide-in overlay when isOpen is true -->
-  <aside 
+  <aside
     :class="[
       'fixed md:static inset-y-0 left-0 w-72 md:w-64 bg-sidebar border-r border-gray-800 flex flex-col transform transition-transform duration-300 ease-in-out z-50',
-      isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
     ]"
   >
     <!-- Mobile Close Button -->
-    <button 
+    <button
       @click="$emit('close')"
       class="absolute top-4 right-4 p-2 text-gray-400 hover:text-white md:hidden"
       aria-label="Close menu"
@@ -25,13 +25,21 @@
     </button>
 
     <div class="px-6 py-5 flex items-center gap-3">
-      <img src="/logo.png" alt="Classifarr Logo" class="w-10 h-10 rounded-lg shadow-lg shadow-primary/20" />
+      <img
+        src="/logo.png"
+        alt="Classifarr Logo"
+        class="w-10 h-10 rounded-lg shadow-lg shadow-primary/20"
+      />
       <div>
         <h1 class="text-xl font-bold text-white tracking-tight">Classifarr</h1>
-        <p class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Media Classifier</p>
+        <p
+          class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold"
+        >
+          Media Classifier
+        </p>
       </div>
     </div>
-    
+
     <nav class="flex-1 px-2 overflow-y-auto">
       <!-- Dashboard Section -->
       <div class="mb-2">
@@ -112,22 +120,27 @@
     </nav>
 
     <!-- Offline Banner -->
-    <div v-if="isOffline" class="mx-2 mb-2 px-3 py-2 bg-yellow-900/30 border border-yellow-700/50 rounded-lg text-center">
-      <span class="text-xs text-yellow-400 flex items-center justify-center gap-1">
+    <div
+      v-if="isOffline"
+      class="mx-2 mb-2 px-3 py-2 bg-yellow-900/30 border border-yellow-700/50 rounded-lg text-center"
+    >
+      <span
+        class="text-xs text-yellow-400 flex items-center justify-center gap-1"
+      >
         📡 Offline - Using cached data
       </span>
     </div>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.40.3a-alpha</div>
+      <div>v0.40.4-alpha</div>
     </div>
   </aside>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { useOnline } from '@vueuse/core'
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import { useOnline } from "@vueuse/core";
 import {
   HomeIcon,
   FolderIcon,
@@ -144,57 +157,61 @@ import {
   PresentationChartLineIcon,
   DocumentDuplicateIcon,
   ArrowPathIcon,
-  SwatchIcon
-} from '@heroicons/vue/24/outline'
+  SwatchIcon,
+} from "@heroicons/vue/24/outline";
 
 defineProps({
   isOpen: {
     type: Boolean,
-    default: false
-  }
-})
+    default: false,
+  },
+});
 
-defineEmits(['close'])
+defineEmits(["close"]);
 
-const route = useRoute()
-const online = useOnline()
-const isOffline = computed(() => !online.value)
+const route = useRoute();
+const online = useOnline();
+const isOffline = computed(() => !online.value);
 
 // Media section
 const mediaMenuItems = [
-  { path: '/libraries', label: 'Libraries', icon: FolderIcon },
-  { path: '/request', label: 'Request', icon: PlusCircleIcon },
-  { path: '/activity', label: 'Activity', icon: ClockIcon },
-]
+  { path: "/libraries", label: "Libraries", icon: FolderIcon },
+  { path: "/request", label: "Request", icon: PlusCircleIcon },
+  { path: "/activity", label: "Activity", icon: ClockIcon },
+];
 
 // Classification section
 const classificationMenuItems = [
-  { path: '/policies', label: 'Policies', icon: DocumentDuplicateIcon },
-  { path: '/presets', label: 'Presets', icon: SwatchIcon },
-  { path: '/tuning-suggestions', label: 'Tuning', icon: LightBulbIcon },
-]
+  { path: "/policies", label: "Policies", icon: DocumentDuplicateIcon },
+  { path: "/presets", label: "Presets", icon: SwatchIcon },
+  { path: "/tuning-suggestions", label: "Tuning", icon: LightBulbIcon },
+];
 
 // Analytics section
 const analyticsMenuItems = [
-  { path: '/history', label: 'History', icon: DocumentTextIcon },
-  { path: '/statistics', label: 'Statistics', icon: ChartBarIcon },
-  { path: '/policy-stats', label: 'Policy Stats', icon: PresentationChartLineIcon },
-]
+  { path: "/history", label: "History", icon: DocumentTextIcon },
+  { path: "/statistics", label: "Statistics", icon: ChartBarIcon },
+  {
+    path: "/policy-stats",
+    label: "Policy Stats",
+    icon: PresentationChartLineIcon,
+  },
+];
 
 // Admin section
 const adminMenuItems = [
-  { path: '/migration', label: 'Migration', icon: ArrowPathIcon },
-  { path: '/queue', label: 'Queue', icon: QueueListIcon },
-  { path: '/settings', label: 'Settings', icon: CogIcon },
-  { path: '/system', label: 'System', icon: ServerIcon },
-]
+  { path: "/migration", label: "Migration", icon: ArrowPathIcon },
+  { path: "/queue", label: "Queue", icon: QueueListIcon },
+  { path: "/settings", label: "Settings", icon: CogIcon },
+  { path: "/system", label: "System", icon: ServerIcon },
+];
 
 const isActive = (path) => {
-  if (path === '/') {
-    return route.path === '/'
+  if (path === "/") {
+    return route.path === "/";
   }
-  return route.path.startsWith(path)
-}
+  return route.path.startsWith(path);
+};
 </script>
 
 <style scoped>
