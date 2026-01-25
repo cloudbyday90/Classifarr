@@ -19,13 +19,7 @@
 const request = require('supertest');
 const express = require('express');
 
-// Mock dependencies BEFORE requiring modules
-jest.mock('../config/database');
-jest.mock('../services/classification');
-jest.mock('../services/clarificationService');
-jest.mock('../services/reclassificationService');
-jest.mock('../services/patternReinforcementService');
-jest.mock('../services/libraryProfileService');
+// 1. Mock Logger FIRST to catch any early logs
 jest.mock('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(),
@@ -35,6 +29,37 @@ jest.mock('../utils/logger', () => ({
   })),
 }));
 
+// 2. Mock Database with factory to prevent startup crashes
+jest.mock('../config/database', () => {
+  const mockQuery = jest.fn().mockResolvedValue({ rows: [] });
+  return {
+    query: mockQuery,
+    pool: {
+      connect: jest.fn().mockResolvedValue({
+        query: mockQuery,
+        release: jest.fn(),
+      }),
+      on: jest.fn(),
+    },
+  };
+});
+
+// 3. Mock ProviderLock to prevent side effects
+jest.mock('../services/providerLock', () => ({
+  loadConfig: jest.fn(),
+  acquireLock: jest.fn().mockResolvedValue(true),
+  releaseLock: jest.fn(),
+  heartbeat: jest.fn(),
+}));
+
+// 4. Mock other services
+jest.mock('../services/classification');
+jest.mock('../services/clarificationService');
+jest.mock('../services/reclassificationService');
+jest.mock('../services/patternReinforcementService');
+jest.mock('../services/libraryProfileService');
+
+// 5. Import modules (Standard top-level import)
 const db = require('../config/database');
 const classificationService = require('../services/classification');
 const clarificationService = require('../services/clarificationService');
@@ -42,9 +67,25 @@ const classificationRouter = require('../routes/classification');
 
 describe('Classification Routes - Pending Resolution', () => {
   let app;
+  let consoleWarnSpy;
+  let consoleErrorSpy;
+
+  beforeAll(() => {
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    consoleWarnSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Reset default mock implementations
+    db.query.mockResolvedValue({ rows: [] });
+    
     app = express();
     app.use(express.json());
     app.use('/api/classification', classificationRouter);
@@ -67,6 +108,7 @@ describe('Classification Routes - Pending Resolution', () => {
           // First call - get classification with library
           rows: [{
             id: 1,
+            library_id: 10,
             metadata: JSON.stringify({ tmdb_id: 12345, title: 'Test Movie', year: 2024 }),
             arr_type: 'radarr',
             arr_id: 1,
@@ -99,19 +141,20 @@ describe('Classification Routes - Pending Resolution', () => {
       // Verify routeToArr was called with correct parameters
       expect(classificationService.routeToArr).toHaveBeenCalledWith(
         { tmdb_id: 12345, title: 'Test Movie', year: 2024 },
-        {
+        expect.objectContaining({
+          id: 10,
           arr_type: 'radarr',
           arr_id: 1,
           radarr_settings: { quality_profile_id: 4, root_folder_path: '/movies' },
           sonarr_settings: null,
           name: 'Action Movies'
-        }
+        })
       );
 
       // Verify status was updated to 'routed'
       expect(db.query).toHaveBeenCalledWith(
-        'UPDATE classification_history SET status = $1 WHERE id = $2',
-        ['routed', 1]
+        expect.stringContaining('UPDATE classification_history SET status'),
+        expect.arrayContaining(['routed', 1])
       );
     });
 
@@ -128,6 +171,7 @@ describe('Classification Routes - Pending Resolution', () => {
         .mockResolvedValueOnce({
           rows: [{
             id: 2,
+            library_id: 20,
             metadata: JSON.stringify({ tmdb_id: 67890, title: 'Test Series', year: 2024 }),
             arr_type: 'sonarr',
             arr_id: 2,
@@ -164,15 +208,16 @@ describe('Classification Routes - Pending Resolution', () => {
       });
 
       db.query.mockResolvedValueOnce({
-        rows: [{
-          id: 3,
-          metadata: JSON.stringify({ tmdb_id: 11111, title: 'Test Movie' }),
-          arr_type: null,  // No arr mapping
-          arr_id: null,
-          radarr_settings: null,
-          sonarr_settings: null,
-          library_name: 'No Arr Library'
-        }]
+          rows: [{
+            id: 3,
+            library_id: 30,
+            metadata: JSON.stringify({ tmdb_id: 11111, title: 'Test Movie' }),
+            arr_type: null,  // No arr mapping
+            arr_id: null,
+            radarr_settings: null,
+            sonarr_settings: null,
+            library_name: 'No Arr Library'
+          }]
       });
 
       const response = await request(app)
@@ -187,6 +232,43 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(classificationService.routeToArr).not.toHaveBeenCalled();
     });
 
+    test('should attempt routing when arr_id is missing but arr_type exists', async () => {
+      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+        success: true,
+        classificationId: 6,
+        libraryId: 60,
+        libraryName: 'Movies',
+        shouldRoute: true,
+      });
+
+      db.query
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 6,
+            library_id: 60,
+            metadata: JSON.stringify({ tmdb_id: 33333, title: 'Test Movie' }),
+            arr_type: 'radarr',
+            arr_id: null,
+            radarr_settings: null,
+            sonarr_settings: null,
+            library_name: 'Movies'
+          }]
+        })
+        .mockResolvedValueOnce({ rows: [] });
+
+      classificationService.routeToArr.mockResolvedValue(undefined);
+
+      const response = await request(app)
+        .post('/api/classification/pending/6/resolve')
+        .send({
+          library_id: 60,
+          selected_option: 'Movies'
+        });
+
+      expect(response.status).toBe(200);
+      expect(classificationService.routeToArr).toHaveBeenCalled();
+    });
+
     test('should succeed even if routing fails', async () => {
       clarificationService.resolvePolicyQuestion.mockResolvedValue({
         success: true,
@@ -197,15 +279,16 @@ describe('Classification Routes - Pending Resolution', () => {
       });
 
       db.query.mockResolvedValueOnce({
-        rows: [{
-          id: 4,
-          metadata: JSON.stringify({ tmdb_id: 22222, title: 'Test Movie' }),
-          arr_type: 'radarr',
-          arr_id: 1,
-          radarr_settings: { quality_profile_id: 4 },
-          sonarr_settings: null,
-          library_name: 'Movies'
-        }]
+          rows: [{
+            id: 4,
+            library_id: 40,
+            metadata: JSON.stringify({ tmdb_id: 22222, title: 'Test Movie' }),
+            arr_type: 'radarr',
+            arr_id: 1,
+            radarr_settings: { quality_profile_id: 4 },
+            sonarr_settings: null,
+            library_name: 'Movies'
+          }]
       });
 
       // Mock routing failure
@@ -238,6 +321,7 @@ describe('Classification Routes - Pending Resolution', () => {
         .mockResolvedValueOnce({
           rows: [{
             id: 5,
+            library_id: 50,
             metadata: { tmdb_id: 33333, title: 'Test Movie' },  // Already an object
             arr_type: 'radarr',
             arr_id: 1,

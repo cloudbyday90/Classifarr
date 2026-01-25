@@ -16,6 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Set environment variable to suppress warnings during test initialization
+process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
 const apiKeyService = require('../services/apiKeyService');
 
 describe('API Key Service - generateApiKey', () => {

@@ -16,6 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Set environment variable to prevent warnings during test initialization
+process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
 const { authenticateApiKey, authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
 const apiKeyService = require('../services/apiKeyService');
 const authService = require('../services/auth');
@@ -26,6 +29,15 @@ jest.mock('../services/auth');
 
 describe('API Key Authentication Middleware', () => {
   let req, res, next;
+  let consoleErrorSpy;
+
+  beforeAll(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
+  });
 
   beforeEach(() => {
     // Reset mocks before each test

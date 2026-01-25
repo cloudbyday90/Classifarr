@@ -18,6 +18,16 @@ jest.mock('../config/database', () => ({
     }
 }));
 
+// Mock the logger
+jest.mock('../utils/logger', () => ({
+    createLogger: () => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn()
+    })
+}));
+
 // Mock RAG retriever
 jest.mock('../services/ragRetriever', () => ({
     semanticSearch: jest.fn()

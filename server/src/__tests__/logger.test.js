@@ -29,10 +29,19 @@ const { createLogger, sanitizeData, getSystemContext } = require('../utils/logge
 
 describe('Logger', () => {
     let logger;
+    let consoleErrorSpy;
+    let consoleWarnSpy;
 
     beforeEach(() => {
         jest.clearAllMocks();
         logger = createLogger('TestModule');
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        consoleErrorSpy.mockRestore();
+        consoleWarnSpy.mockRestore();
     });
 
     describe('createLogger', () => {
@@ -75,14 +84,12 @@ describe('Logger', () => {
         });
 
         test('should still log to console when DB fails', async () => {
-            const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
             db.query.mockRejectedValueOnce(new Error('DB error'));
 
             await logger.error('Important error message', { key: 'value' });
 
-            expect(consoleSpy).toHaveBeenCalled();
-            expect(consoleSpy.mock.calls[0][0]).toContain('Important error message');
-            consoleSpy.mockRestore();
+            expect(consoleErrorSpy).toHaveBeenCalled();
+            expect(consoleErrorSpy.mock.calls[0][0]).toContain('Important error message');
         });
     });
 

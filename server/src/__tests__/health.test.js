@@ -46,8 +46,12 @@ jest.mock('../middleware/auth', () => ({
 
 describe('Health Endpoints', () => {
   let app;
+  let consoleErrorSpy;
 
   beforeEach(() => {
+    // Suppress console.error during tests
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
     // Create a minimal Express app with the health endpoints
     app = express();
     app.use(express.json());
@@ -58,6 +62,10 @@ describe('Health Endpoints', () => {
 
     // Clear all mocks before each test
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   describe('GET /api/system/health/live', () => {
@@ -281,4 +289,3 @@ describe('Health Endpoints', () => {
     });
   });
 });
-

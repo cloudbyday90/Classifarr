@@ -26,6 +26,16 @@ jest.mock('../config/database', () => ({
   },
 }));
 
+// Mock logger
+jest.mock('../utils/logger', () => ({
+  createLogger: () => ({
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  }),
+}));
+
 const db = require('../config/database');
 
 describe('ClarificationService', () => {
@@ -224,9 +234,11 @@ describe('ClarificationService', () => {
         },
       ];
 
-      db.query.mockResolvedValueOnce({
-        rows: mockQuestions,
-      });
+      db.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: mockQuestions,
+        });
 
       const metadata = {
         keywords: ['stand-up comedy', 'recorded live'],
@@ -274,9 +286,11 @@ describe('ClarificationService', () => {
         },
       ];
 
-      db.query.mockResolvedValueOnce({
-        rows: mockQuestions,
-      });
+      db.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: mockQuestions,
+        });
 
       const metadata = {
         keywords: ['keyword1', 'keyword2', 'keyword3'],
@@ -286,6 +300,66 @@ describe('ClarificationService', () => {
       const questions = await clarificationService.matchQuestions(metadata, 2);
 
       expect(questions.length).toBeLessThanOrEqual(2);
+    });
+
+    test('should suppress language question when original language is English', async () => {
+      const mockQuestions = [
+        {
+          id: 10,
+          question_text: 'What language is this content primarily in?',
+          question_type: 'language',
+          trigger_keywords: [],
+          trigger_genres: [],
+          response_options: {},
+          priority: 5,
+          enabled: true,
+        },
+      ];
+
+      db.query.mockResolvedValueOnce({
+        rows: mockQuestions,
+      });
+
+      const metadata = {
+        keywords: [],
+        genres: [],
+        original_language: 'en',
+      };
+
+      const questions = await clarificationService.matchQuestions(metadata, 2);
+
+      expect(questions).toHaveLength(0);
+    });
+
+    test('should allow language question when language is missing and policies use language presets', async () => {
+      const mockQuestions = [
+        {
+          id: 10,
+          question_text: 'What language is this content primarily in?',
+          question_type: 'language',
+          trigger_keywords: [],
+          trigger_genres: [],
+          response_options: {},
+          priority: 5,
+          enabled: true,
+        },
+      ];
+
+      db.query
+        .mockResolvedValueOnce({ rows: [{ exists: true }] })
+        .mockResolvedValueOnce({ rows: mockQuestions });
+
+      const metadata = {
+        keywords: [],
+        genres: [],
+        original_language: null,
+        media_type: 'movie',
+      };
+
+      const questions = await clarificationService.matchQuestions(metadata, 2);
+
+      expect(questions).toHaveLength(1);
+      expect(questions[0].question_type).toBe('language');
     });
   });
 
@@ -602,6 +676,58 @@ describe('ClarificationService', () => {
       );
       expect(learningPatternCall).toBeDefined();
       
+      const metadataParam = JSON.parse(learningPatternCall[1][3]);
+      expect(metadataParam.original_question).toBeNull();
+    });
+
+    test('should handle invalid policy_question string gracefully', async () => {
+      const mockClassification = {
+        id: 1,
+        title: 'Test Movie',
+        media_type: 'movie',
+        library_name: 'Movies',
+        policy_question: '[object Object]',
+        metadata: JSON.stringify({
+          tmdb_id: 12345,
+          title: 'Test Movie'
+        })
+      };
+
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
+          .mockResolvedValueOnce({ 
+            rows: [{ 
+              id: 1, 
+              tmdb_id: 12345, 
+              library_id: 2,
+              pattern_type: 'exact_match',
+              confidence: 100 
+            }] 
+          }) // INSERT learning pattern
+          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      const result = await clarificationService.resolvePolicyQuestion(
+        1,
+        2,
+        'Option',
+        'test-user',
+        true
+      );
+
+      expect(result.success).toBe(true);
+
+      const learningPatternCall = mockClient.query.mock.calls.find(call =>
+        call[0] && call[0].includes('INSERT INTO learning_patterns')
+      );
+      expect(learningPatternCall).toBeDefined();
+
       const metadataParam = JSON.parse(learningPatternCall[1][3]);
       expect(metadataParam.original_question).toBeNull();
     });

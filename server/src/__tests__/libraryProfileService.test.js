@@ -13,6 +13,16 @@ jest.mock('../config/database', () => ({
     query: jest.fn()
 }));
 
+// Mock the logger
+jest.mock('../utils/logger', () => ({
+    createLogger: () => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn()
+    })
+}));
+
 const db = require('../config/database');
 
 describe('LibraryProfileService', () => {

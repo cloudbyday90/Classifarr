@@ -264,6 +264,7 @@ describe('ArrConfigWarning.vue', () => {
 
     it('handles API errors gracefully', async () => {
       api.genericRequest.mockRejectedValueOnce(new Error('Network error'));
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const wrapper = mount(ArrConfigWarning);
       await flushPromises();
@@ -271,6 +272,8 @@ describe('ArrConfigWarning.vue', () => {
       // Should not crash and should not display warning
       expect(wrapper.exists()).toBe(true);
       expect(wrapper.find('.bg-yellow-900\\/30').exists()).toBe(false);
+
+      consoleError.mockRestore();
     });
 
     it('does not call API if already dismissed', async () => {

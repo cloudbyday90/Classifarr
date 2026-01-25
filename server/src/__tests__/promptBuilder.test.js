@@ -7,9 +7,19 @@
 
 const promptBuilder = require('../services/promptBuilder');
 
-// Mock the database and logger
+// Mock the database
 jest.mock('../config/database', () => ({
     query: jest.fn()
+}));
+
+// Mock the logger
+jest.mock('../utils/logger', () => ({
+    createLogger: () => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn()
+    })
 }));
 
 jest.mock('../services/libraryProfileService', () => ({

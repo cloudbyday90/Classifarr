@@ -16,6 +16,16 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Mock the logger
+jest.mock('../utils/logger', () => ({
+    createLogger: () => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn()
+    })
+}));
+
 const contentTypeAnalyzer = require('../services/contentTypeAnalyzer');
 
 describe('ContentTypeAnalyzer', () => {

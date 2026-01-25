@@ -18,6 +18,7 @@ jest.mock('../logger', () => ({
     debug: jest.fn()
 }), { virtual: true });
 
+const db = require('../config/database');
 const libraryMappingService = require('../services/libraryMappingService');
 
 describe('LibraryMappingService - Auto-Detect Exact Match', () => {
@@ -143,6 +144,35 @@ describe('LibraryMappingService - Auto-Detect Exact Match', () => {
 
             expect(result.applied).toHaveLength(1);
             expect(result.applied[0].arr_root_folder_path).toBe('C:\\media\\movies\\Comedy');
+        });
+    });
+
+    describe('saveMapping', () => {
+        test('should update libraries table when mapping is saved', async () => {
+            db.query
+                .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // library exists
+                .mockResolvedValueOnce({ rows: [{ id: 1, library_id: 1 }] }) // mapping upsert
+                .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // mappings count
+                .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // libraries count
+                .mockResolvedValueOnce({ rows: [] }) // app_settings upsert
+                .mockResolvedValueOnce({ rows: [] }); // libraries update
+
+            await libraryMappingService.saveMapping({
+                library_id: 1,
+                arr_type: 'radarr',
+                arr_config_id: 1,
+                arr_root_folder_id: 10,
+                arr_root_folder_path: '/movies',
+                quality_profile_id: 4,
+                plex_path_prefix: null,
+                arr_path_prefix: null,
+                classifarr_path_prefix: null
+            });
+
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringContaining('UPDATE libraries'),
+                expect.arrayContaining([1, 'radarr', 1, '/movies', 4])
+            );
         });
     });
 });

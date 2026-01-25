@@ -34,6 +34,7 @@ const embeddingService = require('./embeddingService');
 const contextManager = require('./contextManager');
 const patternReinforcementService = require('./patternReinforcementService');
 const policyEngine = require('./policyEngine');
+const policyQuestionBuilder = require('./policyQuestionBuilder');
 const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
 const libraryProfileService = require('./libraryProfileService');
@@ -1001,8 +1002,31 @@ class ClassificationService {
           });
         }
 
+        const suggestedLibrary = libraries.find(l => l.id === policyResult.ranked[0]?.library_id);
+        const policyQuestion = await policyQuestionBuilder.build({
+          metadata,
+          policyResult,
+          libraries,
+          suggestedLibrary
+        });
+
+        if (policyQuestion) {
+          return {
+            library: suggestedLibrary || null,
+            confidence: policyResult.confidence,
+            method: 'policy_prompt',
+            reason: `Policy requires clarification`,
+            needs_clarification: true,
+            clarification: policyQuestion,
+            pending_reason: policyQuestion.problem_summary,
+            policy_question: policyQuestion,
+            libraries,
+            policyResult
+          };
+        }
+
         metadata.policyResult = policyResult;
-        // Falls through to legacy signal collection and AI
+        // Falls through to legacy signal collection and AI if no policy question could be built
       }
     } catch (policyError) {
       logger.warn('PolicyEngine evaluation failed, falling back to legacy signals', {
@@ -1101,12 +1125,31 @@ class ClassificationService {
     // Step 5: AI verification (receives pre-calculated confidence)
     try {
       const aiMatch = await this.aiClassify(metadata, libraries, signalContext);
-      return {
+      const aiResult = {
         ...aiMatch,
         method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
         libraries: libraries,
         signalContext: signalContext, // Include for logging
       };
+
+      // Ensure low-confidence results surface policy-driven clarifications
+      if (!aiResult.needs_clarification && aiResult.confidence < 70) {
+        const policyQuestion = await policyQuestionBuilder.build({
+          metadata,
+          policyResult: metadata.policyResult || null,
+          libraries,
+          suggestedLibrary: aiResult.library || null
+        });
+
+        if (policyQuestion) {
+          aiResult.needs_clarification = true;
+          aiResult.clarification = policyQuestion;
+          aiResult.policy_question = policyQuestion;
+          aiResult.pending_reason = policyQuestion.problem_summary;
+        }
+      }
+
+      return aiResult;
     } catch (error) {
       logger.error('AI classification failed', { error: error.message });
 
@@ -1554,7 +1597,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
     // For pending items (needs clarification)
     const pendingReason = result.pending_reason || (result.needs_clarification ? result.reason : null);
-    const policyQuestion = result.policy_question ? JSON.stringify(result.policy_question) : null;
+    const policyQuestion = this.normalizePolicyQuestion(result.policy_question);
 
     // Handle retry status
     let status;
@@ -1686,24 +1729,61 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
   async routeToArr(metadata, library) {
     try {
-      if (library.arr_type === 'radarr') {
+      const resolvedLibrary = await this.resolveRoutingConfig(library);
+
+      if (!resolvedLibrary || !resolvedLibrary.arr_type) {
+        logger.warn('No *arr mapping available for routing', {
+          title: metadata.title,
+          libraryId: library?.id || library?.library_id || null
+        });
+        return;
+      }
+
+      if (!resolvedLibrary.arr_id) {
+        logger.warn('Missing *arr config ID; routing skipped', {
+          title: metadata.title,
+          libraryId: resolvedLibrary.id || resolvedLibrary.library_id || null,
+          arr_type: resolvedLibrary.arr_type
+        });
+        return;
+      }
+
+      if (resolvedLibrary.arr_type === 'radarr') {
         const radarrConfig = await db.query(
           'SELECT * FROM radarr_config WHERE id = $1 AND is_active = true',
-          [library.arr_id]
+          [resolvedLibrary.arr_id]
         );
 
         if (radarrConfig.rows.length > 0) {
           const config = radarrConfig.rows[0];
+          const baseUrl = config.url || radarrService.buildUrl(config);
 
           // Use JSONB settings with fallback to legacy fields
-          const settings = library.radarr_settings && Object.keys(library.radarr_settings).length > 0
-            ? library.radarr_settings
+          const rawSettings = this.normalizeSettings(resolvedLibrary.radarr_settings);
+          const settings = Object.keys(rawSettings).length > 0
+            ? rawSettings
             : {
-              root_folder_path: library.root_folder,
-              quality_profile_id: library.quality_profile_id,
+              root_folder_path: resolvedLibrary.root_folder,
+              quality_profile_id: resolvedLibrary.quality_profile_id,
               monitor: true,
               search_on_add: true
             };
+
+          if (!settings.root_folder_path) {
+            settings.root_folder_path = await this.resolveDefaultRootFolder('radarr', baseUrl, config.api_key);
+          }
+          if (!settings.quality_profile_id) {
+            settings.quality_profile_id = await this.resolveDefaultQualityProfile('radarr', baseUrl, config.api_key);
+          }
+
+          if (!settings.root_folder_path || !settings.quality_profile_id) {
+            logger.warn('Missing Radarr routing settings; skipping route', {
+              title: metadata.title,
+              root_folder_path: settings.root_folder_path || null,
+              quality_profile_id: settings.quality_profile_id || null
+            });
+            return;
+          }
 
           const movieData = {
             title: metadata.title,
@@ -1719,30 +1799,48 @@ Think step by step, then respond with ONLY one of the formats above.`;
             },
           };
 
-          await radarrService.addMovie(config.url, config.api_key, movieData);
+          await radarrService.addMovie(baseUrl, config.api_key, movieData);
           logger.info(`Added movie to Radarr: ${metadata.title}`);
         }
-      } else if (library.arr_type === 'sonarr') {
+      } else if (resolvedLibrary.arr_type === 'sonarr') {
         const sonarrConfig = await db.query(
           'SELECT * FROM sonarr_config WHERE id = $1 AND is_active = true',
-          [library.arr_id]
+          [resolvedLibrary.arr_id]
         );
 
         if (sonarrConfig.rows.length > 0) {
           const config = sonarrConfig.rows[0];
+          const baseUrl = config.url || sonarrService.buildUrl(config);
 
           // Use JSONB settings with fallback to legacy fields
-          const settings = library.sonarr_settings && Object.keys(library.sonarr_settings).length > 0
-            ? library.sonarr_settings
+          const rawSettings = this.normalizeSettings(resolvedLibrary.sonarr_settings);
+          const settings = Object.keys(rawSettings).length > 0
+            ? rawSettings
             : {
-              root_folder_path: library.root_folder,
-              quality_profile_id: library.quality_profile_id,
+              root_folder_path: resolvedLibrary.root_folder,
+              quality_profile_id: resolvedLibrary.quality_profile_id,
               series_type: 'standard',
               season_monitoring: 'all',
               monitor_new_items: 'all',
               season_folder: true,
               search_on_add: true
             };
+
+          if (!settings.root_folder_path) {
+            settings.root_folder_path = await this.resolveDefaultRootFolder('sonarr', baseUrl, config.api_key);
+          }
+          if (!settings.quality_profile_id) {
+            settings.quality_profile_id = await this.resolveDefaultQualityProfile('sonarr', baseUrl, config.api_key);
+          }
+
+          if (!settings.root_folder_path || !settings.quality_profile_id) {
+            logger.warn('Missing Sonarr routing settings; skipping route', {
+              title: metadata.title,
+              root_folder_path: settings.root_folder_path || null,
+              quality_profile_id: settings.quality_profile_id || null
+            });
+            return;
+          }
 
           // Note: We'd need to get TVDB ID from TMDB external IDs
           // This is a simplified version
@@ -1761,13 +1859,150 @@ Think step by step, then respond with ONLY one of the formats above.`;
             },
           };
 
-          await sonarrService.addSeries(config.url, config.api_key, seriesData);
+          await sonarrService.addSeries(baseUrl, config.api_key, seriesData);
           logger.info(`Added series to Sonarr: ${metadata.title}`);
         }
       }
     } catch (error) {
       logger.error('Failed to route to arr', { error: error.message });
       // Don't throw - classification was successful even if routing failed
+    }
+  }
+
+  normalizeSettings(settings) {
+    if (!settings) return {};
+    if (typeof settings === 'string') {
+      try {
+        const parsed = JSON.parse(settings);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch (error) {
+        return {};
+      }
+    }
+    return settings;
+  }
+
+  normalizePolicyQuestion(value) {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+        return null;
+      }
+      try {
+        const parsed = JSON.parse(trimmed);
+        return JSON.stringify(parsed);
+      } catch (error) {
+        return null;
+      }
+    }
+    return JSON.stringify(value);
+  }
+
+  async resolveRoutingConfig(library) {
+    if (!library) return null;
+
+    const libraryId = library.id || library.library_id || null;
+    const resolved = {
+      ...library,
+      id: library.id || library.library_id,
+      library_id: library.library_id || library.id
+    };
+
+    const needsMapping = !resolved.arr_id || !resolved.arr_type;
+    if (!needsMapping || !libraryId) {
+      return resolved;
+    }
+
+    const mappingResult = await db.query(
+      'SELECT * FROM library_arr_mappings WHERE library_id = $1',
+      [libraryId]
+    );
+
+    if (mappingResult.rows.length === 0) {
+      return resolved;
+    }
+
+    const mapping = mappingResult.rows[0];
+
+    resolved.arr_type = resolved.arr_type || mapping.arr_type;
+    resolved.arr_id = resolved.arr_id || mapping.arr_config_id;
+    resolved.root_folder = resolved.root_folder || mapping.arr_root_folder_path;
+    resolved.quality_profile_id = resolved.quality_profile_id || mapping.quality_profile_id;
+
+    if (mapping.arr_type === 'radarr' && this.isSettingsEmpty(resolved.radarr_settings)) {
+      resolved.radarr_settings = {
+        root_folder_path: mapping.arr_root_folder_path,
+        quality_profile_id: mapping.quality_profile_id,
+        monitor: true,
+        search_on_add: true
+      };
+    }
+
+    if (mapping.arr_type === 'sonarr' && this.isSettingsEmpty(resolved.sonarr_settings)) {
+      resolved.sonarr_settings = {
+        root_folder_path: mapping.arr_root_folder_path,
+        quality_profile_id: mapping.quality_profile_id,
+        series_type: 'standard',
+        season_monitoring: 'all',
+        season_folder: true,
+        search_on_add: true
+      };
+    }
+
+    return resolved;
+  }
+
+  isSettingsEmpty(settings) {
+    const normalized = this.normalizeSettings(settings);
+    return !normalized || Object.keys(normalized).length === 0;
+  }
+
+  async resolveDefaultQualityProfile(arrType, baseUrl, apiKey) {
+    try {
+      const cached = await db.query(
+        `SELECT profile_id
+         FROM arr_profiles_cache
+         WHERE arr_type = $1 AND profile_type = 'quality_profile'
+         ORDER BY last_synced DESC, profile_id ASC
+         LIMIT 1`,
+        [arrType]
+      );
+      if (cached.rows.length > 0) {
+        return cached.rows[0].profile_id;
+      }
+
+      const profiles = arrType === 'radarr'
+        ? await radarrService.getQualityProfiles(baseUrl, apiKey)
+        : await sonarrService.getQualityProfiles(baseUrl, apiKey);
+      return profiles?.[0]?.id || null;
+    } catch (error) {
+      logger.warn('Failed to resolve default quality profile', { arrType, error: error.message });
+      return null;
+    }
+  }
+
+  async resolveDefaultRootFolder(arrType, baseUrl, apiKey) {
+    try {
+      const cached = await db.query(
+        `SELECT profile_path
+         FROM arr_profiles_cache
+         WHERE arr_type = $1 AND profile_type = 'root_folder'
+         ORDER BY last_synced DESC, profile_id ASC
+         LIMIT 1`,
+        [arrType]
+      );
+      if (cached.rows.length > 0) {
+        return cached.rows[0].profile_path;
+      }
+
+      const folders = arrType === 'radarr'
+        ? await radarrService.getRootFolders(baseUrl, apiKey)
+        : await sonarrService.getRootFolders(baseUrl, apiKey);
+      return folders?.[0]?.path || null;
+    } catch (error) {
+      logger.warn('Failed to resolve default root folder', { arrType, error: error.message });
+      return null;
     }
   }
 

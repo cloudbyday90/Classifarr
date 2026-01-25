@@ -1,6 +1,31 @@
-﻿# Classifarr Release Notes
+﻿﻿# Classifarr Release Notes
 
 ## Unreleased
+
+## v0.40.4-alpha
+
+**Title: Policy-Driven Clarification, Discord Resolution & *arr Routing**
+
+### Features
+
+- **Policy-Driven Clarification**: Questions now source dynamically from policy presets and candidate libraries.
+- **Smart Language Prompts**: Language questions are suppressed unless language presets exist and language is missing/non-English.
+
+### Fixes
+
+- **Discord Clarification Resolution**: Selections now correctly assign libraries and resolve pending items.
+- ***arr Routing**: Mapped libraries route even when legacy `arr_id` fields are missing.
+- **Policy Question Stability**: Hardened parsing prevents invalid JSON errors during resolution.
+
+### Improvements
+
+- **Test Stability**: Improved reliability of integration tests by isolating service side effects, preventing random failures during development and CI runs.
+- **Discord Prompts**: Clarify-tier prompts now rely on policy questions or manual selection (seeded buttons removed).
+- **Auto-Migration**: One-time backfill aligns existing *arr mappings with library fields.
+- **Data Integrity**: Method/status constraints updated to prevent DB errors during manual resolutions.
+- **Test Runner Stability**: Node 25 web storage warnings removed and Vue test noise reduced for cleaner CI output.
+
+---
 
 ## v0.40.3a-alpha
 

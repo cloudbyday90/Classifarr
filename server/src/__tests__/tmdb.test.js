@@ -29,10 +29,17 @@ const db = require('../config/database');
 const tmdbService = require('../services/tmdb');
 
 describe('TMDBService', () => {
+    let consoleErrorSpy;
+
     beforeEach(() => {
         jest.restoreAllMocks();
         jest.clearAllMocks();
         tmdbService.apiKey = null; // Reset cached key
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        consoleErrorSpy.mockRestore();
     });
 
     describe('getApiKey', () => {

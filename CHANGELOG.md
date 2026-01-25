@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.4-alpha] - 2026-01-25
+
+### Added
+
+- Policy-driven clarification question builder (uses policy presets + candidates).
+- Clarification tests for language gating and policy question generation.
+- Mapping-aware routing fallback using `library_arr_mappings` when `libraries.arr_id` is missing.
+- Auto-sync of library fields when *arr mappings are saved.
+
+### Changed
+
+- Clarify-tier Discord prompts now rely on policy questions or manual selection (no seeded question buttons).
+- Policy Engine now merges `custom_signals` into preset scoring.
+- One-time migration to backfill library *arr fields from mappings, expand clarification_status, update method constraint, and clean invalid policy_question values.
+
+### Fixed
+
+- Clarification questions no longer prompt for language when `original_language = en` or no language presets exist.
+- Clarification API now returns stored `policy_question` when available.
+- Fixed flaky integration tests caused by `ProviderLockService` initialization side effects.
+- Hardened test mocks for database and provider lock services to prevent crashes during test execution.
+- Discord clarification fallback now assigns library and resolves status consistently.
+- Policy question parsing hardened to avoid invalid JSON errors.
+- Routing now attempts *arr delivery even when `arr_id` is missing but mapping exists.
+- Database constraint mismatch for `manual_classification` method.
+- Clarification status length expanded to prevent truncation errors.
+- Frontend test warnings resolved (Vue watch source mock, modal attribute fallthrough, and Node 25 web storage warnings).
+
 ## [0.40.3a-alpha] - 2026-01-22
 
 ### Fixed

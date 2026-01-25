@@ -445,16 +445,26 @@ router.get('/pending', async (req, res) => {
   try {
     const pending = await clarificationService.getPendingClassifications();
 
+    const safeParsePolicyQuestion = (value) => {
+      if (!value) return null;
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+        return null;
+      }
+      try {
+        return JSON.parse(trimmed);
+      } catch (error) {
+        return null;
+      }
+    };
+
     // Parse policy_question JSON for each item
     // policy_question is JSONB in PostgreSQL (already parsed as object)
     // Handle both string (old data) and object (current format)
     const items = pending.map(item => ({
       ...item,
-      policy_question: item.policy_question 
-        ? (typeof item.policy_question === 'string' 
-            ? JSON.parse(item.policy_question) 
-            : item.policy_question)
-        : null,
+      policy_question: safeParsePolicyQuestion(item.policy_question),
     }));
 
     res.json({
@@ -500,7 +510,8 @@ router.post('/pending/:id/resolve', async (req, res) => {
     if (result.shouldRoute && result.libraryId) {
       try {
         const classResult = await db.query(
-          `SELECT ch.*, l.arr_type, l.arr_id, l.radarr_settings, l.sonarr_settings, l.name as library_name
+          `SELECT ch.*, l.arr_type, l.arr_id, l.radarr_settings, l.sonarr_settings, 
+                  l.root_folder, l.quality_profile_id, l.name as library_name
            FROM classification_history ch
            JOIN libraries l ON l.id = $2
            WHERE ch.id = $1`,
@@ -513,13 +524,16 @@ router.post('/pending/:id/resolve', async (req, res) => {
             ? JSON.parse(row.metadata || '{}') 
             : row.metadata;
 
-          // Only route if library has arr configuration
-          if (row.arr_type && row.arr_id) {
+          // Route if library has *arr type; routing service will resolve mapping details
+          if (row.arr_type) {
             await classificationService.routeToArr(parsedMeta, {
+              id: row.library_id,
               arr_type: row.arr_type,
               arr_id: row.arr_id,
               radarr_settings: row.radarr_settings,
               sonarr_settings: row.sonarr_settings,
+              root_folder: row.root_folder,
+              quality_profile_id: row.quality_profile_id,
               name: row.library_name
             });
 

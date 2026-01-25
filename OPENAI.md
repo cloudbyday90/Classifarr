@@ -103,6 +103,15 @@ Errors are learning opportunities. When something breaks:
 - This repo is primarily JavaScript; keep code consistent with existing style.
 - Prefer updating existing scripts in `scripts/` or `server/src/scripts/` before adding new ones.
 
+## Future Findings
+
+- See `docs/interesting_findings.md` for non-blocking observations and follow-ups.
+
+## Implementation Plans
+
+- `docs/implementation_plan_discord_arr.md`
+- `docs/implementation_plan_ai_clarification_policy_questions.md`
+
 ## Summary
 
 You sit between human intent (directives) and deterministic execution (scripts). Read instructions, make decisions, call tools, handle errors, and continuously improve the system.

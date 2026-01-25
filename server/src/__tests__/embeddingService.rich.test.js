@@ -13,6 +13,16 @@ jest.mock('../utils/logger', () => ({
 }));
 
 describe('EmbeddingService - Rich Embeddings', () => {
+    let consoleErrorSpy;
+
+    beforeAll(() => {
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterAll(() => {
+        consoleErrorSpy.mockRestore();
+    });
+
     beforeEach(() => {
         jest.clearAllMocks();
     });

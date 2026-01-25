@@ -814,35 +814,7 @@ class DiscordBotService {
         )
       );
     } else if (effectiveTier === 'clarify' || effectiveTier === 'manual') {
-      // Get clarification questions from pre-configured list (fallback)
-      const questions = await clarificationService.matchQuestions(
-        metadata,
-        effectiveTier === 'clarify' ? 2 : 3
-      );
-
-      // Add question buttons (up to 2-3 questions)
-      if (questions.length > 0) {
-        const questionButtons = [];
-        questions.slice(0, 2).forEach((q, idx) => {
-          const options = JSON.parse(JSON.stringify(q.response_options));
-          Object.keys(options).forEach(key => {
-            questionButtons.push(
-              new ButtonBuilder()
-                .setCustomId(`clarify_${classificationId}_${q.id}_${key}`)
-                .setLabel(`${options[key].label}`)
-                .setStyle(ButtonStyle.Primary)
-            );
-          });
-        });
-
-        // Split into rows of 5 buttons max
-        for (let i = 0; i < questionButtons.length; i += 5) {
-          components.push(
-            new ActionRowBuilder().addComponents(questionButtons.slice(i, i + 5))
-          );
-        }
-      }
-
+      // Policy-driven clarifications should supply options; otherwise show manual selection only
       // Add library selector dropdown
       if (libraries.length > 1) {
         const options = libraries.map(lib => ({
@@ -1081,22 +1053,18 @@ class DiscordBotService {
 
       // v0.33: Check policy_question for library_id mapping
       if (classification.policy_question) {
-        try {
-          const policyQuestion = typeof classification.policy_question === 'string'
-            ? JSON.parse(classification.policy_question)
-            : classification.policy_question;
+        const policyQuestion = typeof classification.policy_question === 'string'
+          ? this.safeParseJson(classification.policy_question)
+          : classification.policy_question;
 
-          if (policyQuestion.options && policyQuestion.options[optionIndex]) {
-            const selectedOption = policyQuestion.options[optionIndex];
-            selectedLabel = selectedOption.label;
+        if (policyQuestion?.options && policyQuestion.options[optionIndex]) {
+          const selectedOption = policyQuestion.options[optionIndex];
+          selectedLabel = selectedOption.label;
 
-            // Use library_id from the option if available
-            if (selectedOption.library_id) {
-              libraryId = selectedOption.library_id;
-            }
+          // Use library_id from the option if available
+          if (selectedOption.library_id) {
+            libraryId = selectedOption.library_id;
           }
-        } catch (parseError) {
-          console.error('Failed to parse policy_question:', parseError);
         }
       } else {
         // Fallback: Get label from button if no policy_question
@@ -1121,23 +1089,71 @@ class DiscordBotService {
       } catch (resolveError) {
         console.error('resolvePolicyQuestion failed, falling back to legacy handling:', resolveError);
 
+        let resolvedLibraryId = libraryId;
+        let resolvedLibraryName = null;
+
+        if (!resolvedLibraryId && selectedLabel) {
+          const normalizedLabel = selectedLabel.replace(/\s*\(.*\)\s*$/, '').trim();
+          let libResult = await db.query(
+            'SELECT id, name FROM libraries WHERE LOWER(name) = LOWER($1) LIMIT 1',
+            [normalizedLabel]
+          );
+
+          if (libResult.rows.length === 0) {
+            libResult = await db.query(
+              'SELECT id, name FROM libraries WHERE name ILIKE $1 LIMIT 1',
+              [`%${normalizedLabel}%`]
+            );
+          }
+
+          if (libResult.rows.length > 0) {
+            resolvedLibraryId = libResult.rows[0].id;
+            resolvedLibraryName = libResult.rows[0].name;
+          }
+        }
+
+        if (resolvedLibraryId && !resolvedLibraryName) {
+          const libResult = await db.query('SELECT name FROM libraries WHERE id = $1', [resolvedLibraryId]);
+          resolvedLibraryName = libResult.rows[0]?.name || null;
+        }
+
+        const displayLibraryName = resolvedLibraryName || selectedLabel;
+
         // Fallback to legacy handling
         await db.query(
           `UPDATE classification_history 
            SET status = 'completed', 
                clarification_status = 'resolved',
+               library_id = $2,
+               library_name = $3,
+               method = 'manual_classification',
+               confidence = 100,
+               reason = $4,
+               pending_reason = NULL,
                clarification_response = $1
-           WHERE id = $2`,
-          [JSON.stringify({ option_index: optionIndex, label: selectedLabel, answered_by: interaction.user.username }), classificationId]
+           WHERE id = $5`,
+          [
+            JSON.stringify({ option_index: optionIndex, label: selectedLabel, answered_by: interaction.user.username }),
+            resolvedLibraryId,
+            displayLibraryName,
+            `Resolved by ${interaction.user.username}: ${selectedLabel}`,
+            classificationId
+          ]
         );
 
-        await this.extractClarificationPatterns(classificationId, libraryId, selectedLabel);
+        await this.extractClarificationPatterns(classificationId, resolvedLibraryId, selectedLabel);
         await this.routeAfterClarification(classificationId);
+        if (resolvedLibraryId) {
+          libraryId = resolvedLibraryId;
+        }
       }
 
       // Get library name for display
-      const libResult = await db.query('SELECT name FROM libraries WHERE id = $1', [libraryId]);
-      const libraryName = libResult.rows[0]?.name || 'Unknown';
+      let libraryName = selectedLabel;
+      if (libraryId) {
+        const libResult = await db.query('SELECT name FROM libraries WHERE id = $1', [libraryId]);
+        libraryName = libResult.rows[0]?.name || selectedLabel;
+      }
 
       // Update Discord message
       await interaction.update({
@@ -1335,7 +1351,7 @@ class DiscordBotService {
       // Get classification with library info
       const result = await db.query(
         `SELECT ch.*, l.arr_type, l.arr_id, l.name as library_name,
-                l.radarr_settings, l.sonarr_settings
+                l.radarr_settings, l.sonarr_settings, l.root_folder, l.quality_profile_id
          FROM classification_history ch
          JOIN libraries l ON ch.library_id = l.id
          WHERE ch.id = $1`,
@@ -1355,10 +1371,13 @@ class DiscordBotService {
 
       // Route to appropriate *arr
       await classificationService.routeToArr(metadata, {
+        id: classification.library_id,
         arr_type: classification.arr_type,
         arr_id: classification.arr_id,
         radarr_settings: classification.radarr_settings,
         sonarr_settings: classification.sonarr_settings,
+        root_folder: classification.root_folder,
+        quality_profile_id: classification.quality_profile_id,
         name: classification.library_name,
       });
 
@@ -1389,6 +1408,19 @@ class DiscordBotService {
     if (confidence >= 70) return 0x3b82f6; // Blue
     if (confidence >= 50) return 0xf59e0b; // Yellow
     return 0xef4444; // Red
+  }
+
+  safeParseJson(value) {
+    if (!value || typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+      return null;
+    }
+    try {
+      return JSON.parse(trimmed);
+    } catch (error) {
+      return null;
+    }
   }
 }
 

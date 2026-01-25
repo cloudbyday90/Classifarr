@@ -33,9 +33,9 @@ router.get('/:classificationId', async (req, res) => {
     const { classificationId } = req.params;
     const { maxQuestions = 3 } = req.query;
 
-    // Get classification metadata
+    // Get classification metadata and policy question (if any)
     const result = await db.query(
-      'SELECT metadata FROM classification_history WHERE id = $1',
+      'SELECT metadata, policy_question FROM classification_history WHERE id = $1',
       [classificationId]
     );
 
@@ -43,7 +43,27 @@ router.get('/:classificationId', async (req, res) => {
       return res.status(404).json({ error: 'Classification not found' });
     }
 
-    const metadata = result.rows[0].metadata;
+    const { metadata, policy_question: policyQuestion } = result.rows[0];
+
+    const safeParsePolicyQuestion = (value) => {
+      if (!value) return null;
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+        return null;
+      }
+      try {
+        return JSON.parse(trimmed);
+      } catch (error) {
+        return null;
+      }
+    };
+
+    const parsedPolicyQuestion = safeParsePolicyQuestion(policyQuestion);
+    if (parsedPolicyQuestion) {
+      return res.json([parsedPolicyQuestion]);
+    }
+
     const questions = await clarificationService.matchQuestions(
       metadata,
       parseInt(maxQuestions)

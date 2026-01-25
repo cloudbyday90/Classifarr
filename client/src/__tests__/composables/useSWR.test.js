@@ -32,9 +32,12 @@ import {
 } from '../helpers/swrTestUtils'
 
 // Mock @vueuse/core
-vi.mock('@vueuse/core', () => ({
-  useOnline: () => ({ value: true })
-}))
+vi.mock('@vueuse/core', async () => {
+  const vue = await import('vue')
+  return {
+    useOnline: () => vue.ref(true)
+  }
+})
 
 /**
  * Helper to create a test component that uses useSWR

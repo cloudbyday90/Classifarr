@@ -112,6 +112,8 @@ class ClarificationService {
    */
   async matchQuestions(metadata, maxQuestions = 3) {
     try {
+      const allowLanguageQuestion = await this.isLanguageQuestionAllowed(metadata);
+
       // Get all enabled questions
       const result = await db.query(
         `SELECT * FROM clarification_questions 
@@ -150,7 +152,7 @@ class ClarificationService {
         }
 
         // Language-specific question (40 points)
-        if (question.question_type === 'language') {
+        if (question.question_type === 'language' && allowLanguageQuestion) {
           score += 40;
           reasons.push('Language clarification needed');
         }
@@ -164,12 +166,51 @@ class ClarificationService {
 
       // Sort by score and return top matches
       return scoredQuestions
-        .filter(q => q.score > 0 || q.question_type === 'language')
+        .filter(q => q.score > 0 || (allowLanguageQuestion && q.question_type === 'language'))
         .sort((a, b) => b.score - a.score)
         .slice(0, maxQuestions);
     } catch (error) {
       logger.error('Error matching questions', { error: error.message });
       return [];
+    }
+  }
+
+  async isLanguageQuestionAllowed(metadata) {
+    const originalLanguage = (metadata?.original_language || '').toLowerCase();
+    if (originalLanguage && originalLanguage === 'en') {
+      return false;
+    }
+
+    const mediaType = metadata?.media_type ? metadata.media_type.toLowerCase() : null;
+    return this.hasLanguagePresets(mediaType);
+  }
+
+  async hasLanguagePresets(mediaType = null) {
+    try {
+      const params = [];
+      let mediaTypeClause = '';
+
+      if (mediaType) {
+        params.push(mediaType);
+        mediaTypeClause = 'AND l.media_type = $1';
+      }
+
+      const result = await db.query(
+        `SELECT 1
+         FROM policy_presets pp
+         JOIN content_presets cp ON cp.id = pp.preset_id
+         JOIN library_policies lp ON lp.id = pp.policy_id AND lp.enabled = true
+         JOIN libraries l ON l.id = lp.library_id AND l.is_active = true
+         WHERE cp.signals ? 'language'
+         ${mediaTypeClause}
+         LIMIT 1`,
+        params
+      );
+
+      return result.rows.length > 0;
+    } catch (error) {
+      logger.error('Error checking language presets', { error: error.message });
+      return false;
     }
   }
 
@@ -517,7 +558,7 @@ class ClarificationService {
         // First, safely parse policy_question (may already be an object from JSONB)
         const policyQuestion = classification.policy_question
           ? (typeof classification.policy_question === 'string'
-              ? JSON.parse(classification.policy_question)
+              ? this.safeParseJson(classification.policy_question)
               : classification.policy_question)
           : null;
         
@@ -597,6 +638,20 @@ class ClarificationService {
     } catch (error) {
       logger.error('Error getting pending classifications', { error: error.message });
       return [];
+    }
+  }
+
+  safeParseJson(value) {
+    if (!value || typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+      return null;
+    }
+    try {
+      return JSON.parse(trimmed);
+    } catch (error) {
+      logger.warn('Failed to parse policy_question JSON', { error: error.message });
+      return null;
     }
   }
 }

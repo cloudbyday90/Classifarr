@@ -19,6 +19,8 @@
 import { vi } from 'vitest'
 
 const STORAGE_PREFIX = 'classifarr:v1:swr:'
+let originalLocalStorageDescriptor
+let hasStoredLocalStorageDescriptor = false
 
 /**
  * Create a mock localStorage for tests
@@ -125,7 +127,19 @@ export function createFailingFetcher(errorMessage = 'Fetch failed', statusCode =
  */
 export function setupLocalStorageMock() {
   const mockStorage = createMockLocalStorage()
-  vi.stubGlobal('localStorage', mockStorage)
+  if (!hasStoredLocalStorageDescriptor) {
+    originalLocalStorageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    hasStoredLocalStorageDescriptor = true
+  }
+  try {
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: mockStorage,
+      configurable: true,
+      writable: true
+    })
+  } catch {
+    vi.stubGlobal('localStorage', mockStorage)
+  }
   return mockStorage
 }
 
@@ -134,5 +148,14 @@ export function setupLocalStorageMock() {
  * Call in afterEach
  */
 export function cleanupLocalStorageMock() {
-  vi.unstubAllGlobals()
+  if (!hasStoredLocalStorageDescriptor) return
+  if (originalLocalStorageDescriptor) {
+    Object.defineProperty(globalThis, 'localStorage', originalLocalStorageDescriptor)
+  } else {
+    try {
+      delete globalThis.localStorage
+    } catch {
+      /* ignore cleanup errors */
+    }
+  }
 }

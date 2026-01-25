@@ -5,9 +5,25 @@
  * Tests for AIResponseParser service
  */
 
+const mockLogger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+};
+
+// Mock the logger to suppress console warnings
+jest.mock('../../utils/logger', () => ({
+    createLogger: () => mockLogger,
+}));
+
 const aiResponseParser = require('../../services/aiResponseParser');
 
 describe('AIResponseParser', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
     const mockLibraries = [
         { id: 1, name: 'Action Movies', media_type: 'movie' },
         { id: 2, name: 'Drama Movies', media_type: 'movie' },
@@ -299,6 +315,7 @@ describe('AIResponseParser', () => {
             expect(result.needs_clarification).toBe(true);
             expect(result.confidence).toBe(50);
             expect(result.clarification.problem_summary).toBe('Unable to auto-classify');
+            expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('malformed'), expect.any(Object));
         });
 
         it('should handle null response', () => {
@@ -309,6 +326,7 @@ describe('AIResponseParser', () => {
 
             expect(result.format).toBe('fallback');
             expect(result.needs_clarification).toBe(true);
+            expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Invalid AI response'), expect.any(Object));
         });
 
         it('should handle empty response', () => {
@@ -319,6 +337,7 @@ describe('AIResponseParser', () => {
 
             expect(result.format).toBe('fallback');
             expect(result.needs_clarification).toBe(true);
+            expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Invalid AI response'), expect.any(Object));
         });
     });
 

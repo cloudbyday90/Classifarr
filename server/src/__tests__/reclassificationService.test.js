@@ -5,14 +5,6 @@
  * Reclassification Service Tests
  */
 
-const reclassificationService = require('../services/reclassificationService');
-const fileOperationsService = require('../services/fileOperationsService');
-const radarrService = require('../services/radarr');
-const sonarrService = require('../services/sonarr');
-const libraryMappingService = require('../services/libraryMappingService');
-const plexService = require('../services/plex');
-const db = require('../config/database');
-
 // Mock dependencies
 jest.mock('../services/fileOperationsService');
 jest.mock('../services/radarr');
@@ -33,7 +25,25 @@ jest.mock('../utils/logger', () => ({
     })
 }));
 
+const reclassificationService = require('../services/reclassificationService');
+const fileOperationsService = require('../services/fileOperationsService');
+const radarrService = require('../services/radarr');
+const sonarrService = require('../services/sonarr');
+const libraryMappingService = require('../services/libraryMappingService');
+const plexService = require('../services/plex');
+const db = require('../config/database');
+
 describe('Reclassification Service', () => {
+    let consoleErrorSpy;
+
+    beforeAll(() => {
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterAll(() => {
+        consoleErrorSpy.mockRestore();
+    });
+
     beforeEach(() => {
         jest.clearAllMocks();
     });

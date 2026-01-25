@@ -36,6 +36,14 @@ jest.mock('../services/mediaSync');
 jest.mock('../services/libraryProfileService');
 jest.mock('../services/discordBot');
 jest.mock('../services/contentTypeAnalyzer');
+jest.mock('../utils/logger', () => ({
+  createLogger: jest.fn(() => ({
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  })),
+}));
 
 describe('ClassificationService', () => {
   describe('evaluateCustomRule', () => {
@@ -462,4 +470,3 @@ describe('Phase Tracking in classify()', () => {
     expect(classificationPhaseService.completeTracking).not.toHaveBeenCalled();
   });
 });
-

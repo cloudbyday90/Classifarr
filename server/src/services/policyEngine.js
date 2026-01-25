@@ -21,6 +21,7 @@ const patternSignalCollector = require('./patternSignalCollector');
 const ragRetriever = require('./ragRetriever');
 const libraryProfileService = require('./libraryProfileService');
 const { createLogger } = require('../utils/logger');
+const { mergePresetSignals, normalizeSignalConfig } = require('../utils/policySignals');
 
 const logger = createLogger('PolicyEngine');
 
@@ -255,13 +256,22 @@ class PolicyEngine {
                         cp.key,
                         cp.name,
                         cp.signals,
-                        pp.weight
+                        pp.weight,
+                        pp.custom_signals
                     FROM policy_presets pp
                     JOIN content_presets cp ON pp.preset_id = cp.id
                     WHERE pp.policy_id = $1
                 `, [policy.id]);
 
-                policy.presets = presetsResult.rows;
+                policy.presets = presetsResult.rows.map(preset => {
+                    const baseSignals = normalizeSignalConfig(preset.signals);
+                    const customSignals = normalizeSignalConfig(preset.custom_signals);
+                    return {
+                        ...preset,
+                        signals: mergePresetSignals(baseSignals, customSignals),
+                        custom_signals: customSignals
+                    };
+                });
                 policies.push(policy);
             }
 
@@ -392,7 +402,11 @@ class PolicyEngine {
 
             for (const preset of presets) {
                 const presetWeight = preset.weight ?? 1.0;
-                const signalScore = await this.evaluatePresetSignals(preset.signals, item);
+                const mergedSignals = mergePresetSignals(
+                    normalizeSignalConfig(preset.signals),
+                    normalizeSignalConfig(preset.custom_signals)
+                );
+                const signalScore = await this.evaluatePresetSignals(mergedSignals, item);
                 
                 totalScore += signalScore * presetWeight;
                 totalWeight += presetWeight;

@@ -172,6 +172,41 @@ class LibraryMappingService {
         // Check if all libraries are now mapped and update app_settings
         await this.updateMappingCompleteStatus();
 
+        // Keep libraries table in sync with mapping if fields are missing
+        await db.query(
+            `UPDATE libraries
+             SET arr_type = COALESCE(arr_type, $2),
+                 arr_id = COALESCE(arr_id, $3),
+                 root_folder = COALESCE(root_folder, $4),
+                 quality_profile_id = COALESCE(quality_profile_id, $5),
+                 radarr_settings = CASE
+                   WHEN $2 = 'radarr' AND (radarr_settings IS NULL OR radarr_settings = '{}'::jsonb)
+                   THEN jsonb_build_object(
+                     'root_folder_path', $4,
+                     'quality_profile_id', $5,
+                     'monitor', true,
+                     'search_on_add', true
+                   )
+                   ELSE radarr_settings
+                 END,
+                 sonarr_settings = CASE
+                   WHEN $2 = 'sonarr' AND (sonarr_settings IS NULL OR sonarr_settings = '{}'::jsonb)
+                   THEN jsonb_build_object(
+                     'root_folder_path', $4,
+                     'quality_profile_id', $5,
+                     'monitor', true,
+                     'search_on_add', true,
+                     'series_type', 'standard',
+                     'season_monitoring', 'all',
+                     'season_folder', true
+                   )
+                   ELSE sonarr_settings
+                 END,
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [library_id, arr_type, arr_config_id, arr_root_folder_path, quality_profile_id]
+        );
+
         return result.rows[0];
     }
 

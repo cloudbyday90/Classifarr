@@ -16,9 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const classificationService = require('../services/classification');
-const clarificationService = require('../services/clarificationService');
-
 // Mock all dependencies
 jest.mock('../config/database');
 jest.mock('../services/tmdb');
@@ -27,7 +24,17 @@ jest.mock('../services/radarr');
 jest.mock('../services/sonarr');
 jest.mock('../services/discordBot');
 jest.mock('../services/clarificationService');
+jest.mock('../utils/logger', () => ({
+  createLogger: jest.fn(() => ({
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+  })),
+}));
 
+const classificationService = require('../services/classification');
+const clarificationService = require('../services/clarificationService');
 const db = require('../config/database');
 
 describe('Classification with require_all_confirmations', () => {
