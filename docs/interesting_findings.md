@@ -57,3 +57,33 @@ These are candidates for future releases.
 - There are no coverage scripts wired in `package.json` at the root, server, or client.
 - Impact: coverage deltas are not visible in CI or local runs.
 - Follow-up: decide on a coverage workflow (Jest/Vitest coverage) and document in `release.md`.
+
+### Integration test output is extremely verbose
+- Integration runs emit extensive Testcontainers and migration logs even when tests pass.
+- Impact: real warnings/errors are harder to spot in CI output.
+- Follow-up: evaluate Testcontainers log level controls and suppress or redirect migration output in tests.
+- Resolution (2026-01-30): gated setup/migration info logs behind `INTEGRATION_TEST_VERBOSE`,
+  but kept warnings/errors and a minimal setup/teardown summary so CI still surfaces issues.
+
+### Integration tests warn about optional migration cleanup
+- Integration runs emit warnings about skipping migration `034_cleanup_unused_tables.sql` when `schema_migrations` does not exist.
+- Impact: expected warnings may obscure real issues in CI output.
+- Follow-up: consider tagging this message as info or gating it behind verbosity if it remains purely expected.
+- Resolution (2026-01-30): integration setup now creates `schema_migrations` and records applied
+  migrations, eliminating the warning and aligning test behavior with production.
+
+### Integration tests warn about deprecated event detection
+- Integration runs emit `detectEventContent is deprecated - event detection now handled by PolicyEngine presets`.
+- Impact: warning spam during integration tests even though behavior is expected.
+- Follow-up: remove or adjust the deprecated method to avoid warnings in test context once callers are migrated.
+
+### Integration tests log expected LegacyMigration errors
+- Legacy migration integration tests emit an error when a rule migration intentionally violates a foreign key constraint
+  (`policy_presets_preset_id_fkey`).
+- Impact: error logs in CI can obscure genuine failures, even though tests assert on rollback behavior.
+- Follow-up: consider downgrading this log to warn/info for expected rollback scenarios, or assert via mocks and suppress log output.
+
+### Integration tests log expected MediaSync errors
+- Sync-lock integration tests log `Library 999999 not found` when exercising error paths.
+- Impact: error logs in CI output for expected negative tests.
+- Follow-up: in tests, mock logger or mark expected error logs to reduce noise without hiding real failures.

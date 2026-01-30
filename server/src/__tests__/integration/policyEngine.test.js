@@ -651,19 +651,67 @@ describe('PolicyEngine Integration Tests', () => {
             }
         });
 
-        // DEPRECATED: In v0.37.5, pattern scoring was replaced by library profile scoring
-        // This test is skipped as patternSignalCollector is deprecated
-        test.skip('scorePatterns should cap at FORMULA_CONFIDENCE_CAP (95) - DEPRECATED', async () => {
-            // This test was using patternSignalCollector which has been deprecated
-            // in favor of library profiles in v0.37.5-alpha
-            expect(true).toBe(true);
+        test('scorePatterns should cap at FORMULA_CONFIDENCE_CAP (95)', async () => {
+            await db.query(`
+                UPDATE ai_provider_config
+                SET pattern_mining_enabled = true
+                WHERE id = 1
+            `);
+
+            const patternRes = await db.query(`
+                INSERT INTO discovered_patterns (
+                    pattern_type,
+                    pattern_value,
+                    library_id,
+                    library_name,
+                    confidence,
+                    sample_size,
+                    support_count,
+                    status
+                )
+                VALUES ('studio', 'Test Studio', $1, 'Test Policy Library', 99.0, 10, 10, 'approved')
+                RETURNING id
+            `, [testLibraryId]);
+
+            try {
+                const score = await policyEngine.scorePatterns(testLibraryId, {
+                    studios: ['Test Studio']
+                });
+
+                expect(score).toBe(95);
+            } finally {
+                await db.query('DELETE FROM discovered_patterns WHERE id = $1', [patternRes.rows[0].id]);
+            }
         });
 
-        // SKIPPED: policy_learning_stats schema has changed, this test uses outdated columns
-        test.skip('scoreHistory should cap at FORMULA_CONFIDENCE_CAP (95)', async () => {
-            // Test skipped - policy_learning_stats no longer has library_id column
-            // History scoring now uses classification_history table instead
-            expect(true).toBe(true);
+        test('scoreHistory should cap at FORMULA_CONFIDENCE_CAP (95)', async () => {
+            const tmdbId = 987654;
+            const insertedIds = [];
+
+            for (let i = 0; i < 4; i += 1) {
+                const result = await db.query(`
+                    INSERT INTO classification_history (
+                        tmdb_id,
+                        media_type,
+                        title,
+                        library_id,
+                        confidence,
+                        method,
+                        status
+                    )
+                    VALUES ($1, 'movie', 'History Cap Test', $2, 99, 'ai_analysis', 'completed')
+                    RETURNING id
+                `, [tmdbId, testLibraryId]);
+
+                insertedIds.push(result.rows[0].id);
+            }
+
+            try {
+                const score = await policyEngine.scoreHistory(testLibraryId, { tmdb_id: tmdbId });
+                expect(score).toBe(95);
+            } finally {
+                await db.query('DELETE FROM classification_history WHERE id = ANY($1::int[])', [insertedIds]);
+            }
         });
 
         test('Authoritative signals should return 100% confidence (not capped)', async () => {

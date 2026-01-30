@@ -15,9 +15,12 @@
 ## Local Testing (Required Before Release)
 1) Server tests: `npm --prefix server test`
 2) Client tests: `npm --prefix client test`
-3) Optional build: `npm --prefix client run build`
-4) Manual smoke (update per release):
+3) Integration tests: `npm --prefix server run test:integration`
+4) Optional build: `npm --prefix client run build`
+5) Manual smoke (update per release):
    - <fill>
+6) Document test run warnings/errors in `docs/interesting_findings.md`.
+   - Only add NEW non-breaking findings discovered during this release cycle.
 
 ## Release Steps
 1) Update `RELEASE_NOTES.md` with new version entry.

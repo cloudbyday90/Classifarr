@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logger DB persistence now uses explicit injection (no import-time DB access).
 - ProviderLockService config loads explicitly at startup (no module import side effects).
 - Integration tests set a deterministic `API_KEY_ENCRYPTION_KEY` to avoid warning noise.
+- Integration test setup logs are now opt-in via `INTEGRATION_TEST_VERBOSE` to reduce output noise.
+- Integration test setup now tracks applied migrations in `schema_migrations` (aligns with production).
+- API keys OpenAPI doc block fixed to avoid YAML parsing errors.
 
 ## [0.40.4-alpha] - 2026-01-25
 

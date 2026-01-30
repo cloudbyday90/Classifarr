@@ -99,9 +99,10 @@ router.get('/', authenticateToken, apiKeyLimiter, async (req, res) => {
  * /api/keys/:id/reveal:
  *   get:
  *     summary: Reveal the full API key
- *     description: Returns the full decrypted API key for authenticated users
- *     NOTE: This allows users to view their API keys again if they lose them
- *     This is intentional - users should be able to retrieve their own keys
+ *     description: |
+ *       Returns the full decrypted API key for authenticated users.
+ *       NOTE: This allows users to view their API keys again if they lose them.
+ *       This is intentional - users should be able to retrieve their own keys.
  */
 router.get('/:id/reveal', authenticateToken, async (req, res) => {
   try {

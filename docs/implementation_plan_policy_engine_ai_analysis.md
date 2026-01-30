@@ -119,9 +119,11 @@ This plan follows the repo’s operating rules and architecture guidelines:
 ### Phase 12: Local Testing
 - [x] Run server tests: `npm --prefix server test`.
 - [x] Run client tests: `npm --prefix client test`.
-- [ ] Optional: client build `npm --prefix client run build`.
+- [x] Run integration tests: `npm --prefix server run test:integration`.
+- [x] Optional: client build `npm --prefix client run build`.
 - [ ] Manual smoke: Discord clarification -> *arr routing (Sonarr + Radarr) with search-on-add enabled.
 - [ ] Manual smoke: Overseerr webhook with season 0 (specials) excluded when toggle is on.
+- [ ] After all test suites complete, update `docs/interesting_findings.md` with any NEW warnings/errors (non-breaking only).
 
 ### Phase 13: Release (v0.40.5-alpha)
 - [x] Update `RELEASE_NOTES.md` with v0.40.5-alpha entry.
@@ -393,6 +395,8 @@ Proposed implementation:
 - Unit: `policyQuestionBuilder` (enriched meta fields).
 - Unit: `classificationPhaseService.test.js` (new phase order).
 - UI: activity stepper order and labels.
+- Integration: `npm --prefix server run test:integration`.
+- Post-test: record NEW non-breaking warnings/errors in `docs/interesting_findings.md`.
 
 ## Acceptance Criteria
 - policy_prompt is only created after AI analysis.

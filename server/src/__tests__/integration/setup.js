@@ -5,6 +5,19 @@ const os = require('os');
 const { PostgreSqlContainer } = require('@testcontainers/postgresql');
 const { Pool } = require('pg');
 
+const verboseLogs = process.env.INTEGRATION_TEST_VERBOSE === 'true';
+const isPrimaryWorker = !process.env.JEST_WORKER_ID || process.env.JEST_WORKER_ID === '1';
+const log = (...args) => {
+    if (verboseLogs) {
+        console.log(...args);
+    }
+};
+const summaryLog = (...args) => {
+    if (isPrimaryWorker) {
+        console.log(...args);
+    }
+};
+
 if (!process.env.API_KEY_ENCRYPTION_KEY) {
     process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 }
@@ -14,7 +27,8 @@ let pool;
 
 // Global setup - start PostgreSQL container
 beforeAll(async () => {
-    console.log('Starting PostgreSQL container via testcontainers...');
+    summaryLog('Integration test database setup starting (set INTEGRATION_TEST_VERBOSE=true for details).');
+    log('Starting PostgreSQL container via testcontainers...');
 
     const dbPath = path.resolve(__dirname, '../../../../database');
     const initSqlPath = path.join(dbPath, 'init.sql');
@@ -35,7 +49,7 @@ beforeAll(async () => {
     // Use os.tmpdir() for cross-platform compatibility (Windows/Linux)
     const tempSqlFile = path.resolve(os.tmpdir(), `classifarr_schema_${Date.now()}.sql`);
     fs.writeFileSync(tempSqlFile, initSql, 'utf8');
-    console.log(`Created temp SQL file at: ${tempSqlFile}`);
+    log(`Created temp SQL file at: ${tempSqlFile}`);
 
     try {
         // Start PostgreSQL container and copy the SQL file
@@ -52,7 +66,7 @@ beforeAll(async () => {
             ])
             .start();
 
-        console.log(`PostgreSQL container started on port ${container.getPort()}`);
+        log(`PostgreSQL container started on port ${container.getPort()}`);
 
         // Create connection pool
         pool = new Pool({
@@ -64,7 +78,7 @@ beforeAll(async () => {
         });
 
         // Apply schema using psql -f inside the container
-        console.log('Applying schema via psql -f...');
+        log('Applying schema via psql -f...');
 
         const { output, exitCode } = await container.exec([
             'psql', '-U', 'test', '-d', 'classifarr_test', '-f', '/tmp/schema.sql'
@@ -75,10 +89,10 @@ beforeAll(async () => {
             throw new Error(`psql failed with exit code ${exitCode}: ${output}`);
         }
 
-        console.log('Schema applied successfully via psql.');
+        log('Schema applied successfully via psql.');
 
         // Apply migrations for testing new schema
-        console.log('Applying migrations...');
+        log('Applying migrations...');
         const migrationsDir = path.join(dbPath, 'migrations');
         const migrationFiles = fs.readdirSync(migrationsDir)
             .filter(f => f.endsWith('.sql') && !f.includes('README') && !f.includes('GUIDE'))
@@ -86,17 +100,29 @@ beforeAll(async () => {
 
         const failedMigrations = [];
         const knownOptionalFailures = [
-            'extension "vector" is not available',  // pgvector extension not in test container
-            'relation "schema_migrations" does not exist'  // Migration tracking table not in fresh db
+            'extension "vector" is not available'  // pgvector extension not in test container
         ];
 
+        // Ensure migration tracking table exists (align with production migration runner)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                id SERIAL PRIMARY KEY,
+                filename VARCHAR(255) UNIQUE NOT NULL,
+                applied_at TIMESTAMP DEFAULT NOW()
+            );
+        `);
+
         for (const migrationFile of migrationFiles) {
-            console.log(`  Applying migration: ${migrationFile}`);
+            log(`  Applying migration: ${migrationFile}`);
             const migrationPath = path.join(migrationsDir, migrationFile);
             const migrationSql = fs.readFileSync(migrationPath, 'utf8');
 
             try {
                 await pool.query(migrationSql);
+                await pool.query(
+                    'INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING',
+                    [migrationFile]
+                );
             } catch (error) {
                 const isKnownOptional = knownOptionalFailures.some(msg => error.message.includes(msg));
 
@@ -120,7 +146,8 @@ beforeAll(async () => {
             throw new Error(`Failed to apply database migrations: ${details}`);
         }
 
-        console.log('Migrations applied.');
+        log('Migrations applied.');
+        summaryLog('Integration test database setup complete.');
     } finally {
         // Clean up temp file
         if (fs.existsSync(tempSqlFile)) {
@@ -131,14 +158,16 @@ beforeAll(async () => {
 
 // Global teardown - stop container
 afterAll(async () => {
-    console.log('Stopping PostgreSQL container...');
+    summaryLog('Integration test database teardown starting.');
+    log('Stopping PostgreSQL container...');
     if (pool) {
         await pool.end();
     }
     if (container) {
         await container.stop();
     }
-    console.log('PostgreSQL container stopped.');
+    log('PostgreSQL container stopped.');
+    summaryLog('Integration test database teardown complete.');
 });
 
 // Mock the database module to use our test pool

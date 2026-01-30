@@ -20,6 +20,9 @@
 - **ProviderLockService Init**: Configuration loads on explicit startup, avoiding DB access during import.
 - **Test Stability**: Logger DB persistence now uses explicit injection; integration tests set a deterministic `API_KEY_ENCRYPTION_KEY`.
 - **Node 25 Test Warnings**: Jest runner strips invalid `--localstorage-file` options and disables experimental web storage.
+- **Integration Test Noise**: Setup/migration logs are now opt-in via `INTEGRATION_TEST_VERBOSE`.
+- **Migration Tracking**: Integration test setup now records applied migrations in `schema_migrations`.
+- **Swagger Doc Fix**: API keys OpenAPI docs now parse cleanly (multi-line description block).
 
 ### Improvements
 

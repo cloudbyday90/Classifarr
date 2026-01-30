@@ -1,10 +1,63 @@
 # Classifarr Development Roadmap
 
-This document outlines the planned features and improvements for upcoming releases.
+This document outlines the planned features and improvements, grouped by complexity.
 
 ---
 
-## v0.38.1-alpha (In Progress)
+## v0.40.6-alpha (Planned)
+
+**Theme: Retire Event Detection + Sync Error Hygiene**
+
+### Goals
+- Fully retire legacy event/holiday detection and event presets.
+- Make sync error handling explicit (404 for missing libraries) without noisy error logs.
+
+### Planned Work
+- **Retire event detection stack**
+  - Remove `detectEventContent` and event keyword detection from `ClassificationService`.
+  - Remove `EVENT_DETECTION` signal type and weights from `SignalCollector`/`ConfidenceCalculator`.
+  - Drop `event_detection_type` / `event_sub_type` from `libraries` (migration + data cleanup).
+  - Remove `event` presets from `content_presets` and detach from policies (migration).
+  - Remove event/holiday UI controls in `LibraryDetail` and rule builder (`event_type` condition).
+  - Remove `/api/libraries/event-types` endpoint and related client usage.
+  - Update activity/history/stats method labels to remove `event_detection`/`holiday_detection`.
+  - Update tests: remove event preset integration suite and adjust coverage accordingly.
+
+- **Sync error hygiene**
+  - Introduce a typed NotFound error in `mediaSync` when library ID is missing.
+  - Return HTTP 404 for missing library in `/api/libraries/:id/sync` and `/api/media-sync/sync/:libraryId`.
+  - Log missing-library cases as warnings (not errors) to reduce noise in tests/CI.
+  - Update integration tests to assert 404 and no error log for expected paths.
+
+---
+
+## High Complexity
+
+### Retire Event Detection + Sync Error Hygiene
+- Fully retire legacy event/holiday detection and event presets.
+- Make sync error handling explicit (404 for missing libraries) without noisy error logs.
+- **Scope**:
+  - Remove `detectEventContent` and event keyword detection from `ClassificationService`.
+  - Remove `EVENT_DETECTION` signal type and weights from `SignalCollector`/`ConfidenceCalculator`.
+  - Drop `event_detection_type` / `event_sub_type` from `libraries` (migration + data cleanup).
+  - Remove event presets from `content_presets` and detach from policies (migration).
+  - Remove event/holiday UI controls in `LibraryDetail` and rule builder (`event_type` condition).
+  - Remove `/api/libraries/event-types` endpoint and related client usage.
+  - Update activity/history/stats method labels to remove `event_detection`/`holiday_detection`.
+  - Update tests: remove event preset integration suite and adjust coverage accordingly.
+  - Introduce a typed NotFound error in `mediaSync` when library ID is missing.
+  - Return HTTP 404 for missing library in `/api/libraries/:id/sync` and `/api/media-sync/sync/:libraryId`.
+  - Log missing-library cases as warnings (not errors) to reduce noise in tests/CI.
+  - Update integration tests to assert 404 and no error log for expected paths.
+
+### RAG Similarity Visualization
+- Display AI similarity matches that contributed to classification decisions.
+- **Scope**:
+  - Backend storage for RAG matches (metadata vs new column).
+  - API endpoint to retrieve RAG matches for a classification.
+  - New `RagMatchesPanel.vue` in History details.
+  - Consensus indicator, match list, and similarity bars.
+  - Responsive UI and manual verification.
 
 **Theme: Unified Policy Configuration**
 
@@ -39,7 +92,23 @@ This document outlines the planned features and improvements for upcoming releas
 
 ---
 
-## v0.38.0-alpha (Current Release)
+## Medium Complexity
+
+### Unified Policy Configuration (In Progress)
+- Consolidate policy editing into a single modal.
+- Inline preset selection with search, categories, and suggestions.
+- Advanced settings collapsed by default.
+- Auto-generated policy name/description.
+ 
+### Advanced Policy Analytics
+- Heatmap of confidence over time.
+- Policy effectiveness scoring.
+- A/B testing for policy configurations.
+
+### Performance Optimizations
+- Batch classification API.
+- Caching layer for repeated classifications.
+- Background job queue improvements.
 
 **Theme: Enhanced Policy Setup Experience**
 
@@ -79,7 +148,21 @@ This document outlines the planned features and improvements for upcoming releas
 
 ---
 
-## v0.39.0-alpha (Planned)
+## Low Complexity
+
+### Policy Name/Description Editing
+- Optional inline editing for policy names/descriptions.
+- Preserve user overrides on subsequent edits.
+
+### Preset Usage Count Display
+- Display “Used in X policies” in the preset grid.
+- Use existing `/policies/presets/:id/usage` endpoint.
+
+### User Experience
+- Dark/light theme toggle.
+- Customizable dashboard widgets.
+- Advanced search and filtering.
+- Export/import policy configurations.
 
 **Theme: RAG Similarity Visualization**
 
@@ -159,40 +242,22 @@ Display AI similarity matches that contributed to classification decisions, help
 
 ---
 
-## v0.40.0+ (Future Ideas)
+## Future Ideas (Unscoped)
 
-### Potential Features Under Consideration
-
-#### Advanced Policy Analytics
-- Heatmap of classification confidence over time
-- Policy effectiveness scoring (how often does this policy correctly classify?)
-- A/B testing for policy configurations
-
-#### Machine Learning Improvements
+### Machine Learning Improvements
 - User feedback loop: "Was this classification correct?"
-- Active learning: Prioritize uncertain classifications for manual review
-- Model retraining based on user corrections
+- Active learning: Prioritize uncertain classifications for manual review.
+- Model retraining based on user corrections.
 
-#### Integration Enhancements
-- Support for additional media servers (Kodi, Emby enhancements)
-- Webhook support for more request sources
-- API integrations with movie databases (Letterboxd, IMDb lists)
+### Integration Enhancements
+- Support for additional media servers (Kodi, Emby enhancements).
+- Webhook support for more request sources.
+- API integrations with movie databases (Letterboxd, IMDb lists).
 
-#### Performance Optimizations
-- Batch classification API
-- Caching layer for repeated classifications
-- Background job queue improvements
-
-#### User Experience
-- Dark/light theme toggle
-- Customizable dashboard widgets
-- Advanced search and filtering
-- Export/import policy configurations
-
-#### Multi-Tenancy
-- Multiple user accounts with different permissions
-- Team collaboration features
-- Audit logging for policy changes
+### Multi-Tenancy
+- Multiple user accounts with different permissions.
+- Team collaboration features.
+- Audit logging for policy changes.
 
 ---
 
@@ -208,5 +273,5 @@ Have ideas for features or improvements? Please open an issue on GitHub or join 
 
 ---
 
-**Last Updated**: 2026-01-13  
-**Current Version**: v0.38.0-alpha
+**Last Updated**: 2026-01-30  
+**Current Version**: v0.40.5-alpha
