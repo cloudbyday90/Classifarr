@@ -4,6 +4,33 @@
 
 Classifarr uses **embedded PostgreSQL 17** (Alpine package `postgresql17`) for data storage. All data is stored in a single volume at `/app/data/postgres/`.
 
+## CPU Compatibility (AVX / non-AVX)
+
+The pgvector extension can be compiled with AVX optimizations. On older CPUs without AVX support, vector similarity queries can crash PostgreSQL with `Illegal instruction`.
+
+Classifarr now ships a **multi-variant pgvector build** by default and auto-selects the best option at startup:
+
+- **AVX2 available** → uses the AVX2-optimized pgvector binary.
+- **AVX available** → uses the AVX-optimized pgvector binary.
+- **No AVX** → uses the generic (non-AVX) pgvector binary.
+
+### Build Options
+
+```
+# Default: build both variants (auto-select at runtime)
+docker build --build-arg PGVECTOR_BUILD=multi -t classifarr:latest .
+
+# Force non-AVX only (best practice for portability: OPTFLAGS="")
+docker build --build-arg PGVECTOR_BUILD=generic --build-arg PGVECTOR_GENERIC_OPTFLAGS="" -t classifarr:generic .
+
+# Force AVX only (conservative AVX flags)
+docker build --build-arg PGVECTOR_BUILD=avx --build-arg PGVECTOR_AVX_OPTFLAGS="-mavx" -t classifarr:avx .
+
+# Force AVX2 only
+docker build --build-arg PGVECTOR_BUILD=avx2 --build-arg PGVECTOR_AVX2_OPTFLAGS="-mavx2" -t classifarr:avx2 .
+```
+
+
 ## Version Compatibility
 
 PostgreSQL data directories are **version-specific**. A data directory created with PostgreSQL version X can **only** be opened by PostgreSQL version X.

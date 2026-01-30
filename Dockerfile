@@ -37,6 +37,19 @@ RUN npm rebuild bcrypt
 # Stage 3: Production Runtime
 FROM node:24-alpine AS production
 
+# pgvector build mode:
+# - multi (default): build generic + AVX + AVX2 variants, select at runtime
+# - generic: build only non-AVX variant (widest CPU compatibility)
+# - avx: build only AVX-optimized variant
+# - avx2: build only AVX2-optimized variant
+ARG PGVECTOR_BUILD=multi
+# Best practice for portability: OPTFLAGS="" (pgvector docs recommend this to avoid illegal instruction)
+ARG PGVECTOR_GENERIC_OPTFLAGS=""
+# AVX-optimized build (kept conservative to avoid AVX2-only requirements)
+ARG PGVECTOR_AVX_OPTFLAGS="-mavx"
+ARG PGVECTOR_AVX2_OPTFLAGS="-mavx2"
+ENV CLASSIFARR_PGVECTOR_BUILD=$PGVECTOR_BUILD
+
 # Labels for OCI compliance
 LABEL org.opencontainers.image.title="Classifarr"
 LABEL org.opencontainers.image.description="AI-powered media classification for the *arr ecosystem"
@@ -65,8 +78,38 @@ RUN apk add --no-cache --virtual .build-deps make gcc musl-dev \
     && curl -L https://github.com/pgvector/pgvector/archive/refs/tags/v0.8.0.tar.gz -o pgvector.tar.gz \
     && tar -xzf pgvector.tar.gz \
     && cd pgvector-0.8.0 \
-    && make PG_CONFIG=/usr/libexec/postgresql17/pg_config \
-    && make install PG_CONFIG=/usr/libexec/postgresql17/pg_config \
+    && PG17_CONFIG="/usr/libexec/postgresql17/pg_config" \
+    && PKGLIBDIR="$($PG17_CONFIG --pkglibdir)" \
+    && if [ "$PGVECTOR_BUILD" = "generic" ]; then \
+        make clean || true; \
+        make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
+        make install PG_CONFIG=$PG17_CONFIG; \
+        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_generic.so"; \
+      elif [ "$PGVECTOR_BUILD" = "avx" ]; then \
+        make clean || true; \
+        make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
+        make install PG_CONFIG=$PG17_CONFIG; \
+        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx.so"; \
+      elif [ "$PGVECTOR_BUILD" = "avx2" ]; then \
+        make clean || true; \
+        make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
+        make install PG_CONFIG=$PG17_CONFIG; \
+        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx2.so"; \
+      else \
+        make clean || true; \
+        make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
+        make install PG_CONFIG=$PG17_CONFIG; \
+        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_generic.so"; \
+        make clean || true; \
+        make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
+        make install PG_CONFIG=$PG17_CONFIG; \
+        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx.so"; \
+        make clean || true; \
+        make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
+        make install PG_CONFIG=$PG17_CONFIG; \
+        cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx2.so"; \
+        ln -sf "$PKGLIBDIR/vector_generic.so" "$PKGLIBDIR/vector.so"; \
+      fi \
     && cd / && rm -rf pgvector-0.8.0 pgvector.tar.gz \
     && apk del .build-deps
 

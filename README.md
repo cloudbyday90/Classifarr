@@ -143,6 +143,7 @@ mkdir classifarr && cd classifarr
 services:
   classifarr:
     image: ghcr.io/cloudbyday90/classifarr:latest
+    # pgvector auto-selects AVX when supported, otherwise uses generic build
     container_name: classifarr
     ports:
       - "21324:21324"
@@ -181,6 +182,7 @@ docker run -d \
   --add-host host.docker.internal:host-gateway \
   --restart unless-stopped \
   ghcr.io/cloudbyday90/classifarr:latest
+  # pgvector auto-selects AVX when supported, otherwise uses generic build
 ```
 
 ### Environment Variables
@@ -1019,6 +1021,16 @@ Installed PostgreSQL:   17
 3. **Start fresh** - Remove data directory if you don't need to preserve data
 
 See [PostgreSQL Version Guide](docs/POSTGRESQL.md) for detailed migration instructions.
+
+### PostgreSQL Recovery Mode (v0.40.5-alpha)
+
+If you upgraded from **v0.40.5-alpha** and see logs like `the database system is in recovery mode`, update to the hotfix image (non-AVX pgvector auto-selection) and run a one-time PostgreSQL restart inside the container:
+
+```bash
+docker exec -it classifarr sh -lc "su-exec classifarr pg_ctl -D /app/data/postgres -m fast stop && su-exec classifarr pg_ctl -D /app/data/postgres -l /app/data/postgres.log start"
+```
+
+If your container name is different (e.g., `Classifarr` on Unraid), replace `classifarr` with your container name.
 
 ### Container Won't Start
 

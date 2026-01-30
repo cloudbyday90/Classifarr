@@ -35,6 +35,7 @@ const queueService = require('./services/queueService');
 const errorHandler = require('./middleware/errorHandler');
 const { setLoggerDb } = require('./utils/logger');
 const providerLock = require('./services/providerLock');
+const avxGuard = require('./services/avxGuard');
 
 const app = express();
 const PORT = process.env.PORT || 21324;
@@ -281,6 +282,16 @@ async function startServer() {
     } catch (upgradeError) {
       console.error('Post-upgrade task error:', upgradeError.message);
       // Continue anyway - post-upgrade tasks are non-critical
+    }
+
+    // Record pgvector CPU compatibility info for UI/diagnostics
+    try {
+      const guardResult = await avxGuard.run();
+      if (guardResult?.selected) {
+        console.log(`pgvector variant selected: ${guardResult.selected}`);
+      }
+    } catch (guardError) {
+      console.warn('AVX guard failed:', guardError.message);
     }
 
     // Initialize services

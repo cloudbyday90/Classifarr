@@ -30,6 +30,7 @@ describe('serviceIcons.js', () => {
     expect(getServiceIcon('Plex')).toBe('📺')
     expect(getServiceIcon('Radarr')).toBe('🎬')
     expect(getServiceIcon('Queue Worker')).toBe('⚡')
+    expect(getServiceIcon('pgvector')).toBe('🧬')
   })
 
   it('returns correct icon for case-insensitive match', () => {

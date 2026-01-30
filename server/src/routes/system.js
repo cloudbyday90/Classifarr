@@ -383,6 +383,35 @@ router.get('/status', async (req, res) => {
   try {
     const uptime = healthCheckService.getUptime();
     const version = packageJson.version;
+    let pgvector = null;
+
+    try {
+      const settingsResult = await db.query(
+        `SELECT key, value FROM settings WHERE key IN (
+          'avx_guard_pgvector_selected',
+          'avx_guard_pgvector_build',
+          'avx_guard_cpu_avx',
+          'avx_guard_cpu_avx2',
+          'avx_guard_last_run'
+        )`
+      );
+
+      const entries = {};
+      for (const row of settingsResult.rows) {
+        entries[row.key] = row.value;
+      }
+
+      pgvector = {
+        build: entries.avx_guard_pgvector_build || null,
+        selectedVariant: entries.avx_guard_pgvector_selected || null,
+        cpuAvx: entries.avx_guard_cpu_avx || null,
+        cpuAvx2: entries.avx_guard_cpu_avx2 || null,
+        lastChecked: entries.avx_guard_last_run || null
+      };
+    } catch (error) {
+      // settings table may not exist yet; omit pgvector info
+      pgvector = null;
+    }
 
     res.json({
       version,
@@ -391,6 +420,7 @@ router.get('/status', async (req, res) => {
       platform: process.platform,
       arch: process.arch,
       memoryUsage: process.memoryUsage(),
+      pgvector,
       timestamp: new Date().toISOString()
     });
   } catch (error) {

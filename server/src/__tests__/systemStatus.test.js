@@ -1,0 +1,86 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2026 cloudbyday90
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+const request = require('supertest');
+const express = require('express');
+const db = require('../config/database');
+
+jest.mock('../config/database', () => ({
+  query: jest.fn()
+}));
+
+jest.mock('../services/healthCheckService', () => ({
+  getUptime: jest.fn(() => 12345)
+}));
+
+jest.mock('../middleware/auth', () => ({
+  authenticateToken: (req, res, next) => {
+    req.user = { userId: 1 };
+    next();
+  }
+}));
+
+describe('System Status Endpoint', () => {
+  let app;
+
+  beforeEach(() => {
+    app = express();
+    app.use(express.json());
+
+    const systemRoutes = require('../routes/system');
+    app.use('/api/system', systemRoutes);
+
+    jest.clearAllMocks();
+  });
+
+  test('returns pgvector details from settings', async () => {
+    db.query.mockResolvedValue({
+      rows: [
+        { key: 'avx_guard_pgvector_selected', value: 'avx2' },
+        { key: 'avx_guard_pgvector_build', value: 'multi' },
+        { key: 'avx_guard_cpu_avx', value: 'true' },
+        { key: 'avx_guard_cpu_avx2', value: 'true' },
+        { key: 'avx_guard_last_run', value: '2026-01-30T12:00:00Z' }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/api/system/status')
+      .set('Authorization', 'Bearer test-token');
+
+    expect(response.status).toBe(200);
+    expect(response.body.pgvector).toEqual({
+      build: 'multi',
+      selectedVariant: 'avx2',
+      cpuAvx: 'true',
+      cpuAvx2: 'true',
+      lastChecked: '2026-01-30T12:00:00Z'
+    });
+  });
+
+  test('returns null pgvector when settings lookup fails', async () => {
+    db.query.mockRejectedValue(new Error('settings table missing'));
+
+    const response = await request(app)
+      .get('/api/system/status')
+      .set('Authorization', 'Bearer test-token');
+
+    expect(response.status).toBe(200);
+    expect(response.body.pgvector).toBeNull();
+  });
+});

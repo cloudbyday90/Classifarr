@@ -29,6 +29,7 @@ UnRaid Community Applications template for easy installation of Classifarr.
 3. Set the following:
    - **Name**: Classifarr
    - **Repository**: `ghcr.io/cloudbyday90/classifarr:latest`
+     - pgvector auto-selects AVX when supported, otherwise uses the generic build
    - **Network Type**: Bridge
    - **WebUI**: `http://[IP]:[PORT:21324]`
    - **Port**: 21324 (host) → 21324 (container)
@@ -144,6 +145,7 @@ If you see permission errors in logs:
 - Check container logs for PostgreSQL errors
 - Verify the data directory has sufficient disk space
 - Ensure the volume is mounted correctly
+ - If you see `Illegal instruction` crashes during RAG similarity queries, ensure you are on a recent image (auto-selects generic pgvector on non-AVX CPUs)
 
 ### API Connection Issues (Radarr/Sonarr)
 

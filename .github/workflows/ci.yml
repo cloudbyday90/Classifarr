@@ -134,7 +134,7 @@ jobs:
   docker-release:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     needs: build-and-test
 
     permissions:
@@ -173,6 +173,8 @@ jobs:
             cloudbyday90/classifarr
           tags: |
             type=ref,event=tag
+            type=ref,event=branch
+            type=sha
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
@@ -183,6 +185,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            PGVECTOR_BUILD=multi
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

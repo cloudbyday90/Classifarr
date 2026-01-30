@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.5a-alpha] - 2026-01-30
+
+### Added
+
+- pgvector now ships with generic + AVX variants and auto-selects the best binary at startup (AVX when supported, generic otherwise).
+- Dashboard banner to indicate when pgvector is running in generic (non-AVX) mode.
+- Generic pgvector builds now use upstream-recommended `OPTFLAGS=""` for portability.
+- Added AVX2 pgvector variant and prefer it when supported for best performance.
+
 ## [0.40.5-alpha] - 2026-01-30
 
 ### Added

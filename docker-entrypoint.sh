@@ -9,6 +9,7 @@ set -e
 DATA_DIR="/app/data"
 PG_DATA="$DATA_DIR/postgres"
 PG_RUN="/run/postgresql"
+VERSION_FILE="$DATA_DIR/app_version"
 
 # Default values for PUID/PGID/UMASK
 PUID=${PUID:-1000}
@@ -82,6 +83,30 @@ fi
 # Ensure directories exist
 mkdir -p "$PG_DATA" "$PG_RUN" "$DATA_DIR/logs"
 
+# Determine app version for upgrade-aware one-time tasks
+APP_VERSION="unknown"
+if command -v node >/dev/null 2>&1; then
+    APP_VERSION=$(node -p "require('/app/package.json').version" 2>/dev/null || echo "unknown")
+fi
+PREVIOUS_VERSION=""
+if [ -f "$VERSION_FILE" ]; then
+    PREVIOUS_VERSION=$(cat "$VERSION_FILE" 2>/dev/null || echo "")
+fi
+UPGRADE_FROM_0405="false"
+if [ -n "$PREVIOUS_VERSION" ] && [ "$APP_VERSION" != "$PREVIOUS_VERSION" ]; then
+    case "$PREVIOUS_VERSION" in
+        0.40.5-alpha|0.40.5a-alpha)
+            UPGRADE_FROM_0405="true"
+            echo "Detected upgrade from $PREVIOUS_VERSION to $APP_VERSION"
+            ;;
+    esac
+fi
+
+EXISTING_DB="false"
+if [ -f "$PG_DATA/PG_VERSION" ]; then
+    EXISTING_DB="true"
+fi
+
 # Fix ownership of data directories
 echo "Setting ownership of $DATA_DIR to $PUID:$PGID..."
 chown -R "$PUID:$PGID" "$DATA_DIR" "$PG_RUN"
@@ -152,5 +177,62 @@ export POSTGRES_USER=classifarr
 export POSTGRES_PASSWORD=""
 
 echo "PostgreSQL is ready!"
+
+# Detect AVX support (used to avoid pgvector crashes on older CPUs)
+HAS_AVX="false"
+HAS_AVX2="false"
+if grep -m1 -qw avx /proc/cpuinfo; then
+    HAS_AVX="true"
+fi
+if grep -m1 -qw avx2 /proc/cpuinfo; then
+    HAS_AVX2="true"
+fi
+
+echo "CPU AVX support: $HAS_AVX (AVX2: $HAS_AVX2)"
+
+# Select pgvector binary variant (generic by default, avx/avx2 if supported)
+PG17_CONFIG="/usr/libexec/postgresql17/pg_config"
+if [ -x "$PG17_CONFIG" ]; then
+    PKGLIBDIR="$($PG17_CONFIG --pkglibdir)"
+else
+    PKGLIBDIR="/usr/lib/postgresql17/lib"
+fi
+
+SELECTED_VARIANT="generic"
+if [ "$HAS_AVX2" = "true" ] && [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
+    SELECTED_VARIANT="avx2"
+elif [ "$HAS_AVX" = "true" ] && [ -f "$PKGLIBDIR/vector_avx.so" ]; then
+    SELECTED_VARIANT="avx"
+elif [ -f "$PKGLIBDIR/vector_generic.so" ]; then
+    SELECTED_VARIANT="generic"
+elif [ -f "$PKGLIBDIR/vector_avx.so" ]; then
+    SELECTED_VARIANT="avx"
+elif [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
+    SELECTED_VARIANT="avx2"
+fi
+
+if [ -f "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" ]; then
+    ln -sf "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" "$PKGLIBDIR/vector.so"
+    export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="$SELECTED_VARIANT"
+    echo "pgvector selected: $SELECTED_VARIANT"
+else
+    echo "WARN: pgvector variant binaries not found in $PKGLIBDIR"
+fi
+
+if [ "$SELECTED_VARIANT" = "avx" ] && [ "$HAS_AVX" != "true" ]; then
+    echo "WARN: AVX not detected but AVX pgvector binary is selected. RAG queries may crash PostgreSQL."
+fi
+
+# One-time restart on upgrade from 0.40.5-alpha to ensure pgvector selection is applied cleanly
+if [ "$UPGRADE_FROM_0405" = "true" ]; then
+    echo "Running one-time PostgreSQL restart for pgvector compatibility..."
+    su-exec classifarr pg_ctl -D "$PG_DATA" -m fast stop
+    su-exec classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
+    echo "Waiting for PostgreSQL to restart..."
+    until su-exec classifarr pg_isready -q; do sleep 1; done
+fi
+
+echo "$APP_VERSION" > "$VERSION_FILE" 2>/dev/null || true
+
 echo "Starting Classifarr server as user classifarr (UID: $PUID, GID: $PGID)..."
 exec su-exec classifarr node src/index.js

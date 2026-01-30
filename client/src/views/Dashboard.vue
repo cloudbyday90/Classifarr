@@ -14,6 +14,9 @@
     <!-- Arr Config Warning -->
     <ArrConfigWarning />
 
+    <!-- pgvector Variant Banner -->
+    <PgvectorVariantBanner />
+
     <!-- Header with Refresh and Timestamp -->
     <div class="flex items-center justify-between">
       <h1 class="text-3xl font-bold">Dashboard</h1>
@@ -280,6 +283,7 @@ import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
 import SetupBanner from '@/components/SetupBanner.vue'
 import ArrConfigWarning from '@/components/settings/ArrConfigWarning.vue'
+import PgvectorVariantBanner from '@/components/PgvectorVariantBanner.vue'
 
 const router = useRouter()
 const librariesStore = useLibrariesStore()

@@ -132,6 +132,33 @@ describe('RAG API Integration Tests', () => {
             expect(response.body).toHaveProperty('stats');
             expect(response.body.stats).toHaveProperty('total');
         });
+
+        it('should surface pgvector settings when available', async () => {
+            const settings = [
+                ['avx_guard_pgvector_selected', 'avx2'],
+                ['avx_guard_pgvector_build', 'multi'],
+                ['avx_guard_cpu_avx', 'true'],
+                ['avx_guard_cpu_avx2', 'true']
+            ];
+
+            for (const [key, value] of settings) {
+                await pool.query(
+                    `INSERT INTO settings (key, value)
+                     VALUES ($1, $2)
+                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+                    [key, value]
+                );
+            }
+
+            const response = await request(app)
+                .get('/api/rag/status')
+                .expect(200);
+
+            expect(response.body.pgvectorVariant).toBe('avx2');
+            expect(response.body.pgvectorBuild).toBe('multi');
+            expect(response.body.cpuAvx).toBe('true');
+            expect(response.body.cpuAvx2).toBe('true');
+        });
     });
 
     describe('GET /api/rag/overview', () => {

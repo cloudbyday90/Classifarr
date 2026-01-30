@@ -5,6 +5,7 @@ version: '3.8'
 
 services:
   classifarr:
+    # pgvector auto-selects AVX when supported, otherwise uses generic build
     image: ghcr.io/cloudbyday90/classifarr:latest
     container_name: classifarr
     ports:

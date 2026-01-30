@@ -163,6 +163,7 @@ This document outlines the planned features and improvements, grouped by complex
 - Customizable dashboard widgets.
 - Advanced search and filtering.
 - Export/import policy configurations.
+- Clean up Arr settings dropdowns to avoid duplicate default options (e.g., "All Episodes (Default)" vs "All Episodes") by consolidating labels and deduping values.
 
 **Theme: RAG Similarity Visualization**
 
@@ -274,4 +275,4 @@ Have ideas for features or improvements? Please open an issue on GitHub or join 
 ---
 
 **Last Updated**: 2026-01-30  
-**Current Version**: v0.40.5-alpha
+**Current Version**: v0.40.5a-alpha

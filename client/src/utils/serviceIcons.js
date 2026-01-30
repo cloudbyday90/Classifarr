@@ -25,6 +25,7 @@ export const SERVICE_ICONS = {
   'Discord Bot': '💬',
   'Discord': '💬',
   'Tavily': '🌐',
+  'pgvector': '🧬',
   'Media Server': '📺',
   'Jellyfin': '📺',
   'Emby': '📺',

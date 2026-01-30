@@ -81,10 +81,11 @@
 
       <!-- Service Cards -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div 
+      <div 
           v-for="service in filteredServices"
           :key="service.name"
           v-tooltip="getServiceTooltip(service)"
+          :data-testid="`service-card-${service.key}`"
           class="p-4 bg-background-light rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
         >
           <div class="flex items-center justify-between mb-2">
@@ -204,6 +205,32 @@
             </div>
           </div>
         </div>
+
+        <div v-if="systemStatus.pgvector" class="md:col-span-2">
+          <h3 class="text-sm font-medium text-gray-400 mb-2">pgvector</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-gray-400">Build:</span>
+              <span>{{ systemStatus.pgvector.build || 'unknown' }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Selected Variant:</span>
+              <span>{{ systemStatus.pgvector.selectedVariant || 'unknown' }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">CPU AVX:</span>
+              <span>{{ formatCpuFlag(systemStatus.pgvector.cpuAvx) }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">CPU AVX2:</span>
+              <span>{{ formatCpuFlag(systemStatus.pgvector.cpuAvx2) }}</span>
+            </div>
+            <div class="flex justify-between md:col-span-2">
+              <span class="text-gray-400">Last Check:</span>
+              <span>{{ systemStatus.pgvector.lastChecked ? formatLastCheck(systemStatus.pgvector.lastChecked) : 'unknown' }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </Card>
 
@@ -273,6 +300,7 @@ let autoRefreshInterval = null
 
 const healthServices = ref([
   { name: 'Database', key: 'database', status: 'unknown', description: 'PostgreSQL connection', responseTime: null, lastCheck: null },
+  { name: 'pgvector', key: 'pgvector', status: 'unknown', description: 'Vector search extension', responseTime: null, lastCheck: null },
   { name: 'Media Server', key: 'mediaServer', status: 'unknown', description: 'Plex/Jellyfin/Emby', responseTime: null, lastCheck: null },
   { name: 'Radarr', key: 'radarr', status: 'unknown', description: 'Movie management', responseTime: null, lastCheck: null },
   { name: 'Sonarr', key: 'sonarr', status: 'unknown', description: 'TV show management', responseTime: null, lastCheck: null },
@@ -290,7 +318,8 @@ const systemStatus = ref({
   nodeVersion: 'N/A',
   platform: 'N/A',
   arch: 'N/A',
-  memoryUsage: { heapUsed: 0 }
+  memoryUsage: { heapUsed: 0 },
+  pgvector: null
 })
 
 const overallHealth = computed(() => {
@@ -329,6 +358,59 @@ const normalizeStatus = (status) => {
   if (statusLower === 'not configured') return 'not_configured'
   
   return status
+}
+
+const parseBooleanFlag = (value) => {
+  if (value === true || value === 'true') return true
+  if (value === false || value === 'false') return false
+  return null
+}
+
+const buildPgvectorService = (pgvectorInfo) => {
+  const selectedVariant = pgvectorInfo?.selectedVariant || null
+  const build = pgvectorInfo?.build || null
+  const cpuAvx = parseBooleanFlag(pgvectorInfo?.cpuAvx)
+  const cpuAvx2 = parseBooleanFlag(pgvectorInfo?.cpuAvx2)
+
+  let status = 'unknown'
+  let error = null
+
+  if (selectedVariant) {
+    if (selectedVariant === 'avx2') {
+      status = cpuAvx2 === false ? 'unhealthy' : 'healthy'
+      if (cpuAvx2 === false) {
+        error = 'Selected AVX2 variant but CPU does not report AVX2 support.'
+      }
+    } else if (selectedVariant === 'avx') {
+      status = cpuAvx === false ? 'unhealthy' : 'healthy'
+      if (cpuAvx === false) {
+        error = 'Selected AVX variant but CPU does not report AVX support.'
+      }
+    } else {
+      status = 'healthy'
+    }
+  }
+
+  return {
+    name: 'pgvector',
+    key: 'pgvector',
+    status,
+    description: `Variant: ${selectedVariant || 'unknown'} • Build: ${build || 'unknown'}`,
+    responseTime: null,
+    lastCheck: pgvectorInfo?.lastChecked || null,
+    error
+  }
+}
+
+const upsertPgvectorService = (services, pgvectorInfo) => {
+  const pgvectorService = buildPgvectorService(pgvectorInfo)
+  const index = services.findIndex(service => service.key === pgvectorService.key)
+  if (index === -1) {
+    return [...services, pgvectorService]
+  }
+  const next = [...services]
+  next[index] = { ...next[index], ...pgvectorService }
+  return next
 }
 
 const loadHealth = async (silent = false) => {
@@ -439,6 +521,8 @@ const loadHealth = async (silent = false) => {
           error: healthDetails.value.tavily?.error
         },
       ]
+
+      healthServices.value = upsertPgvectorService(healthServices.value, systemStatus.value?.pgvector)
       
       lastUpdated.value = new Date()
     }
@@ -457,6 +541,7 @@ const loadStatus = async () => {
     
     if (response.data) {
       systemStatus.value = response.data
+      healthServices.value = upsertPgvectorService(healthServices.value, response.data.pgvector)
     }
   } catch (error) {
     console.error('Failed to load system status:', error)
@@ -560,6 +645,13 @@ const formatMemory = (bytes) => {
   
   const mb = bytes / 1024 / 1024
   return `${mb.toFixed(0)} MB`
+}
+
+const formatCpuFlag = (value) => {
+  if (value === 'true' || value === true) return 'Yes'
+  if (value === 'false' || value === false) return 'No'
+  if (!value) return 'Unknown'
+  return String(value)
 }
 
 onMounted(() => {

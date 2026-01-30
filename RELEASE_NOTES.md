@@ -1,6 +1,16 @@
 ﻿﻿# Classifarr Release Notes
 
-## Unreleased
+## v0.40.5a-alpha
+
+**Title: pgvector CPU Compatibility Hotfix**
+
+### Fixes
+
+- **Non-AVX CPU Safety**: pgvector now ships with generic + AVX variants and auto-selects the best binary at startup (AVX when supported, generic otherwise), preventing PostgreSQL crashes during vector similarity queries.
+- **AVX2 Optimization**: Added an AVX2 pgvector variant and prefer it when the CPU supports AVX2 for faster similarity search.
+- **Dashboard Visibility**: Added a banner when pgvector is running in generic mode so users can confirm CPU compatibility status.
+- **Build Portability**: Generic pgvector builds now follow upstream guidance (`OPTFLAGS=""`) for maximum CPU compatibility.
+- **Upgrade Recovery Marker**: Startup now records the previous version and runs a one-time PostgreSQL restart when upgrading from v0.40.5-alpha.
 
 ## v0.40.5-alpha
 

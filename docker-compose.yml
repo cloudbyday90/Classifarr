@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: ghcr.io/cloudbyday90/classifarr:latest
+    # pgvector auto-selects AVX when supported, otherwise uses generic build
     container_name: classifarr
     ports:
       - "21324:21324"
