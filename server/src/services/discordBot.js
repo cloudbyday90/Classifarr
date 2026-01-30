@@ -16,9 +16,18 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const { Client, GatewayIntentBits, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
-const db = require('../config/database');
-const clarificationService = require('./clarificationService');
+const {
+  Client,
+  GatewayIntentBits,
+  PermissionFlagsBits,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+} = require("discord.js");
+const db = require("../config/database");
+const clarificationService = require("./clarificationService");
 
 class DiscordBotService {
   constructor() {
@@ -32,8 +41,11 @@ class DiscordBotService {
     // For API calls (getServers, getChannels, getChannelDetails), we need the token
     // regardless of enabled status. Only for initialization should we check enabled.
     // v0.37.8b-alpha: Added ignoreEnabledStatus parameter to fix config persistence
-    const enabledFilter = ignoreEnabledStatus ? '' : 'AND enabled = true';
-    const result = await db.query(`SELECT * FROM notification_config WHERE type = $1 ${enabledFilter} LIMIT 1`, ['discord']);
+    const enabledFilter = ignoreEnabledStatus ? "" : "AND enabled = true";
+    const result = await db.query(
+      `SELECT * FROM notification_config WHERE type = $1 ${enabledFilter} LIMIT 1`,
+      ["discord"],
+    );
     if (result.rows.length > 0) {
       this.config = result.rows[0];
       return this.config;
@@ -54,7 +66,7 @@ class DiscordBotService {
       // Use ignoreEnabledStatus=true to allow testing even when bot is disabled
       const token = botToken || (await this.loadConfig(true)).bot_token;
       if (!token) {
-        return { success: false, error: 'No bot token provided' };
+        return { success: false, error: "No bot token provided" };
       }
 
       // Create temporary client to test
@@ -69,7 +81,7 @@ class DiscordBotService {
 
       const response = {
         success: true,
-        message: 'Bot connected successfully',
+        message: "Bot connected successfully",
         botUser: {
           id: user.id,
           username: user.username,
@@ -83,7 +95,7 @@ class DiscordBotService {
         try {
           const channel = await testClient.channels.fetch(channelId);
           if (!channel) {
-            return { success: false, error: 'Channel not found' };
+            return { success: false, error: "Channel not found" };
           }
 
           // Ensure bot member is in cache for permission checking
@@ -92,41 +104,53 @@ class DiscordBotService {
             try {
               await guild.members.fetch(testClient.user.id);
             } catch (fetchError) {
-              console.warn('Could not fetch bot member for permission check:', fetchError.message);
+              console.warn(
+                "Could not fetch bot member for permission check:",
+                fetchError.message,
+              );
             }
           }
 
           // Check permissions
-          const permissions = this.checkChannelPermissions(channel, testClient.user.id);
+          const permissions = this.checkChannelPermissions(
+            channel,
+            testClient.user.id,
+          );
           response.permissions = permissions;
 
           // Check for critical missing permissions
-          const missingCritical = permissions.missing.filter(p => 
-            ['SendMessages', 'EmbedLinks'].includes(p)
+          const missingCritical = permissions.missing.filter((p) =>
+            ["SendMessages", "EmbedLinks"].includes(p),
           );
 
           if (missingCritical.length > 0) {
             return {
               success: false,
-              error: `Missing critical permissions: ${missingCritical.join(', ')}`,
+              error: `Missing critical permissions: ${missingCritical.join(", ")}`,
               permissions,
               botUser: response.botUser,
-              guildsCount: response.guildsCount
+              guildsCount: response.guildsCount,
             };
           }
 
           // Send test notification
           const testEmbed = new EmbedBuilder()
-            .setTitle('✅ Classifarr Test Notification')
-            .setDescription('Your Discord bot is configured correctly and can send notifications!')
+            .setTitle("✅ Classifarr Test Notification")
+            .setDescription(
+              "Your Discord bot is configured correctly and can send notifications!",
+            )
             .setColor(0x00ff00)
             .addFields(
-              { name: 'Bot', value: user.username, inline: true },
-              { name: 'Channel', value: `#${channel.name}`, inline: true },
-              { name: 'Server', value: channel.guild?.name || 'Unknown', inline: true }
+              { name: "Bot", value: user.username, inline: true },
+              { name: "Channel", value: `#${channel.name}`, inline: true },
+              {
+                name: "Server",
+                value: channel.guild?.name || "Unknown",
+                inline: true,
+              },
             )
             .setTimestamp()
-            .setFooter({ text: 'This is a test message from Classifarr' });
+            .setFooter({ text: "This is a test message from Classifarr" });
 
           const sentMessage = await channel.send({ embeds: [testEmbed] });
 
@@ -134,20 +158,21 @@ class DiscordBotService {
             sent: true,
             messageId: sentMessage.id,
             channelName: channel.name,
-            serverName: channel.guild?.name || 'Unknown'
+            serverName: channel.guild?.name || "Unknown",
           };
-          response.message = 'Test notification sent successfully! Check your Discord channel.';
+          response.message =
+            "Test notification sent successfully! Check your Discord channel.";
 
           // Warn about non-critical missing permissions
           if (permissions.missing.length > 0) {
-            response.warning = `Some optional permissions are missing: ${permissions.missing.join(', ')}. This may limit functionality.`;
+            response.warning = `Some optional permissions are missing: ${permissions.missing.join(", ")}. This may limit functionality.`;
           }
         } catch (channelError) {
           return {
             success: false,
             error: `Failed to send test notification: ${channelError.message}`,
             botUser: response.botUser,
-            permissions: response.permissions
+            permissions: response.permissions,
           };
         }
       }
@@ -156,9 +181,9 @@ class DiscordBotService {
     } catch (error) {
       return {
         success: false,
-        error: error.message.includes('token')
-          ? 'Invalid bot token'
-          : error.message
+        error: error.message.includes("token")
+          ? "Invalid bot token"
+          : error.message,
       };
     } finally {
       if (testClient) {
@@ -175,22 +200,22 @@ class DiscordBotService {
    */
   checkChannelPermissions(channel, botUserId) {
     const requiredPermissions = [
-      'SendMessages',
-      'EmbedLinks',
-      'AttachFiles',
-      'ReadMessageHistory',
-      'UseExternalEmojis',
-      'AddReactions'
+      "SendMessages",
+      "EmbedLinks",
+      "AttachFiles",
+      "ReadMessageHistory",
+      "UseExternalEmojis",
+      "AddReactions",
     ];
 
     // Mapping for permission names to PermissionFlagsBits
     const permissionMap = {
-      'SendMessages': PermissionFlagsBits.SendMessages,
-      'EmbedLinks': PermissionFlagsBits.EmbedLinks,
-      'AttachFiles': PermissionFlagsBits.AttachFiles,
-      'ReadMessageHistory': PermissionFlagsBits.ReadMessageHistory,
-      'UseExternalEmojis': PermissionFlagsBits.UseExternalEmojis,
-      'AddReactions': PermissionFlagsBits.AddReactions
+      SendMessages: PermissionFlagsBits.SendMessages,
+      EmbedLinks: PermissionFlagsBits.EmbedLinks,
+      AttachFiles: PermissionFlagsBits.AttachFiles,
+      ReadMessageHistory: PermissionFlagsBits.ReadMessageHistory,
+      UseExternalEmojis: PermissionFlagsBits.UseExternalEmojis,
+      AddReactions: PermissionFlagsBits.AddReactions,
     };
 
     const botMember = channel.guild.members.cache.get(botUserId);
@@ -198,7 +223,7 @@ class DiscordBotService {
       return {
         granted: [],
         missing: requiredPermissions,
-        all: false
+        all: false,
       };
     }
 
@@ -208,14 +233,14 @@ class DiscordBotService {
       return {
         granted: [],
         missing: requiredPermissions,
-        all: false
+        all: false,
       };
     }
 
     const granted = [];
     const missing = [];
 
-    requiredPermissions.forEach(perm => {
+    requiredPermissions.forEach((perm) => {
       const permBit = permissionMap[perm];
       if (permBit && channelPermissions.has(permBit)) {
         granted.push(perm);
@@ -227,7 +252,7 @@ class DiscordBotService {
     return {
       granted,
       missing,
-      all: missing.length === 0
+      all: missing.length === 0,
     };
   }
 
@@ -238,7 +263,7 @@ class DiscordBotService {
       const storedConfig = await this.loadConfig(true);
       const token = storedConfig?.bot_token || botToken;
       if (!token) {
-        throw new Error('No bot token configured');
+        throw new Error("No bot token configured");
       }
 
       // Create temporary client
@@ -249,14 +274,14 @@ class DiscordBotService {
       // Wait for client to be fully ready before accessing guilds
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
-          reject(new Error('Discord client login timeout'));
+          reject(new Error("Discord client login timeout"));
         }, 10000); // 10 second timeout
 
-        testClient.once('ready', () => {
+        testClient.once("ready", () => {
           clearTimeout(timeout);
           resolve();
         });
-        testClient.once('error', (err) => {
+        testClient.once("error", (err) => {
           clearTimeout(timeout);
           reject(err);
         });
@@ -266,7 +291,7 @@ class DiscordBotService {
         });
       });
 
-      const guilds = testClient.guilds.cache.map(guild => ({
+      const guilds = testClient.guilds.cache.map((guild) => ({
         id: guild.id,
         name: guild.name,
         icon: guild.iconURL(),
@@ -288,7 +313,7 @@ class DiscordBotService {
       const storedConfig = await this.loadConfig(true);
       const token = storedConfig?.bot_token || botToken;
       if (!token) {
-        throw new Error('No bot token configured');
+        throw new Error("No bot token configured");
       }
 
       // Create temporary client
@@ -299,14 +324,14 @@ class DiscordBotService {
       // Wait for client to be fully ready before accessing guilds
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
-          reject(new Error('Discord client login timeout'));
+          reject(new Error("Discord client login timeout"));
         }, 10000); // 10 second timeout
 
-        testClient.once('ready', () => {
+        testClient.once("ready", () => {
           clearTimeout(timeout);
           resolve();
         });
-        testClient.once('error', (err) => {
+        testClient.once("error", (err) => {
           clearTimeout(timeout);
           reject(err);
         });
@@ -319,15 +344,15 @@ class DiscordBotService {
       const guild = testClient.guilds.cache.get(serverId);
       if (!guild) {
         await testClient.destroy();
-        throw new Error('Server not found or bot not added to this server');
+        throw new Error("Server not found or bot not added to this server");
       }
 
       // Fetch all channels to ensure cache is populated
       await guild.channels.fetch();
 
       const channels = guild.channels.cache
-        .filter(channel => channel.isTextBased() && !channel.isThread())
-        .map(channel => ({
+        .filter((channel) => channel.isTextBased() && !channel.isThread())
+        .map((channel) => ({
           id: channel.id,
           name: channel.name,
           type: channel.type,
@@ -344,18 +369,22 @@ class DiscordBotService {
 
   async getChannelDetails(channelId, botToken = null) {
     try {
-      console.log(`[Discord] Fetching channel details for channel ID: ${channelId}`);
-      
+      console.log(
+        `[Discord] Fetching channel details for channel ID: ${channelId}`,
+      );
+
       // Always prefer stored token
       // Use ignoreEnabledStatus=true to get token even when bot is disabled
       const storedConfig = await this.loadConfig(true);
       const token = storedConfig?.bot_token || botToken;
-      
+
       if (!token) {
-        throw new Error('No bot token configured');
+        throw new Error("No bot token configured");
       }
 
-      console.log(`[Discord] Using ${storedConfig?.bot_token ? 'stored' : 'provided'} bot token`);
+      console.log(
+        `[Discord] Using ${storedConfig?.bot_token ? "stored" : "provided"} bot token`,
+      );
 
       // Create temporary client
       const testClient = new Client({
@@ -365,14 +394,14 @@ class DiscordBotService {
       // Wait for client to be fully ready
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
-          reject(new Error('Discord client login timeout'));
+          reject(new Error("Discord client login timeout"));
         }, 10000); // 10 second timeout
 
-        testClient.once('ready', () => {
+        testClient.once("ready", () => {
           clearTimeout(timeout);
           resolve();
         });
-        testClient.once('error', (err) => {
+        testClient.once("error", (err) => {
           clearTimeout(timeout);
           reject(err);
         });
@@ -385,27 +414,29 @@ class DiscordBotService {
       try {
         const channel = await testClient.channels.fetch(channelId);
         if (!channel) {
-          throw new Error('Channel not found');
+          throw new Error("Channel not found");
         }
 
         // Ensure guild is available and fetched
-        let guildName = 'Unknown Server';
+        let guildName = "Unknown Server";
         if (channel.guild) {
           // Fetch full guild object if not cached
           if (!channel.guild.name) {
             await channel.guild.fetch();
           }
-          guildName = channel.guild.name || 'Unknown Server';
+          guildName = channel.guild.name || "Unknown Server";
         }
 
         const result = {
           id: channel.id,
           name: channel.name,
           guildId: channel.guildId,
-          guildName: guildName
+          guildName: guildName,
         };
 
-        console.log(`[Discord] Successfully fetched channel: ${channel.name} in guild: ${channel.guild?.name || 'Unknown'}`);
+        console.log(
+          `[Discord] Successfully fetched channel: ${channel.name} in guild: ${channel.guild?.name || "Unknown"}`,
+        );
 
         return result;
       } finally {
@@ -413,7 +444,10 @@ class DiscordBotService {
       }
     } catch (error) {
       // Log the error with context, then re-throw for route handler
-      console.error(`Failed to fetch channel details for ${channelId}:`, error.message);
+      console.error(
+        `Failed to fetch channel details for ${channelId}:`,
+        error.message,
+      );
       throw error; // Re-throw so the route handler can return appropriate status
     }
   }
@@ -433,18 +467,15 @@ class DiscordBotService {
     this.channelId = config.channel_id;
 
     if (!token || !this.channelId || !config.enabled) {
-      throw new Error('Discord bot not configured or not enabled');
+      throw new Error("Discord bot not configured or not enabled");
     }
 
     this.client = new Client({
-      intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-      ],
+      intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
     });
 
     // Handle interactions
-    this.client.on('interactionCreate', async (interaction) => {
+    this.client.on("interactionCreate", async (interaction) => {
       await this.handleInteraction(interaction);
     });
 
@@ -454,7 +485,7 @@ class DiscordBotService {
 
   async sendClassificationNotification(metadata, result) {
     if (!this.isInitialized || !this.client) {
-      console.warn('Discord bot not initialized');
+      console.warn("Discord bot not initialized");
       return;
     }
 
@@ -468,47 +499,70 @@ class DiscordBotService {
 
       const channel = await this.client.channels.fetch(this.channelId);
       if (!channel) {
-        console.error('Discord channel not found');
+        console.error("Discord channel not found");
         return;
       }
 
       const embed = new EmbedBuilder()
-        .setTitle(`${this.getMediaTypeEmoji(metadata.media_type)} ${metadata.title} (${metadata.year || 'N/A'})`)
+        .setTitle(
+          `${this.getMediaTypeEmoji(metadata.media_type)} ${metadata.title} (${metadata.year || "N/A"})`,
+        )
         .setDescription(`Classified as: **${result.library_name}**`)
         .setColor(this.getColorForConfidence(result.confidence))
         .setTimestamp();
 
       // Add fields based on config
       const fields = [
-        { name: 'Media Type', value: metadata.media_type === 'movie' ? 'Movie' : 'TV Show', inline: true },
+        {
+          name: "Media Type",
+          value: metadata.media_type === "movie" ? "Movie" : "TV Show",
+          inline: true,
+        },
       ];
 
       if (config.show_confidence) {
-        fields.push({ name: 'Confidence', value: `${result.confidence}%`, inline: true });
+        fields.push({
+          name: "Confidence",
+          value: `${result.confidence}%`,
+          inline: true,
+        });
       }
 
       if (config.show_method) {
-        fields.push({ name: 'Method', value: this.formatMethod(result.method), inline: true });
+        fields.push({
+          name: "Method",
+          value: this.formatMethod(result.method),
+          inline: true,
+        });
       }
 
       if (config.show_reason && result.reason) {
-        fields.push({ name: 'Reason', value: result.reason, inline: false });
+        fields.push({ name: "Reason", value: result.reason, inline: false });
       }
 
       if (config.show_metadata && metadata) {
         const metadataStr = Object.entries(metadata)
-          .filter(([key]) => !['title', 'year', 'media_type', 'poster_path'].includes(key))
+          .filter(
+            ([key]) =>
+              !["title", "year", "media_type", "poster_path"].includes(key),
+          )
           .map(([key, value]) => `${key}: ${value}`)
-          .join('\n');
+          .join("\n");
         if (metadataStr) {
-          fields.push({ name: 'Metadata', value: metadataStr.substring(0, 1024), inline: false });
+          fields.push({
+            name: "Metadata",
+            value: metadataStr.substring(0, 1024),
+            inline: false,
+          });
         }
       }
 
       embed.addFields(fields);
 
       if (config.show_poster && metadata.poster_path) {
-        embed.setThumbnail(`https://image.tmdb.org/t/p/w200${metadata.poster_path}`);
+        embed.setThumbnail(
+          `https://image.tmdb.org/t/p/w200${metadata.poster_path}`,
+        );
       }
 
       // Create correction buttons if enabled
@@ -518,7 +572,7 @@ class DiscordBotService {
           result.classification_id,
           result.libraries,
           config.correction_buttons_count || 3,
-          config.include_library_dropdown !== false
+          config.include_library_dropdown !== false,
         );
       }
 
@@ -529,11 +583,14 @@ class DiscordBotService {
 
       // Store message ID for later updates
       await db.query(
-        'UPDATE classification_history SET metadata = metadata || $1 WHERE id = $2',
-        [JSON.stringify({ discord_message_id: message.id }), result.classification_id]
+        "UPDATE classification_history SET metadata = metadata || $1 WHERE id = $2",
+        [
+          JSON.stringify({ discord_message_id: message.id }),
+          result.classification_id,
+        ],
       );
     } catch (error) {
-      console.error('Failed to send Discord notification:', error);
+      console.error("Failed to send Discord notification:", error);
     }
   }
 
@@ -541,18 +598,18 @@ class DiscordBotService {
     // Enhanced logging for debugging notification issues (v0.38.4-alpha)
     // These console.log statements are intentional and help diagnose
     // why notifications may not appear on Discord (e.g., tier lookup failures)
-    console.log('[Discord] Notification attempt', {
+    console.log("[Discord] Notification attempt", {
       title: metadata.title,
       confidence: result.confidence,
       initialized: this.isInitialized,
       hasClient: !!this.client,
-      classificationId: result.classification_id
+      classificationId: result.classification_id,
     });
-    
+
     if (!this.isInitialized || !this.client) {
-      console.warn('[Discord] Bot not initialized - notification skipped', {
+      console.warn("[Discord] Bot not initialized - notification skipped", {
         isInitialized: this.isInitialized,
-        hasClient: !!this.client
+        hasClient: !!this.client,
       });
       return;
     }
@@ -561,62 +618,80 @@ class DiscordBotService {
       const config = await this.loadConfig();
 
       // Log enabled flag value (Bug #11 logging)
-      console.log('[Discord] Config check', {
+      console.log("[Discord] Config check", {
         enabled: config.enabled,
         notify_on_classification: config.notify_on_classification,
         bot_token_present: !!config.bot_token,
-        channel_id_present: !!config.channel_id
+        channel_id_present: !!config.channel_id,
       });
 
       if (!config.enabled) {
-        console.log('[Discord] Notifications disabled via enabled flag - skipping', {
-          enabled: config.enabled
-        });
+        console.log(
+          "[Discord] Notifications disabled via enabled flag - skipping",
+          {
+            enabled: config.enabled,
+          },
+        );
         return;
       }
 
       if (!config.notify_on_classification) {
-        console.log('[Discord] Notifications disabled in config - skipping');
+        console.log("[Discord] Notifications disabled in config - skipping");
         return;
       }
 
       // Check if user requires all confirmations
-      const requireAllConfirmations = await clarificationService.isRequireAllConfirmationsEnabled();
+      const requireAllConfirmations =
+        await clarificationService.isRequireAllConfirmationsEnabled();
 
       // Get confidence tier
-      const tier = await clarificationService.getTierForConfidence(result.confidence);
-      
-      console.log('[Discord] Tier lookup result', {
+      const tier = await clarificationService.getTierForConfidence(
+        result.confidence,
+      );
+
+      console.log("[Discord] Tier lookup result", {
         confidence: result.confidence,
-        tier: tier ? tier.tier : 'null',
-        action: tier ? tier.action : 'null'
+        tier: tier ? tier.tier : "null",
+        action: tier ? tier.action : "null",
       });
-      
+
       if (!tier) {
-        console.warn('[Discord] No tier found, falling back to standard notification', {
-          confidence: result.confidence
-        });
+        console.warn(
+          "[Discord] No tier found, falling back to standard notification",
+          {
+            confidence: result.confidence,
+          },
+        );
         // Fallback to standard notification
         return this.sendClassificationNotification(metadata, result);
       }
 
       const channel = await this.client.channels.fetch(this.channelId);
       if (!channel) {
-        console.error('[Discord] Channel not found', { channelId: this.channelId });
+        console.error("[Discord] Channel not found", {
+          channelId: this.channelId,
+        });
         return;
       }
 
       // Check if AI needs clarification - use AI-generated question instead of pre-configured ones
-      const hasClarification = result.needs_clarification && result.clarification;
+      const hasClarification =
+        result.needs_clarification && result.clarification;
 
-      console.log('[Discord] Creating notification', {
+      console.log("[Discord] Creating notification", {
         tier: tier.tier,
         hasClarification,
-        requireAllConfirmations
+        requireAllConfirmations,
       });
 
       // Create embed based on tier (and clarification/requireAllConfirmations setting)
-      const embed = this.createTieredEmbed(metadata, result, tier, requireAllConfirmations, hasClarification);
+      const embed = this.createTieredEmbed(
+        metadata,
+        result,
+        tier,
+        requireAllConfirmations,
+        hasClarification,
+      );
 
       // Create components based on tier and clarification
       const components = await this.createTieredComponents(
@@ -626,7 +701,7 @@ class DiscordBotService {
         metadata,
         result.confidence,
         requireAllConfirmations,
-        hasClarification ? result.clarification : null
+        hasClarification ? result.clarification : null,
       );
 
       const message = await channel.send({
@@ -634,24 +709,24 @@ class DiscordBotService {
         components: components,
       });
 
-      console.log('[Discord] Notification sent successfully', {
+      console.log("[Discord] Notification sent successfully", {
         messageId: message.id,
         tier: tier.tier,
-        confidence: result.confidence
+        confidence: result.confidence,
       });
 
       // Store message ID and clarification status
-      const status = hasClarification ? 'awaiting_clarification' : tier.action;
+      const status = hasClarification ? "awaiting_clarification" : tier.action;
       await db.query(
-        'UPDATE classification_history SET discord_message_id = $1, clarification_status = $2 WHERE id = $3',
-        [message.id, status, result.classification_id]
+        "UPDATE classification_history SET discord_message_id = $1, clarification_status = $2 WHERE id = $3",
+        [message.id, status, result.classification_id],
       );
     } catch (error) {
-      console.error('[Discord] Failed to send confidence-based notification:', {
+      console.error("[Discord] Failed to send confidence-based notification:", {
         error: error.message,
         stack: error.stack,
         title: metadata.title,
-        confidence: result.confidence
+        confidence: result.confidence,
       });
     }
   }
@@ -662,78 +737,99 @@ class DiscordBotService {
    * @returns {string} Emoji for media type
    */
   getMediaTypeEmoji(mediaType) {
-    return mediaType === 'movie' ? '🎬' : '📺';
+    return mediaType === "movie" ? "🎬" : "📺";
   }
 
-  createTieredEmbed(metadata, result, tier, requireAllConfirmations = false, hasClarification = false) {
+  createTieredEmbed(
+    metadata,
+    result,
+    tier,
+    requireAllConfirmations = false,
+    hasClarification = false,
+  ) {
     const colors = {
-      auto: 0x00ff00,      // Green
-      verify: 0xffff00,    // Yellow
-      clarify: 0x0099ff,   // Blue
-      manual: 0xff0000,    // Red
+      auto: 0x00ff00, // Green
+      verify: 0xffff00, // Yellow
+      clarify: 0x0099ff, // Blue
+      manual: 0xff0000, // Red
       clarification: 0x9333ea, // Purple - for AI clarification questions
     };
 
     const icons = {
-      auto: '✅',
-      verify: '⚠️',
-      clarify: '❓',
-      manual: '🛑',
-      clarification: '🤔',
+      auto: "✅",
+      verify: "⚠️",
+      clarify: "❓",
+      manual: "🛑",
+      clarification: "🤔",
     };
 
     // Use clarification styling if AI needs help
-    const effectiveTier = hasClarification ? 'clarification' : tier.tier;
+    const effectiveTier = hasClarification ? "clarification" : tier.tier;
 
     // Use media type emoji for title instead of tier icon when showing clarification
-    const titleEmoji = hasClarification 
+    const titleEmoji = hasClarification
       ? this.getMediaTypeEmoji(metadata.media_type)
       : icons[effectiveTier];
 
     const embed = new EmbedBuilder()
-      .setTitle(`${titleEmoji} ${metadata.title} (${metadata.year || 'N/A'})`)
+      .setTitle(`${titleEmoji} ${metadata.title} (${metadata.year || "N/A"})`)
       .setColor(colors[effectiveTier])
       .setTimestamp();
 
     // AI Clarification - special format with context
     if (hasClarification && result.clarification) {
       const clarification = result.clarification;
-      const mediaTypeLabel = metadata.media_type === 'movie' ? 'movie' : 'TV show';
+      const mediaTypeLabel =
+        metadata.media_type === "movie" ? "movie" : "TV show";
       embed.setDescription(
         `🤔 **I need your help classifying this ${mediaTypeLabel}**\n\n` +
-        `⚠️ **Problem:** ${clarification.problem_summary}\n\n` +
-        `💭 **Why I'm asking:** ${clarification.why_uncertain}\n\n` +
-        `📁 **Question:** ${clarification.question}`
+          `⚠️ **Problem:** ${clarification.problem_summary}\n\n` +
+          `💭 **Why I'm asking:** ${clarification.why_uncertain}\n\n` +
+          `📁 **Question:** ${clarification.question}`,
       );
-    } else if (tier.tier === 'auto' && !requireAllConfirmations) {
-      embed.setDescription(`✅ **Automatically routed to: ${result.library_name}**\n${tier.description}`);
-    } else if (tier.tier === 'auto' && requireAllConfirmations) {
-      embed.setDescription(`⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\n🔒 **Manual confirmation required** (setting enabled)\nPlease confirm or select another option.`);
+    } else if (tier.tier === "auto" && !requireAllConfirmations) {
+      embed.setDescription(
+        `✅ **Automatically routed to: ${result.library_name}**\n${tier.description}`,
+      );
+    } else if (tier.tier === "auto" && requireAllConfirmations) {
+      embed.setDescription(
+        `⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\n🔒 **Manual confirmation required** (setting enabled)\nPlease confirm or select another option.`,
+      );
       embed.setColor(colors.verify);
-    } else if (tier.tier === 'verify') {
-      embed.setDescription(`⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease confirm or select another option.`);
-    } else if (tier.tier === 'clarify') {
-      embed.setDescription(`❓ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease answer the questions below to improve accuracy.`);
+    } else if (tier.tier === "verify") {
+      embed.setDescription(
+        `⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease confirm or select another option.`,
+      );
+    } else if (tier.tier === "clarify") {
+      embed.setDescription(
+        `❓ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease answer the questions below to improve accuracy.`,
+      );
     } else {
-      embed.setDescription(`🛑 **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease answer the questions or select a library manually.`);
+      embed.setDescription(
+        `🛑 **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease answer the questions or select a library manually.`,
+      );
     }
 
     const fields = [
-      { name: 'Media Type', value: metadata.media_type === 'movie' ? 'Movie' : 'TV Show', inline: true },
-      { name: 'Confidence', value: `${result.confidence}%`, inline: true },
-      { name: 'Method', value: this.formatMethod(result.method), inline: true },
+      {
+        name: "Media Type",
+        value: metadata.media_type === "movie" ? "Movie" : "TV Show",
+        inline: true,
+      },
+      { name: "Confidence", value: `${result.confidence}%`, inline: true },
+      { name: "Method", value: this.formatMethod(result.method), inline: true },
     ];
 
     // Don't show reason if we're showing clarification context (redundant)
     if (result.reason && !hasClarification) {
-      fields.push({ name: 'Reason', value: result.reason, inline: false });
+      fields.push({ name: "Reason", value: result.reason, inline: false });
     }
 
     // Add content analysis if available
     if (metadata.contentAnalysis && metadata.contentAnalysis.bestMatch) {
       const analysis = metadata.contentAnalysis.bestMatch;
       fields.push({
-        name: 'Content Type Detected',
+        name: "Content Type Detected",
         value: `${analysis.type} (${analysis.confidence}% confidence)`,
         inline: false,
       });
@@ -742,32 +838,52 @@ class DiscordBotService {
     embed.addFields(fields);
 
     if (metadata.poster_path) {
-      embed.setThumbnail(`https://image.tmdb.org/t/p/w200${metadata.poster_path}`);
+      embed.setThumbnail(
+        `https://image.tmdb.org/t/p/w200${metadata.poster_path}`,
+      );
     }
 
     return embed;
   }
 
-  async createTieredComponents(classificationId, libraries, tier, metadata, confidence, requireAllConfirmations = false, clarification = null) {
+  async createTieredComponents(
+    classificationId,
+    libraries,
+    tier,
+    metadata,
+    confidence,
+    requireAllConfirmations = false,
+    clarification = null,
+  ) {
     const components = [];
 
     // If AI provided clarification options, use those instead of pre-configured questions
-    if (clarification && clarification.options && clarification.options.length > 0) {
+    if (
+      clarification &&
+      clarification.options &&
+      clarification.options.length > 0
+    ) {
       const clarificationButtons = clarification.options.map((opt, idx) =>
         new ButtonBuilder()
           .setCustomId(`ai_clarify_${classificationId}_${idx}`)
           .setLabel(opt.label.substring(0, 80)) // Discord button label max 80 chars
-          .setStyle(idx === 0 ? ButtonStyle.Primary : (idx === clarification.options.length - 1 ? ButtonStyle.Secondary : ButtonStyle.Primary))
+          .setStyle(
+            idx === 0
+              ? ButtonStyle.Primary
+              : idx === clarification.options.length - 1
+                ? ButtonStyle.Secondary
+                : ButtonStyle.Primary,
+          ),
       );
 
       // Add buttons in row
       components.push(
-        new ActionRowBuilder().addComponents(clarificationButtons.slice(0, 5))
+        new ActionRowBuilder().addComponents(clarificationButtons.slice(0, 5)),
       );
 
       // Add library dropdown as fallback
       if (libraries && libraries.length > 1) {
-        const options = libraries.map(lib => ({
+        const options = libraries.map((lib) => ({
           label: lib.name,
           value: `${classificationId}_${lib.id}`,
           description: `${lib.media_type} library`,
@@ -777,9 +893,9 @@ class DiscordBotService {
           new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
               .setCustomId(`library_select`)
-              .setPlaceholder('Or manually select a library...')
-              .addOptions(options)
-          )
+              .setPlaceholder("Or manually select a library...")
+              .addOptions(options),
+          ),
         );
       }
 
@@ -787,37 +903,38 @@ class DiscordBotService {
     }
 
     // If requireAllConfirmations is enabled and tier is 'auto', treat it as 'verify'
-    const effectiveTier = (tier.tier === 'auto' && requireAllConfirmations) ? 'verify' : tier.tier;
+    const effectiveTier =
+      tier.tier === "auto" && requireAllConfirmations ? "verify" : tier.tier;
 
-    if (effectiveTier === 'auto') {
+    if (effectiveTier === "auto") {
       // No interaction needed, just show a confirmation button
       components.push(
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId(`acknowledge_${classificationId}`)
-            .setLabel('✓ Acknowledged')
-            .setStyle(ButtonStyle.Success)
-        )
+            .setLabel("✓ Acknowledged")
+            .setStyle(ButtonStyle.Success),
+        ),
       );
-    } else if (effectiveTier === 'verify') {
+    } else if (effectiveTier === "verify") {
       // Yes/No buttons
       components.push(
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId(`verify_yes_${classificationId}`)
-            .setLabel('✓ Yes, Correct')
+            .setLabel("✓ Yes, Correct")
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId(`verify_no_${classificationId}`)
-            .setLabel('✗ No, Choose Different')
-            .setStyle(ButtonStyle.Danger)
-        )
+            .setLabel("✗ No, Choose Different")
+            .setStyle(ButtonStyle.Danger),
+        ),
       );
-    } else if (effectiveTier === 'clarify' || effectiveTier === 'manual') {
+    } else if (effectiveTier === "clarify" || effectiveTier === "manual") {
       // Policy-driven clarifications should supply options; otherwise show manual selection only
       // Add library selector dropdown
       if (libraries.length > 1) {
-        const options = libraries.map(lib => ({
+        const options = libraries.map((lib) => ({
           label: lib.name,
           value: `${classificationId}_${lib.id}`,
           description: `${lib.media_type} library`,
@@ -827,9 +944,9 @@ class DiscordBotService {
           new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
               .setCustomId(`library_select`)
-              .setPlaceholder('Or manually select a library...')
-              .addOptions(options)
-          )
+              .setPlaceholder("Or manually select a library...")
+              .addOptions(options),
+          ),
         );
       }
     }
@@ -837,7 +954,12 @@ class DiscordBotService {
     return components;
   }
 
-  async createCorrectionComponents(classificationId, libraries, buttonCount = 3, includeDropdown = true) {
+  async createCorrectionComponents(
+    classificationId,
+    libraries,
+    buttonCount = 3,
+    includeDropdown = true,
+  ) {
     const components = [];
 
     // Get alternative libraries
@@ -847,7 +969,7 @@ class DiscordBotService {
       const buttons = [
         new ButtonBuilder()
           .setCustomId(`correct_${classificationId}`)
-          .setLabel('✓ Correct')
+          .setLabel("✓ Correct")
           .setStyle(ButtonStyle.Success),
       ];
 
@@ -856,7 +978,7 @@ class DiscordBotService {
           new ButtonBuilder()
             .setCustomId(`reclassify_${classificationId}_${lib.id}`)
             .setLabel(`→ ${lib.name}`)
-            .setStyle(ButtonStyle.Secondary)
+            .setStyle(ButtonStyle.Secondary),
         );
       });
 
@@ -865,7 +987,7 @@ class DiscordBotService {
 
     // Add dropdown for all libraries if enabled
     if (includeDropdown && libraries.length > 1) {
-      const options = libraries.map(lib => ({
+      const options = libraries.map((lib) => ({
         label: lib.name,
         value: `${classificationId}_${lib.id}`,
         description: `${lib.media_type} library`,
@@ -873,7 +995,7 @@ class DiscordBotService {
 
       const selectMenu = new StringSelectMenuBuilder()
         .setCustomId(`library_select`)
-        .setPlaceholder('Or choose a different library...')
+        .setPlaceholder("Or choose a different library...")
         .addOptions(options);
 
       components.push(new ActionRowBuilder().addComponents(selectMenu));
@@ -886,63 +1008,86 @@ class DiscordBotService {
     try {
       if (interaction.isButton()) {
         const customId = interaction.customId;
-        const parts = customId.split('_');
+        const parts = customId.split("_");
         const action = parts[0];
 
-        if (action === 'correct') {
+        if (action === "correct") {
           const classificationId = parts[1];
           await interaction.update({
             components: [],
             embeds: [
-              EmbedBuilder.from(interaction.message.embeds[0])
-                .setFooter({ text: '✅ Confirmed correct by user' })
+              EmbedBuilder.from(interaction.message.embeds[0]).setFooter({
+                text: "✅ Confirmed correct by user",
+              }),
             ],
           });
-        } else if (action === 'reclassify') {
+        } else if (action === "reclassify") {
           const classificationId = parts[1];
           const newLibraryId = parts[2];
-          await this.processCorrection(parseInt(classificationId), parseInt(newLibraryId), interaction);
-        } else if (action === 'ai') {
+          await this.processCorrection(
+            parseInt(classificationId),
+            parseInt(newLibraryId),
+            interaction,
+          );
+        } else if (action === "ai") {
           // AI clarification response: ai_clarify_{classificationId}_{optionIndex}
-          if (parts[1] === 'clarify') {
+          if (parts[1] === "clarify") {
             const classificationId = parseInt(parts[2]);
             const optionIndex = parseInt(parts[3]);
-            await this.processClarificationResponse(classificationId, optionIndex, interaction);
+            await this.processClarificationResponse(
+              classificationId,
+              optionIndex,
+              interaction,
+            );
           }
-        } else if (action === 'verify') {
+        } else if (action === "verify") {
           const subAction = parts[1]; // 'yes' or 'no'
           const classificationId = parseInt(parts[2]);
-          if (subAction === 'yes') {
+          if (subAction === "yes") {
             // Confirmed - mark as verified and save learning pattern
             await this.processVerification(classificationId, true, interaction);
-          } else if (subAction === 'no') {
+          } else if (subAction === "no") {
             // Not correct - show library selection
             await this.showLibrarySelection(classificationId, interaction);
           }
-        } else if (action === 'acknowledge') {
+        } else if (action === "acknowledge") {
           const classificationId = parts[1];
           await interaction.update({
             components: [],
             embeds: [
-              EmbedBuilder.from(interaction.message.embeds[0])
-                .setFooter({ text: '✅ Acknowledged' })
+              EmbedBuilder.from(interaction.message.embeds[0]).setFooter({
+                text: "✅ Acknowledged",
+              }),
             ],
           });
-        } else if (action === 'clarify') {
+        } else if (action === "clarify") {
           // Pre-configured question response: clarify_{classificationId}_{questionId}_{responseKey}
           const classificationId = parseInt(parts[1]);
           const questionId = parseInt(parts[2]);
           const responseKey = parts[3];
-          await this.processQuestionResponse(classificationId, questionId, responseKey, interaction);
+          await this.processQuestionResponse(
+            classificationId,
+            questionId,
+            responseKey,
+            interaction,
+          );
         }
       } else if (interaction.isStringSelectMenu()) {
-        const [classificationId, newLibraryId] = interaction.values[0].split('_');
-        await this.processCorrection(parseInt(classificationId), parseInt(newLibraryId), interaction);
+        const [classificationId, newLibraryId] =
+          interaction.values[0].split("_");
+        await this.processCorrection(
+          parseInt(classificationId),
+          parseInt(newLibraryId),
+          interaction,
+        );
       }
     } catch (error) {
-      console.error('Error handling Discord interaction:', error);
+      console.error("Error handling Discord interaction:", error);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'An error occurred', ephemeral: true });
+        await interaction.reply({
+          content: "An error occurred",
+          ephemeral: true,
+        });
       }
     }
   }
@@ -951,12 +1096,15 @@ class DiscordBotService {
     try {
       // Get original classification
       const classResult = await db.query(
-        'SELECT * FROM classification_history WHERE id = $1',
-        [classificationId]
+        "SELECT * FROM classification_history WHERE id = $1",
+        [classificationId],
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({ content: 'Classification not found', ephemeral: true });
+        await interaction.reply({
+          content: "Classification not found",
+          ephemeral: true,
+        });
         return;
       }
 
@@ -964,12 +1112,15 @@ class DiscordBotService {
 
       // Get new library info
       const libResult = await db.query(
-        'SELECT name FROM libraries WHERE id = $1',
-        [newLibraryId]
+        "SELECT name FROM libraries WHERE id = $1",
+        [newLibraryId],
       );
 
       if (libResult.rows.length === 0) {
-        await interaction.reply({ content: 'Library not found', ephemeral: true });
+        await interaction.reply({
+          content: "Library not found",
+          ephemeral: true,
+        });
         return;
       }
 
@@ -977,39 +1128,58 @@ class DiscordBotService {
 
       // Update classification with library_id and library_name
       await db.query(
-        'UPDATE classification_history SET library_id = $1, library_name = $2, status = $3 WHERE id = $4',
-        [newLibraryId, newLibraryName, 'corrected', classificationId]
+        "UPDATE classification_history SET library_id = $1, library_name = $2, status = $3 WHERE id = $4",
+        [newLibraryId, newLibraryName, "corrected", classificationId],
       );
 
       // Save correction
       await db.query(
-        'INSERT INTO classification_corrections (classification_id, original_library_id, corrected_library_id, corrected_by) VALUES ($1, $2, $3, $4)',
-        [classificationId, originalLibraryId, newLibraryId, interaction.user.username]
+        "INSERT INTO classification_corrections (classification_id, original_library_id, corrected_library_id, corrected_by) VALUES ($1, $2, $3, $4)",
+        [
+          classificationId,
+          originalLibraryId,
+          newLibraryId,
+          interaction.user.username,
+        ],
       );
 
       // Extract learning patterns
-      await this.extractLearningPatterns(classificationId, newLibraryId);
+      try {
+        await this.extractLearningPatterns(classificationId, newLibraryId);
+      } catch (patternError) {
+        console.error('Error extracting patterns during correction:', patternError);
+        // Continue - don't fail user interaction
+      }
 
       // Update message
       await interaction.update({
         components: [],
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
-            .addFields({ name: 'Corrected To', value: newLibraryName, inline: true })
-            .setFooter({ text: `✅ Corrected by ${interaction.user.username}` })
+            .addFields({
+              name: "Corrected To",
+              value: newLibraryName,
+              inline: true,
+            })
+            .setFooter({
+              text: `✅ Corrected by ${interaction.user.username}`,
+            }),
         ],
       });
     } catch (error) {
-      console.error('Error processing correction:', error);
-      await interaction.reply({ content: 'Failed to process correction', ephemeral: true });
+      console.error("Error processing correction:", error);
+      await interaction.reply({
+        content: "Failed to process correction",
+        ephemeral: true,
+      });
     }
   }
 
   async extractLearningPatterns(classificationId, libraryId) {
     try {
       const result = await db.query(
-        'SELECT tmdb_id, metadata FROM classification_history WHERE id = $1',
-        [classificationId]
+        "SELECT tmdb_id, metadata FROM classification_history WHERE id = $1",
+        [classificationId],
       );
 
       if (result.rows.length > 0) {
@@ -1020,11 +1190,11 @@ class DiscordBotService {
           `INSERT INTO learning_patterns (tmdb_id, library_id, pattern_type, pattern_data, confidence)
            VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT DO NOTHING`,
-          [tmdb_id, libraryId, 'exact_match', metadata, 100.00]
+          [tmdb_id, libraryId, "exact_match", metadata, 100.0],
         );
       }
     } catch (error) {
-      console.error('Error extracting learning patterns:', error);
+      console.error("Error extracting learning patterns:", error);
     }
   }
 
@@ -1032,16 +1202,23 @@ class DiscordBotService {
    * Process AI clarification response - when user clicks an AI-generated option button
    * v0.33: Enhanced to use policy_question with library_id mapping
    */
-  async processClarificationResponse(classificationId, optionIndex, interaction) {
+  async processClarificationResponse(
+    classificationId,
+    optionIndex,
+    interaction,
+  ) {
     try {
       // Get classification details
       const classResult = await db.query(
-        'SELECT *, policy_question FROM classification_history WHERE id = $1',
-        [classificationId]
+        "SELECT *, policy_question FROM classification_history WHERE id = $1",
+        [classificationId],
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({ content: 'Classification not found', ephemeral: true });
+        await interaction.reply({
+          content: "Classification not found",
+          ephemeral: true,
+        });
         return;
       }
 
@@ -1053,9 +1230,10 @@ class DiscordBotService {
 
       // v0.33: Check policy_question for library_id mapping
       if (classification.policy_question) {
-        const policyQuestion = typeof classification.policy_question === 'string'
-          ? this.safeParseJson(classification.policy_question)
-          : classification.policy_question;
+        const policyQuestion =
+          typeof classification.policy_question === "string"
+            ? this.safeParseJson(classification.policy_question)
+            : classification.policy_question;
 
         if (policyQuestion?.options && policyQuestion.options[optionIndex]) {
           const selectedOption = policyQuestion.options[optionIndex];
@@ -1068,7 +1246,8 @@ class DiscordBotService {
         }
       } else {
         // Fallback: Get label from button if no policy_question
-        const selectedButton = interaction.message.components[0]?.components[optionIndex];
+        const selectedButton =
+          interaction.message.components[0]?.components[optionIndex];
         selectedLabel = selectedButton?.label || selectedLabel;
       }
 
@@ -1079,7 +1258,7 @@ class DiscordBotService {
           libraryId,
           selectedLabel,
           interaction.user.username,
-          true // generateRule = true
+          true, // generateRule = true
         );
 
         // Route to arr if resolution indicates we should
@@ -1087,22 +1266,27 @@ class DiscordBotService {
           await this.routeAfterClarification(classificationId);
         }
       } catch (resolveError) {
-        console.error('resolvePolicyQuestion failed, falling back to legacy handling:', resolveError);
+        console.error(
+          "resolvePolicyQuestion failed, falling back to legacy handling:",
+          resolveError,
+        );
 
         let resolvedLibraryId = libraryId;
         let resolvedLibraryName = null;
 
         if (!resolvedLibraryId && selectedLabel) {
-          const normalizedLabel = selectedLabel.replace(/\s*\(.*\)\s*$/, '').trim();
+          const normalizedLabel = selectedLabel
+            .replace(/\s*\(.*\)\s*$/, "")
+            .trim();
           let libResult = await db.query(
-            'SELECT id, name FROM libraries WHERE LOWER(name) = LOWER($1) LIMIT 1',
-            [normalizedLabel]
+            "SELECT id, name FROM libraries WHERE LOWER(name) = LOWER($1) LIMIT 1",
+            [normalizedLabel],
           );
 
           if (libResult.rows.length === 0) {
             libResult = await db.query(
-              'SELECT id, name FROM libraries WHERE name ILIKE $1 LIMIT 1',
-              [`%${normalizedLabel}%`]
+              "SELECT id, name FROM libraries WHERE name ILIKE $1 LIMIT 1",
+              [`%${normalizedLabel}%`],
             );
           }
 
@@ -1113,7 +1297,10 @@ class DiscordBotService {
         }
 
         if (resolvedLibraryId && !resolvedLibraryName) {
-          const libResult = await db.query('SELECT name FROM libraries WHERE id = $1', [resolvedLibraryId]);
+          const libResult = await db.query(
+            "SELECT name FROM libraries WHERE id = $1",
+            [resolvedLibraryId],
+          );
           resolvedLibraryName = libResult.rows[0]?.name || null;
         }
 
@@ -1133,15 +1320,23 @@ class DiscordBotService {
                clarification_response = $1
            WHERE id = $5`,
           [
-            JSON.stringify({ option_index: optionIndex, label: selectedLabel, answered_by: interaction.user.username }),
+            JSON.stringify({
+              option_index: optionIndex,
+              label: selectedLabel,
+              answered_by: interaction.user.username,
+            }),
             resolvedLibraryId,
             displayLibraryName,
             `Resolved by ${interaction.user.username}: ${selectedLabel}`,
-            classificationId
-          ]
+            classificationId,
+          ],
         );
 
-        await this.extractClarificationPatterns(classificationId, resolvedLibraryId, selectedLabel);
+        await this.extractClarificationPatterns(
+          classificationId,
+          resolvedLibraryId,
+          selectedLabel,
+        );
         await this.routeAfterClarification(classificationId);
         if (resolvedLibraryId) {
           libraryId = resolvedLibraryId;
@@ -1151,7 +1346,10 @@ class DiscordBotService {
       // Get library name for display
       let libraryName = selectedLabel;
       if (libraryId) {
-        const libResult = await db.query('SELECT name FROM libraries WHERE id = $1', [libraryId]);
+        const libResult = await db.query(
+          "SELECT name FROM libraries WHERE id = $1",
+          [libraryId],
+        );
         libraryName = libResult.rows[0]?.name || selectedLabel;
       }
 
@@ -1162,15 +1360,20 @@ class DiscordBotService {
           EmbedBuilder.from(interaction.message.embeds[0])
             .setColor(0x22c55e) // Green
             .addFields(
-              { name: 'Your Answer', value: selectedLabel, inline: true },
-              { name: 'Routed To', value: libraryName, inline: true }
+              { name: "Your Answer", value: selectedLabel, inline: true },
+              { name: "Routed To", value: libraryName, inline: true },
             )
-            .setFooter({ text: `✅ Resolved by ${interaction.user.username} • Pattern saved for future` })
+            .setFooter({
+              text: `✅ Resolved by ${interaction.user.username} • Pattern saved for future`,
+            }),
         ],
       });
     } catch (error) {
-      console.error('Error processing clarification response:', error);
-      await interaction.reply({ content: 'Failed to process response', ephemeral: true });
+      console.error("Error processing clarification response:", error);
+      await interaction.reply({
+        content: "Failed to process response",
+        ephemeral: true,
+      });
     }
   }
 
@@ -1180,16 +1383,27 @@ class DiscordBotService {
   async processVerification(classificationId, isCorrect, interaction) {
     try {
       const classResult = await db.query(
-        'SELECT * FROM classification_history WHERE id = $1',
-        [classificationId]
+        "SELECT * FROM classification_history WHERE id = $1",
+        [classificationId],
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({ content: 'Classification not found', ephemeral: true });
+        await interaction.reply({
+          content: "Classification not found",
+          ephemeral: true,
+        });
         return;
       }
 
       const classification = classResult.rows[0];
+
+      // Debug log
+      console.log("[Discord] Processing verification", {
+        id: classificationId,
+        isCorrect,
+        library_id: classification.library_id,
+        status: classification.status,
+      });
 
       // Update status
       await db.query(
@@ -1197,14 +1411,25 @@ class DiscordBotService {
          SET status = 'verified',
              clarification_status = 'confirmed'
          WHERE id = $1`,
-        [classificationId]
+        [classificationId],
       );
 
       // Store learning pattern - this TMDB ID now has confirmed routing
-      await this.extractLearningPatterns(classificationId, classification.library_id);
+      // Explicitly handle null library_id to avoid DB errors if schema expects integer
+      const libraryIdToLearn =
+        classification.library_id === undefined
+          ? null
+          : classification.library_id;
+      await this.extractLearningPatterns(classificationId, libraryIdToLearn);
 
       // Route to arr if not already done
-      await this.routeAfterClarification(classificationId);
+      // Use try/catch specifically for routing to avoid failing the whole verification
+      try {
+        await this.routeAfterClarification(classificationId);
+      } catch (routeError) {
+        console.error("Error routing after verification:", routeError);
+        // Continue - don't fail the user interaction if just routing failed
+      }
 
       // Update message
       await interaction.update({
@@ -1212,12 +1437,19 @@ class DiscordBotService {
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
             .setColor(0x22c55e)
-            .setFooter({ text: `✅ Verified by ${interaction.user.username} • Will auto-route same title next time` })
+            .setFooter({
+              text: `✅ Verified by ${interaction.user.username} • Will auto-route same title next time`,
+            }),
         ],
       });
     } catch (error) {
-      console.error('Error processing verification:', error);
-      await interaction.reply({ content: 'Failed to process verification', ephemeral: true });
+      console.error("Error processing verification:", error);
+      // Return specific error message to user for debugging
+      const errorMessage = error.message || "Unknown error";
+      await interaction.reply({
+        content: `Failed to process verification: ${errorMessage}\nClassification ID: ${classificationId}`,
+        ephemeral: true,
+      });
     }
   }
 
@@ -1227,12 +1459,15 @@ class DiscordBotService {
   async showLibrarySelection(classificationId, interaction) {
     try {
       const classResult = await db.query(
-        'SELECT media_type FROM classification_history WHERE id = $1',
-        [classificationId]
+        "SELECT media_type FROM classification_history WHERE id = $1",
+        [classificationId],
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({ content: 'Classification not found', ephemeral: true });
+        await interaction.reply({
+          content: "Classification not found",
+          ephemeral: true,
+        });
         return;
       }
 
@@ -1240,16 +1475,19 @@ class DiscordBotService {
 
       // Get all libraries for this media type
       const libResult = await db.query(
-        'SELECT id, name, media_type FROM libraries WHERE media_type = $1 AND is_active = true',
-        [mediaType]
+        "SELECT id, name, media_type FROM libraries WHERE media_type = $1 AND is_active = true",
+        [mediaType],
       );
 
       if (libResult.rows.length === 0) {
-        await interaction.reply({ content: 'No libraries available', ephemeral: true });
+        await interaction.reply({
+          content: "No libraries available",
+          ephemeral: true,
+        });
         return;
       }
 
-      const options = libResult.rows.map(lib => ({
+      const options = libResult.rows.map((lib) => ({
         label: lib.name,
         value: `${classificationId}_${lib.id}`,
         description: `${lib.media_type} library`,
@@ -1260,31 +1498,42 @@ class DiscordBotService {
         components: [
           new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
-              .setCustomId('library_select')
-              .setPlaceholder('Select the correct library...')
-              .addOptions(options)
-          )
+              .setCustomId("library_select")
+              .setPlaceholder("Select the correct library...")
+              .addOptions(options),
+          ),
         ],
       });
     } catch (error) {
-      console.error('Error showing library selection:', error);
-      await interaction.reply({ content: 'Failed to show options', ephemeral: true });
+      console.error("Error showing library selection:", error);
+      await interaction.reply({
+        content: "Failed to show options",
+        ephemeral: true,
+      });
     }
   }
 
   /**
    * Process pre-configured question response
    */
-  async processQuestionResponse(classificationId, questionId, responseKey, interaction) {
+  async processQuestionResponse(
+    classificationId,
+    questionId,
+    responseKey,
+    interaction,
+  ) {
     try {
       // Get classification
       const classResult = await db.query(
-        'SELECT * FROM classification_history WHERE id = $1',
-        [classificationId]
+        "SELECT * FROM classification_history WHERE id = $1",
+        [classificationId],
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({ content: 'Classification not found', ephemeral: true });
+        await interaction.reply({
+          content: "Classification not found",
+          ephemeral: true,
+        });
         return;
       }
 
@@ -1296,7 +1545,7 @@ class DiscordBotService {
         questionId,
         responseKey,
         interaction.user.id,
-        classification.confidence
+        classification.confidence,
       );
 
       // Update message
@@ -1304,24 +1553,31 @@ class DiscordBotService {
         components: [],
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
-            .addFields({ name: 'Response', value: responseKey, inline: true })
-            .setFooter({ text: `✅ Answered by ${interaction.user.username}` })
+            .addFields({ name: "Response", value: responseKey, inline: true })
+            .setFooter({ text: `✅ Answered by ${interaction.user.username}` }),
         ],
       });
     } catch (error) {
-      console.error('Error processing question response:', error);
-      await interaction.reply({ content: 'Failed to process response', ephemeral: true });
+      console.error("Error processing question response:", error);
+      await interaction.reply({
+        content: "Failed to process response",
+        ephemeral: true,
+      });
     }
   }
 
   /**
    * Extract learning patterns from clarification responses
    */
-  async extractClarificationPatterns(classificationId, libraryId, selectedOption) {
+  async extractClarificationPatterns(
+    classificationId,
+    libraryId,
+    selectedOption,
+  ) {
     try {
       const result = await db.query(
-        'SELECT tmdb_id, metadata, title FROM classification_history WHERE id = $1',
-        [classificationId]
+        "SELECT tmdb_id, metadata, title FROM classification_history WHERE id = $1",
+        [classificationId],
       );
 
       if (result.rows.length > 0) {
@@ -1333,13 +1589,21 @@ class DiscordBotService {
            VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (tmdb_id, pattern_type) 
            DO UPDATE SET library_id = $2, confidence = $5, updated_at = NOW()`,
-          [tmdb_id, libraryId, 'exact_match', { ...metadata, clarification_response: selectedOption }, 100.00]
+          [
+            tmdb_id,
+            libraryId,
+            "exact_match",
+            { ...metadata, clarification_response: selectedOption },
+            100.0,
+          ],
         );
 
-        console.log(`Learned: ${title} (TMDB: ${tmdb_id}) -> Library ${libraryId} via clarification`);
+        console.log(
+          `Learned: ${title} (TMDB: ${tmdb_id}) -> Library ${libraryId} via clarification`,
+        );
       }
     } catch (error) {
-      console.error('Error extracting clarification patterns:', error);
+      console.error("Error extracting clarification patterns:", error);
     }
   }
 
@@ -1355,30 +1619,30 @@ class DiscordBotService {
          FROM classification_history ch
          JOIN libraries l ON ch.library_id = l.id
          WHERE ch.id = $1`,
-        [classificationId]
+        [classificationId],
       );
 
       if (result.rows.length === 0) return;
 
       const classification = result.rows[0];
       let metadata = classification.metadata;
-      if (typeof metadata === 'string') {
+      if (typeof metadata === "string") {
         metadata = this.safeParseJson(metadata);
       }
 
-      if (!metadata || typeof metadata !== 'object') {
-        console.warn('Skipping *arr routing due to invalid metadata', {
+      if (!metadata || typeof metadata !== "object") {
+        console.warn("Skipping *arr routing due to invalid metadata", {
           classificationId,
-          metadataType: typeof classification.metadata
+          metadataType: typeof classification.metadata,
         });
         return;
       }
 
       // Check if already routed
-      if (classification.status === 'routed') return;
+      if (classification.status === "routed") return;
 
       // Import classification service dynamically to avoid circular dependency
-      const classificationService = require('./classification');
+      const classificationService = require("./classification");
 
       // Route to appropriate *arr
       await classificationService.routeToArr(metadata, {
@@ -1394,22 +1658,24 @@ class DiscordBotService {
 
       // Update status
       await db.query(
-        'UPDATE classification_history SET status = $1 WHERE id = $2',
-        ['routed', classificationId]
+        "UPDATE classification_history SET status = $1 WHERE id = $2",
+        ["routed", classificationId],
       );
 
-      console.log(`Routed after clarification: ${metadata.title} -> ${classification.library_name}`);
+      console.log(
+        `Routed after clarification: ${metadata.title} -> ${classification.library_name}`,
+      );
     } catch (error) {
-      console.error('Error routing after clarification:', error);
+      console.error("Error routing after clarification:", error);
     }
   }
 
   formatMethod(method) {
     const methods = {
-      exact_match: '🎯 Exact Match',
-      learned_pattern: '🧠 Learned Pattern',
-      rule_match: '📋 Rule Match',
-      ai_fallback: '🤖 AI Classification',
+      exact_match: "🎯 Exact Match",
+      learned_pattern: "🧠 Learned Pattern",
+      rule_match: "📋 Rule Match",
+      ai_fallback: "🤖 AI Classification",
     };
     return methods[method] || method;
   }
@@ -1422,9 +1688,9 @@ class DiscordBotService {
   }
 
   safeParseJson(value) {
-    if (!value || typeof value !== 'string') return null;
+    if (!value || typeof value !== "string") return null;
     const trimmed = value.trim();
-    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
       return null;
     }
     try {

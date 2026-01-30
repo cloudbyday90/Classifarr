@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.5b-alpha] - 2026-01-30
+
+### Fixed
+
+- Discord verification buttons now handle missing library IDs gracefully and report specific errors.
+
 ## [0.40.5a-alpha] - 2026-01-30
 
 ### Added
@@ -50,13 +56,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Policy-driven clarification question builder (uses policy presets + candidates).
 - Clarification tests for language gating and policy question generation.
 - Mapping-aware routing fallback using `library_arr_mappings` when `libraries.arr_id` is missing.
-- Auto-sync of library fields when *arr mappings are saved.
+- Auto-sync of library fields when \*arr mappings are saved.
 
 ### Changed
 
 - Clarify-tier Discord prompts now rely on policy questions or manual selection (no seeded question buttons).
 - Policy Engine now merges `custom_signals` into preset scoring.
-- One-time migration to backfill library *arr fields from mappings, expand clarification_status, update method constraint, and clean invalid policy_question values.
+- One-time migration to backfill library \*arr fields from mappings, expand clarification_status, update method constraint, and clean invalid policy_question values.
 
 ### Fixed
 
@@ -66,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hardened test mocks for database and provider lock services to prevent crashes during test execution.
 - Discord clarification fallback now assigns library and resolves status consistently.
 - Policy question parsing hardened to avoid invalid JSON errors.
-- Routing now attempts *arr delivery even when `arr_id` is missing but mapping exists.
+- Routing now attempts \*arr delivery even when `arr_id` is missing but mapping exists.
 - Database constraint mismatch for `manual_classification` method.
 - Clarification status length expanded to prevent truncation errors.
 - Frontend test warnings resolved (Vue watch source mock, modal attribute fallthrough, and Node 25 web storage warnings).

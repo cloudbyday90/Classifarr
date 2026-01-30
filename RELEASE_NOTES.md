@@ -1,5 +1,15 @@
 ﻿﻿# Classifarr Release Notes
 
+## v0.40.5b-alpha
+
+**Title: Discord Verification Fix**
+
+### Fixes
+
+- **User Verification**: Fixed "Failed to process verification" error when clicking "Yes, Correct" or "No, Choose Different" in Discord.
+  - Added specific error logging to ephemeral replies for better debugging.
+  - Handled cases where `library_id` is missing in AI-classified items to prevent database errors.
+
 ## v0.40.5a-alpha
 
 **Title: pgvector CPU Compatibility Hotfix**
@@ -14,7 +24,7 @@
 
 ## v0.40.5-alpha
 
-**Title: PolicyEngine + AI Pipeline, *arr Routing, and Webhook Specials Toggle**
+**Title: PolicyEngine + AI Pipeline, \*arr Routing, and Webhook Specials Toggle**
 
 ### Features
 
@@ -37,13 +47,13 @@
 ### Improvements
 
 - **PolicyEngine Flow**: Policy signals + RAG feed AI analysis before any policy_prompt is generated.
-- ***arr Routing**: Sonarr uses TVDB lookup data, requested season monitoring, and search-on-add settings; Radarr respects quality profile and search-on-add.
+- **\*arr Routing**: Sonarr uses TVDB lookup data, requested season monitoring, and search-on-add settings; Radarr respects quality profile and search-on-add.
 
 ---
 
 ## v0.40.4-alpha
 
-**Title: Policy-Driven Clarification, Discord Resolution & *arr Routing**
+**Title: Policy-Driven Clarification, Discord Resolution & \*arr Routing**
 
 ### Features
 
@@ -53,14 +63,14 @@
 ### Fixes
 
 - **Discord Clarification Resolution**: Selections now correctly assign libraries and resolve pending items.
-- ***arr Routing**: Mapped libraries route even when legacy `arr_id` fields are missing.
+- **\*arr Routing**: Mapped libraries route even when legacy `arr_id` fields are missing.
 - **Policy Question Stability**: Hardened parsing prevents invalid JSON errors during resolution.
 
 ### Improvements
 
 - **Test Stability**: Improved reliability of integration tests by isolating service side effects, preventing random failures during development and CI runs.
 - **Discord Prompts**: Clarify-tier prompts now rely on policy questions or manual selection (seeded buttons removed).
-- **Auto-Migration**: One-time backfill aligns existing *arr mappings with library fields.
+- **Auto-Migration**: One-time backfill aligns existing \*arr mappings with library fields.
 - **Data Integrity**: Method/status constraints updated to prevent DB errors during manual resolutions.
 - **Test Runner Stability**: Node 25 web storage warnings removed and Vue test noise reduced for cleaner CI output.
 
