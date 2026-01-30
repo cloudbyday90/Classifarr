@@ -293,14 +293,6 @@ class Logger {
   constructor(module) {
     this.module = module;
     this.level = LOG_LEVELS[process.env.LOG_LEVEL || 'INFO'];
-    this.db = null;
-
-    // Lazy load database to avoid circular dependencies
-    try {
-      this.db = require('../config/database');
-    } catch (err) {
-      // Database not available yet (e.g., during initial setup)
-    }
   }
 
   formatMessage(level, message, data) {
@@ -311,7 +303,8 @@ class Logger {
   }
 
   async persistToDb(level, message, data, options = {}) {
-    if (!this.db) return null;
+    const db = Logger.db;
+    if (!db || typeof db.query !== 'function') return null;
 
     try {
       const sanitizedData = sanitizeData(data);
@@ -320,7 +313,7 @@ class Logger {
 
       const stack = options.error?.stack || new Error().stack;
 
-      const result = await this.db.query(
+      const result = await db.query(
         `INSERT INTO error_log (level, module, message, stack_trace, request_context, system_context, metadata)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING error_id`,
@@ -400,6 +393,12 @@ class Logger {
   }
 }
 
+Logger.db = null;
+
+const setLoggerDb = (db) => {
+  Logger.db = db;
+};
+
 const createLogger = (module) => new Logger(module);
 
 // Initialize file logging on module load (skip in test environment)
@@ -409,6 +408,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 module.exports = {
   createLogger,
+  setLoggerDb,
   Logger,
   sanitizeData,
   getSystemContext,

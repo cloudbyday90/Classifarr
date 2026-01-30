@@ -42,7 +42,7 @@ class PolicyEngine {
      * @param {object} item - Media item with metadata (title, genres, keywords, etc.)
      * @returns {Promise<object>} Evaluation result with ranked libraries and action
      */
-    async evaluateItem(item) {
+    async evaluateItem(item, options = {}) {
         try {
             logger.info('Evaluating item against policies', { title: item.title });
 
@@ -112,14 +112,27 @@ class PolicyEngine {
 
             // 3. Pre-fetch RAG matches once for all policies (performance optimization)
             // Only call RAG if at least one policy actually uses it
-            let ragCache = { matches: [], timestamp: Date.now() };
+            const normalizeRagCache = (cache) => {
+                if (!cache || !Array.isArray(cache.matches)) {
+                    return { matches: [], timestamp: Date.now() };
+                }
+                return {
+                    matches: cache.matches,
+                    timestamp: cache.timestamp || Date.now()
+                };
+            };
+
+            let ragCache = options.ragCache ? normalizeRagCache(options.ragCache) : null;
             const anyPolicyUsesRAG = candidatePolicies.some(p => p.trust_rag && (p.rag_weight || DEFAULT_RAG_WEIGHT) > 0);
-            if (anyPolicyUsesRAG) {
-                try {
-                    const ragMatches = await ragRetriever.semanticSearch(item, 5);
-                    ragCache = { matches: ragMatches, timestamp: Date.now() };
-                } catch (error) {
-                    logger.debug('Failed to pre-fetch RAG matches', { error: error.message });
+            if (!ragCache) {
+                ragCache = { matches: [], timestamp: Date.now() };
+                if (anyPolicyUsesRAG) {
+                    try {
+                        const ragMatches = await ragRetriever.semanticSearch(item, 5);
+                        ragCache = { matches: ragMatches, timestamp: Date.now() };
+                    } catch (error) {
+                        logger.debug('Failed to pre-fetch RAG matches', { error: error.message });
+                    }
                 }
             }
 
@@ -154,7 +167,10 @@ class PolicyEngine {
                 topScore: result.confidence
             });
 
-            return result;
+            return {
+                ...result,
+                ragCache: anyPolicyUsesRAG ? ragCache : { matches: [], timestamp: Date.now() }
+            };
 
         } catch (error) {
             logger.error('Failed to evaluate item', {
@@ -339,6 +355,14 @@ class PolicyEngine {
                 history: policy.history_weight ?? 0.10
             };
 
+            const breakdown = [
+                { type: 'preset', score: scores.preset, weight: weights.preset },
+                { type: 'profile', score: scores.profile, weight: weights.profile },
+                { type: 'pattern', score: scores.pattern, weight: weights.pattern },
+                { type: 'rag', score: scores.rag, weight: weights.rag },
+                { type: 'history', score: scores.history, weight: weights.history }
+            ];
+
             // Calculate weighted score
             const weightedScore = 
                 (scores.preset * weights.preset) +
@@ -364,6 +388,7 @@ class PolicyEngine {
                 score: Math.round(finalScore * 100) / 100,
                 scores,
                 weights,
+                breakdown,
                 auto_classify_threshold: policy.auto_classify_threshold,
                 prompt_threshold: policy.prompt_threshold
             };
@@ -380,7 +405,8 @@ class PolicyEngine {
                 library_name: policy.library_name,
                 score: 0,
                 scores: { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
-                weights: { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 }
+                weights: { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
+                breakdown: []
             };
         }
     }
@@ -1038,6 +1064,7 @@ class PolicyEngine {
                     method: 'policy_engine',
                     scores: top.scores,
                     weights: top.weights,
+                    breakdown: top.breakdown,
                     ranked
                 };
             }
@@ -1056,6 +1083,7 @@ class PolicyEngine {
                     method: 'policy_engine',
                     scores: top.scores,
                     weights: top.weights,
+                    breakdown: top.breakdown,
                     ranked
                 };
             }
@@ -1065,6 +1093,7 @@ class PolicyEngine {
                 action: 'prompt_select',
                 confidence: top.score,
                 method: 'policy_engine',
+                breakdown: top.breakdown,
                 ranked
             };
 

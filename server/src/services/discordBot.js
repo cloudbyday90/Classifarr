@@ -1361,7 +1361,18 @@ class DiscordBotService {
       if (result.rows.length === 0) return;
 
       const classification = result.rows[0];
-      const metadata = classification.metadata;
+      let metadata = classification.metadata;
+      if (typeof metadata === 'string') {
+        metadata = this.safeParseJson(metadata);
+      }
+
+      if (!metadata || typeof metadata !== 'object') {
+        console.warn('Skipping *arr routing due to invalid metadata', {
+          classificationId,
+          metadataType: typeof classification.metadata
+        });
+        return;
+      }
 
       // Check if already routed
       if (classification.status === 'routed') return;

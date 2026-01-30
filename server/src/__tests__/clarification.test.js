@@ -509,6 +509,58 @@ describe('ClarificationService', () => {
   });
 
   describe('resolvePolicyQuestion - v0.39.7b Bug Fix', () => {
+    test('should handle classification.metadata as JSONB object', async () => {
+      const mockClassification = {
+        id: 1,
+        title: 'Test Movie',
+        media_type: 'movie',
+        library_name: 'Movies',
+        policy_question: '{"question":"Which library?","options":["Yes","No"]}',
+        metadata: {
+          tmdb_id: 12345,
+          title: 'Test Movie'
+        }
+      };
+
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
+          .mockResolvedValueOnce({
+            rows: [{
+              id: 1,
+              tmdb_id: 12345,
+              library_id: 2,
+              pattern_type: 'exact_match',
+              confidence: 100
+            }]
+          }) // INSERT learning pattern
+          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      const result = await clarificationService.resolvePolicyQuestion(
+        1,
+        2,
+        'Yes',
+        'test-user',
+        true
+      );
+
+      expect(result.success).toBe(true);
+
+      const learningPatternCall = mockClient.query.mock.calls.find(call =>
+        call[0] && call[0].includes('INSERT INTO learning_patterns')
+      );
+      expect(learningPatternCall).toBeDefined();
+
+      const metadataParam = JSON.parse(learningPatternCall[1][3]);
+      expect(metadataParam.selected_option).toBe('Yes');
+    });
+
     test('should handle policy_question as JSONB object from database', async () => {
       const mockClassification = {
         id: 1,

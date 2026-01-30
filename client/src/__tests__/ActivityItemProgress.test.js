@@ -64,6 +64,11 @@ describe('ActivityItemProgress.vue - Issue #192 Phase Details', () => {
         label: 'Signal Combination'
       },
       {
+        name: 'ai_analysis',
+        status: 'pending',
+        label: 'AI Analysis'
+      },
+      {
         name: 'decision',
         status: 'pending',
         label: 'Decision'
@@ -113,7 +118,7 @@ describe('ActivityItemProgress.vue - Issue #192 Phase Details', () => {
     await button.trigger('click');
 
     const phaseElements = wrapper.findAll('.space-y-1\\.5 > div');
-    expect(phaseElements.length).toBe(7);
+    expect(phaseElements.length).toBe(8);
   });
 
   it('should show correct status icons for phases', async () => {
@@ -224,5 +229,6 @@ describe('ActivityItemProgress.vue - Issue #192 Phase Details', () => {
     expect(html).toContain('Policy Evaluation');
     expect(html).toContain('RAG Analysis');
     expect(html).toContain('Signal Combination');
+    expect(html).toContain('AI Analysis');
   });
 });

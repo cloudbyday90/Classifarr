@@ -25,7 +25,7 @@ jest.mock('fs', () => ({
 }));
 
 const db = require('../config/database');
-const { createLogger, sanitizeData, getSystemContext } = require('../utils/logger');
+const { createLogger, sanitizeData, getSystemContext, setLoggerDb } = require('../utils/logger');
 
 describe('Logger', () => {
     let logger;
@@ -34,6 +34,7 @@ describe('Logger', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        setLoggerDb(db);
         logger = createLogger('TestModule');
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});

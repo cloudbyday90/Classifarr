@@ -217,6 +217,33 @@ class TMDBService {
     }
   }
 
+  /**
+   * Get external IDs (TVDB, IMDB, etc.) for a TMDB item
+   * @param {number} tmdbId - TMDB ID
+   * @param {string} mediaType - 'movie' or 'tv'
+   * @returns {Promise<object>} External IDs payload
+   */
+  async getExternalIds(tmdbId, mediaType) {
+    try {
+      const apiKey = await this.getApiKey();
+      if (!apiKey) {
+        return {};
+      }
+
+      const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
+      const response = await rateLimiters.tmdb.execute(() =>
+        axios.get(`${this.baseUrl}/${endpoint}/${tmdbId}/external_ids`, {
+          params: { api_key: apiKey },
+          timeout: 10000
+        })
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`TMDB external IDs fetch failed: ${error.message}`);
+      return {};
+    }
+  }
+
   async getKeywords(tmdbId, mediaType) {
     try {
       const apiKey = await this.getApiKey();

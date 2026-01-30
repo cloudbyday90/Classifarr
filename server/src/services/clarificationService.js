@@ -527,7 +527,9 @@ class ClarificationService {
       }
 
       const classification = classResult.rows[0];
-      const metadata = JSON.parse(classification.metadata || '{}');
+      const metadata = typeof classification.metadata === 'string'
+        ? (this.safeParseJson(classification.metadata) || {})
+        : (classification.metadata || {});
 
       // Update classification to resolved status
       // method = 'manual_classification' since a human made this decision

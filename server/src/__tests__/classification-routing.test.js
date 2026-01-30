@@ -11,6 +11,9 @@ jest.mock('../config/database', () => ({
 }));
 jest.mock('../services/radarr');
 jest.mock('../services/sonarr');
+jest.mock('../services/tmdb', () => ({
+  getExternalIds: jest.fn()
+}));
 jest.mock('../services/providerLock', () => ({
   loadConfig: jest.fn(),
   acquireLock: jest.fn().mockResolvedValue(true),
@@ -28,6 +31,8 @@ jest.mock('../utils/logger', () => ({
 
 const db = require('../config/database');
 const radarrService = require('../services/radarr');
+const sonarrService = require('../services/sonarr');
+const tmdbService = require('../services/tmdb');
 const classificationService = require('../services/classification');
 
 describe('ClassificationService - routeToArr mapping fallback', () => {
@@ -81,6 +86,153 @@ describe('ClassificationService - routeToArr mapping fallback', () => {
       expect.objectContaining({
         rootFolderPath: '/movies',
         qualityProfileId: 4
+      })
+    );
+  });
+
+  test('routes Sonarr using TVDB lookup and requested seasons', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 2,
+        url: 'http://sonarr:8989',
+        api_key: 'sonarr-key',
+        is_active: true
+      }]
+    });
+
+    tmdbService.getExternalIds.mockResolvedValueOnce({ tvdb_id: 123 });
+    sonarrService.searchSeries.mockResolvedValueOnce([
+      {
+        tvdbId: 123,
+        title: 'Test Series',
+        seasons: [
+          { seasonNumber: 0, monitored: true },
+          { seasonNumber: 1, monitored: false }
+        ]
+      }
+    ]);
+    sonarrService.addSeries.mockResolvedValueOnce({});
+
+    await classificationService.routeToArr(
+      {
+        title: 'Test Series',
+        tmdb_id: 999,
+        requested_seasons: [0, 1],
+        include_specials: false
+      },
+      {
+        id: 10,
+        arr_type: 'sonarr',
+        arr_id: 2,
+        sonarr_settings: {
+          root_folder_path: '/tv',
+          quality_profile_id: 7,
+          season_monitoring: 'all',
+          search_on_add: true,
+          season_folder: true,
+          monitor: true
+        }
+      }
+    );
+
+    expect(sonarrService.searchSeries).toHaveBeenCalledWith(
+      'http://sonarr:8989',
+      'sonarr-key',
+      123
+    );
+    expect(sonarrService.addSeries).toHaveBeenCalledTimes(1);
+    const addPayload = sonarrService.addSeries.mock.calls[0][2];
+    expect(addPayload.addOptions).toEqual(expect.objectContaining({
+      searchForMissingEpisodes: true,
+      monitor: 'all'
+    }));
+    const season0 = addPayload.seasons.find(season => season.seasonNumber === 0);
+    const season1 = addPayload.seasons.find(season => season.seasonNumber === 1);
+    expect(season0.monitored).toBe(false);
+    expect(season1.monitored).toBe(true);
+  });
+
+  test('skips Sonarr add when lookup lacks English title', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 2,
+        url: 'http://sonarr:8989',
+        api_key: 'sonarr-key',
+        is_active: true
+      }]
+    });
+
+    tmdbService.getExternalIds.mockResolvedValueOnce({ tvdb_id: 123 });
+    sonarrService.searchSeries.mockResolvedValueOnce([
+      {
+        tvdbId: 123,
+        title: '',
+        seasons: []
+      }
+    ]);
+
+    await classificationService.routeToArr(
+      {
+        title: 'Test Series',
+        tmdb_id: 999
+      },
+      {
+        id: 10,
+        arr_type: 'sonarr',
+        arr_id: 2,
+        sonarr_settings: {
+          root_folder_path: '/tv',
+          quality_profile_id: 7,
+          season_monitoring: 'all',
+          search_on_add: true
+        }
+      }
+    );
+
+    expect(sonarrService.addSeries).not.toHaveBeenCalled();
+  });
+
+  test('routes Radarr with search-on-add and monitoring settings', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 4,
+        url: 'http://radarr:7878',
+        api_key: 'radarr-key',
+        is_active: true
+      }]
+    });
+
+    radarrService.addMovie.mockResolvedValueOnce({});
+
+    await classificationService.routeToArr(
+      {
+        title: 'Test Movie',
+        tmdb_id: 777,
+        year: 2024
+      },
+      {
+        id: 11,
+        arr_type: 'radarr',
+        arr_id: 4,
+        radarr_settings: {
+          root_folder_path: '/movies',
+          quality_profile_id: 3,
+          monitor: false,
+          search_on_add: false
+        }
+      }
+    );
+
+    expect(radarrService.addMovie).toHaveBeenCalledWith(
+      'http://radarr:7878',
+      'radarr-key',
+      expect.objectContaining({
+        rootFolderPath: '/movies',
+        qualityProfileId: 3,
+        monitored: false,
+        addOptions: expect.objectContaining({
+          searchForMovie: false
+        })
       })
     );
   });

@@ -359,14 +359,14 @@ class SonarrService {
 
   getSeasonMonitoringOptions() {
     return [
-      { value: 'all', label: 'All Seasons', description: 'Monitor all seasons' },
+      { value: 'all', label: 'All Episodes', description: 'Monitor all episodes except specials' },
       { value: 'future', label: 'Future Seasons', description: 'Only future seasons' },
       { value: 'missing', label: 'Missing Episodes', description: 'Missing in all seasons' },
       { value: 'existing', label: 'Existing Episodes', description: 'Only existing' },
       { value: 'recent', label: 'Recent Episodes', description: 'Recent only' },
       { value: 'pilot', label: 'Pilot Only', description: 'Only pilot episode' },
       { value: 'firstSeason', label: 'First Season', description: 'First season only' },
-      { value: 'lastSeason', label: 'Last Season', description: 'Last season only' },
+      { value: 'latestSeason', label: 'Latest Season', description: 'Latest season only' },
       { value: 'none', label: 'None', description: 'Don\'t monitor' }
     ];
   }

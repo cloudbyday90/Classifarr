@@ -363,6 +363,10 @@
                 <div class="text-sm">Declined Requests</div>
                 <Toggle v-model="config.process_declined" @update:modelValue="saveConfig" />
               </div>
+              <div class="flex items-center justify-between">
+                <div class="text-sm">Include Specials (Season 0)</div>
+                <Toggle v-model="config.include_specials" @update:modelValue="saveConfig" />
+              </div>
             </div>
           </Card>
 
@@ -487,7 +491,8 @@ const config = ref({
   process_auto_approved: true,
   process_declined: false,
   notify_on_receive: true,
-  notify_on_error: true
+  notify_on_error: true,
+  include_specials: false
 })
 
 // Multi-source management

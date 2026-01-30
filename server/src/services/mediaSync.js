@@ -446,7 +446,8 @@ class MediaSyncService {
           library_id = msi.library_id,
           library_name = l.name,
           method = 'source_library',
-          reason = 'Resolved via library placement'
+          reason = 'Resolved via library placement',
+          confidence = 100
         FROM media_server_items msi
         JOIN libraries l ON msi.library_id = l.id
         WHERE ch.tmdb_id = msi.tmdb_id

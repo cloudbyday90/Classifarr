@@ -222,7 +222,7 @@ class OMDbService {
             } catch (error) {
                 const status = error.response?.status;
                 const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
-                const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503;
+                const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
 
                 // Retry on timeout or Cloudflare errors
                 if ((isTimeout || isCloudflareError) && attempt < maxRetries) {

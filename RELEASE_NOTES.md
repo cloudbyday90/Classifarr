@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+## v0.40.5-alpha
+
+**Title: PolicyEngine + AI Pipeline, *arr Routing, and Webhook Specials Toggle**
+
+### Features
+
+- **AI Analysis Phase**: Added AI analysis as an explicit phase in the classification pipeline with updated progress tracking.
+- **Policy Question Enrichment**: Clarification prompts now include policy scores, weights, RAG summary, and AI rationale.
+- **Webhook Specials Toggle**: Optional `include_specials` control to keep or exclude season 0 entries from Overseerr payloads.
+
+### Fixes
+
+- **OMDb Resilience**: Cloudflare 520/521/523 errors now retry/skip gracefully.
+- **Clarification JSON Handling**: Safe parsing when `classification.metadata` is already JSONB.
+- **Source Library Confidence**: Source-library reconciliations now report 100% confidence.
+- **ProviderLockService Init**: Configuration loads on explicit startup, avoiding DB access during import.
+- **Test Stability**: Logger DB persistence now uses explicit injection; integration tests set a deterministic `API_KEY_ENCRYPTION_KEY`.
+- **Node 25 Test Warnings**: Jest runner strips invalid `--localstorage-file` options and disables experimental web storage.
+
+### Improvements
+
+- **PolicyEngine Flow**: Policy signals + RAG feed AI analysis before any policy_prompt is generated.
+- ***arr Routing**: Sonarr uses TVDB lookup data, requested season monitoring, and search-on-add settings; Radarr respects quality profile and search-on-add.
+
+---
+
 ## v0.40.4-alpha
 
 **Title: Policy-Driven Clarification, Discord Resolution & *arr Routing**

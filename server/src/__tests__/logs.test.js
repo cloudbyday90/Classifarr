@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const { createLogger, sanitizeData, getSystemContext } = require('../utils/logger');
+const { createLogger, sanitizeData, getSystemContext, setLoggerDb } = require('../utils/logger');
 const db = require('../config/database');
 
 // Mock the database module
@@ -28,6 +28,7 @@ describe('Logger', () => {
   let logger;
 
   beforeEach(() => {
+    setLoggerDb(db);
     logger = createLogger('TestModule');
     jest.clearAllMocks();
   });

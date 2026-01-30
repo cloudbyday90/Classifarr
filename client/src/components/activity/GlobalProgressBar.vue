@@ -14,7 +14,7 @@
           <p class="text-xs text-slate-400 mt-0.5" v-if="task.currentPhase">
             Phase: <span class="text-slate-300">{{ getPhaseLabel(task.currentPhase) }}</span>
             <span class="mx-1">•</span>
-            <span>Step {{ task.phaseIndex || 1 }} / {{ task.totalPhases || 7 }}</span>
+            <span>Step {{ task.phaseIndex || 1 }} / {{ task.totalPhases || phases.length }}</span>
             <span class="mx-1">•</span>
             <span class="font-mono">{{ formatDuration(task.phaseDuration) }}</span>
           </p>
@@ -88,6 +88,7 @@ const phases = [
   { id: 'policy_eval', icon: '📋', label: 'Policy Evaluation', shortLabel: 'Policy' },
   { id: 'rag_analysis', icon: '🧠', label: 'RAG Analysis', shortLabel: 'RAG' },
   { id: 'signal_combine', icon: '⚖️', label: 'Signal Combination', shortLabel: 'Combine' },
+  { id: 'ai_analysis', icon: '🤖', label: 'AI Analysis', shortLabel: 'AI' },
   { id: 'decision', icon: '✅', label: 'Decision', shortLabel: 'Decision' },
   { id: 'notification', icon: '📤', label: 'Notification', shortLabel: 'Notify' }
 ];

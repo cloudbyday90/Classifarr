@@ -42,13 +42,11 @@ class ProviderLockService {
       maxWaitTime: 120000, // 120 seconds - max time to wait for lock (increased for safety)
     };
     this.configLoaded = false;
+    this.configLoadAttempted = false;
+    this.configLoadPromise = null;
 
     // Promise queue to ensure atomic lock acquisitions
     this.acquisitionQueue = Promise.resolve();
-
-    // Load config from database on initialization (async, non-blocking)
-    // Service uses defaults until config loads from database
-    this.loadConfig();
   }
 
   /**
@@ -72,7 +70,27 @@ class ProviderLockService {
       }
     } catch (error) {
       logger.warn('Failed to load heartbeat config from database, using defaults:', error.message);
+    } finally {
+      this.configLoadAttempted = true;
     }
+  }
+
+  /**
+   * Explicit initialization to avoid DB access on module import.
+   * Safe to call multiple times; only the first call triggers a load.
+   */
+  async init() {
+    if (this.configLoadAttempted) {
+      return this.configLoadPromise;
+    }
+
+    if (!this.configLoadPromise) {
+      this.configLoadPromise = this.loadConfig().catch((error) => {
+        logger.warn('ProviderLock init failed, continuing with defaults:', error.message);
+      });
+    }
+
+    return this.configLoadPromise;
   }
 
   /**

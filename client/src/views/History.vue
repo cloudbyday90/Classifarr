@@ -397,6 +397,7 @@ const methodDisplayNames = {
   'manual_correction': 'Manual',
   'learned_pattern': 'Learned Pattern',
   'exact_match': 'Exact Match',
+  'ai_analysis': 'AI Analysis',
   'ai_fallback': 'AI Analysis',
   'ai_verified': 'AI Verified',
   'signal_calculation': 'Signal Calculation',

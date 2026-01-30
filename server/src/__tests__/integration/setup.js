@@ -5,6 +5,10 @@ const os = require('os');
 const { PostgreSqlContainer } = require('@testcontainers/postgresql');
 const { Pool } = require('pg');
 
+if (!process.env.API_KEY_ENCRYPTION_KEY) {
+    process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+}
+
 let container;
 let pool;
 

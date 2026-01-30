@@ -280,4 +280,29 @@ describe('WebhookService - parsePayload', () => {
       expect(result.requested_by_username).toBe('Display Name');
     });
   });
+
+  describe('Specials Inclusion', () => {
+    test('should remove season 0 from request.seasons and extra entries when include_specials is false', () => {
+      const payload = {
+        subject: 'New TV Show Request - Example',
+        request: {
+          seasons: [0, 1, 2]
+        },
+        extra: [
+          { seasonNumber: 0, episodeNumber: 1 },
+          { seasonNumber: 1, episodeNumber: 1 }
+        ]
+      };
+
+      const { payload: sanitized, specialsExcluded } = webhookService.sanitizePayload(payload, {
+        includeSpecials: false
+      });
+      const result = webhookService.parsePayload(sanitized);
+
+      expect(result.requested_seasons).toBe(JSON.stringify([1, 2]));
+      expect(sanitized.extra).toHaveLength(1);
+      expect(sanitized.extra[0].seasonNumber).toBe(1);
+      expect(specialsExcluded).toBe(2);
+    });
+  });
 });

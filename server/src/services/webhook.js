@@ -31,7 +31,8 @@ class WebhookService {
       process_auto_approved: true,
       process_declined: false,
       notify_on_receive: true,
-      notify_on_error: true
+      notify_on_error: true,
+      include_specials: false
     };
   }
 
@@ -44,7 +45,8 @@ class WebhookService {
       process_declined,
       notify_on_receive,
       notify_on_error,
-      enabled
+      enabled,
+      include_specials
     } = config;
 
     const result = await db.query(
@@ -57,8 +59,9 @@ class WebhookService {
            notify_on_receive = COALESCE($6, notify_on_receive),
            notify_on_error = COALESCE($7, notify_on_error),
            enabled = COALESCE($8, enabled),
+           include_specials = COALESCE($9, include_specials),
            updated_at = NOW()
-       WHERE webhook_type = $9
+       WHERE webhook_type = $10
        RETURNING *`,
       [
         secret_key,
@@ -69,6 +72,7 @@ class WebhookService {
         notify_on_receive,
         notify_on_error,
         enabled,
+        include_specials,
         'overseerr'
       ]
     );
@@ -79,8 +83,8 @@ class WebhookService {
         `INSERT INTO webhook_config (
           webhook_type, secret_key, process_pending, process_approved, 
           process_auto_approved, process_declined, notify_on_receive, 
-          notify_on_error, enabled
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          notify_on_error, enabled, include_specials
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *`,
         [
           'overseerr',
@@ -91,7 +95,8 @@ class WebhookService {
           process_declined === true,
           notify_on_receive !== false,
           notify_on_error !== false,
-          enabled !== false
+          enabled !== false,
+          include_specials === true
         ]
       );
       return insertResult.rows[0];
@@ -107,6 +112,48 @@ class WebhookService {
   validateAuth(providedKey, config) {
     if (!config.secret_key) return true; // No key required
     return providedKey === config.secret_key;
+  }
+
+  sanitizePayload(body, options = {}) {
+    const { includeSpecials = false } = options;
+    if (includeSpecials) {
+      return { payload: body, specialsExcluded: 0 };
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(JSON.stringify(body));
+    } catch (error) {
+      payload = { ...body };
+    }
+
+    let specialsExcluded = 0;
+
+    if (payload.request && Array.isArray(payload.request.seasons)) {
+      const originalCount = payload.request.seasons.length;
+      payload.request.seasons = payload.request.seasons.filter(season => {
+        const rawSeason = (season && typeof season === 'object')
+          ? (season.seasonNumber ?? season.season_number ?? season.season ?? season.number ?? season.index)
+          : season;
+        const seasonNumber = typeof rawSeason === 'string' ? parseInt(rawSeason, 10) : rawSeason;
+        return seasonNumber !== 0;
+      });
+      specialsExcluded += originalCount - payload.request.seasons.length;
+    }
+
+    if (Array.isArray(payload.extra)) {
+      const originalCount = payload.extra.length;
+      payload.extra = payload.extra.filter(entry => {
+        if (!entry || typeof entry !== 'object') return true;
+        const seasonValue = entry.seasonNumber ?? entry.season_number ?? entry.season ?? entry.seasonIndex ?? entry.season_index;
+        if (seasonValue === undefined || seasonValue === null) return true;
+        const seasonNumber = typeof seasonValue === 'string' ? parseInt(seasonValue, 10) : seasonValue;
+        return seasonNumber !== 0;
+      });
+      specialsExcluded += originalCount - payload.extra.length;
+    }
+
+    return { payload, specialsExcluded };
   }
 
   parsePayload(body) {
@@ -385,7 +432,7 @@ class WebhookService {
 
   async getAllConfigs() {
     const result = await db.query(
-      'SELECT id, name, webhook_type, manager_url, is_primary, enabled, created_at FROM webhook_config ORDER BY is_primary DESC, created_at ASC'
+      'SELECT id, name, webhook_type, manager_url, is_primary, enabled, include_specials, created_at FROM webhook_config ORDER BY is_primary DESC, created_at ASC'
     );
     return result.rows;
   }
@@ -408,7 +455,8 @@ class WebhookService {
       process_declined = false,
       notify_on_receive = true,
       notify_on_error = true,
-      enabled = true
+      enabled = true,
+      include_specials = false
     } = config;
 
     // If setting as primary, unset other primaries
@@ -420,13 +468,13 @@ class WebhookService {
       `INSERT INTO webhook_config (
         name, webhook_type, manager_url, is_primary, secret_key,
         process_pending, process_approved, process_auto_approved, process_declined,
-        notify_on_receive, notify_on_error, enabled
+        notify_on_receive, notify_on_error, enabled, include_specials
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
         name, webhook_type, manager_url, is_primary, secret_key,
         process_pending, process_approved, process_auto_approved, process_declined,
-        notify_on_receive, notify_on_error, enabled
+        notify_on_receive, notify_on_error, enabled, include_specials
       ]
     );
 
@@ -446,7 +494,8 @@ class WebhookService {
       process_declined,
       notify_on_receive,
       notify_on_error,
-      enabled
+      enabled,
+      include_specials
     } = config;
 
     // If setting as primary, unset other primaries
@@ -468,13 +517,14 @@ class WebhookService {
         notify_on_receive = COALESCE($10, notify_on_receive),
         notify_on_error = COALESCE($11, notify_on_error),
         enabled = COALESCE($12, enabled),
+        include_specials = COALESCE($13, include_specials),
         updated_at = NOW()
-      WHERE id = $13
+      WHERE id = $14
       RETURNING *`,
       [
         name, webhook_type, manager_url, is_primary, secret_key,
         process_pending, process_approved, process_auto_approved, process_declined,
-        notify_on_receive, notify_on_error, enabled, id
+        notify_on_receive, notify_on_error, enabled, include_specials, id
       ]
     );
 

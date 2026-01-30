@@ -34,7 +34,7 @@
     </div>
     
     <div class="flex justify-between mt-1">
-      <span class="text-[10px] text-slate-500">Step {{ task.phaseIndex || 1 }}/7</span>
+      <span class="text-[10px] text-slate-500">Step {{ task.phaseIndex || 1 }}/{{ task.totalPhases || phaseOrder.length }}</span>
       <span class="text-[10px] text-slate-500 font-mono">{{ formatDuration(task.phaseDuration) }}</span>
     </div>
 
@@ -93,9 +93,12 @@ const phaseLabels = {
   policy_eval: 'Policy Evaluation',
   rag_analysis: 'RAG Analysis',
   signal_combine: 'Signal Combination',
+  ai_analysis: 'AI Analysis',
   decision: 'Decision',
   notification: 'Notification'
 };
+
+const phaseOrder = Object.keys(phaseLabels);
 
 function toggleExpanded() {
   expanded.value = !expanded.value;

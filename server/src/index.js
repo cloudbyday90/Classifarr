@@ -33,6 +33,8 @@ const systemRouter = require('./routes/system');
 const discordBot = require('./services/discordBot');
 const queueService = require('./services/queueService');
 const errorHandler = require('./middleware/errorHandler');
+const { setLoggerDb } = require('./utils/logger');
+const providerLock = require('./services/providerLock');
 
 const app = express();
 const PORT = process.env.PORT || 21324;
@@ -133,6 +135,14 @@ async function initializeServices() {
     console.log('Scheduler service started successfully');
   } catch (error) {
     console.warn('Scheduler service start failed:', error.message);
+  }
+
+  // Initialize ProviderLock configuration (non-blocking defaults if unavailable)
+  try {
+    await providerLock.init();
+    console.log('ProviderLock configuration loaded');
+  } catch (error) {
+    console.warn('ProviderLock configuration load failed:', error.message);
   }
 
 
@@ -251,6 +261,7 @@ async function startServer() {
     // Test database connection
     await db.query('SELECT 1');
     console.log('Database connected successfully');
+    setLoggerDb(db);
 
     // Run database migrations
     try {

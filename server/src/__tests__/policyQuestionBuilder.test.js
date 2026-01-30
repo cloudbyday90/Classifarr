@@ -101,4 +101,70 @@ describe('PolicyQuestionBuilder', () => {
     expect(result).toBeDefined();
     expect(result.problem_summary.toLowerCase()).not.toContain('language');
   });
+
+  test('should include enriched metadata in policy question payload', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        policy_id: 11,
+        preset_id: 201,
+        preset_name: 'Action',
+        signals: { genres: { require_any: ['action'] } },
+        custom_signals: null,
+      }]
+    });
+
+    const libraries = [
+      { id: 1, name: 'Movies', media_type: 'movie' },
+      { id: 2, name: 'Family', media_type: 'movie' },
+    ];
+
+    const policyResult = {
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 55,
+        policy_id: 11,
+        policy_name: 'Movies Policy',
+        scores: { preset: 60, profile: 50, pattern: 20, rag: 40, history: 10 },
+        weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 }
+      }]
+    };
+
+    const result = await policyQuestionBuilder.build({
+      metadata: {
+        title: 'Test Movie',
+        media_type: 'movie',
+        original_language: 'en',
+        genres: ['Action', 'Thriller'],
+        keywords: ['test', 'action', 'hero']
+      },
+      policyResult,
+      libraries,
+      ragContext: {
+        similarItems: [
+          { title: 'Similar Movie', libraryName: 'Movies', similarity: 0.82 }
+        ]
+      },
+      aiResult: {
+        reason: 'AI saw mixed signals between candidates.'
+      }
+    });
+
+    expect(result).toBeDefined();
+    expect(result.meta.policy_scores).toEqual(policyResult.ranked[0].scores);
+    expect(result.meta.policy_weights).toEqual(policyResult.ranked[0].weights);
+    expect(result.meta.ai_rationale).toBe('AI saw mixed signals between candidates.');
+    expect(result.meta.rag_summary).toEqual([
+      { title: 'Similar Movie', library: 'Movies', similarity: 0.82 }
+    ]);
+    expect(result.meta.tags.genres).toEqual(['Action', 'Thriller']);
+    expect(result.meta.tags.keywords).toEqual(['test', 'action', 'hero']);
+    expect(result.meta.candidates[0]).toEqual(expect.objectContaining({
+      library_id: 1,
+      library_name: 'Movies',
+      score: 55,
+      policy_id: 11,
+      policy_name: 'Movies Policy'
+    }));
+  });
 });

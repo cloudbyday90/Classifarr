@@ -59,8 +59,9 @@ class AIResponseParser {
      * @param {object} context - Context for parsing (libraries, metadata)
      * @returns {object} Parsed result with library, confidence, reason, etc.
      */
-    parse(response, context) {
+    parse(response, context, options = {}) {
         const { libraries, metadata } = context;
+        const mode = options.mode || (context.signalContext ? 'verify' : 'classify');
 
         if (!response || typeof response !== 'string') {
             logger.warn('Invalid AI response', { response: String(response).substring(0, 100) });
@@ -68,7 +69,9 @@ class AIResponseParser {
         }
 
         // Try each format parser in priority order
-        const formatOrder = ['confirm', 'confident', 'clarify'];
+        const formatOrder = mode === 'verify'
+            ? ['confirm', 'clarify', 'confident']
+            : ['confident', 'clarify'];
         
         for (const formatName of formatOrder) {
             const parser = this.formatParsers.get(formatName);

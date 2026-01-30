@@ -23,6 +23,7 @@ const tmdbService = require('../services/tmdb');
 const policyEngine = require('../services/policyEngine');
 const confidenceCalculator = require('../services/confidenceCalculator');
 const contentTypeAnalyzer = require('../services/contentTypeAnalyzer');
+const policyQuestionBuilder = require('../services/policyQuestionBuilder');
 
 // Mock dependencies
 jest.mock('../services/classificationPhaseService');
@@ -36,6 +37,9 @@ jest.mock('../services/mediaSync');
 jest.mock('../services/libraryProfileService');
 jest.mock('../services/discordBot');
 jest.mock('../services/contentTypeAnalyzer');
+jest.mock('../services/policyQuestionBuilder', () => ({
+  build: jest.fn()
+}));
 jest.mock('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(),
@@ -468,5 +472,62 @@ describe('Phase Tracking in classify()', () => {
 
     expect(classificationPhaseService.updatePhase).not.toHaveBeenCalled();
     expect(classificationPhaseService.completeTracking).not.toHaveBeenCalled();
+  });
+});
+
+describe('PolicyEngine -> AI flow', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    db.query.mockResolvedValue({ rows: [] });
+    tmdbService.getMovieDetails.mockResolvedValue({ title: 'Test Movie', genres: [] });
+    tmdbService.getCertification.mockResolvedValue('PG');
+    policyQuestionBuilder.build.mockResolvedValue(null);
+
+    db.query.mockImplementation((text) => {
+      const query = typeof text === 'string' ? text : '';
+      if (query.includes('FROM libraries')) {
+        return { rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] };
+      }
+      if (query.includes('INSERT INTO classification_history') || query.includes('INSERT INTO logs') || query.includes('INSERT INTO error_logs')) {
+        return { rows: [{ id: 12345, error_id: 67890 }] };
+      }
+      return { rows: [] };
+    });
+  });
+
+  test('should run AI analysis for policy prompt paths', async () => {
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 55,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 55,
+        policy_id: 11,
+        policy_name: 'Movies Policy',
+        scores: { preset: 60, profile: 50, pattern: 0, rag: 0, history: 0 },
+        weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 }
+      }],
+      ragCache: { matches: [], timestamp: Date.now() }
+    });
+
+    const aiSpy = jest.spyOn(classificationService, 'aiClassify').mockResolvedValue({
+      library: { id: 1, name: 'Movies' },
+      confidence: 60,
+      verified_by_ai: false
+    });
+
+    await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 },
+      taskId: 'task-456'
+    });
+
+    expect(aiSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Array),
+      expect.any(Object),
+      expect.objectContaining({ mode: 'classify' })
+    );
   });
 });

@@ -87,9 +87,22 @@ const handleWebhook = async (req, res) => {
       });
     }
 
-    // 2. Parse payload and log receipt
-    const parsed = webhookService.parsePayload(req.body);
+    // 2. Sanitize payload (optional specials exclusion) and log receipt
+    const { payload: sanitizedPayload, specialsExcluded } = webhookService.sanitizePayload(req.body, {
+      includeSpecials: config.include_specials === true
+    });
+
+    const parsed = webhookService.parsePayload(sanitizedPayload);
     logId = await webhookService.logReceived(req, parsed);
+    if (specialsExcluded > 0) {
+      logger.info('Excluded specials from webhook payload', {
+        title: parsed.title,
+        request_id: parsed.request_id,
+        excluded_count: specialsExcluded
+      });
+    }
+
+    sanitizedPayload.include_specials = config.include_specials === true;
 
     // 3. Handle by event type
     switch (parsed.notification_type) {
@@ -174,7 +187,7 @@ const handleWebhook = async (req, res) => {
     });
 
     // Enqueue task for background processing
-    const taskId = await queueService.enqueue('classification', req.body, {
+    const taskId = await queueService.enqueue('classification', sanitizedPayload, {
       webhookLogId: logId,
       source: 'webhook',
       priority: parsed.notification_type.includes('AUTO') ? 1 : 0  // Auto-approved slightly higher priority

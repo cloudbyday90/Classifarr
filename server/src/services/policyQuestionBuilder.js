@@ -39,14 +39,17 @@ const LANGUAGE_LABELS = {
 };
 
 class PolicyQuestionBuilder {
-  async build({ metadata = {}, policyResult = null, libraries = [], suggestedLibrary = null, maxOptions = 3 }) {
+  async build({ metadata = {}, policyResult = null, libraries = [], suggestedLibrary = null, ragContext = null, aiResult = null, maxOptions = 3 }) {
     const mediaType = metadata.media_type?.toLowerCase();
     const filteredLibraries = this.filterLibrariesByMediaType(libraries, mediaType);
 
     const candidates = this.buildCandidates(policyResult, filteredLibraries, suggestedLibrary, maxOptions);
     if (candidates.length === 0) {
       return this.buildLibrarySelectionQuestion(metadata, filteredLibraries, {
-        reason: 'No policy candidates available'
+        reason: 'No policy candidates available',
+        ragContext,
+        aiResult,
+        policyResult
       });
     }
 
@@ -57,16 +60,27 @@ class PolicyQuestionBuilder {
     if (!hasPresets) {
       return this.buildLibrarySelectionQuestion(metadata, candidates.map(c => c.library).filter(Boolean), {
         reason: 'No presets attached to candidate policies',
-        candidates
+        candidates,
+        ragContext,
+        aiResult,
+        policyResult
       });
     }
 
-    const languageQuestion = this.buildLanguageQuestion(metadata, candidates, presetsByPolicy);
+    const languageQuestion = this.buildLanguageQuestion(metadata, candidates, presetsByPolicy, {
+      ragContext,
+      aiResult,
+      policyResult
+    });
     if (languageQuestion) {
       return languageQuestion;
     }
 
-    return this.buildCandidateQuestion(metadata, candidates, presetsByPolicy);
+    return this.buildCandidateQuestion(metadata, candidates, presetsByPolicy, {
+      ragContext,
+      aiResult,
+      policyResult
+    });
   }
 
   filterLibrariesByMediaType(libraries, mediaType) {
@@ -164,7 +178,7 @@ class PolicyQuestionBuilder {
     }
   }
 
-  buildLanguageQuestion(metadata, candidates, presetsByPolicy) {
+  buildLanguageQuestion(metadata, candidates, presetsByPolicy, extras = {}) {
     const originalLanguage = (metadata.original_language || '').toLowerCase();
     const languageRelevant = !originalLanguage || originalLanguage !== 'en';
     if (!languageRelevant) return null;
@@ -192,7 +206,8 @@ class PolicyQuestionBuilder {
         why_uncertain: 'Language presets are active, but the original language is missing.',
         question: 'Which language best fits this content?',
         options,
-        candidates: languageCandidates
+        candidates: languageCandidates,
+        extras
       });
     }
 
@@ -203,7 +218,10 @@ class PolicyQuestionBuilder {
     if (!fallbackCandidate) {
       return this.buildLibrarySelectionQuestion(metadata, candidates.map(c => c.library), {
         reason: 'Language preset available but no alternative library found',
-        candidates
+        candidates,
+        ragContext: extras.ragContext,
+        aiResult: extras.aiResult,
+        policyResult: extras.policyResult
       });
     }
 
@@ -218,11 +236,12 @@ class PolicyQuestionBuilder {
         this.toOption(`Yes → ${targetCandidate.library.name}`, targetCandidate.library),
         this.toOption(`No → ${fallbackCandidate.library.name}`, fallbackCandidate.library)
       ],
-      candidates
+      candidates,
+      extras
     });
   }
 
-  buildCandidateQuestion(metadata, candidates, presetsByPolicy) {
+  buildCandidateQuestion(metadata, candidates, presetsByPolicy, extras = {}) {
     const top = candidates[0];
     const second = candidates[1];
     const scoreDiff = top && second && top.score != null && second.score != null
@@ -252,11 +271,12 @@ class PolicyQuestionBuilder {
       why_uncertain: whyUncertain,
       question,
       options,
-      candidates
+      candidates,
+      extras
     });
   }
 
-  buildLibrarySelectionQuestion(metadata, libraries, { reason, candidates } = {}) {
+  buildLibrarySelectionQuestion(metadata, libraries, { reason, candidates, ragContext, aiResult, policyResult } = {}) {
     const options = (libraries || []).slice(0, 3).map(lib => this.toOption(lib.name, lib));
     if (options.length === 0) {
       return null;
@@ -267,11 +287,28 @@ class PolicyQuestionBuilder {
       why_uncertain: reason || 'No policy presets are attached to inform a targeted question.',
       question: `Which library should "${metadata.title || 'this item'}" go to?`,
       options,
-      candidates: candidates || []
+      candidates: candidates || [],
+      extras: { ragContext, aiResult, policyResult }
     });
   }
 
-  buildQuestionPayload(metadata, { problem_summary, why_uncertain, question, options, candidates }) {
+  buildQuestionPayload(metadata, { problem_summary, why_uncertain, question, options, candidates, extras = {} }) {
+    const topCandidate = (candidates || [])[0];
+    const policyScores = topCandidate?.scores || null;
+    const policyWeights = topCandidate?.weights || null;
+    const ragSummary = extras.ragContext?.similarItems
+      ? extras.ragContext.similarItems.map(item => ({
+        title: item.title,
+        library: item.libraryName || item.library_name,
+        similarity: item.similarity
+      }))
+      : null;
+    const aiRationale = extras.aiResult?.reason || null;
+    const tags = {
+      genres: metadata.genres || [],
+      keywords: (metadata.keywords || []).slice(0, 10)
+    };
+
     return {
       type: 'policy',
       problem_summary,
@@ -285,7 +322,12 @@ class PolicyQuestionBuilder {
           score: candidate.score,
           policy_id: candidate.policy_id,
           policy_name: candidate.policy_name
-        }))
+        })),
+        policy_scores: policyScores,
+        policy_weights: policyWeights,
+        rag_summary: ragSummary,
+        ai_rationale: aiRationale,
+        tags
       },
       generated_at: new Date().toISOString()
     };

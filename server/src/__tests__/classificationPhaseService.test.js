@@ -65,7 +65,7 @@ describe('classificationPhaseService', () => {
                     taskId: 1,
                     phase: 'metadata_fetch',
                     phaseIndex: 2,
-                    totalPhases: 7
+                    totalPhases: 8
                 })
             );
         });
@@ -104,7 +104,7 @@ describe('classificationPhaseService', () => {
                 title: 'Test Movie',
                 currentPhase: 'rag_analysis',
                 phaseIndex: 4,
-                totalPhases: 7
+                totalPhases: 8
             });
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringContaining('SELECT'),
@@ -204,15 +204,15 @@ describe('classificationPhaseService', () => {
         it('should return phase metadata for all phases', () => {
             const metadata = classificationPhaseService.getPhaseMetadata();
 
-            expect(metadata).toHaveLength(7);
+            expect(metadata).toHaveLength(8);
             expect(metadata[0]).toMatchObject({ name: 'queued', index: 1 });
-            expect(metadata[6]).toMatchObject({ name: 'notification', index: 7 });
+            expect(metadata[7]).toMatchObject({ name: 'notification', index: 8 });
         });
     });
 
     describe('isValidPhase', () => {
         it('should return true for valid phases', () => {
-            const validPhases = ['queued', 'metadata_fetch', 'policy_eval', 'rag_analysis', 'signal_combine', 'decision', 'notification'];
+            const validPhases = ['queued', 'metadata_fetch', 'policy_eval', 'rag_analysis', 'signal_combine', 'ai_analysis', 'decision', 'notification'];
 
             validPhases.forEach(phase => {
                 expect(classificationPhaseService.isValidPhase(phase)).toBe(true);
@@ -240,20 +240,21 @@ describe('classificationPhaseService', () => {
 
             const phases = classificationPhaseService.buildPhaseList(mockTask);
 
-            expect(phases).toHaveLength(7);
+            expect(phases).toHaveLength(8);
             expect(phases[0].status).toBe('complete'); // queued
             expect(phases[1].status).toBe('complete'); // metadata_fetch
             expect(phases[2].status).toBe('complete'); // policy_eval
             expect(phases[3].status).toBe('in_progress'); // rag_analysis
             expect(phases[4].status).toBe('pending'); // signal_combine
-            expect(phases[5].status).toBe('pending'); // decision
-            expect(phases[6].status).toBe('pending'); // notification
+            expect(phases[5].status).toBe('pending'); // ai_analysis
+            expect(phases[6].status).toBe('pending'); // decision
+            expect(phases[7].status).toBe('pending'); // notification
         });
     });
 
     describe('getPhaseCount', () => {
-        it('should return 7 phases', () => {
-            expect(classificationPhaseService.getPhaseCount()).toBe(7);
+        it('should return 8 phases', () => {
+            expect(classificationPhaseService.getPhaseCount()).toBe(8);
         });
     });
 });

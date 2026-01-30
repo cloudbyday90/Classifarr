@@ -75,6 +75,7 @@ class ClassificationService {
         logger.info(`Using existing metadata for ${title}`);
         metadata = {
           tmdb_id: tmdbId || null,
+          tvdb_id: existingMetadata.tvdb_id || null,
           media_type: media_type,
           title: title,
           year: year,
@@ -91,6 +92,7 @@ class ClassificationService {
         // We have TMDB ID - lookup directly
         metadata = await this.enrichWithTMDB(tmdbId, media_type);
         metadata.itemId = existingMetadata.itemId;
+        metadata.tvdb_id = existingMetadata.tvdb_id;
         metadata.source_library_id = existingMetadata.source_library_id;
         metadata.source_library_name = existingMetadata.source_library_name;
       } else if (title && title !== 'Unknown') {
@@ -114,6 +116,7 @@ class ClassificationService {
           // Now get full details
           metadata = await this.enrichWithTMDB(bestMatch.id, media_type);
           metadata.itemId = existingMetadata.itemId;
+          metadata.tvdb_id = existingMetadata.tvdb_id;
           metadata.source_library_id = existingMetadata.source_library_id;
           metadata.source_library_name = existingMetadata.source_library_name;
         } else {
@@ -121,6 +124,7 @@ class ClassificationService {
           logger.warn(`No TMDB match found for: ${title}. Using basic metadata.`);
           metadata = {
             tmdb_id: null,
+            tvdb_id: existingMetadata.tvdb_id || null,
             media_type: media_type,
             title: title,
             year: year,
@@ -136,6 +140,11 @@ class ClassificationService {
         }
       } else {
         throw new Error('No TMDB ID or title provided for classification');
+      }
+
+      if (metadata) {
+        metadata.requested_seasons = existingMetadata.requested_seasons;
+        metadata.include_specials = existingMetadata.include_specials;
       }
 
       // Run decision tree
@@ -257,6 +266,15 @@ class ClassificationService {
 
     // Extract TMDB ID - check multiple locations
     const tmdbId = payload.media?.tmdbId || payload.tmdb_id || payload.extra?.[0]?.value;
+    const tvdbId = payload.media?.tvdbId || payload.tvdb_id;
+    let requestedSeasons = payload.request?.seasons || payload.requested_seasons;
+    if (typeof requestedSeasons === 'string') {
+      try {
+        requestedSeasons = JSON.parse(requestedSeasons);
+      } catch (error) {
+        requestedSeasons = null;
+      }
+    }
 
     // Extract title - check multiple locations  
     const title = payload.title || payload.subject || payload.media?.title || 'Unknown';
@@ -274,10 +292,14 @@ class ClassificationService {
       itemId: payload.itemId, // Internal ID for updating media_server_items
       source_library_id: payload.source_library_id, // Source Plex library ID
       source_library_name: payload.source_library_name, // Source Plex library name
+      requested_seasons: Array.isArray(requestedSeasons) ? requestedSeasons : null,
+      include_specials: payload.include_specials === true,
     };
 
     // Extract taskId if present (injected by queueService)
     const taskId = payload.taskId;
+
+    existingMetadata.tvdb_id = tvdbId;
 
     return { media_type, tmdbId, title, year, existingMetadata, taskId };
   }
@@ -916,16 +938,45 @@ class ClassificationService {
 
     // Step 3: Policy Engine evaluation (v0.37.0)
     // Modern policy-based classification with comprehensive signal scoring
+    let policyResult = null;
+    let policySignalContext = null;
+
+    const buildPolicySignalContext = (result, candidates, rankedList) => {
+      const ranked = Array.isArray(rankedList) ? rankedList : [];
+      const top = ranked[0] || null;
+      const suggestedLibrary = top ? candidates.find(l => l.id === top.library_id) : null;
+      const breakdown = top?.breakdown?.length ? top.breakdown : (top ? [
+        { type: 'preset', score: top.scores?.preset || 0, weight: top.weights?.preset || 0 },
+        { type: 'profile', score: top.scores?.profile || 0, weight: top.weights?.profile || 0 },
+        { type: 'pattern', score: top.scores?.pattern || 0, weight: top.weights?.pattern || 0 },
+        { type: 'rag', score: top.scores?.rag || 0, weight: top.weights?.rag || 0 },
+        { type: 'history', score: top.scores?.history || 0, weight: top.weights?.history || 0 },
+      ] : []);
+      const hasConflict = ranked.length > 1 && top?.score != null && ranked[1]?.score != null
+        ? Math.abs(top.score - ranked[1].score) <= 10
+        : false;
+
+      return {
+        confidence: result?.confidence || 0,
+        suggestedLibrary,
+        breakdown,
+        ranked,
+        scores: top?.scores || null,
+        weights: top?.weights || null,
+        hasConflict
+      };
+    };
+
     try {
       if (taskId && !metadata.source_library_id) {
         await classificationPhaseService.updatePhase(taskId, 'policy_eval');
       }
 
       logger.info('Evaluating with PolicyEngine', { title: metadata.title });
-      const policyResult = await policyEngine.evaluateItem(metadata);
+      policyResult = await policyEngine.evaluateItem(metadata);
 
-      if (policyResult.action === 'auto_classify' && policyResult.library) {
-        // HIGH CONFIDENCE (≥85%) - Skip AI entirely, trust PolicyEngine
+      if (policyResult?.action === 'auto_classify' && policyResult.library) {
+        // HIGH CONFIDENCE - Skip AI entirely, trust PolicyEngine
         logger.info('PolicyEngine auto-classified (AI skipped)', {
           title: metadata.title,
           library: policyResult.library.library_name,
@@ -946,87 +997,11 @@ class ClassificationService {
           libraries: libraries,
           policyResult: policyResult, // Include for logging/debugging
         };
-      } else if (policyResult.action === 'prompt_confirm' && policyResult.library) {
-        // MEDIUM CONFIDENCE (60-84%) - Skip AI, prompt user with PolicyEngine context
-        logger.info('PolicyEngine suggests confirmation (AI skipped)', {
-          title: metadata.title,
-          library: policyResult.library.library_name,
-          confidence: policyResult.confidence
-        });
-        const matchedLibrary = libraries.find(l => l.id === policyResult.library.library_id);
+      }
 
-        // Build clarification from policy breakdown
-        const policyQuestion = {
-          problem_summary: `Confirm: ${policyResult.library.policy_name}`,
-          why_uncertain: `Confidence ${policyResult.confidence}% - below auto-classify threshold`,
-          question: `Should "${metadata.title}" go to ${matchedLibrary?.name}?`,
-          options: [
-            { label: `Yes, ${matchedLibrary?.name}`, value: 'confirm', library_id: matchedLibrary?.id },
-            ...policyResult.ranked.slice(1, 3).map(r => ({
-              label: r.library_name,
-              value: `alt_${r.library_id}`,
-              library_id: r.library_id
-            }))
-          ],
-          signal_breakdown: policyResult.breakdown,
-          calculated_confidence: policyResult.confidence,
-        };
-
-        return {
-          library: matchedLibrary,
-          confidence: policyResult.confidence,
-          method: 'policy_prompt',
-          reason: `Policy suggests: ${policyResult.library.policy_name}`,
-          needs_clarification: true,
-          clarification: policyQuestion,
-          pending_reason: policyQuestion.problem_summary,
-          policy_question: policyQuestion,
-          libraries: libraries,
-          policyResult: policyResult,
-        };
-      } else if (policyResult.action === 'prompt_select' && policyResult.ranked.length > 0) {
-        // LOW CONFIDENCE (<60%) - Continue to AI for help
-        logger.info('PolicyEngine needs AI assistance', {
-          title: metadata.title,
-          topLibrary: policyResult.ranked[0]?.library_name,
-          confidence: policyResult.confidence
-        });
-
-        // Log signal context before AI call for debugging
-        if (policyResult.ranked && policyResult.ranked.length > 0) {
-          logger.debug('Signal breakdown before AI', {
-            title: metadata.title,
-            suggestedLibrary: policyResult.ranked[0]?.library_name,
-            rankedCount: policyResult.ranked.length,
-            topConfidence: policyResult.ranked[0]?.score
-          });
-        }
-
-        const suggestedLibrary = libraries.find(l => l.id === policyResult.ranked[0]?.library_id);
-        const policyQuestion = await policyQuestionBuilder.build({
-          metadata,
-          policyResult,
-          libraries,
-          suggestedLibrary
-        });
-
-        if (policyQuestion) {
-          return {
-            library: suggestedLibrary || null,
-            confidence: policyResult.confidence,
-            method: 'policy_prompt',
-            reason: `Policy requires clarification`,
-            needs_clarification: true,
-            clarification: policyQuestion,
-            pending_reason: policyQuestion.problem_summary,
-            policy_question: policyQuestion,
-            libraries,
-            policyResult
-          };
-        }
-
+      if (policyResult?.ranked && policyResult.ranked.length > 0) {
         metadata.policyResult = policyResult;
-        // Falls through to legacy signal collection and AI if no policy question could be built
+        policySignalContext = buildPolicySignalContext(policyResult, libraries, policyResult.ranked);
       }
     } catch (policyError) {
       logger.warn('PolicyEngine evaluation failed, falling back to legacy signals', {
@@ -1035,11 +1010,117 @@ class ClassificationService {
       });
     }
 
-    // Step 4: Collect signals and calculate confidence for AI verification
-    // v0.33 Signal Aggregation Model (Legacy fallback)
+    // Use PolicyEngine signals for AI analysis when available
+    if (policySignalContext) {
+      let ragContext = null;
+      const ragCache = policyResult?.ragCache || null;
+      const ragMatches = ragCache?.matches || [];
+      if (ragCache && taskId && !metadata.source_library_id) {
+        await classificationPhaseService.updatePhase(taskId, 'rag_analysis');
+      }
+      if (ragMatches.length > 0) {
+        ragContext = {
+          similarItems: ragMatches.slice(0, 3),
+          suggestion: ragRetriever.getSuggestedLibrary(ragMatches)
+        };
+      }
+
+      if (taskId && !metadata.source_library_id) {
+        await classificationPhaseService.updatePhase(taskId, 'ai_analysis');
+      }
+
+      try {
+        const aiMatch = await this.aiClassify(metadata, libraries, policySignalContext, {
+          mode: 'classify',
+          ragContext
+        });
+        const aiResult = {
+          ...aiMatch,
+          method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
+          libraries: libraries,
+          signalContext: policySignalContext,
+          policyResult: policyResult,
+          ragContext
+        };
+
+        if (taskId && !metadata.source_library_id) {
+          await classificationPhaseService.updatePhase(taskId, 'decision', {
+            confidence: aiResult.confidence
+          });
+        }
+
+        // Ensure low-confidence results surface policy-driven clarifications
+        if (!aiResult.needs_clarification && aiResult.confidence < 70) {
+          const policyQuestion = await policyQuestionBuilder.build({
+            metadata,
+            policyResult: policyResult || null,
+            libraries,
+            suggestedLibrary: aiResult.library || null,
+            ragContext,
+            aiResult
+          });
+
+          if (policyQuestion) {
+            aiResult.needs_clarification = true;
+            aiResult.clarification = policyQuestion;
+            aiResult.policy_question = policyQuestion;
+            aiResult.pending_reason = policyQuestion.problem_summary;
+          }
+        }
+
+        return aiResult;
+      } catch (error) {
+        logger.error('AI classification failed', { error: error.message });
+
+        const fallbackConfidence = policySignalContext.confidence || 0;
+        const suggestedLibrary = policySignalContext.suggestedLibrary;
+
+        if (fallbackConfidence < 50) {
+          logger.info('AI unavailable with very low confidence - queuing for retry', {
+            confidence: fallbackConfidence,
+            tmdbId: metadata.tmdb_id,
+            title: metadata.title,
+          });
+
+          return {
+            library: null,
+            confidence: fallbackConfidence,
+            method: 'queued_for_retry',
+            reason: 'AI temporarily unavailable - queued for retry',
+            retry_after: new Date(Date.now() + RETRY_DELAY_MS),
+            retry_count: 0,
+            max_retries: 3,
+            libraries: libraries,
+            signalContext: policySignalContext,
+            needs_retry: true,
+          };
+        }
+
+        if (suggestedLibrary && fallbackConfidence >= 50) {
+          return {
+            library: suggestedLibrary,
+            confidence: fallbackConfidence,
+            method: 'signal_calculation',
+            reason: 'Calculated from policy signals (AI unavailable)',
+            libraries: libraries,
+            policyResult
+          };
+        }
+
+        const fallbackLibrary = libraries[libraries.length - 1];
+        return {
+          library: fallbackLibrary,
+          confidence: 50,
+          method: 'fallback',
+          reason: `Default library - AI unavailable (fell back to ${fallbackLibrary.name})`,
+          libraries: libraries,
+        };
+      }
+    }
+
+    // Step 4: Collect signals and calculate confidence for AI verification (legacy fallback)
     const signalCollector = new SignalCollector();
 
-    // Collect ALL signals via the full pipeline (v0.38.2-alpha fix)
     const detectors = {
       checkLearnedCorrections: this.checkLearnedCorrections.bind(this),
       checkLibraryRules: this.checkLibraryRules.bind(this),
@@ -1052,9 +1133,6 @@ class ClassificationService {
 
     await signalCollector.collectAll(metadata, libraries, detectors);
 
-    // Step 4.5: RAG-based semantic similarity (v0.34)
-    // Note: RAG/semantic search is handled here as a separate step (not via collectAll),
-    // and we keep this for backward compatibility and to generate ragContext for AI
     let ragContext = null;
     try {
       if (taskId && !metadata.source_library_id) {
@@ -1069,7 +1147,6 @@ class ClassificationService {
         if (suggestedLibrary) {
           const ragLibrary = libraries.find(l => l.id === suggestedLibrary.libraryId);
           if (ragLibrary) {
-            // Only add if not already collected (collectAll may have added it)
             if (!signalCollector.hasSignal(SIGNAL_TYPES.SEMANTIC_SIMILARITY)) {
               signalCollector.addSignal(
                 SIGNAL_TYPES.SEMANTIC_SIMILARITY,
@@ -1082,7 +1159,10 @@ class ClassificationService {
                 ragLibrary
               );
             }
-            ragContext = ragRetriever.formatForAIContext(similarItems);
+            ragContext = {
+              similarItems: similarItems.slice(0, 3),
+              suggestion: ragRetriever.getSuggestedLibrary(similarItems)
+            };
             logger.info('RAG signal added', {
               title: metadata.title,
               library: ragLibrary.name,
@@ -1096,7 +1176,6 @@ class ClassificationService {
       logger.debug('RAG search failed, continuing without', { error: ragError.message });
     }
 
-    // Load weights and calculate confidence
     if (taskId && !metadata.source_library_id) {
       await classificationPhaseService.updatePhase(taskId, 'signal_combine');
     }
@@ -1105,40 +1184,43 @@ class ClassificationService {
     const confidenceResult = confidenceCalculator.calculate(signalCollector.getSignals());
 
     if (taskId && !metadata.source_library_id) {
-      await classificationPhaseService.updatePhase(taskId, 'decision', {
-        confidence: confidenceResult.confidence
-      });
+      await classificationPhaseService.updatePhase(taskId, 'ai_analysis');
     }
 
-    // Generate AI context
     const aiContext = confidenceCalculator.toAIContext(confidenceResult);
 
-    // Create signal context for AI verification
     const signalContext = {
       ...confidenceResult,
       aiContext,
-      ragContext,  // RAG similar items context for AI
+      ragContext,
       signals: signalCollector.getSignals(),
-      patternSignals: signalCollector.getPatternSignals(),  // For pattern reinforcement
+      patternSignals: signalCollector.getPatternSignals(),
     };
 
-    // Step 5: AI verification (receives pre-calculated confidence)
     try {
       const aiMatch = await this.aiClassify(metadata, libraries, signalContext);
       const aiResult = {
         ...aiMatch,
         method: aiMatch.verified_by_ai ? 'ai_verified' : 'ai_analysis',
         libraries: libraries,
-        signalContext: signalContext, // Include for logging
+        signalContext: signalContext,
+        policyResult: policyResult || null,
       };
 
-      // Ensure low-confidence results surface policy-driven clarifications
+      if (taskId && !metadata.source_library_id) {
+        await classificationPhaseService.updatePhase(taskId, 'decision', {
+          confidence: aiResult.confidence
+        });
+      }
+
       if (!aiResult.needs_clarification && aiResult.confidence < 70) {
         const policyQuestion = await policyQuestionBuilder.build({
           metadata,
           policyResult: metadata.policyResult || null,
           libraries,
-          suggestedLibrary: aiResult.library || null
+          suggestedLibrary: aiResult.library || null,
+          ragContext,
+          aiResult
         });
 
         if (policyQuestion) {
@@ -1153,9 +1235,6 @@ class ClassificationService {
     } catch (error) {
       logger.error('AI classification failed', { error: error.message });
 
-      // Check if we should queue for retry based on confidence
-      // Only queue for retry if confidence is below 50% (very low confidence without AI)
-      // Items with confidence >= 50% can use signal_calculation fallback
       if (confidenceResult.confidence < 50) {
         logger.info('AI unavailable with very low confidence - queuing for retry', {
           confidence: confidenceResult.confidence,
@@ -1177,7 +1256,6 @@ class ClassificationService {
         };
       }
 
-      // Fallback to calculated result if AI fails but confidence is acceptable
       if (confidenceResult.suggestedLibrary && confidenceResult.confidence >= 50) {
         return {
           library: confidenceResult.suggestedLibrary,
@@ -1188,7 +1266,6 @@ class ClassificationService {
         };
       }
 
-      // Last resort: use the lowest priority library
       const fallbackLibrary = libraries[libraries.length - 1];
       return {
         library: fallbackLibrary,
@@ -1427,7 +1504,7 @@ class ClassificationService {
     }
   }
 
-  async aiClassify(metadata, libraries, signalContext = null) {
+  async aiClassify(metadata, libraries, signalContext = null, options = {}) {
     // Try to get web search results if Tavily is enabled
     const webSearchResults = await this.enrichWithWebSearch(metadata);
 
@@ -1451,7 +1528,8 @@ class ClassificationService {
       metadata: metadata,
       libraries: libraries,
       signalContext: signalContext,
-      policySignals: signalContext, // Policy engine signals
+      policySignals: options.policySignals || signalContext,
+      ragContext: options.ragContext || null,
     };
 
     // Add library profile if we have a suggested library
@@ -1470,7 +1548,7 @@ class ClassificationService {
     }
 
     // Determine mode: verify if we have signalContext, otherwise classify
-    const mode = signalContext ? 'verify' : 'classify';
+    const mode = options.mode || (signalContext ? 'verify' : 'classify');
 
     // Build prompt using modular AI prompt builder
     let prompt = `You are a media classification ${mode === 'verify' ? 'VERIFIER' : 'AI'} for a home media server. ${mode === 'verify' ? 'Your role is to VERIFY a pre-calculated classification decision.' : 'Your role is to classify media items into the appropriate library.'}
@@ -1586,7 +1664,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
       metadata: metadata
     };
 
-    return aiResponseParser.parse(response, parseContext);
+    return aiResponseParser.parse(response, parseContext, { mode });
   }
 
   async logClassification(metadata, result, startTime = null) {
@@ -1842,25 +1920,123 @@ Think step by step, then respond with ONLY one of the formats above.`;
             return;
           }
 
-          // Note: We'd need to get TVDB ID from TMDB external IDs
-          // This is a simplified version
+          let tvdbId = metadata.tvdb_id;
+          if (!tvdbId && metadata.tmdb_id) {
+            const externalIds = await tmdbService.getExternalIds(metadata.tmdb_id, 'tv');
+            tvdbId = externalIds?.tvdb_id || externalIds?.tvdbId || null;
+          }
+
+          if (!tvdbId) {
+            logger.warn('Missing TVDB ID; skipping Sonarr routing', {
+              title: metadata.title,
+              tmdbId: metadata.tmdb_id
+            });
+            return;
+          }
+
+          const lookupResults = await sonarrService.searchSeries(baseUrl, config.api_key, tvdbId);
+          const lookupSeries = lookupResults.find(s => s.tvdbId === parseInt(tvdbId, 10)) || lookupResults[0];
+          if (!lookupSeries) {
+            logger.warn('Sonarr lookup returned no series', {
+              title: metadata.title,
+              tvdbId
+            });
+            return;
+          }
+          if (!lookupSeries.title || !lookupSeries.title.toString().trim()) {
+            logger.warn('Sonarr lookup missing English title; skipping add', {
+              title: metadata.title,
+              tvdbId
+            });
+            return;
+          }
+
+          const normalizeMonitor = (value) => {
+            if (!value) return 'all';
+            const key = value.toString();
+            const map = {
+              all_seasons: 'all',
+              all: 'all',
+              future: 'future',
+              missing: 'missing',
+              existing: 'existing',
+              recent: 'recent',
+              pilot: 'pilot',
+              first: 'firstSeason',
+              firstSeason: 'firstSeason',
+              lastSeason: 'latestSeason',
+              latest: 'latestSeason',
+              latestSeason: 'latestSeason',
+              none: 'none'
+            };
+            return map[key] || key;
+          };
+
+          const requestedSeasons = Array.isArray(metadata.requested_seasons)
+            ? metadata.requested_seasons
+                .map(season => (typeof season === 'string' ? parseInt(season, 10) : season))
+                .filter(season => Number.isInteger(season))
+            : [];
+          const requestedSeasonSet = new Set(requestedSeasons);
+          const includeSpecials = metadata.include_specials === true;
+          const monitorValue = normalizeMonitor(settings.season_monitoring);
+
           const seriesData = {
-            title: metadata.title,
-            tvdbId: metadata.tmdb_id, // This would need proper mapping
+            ...lookupSeries,
             qualityProfileId: settings.quality_profile_id,
             rootFolderPath: settings.root_folder_path,
             monitored: settings.monitor !== false,
-            seriesType: settings.series_type || 'standard',
+            seriesType: settings.series_type || lookupSeries.seriesType || 'standard',
             seasonFolder: settings.season_folder !== false,
-            tags: settings.tags || [],
+            tags: settings.tags || lookupSeries.tags || [],
             addOptions: {
               searchForMissingEpisodes: settings.search_on_add !== false,
-              monitor: settings.season_monitoring || 'all',
+              monitor: monitorValue || 'all',
             },
           };
 
-          await sonarrService.addSeries(baseUrl, config.api_key, seriesData);
-          logger.info(`Added series to Sonarr: ${metadata.title}`);
+          if (requestedSeasonSet.size > 0 && !includeSpecials) {
+            requestedSeasonSet.delete(0);
+          }
+
+          if (Array.isArray(seriesData.seasons) && requestedSeasonSet.size > 0) {
+            seriesData.seasons = seriesData.seasons.map(season => {
+              const seasonNumber = season?.seasonNumber ?? season?.season_number ?? season?.season ?? season?.number;
+              const normalizedNumber = typeof seasonNumber === 'string' ? parseInt(seasonNumber, 10) : seasonNumber;
+              let monitored = season?.monitored;
+
+              if (Number.isInteger(normalizedNumber)) {
+                monitored = requestedSeasonSet.has(normalizedNumber);
+              }
+
+              return {
+                ...season,
+                monitored
+              };
+            });
+          }
+
+          delete seriesData.id;
+
+          try {
+            await sonarrService.addSeries(baseUrl, config.api_key, seriesData);
+            logger.info(`Added series to Sonarr: ${metadata.title}`);
+          } catch (sonarrError) {
+            logger.error('Failed to add series to Sonarr', {
+              title: metadata.title,
+              tvdbId,
+              error: sonarrError.message,
+              payload: {
+                qualityProfileId: seriesData.qualityProfileId,
+                rootFolderPath: seriesData.rootFolderPath,
+                monitored: seriesData.monitored,
+                seriesType: seriesData.seriesType,
+                seasonFolder: seriesData.seasonFolder,
+                addOptions: seriesData.addOptions
+              }
+            });
+            throw sonarrError;
+          }
         }
       }
     } catch (error) {

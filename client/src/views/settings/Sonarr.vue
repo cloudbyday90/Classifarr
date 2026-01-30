@@ -170,7 +170,7 @@
           <div>
             <label class="block text-sm font-medium mb-2">Monitor</label>
             <select v-model="editForm.monitor" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
-              <option value="all">All Seasons (Default)</option>
+              <option value="all">All Episodes (Default)</option>
               <option v-for="option in seasonMonitoringOptions" :key="option.value" :value="option.value">
                 {{ option.label }}
               </option>
@@ -292,7 +292,7 @@
         <div>
           <label class="block text-sm font-medium mb-2">Monitor</label>
           <select v-model="editForm.monitor" class="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg">
-            <option value="all">All Seasons (Default)</option>
+            <option value="all">All Episodes (Default)</option>
             <option v-for="option in seasonMonitoringOptions" :key="option.value" :value="option.value">
               {{ option.label }}
             </option>
@@ -362,14 +362,26 @@ const seriesTypeOptions = ref([
   { value: 'anime', label: 'Anime' }
 ])
 const seasonMonitoringOptions = ref([
-  { value: 'all', label: 'All Seasons' },
+  { value: 'all', label: 'All Episodes' },
   { value: 'future', label: 'Future Seasons' },
-  { value: 'missing', label: 'Missing Seasons' },
-  { value: 'existing', label: 'Existing Seasons' },
-  { value: 'first', label: 'First Season' },
-  { value: 'latest', label: 'Latest Season' },
+  { value: 'missing', label: 'Missing Episodes' },
+  { value: 'existing', label: 'Existing Episodes' },
+  { value: 'recent', label: 'Recent Episodes' },
+  { value: 'pilot', label: 'Pilot Only' },
+  { value: 'firstSeason', label: 'First Season' },
+  { value: 'latestSeason', label: 'Latest Season' },
   { value: 'none', label: 'None' }
 ])
+
+const normalizeMonitorValue = (value) => {
+  if (!value) return 'all'
+  const map = {
+    first: 'firstSeason',
+    latest: 'latestSeason',
+    lastSeason: 'latestSeason'
+  }
+  return map[value] || value
+}
 
 const editForm = ref({
   name: 'Sonarr',
@@ -440,7 +452,7 @@ const startEditing = async (instance) => {
   isAddingNew.value = false
   // Note: The spread already includes id, but we explicitly set it for clarity
   // when reading code that uses editForm.id for API calls with masked api_key
-  editForm.value = { ...instance, id: instance.id }
+  editForm.value = { ...instance, id: instance.id, monitor: normalizeMonitorValue(instance.monitor) }
   
   // Load profiles for this instance using direct API endpoint
   loadingProfiles.value = true

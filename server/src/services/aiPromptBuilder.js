@@ -279,7 +279,15 @@ class AIPromptBuilder {
      * @returns {string|null} Formatted RAG context or null
      */
     formatRAGContext(data) {
-        if (!data || !data.similarItems || data.similarItems.length === 0) {
+        if (!data) {
+            return null;
+        }
+
+        if (typeof data === 'string') {
+            return data;
+        }
+
+        if (!data.similarItems || data.similarItems.length === 0) {
             return null;
         }
 

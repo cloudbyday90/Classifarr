@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.5-alpha] - 2026-01-30
+
+### Added
+
+- AI analysis phase tracking across backend and frontend progress UI.
+- Policy question payloads now include policy/RAG/AI context for richer clarification prompts.
+- Webhook config toggle to include/exclude specials (season 0) in Overseerr payloads.
+- Jest wrapper to sanitize Node 25 Web Storage options for cleaner test output.
+
+### Changed
+
+- PolicyEngine now feeds RAG + signals into AI analysis and defers policy_prompt until after AI.
+- Sonarr routing now uses TVDB lookup results and requested season monitoring behavior.
+- Radarr/Sonarr routing uses quality profile + search-on-add settings consistently.
+
+### Fixed
+
+- OMDb 520/521/523 errors treated as transient Cloudflare failures.
+- ClarificationService JSON parsing handles JSONB metadata safely.
+- Source-library reconciliations now report 100% confidence.
+- Logger DB persistence now uses explicit injection (no import-time DB access).
+- ProviderLockService config loads explicitly at startup (no module import side effects).
+- Integration tests set a deterministic `API_KEY_ENCRYPTION_KEY` to avoid warning noise.
+
 ## [0.40.4-alpha] - 2026-01-25
 
 ### Added

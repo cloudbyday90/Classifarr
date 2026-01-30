@@ -18,6 +18,7 @@ const PHASES = [
     'policy_eval',
     'rag_analysis',
     'signal_combine',
+    'ai_analysis',
     'decision',
     'notification'
 ];
@@ -29,6 +30,7 @@ const PHASE_METADATA = {
     policy_eval: { icon: '📋', label: 'Policy Evaluation', description: 'Running PolicyEngine matching' },
     rag_analysis: { icon: '🧠', label: 'RAG Analysis', description: 'Running embeddings similarity search' },
     signal_combine: { icon: '⚖️', label: 'Signal Combination', description: 'Combining scores from all engines' },
+    ai_analysis: { icon: '🤖', label: 'AI Analysis', description: 'Running AI classification analysis' },
     decision: { icon: '✅', label: 'Decision', description: 'Final classification decision made' },
     notification: { icon: '📤', label: 'Notification', description: 'Sending to *arr / notifications' }
 };
