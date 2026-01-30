@@ -8,7 +8,7 @@ It includes code changes, database migrations, and test updates to prevent regre
 - Follow repo-level agent guidance in `OPENAI.md` (mirrored across AGENTS/CLAUDE/GEMINI).
 - Before changes, review existing design and code paths; expand/change/remove only where it improves overall design and remains consistent with project patterns.
 - All code changes must follow `OPENAI.md` guidelines.
-- Target release: **v0.40.4-alpha**.
+- Target release: **v0.40.5-alpha**.
 
 ## Goals
 - Discord clarification selections always resolve classifications with a library assignment.
@@ -191,7 +191,7 @@ It includes code changes, database migrations, and test updates to prevent regre
 - Identify rows where `policy_question` is not valid JSONB.
 - Set invalid values to NULL (or re-parse if safely detectable).
 
-### Consolidation (Release v0.40.4-alpha)
+### Consolidation (Release v0.40.5-alpha)
 - Combine migrations **1–3** and the *arr backfill into a single migration file:
   - `database/migrations/069_discord_arr_fixes.sql`
 
@@ -236,7 +236,7 @@ It includes code changes, database migrations, and test updates to prevent regre
 
 ## Release Notes & Changelog
 - Update `CHANGELOG.md` with technical changes (DB migrations, routing logic, Discord fallback fixes).
-- Update `RELEASE_NOTES.md` with high-level user-facing changes for **v0.40.4-alpha**.
+- Update `RELEASE_NOTES.md` with high-level user-facing changes for **v0.40.5-alpha**.
 
 ## Rollback Plan
 - Revert to previous container tag if issues appear.

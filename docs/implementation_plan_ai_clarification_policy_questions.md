@@ -330,6 +330,6 @@ Key rules:
 - Libraries with very close scores: ensure deterministic ordering for options.
 - Policy question payload format must remain stable for Discord and web UI.
 
-## Release Notes Checklist (v0.40.4-alpha follow-up)
+## Release Notes Checklist (v0.40.5-alpha follow-up)
 - Clarification questions now policy-driven.
 - Language prompts suppressed unless language policies exist or language is unknown.

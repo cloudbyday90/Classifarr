@@ -25,24 +25,14 @@
 ## Release Steps
 1) Update `RELEASE_NOTES.md` with new version entry.
 2) Update `CHANGELOG.md` if required by repo conventions.
-3) Verify version references (server/client package.json if needed).
-4) Tag the release.
+3) Update version references across server, client, UI display, and any docs that should mention the new version.
+4) Verify version references are consistent (search for the previous version string).
+5) Tag the release.
 
 ## Post-Release Verification
-- Verify key flows for this release (see “Release-Specific Checks” below).
-- Monitor logs for regressions (routing errors, webhook failures, AI errors).
+- Confirm deployment is live (version display and health endpoints).
+- Run a short production smoke (auth/login, classification, routing, webhook ingest).
+- Monitor logs and alerts for regressions (routing errors, webhook failures, AI errors).
+- Check metrics for error rate spikes, queue backlogs, and slowdowns.
+- Validate rollback path is ready if issues appear.
 
-## Release-Specific Checks (Fill Per Release)
-For each release, copy the release-specific checks from the active implementation plan into this section.
-Implementation plan: <fill>
-### Highlights / Changes
-- <fill>
-
-### Manual Smoke Tests
-- <fill>
-
-### Observability
-- <fill>
-
-### Links
-- <fill>
