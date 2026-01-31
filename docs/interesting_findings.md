@@ -87,3 +87,10 @@ These are candidates for future releases.
 - Sync-lock integration tests log `Library 999999 not found` when exercising error paths.
 - Impact: error logs in CI output for expected negative tests.
 - Follow-up: in tests, mock logger or mark expected error logs to reduce noise without hiding real failures.
+
+## 2026-01-31
+
+### Integration test log noise persists in v0.40.5c-alpha
+- Reconfirmed expected log output in integration runs: deprecated `detectEventContent`, legacy migration FK errors, and `Library 999999 not found`.
+- Impact: CI output remains noisy even when tests pass.
+- Follow-up: see 2026-01-30 items; no new action beyond existing follow-ups.

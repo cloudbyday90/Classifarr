@@ -17,10 +17,7 @@
 2) Client tests: `npm --prefix client test`
 3) Integration tests: `npm --prefix server run test:integration`
 4) Optional build: `npm --prefix client run build`
-5) Manual smoke (update per release):
-   - Verify Discord verification flow (Yes/No) completes without constraint errors.
-   - Confirm system version displays v0.40.5c-alpha.
-6) Document test run warnings/errors in `docs/interesting_findings.md`.
+5) Document test run warnings/errors in `docs/interesting_findings.md`.
    - Only add NEW non-breaking findings discovered during this release cycle.
 
 ## Release Steps
