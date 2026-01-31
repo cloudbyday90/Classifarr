@@ -1,6 +1,6 @@
 ﻿﻿# Classifarr Release Notes
 
-## v0.40.5b-alpha
+## v0.40.5c-alpha
 
 **Title: Discord Verification Fix**
 
@@ -9,6 +9,7 @@
 - **User Verification**: Fixed "Failed to process verification" error when clicking "Yes, Correct" or "No, Choose Different" in Discord.
   - Added specific error logging to ephemeral replies for better debugging.
   - Handled cases where `library_id` is missing in AI-classified items to prevent database errors.
+- **Post-Migration Constraint Fix**: Added a new migration that expands `classification_history` status values to include `verified` and `reclassified` for existing installs.
 
 ## v0.40.5a-alpha
 
@@ -21,6 +22,7 @@
 - **Dashboard Visibility**: Added a banner when pgvector is running in generic mode so users can confirm CPU compatibility status.
 - **Build Portability**: Generic pgvector builds now follow upstream guidance (`OPTFLAGS=""`) for maximum CPU compatibility.
 - **Upgrade Recovery Marker**: Startup now records the previous version and runs a one-time PostgreSQL restart when upgrading from v0.40.5-alpha.
+- **Verification Constraint Fix**: `classification_history` now accepts verification/reclassification status values to prevent constraint errors.
 
 ## v0.40.5-alpha
 

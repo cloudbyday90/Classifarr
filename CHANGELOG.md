@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.40.5b-alpha] - 2026-01-30
+## [0.40.5c-alpha] - 2026-01-30
 
 ### Fixed
 
 - Discord verification buttons now handle missing library IDs gracefully and report specific errors.
+- Post-migration fix for `classification_history` status constraint to allow verification/reclassification states.
 
 ## [0.40.5a-alpha] - 2026-01-30
 
@@ -21,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dashboard banner to indicate when pgvector is running in generic (non-AVX) mode.
 - Generic pgvector builds now use upstream-recommended `OPTFLAGS=""` for portability.
 - Added AVX2 pgvector variant and prefer it when supported for best performance.
+
+### Fixed
+
+- Allow verification and reclassification status values in `classification_history` to prevent constraint errors during confirmations.
 
 ## [0.40.5-alpha] - 2026-01-30
 

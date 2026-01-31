@@ -1,10 +1,10 @@
 # Release Checklist (Template)
 
 ## Release Metadata
-- Version: <fill>
-- Date: <fill>
-- Owner: <fill>
-- Scope/Highlights: <fill>
+- Version: v0.40.5c-alpha
+- Date: 2026-01-31
+- Owner: Moreland
+- Scope/Highlights: Discord verification constraint fix via post-migration update.
 
 ## Preconditions
 - Implementation plan complete and signed off.
@@ -18,7 +18,8 @@
 3) Integration tests: `npm --prefix server run test:integration`
 4) Optional build: `npm --prefix client run build`
 5) Manual smoke (update per release):
-   - <fill>
+   - Verify Discord verification flow (Yes/No) completes without constraint errors.
+   - Confirm system version displays v0.40.5c-alpha.
 6) Document test run warnings/errors in `docs/interesting_findings.md`.
    - Only add NEW non-breaking findings discovered during this release cycle.
 

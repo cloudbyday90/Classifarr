@@ -132,7 +132,7 @@
     </div>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.40.5b-alpha</div>
+      <div>v0.40.5c-alpha</div>
     </div>
   </aside>
 </template>
