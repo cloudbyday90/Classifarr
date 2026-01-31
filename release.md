@@ -1,10 +1,10 @@
 # Release Checklist (Template)
 
 ## Release Metadata
-- Version: v0.40.5c-alpha
-- Date: 2026-01-31
+- Version: v0.40.5d-alpha
+- Date: 2026-01-30
 - Owner: Moreland
-- Scope/Highlights: Discord verification constraint fix via post-migration update.
+- Scope/Highlights: Respect *arr quality profile selection during routing.
 
 ## Preconditions
 - Implementation plan complete and signed off.

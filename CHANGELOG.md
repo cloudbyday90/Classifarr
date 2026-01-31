@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.5d-alpha] - 2026-01-30
+
+### Fixed
+
+- Radarr/Sonarr routing now respects configured quality profiles by coercing IDs and falling back to instance config profiles before defaults.
+
 ## [0.40.5c-alpha] - 2026-01-30
 
 ### Fixed

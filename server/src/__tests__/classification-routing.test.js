@@ -236,4 +236,178 @@ describe('ClassificationService - routeToArr mapping fallback', () => {
       })
     );
   });
+
+  test('falls back to Radarr config quality profile when library settings are missing', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 9,
+        url: 'http://radarr:7878',
+        api_key: 'radarr-key',
+        quality_profile_id: 11,
+        is_active: true
+      }]
+    });
+
+    radarrService.addMovie.mockResolvedValueOnce({});
+
+    await classificationService.routeToArr(
+      {
+        title: 'Config Profile Movie',
+        tmdb_id: 321,
+        year: 2025
+      },
+      {
+        id: 12,
+        arr_type: 'radarr',
+        arr_id: 9,
+        radarr_settings: {},
+        root_folder: '/movies',
+        quality_profile_id: null
+      }
+    );
+
+    expect(radarrService.addMovie).toHaveBeenCalledWith(
+      'http://radarr:7878',
+      'radarr-key',
+      expect.objectContaining({
+        rootFolderPath: '/movies',
+        qualityProfileId: 11
+      })
+    );
+  });
+
+  test('coerces Radarr quality profile IDs to numbers', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 10,
+        url: 'http://radarr:7878',
+        api_key: 'radarr-key',
+        quality_profile_id: 12,
+        is_active: true
+      }]
+    });
+
+    radarrService.addMovie.mockResolvedValueOnce({});
+
+    await classificationService.routeToArr(
+      {
+        title: 'String Profile Movie',
+        tmdb_id: 555,
+        year: 2024
+      },
+      {
+        id: 14,
+        arr_type: 'radarr',
+        arr_id: 10,
+        radarr_settings: {
+          root_folder_path: '/movies',
+          quality_profile_id: '12'
+        }
+      }
+    );
+
+    expect(radarrService.addMovie).toHaveBeenCalledWith(
+      'http://radarr:7878',
+      'radarr-key',
+      expect.objectContaining({
+        qualityProfileId: 12
+      })
+    );
+  });
+
+  test('falls back to Sonarr config quality profile when library settings are missing', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 6,
+        url: 'http://sonarr:8989',
+        api_key: 'sonarr-key',
+        quality_profile_id: 22,
+        is_active: true
+      }]
+    });
+
+    tmdbService.getExternalIds.mockResolvedValueOnce({ tvdb_id: 222 });
+    sonarrService.searchSeries.mockResolvedValueOnce([
+      {
+        tvdbId: 222,
+        title: 'Config Profile Show',
+        seasons: [
+          { seasonNumber: 1, monitored: false }
+        ]
+      }
+    ]);
+    sonarrService.addSeries.mockResolvedValueOnce({});
+
+    await classificationService.routeToArr(
+      {
+        title: 'Config Profile Show',
+        tmdb_id: 111
+      },
+      {
+        id: 13,
+        arr_type: 'sonarr',
+        arr_id: 6,
+        sonarr_settings: {},
+        root_folder: '/tv',
+        quality_profile_id: null
+      }
+    );
+
+    expect(sonarrService.addSeries).toHaveBeenCalledWith(
+      'http://sonarr:8989',
+      'sonarr-key',
+      expect.objectContaining({
+        rootFolderPath: '/tv',
+        qualityProfileId: 22
+      })
+    );
+  });
+
+  test('coerces Sonarr quality profile IDs to numbers', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 7,
+        url: 'http://sonarr:8989',
+        api_key: 'sonarr-key',
+        quality_profile_id: 33,
+        is_active: true
+      }]
+    });
+
+    tmdbService.getExternalIds.mockResolvedValueOnce({ tvdb_id: 333 });
+    sonarrService.searchSeries.mockResolvedValueOnce([
+      {
+        tvdbId: 333,
+        title: 'String Profile Show',
+        seasons: [
+          { seasonNumber: 1, monitored: false }
+        ]
+      }
+    ]);
+    sonarrService.addSeries.mockResolvedValueOnce({});
+
+    await classificationService.routeToArr(
+      {
+        title: 'String Profile Show',
+        tmdb_id: 444
+      },
+      {
+        id: 15,
+        arr_type: 'sonarr',
+        arr_id: 7,
+        sonarr_settings: {
+          root_folder_path: '/tv',
+          quality_profile_id: '33'
+        }
+      }
+    );
+
+    expect(sonarrService.addSeries).toHaveBeenCalledWith(
+      'http://sonarr:8989',
+      'sonarr-key',
+      expect.objectContaining({
+        qualityProfileId: 33
+      })
+    );
+  });
 });

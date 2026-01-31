@@ -1850,6 +1850,10 @@ Think step by step, then respond with ONLY one of the formats above.`;
           if (!settings.root_folder_path) {
             settings.root_folder_path = await this.resolveDefaultRootFolder('radarr', baseUrl, config.api_key);
           }
+          settings.quality_profile_id = this.normalizeQualityProfileId(settings.quality_profile_id);
+          if (!settings.quality_profile_id) {
+            settings.quality_profile_id = this.normalizeQualityProfileId(config.quality_profile_id);
+          }
           if (!settings.quality_profile_id) {
             settings.quality_profile_id = await this.resolveDefaultQualityProfile('radarr', baseUrl, config.api_key);
           }
@@ -1906,6 +1910,10 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
           if (!settings.root_folder_path) {
             settings.root_folder_path = await this.resolveDefaultRootFolder('sonarr', baseUrl, config.api_key);
+          }
+          settings.quality_profile_id = this.normalizeQualityProfileId(settings.quality_profile_id);
+          if (!settings.quality_profile_id) {
+            settings.quality_profile_id = this.normalizeQualityProfileId(config.quality_profile_id);
           }
           if (!settings.quality_profile_id) {
             settings.quality_profile_id = await this.resolveDefaultQualityProfile('sonarr', baseUrl, config.api_key);
@@ -2056,6 +2064,12 @@ Think step by step, then respond with ONLY one of the formats above.`;
       }
     }
     return settings;
+  }
+
+  normalizeQualityProfileId(value) {
+    if (value === null || value === undefined) return null;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
   normalizePolicyQuestion(value) {

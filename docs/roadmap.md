@@ -275,4 +275,4 @@ Have ideas for features or improvements? Please open an issue on GitHub or join 
 ---
 
 **Last Updated**: 2026-01-30  
-**Current Version**: v0.40.5c-alpha
+**Current Version**: v0.40.5d-alpha

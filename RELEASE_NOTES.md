@@ -1,5 +1,13 @@
 ﻿﻿# Classifarr Release Notes
 
+## v0.40.5d-alpha
+
+**Title: *arr Quality Profile Respect Fix**
+
+### Fixes
+
+- **Quality Profile Routing**: Radarr/Sonarr add requests now coerce `qualityProfileId` to a valid numeric ID and fall back to the instance config profile before defaulting, preventing "Any" quality selection when a profile is configured.
+
 ## v0.40.5c-alpha
 
 **Title: Discord Verification Fix**
