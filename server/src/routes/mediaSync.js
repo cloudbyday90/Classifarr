@@ -75,7 +75,7 @@ router.post('/sync/:libraryId', requireReadWrite, async (req, res) => {
 });
 
 /**
- * @route GET /api/media-sync/items/{libraryId}
+ * @route GET /api/media-sync/items/:libraryId
  * @desc Get synced items for a library
  * @param {number} libraryId.path.required - Library ID
  * @returns {object} 200 - List of items with pagination
