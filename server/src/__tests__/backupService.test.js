@@ -16,6 +16,20 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Mock fs module to avoid environment-specific filesystem behavior
+jest.mock('fs', () => ({
+  promises: {
+    mkdir: jest.fn(),
+    writeFile: jest.fn(),
+    readFile: jest.fn(),
+    readdir: jest.fn(),
+    unlink: jest.fn(),
+    access: jest.fn(),
+    stat: jest.fn(),
+  }
+}));
+
+const fs = require('fs').promises;
 const backupService = require('../services/backupService');
 
 describe('BackupService - Encryption/Decryption', () => {
@@ -111,6 +125,16 @@ describe('BackupService - Encryption/Decryption', () => {
 });
 
 describe('BackupService - Password Validation', () => {
+  beforeEach(() => {
+    // Reset all mocks before each test
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    // Clean up after each test
+    jest.resetAllMocks();
+  });
+
   test('should reject password shorter than 8 characters', async () => {
     await expect(
       backupService.createBackup({
@@ -119,17 +143,28 @@ describe('BackupService - Password Validation', () => {
         includePatterns: false
       })
     ).rejects.toThrow('Password must be at least 8 characters');
+    
+    // Should fail before attempting directory creation
+    expect(fs.mkdir).not.toHaveBeenCalled();
   });
 
   test('should accept password with exactly 8 characters', async () => {
-    // This will fail at ensureBackupDirectory in test environment, but validates password
+    // Mock directory creation to fail so we can verify password validation passed
+    fs.mkdir.mockRejectedValue({
+      code: 'EACCES',
+      message: 'Permission denied'
+    });
+    
     await expect(
       backupService.createBackup({
         encrypted: true,
         password: '12345678',
         includePatterns: false
       })
-    ).rejects.toThrow(); // Will throw directory error, not password error
+    ).rejects.toThrow('Failed to create backup directory');
+    
+    // Password validation should pass, so mkdir should be called
+    expect(fs.mkdir).toHaveBeenCalled();
   });
 
   test('should reject empty password for encrypted backup', async () => {
@@ -140,16 +175,27 @@ describe('BackupService - Password Validation', () => {
         includePatterns: false
       })
     ).rejects.toThrow('Password must be at least 8 characters');
+    
+    // Should fail before attempting directory creation
+    expect(fs.mkdir).not.toHaveBeenCalled();
   });
 
   test('should allow plaintext backup without password', async () => {
-    // This will fail at ensureBackupDirectory, but validates password logic
+    // Mock directory creation to fail so we can verify password validation passed
+    fs.mkdir.mockRejectedValue({
+      code: 'EACCES',
+      message: 'Permission denied'
+    });
+    
     await expect(
       backupService.createBackup({
         encrypted: false,
         includePatterns: false
       })
-    ).rejects.toThrow(); // Will throw directory error, not password error
+    ).rejects.toThrow('Failed to create backup directory');
+    
+    // Password validation should pass (no password required for plaintext), so mkdir should be called
+    expect(fs.mkdir).toHaveBeenCalled();
   });
 });
 
