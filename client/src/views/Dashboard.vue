@@ -223,20 +223,36 @@
         <Card title="Quick Actions">
           <div class="grid grid-cols-2 gap-3">
             <router-link 
-              to="/request" 
-              class="p-4 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-lg text-center transition-colors touch-manipulation"
-              aria-label="Classify media content"
+              :to="canClassifyMedia ? '/request' : '#'"
+              :class="[
+                'p-4 border rounded-lg text-center transition-colors touch-manipulation',
+                canClassifyMedia 
+                  ? 'bg-primary/10 hover:bg-primary/20 border-primary/30' 
+                  : 'bg-gray-700/30 border-gray-600 opacity-50 pointer-events-none'
+              ]"
+              :aria-label="canClassifyMedia ? 'Classify media content' : 'Classify media (AI Provider required)'"
+              :title="!canClassifyMedia ? 'Configure AI Provider to enable this feature' : undefined"
             >
-              <div class="text-2xl mb-2" aria-hidden="true">🎬</div>
+              <div class="text-2xl mb-2" aria-hidden="true">
+                <span v-if="!canClassifyMedia">🔒 </span>🎬
+              </div>
               <div class="text-sm font-semibold">Classify Media</div>
             </router-link>
             
             <router-link 
-              to="/libraries" 
-              class="p-4 bg-green-900/20 hover:bg-green-900/30 border border-green-700/30 rounded-lg text-center transition-colors touch-manipulation"
-              aria-label="Manage your media libraries"
+              :to="canManageLibraries ? '/libraries' : '#'"
+              :class="[
+                'p-4 border rounded-lg text-center transition-colors touch-manipulation',
+                canManageLibraries
+                  ? 'bg-green-900/20 hover:bg-green-900/30 border-green-700/30'
+                  : 'bg-gray-700/30 border-gray-600 opacity-50 pointer-events-none'
+              ]"
+              :aria-label="canManageLibraries ? 'Manage your media libraries' : 'Manage Libraries (Media Server required)'"
+              :title="!canManageLibraries ? 'Configure Media Server to enable this feature' : undefined"
             >
-              <div class="text-2xl mb-2" aria-hidden="true">📚</div>
+              <div class="text-2xl mb-2" aria-hidden="true">
+                <span v-if="!canManageLibraries">🔒 </span>📚
+              </div>
               <div class="text-sm font-semibold">Manage Libraries</div>
             </router-link>
             
@@ -350,6 +366,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDocumentVisibility } from '@vueuse/core'
 import { useLibrariesStore } from '@/stores/libraries'
+import { useServiceRequirements } from '@/composables/useServiceRequirements'
 import { useSWR } from '@/composables/useSWR'
 import { CACHE_KEYS, CACHE_TTL, POLL_INTERVALS } from '@/constants/cacheKeys'
 import api from '@/api'
@@ -363,6 +380,10 @@ import PgvectorVariantBanner from '@/components/PgvectorVariantBanner.vue'
 const router = useRouter()
 const librariesStore = useLibrariesStore()
 const visibility = useDocumentVisibility()
+
+// Service requirements for Quick Actions
+const { canUseFeature: canClassifyMedia } = useServiceRequirements(['aiProvider'])
+const { canUseFeature: canManageLibraries } = useServiceRequirements(['mediaServer'])
 
 // Constants
 const GITHUB_WIKI_URL = 'https://github.com/cloudbyday90/Classifarr/wiki'

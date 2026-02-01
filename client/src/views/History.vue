@@ -12,8 +12,13 @@
       <h1 class="text-2xl font-bold">Classification History</h1>
       <div v-if="selectedItems.length > 0" class="flex items-center gap-3">
         <span class="text-sm text-gray-400">{{ selectedItems.length }} selected</span>
-        <Button @click="showBatchModal = true" variant="warning">
-          🔄 Batch Reclassify
+        <Button 
+          @click="handleBatchReclassifyClick" 
+          variant="warning"
+          :disabled="!canReclassify"
+          :title="!canReclassify ? lockdownTooltip : undefined"
+        >
+          <span v-if="!canReclassify">🔒 </span>🔄 Batch Reclassify
         </Button>
         <Button @click="clearSelection" variant="secondary" size="sm">
           Clear
@@ -301,6 +306,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useLibrariesStore } from '@/stores/libraries'
+import { useServiceRequirements } from '@/composables/useServiceRequirements'
+import { useServiceLockdownToast } from '@/composables/useServiceLockdownToast'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
@@ -311,6 +318,10 @@ import SignalRow from '@/components/history/SignalRow.vue'
 
 const librariesStore = useLibrariesStore()
 const libraries = computed(() => librariesStore.libraries)
+
+// Service lockdown for AI provider
+const { canUseFeature: canReclassify, lockdownTooltip, firstUnavailableService } = useServiceRequirements(['aiProvider'])
+const { showLockdownNotification } = useServiceLockdownToast()
 
 const history = ref([])
 const loading = ref(true)
@@ -352,6 +363,16 @@ const toggleSelectAll = () => {
 
 const clearSelection = () => {
   selectedItems.value = []
+}
+
+const handleBatchReclassifyClick = () => {
+  // Check if AI provider is available
+  if (!canReclassify.value) {
+    showLockdownNotification(firstUnavailableService.value)
+    return
+  }
+  
+  showBatchModal.value = true
 }
 
 const onBatchComplete = () => {
