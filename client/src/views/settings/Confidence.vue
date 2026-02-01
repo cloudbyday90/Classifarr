@@ -37,7 +37,7 @@
             <label class="font-medium">Auto-Classify Threshold</label>
             <span class="text-2xl font-bold text-green-400">{{ policySettings.autoClassifyThreshold }}%</span>
           </div>
-          <p class="text-sm text-gray-400">Items scoring at or above this confidence are automatically routed without user intervention</p>
+          <p class="text-sm text-gray-400">High-confidence items above this threshold are automatically classified, saving you time on obvious matches.</p>
           <Slider
             v-model="policySettings.autoClassifyThreshold"
             :min="70"
@@ -53,7 +53,7 @@
             <label class="font-medium">Policy Builder Threshold</label>
             <span class="text-2xl font-bold text-yellow-400">{{ policySettings.promptThreshold }}%</span>
           </div>
-          <p class="text-sm text-gray-400">Items below this threshold show detailed signal breakdown and trigger the policy builder workflow. Items between this and auto-classify threshold prompt for Yes/No confirmation.</p>
+          <p class="text-sm text-gray-400">Low-confidence items (below this threshold) guide you through creating classification rules, so the system learns and improves over time.</p>
           <Slider
             v-model="policySettings.promptThreshold"
             :min="40"
@@ -66,6 +66,18 @@
         <!-- Validation Warning -->
         <div v-if="!isValid" class="p-3 bg-red-900/30 text-red-400 rounded-lg text-sm border border-red-500/30">
           ⚠️ Invalid configuration: Auto-classify threshold must be at least 5% higher than policy builder threshold.
+        </div>
+
+        <!-- How It Works Summary -->
+        <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+          <div class="flex items-start gap-3">
+            <div class="text-blue-400 text-xl">ℹ️</div>
+            <div class="flex-1">
+              <p class="text-sm text-gray-300">
+                <span class="font-semibold text-blue-400">How it works:</span> Items scoring {{ policySettings.autoClassifyThreshold }}% or higher are auto-classified. Items between {{ policySettings.promptThreshold }}% - {{ policySettings.autoClassifyThreshold - 1 }}% prompt you for Yes/No confirmation. Items below {{ policySettings.promptThreshold }}% guide you through the Policy Builder to create rules.
+              </p>
+            </div>
+          </div>
         </div>
 
         <!-- Threshold Ranges Visual -->
@@ -84,7 +96,7 @@
             <div class="text-yellow-400 text-2xl">?</div>
             <div class="flex-1">
               <div class="font-medium text-yellow-400">Prompt Confirm ({{ policySettings.promptThreshold }}% - {{ Math.max(policySettings.autoClassifyThreshold - 1, policySettings.promptThreshold) }}%)</div>
-              <div class="text-sm text-gray-400">Ask "Is this correct?"</div>
+              <div class="text-sm text-gray-400">Medium-confidence items prompt you for quick Yes/No confirmation before routing.</div>
             </div>
           </div>
           
