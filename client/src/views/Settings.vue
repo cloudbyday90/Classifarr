@@ -116,6 +116,7 @@ import OMDb from './settings/OMDb.vue'
 import RatingNormalization from './settings/RatingNormalization.vue'
 import RAGSettings from './RAGSettings.vue'
 import Security from './settings/Security.vue'
+import Profile from './settings/Profile.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -166,6 +167,7 @@ const settingsGroups = [
   {
     name: 'System',
     tabs: [
+      { id: 'profile', label: 'Profile', icon: '👤', component: Profile },
       { id: 'security', label: 'Security', icon: '🔑', component: Security },
       { id: 'backup', label: 'Backup', icon: '💾', component: Backup },
       { id: 'ssl', label: 'SSL/HTTPS', icon: '🔒', component: SSL },

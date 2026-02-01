@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **User Profile Settings Page**: New profile management interface (#187)
+  - View and edit username with uniqueness validation
+  - Secure password change with current password verification
+  - Password strength requirements enforced (8+ chars, uppercase, lowercase, number, special char)
+  - Current session information display (IP, browser, login time, account creation date)
+  - User role display (Admin/User) in account information section
+  - Link to API Keys management in Security settings
+  - Show/hide password toggles for improved UX
+  - Full accessibility support (ARIA labels, keyboard navigation, visible focus states)
+  - Audit logging for all profile changes (username updates, password changes)
+  - Rate limiting on profile update endpoints (10 requests per hour)
+  - Backend routes: `GET /api/user/me`, `PATCH /api/user/profile`, `PATCH /api/user/password`, `GET /api/auth/session`
+  - Comprehensive backend integration tests for all profile operations
+  - **Full backward compatibility**: Existing admin and user accounts can immediately use the profile page to update their credentials
+
+
 ### Changed
 
 - **Dashboard UX Improvements**: Major polish and efficiency upgrades

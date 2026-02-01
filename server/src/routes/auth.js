@@ -163,4 +163,29 @@ router.post('/logout', authenticateToken, authLimiter, async (req, res) => {
   }
 });
 
+/**
+ * Get current session info
+ */
+router.get('/session', authenticateToken, authLimiter, async (req, res) => {
+  try {
+    const user = await db.query(
+      'SELECT last_login, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    if (user.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({
+      started: user.rows[0].last_login,
+      ip: req.ip || req.socket.remoteAddress,
+      userAgent: req.get('User-Agent'),
+      createdAt: user.rows[0].created_at
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

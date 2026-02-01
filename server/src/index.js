@@ -70,8 +70,10 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // API Routes
+const userRouter = require('./routes/user');
 app.use('/api/setup', setupRouter);  // Setup routes (no auth required)
 app.use('/api/auth', authRouter);    // Auth routes
+app.use('/api/user', userRouter);    // User profile routes (auth required)
 app.use('/api/system', systemRouter); // System routes (auth required)
 app.use('/api', apiRouter);
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

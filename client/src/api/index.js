@@ -57,6 +57,9 @@ export default {
   put(url, data, config) {
     return apiClient.put(url, data, config)
   },
+  patch(url, data, config) {
+    return apiClient.patch(url, data, config)
+  },
   delete(url, config) {
     return apiClient.delete(url, config)
   },

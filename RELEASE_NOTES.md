@@ -4,6 +4,19 @@
 
 **Title: Event Detection System Removal**
 
+### Added
+
+- **👤 Profile Settings**: New user profile management page
+  - Easily update your username with uniqueness validation
+  - Change your password securely with current password verification and strength requirements
+  - View your current session information (IP address, browser, login time, account creation date)
+  - See your user role (Administrator or User) in your account information
+  - Quick access to API key management through Security settings
+  - Show/hide password toggles for better security and usability
+  - Fully accessible with keyboard navigation and screen reader support
+  - All profile changes are automatically logged for security auditing
+  - **Works seamlessly with existing accounts**: Admin and user accounts from previous versions can immediately use the new profile page to manage their credentials
+
 ### Improved
 
 - **Dashboard Experience**: Completely refreshed dashboard with better performance and UX

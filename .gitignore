@@ -8,6 +8,10 @@ data/
 local_test_*.js
 *.local.js
 
+# Production build
+/client/dist/
+/server/public/
+
 # Test output files
 test_output*.txt
 test_results*.json
