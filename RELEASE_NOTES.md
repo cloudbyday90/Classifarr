@@ -2,9 +2,44 @@
 
 ## [Unreleased] v0.41.0-alpha
 
-**Title: Discord Intelligence & Learning + Unified Confidence Settings + Event Detection System Removal**
+**Title: Discord Intelligence & Learning + Unified Confidence Settings + Backup & Restore + Event Detection System Removal**
 
 ### Added
+
+- **💾 Backup & Restore System** (#186)
+  - **Encrypted by Default**: AES-256-GCM encryption with PBKDF2 key derivation (100k iterations)
+  - **Complete Configuration Backup**: 
+    - ✅ Users (usernames, roles)
+    - ✅ Service connections (Plex, Emby, Jellyfin, Radarr, Sonarr with API keys)
+    - ✅ Libraries, policies, custom rules, presets
+    - ✅ Confidence settings and auto-learned preferences
+    - ✅ Scheduled tasks, path mappings
+    - ✅ Discovered patterns (optional)
+  - **What's NOT Backed Up**:
+    - ❌ Classification history and statistics
+    - ❌ Embeddings and queue state
+    - ❌ User passwords (must be reset after restore)
+    - ❌ Classifarr API keys (regenerated on restore)
+  - **Restore Modes**:
+    - 🔄 **Replace Mode**: Wipe existing config and restore from backup (default)
+    - 🔀 **Merge Mode**: Keep existing data, add items from backup
+  - **Preview Before Restore**: See what will be restored before applying
+  - **Backup Management**:
+    - 📋 List all backups with type, size, and date
+    - ⬇️ Download backup files
+    - 🗑️ Delete old backups
+  - **Complete Audit Trail**: All backup operations logged with user, IP, timestamp
+  - **Security Features**:
+    - 🔐 Password strength validation (minimum 8 characters)
+    - ⚠️ Security warning for plaintext backups
+    - 🔑 New API keys generated on restore for security
+  - **Storage**: Backups stored in `/app/data/backups`
+  - **UI**: Settings → System → Backup & Restore
+  - **For Users**: Protect your configuration with encrypted backups
+  - **For Users**: Easily migrate between installations
+  - **For Admins**: Complete control over backup/restore operations
+  - **Technical**: New tables (`backup_audit`, `backup_schedules`)
+  - **Technical**: New service (`backupService.js`) with encryption utilities
 
 - **🎛️ Unified Confidence Settings Page** (#241)
   - **Comprehensive Control Center**: Single page for all confidence thresholds

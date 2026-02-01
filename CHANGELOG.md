@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Backup & Restore System** (Fixes #186)
+  - Encrypted config backups with AES-256-GCM encryption
+  - Export/import with replace or merge modes
+  - Complete audit trail of all backup operations
+  - Settings → System → Backup & Restore UI
+  - Backups stored in `/app/data/backups`
+  - What's backed up: Users, services, libraries, policies, settings, auto-learned preferences
+  - What's not backed up: History, statistics, embeddings, API keys (regenerated on restore)
+  - Password-protected encrypted backups (default, min 8 characters)
+  - Plaintext backup option with security warning
+  - Backup preview before restore showing item counts
+  - Replace mode: wipe config tables and restore from backup
+  - Merge mode: keep existing data, add items from backup
+  - List, download, and delete backups from UI
+  - New database tables: `backup_audit`, `backup_schedules`
+  - New service: `backupService.js` with encryption/decryption utilities
 - **Comprehensive Confidence Settings Page** (Fixes #241)
   - Unified UI for all confidence thresholds (policy, Discord, learning)
   - Visual sliders with real-time threshold previews
