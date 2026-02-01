@@ -400,7 +400,11 @@ class BackupService {
         for (const server of backupData.data.mediaServers) {
           await client.query(
             `INSERT INTO media_server (type, name, url, api_key, is_active) 
-             VALUES ($1, $2, $3, $4, $5)`,
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (type, name) DO UPDATE SET
+               url = EXCLUDED.url,
+               api_key = EXCLUDED.api_key,
+               is_active = EXCLUDED.is_active`,
             [server.type, server.name, server.url, server.api_key, server.is_active]
           );
         }
@@ -417,8 +421,11 @@ class BackupService {
           const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
           
           if (keys.length > 0) {
+            // Use name as the conflict key for radarr_config
+            const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
             await client.query(
-              `INSERT INTO radarr_config (${keys.join(', ')}) VALUES (${placeholders})`,
+              `INSERT INTO radarr_config (${keys.join(', ')}) VALUES (${placeholders})
+               ON CONFLICT (name) DO UPDATE SET ${updateClauses}`,
               values
             );
           }
@@ -435,8 +442,11 @@ class BackupService {
           const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
           
           if (keys.length > 0) {
+            // Use name as the conflict key for sonarr_config
+            const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
             await client.query(
-              `INSERT INTO sonarr_config (${keys.join(', ')}) VALUES (${placeholders})`,
+              `INSERT INTO sonarr_config (${keys.join(', ')}) VALUES (${placeholders})
+               ON CONFLICT (name) DO UPDATE SET ${updateClauses}`,
               values
             );
           }
@@ -455,8 +465,13 @@ class BackupService {
           const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
           
           if (keys.length > 0) {
+            // Use name and type as conflict key (based on libraries_name_media_type_unique constraint)
+            // In merge mode, update the library if it exists, otherwise insert
+            const updateClauses = keys.filter(k => k !== 'name' && k !== 'type').map(k => `${k} = EXCLUDED.${k}`).join(', ');
             const result = await client.query(
-              `INSERT INTO libraries (${keys.join(', ')}) VALUES (${placeholders}) RETURNING id`,
+              `INSERT INTO libraries (${keys.join(', ')}) VALUES (${placeholders})
+               ON CONFLICT (name, media_type) DO UPDATE SET ${updateClauses}
+               RETURNING id`,
               values
             );
             libraryIdMap.set(oldId, result.rows[0].id);
@@ -473,7 +488,10 @@ class BackupService {
           const { id, library_id, created_at, updated_at, ...data } = policy;
           await client.query(
             `INSERT INTO library_policies (library_id, policy_type, policy_data, is_active) 
-             VALUES ($1, $2, $3, $4)`,
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (library_id, policy_type) DO UPDATE SET
+               policy_data = EXCLUDED.policy_data,
+               is_active = EXCLUDED.is_active`,
             [newLibraryId, data.policy_type, data.policy_data, data.is_active]
           );
         }
@@ -487,7 +505,11 @@ class BackupService {
           
           await client.query(
             `INSERT INTO library_custom_rules (library_id, name, description, rule_json, is_active) 
-             VALUES ($1, $2, $3, $4, $5)`,
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (library_id, name) DO UPDATE SET
+               description = EXCLUDED.description,
+               rule_json = EXCLUDED.rule_json,
+               is_active = EXCLUDED.is_active`,
             [newLibraryId, rule.name, rule.description, rule.rule_json, rule.is_active]
           );
         }
@@ -498,7 +520,9 @@ class BackupService {
         for (const preset of backupData.data.labelPresets) {
           const { id, created_at, ...data } = preset;
           await client.query(
-            `INSERT INTO label_presets (name, labels) VALUES ($1, $2)`,
+            `INSERT INTO label_presets (name, labels) VALUES ($1, $2)
+             ON CONFLICT (name) DO UPDATE SET
+               labels = EXCLUDED.labels`,
             [data.name, data.labels]
           );
         }
@@ -510,7 +534,11 @@ class BackupService {
           const newLibraryId = task.library_id ? libraryIdMap.get(task.library_id) : null;
           await client.query(
             `INSERT INTO scheduled_tasks (name, task_type, library_id, interval_minutes, enabled) 
-             VALUES ($1, $2, $3, $4, $5)`,
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (name, task_type) DO UPDATE SET
+               library_id = EXCLUDED.library_id,
+               interval_minutes = EXCLUDED.interval_minutes,
+               enabled = EXCLUDED.enabled`,
             [task.name, task.task_type, newLibraryId, task.interval_minutes, task.enabled]
           );
         }
@@ -525,7 +553,12 @@ class BackupService {
           await client.query(
             `INSERT INTO auto_learned_preferences 
              (library_id, policy_id, preference_type, preference_value, confidence_count, source, status) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (library_id, preference_type, preference_value) DO UPDATE SET
+               policy_id = EXCLUDED.policy_id,
+               confidence_count = EXCLUDED.confidence_count,
+               source = EXCLUDED.source,
+               status = EXCLUDED.status`,
             [newLibraryId, pref.policy_id, pref.preference_type, pref.preference_value, 
              pref.confidence_count, pref.source, pref.status]
           );
@@ -557,7 +590,10 @@ class BackupService {
           const { id, created_at, ...data } = mapping;
           await client.query(
             `INSERT INTO path_mappings (source_path, target_path, is_active) 
-             VALUES ($1, $2, $3)`,
+             VALUES ($1, $2, $3)
+             ON CONFLICT (source_path) DO UPDATE SET
+               target_path = EXCLUDED.target_path,
+               is_active = EXCLUDED.is_active`,
             [data.source_path, data.target_path, data.is_active]
           );
         }
@@ -651,7 +687,8 @@ class BackupService {
           
           await client.query(
             `INSERT INTO library_labels (library_id, label) 
-             VALUES ($1, $2)`,
+             VALUES ($1, $2)
+             ON CONFLICT (library_id, label) DO NOTHING`,
             [newLibraryId, label.label]
           );
         }
