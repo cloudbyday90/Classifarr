@@ -225,11 +225,11 @@ class MigrationRunner {
 
             if (!rows[0].exists) {
                 // FRESH INSTALL - Try schema snapshot first
+                const allFiles = this.getMigrationFiles();
                 const usedSnapshot = await this.initializeFreshInstall();
                 if (usedSnapshot) {
-                    // Count migrations from schema snapshot metadata
-                    const allFiles = this.getMigrationFiles();
-                    return { applied: 0, total: allFiles.length, method: 'snapshot' };
+                    // All migrations are marked as applied by the snapshot
+                    return { applied: allFiles.length, total: allFiles.length, method: 'snapshot' };
                 }
             }
 
