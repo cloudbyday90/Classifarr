@@ -240,6 +240,16 @@ docker run -d \
 | `TZ` | Timezone (e.g., `America/New_York`) | `UTC` |
 | `UMASK` | File permission mask | `022` |
 
+#### Migration Path Configuration (Advanced)
+
+If migrations fail to load in Docker, you can override the paths:
+
+```yaml
+environment:
+  - MIGRATIONS_DIR=/app/database/migrations
+  - SCHEMA_FILE=/app/database/schema/current.sql
+```
+
 > [!CAUTION]
 > **PUID/PGID Must Match Across All Containers**
 > 

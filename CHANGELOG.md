@@ -138,6 +138,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Migration Runner Path Resolution in Docker** (Fixes #259)
+  - Migration runner now uses `path.resolve()` instead of `path.join()` for absolute paths
+  - Added `MIGRATIONS_DIR` and `SCHEMA_FILE` environment variable support for custom paths
+  - Improved error logging with troubleshooting tips for Docker users
+  - Prevents "Migrations directory not found" errors in containerized environments
+  - Added unit tests for path resolution and migration sorting logic
 - **Plex OAuth Duplicate Servers Bug** (Fixes #257)
   - `/api/plex/save-server` now updates existing server instead of always inserting new one
   - Checks for existing server by URL before creating duplicate

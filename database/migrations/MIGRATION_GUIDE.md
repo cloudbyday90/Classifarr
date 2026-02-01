@@ -104,6 +104,50 @@ The snapshot is located at `database/schema/current.sql` and is auto-generated b
 - Before releasing a new version
 - When onboarding new developers (ensures fresh install works)
 
+## Troubleshooting Migration Path Issues
+
+### Docker Path Resolution
+
+If you see this error in Docker logs:
+```
+[Migrations] Migrations directory not found: /database/migrations
+```
+
+**Cause:** The migration runner couldn't resolve the path correctly.
+
+**Solutions:**
+
+1. **Environment Variable Override (Recommended):**
+   ```yaml
+   # docker-compose.yml
+   services:
+     classifarr:
+       environment:
+         - MIGRATIONS_DIR=/app/database/migrations
+         - SCHEMA_FILE=/app/database/schema/current.sql
+   ```
+
+2. **Verify Volume Mounts:**
+   ```yaml
+   volumes:
+     - ./database:/app/database
+   ```
+
+3. **Check Container Working Directory:**
+   ```bash
+   docker exec -it classifarr pwd
+   # Should output: /app
+   ```
+
+### Path Resolution Logic
+
+The migration runner uses `path.resolve(__dirname, '../../../database/migrations')` which:
+- Always produces an absolute path
+- Works correctly when `__dirname` = `/app/server/src/config`
+- Resolves to `/app/database/migrations`
+
+If your setup differs, use the `MIGRATIONS_DIR` environment variable.
+
 ## Naming Convention (Legacy)
 
 For reference only - do not use for new migrations:

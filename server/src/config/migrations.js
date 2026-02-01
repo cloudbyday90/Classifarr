@@ -101,8 +101,13 @@ function compareMigrations(a, b) {
  */
 class MigrationRunner {
     constructor() {
-        this.migrationsDir = path.join(__dirname, '../../../database/migrations');
-        this.schemaFile = path.join(__dirname, '../../../database/schema/current.sql');
+        // Use path.resolve() to always get absolute path, with optional env var override
+        this.migrationsDir = process.env.MIGRATIONS_DIR || path.resolve(__dirname, '../../../database/migrations');
+        this.schemaFile = process.env.SCHEMA_FILE || path.resolve(__dirname, '../../../database/schema/current.sql');
+        
+        // Log the resolved paths for debugging
+        logger.debug('[Migrations] Migrations directory: ' + this.migrationsDir);
+        logger.debug('[Migrations] Schema file: ' + this.schemaFile);
     }
 
     /**
@@ -201,7 +206,9 @@ class MigrationRunner {
      */
     getMigrationFiles() {
         if (!fs.existsSync(this.migrationsDir)) {
-            logger.warn('[Migrations] Migrations directory not found: ' + this.migrationsDir);
+            logger.error('[Migrations] ❌ Migrations directory not found: ' + this.migrationsDir);
+            logger.error('[Migrations] 💡 Tip: If running in Docker, set MIGRATIONS_DIR env var or check container path mounting');
+            logger.error('[Migrations] 💡 __dirname resolves to: ' + __dirname);
             return [];
         }
 
@@ -209,6 +216,7 @@ class MigrationRunner {
             .filter(f => f.endsWith('.sql'))
             .sort(compareMigrations);
 
+        logger.debug('[Migrations] Found ' + files.length + ' migration files in ' + this.migrationsDir);
         return files;
     }
 
