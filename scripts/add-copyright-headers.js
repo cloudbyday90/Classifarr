@@ -95,7 +95,23 @@ function addHeader(filePath) {
   const ext = filePath.split('.').pop();
   const header = HEADERS[ext] || HEADERS.js;
   
-  const newContent = header + content;
+  // Check if file starts with a shebang
+  let newContent;
+  if (content.startsWith('#!')) {
+    // Preserve shebang on first line
+    const firstLineEnd = content.indexOf('\n');
+    if (firstLineEnd !== -1) {
+      const shebang = content.substring(0, firstLineEnd + 1);
+      const restOfContent = content.substring(firstLineEnd + 1);
+      newContent = shebang + header + restOfContent;
+    } else {
+      // File only has shebang, no newline
+      newContent = content + '\n' + header;
+    }
+  } else {
+    newContent = header + content;
+  }
+  
   fs.writeFileSync(filePath, newContent, 'utf8');
   return true;
 }
