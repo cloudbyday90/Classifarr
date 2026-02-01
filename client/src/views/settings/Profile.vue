@@ -33,6 +33,14 @@
             {{ usernameError }}
           </div>
         </div>
+        
+        <div v-if="userRole" class="mb-4">
+          <label class="block text-sm font-medium mb-2">Role</label>
+          <div class="px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-400">
+            {{ userRole === 'admin' ? '👑 Administrator' : '👤 User' }}
+          </div>
+        </div>
+        
         <button
           type="submit"
           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -163,6 +171,7 @@ const toast = useToast()
 // Username state
 const username = ref('')
 const originalUsername = ref('')
+const userRole = ref('')
 const savingUsername = ref(false)
 const usernameError = ref('')
 
@@ -255,6 +264,7 @@ onMounted(async () => {
     const { data } = await api.get('/user/me')
     username.value = data.username
     originalUsername.value = data.username
+    userRole.value = data.role
   } catch (error) {
     console.error('Failed to fetch user info:', error)
     toast.error('Failed to load user information')
