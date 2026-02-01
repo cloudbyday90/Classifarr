@@ -17,16 +17,90 @@ const discordBotService = require('./discordBot');
 
 // Cache for health status
 let healthCache = {
-    database: { status: 'unknown', lastCheck: null, responseTime: null },
-    discordBot: { status: 'unknown', lastCheck: null, responseTime: null },
-    ollama: { status: 'unknown', lastCheck: null, responseTime: null },
-    rag: { status: 'unknown', lastCheck: null, pgvector: false, provider: null },
-    radarr: { status: 'unknown', lastCheck: null, responseTime: null, instances: [] },
-    sonarr: { status: 'unknown', lastCheck: null, responseTime: null, instances: [] },
-    mediaServer: { status: 'unknown', lastCheck: null, responseTime: null, type: null },
-    tmdb: { status: 'unknown', lastCheck: null, responseTime: null },
-    omdb: { status: 'unknown', lastCheck: null, responseTime: null },
-    tavily: { status: 'unknown', lastCheck: null, responseTime: null }
+    database: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        previousStatus: null,
+        previousResponseTime: null
+    },
+    discordBot: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        previousStatus: null,
+        previousResponseTime: null
+    },
+    ollama: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        previousStatus: null,
+        previousResponseTime: null
+    },
+    rag: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        pgvector: false, 
+        provider: null,
+        previousStatus: null
+    },
+    radarr: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        instances: [],
+        previousStatus: null,
+        previousResponseTime: null
+    },
+    sonarr: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        instances: [],
+        previousStatus: null,
+        previousResponseTime: null
+    },
+    mediaServer: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        type: null,
+        name: null,
+        previousStatus: null,
+        previousResponseTime: null
+    },
+    tmdb: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        previousStatus: null,
+        previousResponseTime: null
+    },
+    omdb: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        previousStatus: null,
+        previousResponseTime: null
+    },
+    tavily: { 
+        status: 'unknown', 
+        lastCheck: null, 
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        previousStatus: null,
+        previousResponseTime: null
+    }
 };
 
 // Heartbeat interval (default: 15 minutes)
@@ -56,6 +130,7 @@ async function measureTime(fn) {
  * Check database connectivity
  */
 async function checkDatabase() {
+    const previous = { ...healthCache.database };
     const result = await measureTime(async () => {
         await db.query('SELECT 1');
     });
@@ -63,7 +138,10 @@ async function checkDatabase() {
     healthCache.database = {
         status: result.success ? 'connected' : 'disconnected',
         lastCheck: new Date().toISOString(),
+        lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
         responseTime: result.time,
+        previousStatus: previous.status,
+        previousResponseTime: previous.responseTime,
         error: result.error
     };
 
@@ -74,6 +152,8 @@ async function checkDatabase() {
  * Check Discord bot status
  */
 async function checkDiscordBot() {
+    const previous = { ...healthCache.discordBot };
+    
     try {
         const isConnected = discordBotService.client && discordBotService.client.isReady();
 
@@ -87,17 +167,25 @@ async function checkDiscordBot() {
             isConfigured = false;
         }
 
+        const status = isConnected ? 'connected' : (isConfigured ? 'disconnected' : 'not configured');
+        
         healthCache.discordBot = {
-            status: isConnected ? 'connected' : (isConfigured ? 'disconnected' : 'not configured'),
+            status: status,
             lastCheck: new Date().toISOString(),
-            responseTime: null
+            lastSuccessfulCheck: isConnected ? new Date().toISOString() : previous.lastSuccessfulCheck,
+            responseTime: null,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     } catch (error) {
         // Unexpected error - treat as not configured rather than error
         healthCache.discordBot = {
             status: 'not configured',
             lastCheck: new Date().toISOString(),
-            responseTime: null
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            responseTime: null,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     }
 
@@ -108,6 +196,8 @@ async function checkDiscordBot() {
  * Check Ollama/AI provider status
  */
 async function checkOllama() {
+    const previous = { ...healthCache.ollama };
+    
     try {
         // Check AI config - table might not exist yet
         let aiConfig;
@@ -118,7 +208,10 @@ async function checkOllama() {
             healthCache.ollama = {
                 status: 'not configured',
                 lastCheck: new Date().toISOString(),
-                provider: 'none'
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                provider: 'none',
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.ollama;
         }
@@ -127,7 +220,10 @@ async function checkOllama() {
             healthCache.ollama = {
                 status: 'not configured',
                 lastCheck: new Date().toISOString(),
-                provider: 'none'
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                provider: 'none',
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.ollama;
         }
@@ -156,8 +252,11 @@ async function checkOllama() {
         healthCache.ollama = {
             status: result.success ? 'connected' : 'disconnected',
             lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
             responseTime: result.time,
             provider: provider,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime,
             error: result.error
         };
     } catch (error) {
@@ -165,7 +264,10 @@ async function checkOllama() {
         healthCache.ollama = {
             status: 'not configured',
             lastCheck: new Date().toISOString(),
-            provider: 'none'
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            provider: 'none',
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     }
 
@@ -176,6 +278,8 @@ async function checkOllama() {
  * Check all Radarr instances
  */
 async function checkRadarr() {
+    const previous = { ...healthCache.radarr };
+    
     try {
         let configs;
         try {
@@ -185,7 +289,10 @@ async function checkRadarr() {
             healthCache.radarr = {
                 status: 'not configured',
                 lastCheck: new Date().toISOString(),
-                instances: []
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                instances: [],
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.radarr;
         }
@@ -194,7 +301,10 @@ async function checkRadarr() {
             healthCache.radarr = {
                 status: 'not configured',
                 lastCheck: new Date().toISOString(),
-                instances: []
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                instances: [],
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.radarr;
         }
@@ -204,6 +314,7 @@ async function checkRadarr() {
         let anyConnected = false;
 
         for (const config of configs.rows) {
+            const prevInstance = previous.instances?.find(i => i.id === config.id);
             const result = await measureTime(async () => {
                 await radarrService.testConnection(config);
             });
@@ -213,6 +324,9 @@ async function checkRadarr() {
                 name: config.name,
                 status: result.success ? 'connected' : 'disconnected',
                 responseTime: result.time,
+                lastSuccessfulCheck: result.success ? new Date().toISOString() : prevInstance?.lastSuccessfulCheck,
+                previousStatus: prevInstance?.status,
+                previousResponseTime: prevInstance?.responseTime,
                 error: result.error
             });
 
@@ -220,18 +334,27 @@ async function checkRadarr() {
             else allConnected = false;
         }
 
+        const overallStatus = allConnected ? 'connected' : (anyConnected ? 'partial' : 'disconnected');
+        const avgResponseTime = instances.length > 0 ? Math.round(instances.reduce((sum, i) => sum + i.responseTime, 0) / instances.length) : null;
+
         healthCache.radarr = {
-            status: allConnected ? 'connected' : (anyConnected ? 'partial' : 'disconnected'),
+            status: overallStatus,
             lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: allConnected ? new Date().toISOString() : previous.lastSuccessfulCheck,
             instances: instances,
-            responseTime: instances.length > 0 ? Math.round(instances.reduce((sum, i) => sum + i.responseTime, 0) / instances.length) : null
+            responseTime: avgResponseTime,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     } catch (error) {
         // Treat unexpected errors as not configured
         healthCache.radarr = {
             status: 'not configured',
             lastCheck: new Date().toISOString(),
-            instances: []
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            instances: [],
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     }
 
@@ -242,6 +365,8 @@ async function checkRadarr() {
  * Check all Sonarr instances
  */
 async function checkSonarr() {
+    const previous = { ...healthCache.sonarr };
+    
     try {
         let configs;
         try {
@@ -251,7 +376,10 @@ async function checkSonarr() {
             healthCache.sonarr = {
                 status: 'not configured',
                 lastCheck: new Date().toISOString(),
-                instances: []
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                instances: [],
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.sonarr;
         }
@@ -260,7 +388,10 @@ async function checkSonarr() {
             healthCache.sonarr = {
                 status: 'not configured',
                 lastCheck: new Date().toISOString(),
-                instances: []
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                instances: [],
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.sonarr;
         }
@@ -270,6 +401,7 @@ async function checkSonarr() {
         let anyConnected = false;
 
         for (const config of configs.rows) {
+            const prevInstance = previous.instances?.find(i => i.id === config.id);
             const result = await measureTime(async () => {
                 await sonarrService.testConnection(config);
             });
@@ -279,6 +411,9 @@ async function checkSonarr() {
                 name: config.name,
                 status: result.success ? 'connected' : 'disconnected',
                 responseTime: result.time,
+                lastSuccessfulCheck: result.success ? new Date().toISOString() : prevInstance?.lastSuccessfulCheck,
+                previousStatus: prevInstance?.status,
+                previousResponseTime: prevInstance?.responseTime,
                 error: result.error
             });
 
@@ -286,18 +421,27 @@ async function checkSonarr() {
             else allConnected = false;
         }
 
+        const overallStatus = allConnected ? 'connected' : (anyConnected ? 'partial' : 'disconnected');
+        const avgResponseTime = instances.length > 0 ? Math.round(instances.reduce((sum, i) => sum + i.responseTime, 0) / instances.length) : null;
+
         healthCache.sonarr = {
-            status: allConnected ? 'connected' : (anyConnected ? 'partial' : 'disconnected'),
+            status: overallStatus,
             lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: allConnected ? new Date().toISOString() : previous.lastSuccessfulCheck,
             instances: instances,
-            responseTime: instances.length > 0 ? Math.round(instances.reduce((sum, i) => sum + i.responseTime, 0) / instances.length) : null
+            responseTime: avgResponseTime,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     } catch (error) {
         // Treat unexpected errors as not configured
         healthCache.sonarr = {
             status: 'not configured',
             lastCheck: new Date().toISOString(),
-            instances: []
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            instances: [],
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     }
 
@@ -308,6 +452,8 @@ async function checkSonarr() {
  * Check Media Server (Plex/Jellyfin/Emby)
  */
 async function checkMediaServer() {
+    const previous = { ...healthCache.mediaServer };
+    
     try {
         const config = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
 
@@ -315,7 +461,10 @@ async function checkMediaServer() {
             healthCache.mediaServer = {
                 status: 'not configured',
                 lastCheck: new Date().toISOString(),
-                type: null
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                type: null,
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.mediaServer;
         }
@@ -344,17 +493,23 @@ async function checkMediaServer() {
         healthCache.mediaServer = {
             status: result.success ? 'connected' : 'disconnected',
             lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
             responseTime: result.time,
             type: serverType,
             name: server.name,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime,
             error: result.error
         };
     } catch (error) {
         healthCache.mediaServer = {
             status: 'error',
             lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
             error: error.message,
-            type: null
+            type: null,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     }
 
@@ -365,13 +520,18 @@ async function checkMediaServer() {
  * Check TMDB API
  */
 async function checkTMDB() {
+    const previous = { ...healthCache.tmdb };
+    
     try {
         const config = await db.query('SELECT api_key FROM tmdb_config LIMIT 1');
 
         if (config.rows.length === 0 || !config.rows[0].api_key) {
             healthCache.tmdb = {
                 status: 'not configured',
-                lastCheck: new Date().toISOString()
+                lastCheck: new Date().toISOString(),
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.tmdb;
         }
@@ -383,14 +543,20 @@ async function checkTMDB() {
         healthCache.tmdb = {
             status: result.success ? 'connected' : 'disconnected',
             lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
             responseTime: result.time,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime,
             error: result.error
         };
     } catch (error) {
         healthCache.tmdb = {
             status: 'error',
             lastCheck: new Date().toISOString(),
-            error: error.message
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            error: error.message,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     }
 
@@ -401,13 +567,18 @@ async function checkTMDB() {
  * Check OMDb API
  */
 async function checkOMDb() {
+    const previous = { ...healthCache.omdb };
+    
     try {
         const config = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
 
         if (config.rows.length === 0 || !config.rows[0].api_key) {
             healthCache.omdb = {
                 status: 'not configured',
-                lastCheck: new Date().toISOString()
+                lastCheck: new Date().toISOString(),
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.omdb;
         }
@@ -419,14 +590,20 @@ async function checkOMDb() {
         healthCache.omdb = {
             status: result.success ? 'connected' : 'disconnected',
             lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: result.success ? new Date().toISOString() : previous.lastSuccessfulCheck,
             responseTime: result.time,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime,
             error: result.error
         };
     } catch (error) {
         healthCache.omdb = {
             status: 'error',
             lastCheck: new Date().toISOString(),
-            error: error.message
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            error: error.message,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     }
 
@@ -437,13 +614,18 @@ async function checkOMDb() {
  * Check Tavily API (optional)
  */
 async function checkTavily() {
+    const previous = { ...healthCache.tavily };
+    
     try {
         const config = await db.query('SELECT api_key FROM tavily_config LIMIT 1');
 
         if (config.rows.length === 0 || !config.rows[0].api_key) {
             healthCache.tavily = {
                 status: 'not configured',
-                lastCheck: new Date().toISOString()
+                lastCheck: new Date().toISOString(),
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
             };
             return healthCache.tavily;
         }
@@ -452,13 +634,19 @@ async function checkTavily() {
         healthCache.tavily = {
             status: 'configured',
             lastCheck: new Date().toISOString(),
-            responseTime: null
+            lastSuccessfulCheck: new Date().toISOString(),
+            responseTime: null,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     } catch (error) {
         healthCache.tavily = {
             status: 'error',
             lastCheck: new Date().toISOString(),
-            error: error.message
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            error: error.message,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
         };
     }
 
@@ -469,6 +657,8 @@ async function checkTavily() {
  * Check RAG (Semantic Search) status
  */
 async function checkRAG() {
+    const previous = { ...healthCache.rag };
+    
     try {
         // Check if RAG is enabled
         const config = await db.query(
@@ -479,8 +669,10 @@ async function checkRAG() {
             healthCache.rag = {
                 status: 'disabled',
                 lastCheck: new Date().toISOString(),
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
                 pgvector: false,
-                provider: null
+                provider: null,
+                previousStatus: previous.status
             };
             return healthCache.rag;
         }
@@ -506,21 +698,27 @@ async function checkRAG() {
             // Table may not exist yet
         }
 
+        const currentStatus = pgvectorAvailable ? 'available' : 'unavailable';
+        
         healthCache.rag = {
-            status: pgvectorAvailable ? 'available' : 'unavailable',
+            status: currentStatus,
             lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: pgvectorAvailable ? new Date().toISOString() : previous.lastSuccessfulCheck,
             pgvector: pgvectorAvailable,
             provider: config.rows[0].embedding_provider,
             model: config.rows[0].embedding_model,
             embeddingCount: embeddingCount,
-            staleCount: staleCount
+            staleCount: staleCount,
+            previousStatus: previous.status
         };
     } catch (error) {
         healthCache.rag = {
             status: 'error',
             lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
             error: error.message,
-            pgvector: false
+            pgvector: false,
+            previousStatus: previous.status
         };
     }
 
