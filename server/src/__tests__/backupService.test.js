@@ -334,3 +334,68 @@ describe('BackupService - Error Handling', () => {
     }).toThrow();
   });
 });
+
+describe('BackupService - Filesystem Operations', () => {
+  beforeEach(() => {
+    // Reset all mocks before each test
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    // Clean up after each test
+    jest.resetAllMocks();
+  });
+
+  test('should handle directory creation success', async () => {
+    // Mock successful directory creation
+    fs.mkdir.mockResolvedValue(undefined);
+    
+    await expect(backupService.ensureBackupDirectory()).resolves.toBeUndefined();
+    
+    expect(fs.mkdir).toHaveBeenCalledWith(
+      expect.stringContaining('backups'),
+      { recursive: true }
+    );
+  });
+
+  test('should handle directory creation failure with EACCES', async () => {
+    // Mock mkdir to fail with permission error
+    fs.mkdir.mockRejectedValue({
+      code: 'EACCES',
+      message: 'Permission denied'
+    });
+    
+    await expect(backupService.ensureBackupDirectory())
+      .rejects.toThrow('Failed to create backup directory');
+    
+    expect(fs.mkdir).toHaveBeenCalled();
+  });
+
+  test('should handle directory creation failure with ENOSPC', async () => {
+    // Mock mkdir to fail with no space error
+    fs.mkdir.mockRejectedValue({
+      code: 'ENOSPC',
+      message: 'No space left on device'
+    });
+    
+    await expect(backupService.ensureBackupDirectory())
+      .rejects.toThrow('Failed to create backup directory');
+    
+    expect(fs.mkdir).toHaveBeenCalled();
+  });
+
+  test('should validate password before attempting directory operations', async () => {
+    // Password validation should fail before any filesystem operations
+    await expect(
+      backupService.createBackup({
+        encrypted: true,
+        password: 'short',
+        includePatterns: false
+      })
+    ).rejects.toThrow('Password must be at least 8 characters');
+    
+    // No filesystem operations should be attempted
+    expect(fs.mkdir).not.toHaveBeenCalled();
+    expect(fs.writeFile).not.toHaveBeenCalled();
+  });
+});
