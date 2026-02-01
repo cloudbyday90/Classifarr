@@ -57,16 +57,16 @@ if (!description) {
   process.exit(1);
 }
 
-// Generate timestamp: YYYYMMDD_HHMMSS
+// Generate timestamp: YYYYMMDD_HHMMSS (in UTC to avoid timezone issues)
 const now = new Date();
 const timestamp = [
-  now.getFullYear(),
-  String(now.getMonth() + 1).padStart(2, '0'),
-  String(now.getDate()).padStart(2, '0'),
+  now.getUTCFullYear(),
+  String(now.getUTCMonth() + 1).padStart(2, '0'),
+  String(now.getUTCDate()).padStart(2, '0'),
   '_',
-  String(now.getHours()).padStart(2, '0'),
-  String(now.getMinutes()).padStart(2, '0'),
-  String(now.getSeconds()).padStart(2, '0')
+  String(now.getUTCHours()).padStart(2, '0'),
+  String(now.getUTCMinutes()).padStart(2, '0'),
+  String(now.getUTCSeconds()).padStart(2, '0')
 ].join('');
 
 // Generate filename
@@ -120,4 +120,7 @@ console.log('  2. Preserve existing data when modifying tables');
 console.log('  3. Test on both fresh and existing databases');
 console.log('  4. Run twice to verify idempotency');
 console.log('');
-console.log('💡 After editing, run: npm run db:migrate');
+console.log('💡 After editing, start the dev server to apply migrations:');
+console.log('    npm --prefix server run dev');
+console.log('💾 Then update the schema snapshot:');
+console.log('    npm run db:dump-schema');

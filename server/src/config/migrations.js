@@ -19,7 +19,7 @@ const logger = createLogger('Migrations');
  * 
  * This system supports two migration strategies:
  * 
- * 1. LEGACY MIGRATIONS (v0.1 - v0.41)
+ * 1. LEGACY MIGRATIONS (Pre-v0.41)
  *    - Numeric format: 001_description.sql, 002_description.sql, etc.
  *    - Limited to 999 migrations
  *    - Causes merge conflicts when multiple PRs add migrations simultaneously
@@ -81,8 +81,13 @@ class MigrationRunner {
      * The schema snapshot includes:
      * - Complete table structures
      * - Indexes and constraints
-     * - Default data (presets, settings, etc.)
-     * - Automatic marking of all migrations as applied
+     * - INSERT statements to mark all migrations as applied in schema_migrations
+     * - Any additional SQL explicitly included in the snapshot file
+     * 
+     * NOTE: The snapshot is schema-only (structure, not data). Seed data 
+     *       (presets, settings, etc.) must be handled by running the normal
+     *       migration flow after snapshot loading, or by explicitly including
+     *       seed INSERT statements when generating the snapshot.
      * 
      * FALLBACK: If schema snapshot doesn't exist, falls back to running
      * all migrations individually (legacy behavior).
@@ -171,7 +176,19 @@ class MigrationRunner {
                     return filename;
                 };
                 
-                return getVersion(a).localeCompare(getVersion(b));
+                const versionA = getVersion(a);
+                const versionB = getVersion(b);
+                
+                // Primary sort by version
+                const versionCompare = versionA.localeCompare(versionB);
+                
+                // If versions are the same (e.g., duplicate prefixes like 011_*, 044_*),
+                // use filename as tie-breaker for deterministic ordering
+                if (versionCompare === 0) {
+                    return a.localeCompare(b);
+                }
+                
+                return versionCompare;
             });
 
         return files;

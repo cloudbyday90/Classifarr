@@ -1,6 +1,6 @@
 # Classifarr Migration System Documentation
 
-> **Version:** 0.42+  
+> **Version:** 0.41+  
 > **Last Updated:** 2026-02-01
 
 ## Table of Contents
@@ -37,7 +37,7 @@ Classifarr uses an advanced database migration system that supports:
 
 ## Migration Formats
 
-### Legacy Numeric Format (v0.1 - v0.41)
+### Legacy Numeric Format (Pre-v0.41)
 
 **Pattern:** `XXX_descriptive_name.sql`
 
@@ -194,9 +194,9 @@ This guarantees:
 
 **How it works:**
 1. `npm run db:dump-schema` generates `database/schema/current.sql`
-2. Snapshot contains complete database structure + all seed data
-3. Snapshot includes INSERT statements to mark all migrations as applied
-4. Fresh installs load snapshot instead of running 76+ individual migrations
+2. Snapshot contains the complete database schema (structure only, no data rows)
+3. Seed data must be applied via migrations or dedicated seed scripts
+4. Fresh installs load the snapshot to avoid running 76+ individual schema migrations
 
 **Regeneration triggers:**
 - After merging any new migration to main
@@ -475,18 +475,20 @@ module.exports = {
 ### Migration Performance
 
 **Optimization tips:**
-- Use `CREATE INDEX CONCURRENTLY` for large tables (doesn't lock)
 - Batch large data migrations (commit every 10,000 rows)
 - Add indexes AFTER bulk inserts, not before
 - Use `ANALYZE` after large data changes
+- Note: `CREATE INDEX CONCURRENTLY` cannot be used inside migration transactions
+  (each migration runs in BEGIN/COMMIT). For concurrent index creation, consider
+  running the command outside the migration system or splitting into separate steps.
 
 **Example:**
 ```sql
--- Slow: Locks table
-CREATE INDEX idx_users_email ON users(email);
+-- Standard index creation (works in migrations)
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
--- Fast: Doesn't lock (Postgres 11+)
-CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
+-- Note: CREATE INDEX CONCURRENTLY cannot be used within migration transactions
+-- and will cause the migration to fail. Use standard CREATE INDEX instead.
 ```
 
 ---
@@ -525,12 +527,13 @@ Classifarr/
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DB_NAME` | `classifarr_db` | Database name for migrations |
-| `DB_HOST` | `localhost` | Database host |
-| `DB_PORT` | `5432` | Database port |
-| `DB_USER` | `classifarr_user` | Database user |
+| Variable      | Default         | Description |
+|---------------|-----------------|-------------|
+| `DB_NAME`     | `classifarr_db` | Database name (used by dump-schema.js) |
+| `PGHOST`      | `localhost`     | Database host (libpq; used by `pg_dump`) |
+| `PGPORT`      | `5432`          | Database port (libpq; used by `pg_dump`) |
+| `PGUSER`      | `classifarr_user` | Database user (libpq; used by `pg_dump`) |
+| `PGPASSWORD`  | *(none)*        | Database password (libpq; used by `pg_dump`) |
 
 ---
 

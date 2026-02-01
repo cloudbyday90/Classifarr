@@ -45,18 +45,25 @@
  *   - "database does not exist": Set DB_NAME environment variable
  */
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 const DB_NAME = process.env.DB_NAME || 'classifarr_db';
 const OUTPUT_PATH = path.join(__dirname, '../database/schema/current.sql');
 
+// Validate DB_NAME to prevent shell injection
+const DB_NAME_PATTERN = /^[A-Za-z0-9_\-]+$/;
+if (!DB_NAME_PATTERN.test(DB_NAME)) {
+  console.error('❌ Invalid DB_NAME. Only letters, numbers, underscores, and hyphens are allowed.');
+  process.exit(1);
+}
+
 console.log('📦 Dumping current database schema...');
 
 try {
-  // Dump schema-only (no data)
-  const schema = execSync(`pg_dump --schema-only ${DB_NAME}`, {
+  // Dump schema-only (no data) using execFileSync for security
+  const schema = execFileSync('pg_dump', ['--schema-only', DB_NAME], {
     encoding: 'utf8'
   });
   

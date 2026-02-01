@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import Confidence from '@/views/settings/Confidence.vue'
 import api from '@/api'
 
@@ -51,8 +51,7 @@ describe('Confidence Settings - Discord Display Options', () => {
     const wrapper = mount(Confidence)
 
     // Wait for component to load
-    await wrapper.vm.$nextTick()
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await flushPromises()
 
     // Verify API was called
     expect(api.get).toHaveBeenCalledWith('/api/settings/confidence')
@@ -86,8 +85,7 @@ describe('Confidence Settings - Discord Display Options', () => {
     const wrapper = mount(Confidence)
 
     // Wait for component to load
-    await wrapper.vm.$nextTick()
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await flushPromises()
 
     // Update Discord settings
     wrapper.vm.discordSettings.includeSignalBreakdown = false
@@ -95,6 +93,7 @@ describe('Confidence Settings - Discord Display Options', () => {
 
     // Save settings
     await wrapper.vm.saveAllSettings()
+    await flushPromises()
 
     // Verify the API was called with Discord settings
     expect(api.put).toHaveBeenCalledWith('/api/settings/confidence', 
@@ -127,8 +126,7 @@ describe('Confidence Settings - Discord Display Options', () => {
     const wrapper = mount(Confidence)
 
     // Wait for component to load
-    await wrapper.vm.$nextTick()
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await flushPromises()
 
     // Verify checkboxes are rendered
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
@@ -153,8 +151,7 @@ describe('Confidence Settings - Discord Display Options', () => {
     api.get.mockResolvedValueOnce({ data: [] })
 
     const wrapper1 = mount(Confidence)
-    await wrapper1.vm.$nextTick()
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await flushPromises()
 
     expect(wrapper1.vm.discordSettings.includeSignalBreakdown).toBe(true)
     expect(wrapper1.vm.discordSettings.showSimilarItems).toBe(true)
@@ -173,8 +170,7 @@ describe('Confidence Settings - Discord Display Options', () => {
     api.get.mockResolvedValueOnce({ data: [] })
 
     const wrapper2 = mount(Confidence)
-    await wrapper2.vm.$nextTick()
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await flushPromises()
 
     // Verify settings persisted
     expect(wrapper2.vm.discordSettings.includeSignalBreakdown).toBe(false)
