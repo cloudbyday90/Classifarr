@@ -21,7 +21,7 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('AutoLearning');
 
-// Configuration constants for auto-learning
+// Configuration constants for auto-learning (defaults, will be overridden by DB settings)
 const DEFAULT_THRESHOLDS = {
     genreLearnThreshold: 3,           // Need 3+ confirmations before learning genre
     keywordLearnThreshold: 5,         // Need 5+ confirmations before learning keyword
@@ -32,11 +32,81 @@ const DEFAULT_THRESHOLDS = {
     learningLookbackDays: 30          // Look back 30 days for pattern analysis
 };
 
+// Cache for learning settings to avoid repeated DB queries
+let settingsCache = null;
+let settingsCacheTime = 0;
+const CACHE_TTL = 60000; // 60 seconds
+
 /**
  * Auto-Learning Service
  * Learns from user feedback to automatically enhance policy preferences
  */
 class AutoLearningService {
+    /**
+     * Clear the settings cache (called when settings are updated)
+     */
+    clearCache() {
+        settingsCache = null;
+        settingsCacheTime = 0;
+        logger.info('Learning settings cache cleared');
+    }
+
+    /**
+     * Get learning settings from database (with caching)
+     * @returns {Promise<object>} Learning settings
+     */
+    async getLearningSettings() {
+        const now = Date.now();
+        if (settingsCache && (now - settingsCacheTime) < CACHE_TTL) {
+            return settingsCache;
+        }
+
+        try {
+            const result = await db.query(`
+                SELECT setting_key, setting_value
+                FROM confidence_settings
+                WHERE setting_key LIKE 'learning_%'
+            `);
+
+            const settings = { ...DEFAULT_THRESHOLDS };
+            
+            result.rows.forEach(row => {
+                const key = row.setting_key;
+                const value = row.setting_value;
+                
+                if (key === 'learning_genre_threshold') {
+                    settings.genreLearnThreshold = parseInt(value) || DEFAULT_THRESHOLDS.genreLearnThreshold;
+                } else if (key === 'learning_keyword_threshold') {
+                    settings.keywordLearnThreshold = parseInt(value) || DEFAULT_THRESHOLDS.keywordLearnThreshold;
+                } else if (key === 'learning_studio_threshold') {
+                    settings.studioLearnThreshold = parseInt(value) || DEFAULT_THRESHOLDS.studioLearnThreshold;
+                } else if (key === 'learning_min_confidence_rate') {
+                    settings.minConfidenceRate = parseInt(value) / 100 || DEFAULT_THRESHOLDS.minConfidenceRate;
+                } else if (key === 'learning_max_per_user_day') {
+                    settings.maxLearnsPerUserPerDay = parseInt(value) || DEFAULT_THRESHOLDS.maxLearnsPerUserPerDay;
+                } else if (key === 'learning_max_per_library_hour') {
+                    settings.maxLearnsPerLibraryPerHour = parseInt(value) || DEFAULT_THRESHOLDS.maxLearnsPerLibraryPerHour;
+                } else if (key === 'learning_lookback_days') {
+                    settings.learningLookbackDays = parseInt(value) || DEFAULT_THRESHOLDS.learningLookbackDays;
+                } else if (key === 'learning_conflict_strategy') {
+                    settings.conflictStrategy = value || 'escalate';
+                } else if (key === 'learning_auto_resolve_threshold') {
+                    settings.autoResolveThreshold = parseInt(value) || 7;
+                } else if (key === 'learning_multi_genre_strategy') {
+                    settings.multiGenreStrategy = value || 'weighted';
+                }
+            });
+
+            settingsCache = settings;
+            settingsCacheTime = now;
+            
+            return settings;
+        } catch (error) {
+            logger.error('Failed to load learning settings from database, using defaults', { error: error.message });
+            return DEFAULT_THRESHOLDS;
+        }
+    }
+
     /**
      * Main entry point: Learn from user feedback
      * @param {object} feedbackData - Feedback data from user interaction
@@ -197,11 +267,12 @@ class AutoLearningService {
             const confidence = await this.calculateNetConfidence(libraryId, keyword, 'keyword');
             
             // Check if meets threshold (higher for keywords)
-            if (confidence.confirmCount < DEFAULT_THRESHOLDS.keywordLearnThreshold) {
+            const settings = await this.getLearningSettings();
+            if (confidence.confirmCount < settings.keywordLearnThreshold) {
                 return { learned: false, reason: 'insufficient_confirmations' };
             }
 
-            if (confidence.confidenceRate < DEFAULT_THRESHOLDS.minConfidenceRate) {
+            if (confidence.confidenceRate < settings.minConfidenceRate) {
                 return { learned: false, reason: 'low_confidence_rate' };
             }
 
@@ -232,11 +303,12 @@ class AutoLearningService {
             const confidence = await this.calculateNetConfidence(libraryId, studio, 'studio');
             
             // Check if meets threshold (lower for studios as they're more specific)
-            if (confidence.confirmCount < DEFAULT_THRESHOLDS.studioLearnThreshold) {
+            const settings = await this.getLearningSettings();
+            if (confidence.confirmCount < settings.studioLearnThreshold) {
                 return { learned: false, reason: 'insufficient_confirmations' };
             }
 
-            if (confidence.confidenceRate < DEFAULT_THRESHOLDS.minConfidenceRate) {
+            if (confidence.confidenceRate < settings.minConfidenceRate) {
                 return { learned: false, reason: 'low_confidence_rate' };
             }
 
@@ -498,13 +570,16 @@ class AutoLearningService {
             const totalFeedback = confirmCount + rejectCount;
             const confidenceRate = totalFeedback > 0 ? confirmCount / totalFeedback : 0;
             
+            // Get settings from database
+            const settings = await this.getLearningSettings();
+            
             // Determine if we should apply learning based on thresholds
-            let threshold = DEFAULT_THRESHOLDS.genreLearnThreshold;
-            if (type === 'keyword') threshold = DEFAULT_THRESHOLDS.keywordLearnThreshold;
-            if (type === 'studio') threshold = DEFAULT_THRESHOLDS.studioLearnThreshold;
+            let threshold = settings.genreLearnThreshold;
+            if (type === 'keyword') threshold = settings.keywordLearnThreshold;
+            if (type === 'studio') threshold = settings.studioLearnThreshold;
             
             const shouldApply = confirmCount >= threshold && 
-                              confidenceRate >= DEFAULT_THRESHOLDS.minConfidenceRate;
+                              confidenceRate >= settings.minConfidenceRate;
             
             return {
                 confirmCount,
@@ -596,6 +671,8 @@ class AutoLearningService {
      */
     async canApplyLearning(userId, libraryId) {
         try {
+            const settings = await this.getLearningSettings();
+            
             // Check user rate limit (per day)
             const userLimit = await db.query(`
                 SELECT COUNT(*) as count
@@ -605,10 +682,10 @@ class AutoLearningService {
             `, [userId]);
             
             const userCount = parseInt(userLimit.rows[0].count);
-            if (userCount >= DEFAULT_THRESHOLDS.maxLearnsPerUserPerDay) {
+            if (userCount >= settings.maxLearnsPerUserPerDay) {
                 return {
                     allowed: false,
-                    reason: `User rate limit exceeded (${userCount}/${DEFAULT_THRESHOLDS.maxLearnsPerUserPerDay} per day)`
+                    reason: `User rate limit exceeded (${userCount}/${settings.maxLearnsPerUserPerDay} per day)`
                 };
             }
             
@@ -621,10 +698,10 @@ class AutoLearningService {
             `, [libraryId]);
             
             const libraryCount = parseInt(libraryLimit.rows[0].count);
-            if (libraryCount >= DEFAULT_THRESHOLDS.maxLearnsPerLibraryPerHour) {
+            if (libraryCount >= settings.maxLearnsPerLibraryPerHour) {
                 return {
                     allowed: false,
-                    reason: `Library rate limit exceeded (${libraryCount}/${DEFAULT_THRESHOLDS.maxLearnsPerLibraryPerHour} per hour)`
+                    reason: `Library rate limit exceeded (${libraryCount}/${settings.maxLearnsPerLibraryPerHour} per hour)`
                 };
             }
             

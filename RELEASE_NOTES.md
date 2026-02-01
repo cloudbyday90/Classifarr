@@ -2,9 +2,24 @@
 
 ## [Unreleased] v0.41.0-alpha
 
-**Title: Discord Intelligence & Learning + Event Detection System Removal**
+**Title: Discord Intelligence & Learning + Unified Confidence Settings + Event Detection System Removal**
 
 ### Added
+
+- **🎛️ Unified Confidence Settings Page** (#241)
+  - **Comprehensive Control Center**: Single page for all confidence thresholds
+    - 🎯 **Policy Engine Thresholds**: Auto-classify (85%+), prompt (60-84%), manual (<60%)
+    - 🔔 **Discord Notification Thresholds**: Info-only (85%+), verification (60-84%)
+    - 🧠 **Auto-Learning Thresholds**: Genre (3 confirms), keyword (5), studio (2)
+  - **Visual Controls**: Real-time sliders with instant preview
+  - **Flow Visualization**: Color-coded ranges show classification behavior
+  - **Audit Trail**: Complete history of all setting changes with who/when/reason
+  - **Revert Functionality**: One-click rollback to previous configurations
+  - **Export/Import**: Save and restore complete configuration sets
+  - **Rate Limiting Controls**: Max learns per user/day and library/hour
+  - **Conflict Resolution**: Strategy selection (block/escalate/auto-resolve)
+  - **Database-Backed**: All settings stored in `confidence_settings` table
+  - **Service Integration**: Auto-learning service reads thresholds from database
 
 - **🧠 Discord Verification Learning & Policy Auto-Enhancement** (#240)
   - **Smart Discord Thresholds**: Different notification types based on confidence
