@@ -1,5 +1,19 @@
 ﻿﻿# Classifarr Release Notes
 
+## [Unreleased] v0.41.0-alpha
+
+**Title: Event Detection System Removal**
+
+### Removed
+
+- **Event Detection System**: Deprecated event/holiday detection has been fully removed
+  - Event detection is now handled exclusively through PolicyEngine presets (migrated in v0.37.0)
+  - Libraries no longer have event detection type/subtype fields in the UI or database
+  - Event presets (`event_holiday`, `event_sports`, `event_ppv`, `event_concert`, `event_standup`, `event_awards`) have been removed from the system
+  - All policy references to event presets have been cleaned up
+  - Deprecated backend methods have been removed
+  - **Migration Impact**: If you were using the old event detection dropdown in library settings, your libraries should already have the equivalent event presets attached via policies (from v0.37.0 migration). Review your policies to ensure event detection still works as expected.
+
 ## v0.40.5d-alpha
 
 **Title: *arr Quality Profile Respect Fix**

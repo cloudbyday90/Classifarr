@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Event Detection System**: Removed deprecated event detection columns and presets
+  - Dropped `event_detection_type` and `event_sub_type` columns from `libraries` table
+  - Removed all event presets (`event_holiday`, `event_sports`, `event_ppv`, `event_concert`, `event_standup`, `event_awards`)
+  - Cleaned up policy references to event presets
+  - Removed deprecated `detectEventContent()` and `checkLibraryRulesForExceptions()` methods from classification service
+  - Removed event detection UI elements from library detail page
+  - Migration 072: Complete event detection system removal
+  - Event detection functionality is now handled exclusively through PolicyEngine presets (migrated in v0.37.0)
+
 ## [0.40.5d-alpha] - 2026-01-30
 
 ### Fixed
