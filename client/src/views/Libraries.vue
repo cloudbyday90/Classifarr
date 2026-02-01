@@ -98,7 +98,7 @@ import { useLibrariesStore } from '@/stores/libraries'
 import { useSyncStatusStore, SYNC_TYPE } from '@/stores/syncStatus'
 import { useToast } from '@/stores/toast'
 import { useServiceRequirements } from '@/composables/useServiceRequirements'
-import { useServiceLockdownToast } from '@/composables/useServiceLockdownToast'
+import { useServiceLockdownDialog } from '@/composables/useServiceLockdownToast'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -116,7 +116,7 @@ const toast = useToast()
 
 // Service lockdown for media server
 const { canUseFeature: canSyncLibraries, lockdownTooltip, firstUnavailableService } = useServiceRequirements(['mediaServer'])
-const { showLockdownNotification } = useServiceLockdownToast()
+const { showLockdownNotification } = useServiceLockdownDialog()
 
 onMounted(async () => {
   await librariesStore.fetchLibraries()

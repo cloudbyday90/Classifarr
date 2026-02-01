@@ -307,7 +307,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useServiceRequirements } from '@/composables/useServiceRequirements'
-import { useServiceLockdownToast } from '@/composables/useServiceLockdownToast'
+import { useServiceLockdownDialog } from '@/composables/useServiceLockdownToast'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
@@ -321,7 +321,7 @@ const libraries = computed(() => librariesStore.libraries)
 
 // Service lockdown for AI provider
 const { canUseFeature: canReclassify, lockdownTooltip, firstUnavailableService } = useServiceRequirements(['aiProvider'])
-const { showLockdownNotification } = useServiceLockdownToast()
+const { showLockdownNotification } = useServiceLockdownDialog()
 
 const history = ref([])
 const loading = ref(true)
