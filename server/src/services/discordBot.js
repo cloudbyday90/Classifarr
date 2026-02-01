@@ -28,6 +28,7 @@ const {
 } = require("discord.js");
 const db = require("../config/database");
 const clarificationService = require("./clarificationService");
+const autoLearningService = require("./autoLearningService");
 
 class DiscordBotService {
   constructor() {
@@ -685,7 +686,7 @@ class DiscordBotService {
       });
 
       // Create embed based on tier (and clarification/requireAllConfirmations setting)
-      const embed = this.createTieredEmbed(
+      const embed = await this.createTieredEmbed(
         metadata,
         result,
         tier,
@@ -740,7 +741,7 @@ class DiscordBotService {
     return mediaType === "movie" ? "🎬" : "📺";
   }
 
-  createTieredEmbed(
+  async createTieredEmbed(
     metadata,
     result,
     tier,
@@ -823,6 +824,73 @@ class DiscordBotService {
     // Don't show reason if we're showing clarification context (redundant)
     if (result.reason && !hasClarification) {
       fields.push({ name: "Reason", value: result.reason, inline: false });
+    }
+
+    // Enhanced context: Add top 3 alternative libraries if available
+    if (result.libraries && result.libraries.length > 1) {
+      const topAlternatives = result.libraries.slice(1, 4)
+        .map(lib => `${lib.name} (${lib.score || lib.confidence || '?'}%)`)
+        .join(', ');
+      if (topAlternatives) {
+        fields.push({
+          name: "📊 Top Alternatives",
+          value: topAlternatives,
+          inline: false
+        });
+      }
+    }
+
+    // Enhanced context: Add signal breakdown if available
+    if (result.signal_scores) {
+      const signalBreakdown = Object.entries(result.signal_scores)
+        .filter(([_, score]) => score > 0)
+        .map(([signal, score]) => `${signal}: ${score}%`)
+        .join(', ');
+      if (signalBreakdown) {
+        fields.push({
+          name: "🔍 Signal Breakdown",
+          value: signalBreakdown,
+          inline: false
+        });
+      }
+    }
+
+    // Enhanced context: Add matched genres/keywords if available
+    if (metadata.genres && metadata.genres.length > 0) {
+      const genreList = metadata.genres.slice(0, 5).join(', ');
+      fields.push({
+        name: "🎭 Genres",
+        value: genreList,
+        inline: false
+      });
+    }
+
+    // Enhanced context: Add similar items from RAG if available
+    try {
+      const ragRetriever = require('./ragRetriever');
+      if (metadata.title && result.library_id) {
+        const similarItems = await ragRetriever.findSimilarItems(
+          metadata.title,
+          result.library_id,
+          3
+        );
+        if (similarItems && similarItems.length > 0) {
+          const similarList = similarItems
+            .map(item => item.title || item.name)
+            .filter(Boolean)
+            .join(', ');
+          if (similarList) {
+            fields.push({
+              name: "📚 Similar in Library",
+              value: similarList,
+              inline: false
+            });
+          }
+        }
+      }
+    } catch (ragError) {
+      // RAG is optional, don't fail if not available
+      console.log('[Discord] RAG similar items not available:', ragError.message);
     }
 
     // Add content analysis if available
@@ -1109,6 +1177,7 @@ class DiscordBotService {
       }
 
       const originalLibraryId = classResult.rows[0].library_id;
+      const classification = classResult.rows[0];
 
       // Get new library info
       const libResult = await db.query(
@@ -1142,6 +1211,31 @@ class DiscordBotService {
           interaction.user.username,
         ],
       );
+
+      // Learn from this correction (user selected a different library)
+      try {
+        const metadata = classification.item_metadata || {};
+        const learningResult = await autoLearningService.learnFromFeedback({
+          tmdbId: classification.tmdb_id,
+          libraryId: newLibraryId, // Learn for the NEW library
+          genres: metadata.genres || [],
+          keywords: metadata.keywords || [],
+          studio: metadata.studio,
+          wasCorrection: true,
+          userId: interaction.user.id
+        });
+
+        console.log("[Discord] Auto-learning from correction", {
+          classificationId,
+          originalLibrary: originalLibraryId,
+          newLibrary: newLibraryId,
+          learned: learningResult.learned,
+          preferences: learningResult.preferences
+        });
+      } catch (learningError) {
+        console.error("[Discord] Auto-learning from correction failed:", learningError);
+        // Don't fail correction if learning fails
+      }
 
       // Extract learning patterns
       try {
@@ -1414,6 +1508,29 @@ class DiscordBotService {
         [classificationId],
       );
 
+      // Learn from this verification (user confirmed the classification)
+      try {
+        const metadata = classification.item_metadata || {};
+        const learningResult = await autoLearningService.learnFromFeedback({
+          tmdbId: classification.tmdb_id,
+          libraryId: classification.library_id,
+          genres: metadata.genres || [],
+          keywords: metadata.keywords || [],
+          studio: metadata.studio,
+          wasCorrection: false,
+          userId: interaction.user.id
+        });
+
+        console.log("[Discord] Auto-learning result", {
+          classificationId,
+          learned: learningResult.learned,
+          preferences: learningResult.preferences
+        });
+      } catch (learningError) {
+        console.error("[Discord] Auto-learning failed:", learningError);
+        // Don't fail verification if learning fails
+      }
+
       // Store learning pattern - this TMDB ID now has confirmed routing
       // Explicitly handle null library_id to avoid DB errors if schema expects integer
       const libraryIdToLearn =
@@ -1431,6 +1548,26 @@ class DiscordBotService {
         // Continue - don't fail the user interaction if just routing failed
       }
 
+      // Build feedback message
+      const metadata = classification.item_metadata || {};
+      let feedbackMessage = "✅ **Verified!** System learned from your confirmation.";
+      
+      // Add details about what was learned
+      try {
+        const learnedItems = [];
+        if (metadata.genres && metadata.genres.length > 0) {
+          learnedItems.push(`Genres: ${metadata.genres.slice(0, 3).join(', ')}`);
+        }
+        if (metadata.keywords && metadata.keywords.length > 0) {
+          learnedItems.push(`Keywords: ${metadata.keywords.slice(0, 3).join(', ')}`);
+        }
+        if (learnedItems.length > 0) {
+          feedbackMessage += `\n\n_System is learning these preferences for this library:_\n${learnedItems.join('\n')}`;
+        }
+      } catch (error) {
+        // Ignore errors in building feedback message
+      }
+
       // Update message
       await interaction.update({
         components: [],
@@ -1441,6 +1578,12 @@ class DiscordBotService {
               text: `✅ Verified by ${interaction.user.username} • Will auto-route same title next time`,
             }),
         ],
+      });
+
+      // Send ephemeral feedback message
+      await interaction.followUp({
+        content: feedbackMessage,
+        ephemeral: true
       });
     } catch (error) {
       console.error("Error processing verification:", error);

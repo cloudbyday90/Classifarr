@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Discord Verification Learning & Policy Auto-Enhancement** (Fixes #240)
+  - Smart Discord thresholds: 85%+ = info-only, 60-84% = verify, <60% = detailed
+  - Enhanced Discord notifications with signal breakdown, top 3 libraries, similar items
+  - Auto-learning from user feedback: genres/keywords/studios added to "prefer" lists
+  - Conflict detection and resolution for genre/keyword conflicts
+  - Rate limiting: max 50 learns/user/day, 20 learns/library/hour
+  - Complete audit trail of all auto-learned preferences
+  - User feedback toasts showing what the system learned
+  - Admin dashboard for reviewing and reverting auto-learned preferences
+  - New database tables: `auto_learned_preferences`, `learning_conflicts`, `learning_rate_limits`
+  - New service: `autoLearningService.js` for managing preference learning
+  - Enhanced RAG integration with `findSimilarItems()` method for Discord context
+
+
+### Added
 - **Service Lockdown System** (Fixes #206)
   - Pinia store for tracking service health from `/api/system/health`
   - Auto-refresh service status every 30 seconds
