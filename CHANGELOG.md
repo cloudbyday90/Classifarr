@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Classification Signals Breakdown UI** (Fixes #185)
+  - Signal breakdown now displays in Classification Details modal for all policy engine classifications
+  - Shows all 5 engines (Preset, Profile, Pattern, RAG, History) with individual scores and weights
+  - Grayed-out display for unused engines with "(not used)" label
+  - Color-coded progress bars (green ≥80%, yellow ≥60%, orange ≥40%, red <40%)
+  - Weight multipliers shown for each engine (e.g., ×0.35)
+  - Combined score display at bottom of breakdown
+  - Backend now consistently stores classification_details with scores/weights in metadata
+  - Full transparency into how classification decisions are made
 - **User Profile Settings Page**: New profile management interface (#187)
   - View and edit username with uniqueness validation
   - Secure password change with current password verification
