@@ -18,24 +18,6 @@
     </div>
 
     <div v-else-if="library" class="space-y-6">
-      <!-- Event Detection Deprecation Notice -->
-      <div v-if="library.event_detection_type" class="event-deprecation-notice">
-        <div class="icon">⚠️</div>
-        <div class="content">
-          <h3>Event Detection - Deprecated</h3>
-          <p>
-            Event detection is being replaced by <strong>Event Presets</strong> in the Policy Engine.
-            This feature will be removed in <strong>v0.39.0</strong>.
-          </p>
-          <p class="migration-info">
-            Your library will automatically get the <code>event_{{ library.event_detection_type }}</code> preset attached.
-            <router-link :to="`/policies?library=${library.id}`" class="link-policies">
-              View/Edit Policy →
-            </router-link>
-          </p>
-        </div>
-      </div>
-
       <Card title="Library Configuration">
         <div class="grid grid-cols-2 gap-4">
           <Input v-model="library.name" label="Name" disabled />
@@ -49,66 +31,7 @@
             ]"
             placeholder="Select ARR type"
           />
-          <Select
-            v-model="library.event_detection_type"
-            label="Event Detection Type (Deprecated)"
-            :options="eventDetectionOptions"
-          />
           
-          <!-- Event Sub-Type Selectors -->
-          <Select
-            v-if="library.event_detection_type === 'holiday'"
-            v-model="library.event_sub_type"
-            label="Holiday Sub-Type"
-            :options="holidaySubTypeOptions"
-          />
-          <Select
-            v-if="library.event_detection_type === 'sports'"
-            v-model="library.event_sub_type"
-            label="Sports Sub-Type"
-            :options="sportsSubTypeOptions"
-          />
-          <Select
-            v-if="library.event_detection_type === 'ppv'"
-            v-model="library.event_sub_type"
-            label="Combat Sports Sub-Type"
-            :options="ppvSubTypeOptions"
-          />
-          
-          <div class="col-span-2">
-            <div v-if="library.event_detection_type" class="flex items-start gap-2 mt-1">
-              <p class="text-xs text-gray-400">
-                {{ getEventDescription(library.event_detection_type) }}
-              </p>
-              <div class="relative group">
-                <button 
-                  type="button"
-                  class="w-4 h-4 rounded-full bg-gray-700 text-gray-300 text-xs flex items-center justify-center hover:bg-gray-600 transition-colors"
-                  title="View detection keywords"
-                >
-                  i
-                </button>
-                <div class="absolute left-6 top-0 w-80 p-3 bg-gray-800 border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                  <h4 class="text-sm font-medium text-white mb-2">🔍 Detection Keywords</h4>
-                  <p class="text-xs text-gray-400 mb-2">Content with these keywords will auto-route to this library:</p>
-                  <div class="flex flex-wrap gap-1">
-                    <span 
-                      v-for="keyword in getEventKeywords(library.event_detection_type, library.event_sub_type)" 
-                      :key="keyword"
-                      class="px-2 py-0.5 text-xs bg-gray-700 text-gray-300 rounded-sm"
-                    >
-                      {{ keyword }}
-                    </span>
-                  </div>
-                  <div class="mt-3 pt-2 border-t border-gray-700">
-                    <p class="text-xs text-orange-400">
-                      ⚠️ <strong>Deprecated:</strong> Event detection is being replaced by Event Presets. Use the Policy Engine instead.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
           <div class="flex items-end">
             <Button @click="saveLibrary" :loading="saving">Save Changes</Button>
           </div>
@@ -609,8 +532,6 @@ const saveLibrary = async () => {
     await api.updateLibrary(library.value.id, {
       priority: library.value.priority,
       arr_type: library.value.arr_type,
-      event_detection_type: library.value.event_detection_type || null,
-      event_sub_type: library.value.event_sub_type || null,
     })
     toast.success('Library updated successfully')
   } catch (error) {
@@ -619,103 +540,6 @@ const saveLibrary = async () => {
   } finally {
     saving.value = false
   }
-}
-
-// Event Detection Type options and descriptions
-const eventDetectionOptions = [
-  { label: 'None (skip event detection)', value: '' },
-  { label: '🎄 Holiday', value: 'holiday' },
-  { label: '🏈 Sports', value: 'sports' },
-  { label: '🥊 PPV/Combat', value: 'ppv' },
-  { label: '🎵 Concert', value: 'concert' },
-  { label: '🎤 Stand-up Comedy', value: 'standup' },
-  { label: '🏆 Awards', value: 'awards' },
-]
-
-// Sub-type options for each category
-const holidaySubTypeOptions = [
-  { label: 'All Holidays (generic)', value: '' },
-  { label: '🎄 Christmas/Xmas', value: 'christmas' },
-  { label: '🎃 Halloween', value: 'halloween' },
-  { label: '🦃 Thanksgiving', value: 'thanksgiving' },
-  { label: '🐰 Easter', value: 'easter' },
-  { label: '❤️ Valentine\'s Day', value: 'valentines' },
-  { label: '🎆 New Year\'s', value: 'newyear' },
-  { label: '🇺🇸 4th of July', value: 'july4' },
-]
-
-const sportsSubTypeOptions = [
-  { label: 'All Sports (generic)', value: '' },
-  { label: '🏈 Football/NFL', value: 'football' },
-  { label: '🏀 Basketball/NBA', value: 'basketball' },
-  { label: '⚾ Baseball/MLB', value: 'baseball' },
-  { label: '🏒 Hockey/NHL', value: 'hockey' },
-  { label: '⚽ Soccer/Football', value: 'soccer' },
-  { label: '⛳ Golf', value: 'golf' },
-  { label: '🏎️ Racing/F1/NASCAR', value: 'racing' },
-]
-
-const ppvSubTypeOptions = [
-  { label: 'All Combat Sports', value: '' },
-  { label: '🥊 UFC/MMA', value: 'ufc' },
-  { label: '🥊 Boxing', value: 'boxing' },
-  { label: '💪 Wrestling/WWE', value: 'wrestling' },
-]
-
-const eventDescriptions = {
-  holiday: 'Christmas, Halloween, Thanksgiving, Easter, New Years, etc.',
-  sports: 'NFL, NBA, MLB, NHL, Olympics, Super Bowl, World Cup, etc.',
-  ppv: 'UFC, MMA, Boxing, WWE, WrestleMania, Bellator, etc.',
-  concert: 'Live concerts, music festivals, symphonies, MTV Unplugged, etc.',
-  standup: 'Stand-up comedy specials, Netflix/HBO specials, roasts, improv shows, etc.',
-  awards: 'Oscars, Emmys, Grammys, Golden Globes, BAFTA, etc.',
-}
-
-// Keywords that trigger each event type detection (with sub-type support)
-const eventKeywordMap = {
-  holiday: {
-    '': ['christmas', 'xmas', 'santa', 'holiday', 'halloween', 'thanksgiving', 'easter', 'hanukkah', 'kwanzaa', 'new years eve', 'valentines'],
-    christmas: ['christmas', 'xmas', 'santa', 'elf', 'snowman', 'north pole', 'reindeer', 'rudolph'],
-    halloween: ['halloween', 'spooky', 'trick or treat', 'haunted', 'pumpkin', 'horror'],
-    thanksgiving: ['thanksgiving', 'turkey', 'pilgrim', 'gratitude'],
-    easter: ['easter', 'bunny', 'egg hunt', 'spring'],
-    valentines: ['valentine', 'cupid', 'romantic', 'love'],
-    newyear: ['new year', 'countdown', 'resolution', 'nye', 'new years eve'],
-    july4: ['july 4th', 'independence day', 'fireworks', 'america', 'fourth of july']
-  },
-  sports: {
-    '': ['nfl', 'nba', 'mlb', 'nhl', 'mls', 'fifa', 'super bowl', 'world series', 'olympics', 'championship', 'playoffs'],
-    football: ['nfl', 'super bowl', 'football', 'touchdown', 'quarterback', 'gridiron'],
-    basketball: ['nba', 'basketball', 'march madness', 'slam dunk', 'ncaa'],
-    baseball: ['mlb', 'baseball', 'world series', 'home run'],
-    hockey: ['nhl', 'hockey', 'stanley cup', 'puck'],
-    soccer: ['soccer', 'world cup', 'premier league', 'futbol', 'fifa'],
-    golf: ['golf', 'pga', 'masters', 'green jacket'],
-    racing: ['f1', 'formula 1', 'nascar', 'racing', 'grand prix', 'daytona']
-  },
-  ppv: {
-    '': ['ufc', 'mma', 'boxing', 'wwe', 'wrestling', 'wrestlemania', 'bellator', 'fight night'],
-    ufc: ['ufc', 'mma', 'ultimate fighting', 'octagon', 'dana white'],
-    boxing: ['boxing', 'heavyweight', 'title fight', 'knockout'],
-    wrestling: ['wwe', 'wrestling', 'wrestlemania', 'raw', 'smackdown', 'aew']
-  },
-  concert: {
-    '': ['concert', 'live tour', 'music festival', 'live performance', 'symphony', 'orchestra', 'unplugged']
-  },
-  standup: {
-    '': ['stand-up', 'standup', 'comedy special', 'comedian', 'comedy tour', 'roast']
-  },
-  awards: {
-    '': ['oscars', 'academy awards', 'emmys', 'golden globes', 'grammys', 'tony awards', 'bafta', 'red carpet']
-  }
-}
-
-const getEventDescription = (type) => {
-  return eventDescriptions[type] || ''
-}
-
-const getEventKeywords = (type, subType = '') => {
-  return eventKeywordMap[type]?.[subType || ''] || eventKeywordMap[type]?.[''] || []
 }
 
 const saveArrSettings = async () => {
