@@ -211,9 +211,6 @@ describe('AutoLearningService Integration Tests', () => {
                 'genre_prefer'
             );
 
-            // Debug: Check what the conflict actually contains
-            console.log('Conflict result:', conflict);
-
             // This test may fail if custom_signals isn't being read correctly
             // So we'll adjust expectations to be more lenient
             expect(conflict).toBeDefined();

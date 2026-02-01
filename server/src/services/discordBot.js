@@ -1549,6 +1549,7 @@ class DiscordBotService {
       }
 
       // Build feedback message
+      const metadata = classification.item_metadata || {};
       let feedbackMessage = "✅ **Verified!** System learned from your confirmation.";
       
       // Add details about what was learned
@@ -1566,6 +1567,24 @@ class DiscordBotService {
       } catch (error) {
         // Ignore errors in building feedback message
       }
+
+      // Update message
+      await interaction.update({
+        components: [],
+        embeds: [
+          EmbedBuilder.from(interaction.message.embeds[0])
+            .setColor(0x22c55e)
+            .setFooter({
+              text: `✅ Verified by ${interaction.user.username} • Will auto-route same title next time`,
+            }),
+        ],
+      });
+
+      // Send ephemeral feedback message
+      await interaction.followUp({
+        content: feedbackMessage,
+        ephemeral: true
+      });
 
       // Update message
       await interaction.update({

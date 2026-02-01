@@ -463,8 +463,8 @@ class AutoLearningService {
                     ch.item_metadata
                 FROM policy_feedback_log pfl
                 JOIN classification_history ch ON pfl.tmdb_id = ch.tmdb_id
-                WHERE pfl.prompted_at >= NOW() - INTERVAL '${DEFAULT_THRESHOLDS.learningLookbackDays} days'
-            `);
+                WHERE pfl.prompted_at >= NOW() - $1::interval
+            `, [`${DEFAULT_THRESHOLDS.learningLookbackDays} days`]);
             
             let confirmCount = 0;
             let rejectCount = 0;
@@ -710,21 +710,29 @@ class AutoLearningService {
                 WHERE id = $3
             `, [userId, reason, preferenceId]);
             
+            // Validate preference_type to prevent SQL injection
+            const validTypes = ['genre_prefer', 'keyword_prefer', 'studio_prefer'];
+            if (!validTypes.includes(preference.preference_type)) {
+                throw new Error('Invalid preference type');
+            }
+            
             // Remove from policy signals
             const signalPath = preference.preference_type.replace('_prefer', '');
+            
+            // Use a safe approach by building the path as an array
             await client.query(`
                 UPDATE policy_presets
                 SET custom_signals = jsonb_set(
                     custom_signals,
-                    '{${signalPath},prefer}',
+                    $1,
                     (
-                        SELECT jsonb_agg(elem)
-                        FROM jsonb_array_elements(custom_signals->'${signalPath}'->'prefer') elem
-                        WHERE elem::text != $1::text
+                        SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
+                        FROM jsonb_array_elements(custom_signals->$2->'prefer') elem
+                        WHERE elem::text != $3::text
                     )
                 )
-                WHERE policy_id = $2
-            `, [JSON.stringify(preference.preference_value), preference.policy_id]);
+                WHERE policy_id = $4
+            `, [`{${signalPath},prefer}`, signalPath, JSON.stringify(preference.preference_value), preference.policy_id]);
             
             await client.query('COMMIT');
             

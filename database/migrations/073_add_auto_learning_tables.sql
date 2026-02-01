@@ -62,9 +62,7 @@ CREATE TABLE IF NOT EXISTS learning_rate_limits (
   id SERIAL PRIMARY KEY,
   user_id VARCHAR(100) NOT NULL,
   library_id INTEGER NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
-  learn_timestamp TIMESTAMP DEFAULT NOW(),
-  
-  CONSTRAINT unique_user_library_timestamp UNIQUE(user_id, library_id, learn_timestamp)
+  learn_timestamp TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_learning_rate_user ON learning_rate_limits(user_id, learn_timestamp);
