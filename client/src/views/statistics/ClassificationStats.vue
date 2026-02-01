@@ -228,7 +228,6 @@ const getMethodColor = (method) => {
     'custom_rule': 'bg-purple-500',
     'ai_analysis': 'bg-yellow-500',
     'source_library': 'bg-cyan-500',
-    'event_detection': 'bg-red-500',
     'manual_correction': 'bg-pink-500',
     'existing_media': 'bg-teal-500',
     'reclassification': 'bg-orange-500',
@@ -236,7 +235,6 @@ const getMethodColor = (method) => {
     'rule_match': 'bg-purple-500',
     'library_rule': 'bg-purple-500',
     'ai_fallback': 'bg-yellow-500',
-    'holiday_detection': 'bg-red-500',
     'learned_correction': 'bg-pink-500',
     'unknown': 'bg-gray-500'
   }

@@ -212,9 +212,6 @@ export default {
   getPendingSuggestions() {
     return apiClient.get('/libraries/pending-suggestions')
   },
-  getEventTypes() {
-    return apiClient.get('/libraries/event-types')
-  },
   dismissSuggestions(libraryId) {
     return apiClient.post(`/libraries/${libraryId}/dismiss-suggestions`)
   },

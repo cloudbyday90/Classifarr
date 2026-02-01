@@ -453,7 +453,6 @@ const formatMethod = (method) => {
     'source_library': 'Source',
     'custom_rule': 'Rule',
     'exact_match': 'Exact',
-    'event_detection': 'Event',
     'manual_correction': 'Corrected',
     'learned_pattern': 'Learned',
     'existing_media': 'Exists',
@@ -462,35 +461,18 @@ const formatMethod = (method) => {
     'ai_fallback': 'AI',
     'rule_match': 'Rule',
     'library_rule': 'Rule',
-    'holiday_detection': 'Event',
     'learned_correction': 'Corrected'
   }
   return methods[method] || method
 }
 
 const getMethodIcon = (method, eventType = null) => {
-  // Event-specific icons
-  const eventIcons = {
-    'holiday': '🎄',
-    'sports': '🏈',
-    'ppv': '🥊',
-    'concert': '🎵',
-    'standup': '🎤',
-    'awards': '🏆'
-  }
-  
-  // If event type is provided, use it
-  if (method === 'event_detection' && eventType && eventIcons[eventType]) {
-    return eventIcons[eventType]
-  }
-
   const icons = {
     // New standardized names
     'ai_analysis': '🤖',
     'source_library': '📚',
     'custom_rule': '📋',
     'exact_match': '🎯',
-    'event_detection': '🎄', // Default event icon
     'manual_correction': '✏️',
     'learned_pattern': '🧠',
     'existing_media': '✅',
@@ -499,7 +481,6 @@ const getMethodIcon = (method, eventType = null) => {
     'ai_fallback': '🤖',
     'rule_match': '📋',
     'library_rule': '📖',
-    'holiday_detection': '🎄',
     'learned_correction': '✏️'
   }
   return icons[method] || '✓'
