@@ -417,6 +417,14 @@ async function loadSettings() {
       learningSettings.maxLearnsPerLibraryPerHour = !isNaN(value) ? value : 20
     }
     
+    // Load Discord display options
+    if (data.discord_include_signal_breakdown !== undefined) {
+      discordSettings.includeSignalBreakdown = data.discord_include_signal_breakdown.value === 'true'
+    }
+    if (data.discord_show_similar_items !== undefined) {
+      discordSettings.showSimilarItems = data.discord_show_similar_items.value === 'true'
+    }
+    
     console.log('Parsed settings:', { policySettings, discordSettings, learningSettings })
   } catch (error) {
     console.error('Failed to load confidence settings:', error)
@@ -444,6 +452,8 @@ async function saveAllSettings() {
     const payload = {
       policy_auto_classify_threshold: policySettings.autoClassifyThreshold,
       policy_prompt_threshold: policySettings.promptThreshold,
+      discord_include_signal_breakdown: discordSettings.includeSignalBreakdown,
+      discord_show_similar_items: discordSettings.showSimilarItems,
       learning_genre_threshold: learningSettings.genreLearnThreshold,
       learning_keyword_threshold: learningSettings.keywordLearnThreshold,
       learning_studio_threshold: learningSettings.studioLearnThreshold,

@@ -21,6 +21,7 @@ const logger = createLogger('Migrations');
 class MigrationRunner {
     constructor() {
         this.migrationsDir = path.join(__dirname, '../../database/migrations');
+        this.schemaFile = path.join(__dirname, '../../database/schema/current.sql');
     }
 
     /**
@@ -37,6 +38,36 @@ class MigrationRunner {
     }
 
     /**
+     * Initialize database for fresh installs using schema snapshot
+     */
+    async initializeFreshInstall() {
+        if (!fs.existsSync(this.schemaFile)) {
+            logger.warn('[Migrations] Schema snapshot not found, using legacy migrations');
+            return false;
+        }
+
+        logger.info('[Migrations] 🆕 Fresh install detected - loading schema snapshot');
+        logger.info('[Migrations] ⚡ This is much faster than running 76+ individual migrations');
+
+        const schemaSQL = fs.readFileSync(this.schemaFile, 'utf8');
+        
+        const client = await db.pool.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query(schemaSQL);
+            await client.query('COMMIT');
+            logger.info('[Migrations] ✅ Database initialized from schema snapshot');
+            return true;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            logger.error('[Migrations] Schema snapshot failed:', error.message);
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
      * Get list of already applied migrations
      */
     async getAppliedMigrations() {
@@ -45,7 +76,7 @@ class MigrationRunner {
     }
 
     /**
-     * Get list of all migration files
+     * Get list of all migration files (supports both numeric and timestamp)
      */
     getMigrationFiles() {
         if (!fs.existsSync(this.migrationsDir)) {
@@ -55,7 +86,27 @@ class MigrationRunner {
 
         const files = fs.readdirSync(this.migrationsDir)
             .filter(f => f.endsWith('.sql'))
-            .sort(); // Sort alphabetically (001_, 002_, etc.)
+            .sort((a, b) => {
+                // Extract version from filename for proper sorting
+                const getVersion = (filename) => {
+                    // Timestamp format: 20260201_150000_description.sql
+                    const timestampMatch = filename.match(/^(\d{8}_\d{6})_/);
+                    if (timestampMatch) {
+                        return timestampMatch[1];
+                    }
+                    
+                    // Numeric format: 076_description.sql
+                    const numericMatch = filename.match(/^(\d+)_/);
+                    if (numericMatch) {
+                        // Pad to ensure numeric sorts before timestamps
+                        return '00000000_000000_' + numericMatch[1].padStart(10, '0');
+                    }
+                    
+                    return filename;
+                };
+                
+                return getVersion(a).localeCompare(getVersion(b));
+            });
 
         return files;
     }
@@ -98,17 +149,32 @@ class MigrationRunner {
         try {
             logger.info('[Migrations] Checking for pending database migrations...');
 
-            // Ensure tracking table exists
-            await this.ensureMigrationsTable();
+            // Check if this is a fresh install
+            const { rows } = await db.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_name = 'schema_migrations'
+                ) as exists
+            `);
 
-            // Get applied and pending migrations
+            if (!rows[0].exists) {
+                // FRESH INSTALL - Try schema snapshot first
+                const usedSnapshot = await this.initializeFreshInstall();
+                if (usedSnapshot) {
+                    return { applied: 0, total: 76, method: 'snapshot' };
+                }
+            }
+
+            // EXISTING INSTALL or no snapshot - Use migrations
+            await this.ensureMigrationsTable();
+            
             const applied = await this.getAppliedMigrations();
             const allFiles = this.getMigrationFiles();
             const pending = allFiles.filter(f => !applied.includes(f));
 
             if (pending.length === 0) {
                 logger.info('[Migrations] Database is up to date (' + applied.length + ' migrations applied)');
-                return { applied: 0, total: applied.length };
+                return { applied: 0, total: applied.length, method: 'migrations' };
             }
 
             logger.info('[Migrations] Found ' + pending.length + ' pending migration(s)');
@@ -129,7 +195,7 @@ class MigrationRunner {
             }
 
             logger.info('[Migrations] Successfully applied ' + successCount + ' migration(s)');
-            return { applied: successCount, total: applied.length + successCount };
+            return { applied: successCount, total: applied.length + successCount, method: 'migrations' };
         } catch (error) {
             logger.error('[Migrations] Migration runner error: ' + error.message);
             throw error;

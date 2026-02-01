@@ -15,7 +15,9 @@
     "check-copyright": "node scripts/check-copyright.js",
     "update-copyright": "node scripts/update-copyright.js",
     "add-copyright-headers": "node scripts/add-copyright-headers.js",
-    "generate-contributors": "node scripts/generate-contributors.js"
+    "generate-contributors": "node scripts/generate-contributors.js",
+    "migration:create": "node scripts/create-migration.js",
+    "db:dump-schema": "node scripts/dump-schema.js"
   },
   "dependencies": {
     "axios": "^1.13.2",
