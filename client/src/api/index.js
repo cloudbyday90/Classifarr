@@ -578,15 +578,24 @@ export default {
     return apiClient.post(`/scheduler/${id}/run`)
   },
 
-  // Backup
-  exportBackup() {
-    return apiClient.get('/backup/export')
+  // Backup & Restore
+  createBackup(options) {
+    return apiClient.post('/backup/export', options)
   },
-  importBackup(data, options = {}) {
-    return apiClient.post('/backup/import', { data, options })
+  listBackups() {
+    return apiClient.get('/backup/list')
   },
-  previewBackup(data) {
-    return apiClient.post('/backup/preview', { data })
+  downloadBackup(filename) {
+    return apiClient.get(`/backup/download/${filename}`, { responseType: 'blob' })
+  },
+  deleteBackup(filename) {
+    return apiClient.delete(`/backup/${filename}`)
+  },
+  restoreBackup(filename, password, mode) {
+    return apiClient.post('/backup/import', { filename, password, mode })
+  },
+  previewBackupFile(filename, password) {
+    return apiClient.post('/backup/preview', { filename, password })
   },
 
   // Queue Settings
