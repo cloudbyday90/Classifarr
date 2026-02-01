@@ -17,10 +17,10 @@
  */
 
 const db = require('../../config/database');
+const { getMigrationSortKey, compareMigrations } = require('../../config/migrations');
 
 describe('Migration System Tests', () => {
     describe('Migration Filename Sorting', () => {
-        // Test the sorting logic used in MigrationRunner.getMigrationFiles()
         test('should sort numeric migrations before timestamp migrations', () => {
             const files = [
                 '20260201_150000_new_feature.sql',
@@ -31,26 +31,7 @@ describe('Migration System Tests', () => {
                 '050_middle_migration.sql'
             ];
 
-            const sorted = files.sort((a, b) => {
-                const getVersion = (filename) => {
-                    // Timestamp format: 20260201_150000_description.sql
-                    const timestampMatch = filename.match(/^(\d{8}_\d{6})_/);
-                    if (timestampMatch) {
-                        return timestampMatch[1];
-                    }
-                    
-                    // Numeric format: 076_description.sql
-                    const numericMatch = filename.match(/^(\d+)_/);
-                    if (numericMatch) {
-                        // Pad to ensure numeric sorts before timestamps
-                        return '00000000_000000_' + numericMatch[1].padStart(10, '0');
-                    }
-                    
-                    return filename;
-                };
-                
-                return getVersion(a).localeCompare(getVersion(b));
-            });
+            const sorted = files.sort(compareMigrations);
 
             // Verify numeric migrations come first
             expect(sorted[0]).toBe('001_initial_schema.sql');
@@ -71,28 +52,48 @@ describe('Migration System Tests', () => {
                 '20269999_235959_far_future.sql'
             ];
 
-            const sorted = files.sort((a, b) => {
-                const getVersion = (filename) => {
-                    const timestampMatch = filename.match(/^(\d{8}_\d{6})_/);
-                    if (timestampMatch) {
-                        return timestampMatch[1];
-                    }
-                    
-                    const numericMatch = filename.match(/^(\d+)_/);
-                    if (numericMatch) {
-                        return '00000000_000000_' + numericMatch[1].padStart(10, '0');
-                    }
-                    
-                    return filename;
-                };
-                
-                return getVersion(a).localeCompare(getVersion(b));
-            });
+            const sorted = files.sort(compareMigrations);
 
             expect(sorted[0]).toBe('001_first_numeric.sql');
             expect(sorted[1]).toBe('999_last_numeric.sql');
             expect(sorted[2]).toBe('20260101_000000_first_timestamp.sql');
             expect(sorted[3]).toBe('20269999_235959_far_future.sql');
+        });
+
+        test('should handle duplicate numeric prefixes deterministically', () => {
+            // These duplicate prefixes exist in the actual repo
+            const files = [
+                '011_remove_email_column.sql',
+                '011_add_library_rules.sql',
+                '044_expand_content_presets.sql',
+                '044_add_tuning_suggestion_tracking.sql',
+                '010_something_else.sql'
+            ];
+
+            const sorted = files.sort(compareMigrations);
+
+            // Within same prefix, should sort alphabetically by full filename
+            expect(sorted[0]).toBe('010_something_else.sql');
+            expect(sorted[1]).toBe('011_add_library_rules.sql'); // 'add' < 'remove'
+            expect(sorted[2]).toBe('011_remove_email_column.sql');
+            expect(sorted[3]).toBe('044_add_tuning_suggestion_tracking.sql'); // 'add' < 'expand'
+            expect(sorted[4]).toBe('044_expand_content_presets.sql');
+        });
+
+        test('getMigrationSortKey should generate correct sort keys', () => {
+            // Test numeric migrations
+            expect(getMigrationSortKey('001_initial.sql')).toBe('00000000_000000_0000000001');
+            expect(getMigrationSortKey('076_latest.sql')).toBe('00000000_000000_0000000076');
+            expect(getMigrationSortKey('999_last.sql')).toBe('00000000_000000_0000000999');
+            
+            // Test timestamp migrations
+            expect(getMigrationSortKey('20260201_150000_feature.sql')).toBe('20260201_150000');
+            expect(getMigrationSortKey('20260201_140000_another.sql')).toBe('20260201_140000');
+            
+            // Test that numeric sort keys are less than timestamp sort keys
+            const numericKey = getMigrationSortKey('999_last.sql');
+            const timestampKey = getMigrationSortKey('20260101_000000_first.sql');
+            expect(numericKey < timestampKey).toBe(true);
         });
     });
 

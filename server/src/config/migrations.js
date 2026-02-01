@@ -15,6 +15,56 @@ const { createLogger } = require('../utils/logger');
 const logger = createLogger('Migrations');
 
 /**
+ * Extract version key from migration filename for sorting
+ * 
+ * @param {string} filename - Migration filename
+ * @returns {string} Sort key for the migration
+ * 
+ * @example
+ * getMigrationSortKey('001_initial.sql') // => '00000000_000000_0000000001'
+ * getMigrationSortKey('20260201_150000_feature.sql') // => '20260201_150000'
+ */
+function getMigrationSortKey(filename) {
+    // Timestamp format: 20260201_150000_description.sql
+    const timestampMatch = filename.match(/^(\d{8}_\d{6})_/);
+    if (timestampMatch) {
+        return timestampMatch[1];
+    }
+    
+    // Numeric format: 076_description.sql
+    const numericMatch = filename.match(/^(\d+)_/);
+    if (numericMatch) {
+        // Pad to ensure numeric sorts before timestamps
+        return '00000000_000000_' + numericMatch[1].padStart(10, '0');
+    }
+    
+    return filename;
+}
+
+/**
+ * Compare two migration filenames for sorting
+ * 
+ * @param {string} a - First migration filename
+ * @param {string} b - Second migration filename
+ * @returns {number} -1, 0, or 1 for sort ordering
+ */
+function compareMigrations(a, b) {
+    const versionA = getMigrationSortKey(a);
+    const versionB = getMigrationSortKey(b);
+    
+    // Primary sort by version
+    const versionCompare = versionA.localeCompare(versionB);
+    
+    // If versions are the same (e.g., duplicate prefixes like 011_*, 044_*),
+    // use filename as tie-breaker for deterministic ordering
+    if (versionCompare === 0) {
+        return a.localeCompare(b);
+    }
+    
+    return versionCompare;
+}
+
+/**
  * Database Migration Runner
  * 
  * This system supports two migration strategies:
@@ -157,39 +207,7 @@ class MigrationRunner {
 
         const files = fs.readdirSync(this.migrationsDir)
             .filter(f => f.endsWith('.sql'))
-            .sort((a, b) => {
-                // Extract version from filename for proper sorting
-                const getVersion = (filename) => {
-                    // Timestamp format: 20260201_150000_description.sql
-                    const timestampMatch = filename.match(/^(\d{8}_\d{6})_/);
-                    if (timestampMatch) {
-                        return timestampMatch[1];
-                    }
-                    
-                    // Numeric format: 076_description.sql
-                    const numericMatch = filename.match(/^(\d+)_/);
-                    if (numericMatch) {
-                        // Pad to ensure numeric sorts before timestamps
-                        return '00000000_000000_' + numericMatch[1].padStart(10, '0');
-                    }
-                    
-                    return filename;
-                };
-                
-                const versionA = getVersion(a);
-                const versionB = getVersion(b);
-                
-                // Primary sort by version
-                const versionCompare = versionA.localeCompare(versionB);
-                
-                // If versions are the same (e.g., duplicate prefixes like 011_*, 044_*),
-                // use filename as tie-breaker for deterministic ordering
-                if (versionCompare === 0) {
-                    return a.localeCompare(b);
-                }
-                
-                return versionCompare;
-            });
+            .sort(compareMigrations);
 
         return files;
     }
@@ -289,3 +307,7 @@ class MigrationRunner {
 }
 
 module.exports = new MigrationRunner();
+
+// Export helper functions for testing
+module.exports.getMigrationSortKey = getMigrationSortKey;
+module.exports.compareMigrations = compareMigrations;
