@@ -1,6 +1,6 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2025 cloudbyday90
+ * Copyright (C) 2024-2026 Classifarr Contributors
  *
  * Integration test for CARSA library mapping preservation
  * Tests the complete workflow of preserving Radarr/Sonarr mappings during Clear and Re-sync All

@@ -6,6 +6,18 @@
 
 ### Added
 
+- **📝 Copyright Compliance System**: Automated copyright management and contributor tracking
+  - ✅ Automated compliance checking (`npm run check-copyright`)
+  - ✅ One-click copyright year updates (`npm run update-copyright`)
+  - ✅ Auto-generated CONTRIBUTORS.md from git history
+  - ✅ CI enforcement on all pull requests
+  - ✅ Project-specific LICENSE header
+  - **For Users**: All source files now properly attributed to "Classifarr Contributors"
+  - **For Users**: Copyright headers automatically update each year on January 1st
+  - **For Users**: CONTRIBUTORS.md recognizes everyone who contributed code
+  - **For Developers**: CI will fail if copyright headers are outdated
+  - **For Developers**: Simply run `npm run update-copyright` to fix all files
+  - **For Developers**: No more manual copyright header management
 - **👤 Profile Settings**: New user profile management page
   - Easily update your username with uniqueness validation
   - Change your password securely with current password verification and strength requirements

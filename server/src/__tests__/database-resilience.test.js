@@ -1,6 +1,6 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2025 cloudbyday90
+ * Copyright (C) 2024-2026 Classifarr Contributors
  *
  * Database Resilience Tests
  * Ensures database connection errors don't crash the application (regression prevention)

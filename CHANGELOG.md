@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Copyright Compliance System** (Fixes #198)
+  - Automated copyright compliance checking with `npm run check-copyright`
+  - Auto-fix script to update copyright years with `npm run update-copyright`
+  - Auto-generated CONTRIBUTORS.md from git history
+  - CI integration to enforce copyright compliance on all PRs
+  - Updated LICENSE with project-specific header
+  - All source files updated to use `2024-2026 Classifarr Contributors`
+  - Annual year updates now automated (CI fails on Jan 1st each year)
 - **Classification Signals Breakdown UI** (Fixes #185)
   - Signal breakdown now displays in Classification Details modal for all policy engine classifications
   - Shows all 5 engines (Preset, Profile, Pattern, RAG, History) with individual scores and weights

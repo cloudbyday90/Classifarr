@@ -1,6 +1,6 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2025 cloudbyday90
+ * Copyright (C) 2024-2026 Classifarr Contributors
  *
  * Tests for preset customization (custom_signals) feature
  * Ensures policies can store and retrieve per-preset signal customizations

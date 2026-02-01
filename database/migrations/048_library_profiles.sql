@@ -1,6 +1,6 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2025 cloudbyday90
+ * Copyright (C) 2024-2026 Classifarr Contributors
  *
  * Migration: 048_library_profiles.sql
  * Purpose: Replace Pattern Management with auto-generated Library Profiles

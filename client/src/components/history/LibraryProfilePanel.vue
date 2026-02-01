@@ -1,6 +1,6 @@
 <!--
   Classifarr - AI-powered media classification for the *arr ecosystem
-  Copyright (C) 2025 cloudbyday90
+  Copyright (C) 2024-2026 Classifarr Contributors
   
   Library Profile Panel - Shows library profile used in classification decision
   For Issue #142 (Epic #136 - v0.39.0-alpha)
