@@ -345,6 +345,7 @@ describe('useServiceStatusStore', () => {
     })
   })
   })
+  })
 
   describe('isSystemHealthy', () => {
     it('returns true when database is healthy', () => {

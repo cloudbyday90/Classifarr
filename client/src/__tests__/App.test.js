@@ -20,6 +20,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import App from '../App.vue';
+import api from '@/api'
 
 // Mock the API
 vi.mock('@/api', () => ({
@@ -31,6 +32,22 @@ vi.mock('@/api', () => ({
 describe('App.vue', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    // Mock the API response
+    api.getSystemHealth.mockResolvedValue({
+      data: {
+        database: 'connected',
+        mediaServer: 'not_configured',
+        radarr: 'not_configured',
+        sonarr: 'not_configured',
+        ollama: 'not_configured',
+        tmdb: 'not_configured',
+        omdb: 'not_configured',
+        discordBot: 'not_configured',
+        tavily: 'not_configured',
+        queueWorker: 'healthy',
+        details: {}
+      }
+    })
   })
 
   it('renders without crashing', () => {
