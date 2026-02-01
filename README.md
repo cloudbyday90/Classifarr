@@ -992,6 +992,7 @@ When you enable RAG, existing classification history can be backfilled to seed t
 - [Discord Bot Setup](DISCORD_SETUP.md) - Configure Discord notifications
 - [Authentication](AUTHENTICATION.md) - User management
 - [UnRaid Guide](unraid/README.md) - UnRaid deployment
+- [Database Migration System](docs/MIGRATION_SYSTEM.md) - How migrations work (v0.41+)
 - [Database Migrations](docs/migrations.md) - Schema management
 
 ## 🎮 Discord Bot
