@@ -8,8 +8,42 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * Generates a new timestamp-based migration file
- * Usage: npm run migration:create "add user preferences"
+ * ============================================================================
+ * Timestamp-Based Migration Generator
+ * ============================================================================
+ * 
+ * PURPOSE:
+ *   Generates new database migration files with timestamp-based naming.
+ *   Prevents merge conflicts that occur with numeric migration naming.
+ * 
+ * BENEFITS:
+ *   ✅ Unique timestamps prevent PR conflicts
+ *   ✅ Infinite scalability (no 999 migration limit)
+ *   ✅ Self-documenting (creation date embedded in filename)
+ *   ✅ Follows industry best practices (Rails, Laravel, Django, etc.)
+ * 
+ * NAMING FORMAT:
+ *   YYYYMMDD_HHMMSS_description.sql
+ *   Example: 20260201_150322_add_user_preferences.sql
+ * 
+ * USAGE:
+ *   npm run migration:create "description of changes"
+ * 
+ * WORKFLOW:
+ *   1. Run: npm run migration:create "add user notifications"
+ *   2. Edit the generated migration file (add your SQL)
+ *   3. Test: npm --prefix server run dev
+ *   4. Verify: Check database schema
+ *   5. Test idempotency: Restart server (should not error)
+ *   6. Update snapshot: npm run db:dump-schema
+ *   7. Commit: git add database/migrations/*.sql database/schema/current.sql
+ * 
+ * BEST PRACTICES:
+ *   - Use descriptive names: "add_user_preferences" not "update_db"
+ *   - Keep migrations focused: One logical change per migration
+ *   - Always use IF NOT EXISTS / IF EXISTS for idempotency
+ *   - Test on both fresh AND existing databases
+ *   - Never edit migrations after they're merged to main
  */
 
 const fs = require('fs');
