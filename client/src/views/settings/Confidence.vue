@@ -399,14 +399,6 @@ async function loadSettings() {
       policySettings.promptThreshold = !isNaN(value) ? value : 60
     }
     
-    // Load Discord display options only
-    if (data.discord_include_signal_breakdown !== undefined) {
-      discordSettings.includeSignalBreakdown = data.discord_include_signal_breakdown.value === 'true'
-    }
-    if (data.discord_show_similar_items !== undefined) {
-      discordSettings.showSimilarItems = data.discord_show_similar_items.value === 'true'
-    }
-    
     if (data.learning_genre_threshold) {
       const value = parseInt(data.learning_genre_threshold.value)
       learningSettings.genreLearnThreshold = !isNaN(value) ? value : 3
@@ -466,8 +458,6 @@ async function saveAllSettings() {
     const payload = {
       policy_auto_classify_threshold: policySettings.autoClassifyThreshold,
       policy_prompt_threshold: policySettings.promptThreshold,
-      discord_include_signal_breakdown: discordSettings.includeSignalBreakdown,
-      discord_show_similar_items: discordSettings.showSimilarItems,
       learning_genre_threshold: learningSettings.genreLearnThreshold,
       learning_keyword_threshold: learningSettings.keywordLearnThreshold,
       learning_studio_threshold: learningSettings.studioLearnThreshold,
