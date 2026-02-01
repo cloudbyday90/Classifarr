@@ -10,10 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **Event Detection Frontend UI**: Removed all legacy event/holiday detection UI controls and code
-  - Removed event/holiday UI controls from LibraryDetail, preset selectors, and policy builder
-  - Removed all references to `/api/libraries/event-types` endpoint in client code
-  - Cleaned up event/holiday translation keys and i18n entries
-  - Removed event preset options from all dropdowns and selectors
+  - Removed event_type field and operators from SmartRuleForm component
+  - Removed event type select UI with holiday/sports/PPV sub-type selectors
+  - Removed `getEventSubTypeKeywords` helper function
+  - Removed `getEventTypes()` API endpoint call from client API layer
+  - Removed event_detection and holiday_detection from Activity, History, Dashboard, Confidence, and ClassificationStats views
   - Updated all affected frontend tests
   - UI now exclusively uses PolicyEngine/preset-driven workflows
 - **Event Detection Backend Code**: Removed all legacy event/holiday detection code from backend
