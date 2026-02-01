@@ -8,7 +8,10 @@
     "dev": "nodemon src/index.js",
     "test": "node ./scripts/run-jest.mjs --runInBand",
     "test:integration": "node ./scripts/run-jest.mjs -c jest.integration.config.js",
-    "test:watch": "node ./scripts/run-jest.mjs --watch"
+    "test:watch": "node ./scripts/run-jest.mjs --watch",
+    "check-copyright": "node ../scripts/check-copyright.js",
+    "update-copyright": "node ../scripts/update-copyright.js",
+    "generate-contributors": "node ../scripts/generate-contributors.js"
   },
   "dependencies": {
     "axios": "^1.13.4",

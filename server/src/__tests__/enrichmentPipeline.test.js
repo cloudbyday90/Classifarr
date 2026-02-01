@@ -1,6 +1,6 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2025 cloudbyday90
+ * Copyright (C) 2024-2026 Classifarr Contributors
  *
  * Integration tests for metadata enrichment pipeline
  * Tests the full flow: TVDB→TMDB, IMDB→TMDB, title search, classification_history

@@ -1,6 +1,6 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2025 cloudbyday90
+ * Copyright (C) 2024-2026 Classifarr Contributors
  *
  * Regression tests for v0.37.1-alpha fixes:
  * 1. Scheduler import fix (runGapAnalysis vs runPatternAnalysis)

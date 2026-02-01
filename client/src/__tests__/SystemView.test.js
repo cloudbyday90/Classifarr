@@ -1,6 +1,6 @@
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2026 cloudbyday90
+ * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
