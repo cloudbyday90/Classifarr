@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './accessibility.css';
 
 @theme {
   --color-primary: #3b82f6;
