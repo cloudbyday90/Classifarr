@@ -19,6 +19,11 @@
 const db = require('../../config/database');
 const fs = require('fs');
 const path = require('path');
+const request = require('supertest');
+const express = require('express');
+const librariesRouter = require('../../routes/libraries');
+const { authenticateTokenOrApiKey } = require('../../middleware/apiKeyAuth');
+const authService = require('../../services/auth');
 
 describe('Event Detection Removal Migration Tests (v0.41.0)', () => {
     describe('Migration 072: Event Detection System Removal', () => {
@@ -146,6 +151,68 @@ describe('Event Detection Removal Migration Tests (v0.41.0)', () => {
             // Event detection fields should not exist
             expect(library.event_detection_type).toBeUndefined();
             expect(library.event_sub_type).toBeUndefined();
+        });
+
+        test('should properly ignore deprecated event detection fields in library update', async () => {
+            // Create test app with authentication
+            const app = express();
+            app.use(express.json());
+            app.use('/api/libraries', authenticateTokenOrApiKey, librariesRouter);
+
+            // Create test user and token
+            const userResult = await db.query(`
+                INSERT INTO users (username, password_hash, role, is_active)
+                VALUES ('test-event-user', 'hashedpass', 'admin', true)
+                RETURNING id
+            `);
+            const userId = userResult.rows[0].id;
+
+            const testToken = await authService.generateToken({ 
+                id: userId, 
+                username: 'test-event-user',
+                role: 'admin'
+            });
+
+            try {
+                // Attempt to update library with deprecated event detection fields
+                const response = await request(app)
+                    .put(`/api/libraries/${testLibraryId}`)
+                    .set('Authorization', `Bearer ${testToken}`)
+                    .send({
+                        priority: 10,
+                        arr_type: 'radarr',
+                        // These deprecated fields should be silently ignored
+                        event_detection_type: 'holiday',
+                        event_sub_type: 'christmas'
+                    })
+                    .expect(200);
+
+                // Request should succeed
+                expect(response.body).toBeDefined();
+                expect(response.body.id).toBe(testLibraryId);
+                expect(response.body.priority).toBe(10);
+                expect(response.body.arr_type).toBe('radarr');
+
+                // Verify deprecated fields are not in response
+                expect(response.body.event_detection_type).toBeUndefined();
+                expect(response.body.event_sub_type).toBeUndefined();
+
+                // Verify in database that deprecated fields were not stored
+                const dbResult = await db.query(`
+                    SELECT * FROM libraries WHERE id = $1
+                `, [testLibraryId]);
+
+                const updatedLibrary = dbResult.rows[0];
+                expect(updatedLibrary.priority).toBe(10);
+                expect(updatedLibrary.arr_type).toBe('radarr');
+                
+                // Confirm columns don't exist in database
+                expect(updatedLibrary.event_detection_type).toBeUndefined();
+                expect(updatedLibrary.event_sub_type).toBeUndefined();
+            } finally {
+                // Clean up test user
+                await db.query('DELETE FROM users WHERE id = $1', [userId]);
+            }
         });
     });
 
