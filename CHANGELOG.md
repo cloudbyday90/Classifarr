@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Dashboard UX Improvements**: Major polish and efficiency upgrades
+  - Added loading skeletons and error states for all dashboard cards
+  - Parallelized API calls for faster dashboard load times
+  - Implemented smart polling that pauses when browser tab is hidden (saves resources)
+  - Added beginner-friendly empty state with onboarding guidance
+  - Expanded Quick Actions with shortcuts to Settings, Statistics, and Documentation
+  - Added "Last updated" timestamp with relative time display
+  - Enhanced Recent Classifications with method, timestamp, and clickable details
+  - Improved accessibility and mobile responsiveness across all dashboard elements
 - **Sync Error Handling**: Improved error handling for sync endpoints
   - Added explicit HTTP 404 responses for missing libraries in sync operations
   - Created `LibraryNotFoundError` for type-safe error handling

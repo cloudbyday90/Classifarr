@@ -6,6 +6,15 @@
 
 ### Improved
 
+- **Dashboard Experience**: Completely refreshed dashboard with better performance and UX
+  - Faster loading with parallel API calls
+  - Clear loading and error states (no more blank screens)
+  - Smart resource management (pauses updates when tab is hidden)
+  - Helpful onboarding for new users with no libraries
+  - Quick access to Settings, Statistics, and Documentation
+  - Live "last updated" timestamps show data freshness
+  - Enhanced classification history with more details and clickable items
+  - Better accessibility and mobile experience
 - **Sync Error Handling**: Better error messages and handling for sync operations
   - Sync endpoints now return clear HTTP 404 errors when libraries don't exist
   - Reduced log noise for expected error cases
