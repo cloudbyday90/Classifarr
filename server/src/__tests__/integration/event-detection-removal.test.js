@@ -63,7 +63,7 @@ describe('Event Detection Removal Migration Tests (v0.41.0)', () => {
         });
 
         test('should verify migration 072 file exists and contains correct SQL', async () => {
-            const migrationPath = path.join(__dirname, '../../../database/migrations/072_remove_event_detection.sql');
+            const migrationPath = path.join(__dirname, '../../../../database/migrations/072_remove_event_detection.sql');
             expect(fs.existsSync(migrationPath)).toBe(true);
 
             const migrationContent = fs.readFileSync(migrationPath, 'utf8');
