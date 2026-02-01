@@ -2897,6 +2897,16 @@ router.put('/confidence', authenticateToken, requireAdmin, async (req, res) => {
     const userId = req.user?.id || null;
     const changeReason = req.body._reason || 'Manual update';
     
+    // Warn if client sends deprecated Discord thresholds
+    const deprecatedKeys = ['discord_auto_route_threshold', 'discord_verify_threshold', 'discord_enhanced_details_threshold'];
+    const sentDeprecatedKeys = deprecatedKeys.filter(key => key in updates);
+    if (sentDeprecatedKeys.length > 0) {
+      logger.warn('Deprecated Discord threshold settings sent - these are ignored', {
+        deprecatedKeys: sentDeprecatedKeys,
+        userId
+      });
+    }
+    
     // Validate that settings exist before updating
     const existingKeys = await client.query(
       'SELECT setting_key FROM confidence_settings'
@@ -2905,6 +2915,9 @@ router.put('/confidence', authenticateToken, requireAdmin, async (req, res) => {
     
     for (const [key, newValue] of Object.entries(updates)) {
       if (key.startsWith('_')) continue; // Skip metadata
+      
+      // Skip deprecated Discord threshold keys (log warning above)
+      if (deprecatedKeys.includes(key)) continue;
       
       // Validate key exists
       if (!validKeys.has(key)) {

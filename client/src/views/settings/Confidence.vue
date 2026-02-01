@@ -111,49 +111,35 @@
       </div>
     </Card>
 
-    <!-- ==================== SECTION 2: Discord Notification Thresholds ==================== -->
+    <!-- ==================== SECTION 2: Discord Notification Display Options ==================== -->
     <Card>
       <template #header>
-        <h2 class="text-xl font-semibold">🔔 Discord Notification - Behavior Thresholds</h2>
+        <h2 class="text-xl font-semibold">🔔 Discord Notification - Display Options</h2>
       </template>
 
       <p class="text-gray-400 mb-6">
-        Control when Discord notifications are sent and what type of message users see based on classification confidence.
+        Configure what information is included in Discord notifications. Notification behavior (when to send messages and whether to include buttons) is automatically determined by the Classification Thresholds above.
       </p>
 
+      <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded mb-6">
+        <div class="flex items-start gap-3">
+          <div class="text-blue-400 text-xl">ℹ️</div>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-blue-400 mb-2">How Discord uses thresholds:</p>
+            <p class="text-sm text-gray-300">
+              Items ≥{{ policySettings.autoClassifyThreshold }}% send info-only messages.
+              Items {{ policySettings.promptThreshold }}%-{{ policySettings.autoClassifyThreshold - 1 }}% send messages with Yes/No buttons.
+              Items &lt;{{ policySettings.promptThreshold }}% may trigger Policy Builder notifications.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div class="space-y-6">
-        <!-- Auto-Route Threshold -->
-        <div class="space-y-2">
-          <div class="flex justify-between items-center">
-            <label class="font-medium">Auto-Route Notification Threshold</label>
-            <span class="text-2xl font-bold text-blue-400">{{ discordSettings.autoRouteThreshold }}%</span>
-          </div>
-          <p class="text-sm text-gray-400">High-confidence items (≥ this threshold) send informational messages WITHOUT verification buttons</p>
-          <Slider
-            v-model="discordSettings.autoRouteThreshold"
-            :min="75"
-            :max="100"
-            :step="5"
-          />
-        </div>
-
-        <!-- Verification Threshold -->
-        <div class="space-y-2">
-          <div class="flex justify-between items-center">
-            <label class="font-medium">Verification Required Threshold</label>
-            <span class="text-2xl font-bold text-purple-400">{{ discordSettings.verificationThreshold }}%</span>
-          </div>
-          <p class="text-sm text-gray-400">Medium-confidence items (≥ this threshold, &lt; auto-route) prompt for Yes/No verification</p>
-          <Slider
-            v-model="discordSettings.verificationThreshold"
-            :min="50"
-            :max="85"
-            :step="5"
-          />
-        </div>
-
-        <!-- Options -->
-        <div class="space-y-3 pt-4 border-t border-gray-700">
+        <!-- Display Options -->
+        <div class="space-y-3">
+          <h3 class="font-medium text-sm text-gray-300">Message Content Options</h3>
+          
           <label class="flex items-center gap-2">
             <input type="checkbox" v-model="discordSettings.includeSignalBreakdown" class="w-4 h-4 rounded bg-gray-800 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" />
             <span class="text-sm">Always include signal breakdown in verification messages</span>
@@ -367,9 +353,6 @@ const policySettings = reactive({
 })
 
 const discordSettings = reactive({
-  autoRouteThreshold: 85,
-  verificationThreshold: 60,
-  enhancedDetailsThreshold: 60,
   includeSignalBreakdown: true,
   showSimilarItems: true
 })
@@ -415,14 +398,15 @@ async function loadSettings() {
       const value = parseInt(data.policy_prompt_threshold.value)
       policySettings.promptThreshold = !isNaN(value) ? value : 60
     }
-    if (data.discord_auto_route_threshold) {
-      const value = parseInt(data.discord_auto_route_threshold.value)
-      discordSettings.autoRouteThreshold = !isNaN(value) ? value : 85
+    
+    // Load Discord display options only
+    if (data.discord_include_signal_breakdown !== undefined) {
+      discordSettings.includeSignalBreakdown = data.discord_include_signal_breakdown.value === 'true'
     }
-    if (data.discord_verify_threshold) {
-      const value = parseInt(data.discord_verify_threshold.value)
-      discordSettings.verificationThreshold = !isNaN(value) ? value : 60
+    if (data.discord_show_similar_items !== undefined) {
+      discordSettings.showSimilarItems = data.discord_show_similar_items.value === 'true'
     }
+    
     if (data.learning_genre_threshold) {
       const value = parseInt(data.learning_genre_threshold.value)
       learningSettings.genreLearnThreshold = !isNaN(value) ? value : 3
@@ -482,9 +466,8 @@ async function saveAllSettings() {
     const payload = {
       policy_auto_classify_threshold: policySettings.autoClassifyThreshold,
       policy_prompt_threshold: policySettings.promptThreshold,
-      discord_auto_route_threshold: discordSettings.autoRouteThreshold,
-      discord_verify_threshold: discordSettings.verificationThreshold,
-      discord_enhanced_details_threshold: discordSettings.enhancedDetailsThreshold,
+      discord_include_signal_breakdown: discordSettings.includeSignalBreakdown,
+      discord_show_similar_items: discordSettings.showSimilarItems,
       learning_genre_threshold: learningSettings.genreLearnThreshold,
       learning_keyword_threshold: learningSettings.keywordLearnThreshold,
       learning_studio_threshold: learningSettings.studioLearnThreshold,
@@ -550,8 +533,8 @@ async function resetToDefaults() {
   
   policySettings.autoClassifyThreshold = 85
   policySettings.promptThreshold = 60
-  discordSettings.autoRouteThreshold = 85
-  discordSettings.verificationThreshold = 60
+  discordSettings.includeSignalBreakdown = true
+  discordSettings.showSimilarItems = true
   learningSettings.genreLearnThreshold = 3
   learningSettings.keywordLearnThreshold = 5
   learningSettings.studioLearnThreshold = 2
