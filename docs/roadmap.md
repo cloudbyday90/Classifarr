@@ -6,23 +6,12 @@ This document outlines the planned features and improvements, grouped by complex
 
 ## v0.40.6-alpha (Planned)
 
-**Theme: Retire Event Detection + Sync Error Hygiene**
+**Theme: Sync Error Hygiene**
 
 ### Goals
-- Fully retire legacy event/holiday detection and event presets.
 - Make sync error handling explicit (404 for missing libraries) without noisy error logs.
 
 ### Planned Work
-- **Retire event detection stack**
-  - Remove `detectEventContent` and event keyword detection from `ClassificationService`.
-  - Remove `EVENT_DETECTION` signal type and weights from `SignalCollector`/`ConfidenceCalculator`.
-  - Drop `event_detection_type` / `event_sub_type` from `libraries` (migration + data cleanup).
-  - Remove `event` presets from `content_presets` and detach from policies (migration).
-  - Remove event/holiday UI controls in `LibraryDetail` and rule builder (`event_type` condition).
-  - Remove `/api/libraries/event-types` endpoint and related client usage.
-  - Update activity/history/stats method labels to remove `event_detection`/`holiday_detection`.
-  - Update tests: remove event preset integration suite and adjust coverage accordingly.
-
 - **Sync error hygiene**
   - Introduce a typed NotFound error in `mediaSync` when library ID is missing.
   - Return HTTP 404 for missing library in `/api/libraries/:id/sync` and `/api/media-sync/sync/:libraryId`.
@@ -31,24 +20,24 @@ This document outlines the planned features and improvements, grouped by complex
 
 ---
 
-## High Complexity
+## v0.41.0-alpha (Completed)
 
-### Retire Event Detection + Sync Error Hygiene
-- Fully retire legacy event/holiday detection and event presets.
-- Make sync error handling explicit (404 for missing libraries) without noisy error logs.
-- **Scope**:
-  - Remove `detectEventContent` and event keyword detection from `ClassificationService`.
-  - Remove `EVENT_DETECTION` signal type and weights from `SignalCollector`/`ConfidenceCalculator`.
-  - Drop `event_detection_type` / `event_sub_type` from `libraries` (migration + data cleanup).
-  - Remove event presets from `content_presets` and detach from policies (migration).
-  - Remove event/holiday UI controls in `LibraryDetail` and rule builder (`event_type` condition).
-  - Remove `/api/libraries/event-types` endpoint and related client usage.
-  - Update activity/history/stats method labels to remove `event_detection`/`holiday_detection`.
-  - Update tests: remove event preset integration suite and adjust coverage accordingly.
-  - Introduce a typed NotFound error in `mediaSync` when library ID is missing.
-  - Return HTTP 404 for missing library in `/api/libraries/:id/sync` and `/api/media-sync/sync/:libraryId`.
-  - Log missing-library cases as warnings (not errors) to reduce noise in tests/CI.
-  - Update integration tests to assert 404 and no error log for expected paths.
+**Theme: Event Detection System Removal**
+
+### Completed ✅
+- **Retired event detection stack** (#228, Epic #168)
+  - ✅ Removed `detectEventContent` and `checkLibraryRulesForExceptions` from `ClassificationService`
+  - ✅ Dropped `event_detection_type` / `event_sub_type` from `libraries` table (migration 072)
+  - ✅ Removed all 6 event presets from `content_presets` (event_holiday, event_sports, event_ppv, event_concert, event_standup, event_awards)
+  - ✅ Cleaned up all policy references to event presets
+  - ✅ Removed event/holiday UI controls from `LibraryDetail.vue`
+  - ✅ Kept `detectEventTypesFromMetadata` (used by library rules for condition evaluation)
+  - ✅ Removed event preset integration test suite, added migration verification tests
+  - ✅ Updated CHANGELOG.md and RELEASE_NOTES.md with migration impact notes
+
+---
+
+## High Complexity
 
 ### RAG Similarity Visualization
 - Display AI similarity matches that contributed to classification decisions.
