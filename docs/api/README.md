@@ -1,98 +1,200 @@
 # Classifarr API Reference
 
+**Version:** v0.41.0-alpha
+
+Comprehensive REST API for Classifarr's policy-driven media classification platform.
+
+---
+
 ## Overview
 
-The Classifarr API provides RESTful endpoints for managing policies, presets, tuning suggestions, statistics, and legacy rule migration.
+The Classifarr API provides complete programmatic access to all platform features:
+
+- **Policy-based classification** with 168 content presets
+- **System health monitoring** with trend indicators
+- **Media library management** and synchronization
+- **Webhook integrations** for Overseerr/Jellyseerr/Seer
+- **API key management** for secure integrations
+- **Comprehensive error handling** with consistent response formats
 
 **Base URL:** `http://localhost:21324/api`
 
-**Authentication:** Most endpoints require JWT authentication via the `Authorization: Bearer <token>` header.
+**Current Version:** v0.41.0-alpha
+
+---
+
+## Quick Start
+
+### Authentication
+
+Classifarr supports two authentication methods:
+
+**1. JWT Tokens (Web UI):**
+```bash
+curl -X POST http://localhost:21324/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"password"}'
+```
+
+**2. API Keys (Integrations - Recommended):**
+```bash
+curl -X GET http://localhost:21324/api/libraries \
+  -H "X-API-Key: clf_your_api_key_here"
+```
+
+See [Authentication Guide](./authentication.md) for complete details.
+
+### Example Request
+
+```bash
+# Get system health
+curl -X GET http://localhost:21324/api/system/health/services \
+  -H "X-API-Key: clf_your_api_key_here"
+```
 
 ---
 
 ## API Categories
 
-- [Policies API](./policies.md) - Policy CRUD and preset management
-- [Presets API](./presets.md) - Content preset discovery and filtering
-- [Suggestions API](./suggestions.md) - Tuning suggestion management
-- [Stats API](./stats.md) - Policy statistics and analytics
-- [Migration API](./migration.md) - Legacy rule migration tools
+### Core APIs
 
-> **Note:** Additional APIs for presets, suggestions, statistics, and legacy rule migration are available in the service, but their detailed documentation is not yet included in this reference and will be added in a future revision.
+| API | Description | Documentation |
+|-----|-------------|---------------|
+| **[Authentication](./authentication.md)** | JWT tokens, API keys, permissions | Essential for all API access |
+| **[System Health](./system.md)** | Service monitoring, trends, K8s probes | v0.41.0: Trend indicators added |
+| **[Libraries](./libraries.md)** | Manage Radarr/Sonarr libraries | Includes 404 handling |
+| **[Media Sync](./media-sync.md)** | Sync items from media servers | v0.41.0: Atomic operations |
+| **[Classification](./classification.md)** | Classify media, view history | Policy-based routing |
+| **[Policies](./policies.md)** | Configure classification rules | 168 content presets |
+| **[Webhooks](./webhooks.md)** | Overseerr/Jellyseerr integration | Auto-classification |
+
+### Supporting APIs
+
+| API | Description | Status |
+|-----|-------------|--------|
+| **Presets** | Content preset discovery | Covered in Policies API |
+| **Suggestions** | Policy tuning suggestions | Coming soon |
+| **Stats** | Policy statistics | Coming soon |
+| **Migration** | Legacy rule migration | Coming soon |
+
+### Error Handling
+
+**[Error Handling Guide](./errors.md)** - **NEW in v0.41.0**
+- Standard error response format: `{ "error": "Description" }`
+- HTTP status codes and meanings
+- Retry strategies for 5xx errors
+- Common error scenarios and solutions
 
 ---
 
-## Common Response Formats
+## API Documentation
 
-### Success Response
+### Comprehensive Guides
 
+- **[Authentication Guide](./authentication.md)** - JWT & API keys, permissions, security best practices
+- **[System Health API](./system.md)** - Health monitoring with trends (v0.41.0)
+- **[Libraries API](./libraries.md)** - Manage library configurations
+- **[Media Sync API](./media-sync.md)** - Sync with atomic operations (v0.41.0)
+- **[Classification API](./classification.md)** - Classify media and manage queue
+- **[Policies API](./policies.md)** - Configure classification policies
+- **[Webhooks API](./webhooks.md)** - Integrate with request managers
+- **[Error Handling Guide](./errors.md)** - Error codes and best practices (v0.41.0)
+
+### Code Examples
+
+- **[cURL Examples](./examples/curl.md)** - Complete bash/shell examples
+- **[JavaScript Examples](./examples/javascript.md)** - Node.js with async/await
+- **[Python Examples](./examples/python.md)** - Python with type hints
+
+---
+
+---
+
+## Response Formats
+
+### Standard Success Response (200, 201)
+
+Most endpoints return data directly:
 ```json
 {
-  "success": true,
-  "data": { ... }
+  "id": 1,
+  "name": "Kids Movies",
+  "is_active": true
 }
 ```
 
-### Error Response
+Or as an array:
+```json
+[
+  { "id": 1, "name": "Kids Movies" },
+  { "id": 2, "name": "4K Movies" }
+]
+```
 
+### Standard Error Response (v0.41.0+)
+
+**NEW:** Consistent error format across all endpoints:
+```json
+{
+  "error": "Description of what went wrong"
+}
+```
+
+**Legacy format** (being phased out):
 ```json
 {
   "success": false,
-  "error": "Error message",
-  "code": "ERROR_CODE"
+  "error": "Error message"
 }
 ```
+
+See [Error Handling Guide](./errors.md) for details.
 
 ---
 
-## Authentication
+## HTTP Status Codes
 
-### Login
-
-**POST** `/api/auth/login`
-
-```json
-{
-  "username": "admin",
-  "password": "password"
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": 1,
-    "username": "admin"
-  }
-}
-```
+| Code | Status | Meaning |
+|------|--------|---------|
+| **200** | OK | Success |
+| **201** | Created | Resource created |
+| **400** | Bad Request | Invalid parameters |
+| **401** | Unauthorized | Missing/invalid authentication |
+| **403** | Forbidden | Insufficient permissions |
+| **404** | Not Found | Resource doesn't exist |
+| **409** | Conflict | Resource conflict (e.g., sync running) |
+| **429** | Too Many Requests | Rate limit exceeded |
+| **500** | Internal Server Error | Server error |
+| **503** | Service Unavailable | Service temporarily unavailable |
 
 ---
 
 ## Pagination
 
-Endpoints that return lists support pagination:
+List endpoints support pagination via query parameters:
 
 **Query Parameters:**
-- `page` - Page number (default: 1)
+- `page` - Page number (default: 1, min: 1)
 - `limit` - Items per page (default: 50, max: 100)
 
-**Response:**
-
+**Response Format:**
 ```json
 {
-  "data": [...],
+  "items": [...],
   "pagination": {
     "page": 1,
     "limit": 50,
-    "total": 168,
-    "totalPages": 4
+    "total": 247,
+    "totalPages": 5
   }
 }
+```
+
+**Example:**
+```bash
+# Get page 2 with 100 items per page
+curl "http://localhost:21324/api/classification/history?page=2&limit=100" \
+  -H "X-API-Key: clf_your_key"
 ```
 
 ---
@@ -101,139 +203,130 @@ Endpoints that return lists support pagination:
 
 Many endpoints support filtering via query parameters:
 
-**Example:**
+**Common Filters:**
+- `library_id` - Filter by library
+- `media_type` - Filter by `movie` or `tv`
+- `active` - Filter by active status (`true`/`false`)
+- `search` - Text search
+- `category` - Filter by category
 
-```
-GET /api/policies?library_id=123&active=true
-GET /api/presets?category=genre&search=action
+**Examples:**
+```bash
+# Get active movie libraries
+GET /api/libraries?media_type=movie&is_active=true
+
+# Search presets for "action"
+GET /api/presets?search=action
+
+# Get classifications for library 1
+GET /api/classification/history?library_id=1
 ```
 
 ---
 
 ## Rate Limiting
 
+**Limits:**
 - **Default:** 100 requests per 15 minutes per IP
 - **Authentication endpoints:** 5 requests per 15 minutes per IP
+- **Webhook endpoint:** 100 requests per 15 minutes per IP
+- **API key operations:** 20 requests per 15 minutes
 
-Rate limit headers:
+**Response Headers:**
 - `X-RateLimit-Limit` - Request limit
 - `X-RateLimit-Remaining` - Remaining requests
 - `X-RateLimit-Reset` - Reset time (Unix timestamp)
+
+**Rate Limited Response (429):**
+```json
+{
+  "error": "Too many requests, please try again later"
+}
+```
 
 ---
 
 ## Versioning
 
-Current API version: **v1**
+**Current Version:** v0.41.0-alpha
 
-The API version is included in the response headers:
+**Breaking Changes in v0.41.0:**
+- Error responses now use `{ "error": "..." }` format
+- System health endpoints return trend indicators
+- Media sync operations are atomic (409 on conflict)
 
-```
-X-API-Version: 1.0.0
-```
-
----
-
-## Error Codes
-
-| Code | Description |
-|------|-------------|
-| `UNAUTHORIZED` | Missing or invalid authentication token |
-| `FORBIDDEN` | Insufficient permissions |
-| `NOT_FOUND` | Resource not found |
-| `VALIDATION_ERROR` | Invalid request parameters |
-| `CONFLICT` | Resource conflict (e.g., duplicate) |
-| `INTERNAL_ERROR` | Server error |
+**Deprecation Notice:**
+- `POST /api/libraries/:id/sync` → Use `POST /api/media-sync/sync/:libraryId`
+- Legacy error format `{ "success": false, "error": "..." }` → Use `{ "error": "..." }`
 
 ---
 
-## OpenAPI Specification
+## Key Features by Version
 
-Full OpenAPI 3.0 specification available at:
+### v0.41.0-alpha (Current)
+- ✅ System health trend indicators (`improving`, `degrading`, `stable`)
+- ✅ Atomic sync operations (prevents race conditions)
+- ✅ Consistent 404 error handling (#226)
+- ✅ Enhanced error response format
+- ✅ `lastSuccessfulCheck` tracking for services
 
-```
-GET /api/docs
-```
+### v0.40.6-alpha
+- Service connection locking
+- Instance protection
+- Heartbeat monitoring
 
-Interactive Swagger UI:
+### v0.40.0-alpha
+- Classification transparency (signal breakdown)
+- Dashboard performance improvements (SWR caching)
 
-```
-http://localhost:21324/api/docs
-```
-
----
-
-## Examples
-
-### Creating a Policy
-
-```bash
-curl -X POST http://localhost:21324/api/policies \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "library_id": 123,
-    "name": "Kids Movies Policy",
-    "auto_classify_threshold": 85,
-    "prompt_threshold": 60,
-    "preset_ids": [1, 2, 3]
-  }'
-```
-
-### Getting Statistics
-
-```bash
-curl -X GET http://localhost:21324/api/stats/overview \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### Applying a Suggestion
-
-```bash
-curl -X POST http://localhost:21324/api/suggestions/456/apply \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## WebSocket Events
-
-Real-time events are available via WebSocket:
-
-**Endpoint:** `ws://localhost:21324/ws`
-
-**Events:**
-- `policy:decision` - New classification decision
-- `pattern:discovered` - New pattern detected
-- `suggestion:created` - New tuning suggestion
-- `stats:updated` - Statistics updated
-
-**Example:**
-
-```javascript
-const ws = new WebSocket('ws://localhost:21324/ws');
-
-ws.on('message', (data) => {
-  const event = JSON.parse(data);
-  console.log(event.type, event.payload);
-});
-```
+### v0.37.0-alpha
+- Policy Engine with 168 presets
+- AI Skip Logic (70-80% faster)
+- Pattern discovery and RAG semantic search
 
 ---
 
 ## Best Practices
 
-1. **Always use HTTPS in production**
-2. **Store tokens securely** (e.g., httpOnly cookies)
-3. **Implement retry logic** for transient errors
-4. **Cache frequently accessed data** (presets, policies)
-5. **Use pagination** for large datasets
-6. **Handle rate limits** gracefully
+### Security
+
+1. **Use API Keys for integrations** - Prefer API keys over JWT tokens for automation
+2. **Use HTTPS in production** - Always encrypt API traffic
+3. **Rotate API keys regularly** - Create new keys and revoke old ones
+4. **Set appropriate permissions** - Use `read_only` when write access isn't needed
+5. **Validate webhook signatures** - Use secret keys for webhook endpoints
+
+### Performance
+
+1. **Cache responses** - Cache library lists, policies, presets
+2. **Use pagination** - Don't fetch all records at once
+3. **Batch operations** - Group related API calls
+4. **Monitor rate limits** - Track remaining requests
+5. **Use incremental syncs** - Only sync changed items when possible
+
+### Error Handling
+
+1. **Check status codes** - Don't just parse JSON
+2. **Implement retry logic** - Use exponential backoff for 5xx errors
+3. **Handle 409 conflicts** - Poll sync status and retry
+4. **Distinguish error types** - Retry 5xx, don't retry 4xx (except 429)
+5. **Log errors with context** - Include request details in logs
+
+See [Error Handling Guide](./errors.md) for complete examples.
 
 ---
 
-## Support
+## Getting Help
 
-- [GitHub Issues](https://github.com/cloudbyday90/Classifarr/issues)
+### Documentation
+- [GitHub Repository](https://github.com/cloudbyday90/Classifarr)
+- [Issue Tracker](https://github.com/cloudbyday90/Classifarr/issues)
+- [API Documentation](https://github.com/cloudbyday90/Classifarr/tree/main/docs/api)
+
+### Community
 - [Discord Community](https://discord.gg/classifarr)
-- [Documentation](https://github.com/cloudbyday90/Classifarr/tree/main/docs)
+- [GitHub Discussions](https://github.com/cloudbyday90/Classifarr/discussions)
+
+### Reporting Issues
+- [Report a Bug](https://github.com/cloudbyday90/Classifarr/issues/new?template=bug_report.md)
+- [Request a Feature](https://github.com/cloudbyday90/Classifarr/issues/new?template=feature_request.md)

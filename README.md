@@ -2,10 +2,10 @@
 
 **Policy-Driven Media Classification for the *arr Ecosystem**
 
-Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr/Seer to the correct Radarr/Sonarr library. **v0.37.0** introduces the revolutionary Policy Engine—a transparent, configurable system that combines 168 content presets, auto-discovered patterns, semantic similarity, and learning from your decisions. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
+Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr/Seer to the correct Radarr/Sonarr library. **v0.41.0-alpha** introduces the revolutionary Policy Engine—a transparent, configurable system that combines 168 content presets, auto-discovered patterns, semantic similarity (RAG), and learning from your decisions. Now featuring real-time health monitoring with trend indicators, comprehensive error handling, and enhanced system observability. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.37.0--alpha-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.41.0--alpha-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 ## ✨ Features
@@ -21,15 +21,60 @@ Classifarr is an intelligent media classification platform that automatically ro
 - **🎭 Transparent Classification** - See exactly why each item was classified where it was
 - **💰 Cost Reduction** - 70-80% reduction in AI API costs with intelligent skip logic
 
+### 🏥 System Health & Monitoring (v0.41.0-alpha)
+- **📊 Real-Time Service Health** - Monitor all services (Media Server, AI providers, TMDB, Webhook, etc.)
+- **📈 Trend Indicators** - Visual arrows showing service health trends (↗️ improving, ↘️ degrading, → stable)
+- **⏱️ Last Successful Check** - Track when each service last responded successfully
+- **🎯 Service Icons** - Quick visual identification of each service type
+- **⚡ Latency Tracking** - Response time monitoring with color-coded status (green < 1s, yellow < 3s, red ≥3s)
+- **🔄 Auto-Refresh** - Health status updates every 30 seconds automatically
+- **🔢 Instance Details** - Monitor multi-instance setups (Radarr/Sonarr)
+- **🔍 Filter & Search** - Find specific services quickly
+- **💀 Loading Skeletons** - Smooth loading experience during health checks
+- **📴 Offline Support** - View cached health data when offline
+
+### 🛡️ Enhanced Error Handling (v0.41.0-alpha)
+- **🎯 Consistent 404 Responses** - Structured error messages for all "not found" scenarios
+- **⚛️ Atomic Sync Operations** - Rollback on failure to prevent partial states
+- **📋 Structured Errors** - Standard error format with codes, messages, and details
+- **🔇 Reduced Log Noise** - Only log actionable errors, not expected conditions
+- **🔍 Better Troubleshooting** - Clear error messages with suggested fixes
+
+### 🔒 Service Connection Locking (v0.40.6-alpha)
+- **🔐 Media Server Lockdown** - Prevent accidental disconnection of active media servers
+- **🛡️ Instance Protection** - Lock media server instances (Radarr/Sonarr) when in use
+- **💓 Heartbeat Monitoring** - Track service health and connection status
+- **🔓 Provider Lock Status** - Visual indicators for locked connections
+
+### 🔍 Classification Transparency (v0.40.0-alpha)
+- **🎯 Signal Breakdown** - See which signals contributed to the classification decision
+- **⚙️ 5-Engine Analysis** - View scores from Preset, Pattern, RAG, History, and AI engines
+- **⏱️ Processing Time** - Track how long each classification took
+- **📊 Visual Scoring** - Color-coded confidence indicators
+- **⚖️ Weight Multipliers** - See how policy weights affected final scores
+- **📌 Source Indicators** - Know whether decision came from policy formula or AI validation
+
+### ⚡ Dashboard Performance (v0.40.0-alpha)
+- **💾 SWR Caching** - Smart caching with stale-while-revalidate pattern
+- **🔄 Parallel API Calls** - Fetch multiple resources simultaneously
+- **🔗 Cross-Tab Sync** - Keep data synchronized across browser tabs
+- **📴 Offline Support** - View cached data when server is unreachable
+- **🔁 Auto-Retry** - Exponential backoff for failed requests
+- **📊 Smart Polling** - Efficient background updates without excessive requests
+- **💀 Loading States** - Skeleton screens and loading indicators
+
 ### 🔐 Core Features
 - **Secure Authentication** - JWT-based login with first-run setup wizard
+- **API Key Management** - Create, view, rotate, and revoke API keys with permission levels
 - **Multi-Server Support** - Plex, Emby, and Jellyfin with OAuth flows
 - **Multi-provider AI** - OpenAI, Gemini, OpenRouter, Ollama with budget controls
 - **RAG Semantic Search** - Learns from history using Reciprocal Rank Fusion algorithm
 - **Pattern Discovery** - Auto-detect studio, keyword, and genre associations
 - **Embedded PostgreSQL** - All data in a single volume, auto-initialized
+- **Health Monitoring** - Real-time service status with trend indicators and latency tracking
 - **Discord Bot** - Real-time notifications with interactive buttons
 - **Webhook Integration** - Automatic processing of Overseerr requests
+- **Comprehensive API** - Full REST API with consistent error handling and documentation
 - **🐳 Single Container** - Just `docker compose up -d`
 
 ## 🏗️ Architecture
@@ -280,6 +325,45 @@ On first startup, Classifarr auto-generates a read-write API key named "Default 
 ```
 
 You can view this key again later in **Settings** → **Security** by clicking the eye icon.
+
+## 🏥 System Health Monitoring
+
+Classifarr includes comprehensive real-time health monitoring for all integrated services, accessible via the UI and API.
+
+### Health Dashboard
+
+Navigate to **System** → **Health** to view:
+- **Service Status** - Current operational state of each service
+- **Trend Indicators** - Visual arrows showing health trends over time
+- **Last Successful Check** - When the service last responded successfully
+- **Response Time** - Current latency with color-coded indicators
+- **Instance Details** - For services with multiple instances (Radarr/Sonarr)
+
+### Health Status Values
+
+| Status | Icon | Description |
+|--------|------|-------------|
+| `healthy` | 🟢 | Service is operational and responding normally |
+| `degraded` | 🟡 | Service is responding but with elevated latency or partial failures |
+| `unhealthy` | 🔴 | Service is not responding or returning errors |
+| `unknown` | ⚪ | Service has not been checked yet or status is indeterminate |
+
+### Trend Indicators
+
+| Indicator | Meaning |
+|-----------|---------|
+| ↗️ | Service health is improving (consecutive successful checks) |
+| ↘️ | Service health is degrading (recent failures or increased latency) |
+| → | Service health is stable (consistent performance) |
+
+### Auto-Refresh
+
+The health dashboard automatically refreshes every 30 seconds to provide real-time monitoring without manual intervention.
+
+### System Health API
+
+For automated monitoring and integrations, see the [System Health API Documentation](docs/api/system-health.md).
+
 
 ## 🎯 How Classification Works (v0.37.0)
 
@@ -878,7 +962,15 @@ When you enable RAG, existing classification history can be backfilled to seed t
 
 **API Documentation:**
 - [API Overview](docs/api/README.md) - Authentication, pagination, rate limiting
+- [Authentication API](docs/api/authentication.md) - JWT tokens, API keys, permissions
+- [System Health API](docs/api/system-health.md) - Service monitoring, health checks, trends
+- [Libraries API](docs/api/libraries.md) - Library management and configuration
+- [Media Sync API](docs/api/media-sync.md) - Media server synchronization
 - [Policies API](docs/api/policies.md) - Create and manage policies
+- [Classification API](docs/api/classification.md) - Classification requests and results
+- [Webhooks API](docs/api/webhooks.md) - Webhook endpoints for Overseerr/Jellyseerr
+- [Error Handling](docs/api/errors.md) - Error codes, formats, and troubleshooting
+- [Code Examples](docs/api/examples.md) - Complete integration examples
 - Full API docs: `http://localhost:21324/api/docs` (Swagger UI)
 
 **Key Concepts:**
@@ -891,6 +983,7 @@ When you enable RAG, existing classification history can be backfilled to seed t
 | **RAG** | Semantic similarity matching | [Architecture](docs/architecture/policy-engine.md#rag-scoring) |
 | **Tuning** | AI-generated policy improvements | [Tuning Dashboard](#-policy-statistics--tuning) |
 | **Migration** | Upgrading from v0.36.x | [Migration Guide](docs/migration/v037.md) |
+| **Health Monitoring** | Real-time service health tracking | [System Health](#-system-health-monitoring) |
 
 ### Additional Guides
 
@@ -912,9 +1005,28 @@ Corrections feed into the learning system for improved future accuracy.
 
 ## 📊 API Documentation
 
-Full API documentation available at: `http://localhost:21324/api/docs` (Swagger UI)
+Full interactive API documentation available at: `http://localhost:21324/api/docs` (Swagger UI)
 
-### v0.37.0 Policy Engine Endpoints
+### Core API Documentation
+
+**Authentication & Security:**
+- [API Authentication](docs/api/authentication.md) - JWT tokens, API keys, permissions
+- [System Health API](docs/api/system-health.md) - Service monitoring, health checks, trends
+
+**Data Management:**
+- [Libraries API](docs/api/libraries.md) - Library management and configuration
+- [Media Sync API](docs/api/media-sync.md) - Media server synchronization
+- [Policies API](docs/api/policies.md) - Policy creation and management
+- [Classification API](docs/api/classification.md) - Classification requests and results
+
+**Integration:**
+- [Webhooks API](docs/api/webhooks.md) - Webhook endpoints for Overseerr/Jellyseerr
+- [Error Handling](docs/api/errors.md) - Error codes, formats, and troubleshooting
+- [Code Examples](docs/api/examples.md) - Complete integration examples
+
+### Quick Reference
+
+**v0.37.0+ Policy Engine Endpoints:**
 
 **Policies:**
 - `GET /api/policies` - List all policies
@@ -929,7 +1041,6 @@ Full API documentation available at: `http://localhost:21324/api/docs` (Swagger 
 - `GET /api/policies/:id/presets` - Get policy's presets
 
 **Tuning & Suggestions:**
-- `GET /api/suggestions` - List tuning suggestions
 - `POST /api/suggestions/:id/apply` - Apply suggestion
 - `POST /api/suggestions/:id/reject` - Reject suggestion
 - `GET /api/suggestions/:id/impact` - Get impact metrics
@@ -941,12 +1052,12 @@ Full API documentation available at: `http://localhost:21324/api/docs` (Swagger 
 - `GET /api/stats/live-feed` - Real-time activity feed
 - `GET /api/stats/alerts` - Abnormal metrics alerts
 
-**Migration:**
-- `GET /api/migration/status` - Migration status
-- `GET /api/migration/libraries` - Libraries with legacy rules
-- `POST /api/migration/rules/:id/migrate` - Migrate legacy rule
+**Health Monitoring (v0.41.0+):**
+- `GET /api/health` - Overall system health
+- `GET /api/health/services` - Detailed service health with trends
+- `GET /api/health/history` - Historical health data
 
-### Core Endpoints
+**Core Endpoints:**
 - `POST /api/webhook/overseerr` - Receive Overseerr webhooks
 - `GET /api/libraries` - List libraries
 - `POST /api/queue/clear-and-resync` - Reset and resync
@@ -981,6 +1092,44 @@ See deployment guides:
 
 ## 🐛 Troubleshooting
 
+### Health Monitoring Issues
+
+1. **Services showing as "unknown"**
+   - Check that services are configured in Settings
+   - Verify network connectivity to external services
+   - Review logs for connection errors
+
+2. **Incorrect health status**
+   - Click **Refresh** to force an immediate health check
+   - Check service configuration for typos in URLs or API keys
+   - Verify firewall rules allow outbound connections
+
+3. **Health dashboard not loading**
+   - Check browser console for errors
+   - Verify API authentication is working
+   - Clear browser cache and reload
+
+### Error 404 - Resource Not Found
+
+If you receive a 404 error with a structured response like:
+```json
+{
+  "error": "Library not found",
+  "code": "LIBRARY_NOT_FOUND",
+  "details": { "libraryId": 999 }
+}
+```
+
+**Common causes:**
+- Resource was deleted or never existed
+- Incorrect ID in the URL or request
+- Database was cleared or reset
+
+**Solutions:**
+- Verify the resource ID is correct
+- Check the resource still exists via the UI
+- Review recent changes that may have affected the resource
+
 ### Classification Issues
 1. Check **Settings** → **Queue** for pending items
 2. Verify TMDB API key in settings
@@ -991,6 +1140,23 @@ See deployment guides:
 1. Test connection in **Settings** → **Media Server**
 2. Click **Sync Libraries** to manually refresh
 3. Check that libraries are accessible
+
+### Sync Issues
+
+**Error 409 - Sync Already in Progress:**
+```json
+{
+  "error": "Sync operation already in progress",
+  "code": "SYNC_IN_PROGRESS"
+}
+```
+
+**Cause:** Another sync operation is currently running. Classifarr prevents concurrent syncs to avoid race conditions and data corruption.
+
+**Solutions:**
+- Wait for the current sync to complete (check logs or UI)
+- If a sync appears stuck, restart the container to clear the lock
+- Use the health monitoring dashboard to check sync service status
 
 ### AI Not Working
 1. Go to **Settings** → **AI** and test connection
