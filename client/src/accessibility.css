@@ -47,21 +47,24 @@
 /* Ensure minimum touch target sizes on mobile for interactive elements */
 /* Excludes inline links to prevent layout issues */
 @media (max-width: 768px) {
+  /* Common interactive elements get both min-height and min-width */
   button,
-  a:not(.inline-link),
-  input[type="button"],
-  input[type="submit"],
-  input[type="reset"],
-  select,
-  .touch-target {
-    min-height: 44px;
-  }
-  
-  button,
-  a.touch-target,
   input[type="button"],
   input[type="submit"],
   input[type="reset"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Links and selects get min-height only (to avoid breaking inline layouts) */
+  a:not(.inline-link),
+  select {
+    min-height: 44px;
+  }
+  
+  /* Elements with explicit touch-target class get both */
+  .touch-target {
+    min-height: 44px;
     min-width: 44px;
   }
 }
