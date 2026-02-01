@@ -21,6 +21,7 @@ const mediaSyncService = require('../services/mediaSync');
 const { createLogger } = require('../utils/logger');
 const syncStatus = require('../services/syncStatus');
 const { authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
+const { LibraryNotFoundError } = require('../utils/errors');
 
 const router = express.Router();
 const logger = createLogger('mediaSync-routes');
@@ -57,8 +58,15 @@ router.post('/sync/:libraryId', requireReadWrite, async (req, res) => {
     syncStatus.stop();
     res.json(result);
   } catch (error) {
-    logger.error('Sync failed', { error: error.message });
     syncStatus.stop();
+
+    // Handle library not found as 404
+    if (error instanceof LibraryNotFoundError) {
+      return res.status(404).json(error.toJSON());
+    }
+
+    // Log and return server error for all other exceptions
+    logger.error('Sync failed', { error: error.message });
     res.status(500).json({
       success: false,
       error: error.message,

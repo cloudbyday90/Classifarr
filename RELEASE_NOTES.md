@@ -4,6 +4,14 @@
 
 **Title: Event Detection System Removal**
 
+### Improved
+
+- **Sync Error Handling**: Better error messages and handling for sync operations
+  - Sync endpoints now return clear HTTP 404 errors when libraries don't exist
+  - Reduced log noise for expected error cases
+  - Easier troubleshooting with standardized error responses
+  - More reliable CI/test runs without false-positive errors
+
 ### Removed
 
 - **Event Detection UI**: Legacy event/holiday detection controls fully removed from UI

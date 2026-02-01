@@ -22,6 +22,7 @@ const embyService = require('./emby');
 const jellyfinService = require('./jellyfin');
 const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 const { createLogger } = require('../utils/logger');
+const { LibraryNotFoundError } = require('../utils/errors');
 
 const logger = createLogger('mediaSync');
 
@@ -46,7 +47,8 @@ class MediaSyncService {
       );
 
       if (libraryResult.rows.length === 0) {
-        throw new Error(`Library ${libraryId} not found`);
+        logger.warn('Library not found during sync', { libraryId });
+        throw new LibraryNotFoundError(libraryId);
       }
 
       const library = libraryResult.rows[0];
@@ -153,7 +155,10 @@ class MediaSyncService {
         throw error;
       }
     } catch (error) {
-      logger.error(`Library sync failed`, { libraryId, error: error.message });
+      // Don't log LibraryNotFoundError - it's already logged as warning when first detected
+      if (!(error instanceof LibraryNotFoundError)) {
+        logger.error(`Library sync failed`, { libraryId, error: error.message });
+      }
       throw error;
     }
   }

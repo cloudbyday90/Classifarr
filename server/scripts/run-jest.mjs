@@ -22,13 +22,14 @@ for (let i = 0; i < nodeOptions.length; i += 1) {
   if (option.startsWith('--localstorage-file=')) {
     continue
   }
+  if (option === '--no-experimental-webstorage' || option.startsWith('--no-experimental-webstorage=')) {
+    continue
+  }
   sanitizedOptions.push(option)
 }
 
-if (!sanitizedOptions.includes('--no-experimental-webstorage')) {
-  sanitizedOptions.push('--no-experimental-webstorage')
-}
-
+// Don't add webstorage option for Node versions that don't support it
+// Just clean up NODE_OPTIONS and run jest
 process.env.NODE_OPTIONS = sanitizedOptions.join(' ')
 
 const child = spawn(process.execPath, [jestPath, ...args], {
