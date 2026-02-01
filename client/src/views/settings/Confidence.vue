@@ -127,12 +127,12 @@
         <!-- Options -->
         <div class="space-y-3 pt-4 border-t border-gray-700">
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="discordSettings.includeSignalBreakdown" class="rounded" />
+            <input type="checkbox" v-model="discordSettings.includeSignalBreakdown" class="w-4 h-4 rounded bg-gray-800 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" />
             <span class="text-sm">Always include signal breakdown in verification messages</span>
           </label>
           
           <label class="flex items-center gap-2">
-            <input type="checkbox" v-model="discordSettings.showSimilarItems" class="rounded" />
+            <input type="checkbox" v-model="discordSettings.showSimilarItems" class="w-4 h-4 rounded bg-gray-800 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900" />
             <span class="text-sm">Show similar items already in library (top 3)</span>
           </label>
         </div>
@@ -162,7 +162,7 @@
                 type="number"
                 :min="1"
                 :max="10"
-                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <p class="text-xs text-gray-400">Confirmations needed</p>
             </div>
@@ -174,7 +174,7 @@
                 type="number"
                 :min="1"
                 :max="15"
-                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <p class="text-xs text-gray-400">Confirmations needed (noisier)</p>
             </div>
@@ -186,7 +186,7 @@
                 type="number"
                 :min="1"
                 :max="5"
-                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <p class="text-xs text-gray-400">Confirmations needed (reliable)</p>
             </div>
@@ -225,7 +225,7 @@
               type="number"
               :min="5"
               :max="15"
-              class="w-full md:w-64 px-3 py-2 bg-gray-800 border border-gray-700 rounded"
+              class="w-full md:w-64 px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <p class="text-xs text-gray-400">Confirmations needed to override an exclusion rule</p>
           </div>
@@ -243,7 +243,7 @@
                 type="number"
                 :min="10"
                 :max="200"
-                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
@@ -254,7 +254,7 @@
                 type="number"
                 :min="5"
                 :max="100"
-                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
@@ -532,13 +532,3 @@ function validateThresholds() {
   }
 }
 </script>
-
-<style scoped>
-input[type="checkbox"] {
-  @apply w-4 h-4 bg-gray-800 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900;
-}
-
-input[type="number"] {
-  @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
-}
-</style>
