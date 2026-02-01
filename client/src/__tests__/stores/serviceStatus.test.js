@@ -344,8 +344,6 @@ describe('useServiceStatusStore', () => {
       expect(api.getSystemHealth.mock.calls.length).toBe(callCountBeforeStop)
     })
   })
-  })
-  })
 
   describe('isSystemHealthy', () => {
     it('returns true when database is healthy', () => {
