@@ -1585,24 +1585,6 @@ class DiscordBotService {
         content: feedbackMessage,
         ephemeral: true
       });
-
-      // Update message
-      await interaction.update({
-        components: [],
-        embeds: [
-          EmbedBuilder.from(interaction.message.embeds[0])
-            .setColor(0x22c55e)
-            .setFooter({
-              text: `✅ Verified by ${interaction.user.username} • Will auto-route same title next time`,
-            }),
-        ],
-      });
-
-      // Send ephemeral feedback message
-      await interaction.followUp({
-        content: feedbackMessage,
-        ephemeral: true
-      });
     } catch (error) {
       console.error("Error processing verification:", error);
       // Return specific error message to user for debugging
