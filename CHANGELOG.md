@@ -47,9 +47,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New database tables: `auto_learned_preferences`, `learning_conflicts`, `learning_rate_limits`
   - New service: `autoLearningService.js` for managing preference learning
   - Enhanced RAG integration with `findSimilarItems()` method for Discord context
-
-
-### Added
 - **System Health Dashboard Enhancements** (Fixes #184)
   - **Trend Tracking**: Visual indicators (↗️/↘️/→) show service health direction over time
   - **Last Successful Check**: Track when services were last healthy to diagnose outage duration

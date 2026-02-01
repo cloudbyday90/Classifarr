@@ -145,13 +145,16 @@ export function calculateTrend(current, previous) {
   const statusScore = {
     'healthy': 3,
     'connected': 3,
+    'available': 3,
     'configured': 2,
     'degraded': 2,
     'partial': 2,
     'unhealthy': 1,
     'disconnected': 1,
+    'unavailable': 1,
     'error': 1,
     'not_configured': 0,
+    'disabled': 0,
     'unknown': 0
   };
   
