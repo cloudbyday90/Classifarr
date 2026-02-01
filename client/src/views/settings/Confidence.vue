@@ -118,22 +118,8 @@
       </template>
 
       <p class="text-gray-400 mb-6">
-        Configure what information is included in Discord notifications. Notification behavior (when to send messages and whether to include buttons) is automatically determined by the Classification Thresholds above.
+        Configure what information is included in Discord notifications. Discord uses its own configurable tier system to determine notification behavior (auto-route, verification buttons, or clarification prompts).
       </p>
-
-      <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded mb-6">
-        <div class="flex items-start gap-3">
-          <div class="text-blue-400 text-xl">ℹ️</div>
-          <div class="flex-1">
-            <p class="text-sm font-semibold text-blue-400 mb-2">How Discord uses thresholds:</p>
-            <p class="text-sm text-gray-300">
-              Items ≥{{ policySettings.autoClassifyThreshold }}% send info-only messages.
-              Items {{ policySettings.promptThreshold }}%-{{ policySettings.autoClassifyThreshold - 1 }}% send messages with Yes/No buttons.
-              Items &lt;{{ policySettings.promptThreshold }}% may trigger Policy Builder notifications.
-            </p>
-          </div>
-        </div>
-      </div>
 
       <div class="space-y-6">
         <!-- Display Options -->

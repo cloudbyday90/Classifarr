@@ -16,12 +16,13 @@
 
 -- Migration 076: Remove Duplicate Discord Threshold Settings
 -- ═══════════════════════════════════════════════════════════════════════════
--- Description: Remove redundant Discord-specific threshold settings.
---              Discord notifications now use Policy Engine thresholds.
+-- Description: Remove redundant Discord-specific threshold settings that were
+--              never actually used. Discord uses the tier-based system from the
+--              confidence_thresholds table instead.
 -- Issue: Remove duplicate confidence threshold sliders
 
 -- Remove duplicate Discord threshold settings
--- These are redundant with policy_auto_classify_threshold and policy_prompt_threshold
+-- These settings were never used by Discord (it uses confidence_thresholds table)
 DELETE FROM confidence_settings 
 WHERE setting_key IN (
   'discord_auto_route_threshold',
@@ -31,4 +32,4 @@ WHERE setting_key IN (
 
 -- Add comment to confidence_settings table
 COMMENT ON TABLE confidence_settings IS 
-'Configuration settings for confidence thresholds and behavior. Policy thresholds control both classification AND Discord notification behavior.';
+'Configuration settings for confidence thresholds and behavior. Discord uses the separate confidence_thresholds table for its tier-based notification system.';
