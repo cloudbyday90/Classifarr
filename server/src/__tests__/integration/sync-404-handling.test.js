@@ -78,10 +78,8 @@ describe('Sync 404 Handling Integration Tests', () => {
         .send({})
         .expect(404);
 
-      expect(response.body).toMatchObject({
-        error: 'Library not found',
-        code: 404,
-        libraryId: 99999
+      expect(response.body).toEqual({
+        error: 'Library not found'
       });
     });
 
@@ -98,8 +96,9 @@ describe('Sync 404 Handling Integration Tests', () => {
         .send({})
         .expect(404);
 
-      // Should not have called error logger in the route handler for 404
-      // (Note: The service logs a warning, which is expected)
+      // Verify that error logger was NOT called in the route handler for expected 404
+      // The service layer logs a warning (not an error) which is the expected behavior
+      expect(mockLogger.error).not.toHaveBeenCalled();
     });
   });
 
@@ -110,10 +109,8 @@ describe('Sync 404 Handling Integration Tests', () => {
         .send({})
         .expect(404);
 
-      expect(response.body).toMatchObject({
-        error: 'Library not found',
-        code: 404,
-        libraryId: 99999
+      expect(response.body).toEqual({
+        error: 'Library not found'
       });
     });
 
@@ -133,18 +130,16 @@ describe('Sync 404 Handling Integration Tests', () => {
   });
 
   describe('Error response structure', () => {
-    it('should return structured JSON error for 404', async () => {
+    it('should return simple error format matching codebase conventions', async () => {
       const response = await request(app)
         .post('/api/libraries/12345/sync')
         .send({})
         .expect(404);
 
-      expect(response.body).toHaveProperty('error');
-      expect(response.body).toHaveProperty('code');
-      expect(response.body).toHaveProperty('libraryId');
-      expect(response.body.error).toBe('Library not found');
-      expect(response.body.code).toBe(404);
-      expect(response.body.libraryId).toBe(12345);
+      // Verify simple { error: "message" } format (consistent with rest of codebase)
+      expect(response.body).toEqual({
+        error: 'Library not found'
+      });
     });
   });
 });

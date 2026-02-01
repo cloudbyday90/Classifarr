@@ -38,12 +38,11 @@ class LibraryNotFoundError extends Error {
 
   /**
    * Convert error to JSON format for API responses
+   * Follows codebase convention of simple { error: "message" } format
    */
   toJSON() {
     return {
-      error: 'Library not found',
-      code: this.statusCode,
-      libraryId: this.libraryId
+      error: 'Library not found'
     };
   }
 }
