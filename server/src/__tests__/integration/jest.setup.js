@@ -16,13 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-module.exports = {
-    testEnvironment: 'node',
-    testMatch: ['**/__tests__/integration/**/*.test.js'],
-    setupFilesAfterEnv: ['./src/__tests__/integration/setup.js'],
-    verbose: true,
-    // Ensure we don't automatically mock everything if verify is used elsewhere
-    automock: false,
-    // Set test environment variable to skip rate limiting
-    setupFiles: ['<rootDir>/src/__tests__/integration/jest.setup.js'],
-};
+// Set NODE_ENV to test for integration tests
+// This disables rate limiting and other production-only features
+process.env.NODE_ENV = 'test';

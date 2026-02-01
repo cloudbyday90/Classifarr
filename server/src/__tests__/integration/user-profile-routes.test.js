@@ -136,7 +136,8 @@ describe('User Profile Routes Integration Tests', () => {
                 [testUserId, 'username_changed']
             );
             expect(auditResult.rows.length).toBe(1);
-            expect(JSON.parse(auditResult.rows[0].metadata).new_username).toBe(newUsername);
+            // metadata is JSONB in PostgreSQL, returned as object not string
+            expect(auditResult.rows[0].metadata.new_username).toBe(newUsername);
 
             // Reset username for other tests
             await db.query('UPDATE users SET username = $1 WHERE id = $2', [testUsername, testUserId]);
@@ -321,6 +322,7 @@ describe('User Profile Routes Integration Tests', () => {
             const response = await request(app)
                 .patch('/api/user/password')
                 .set('Authorization', `Bearer ${testToken}`)
+                .set('User-Agent', 'Jest-Test-Runner')
                 .send({
                     currentPassword: testPassword
                 })
@@ -347,11 +349,13 @@ describe('User Profile Routes Integration Tests', () => {
             const response = await request(app)
                 .get('/api/auth/session')
                 .set('Authorization', `Bearer ${testToken}`)
+                .set('User-Agent', 'Jest-Test-Runner')
                 .expect(200);
 
             expect(response.body).toHaveProperty('started');
             expect(response.body).toHaveProperty('ip');
             expect(response.body).toHaveProperty('userAgent');
+            expect(response.body.userAgent).toBe('Jest-Test-Runner');
             expect(response.body).toHaveProperty('createdAt');
         });
 

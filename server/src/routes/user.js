@@ -30,6 +30,7 @@ const profileUpdateLimiter = rateLimit({
   message: { error: 'Too many profile update attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === 'test'
 });
 
 // General rate limiter for authenticated endpoints - 100 requests per 15 minutes
