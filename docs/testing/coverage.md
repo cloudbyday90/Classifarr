@@ -160,4 +160,4 @@ const { mockLogger } = require('../setup/mockLogger');
 ## References
 - Jest Documentation: https://jestjs.io/
 - Vitest Documentation: https://vitest.dev/
-- Coverage Thresholds: `server/package.json` → `jest.coverageThresholds`
+- Coverage Thresholds: `server/jest.config.js` → `coverageThreshold`

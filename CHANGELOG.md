@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `docs/testing/coverage.md` with comprehensive testing guide
   - Added logger mocking to suppress expected error noise in tests
   - Added test to verify expected errors log as warnings (404s don't log as errors)
-  - Added coverage thresholds: Server (80% lines, 75% functions, 70% branches), Client (75% lines, 70% functions, 65% branches)
+  - Added coverage thresholds for server: 80% lines, 75% functions, 70% branches
   - Added CI test scripts with `npm run test:ci`
 - **Backup & Restore System** (Fixes #186)
   - Encrypted config backups with AES-256-GCM encryption

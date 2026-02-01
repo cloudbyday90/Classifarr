@@ -24,81 +24,48 @@ describe('Sync Error Logging Behavior', () => {
     clearLoggerMocks();
   });
   
-  it('should log 404 library not found as warning, not error', async () => {
-    // Test that library not found errors are logged as warnings
-    // This is an expected condition, not an exceptional error
-    
+  it('should verify database queries handle missing records gracefully', async () => {
+    // Test that querying for non-existent records doesn't throw errors
     const result = await db.query(
       'SELECT * FROM libraries WHERE id = $1',
       [99999]
     );
     
-    // Should return no rows (expected behavior for non-existent ID)
+    // Should return empty result set, not throw an error
     expect(result.rows.length).toBe(0);
-    
-    // In actual API usage, this would trigger a warning log
-    // For this test, we verify the structure is correct
-    expect(result).toBeDefined();
     expect(result.rows).toEqual([]);
   });
   
-  it('should verify expected errors do not log as errors', () => {
-    // Mock a library service that logs warnings for expected conditions
-    const mockLibraryService = {
-      findById: async (id) => {
-        const result = await db.query(
-          'SELECT * FROM libraries WHERE id = $1',
-          [id]
-        );
-        
-        if (result.rows.length === 0) {
-          // This is expected, not an error - should log as warning
-          console.warn(`Library not found: ${id}`);
-          return null;
-        }
-        
-        return result.rows[0];
-      }
-    };
+  it('should demonstrate warning vs error logging pattern', () => {
+    // Clear any previous log calls
+    clearLoggerMocks();
     
-    // Test expected behavior
-    expect(mockLibraryService.findById).toBeDefined();
+    // Simulate expected condition (should log as warning)
+    console.warn('Library not found: 99999');
+    expect(spyLogger.warn).toHaveBeenCalledWith('Library not found: 99999');
+    expect(spyLogger.error).not.toHaveBeenCalled();
+    
+    clearLoggerMocks();
+    
+    // Simulate unexpected error (should log as error)
+    console.error('Database connection failed');
+    expect(spyLogger.error).toHaveBeenCalledWith('Database connection failed');
   });
   
-  it('should handle database connection errors appropriately', async () => {
-    // Test that unexpected errors (like connection failures) would be logged as errors
-    // This test verifies the database is accessible (expected in tests)
-    
+  it('should verify database connectivity for unexpected error testing', async () => {
+    // This test ensures the database is accessible
+    // In production, connection failures would trigger error logs
     const result = await db.query('SELECT 1 as test');
     
     expect(result).toBeDefined();
     expect(result.rows[0].test).toBe(1);
-    
-    // If connection failed, this would be logged as error (unexpected condition)
   });
   
-  it('should verify sync operations handle missing libraries gracefully', async () => {
-    // Create a test scenario for library sync
-    const testLibraryId = 99999;
-    
-    // Query for non-existent library
-    const result = await db.query(
-      'SELECT * FROM libraries WHERE id = $1',
-      [testLibraryId]
-    );
-    
-    // Verify graceful handling (no rows, no exception)
-    expect(result.rows).toEqual([]);
-    
-    // In production, this would log: "Library not found" as warning
-    // Not as error, because it's an expected condition
-  });
-  
-  it('should distinguish between expected (404) and unexpected (500) conditions', () => {
-    // Test helper to categorize error types
+  it('should test error categorization helper', () => {
+    // Helper function to categorize HTTP status codes
     const categorizeError = (statusCode) => {
       if (statusCode === 404) {
-        return 'warning'; // Expected condition
+        return 'warning'; // Expected condition - resource not found
       } else if (statusCode >= 500) {
         return 'error'; // Unexpected server error
       } else if (statusCode >= 400) {
@@ -107,9 +74,77 @@ describe('Sync Error Logging Behavior', () => {
       return 'info';
     };
     
+    // Expected conditions log as warnings
     expect(categorizeError(404)).toBe('warning');
-    expect(categorizeError(500)).toBe('error');
     expect(categorizeError(400)).toBe('warning');
+    expect(categorizeError(403)).toBe('warning');
+    
+    // Unexpected server errors log as errors
+    expect(categorizeError(500)).toBe('error');
+    expect(categorizeError(503)).toBe('error');
+    
+    // Success logs as info
     expect(categorizeError(200)).toBe('info');
+  });
+  
+  it('should demonstrate proper error handling with logger spies', async () => {
+    // Clear previous calls
+    clearLoggerMocks();
+    
+    // Simulate a service method that handles missing resources
+    const mockService = {
+      findLibrary: async (id) => {
+        const result = await db.query(
+          'SELECT * FROM libraries WHERE id = $1',
+          [id]
+        );
+        
+        if (result.rows.length === 0) {
+          // Expected condition: log as warning, not error
+          console.warn(`Library not found: ${id}`);
+          return null;
+        }
+        
+        return result.rows[0];
+      }
+    };
+    
+    // Call with non-existent ID
+    const result = await mockService.findLibrary(99999);
+    
+    // Should return null and log warning
+    expect(result).toBeNull();
+    expect(spyLogger.warn).toHaveBeenCalledWith('Library not found: 99999');
+    expect(spyLogger.error).not.toHaveBeenCalled();
+  });
+  
+  it('should verify sync operation error handling pattern', async () => {
+    clearLoggerMocks();
+    
+    // Simulate sync operation that encounters missing library
+    const mockSyncService = {
+      syncLibrary: async (libraryId) => {
+        const result = await db.query(
+          'SELECT * FROM libraries WHERE id = $1',
+          [libraryId]
+        );
+        
+        if (result.rows.length === 0) {
+          // This is an expected scenario during sync operations
+          // Log as warning, not error
+          console.warn(`Sync skipped: Library ${libraryId} not found`);
+          return { success: false, reason: 'library_not_found' };
+        }
+        
+        return { success: true };
+      }
+    };
+    
+    const syncResult = await mockSyncService.syncLibrary(99999);
+    
+    expect(syncResult.success).toBe(false);
+    expect(syncResult.reason).toBe('library_not_found');
+    expect(spyLogger.warn).toHaveBeenCalledWith('Sync skipped: Library 99999 not found');
+    expect(spyLogger.error).not.toHaveBeenCalled();
   });
 });

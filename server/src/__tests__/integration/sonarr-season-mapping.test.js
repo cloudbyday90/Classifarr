@@ -43,120 +43,12 @@ describe('Sonarr Season Mapping Integration', () => {
     });
   });
 
-  describe('include_specials flag', () => {
-    it('should include season 0 when include_specials is true', async () => {
-      const seasonsWithSpecials = [
-        { seasonNumber: 0, monitored: true },
-        { seasonNumber: 1, monitored: true },
-        { seasonNumber: 2, monitored: true },
-        { seasonNumber: 3, monitored: true }
-      ];
-      
-      const seriesData = {
-        tvdbId: 12345,
-        title: 'Test Series',
-        seasons: seasonsWithSpecials,
-        monitored: true
-      };
-      
-      // Mock the API to echo back the seasons we send
-      axios.post.mockResolvedValueOnce({
-        data: {
-          ...seriesData,
-          id: 1,
-          seasons: seasonsWithSpecials
-        }
-      });
-      
-      const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', seriesData);
-      
-      expect(result.seasons).toBeDefined();
-      expect(result.seasons.some(s => s.seasonNumber === 0)).toBe(true);
-      expect(result.seasons.length).toBe(4); // 0, 1, 2, 3
-    });
-    
-    it('should exclude season 0 when include_specials is false', async () => {
+  describe('Sonarr API integration', () => {
+    it('should successfully add series to Sonarr with seasons', async () => {
       const seriesData = {
         tvdbId: 12345,
         title: 'Test Series',
         seasons: [
-          { seasonNumber: 1, monitored: true },
-          { seasonNumber: 2, monitored: true },
-          { seasonNumber: 3, monitored: true }
-        ],
-        monitored: true
-      };
-      
-      axios.post.mockResolvedValueOnce({
-        data: {
-          ...seriesData,
-          id: 1
-        }
-      });
-      
-      const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', seriesData);
-      
-      expect(result.seasons).toBeDefined();
-      expect(result.seasons.some(s => s.seasonNumber === 0)).toBe(false);
-      expect(result.seasons.length).toBe(3); // 1, 2, 3
-    });
-    
-    it('should handle undefined include_specials (default false)', async () => {
-      const seriesData = {
-        tvdbId: 12345,
-        title: 'Test Series',
-        seasons: [
-          { seasonNumber: 1, monitored: true },
-          { seasonNumber: 2, monitored: true },
-          { seasonNumber: 3, monitored: true }
-        ],
-        monitored: true
-        // include_specials undefined
-      };
-      
-      axios.post.mockResolvedValueOnce({
-        data: {
-          ...seriesData,
-          id: 1
-        }
-      });
-      
-      const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', seriesData);
-      
-      expect(result.seasons).toBeDefined();
-      expect(result.seasons.some(s => s.seasonNumber === 0)).toBe(false);
-    });
-    
-    it('should handle empty seasons array with include_specials true', async () => {
-      const seriesData = {
-        tvdbId: 12345,
-        title: 'Test Series',
-        seasons: [
-          { seasonNumber: 0, monitored: true }
-        ],
-        monitored: true
-      };
-      
-      axios.post.mockResolvedValueOnce({
-        data: {
-          ...seriesData,
-          id: 1
-        }
-      });
-      
-      const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', seriesData);
-      
-      expect(result.seasons).toBeDefined();
-      expect(result.seasons.length).toBe(1);
-      expect(result.seasons[0].seasonNumber).toBe(0);
-    });
-    
-    it('should deduplicate season 0 if already in seasons array', async () => {
-      const seriesData = {
-        tvdbId: 12345,
-        title: 'Test Series',
-        seasons: [
-          { seasonNumber: 0, monitored: true },
           { seasonNumber: 1, monitored: true },
           { seasonNumber: 2, monitored: true }
         ],
@@ -172,15 +64,69 @@ describe('Sonarr Season Mapping Integration', () => {
       
       const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', seriesData);
       
-      // Should not duplicate season 0
-      const season0Count = result.seasons.filter(s => s.seasonNumber === 0).length;
-      expect(season0Count).toBe(1);
-      expect(result.seasons.length).toBe(3); // 0, 1, 2
+      expect(result.seasons).toBeDefined();
+      expect(result.seasons.length).toBe(2);
+      expect(axios.post).toHaveBeenCalledWith(
+        'http://localhost:8989/api/v3/series',
+        seriesData,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Api-Key': 'test-key'
+          })
+        })
+      );
+    });
+    
+    it('should pass through season 0 if included in request', async () => {
+      const seriesDataWithSpecials = {
+        tvdbId: 12345,
+        title: 'Test Series',
+        seasons: [
+          { seasonNumber: 0, monitored: true }, // Specials
+          { seasonNumber: 1, monitored: true },
+          { seasonNumber: 2, monitored: true }
+        ],
+        monitored: true
+      };
+      
+      axios.post.mockResolvedValueOnce({
+        data: {
+          ...seriesDataWithSpecials,
+          id: 1
+        }
+      });
+      
+      const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', seriesDataWithSpecials);
+      
+      expect(result.seasons).toBeDefined();
+      expect(result.seasons.some(s => s.seasonNumber === 0)).toBe(true);
+      expect(result.seasons.length).toBe(3);
+    });
+    
+    it('should handle empty seasons array', async () => {
+      const seriesData = {
+        tvdbId: 12345,
+        title: 'Test Series',
+        seasons: [],
+        monitored: true
+      };
+      
+      axios.post.mockResolvedValueOnce({
+        data: {
+          ...seriesData,
+          id: 1
+        }
+      });
+      
+      const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', seriesData);
+      
+      expect(result.seasons).toBeDefined();
+      expect(result.seasons).toEqual([]);
     });
   });
   
   describe('Overseerr webhook payloads', () => {
-    it('should handle Overseerr payload with legacy season format', () => {
+    it('should parse Overseerr payload with legacy season format', () => {
       const overseerrPayload = {
         subject: 'Breaking Bad',
         message: 'New request',
@@ -193,26 +139,7 @@ describe('Sonarr Season Mapping Integration', () => {
           }]
         },
         request: {
-          requestedBy_username: 'user123'
-        }
-      };
-      
-      const parsed = webhookService.parsePayload(overseerrPayload);
-      
-      expect(parsed).toBeDefined();
-      expect(parsed.tvdb_id).toBe(81189);
-      expect(parsed.title).toBe('Breaking Bad');
-    });
-    
-    it('should handle Overseerr payload with include_specials', () => {
-      const overseerrPayload = {
-        subject: 'Breaking Bad',
-        media: {
-          tvdbId: 81189,
-          seasons: [1, 2, 3],
-          include_specials: true
-        },
-        request: {
+          requestedBy_username: 'user123',
           seasons: [1, 2, 3]
         }
       };
@@ -222,9 +149,31 @@ describe('Sonarr Season Mapping Integration', () => {
       expect(parsed).toBeDefined();
       expect(parsed.tvdb_id).toBe(81189);
       expect(parsed.title).toBe('Breaking Bad');
+      expect(parsed.requested_seasons).toBe(JSON.stringify([1, 2, 3]));
     });
     
-    it('should sanitize payload and exclude specials when include_specials is false', () => {
+    it('should parse Overseerr payload with array season format', () => {
+      const overseerrPayload = {
+        subject: 'Breaking Bad',
+        media: {
+          tvdbId: 81189,
+          title: 'Breaking Bad'
+        },
+        request: {
+          seasons: [1, 2, 3],
+          requestedBy_username: 'user123'
+        }
+      };
+      
+      const parsed = webhookService.parsePayload(overseerrPayload);
+      
+      expect(parsed).toBeDefined();
+      expect(parsed.tvdb_id).toBe(81189);
+      expect(parsed.title).toBe('Breaking Bad');
+      expect(parsed.requested_seasons).toBe(JSON.stringify([1, 2, 3]));
+    });
+    
+    it('should sanitize payload and exclude specials when includeSpecials is false', () => {
       const payload = {
         request: {
           seasons: [
@@ -259,43 +208,43 @@ describe('Sonarr Season Mapping Integration', () => {
       expect(sanitized.request.seasons.some(s => s.seasonNumber === 0)).toBe(true);
       expect(specialsExcluded).toBe(0);
     });
+    
+    it('should handle extra array with season 0 when sanitizing', () => {
+      const payload = {
+        extra: [
+          { seasonNumber: 0, name: 'Specials' },
+          { seasonNumber: 1, name: 'Season 1' }
+        ]
+      };
+      
+      const { payload: sanitized, specialsExcluded } = webhookService.sanitizePayload(payload, { includeSpecials: false });
+      
+      expect(sanitized.extra).toHaveLength(1);
+      expect(sanitized.extra[0].seasonNumber).toBe(1);
+      expect(specialsExcluded).toBe(1);
+    });
   });
   
-  describe('Multi-instance Sonarr', () => {
-    it('should apply include_specials to correct instance', async () => {
-      // This test verifies that when adding series to a specific Sonarr instance,
-      // the include_specials flag is properly handled
-      
+  describe('Sonarr API request validation', () => {
+    it('should send correct headers and URL to Sonarr API', async () => {
       const seriesData = {
         tvdbId: 12345,
         title: 'Test Series',
         seasons: [
-          { seasonNumber: 0, monitored: true }, // Specials
-          { seasonNumber: 1, monitored: true },
-          { seasonNumber: 2, monitored: true }
+          { seasonNumber: 1, monitored: true }
         ],
         monitored: true
       };
       
-      axios.post.mockResolvedValueOnce({
-        data: {
-          ...seriesData,
-          id: 1
-        }
-      });
+      await sonarrService.addSeries('http://localhost:8989', 'test-api-key', seriesData);
       
-      const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', seriesData);
-      
-      expect(result.seasons).toBeDefined();
-      expect(result.seasons.some(s => s.seasonNumber === 0)).toBe(true);
-      
-      // Verify the request was made to the correct endpoint
       expect(axios.post).toHaveBeenCalledWith(
         'http://localhost:8989/api/v3/series',
         seriesData,
         expect.objectContaining({
           headers: expect.objectContaining({
-            'X-Api-Key': 'test-key'
+            'X-Api-Key': 'test-api-key',
+            'Content-Type': 'application/json'
           })
         })
       );
