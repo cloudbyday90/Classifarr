@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Event Detection Backend Code**: Removed all legacy event/holiday detection code from backend
+  - Removed `detectEventContent()` method from `ClassificationService`
+  - Removed `EVENT_DETECTION` signal type from `SignalCollector` and `ConfidenceCalculator`
+  - Removed `/api/libraries/event-types` API endpoint
+  - Removed event detection method labels from activity, history, and stats
+  - Updated all affected backend tests
+  - Event detection now handled exclusively through PolicyEngine presets (see #228)
 - **Event Detection System**: Removed deprecated event detection columns and presets
   - Dropped `event_detection_type` and `event_sub_type` columns from `libraries` table
   - Removed all event presets (`event_holiday`, `event_sports`, `event_ppv`, `event_concert`, `event_standup`, `event_awards`)

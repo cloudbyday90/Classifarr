@@ -291,12 +291,7 @@ class SignalCollector {
         }
         logger.debug('Profile scoring complete', { libraryCount: libraries.length });
 
-        // 4. Event Detection Signal - DEPRECATED in v0.37.0
-        // Event detection now handled by PolicyEngine via content_presets in 'events' category
-        // Keeping this code for backward compatibility but skipping execution
-        // if (detectors.detectEventContent) { ... }
-
-        // 5. Custom Rule Signals (library rules)
+        // 4. Custom Rule Signals (library rules)
         if (detectors.checkLibraryRules) {
             const ruleMatch = await detectors.checkLibraryRules(metadata, libraries);
             if (ruleMatch) {
@@ -308,7 +303,7 @@ class SignalCollector {
             }
         }
 
-        // 6. Existing Media Signal
+        // 5. Existing Media Signal
         if (detectors.findExistingMedia) {
             const existing = await detectors.findExistingMedia(metadata.tmdb_id, metadata.media_type);
             if (existing) {
@@ -321,7 +316,7 @@ class SignalCollector {
             }
         }
 
-        // 7. Content Analysis Signal
+        // 6. Content Analysis Signal
         if (detectors.analyzeContent) {
             const analysis = await detectors.analyzeContent(metadata);
             if (analysis?.bestMatch) {
@@ -335,7 +330,7 @@ class SignalCollector {
             }
         }
 
-        // 8. Exact Match Signal
+        // 7. Exact Match Signal
         if (detectors.checkExactMatch) {
             const exactMatch = await detectors.checkExactMatch(metadata.tmdb_id);
             if (exactMatch) {
@@ -348,7 +343,7 @@ class SignalCollector {
             }
         }
 
-        // 9. Learned Pattern Signal
+        // 8. Learned Pattern Signal
         if (detectors.checkLearnedPatterns) {
             const pattern = await detectors.checkLearnedPatterns(metadata);
             if (pattern && pattern.confidence >= 50) { // Lower threshold - let AI decide
@@ -362,7 +357,7 @@ class SignalCollector {
             }
         }
 
-        // 10. Collection/Franchise Signal
+        // 9. Collection/Franchise Signal
         const franchise = await this.checkFranchiseMembership(metadata.tmdb_id, metadata.media_type);
         if (franchise) {
             const relatedItems = await this.findRelatedClassifiedItems(franchise.collectionId);
@@ -388,7 +383,7 @@ class SignalCollector {
             }
         }
 
-        // 11. Legacy Rule Matching (matchRules)
+        // 10. Legacy Rule Matching (matchRules)
         if (detectors.matchRules) {
             const legacyMatch = await detectors.matchRules(metadata, libraries);
             if (legacyMatch && legacyMatch.confidence >= 50) { // Lower threshold
