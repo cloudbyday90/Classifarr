@@ -21,8 +21,8 @@ Classifarr provides two authentication methods for different use cases: **JWT to
 
 | Method | Use Case | Header | Format |
 |--------|----------|--------|--------|
-| **JWT Token** | Web UI, browser sessions | `Authorization` | `Bearer <token>` |
-| **API Key** | Integrations, automation, scripts | `X-API-Key` | `clf_<key>` |
+| **JWT Token** | Web UI, browser sessions | `Authorization` | `Bearer {token}` |
+| **API Key** | Integrations, automation, scripts | `X-API-Key` | `clf_{key}` |
 
 Both methods provide secure access to the Classifarr API with different permission levels.
 
@@ -127,7 +127,7 @@ API keys must be created through the web UI by authenticated users.
 **Request:**
 ```bash
 curl -X POST http://localhost:21324/api/keys \
-  -H "Authorization: Bearer <jwt_token>" \
+  -H "Authorization: Bearer {jwt_token}" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Automation Script",
@@ -248,11 +248,11 @@ Or reveal it through the API:
 ```bash
 # List all keys
 curl -X GET http://localhost:21324/api/keys \
-  -H "Authorization: Bearer <jwt_token>"
+  -H "Authorization: Bearer {jwt_token}"
 
 # Reveal full key by ID
 curl -X GET http://localhost:21324/api/keys/1/reveal \
-  -H "Authorization: Bearer <jwt_token>"
+  -H "Authorization: Bearer {jwt_token}"
 ```
 
 ---
