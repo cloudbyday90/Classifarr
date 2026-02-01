@@ -32,6 +32,7 @@
             :min="70"
             :max="95"
             :step="5"
+            @update:modelValue="validateThresholds"
           />
         </div>
 
@@ -47,6 +48,7 @@
             :min="40"
             :max="85"
             :step="5"
+            @update:modelValue="validateThresholds"
           />
         </div>
 
@@ -65,7 +67,7 @@
           <div class="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
             <div class="text-yellow-400 text-2xl">?</div>
             <div class="flex-1">
-              <div class="font-medium text-yellow-400">Prompt Confirm ({{ policySettings.promptThreshold }}% - {{ policySettings.autoClassifyThreshold - 1 }}%)</div>
+              <div class="font-medium text-yellow-400">Prompt Confirm ({{ policySettings.promptThreshold }}% - {{ Math.max(policySettings.autoClassifyThreshold - 1, policySettings.promptThreshold) }}%)</div>
               <div class="text-sm text-gray-400">Ask "Is this correct?"</div>
             </div>
           </div>
@@ -73,7 +75,7 @@
           <div class="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded">
             <div class="text-red-400 text-2xl">⚠</div>
             <div class="flex-1">
-              <div class="font-medium text-red-400">Manual Selection (0% - {{ policySettings.promptThreshold - 1 }}%)</div>
+              <div class="font-medium text-red-400">Manual Selection (0% - {{ Math.max(policySettings.promptThreshold - 1, 0) }}%)</div>
               <div class="text-sm text-gray-400">Show all options with AI guidance</div>
             </div>
           </div>
@@ -514,6 +516,20 @@ function formatDate(dateString) {
   if (!dateString) return 'Unknown'
   const date = new Date(dateString)
   return date.toLocaleString()
+}
+
+function validateThresholds() {
+  // Ensure auto-classify threshold is always higher than prompt threshold
+  if (policySettings.autoClassifyThreshold <= policySettings.promptThreshold) {
+    // Adjust prompt threshold to be 5% lower
+    policySettings.promptThreshold = Math.max(40, policySettings.autoClassifyThreshold - 5)
+    toast.warning('Auto-classify threshold must be higher than prompt threshold')
+  }
+  
+  // Ensure prompt threshold is at least 5% higher than 0
+  if (policySettings.promptThreshold < 5) {
+    policySettings.promptThreshold = 5
+  }
 }
 </script>
 
