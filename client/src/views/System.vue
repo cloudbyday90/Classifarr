@@ -103,11 +103,21 @@
           <p class="text-sm text-gray-400">{{ service.description }}</p>
           
           <!-- Latency and Last Check -->
-          <div v-if="service.responseTime != null || service.lastCheck" class="mt-2 flex items-center gap-3 text-xs text-gray-500">
+          <div v-if="service.responseTime != null || service.lastCheck || service.trend" class="mt-2 flex items-center gap-3 text-xs text-gray-500">
             <span v-if="service.responseTime != null" :class="getLatencyClass(service.responseTime)">
               {{ service.responseTime }}ms
             </span>
             <span v-if="service.lastCheck">{{ formatLastCheck(service.lastCheck) }}</span>
+            <span v-if="service.trend && service.trend !== 'stable'" 
+                  :title="getTrendTooltip(service)"
+                  class="cursor-help">
+              {{ getTrendArrow(service.trend) }}
+            </span>
+          </div>
+
+          <!-- Show last successful check if service is not healthy -->
+          <div v-if="service.lastSuccessfulCheck && service.status !== 'healthy'" class="mt-2 text-xs text-gray-500">
+            Last healthy: {{ formatLastCheck(service.lastSuccessfulCheck) }}
           </div>
 
           <!-- Queue Worker Metadata -->
@@ -141,12 +151,22 @@
               >
                 <div class="flex items-center justify-between mb-1">
                   <span class="font-medium">{{ instance.name }}</span>
-                  <Badge :variant="getHealthBadgeVariant(instance.status)">
-                    {{ instance.status }}
-                  </Badge>
+                  <div class="flex items-center gap-2">
+                    <Badge :variant="getHealthBadgeVariant(instance.status)">
+                      {{ instance.status }}
+                    </Badge>
+                    <span v-if="instance.trend && instance.trend !== 'stable'" 
+                          :title="getTrendTooltip(instance)"
+                          class="cursor-help">
+                      {{ getTrendArrow(instance.trend) }}
+                    </span>
+                  </div>
                 </div>
                 <div v-if="instance.responseTime != null" :class="getLatencyClass(instance.responseTime)">
                   {{ instance.responseTime }}ms
+                </div>
+                <div v-if="instance.lastSuccessfulCheck && instance.status !== 'connected'" class="text-gray-400 mt-1">
+                  Last healthy: {{ formatLastCheck(instance.lastSuccessfulCheck) }}
                 </div>
                 <div v-if="instance.error" class="text-red-400 mt-1">
                   {{ instance.error }}
@@ -282,7 +302,7 @@ import Button from '@/components/common/Button.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import api from '@/api'
 import { getServiceIcon } from '@/utils/serviceIcons'
-import { getStatusConfig, getLatencyClass, getOverallHealth } from '@/utils/healthStatus'
+import { getStatusConfig, getLatencyClass, getOverallHealth, calculateTrend, getTrendArrow, getTrendTooltip } from '@/utils/healthStatus'
 
 // Auto-refresh interval (30 seconds)
 const AUTO_REFRESH_INTERVAL_MS = 30000
@@ -434,7 +454,18 @@ const loadHealth = async (silent = false) => {
           description: 'PostgreSQL connection',
           responseTime: healthDetails.value.database?.responseTime,
           lastCheck: healthDetails.value.database?.lastCheck,
-          error: healthDetails.value.database?.error
+          lastSuccessfulCheck: healthDetails.value.database?.lastSuccessfulCheck,
+          error: healthDetails.value.database?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.database), 
+              responseTime: healthDetails.value.database?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.database?.previousStatus), 
+              responseTime: healthDetails.value.database?.previousResponseTime 
+            }
+          )
         },
         { 
           name: 'Media Server', 
@@ -443,7 +474,18 @@ const loadHealth = async (silent = false) => {
           description: healthDetails.value.mediaServer?.type ? `${healthDetails.value.mediaServer.type} - ${healthDetails.value.mediaServer.name || ''}` : 'Plex/Jellyfin/Emby',
           responseTime: healthDetails.value.mediaServer?.responseTime,
           lastCheck: healthDetails.value.mediaServer?.lastCheck,
-          error: healthDetails.value.mediaServer?.error
+          lastSuccessfulCheck: healthDetails.value.mediaServer?.lastSuccessfulCheck,
+          error: healthDetails.value.mediaServer?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.mediaServer), 
+              responseTime: healthDetails.value.mediaServer?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.mediaServer?.previousStatus), 
+              responseTime: healthDetails.value.mediaServer?.previousResponseTime 
+            }
+          )
         },
         { 
           name: 'Radarr', 
@@ -452,8 +494,25 @@ const loadHealth = async (silent = false) => {
           description: healthDetails.value.radarr?.instances?.length ? `${healthDetails.value.radarr.instances.length} instance(s)` : 'Movie management',
           responseTime: healthDetails.value.radarr?.responseTime,
           lastCheck: healthDetails.value.radarr?.lastCheck,
-          instances: healthDetails.value.radarr?.instances || [],
-          error: healthDetails.value.radarr?.error
+          lastSuccessfulCheck: healthDetails.value.radarr?.lastSuccessfulCheck,
+          instances: (healthDetails.value.radarr?.instances || []).map(instance => ({
+            ...instance,
+            trend: calculateTrend(
+              { status: instance.status, responseTime: instance.responseTime },
+              { status: instance.previousStatus, responseTime: instance.previousResponseTime }
+            )
+          })),
+          error: healthDetails.value.radarr?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.radarr), 
+              responseTime: healthDetails.value.radarr?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.radarr?.previousStatus), 
+              responseTime: healthDetails.value.radarr?.previousResponseTime 
+            }
+          )
         },
         { 
           name: 'Sonarr', 
@@ -462,8 +521,25 @@ const loadHealth = async (silent = false) => {
           description: healthDetails.value.sonarr?.instances?.length ? `${healthDetails.value.sonarr.instances.length} instance(s)` : 'TV show management',
           responseTime: healthDetails.value.sonarr?.responseTime,
           lastCheck: healthDetails.value.sonarr?.lastCheck,
-          instances: healthDetails.value.sonarr?.instances || [],
-          error: healthDetails.value.sonarr?.error
+          lastSuccessfulCheck: healthDetails.value.sonarr?.lastSuccessfulCheck,
+          instances: (healthDetails.value.sonarr?.instances || []).map(instance => ({
+            ...instance,
+            trend: calculateTrend(
+              { status: instance.status, responseTime: instance.responseTime },
+              { status: instance.previousStatus, responseTime: instance.previousResponseTime }
+            )
+          })),
+          error: healthDetails.value.sonarr?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.sonarr), 
+              responseTime: healthDetails.value.sonarr?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.sonarr?.previousStatus), 
+              responseTime: healthDetails.value.sonarr?.previousResponseTime 
+            }
+          )
         },
         { 
           name: 'AI Provider', 
@@ -472,7 +548,18 @@ const loadHealth = async (silent = false) => {
           description: healthDetails.value.ollama?.provider ? healthDetails.value.ollama.provider : 'Ollama/OpenAI/Anthropic',
           responseTime: healthDetails.value.ollama?.responseTime,
           lastCheck: healthDetails.value.ollama?.lastCheck,
-          error: healthDetails.value.ollama?.error
+          lastSuccessfulCheck: healthDetails.value.ollama?.lastSuccessfulCheck,
+          error: healthDetails.value.ollama?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.ollama), 
+              responseTime: healthDetails.value.ollama?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.ollama?.previousStatus), 
+              responseTime: healthDetails.value.ollama?.previousResponseTime 
+            }
+          )
         },
         { 
           name: 'Queue Worker', 
@@ -491,7 +578,18 @@ const loadHealth = async (silent = false) => {
           description: 'Movie/TV metadata',
           responseTime: healthDetails.value.tmdb?.responseTime,
           lastCheck: healthDetails.value.tmdb?.lastCheck,
-          error: healthDetails.value.tmdb?.error
+          lastSuccessfulCheck: healthDetails.value.tmdb?.lastSuccessfulCheck,
+          error: healthDetails.value.tmdb?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.tmdb), 
+              responseTime: healthDetails.value.tmdb?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.tmdb?.previousStatus), 
+              responseTime: healthDetails.value.tmdb?.previousResponseTime 
+            }
+          )
         },
         { 
           name: 'OMDb', 
@@ -500,7 +598,18 @@ const loadHealth = async (silent = false) => {
           description: 'Movie/TV enrichment',
           responseTime: healthDetails.value.omdb?.responseTime,
           lastCheck: healthDetails.value.omdb?.lastCheck,
-          error: healthDetails.value.omdb?.error
+          lastSuccessfulCheck: healthDetails.value.omdb?.lastSuccessfulCheck,
+          error: healthDetails.value.omdb?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.omdb), 
+              responseTime: healthDetails.value.omdb?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.omdb?.previousStatus), 
+              responseTime: healthDetails.value.omdb?.previousResponseTime 
+            }
+          )
         },
         { 
           name: 'Discord Bot', 
@@ -509,7 +618,18 @@ const loadHealth = async (silent = false) => {
           description: 'Notifications',
           responseTime: healthDetails.value.discordBot?.responseTime,
           lastCheck: healthDetails.value.discordBot?.lastCheck,
-          error: healthDetails.value.discordBot?.error
+          lastSuccessfulCheck: healthDetails.value.discordBot?.lastSuccessfulCheck,
+          error: healthDetails.value.discordBot?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.discordBot), 
+              responseTime: healthDetails.value.discordBot?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.discordBot?.previousStatus), 
+              responseTime: healthDetails.value.discordBot?.previousResponseTime 
+            }
+          )
         },
         { 
           name: 'Tavily', 
@@ -518,7 +638,18 @@ const loadHealth = async (silent = false) => {
           description: 'Web search (optional)',
           responseTime: healthDetails.value.tavily?.responseTime,
           lastCheck: healthDetails.value.tavily?.lastCheck,
-          error: healthDetails.value.tavily?.error
+          lastSuccessfulCheck: healthDetails.value.tavily?.lastSuccessfulCheck,
+          error: healthDetails.value.tavily?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.tavily), 
+              responseTime: healthDetails.value.tavily?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.tavily?.previousStatus), 
+              responseTime: healthDetails.value.tavily?.previousResponseTime 
+            }
+          )
         },
       ]
 
@@ -588,6 +719,12 @@ const getServiceTooltip = (service) => {
   }
   if (service.lastCheck) {
     tooltip += `\nLast Check: ${formatLastCheck(service.lastCheck)}`
+  }
+  if (service.lastSuccessfulCheck && service.status !== 'healthy') {
+    tooltip += `\nLast Healthy: ${formatLastCheck(service.lastSuccessfulCheck)}`
+  }
+  if (service.trend && service.trend !== 'stable') {
+    tooltip += `\nTrend: ${service.trend}`
   }
   return tooltip
 }

@@ -129,3 +129,89 @@ export function getOverallHealth(services) {
     degraded
   }
 }
+
+/**
+ * Calculate trend based on status and latency changes
+ * @param {object} current - Current service state
+ * @param {object} previous - Previous service state
+ * @returns {'improving'|'degrading'|'stable'|null}
+ */
+export function calculateTrend(current, previous) {
+  if (!current || !previous || !previous.status) {
+    return null;
+  }
+  
+  // Status score for comparison
+  const statusScore = {
+    'healthy': 3,
+    'connected': 3,
+    'configured': 2,
+    'degraded': 2,
+    'partial': 2,
+    'unhealthy': 1,
+    'disconnected': 1,
+    'error': 1,
+    'not_configured': 0,
+    'unknown': 0
+  };
+  
+  const currentScore = statusScore[current.status] || 0;
+  const previousScore = statusScore[previous.status] || 0;
+  
+  // Status improved
+  if (currentScore > previousScore) {
+    return 'improving';
+  }
+  
+  // Status degraded
+  if (currentScore < previousScore) {
+    return 'degrading';
+  }
+  
+  // Status same - check latency trend
+  if (current.responseTime != null && previous.responseTime != null) {
+    const diff = current.responseTime - previous.responseTime;
+    const threshold = 50; // 50ms threshold for meaningful change
+    
+    if (Math.abs(diff) > threshold) {
+      return diff < 0 ? 'improving' : 'degrading';
+    }
+  }
+  
+  return 'stable';
+}
+
+/**
+ * Get emoji arrow for trend
+ * @param {string} trend - Trend value
+ * @returns {string} Emoji arrow
+ */
+export function getTrendArrow(trend) {
+  switch (trend) {
+    case 'improving': return '↗️';
+    case 'degrading': return '↘️';
+    case 'stable': return '→';
+    default: return '';
+  }
+}
+
+/**
+ * Get tooltip text for trend
+ * @param {object} service - Service with trend data
+ * @returns {string} Tooltip text
+ */
+export function getTrendTooltip(service) {
+  if (!service.trend || service.trend === 'stable') {
+    return 'Status is stable';
+  }
+  
+  if (service.trend === 'improving') {
+    return 'Status is improving';
+  }
+  
+  if (service.trend === 'degrading') {
+    return 'Status is degrading';
+  }
+  
+  return '';
+}
