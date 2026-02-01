@@ -155,10 +155,8 @@ class MediaSyncService {
         throw error;
       }
     } catch (error) {
-      // Don't log LibraryNotFoundError as error - it's an expected case
-      if (error instanceof LibraryNotFoundError) {
-        logger.warn(`Library not found during sync`, { libraryId, error: error.message });
-      } else {
+      // Don't log LibraryNotFoundError - it's already logged as warning when first detected
+      if (!(error instanceof LibraryNotFoundError)) {
         logger.error(`Library sync failed`, { libraryId, error: error.message });
       }
       throw error;

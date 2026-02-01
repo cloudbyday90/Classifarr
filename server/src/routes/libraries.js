@@ -525,7 +525,7 @@ router.post('/:id/sync', requireReadWrite, async (req, res) => {
       return res.status(404).json(error.toJSON());
     }
 
-    // Log unexpected errors
+    // Log and return server error for all other exceptions
     logger.error('Sync failed', { error: error.message });
     res.status(500).json({
       success: false,
