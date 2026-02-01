@@ -52,7 +52,7 @@ Classifarr uses an advanced database migration system that supports:
 - ❌ Causes merge conflicts in parallel development
 - ❌ **DO NOT create new numeric migrations**
 
-### Timestamp Format (v0.42+)
+### Timestamp Format (v0.41+)
 
 **Pattern:** `YYYYMMDD_HHMMSS_descriptive_name.sql`
 

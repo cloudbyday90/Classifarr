@@ -17,7 +17,7 @@
 | Method | Time | Speed |
 |--------|------|-------|
 | **Legacy (76 migrations)** | ~7.6 seconds | Baseline |
-| **Schema Snapshot (v0.42+)** | ~0.6 seconds | **13x faster** ⚡ |
+| **Schema Snapshot (v0.41+)** | ~0.6 seconds | **13x faster** ⚡ |
 
 ### Migration Conflict Prevention
 
@@ -365,7 +365,7 @@ npm run db:dump-schema
 ❌ 7.6 second fresh installs  
 ❌ No comprehensive documentation  
 
-### After (v0.42+)
+### After (v0.41+)
 
 ✅ Auto-generated timestamps  
 ✅ Zero merge conflicts  
@@ -504,7 +504,7 @@ The system automatically:
 ---
 
 **Implementation Date:** 2026-02-01  
-**Version:** v0.42.0-alpha  
+**Version:** v0.41.0-alpha  
 **Status:** ✅ Complete  
 **Security:** ✅ 0 Vulnerabilities  
 **Documentation:** ✅ Comprehensive  

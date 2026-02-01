@@ -25,7 +25,7 @@ const logger = createLogger('Migrations');
  *    - Causes merge conflicts when multiple PRs add migrations simultaneously
  *    - Still fully supported for backward compatibility
  * 
- * 2. TIMESTAMP-BASED MIGRATIONS (v0.42+)
+ * 2. TIMESTAMP-BASED MIGRATIONS (v0.41+)
  *    - Format: YYYYMMDD_HHMMSS_description.sql
  *    - Infinitely scalable (no limit on number of migrations)
  *    - Prevents merge conflicts (each PR gets unique timestamp)
@@ -129,7 +129,7 @@ class MigrationRunner {
      * 
      * MIGRATION FORMATS SUPPORTED:
      * 1. Numeric (legacy):  001_description.sql, 076_description.sql
-     * 2. Timestamp (v0.42+): 20260201_150000_description.sql
+     * 2. Timestamp (v0.41+): 20260201_150000_description.sql
      * 
      * SORTING ALGORITHM:
      * - Numeric migrations are padded with "00000000_000000_" prefix for sorting

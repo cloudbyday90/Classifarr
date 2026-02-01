@@ -8,7 +8,7 @@ Migrations are automatically run on application startup by the `MigrationRunner`
 
 ## Migration Naming Conventions
 
-### Legacy Numeric Format (Pre-v0.42)
+### Legacy Numeric Format (Pre-v0.41)
 **Format:** `XXX_descriptive_name.sql`
 - Used for migrations 001-076
 - Still supported for backward compatibility
@@ -16,7 +16,7 @@ Migrations are automatically run on application startup by the `MigrationRunner`
 
 **Example:** `076_remove_duplicate_discord_thresholds.sql`
 
-### Timestamp Format (v0.42+)
+### Timestamp Format (v0.41+)
 **Format:** `YYYYMMDD_HHMMSS_descriptive_name.sql`
 - **Required for all new migrations**
 - Auto-generated with `npm run migration:create`
@@ -91,7 +91,7 @@ npm run migration:create "fix discord settings cleanup"  # ✅ CORRECT!
 
 ## Schema Snapshots for Fresh Installs
 
-As of v0.42, fresh installs use a schema snapshot instead of running 76+ migrations sequentially.
+As of v0.41, fresh installs use a schema snapshot instead of running 76+ migrations sequentially.
 
 **Performance:**
 - Old way: 76 migrations × 0.1s = ~7.6 seconds
