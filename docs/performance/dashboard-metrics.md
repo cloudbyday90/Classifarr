@@ -39,3 +39,4 @@
 - **Performance**: 97
 - **Accessibility**: 100 ✅
 - **Best Practices**: 96
+- **Evidence**: Scores captured using Lighthouse 10.1.0 in Chrome (Desktop configuration); full HTML report and screenshot are archived under `docs/lighthouse/dashboard-lighthouse-report.html` and `docs/lighthouse/dashboard-lighthouse-report.png`.
