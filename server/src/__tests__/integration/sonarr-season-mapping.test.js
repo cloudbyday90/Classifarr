@@ -45,14 +45,17 @@ describe('Sonarr Season Mapping Integration', () => {
 
   describe('include_specials flag', () => {
     it('should include season 0 when include_specials is true', async () => {
+      const seasonsWithSpecials = [
+        { seasonNumber: 0, monitored: true },
+        { seasonNumber: 1, monitored: true },
+        { seasonNumber: 2, monitored: true },
+        { seasonNumber: 3, monitored: true }
+      ];
+      
       const seriesData = {
         tvdbId: 12345,
         title: 'Test Series',
-        seasons: [
-          { seasonNumber: 1, monitored: true },
-          { seasonNumber: 2, monitored: true },
-          { seasonNumber: 3, monitored: true }
-        ],
+        seasons: seasonsWithSpecials,
         monitored: true
       };
       
@@ -60,20 +63,12 @@ describe('Sonarr Season Mapping Integration', () => {
       axios.post.mockResolvedValueOnce({
         data: {
           ...seriesData,
-          id: 1
+          id: 1,
+          seasons: seasonsWithSpecials
         }
       });
       
-      // Simulate adding season 0 when include_specials is true
-      const seasonsWithSpecials = [
-        { seasonNumber: 0, monitored: true },
-        ...seriesData.seasons
-      ];
-      
-      const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', {
-        ...seriesData,
-        seasons: seasonsWithSpecials
-      });
+      const result = await sonarrService.addSeries('http://localhost:8989', 'test-key', seriesData);
       
       expect(result.seasons).toBeDefined();
       expect(result.seasons.some(s => s.seasonNumber === 0)).toBe(true);

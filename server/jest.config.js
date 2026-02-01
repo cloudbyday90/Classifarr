@@ -35,7 +35,7 @@ module.exports = {
     '/src/__tests__/integration/'
   ],
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup/mockLogger.js'],
-  coverageThresholds: {
+  coverageThreshold: {
     global: {
       branches: 70,
       functions: 75,
