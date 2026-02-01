@@ -479,7 +479,6 @@ const getMethodVariant = (method) => {
     'custom_rule': 'default',
     'ai_analysis': 'warning',
     'source_library': 'success',
-    'event_detection': 'info',
     'manual_correction': 'success',
     'existing_media': 'success',
     'reclassification': 'warning',
@@ -487,7 +486,6 @@ const getMethodVariant = (method) => {
     'rule_match': 'default',
     'ai_fallback': 'warning',
     'library_rule': 'default',
-    'holiday_detection': 'info',
     'learned_correction': 'success',
   }
   return variants[method] || 'default'

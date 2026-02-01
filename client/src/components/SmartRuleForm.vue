@@ -265,7 +265,6 @@
               class="w-full bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary [&>option]:bg-gray-800 [&>option]:text-white"
             >
               <option value="content_type">Content Type</option>
-              <option value="event_type">Event Type</option>
               <option value="genres">Genre</option>
               <option value="keywords">Keyword</option>
               <option value="certification">Content Rating</option>
@@ -284,8 +283,7 @@
               <option value="not_equals">Does not equal</option>
               <option value="contains" v-if="['genres', 'keywords', 'title'].includes(condition.field)">Contains</option>
               <option value="not_contains" v-if="['genres', 'keywords', 'title'].includes(condition.field)">Does not contain</option>
-              <option value="includes" v-if="condition.field === 'event_type'">Includes any of</option>
-              <option value="is_one_of" v-if="['content_type', 'certification', 'genres', 'event_type'].includes(condition.field)">Is one of...</option>
+              <option value="is_one_of" v-if="['content_type', 'certification', 'genres'].includes(condition.field)">Is one of...</option>
               <option v-if="condition.field === 'year'" value="greater_than">Greater than</option>
               <option v-if="condition.field === 'year'" value="less_than">Less than</option>
               <option v-if="condition.field === 'year'" value="between">Between</option>
@@ -313,70 +311,6 @@
               <option value="halloween">Halloween</option>
               <option value="documentary">Documentary</option>
             </select>
-            
-            <!-- Event Type Select (Enhanced with Sub-Types) -->
-            <div v-else-if="condition.field === 'event_type'" class="w-full space-y-2">
-              <select 
-                v-model="condition.value"
-                class="w-full bg-gray-900 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary"
-              >
-                <option value="">Select event category...</option>
-                <option value="holiday">🎄 Holiday</option>
-                <option value="sports">🏈 Sports</option>
-                <option value="ppv">🥊 PPV/Combat</option>
-                <option value="concert">🎵 Concert</option>
-                <option value="standup">🎤 Stand-up Comedy</option>
-                <option value="awards">🏆 Awards</option>
-              </select>
-              
-              <!-- Holiday sub-types -->
-              <select 
-                v-if="condition.value === 'holiday'"
-                v-model="condition.subType"
-                class="w-full bg-gray-800 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary text-sm"
-              >
-                <option value="">All holidays (generic)</option>
-                <option value="christmas">🎄 Christmas/Xmas</option>
-                <option value="halloween">🎃 Halloween</option>
-                <option value="thanksgiving">🦃 Thanksgiving</option>
-                <option value="easter">🐰 Easter</option>
-                <option value="valentines">❤️ Valentine's Day</option>
-                <option value="newyear">🎆 New Year's</option>
-                <option value="july4">🎆 4th of July</option>
-              </select>
-              
-              <!-- Sports sub-types -->
-              <select 
-                v-if="condition.value === 'sports'"
-                v-model="condition.subType"
-                class="w-full bg-gray-800 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary text-sm"
-              >
-                <option value="">All sports (generic)</option>
-                <option value="football">🏈 Football/NFL</option>
-                <option value="basketball">🏀 Basketball/NBA</option>
-                <option value="baseball">⚾ Baseball/MLB</option>
-                <option value="hockey">🏒 Hockey/NHL</option>
-                <option value="soccer">⚽ Soccer/Football</option>
-                <option value="golf">⛳ Golf</option>
-                <option value="racing">🏎️ Racing/F1/NASCAR</option>
-              </select>
-              
-              <!-- PPV/Combat sub-types -->
-              <select 
-                v-if="condition.value === 'ppv'"
-                v-model="condition.subType"
-                class="w-full bg-gray-800 border border-gray-600 rounded-sm px-3 py-2 text-white focus:outline-hidden focus:border-primary text-sm"
-              >
-                <option value="">All combat sports</option>
-                <option value="ufc">🥊 UFC/MMA</option>
-                <option value="boxing">🥊 Boxing</option>
-                <option value="wrestling">💪 Wrestling/WWE</option>
-              </select>
-              
-              <p v-if="condition.value && getEventSubTypeKeywords(condition.value, condition.subType)" class="text-xs text-gray-500">
-                Keywords: {{ getEventSubTypeKeywords(condition.value, condition.subType).join(', ') }}
-              </p>
-            </div>
             
             <!-- Certification Select (New) -->
             <select 
@@ -655,49 +589,6 @@ const formatTimeAgo = (dateString) => {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`
   if (seconds < 604800) return `${Math.floor(seconds / 86400)} days ago`
   return date.toLocaleDateString()
-}
-
-// Helper to get keywords for event type/subtype combinations
-const getEventSubTypeKeywords = (eventType, subType) => {
-  const keywordMap = {
-    holiday: {
-      '': ['christmas', 'holiday', 'xmas', 'festive', 'santa'],
-      christmas: ['christmas', 'xmas', 'santa', 'elf', 'snowman', 'north pole', 'reindeer'],
-      halloween: ['halloween', 'spooky', 'trick or treat', 'haunted', 'pumpkin'],
-      thanksgiving: ['thanksgiving', 'turkey', 'pilgrim', 'gratitude'],
-      easter: ['easter', 'bunny', 'egg hunt', 'spring'],
-      valentines: ['valentine', 'cupid', 'romantic', 'love'],
-      newyear: ['new year', 'countdown', 'resolution', 'nye'],
-      july4: ['july 4th', 'independence day', 'fireworks', 'america']
-    },
-    sports: {
-      '': ['sports', 'game', 'championship', 'tournament'],
-      football: ['nfl', 'super bowl', 'football', 'touchdown', 'quarterback'],
-      basketball: ['nba', 'basketball', 'march madness', 'slam dunk'],
-      baseball: ['mlb', 'baseball', 'world series', 'home run'],
-      hockey: ['nhl', 'hockey', 'stanley cup', 'puck'],
-      soccer: ['soccer', 'world cup', 'premier league', 'futbol'],
-      golf: ['golf', 'pga', 'masters', 'green jacket'],
-      racing: ['f1', 'formula 1', 'nascar', 'racing', 'grand prix']
-    },
-    ppv: {
-      '': ['ppv', 'pay per view', 'fight', 'bout'],
-      ufc: ['ufc', 'mma', 'ultimate fighting', 'octagon'],
-      boxing: ['boxing', 'heavyweight', 'title fight'],
-      wrestling: ['wwe', 'wrestling', 'wrestlemania', 'aew']
-    },
-    concert: {
-      '': ['concert', 'live', 'tour', 'music festival', 'performance']
-    },
-    standup: {
-      '': ['standup', 'stand-up', 'comedy special', 'comedian']
-    },
-    awards: {
-      '': ['oscars', 'emmy', 'grammy', 'golden globe', 'awards', 'red carpet']
-    }
-  }
-  
-  return keywordMap[eventType]?.[subType || ''] || null
 }
 
 // Helper to format content rating labels with friendly names

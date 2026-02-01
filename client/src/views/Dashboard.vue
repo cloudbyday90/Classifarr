@@ -420,8 +420,7 @@ const getMethodIcon = (method) => {
     'ai_fallback': '🤖',
     'rule_match': '📋',
     'library_rule': '📋',
-    'existing_media': '🎬',
-    'holiday_detection': '🎄'
+    'existing_media': '🎬'
   }
   return icons[method] || '❓'
 }
@@ -436,8 +435,7 @@ const formatMethodName = (method) => {
     'ai_fallback': 'AI Analysis',
     'rule_match': 'Rule Match',
     'library_rule': 'Rule Match',
-    'existing_media': 'Existing Media',
-    'holiday_detection': 'Holiday Detection'
+    'existing_media': 'Existing Media'
   }
   return names[method] || method.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
@@ -452,8 +450,7 @@ const getMethodColor = (method) => {
     'ai_fallback': 'text-orange-400',
     'rule_match': 'text-indigo-400',
     'library_rule': 'text-indigo-400',
-    'existing_media': 'text-pink-400',
-    'holiday_detection': 'text-red-400'
+    'existing_media': 'text-pink-400'
   }
   return colors[method] || 'text-gray-400'
 }
@@ -468,8 +465,7 @@ const getMethodTooltip = (method) => {
     'ai_fallback': 'AI-powered classification when other methods fail',
     'rule_match': 'Matched against defined rules',
     'library_rule': 'Matched against library-specific rules',
-    'existing_media': 'Based on existing media in libraries',
-    'holiday_detection': 'Special holiday/seasonal content detected'
+    'existing_media': 'Based on existing media in libraries'
   }
   return tooltips[method] || 'Classification method'
 }

@@ -6,6 +6,14 @@
 
 ### Removed
 
+- **Event Detection UI**: Legacy event/holiday detection controls fully removed from UI
+  - Event type field and operators removed from SmartRuleForm rule builder
+  - Event type select UI with holiday/sports/PPV sub-type selectors removed
+  - Event detection method labels removed from Activity, History, Dashboard, and Statistics views
+  - Event detection signals removed from Confidence settings
+  - UI simplified to focus on PolicyEngine-based classification
+  - All event detection now handled through PolicyEngine presets (migrated in v0.37.0)
+  - See backend cleanup in #229 and database cleanup in #228
 - **Event Detection Backend**: Legacy event/holiday detection code fully removed from backend
   - Event detection logic removed from classification service
   - Event detection signals and weights removed from scoring engine
