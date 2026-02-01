@@ -32,10 +32,19 @@ const profileUpdateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// General rate limiter for authenticated endpoints - 100 requests per 15 minutes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 /**
  * Get current user info
  */
-router.get('/me', authenticateToken, async (req, res) => {
+router.get('/me', authenticateToken, authLimiter, async (req, res) => {
   try {
     const result = await db.query(
       'SELECT id, username, role, is_active, last_login, created_at FROM users WHERE id = $1',
