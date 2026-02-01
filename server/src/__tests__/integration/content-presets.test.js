@@ -8,14 +8,14 @@ describe('Content Presets Seed Data Integration Test', () => {
     });
 
     describe('Basic Preset Verification', () => {
-        test('should have inserted 174 system presets (46 original + 122 new + 6 events)', async () => {
+        test('should have inserted 168 system presets (46 original + 122 new, 6 event presets removed in v0.41.0)', async () => {
             const res = await db.query(`
                 SELECT COUNT(*) as count 
                 FROM content_presets 
                 WHERE is_system = true
             `);
 
-            expect(parseInt(res.rows[0].count)).toBe(174);
+            expect(parseInt(res.rows[0].count)).toBe(168);
         });
 
         test('all system presets should have null user_id', async () => {

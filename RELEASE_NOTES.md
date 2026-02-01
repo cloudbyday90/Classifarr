@@ -6,6 +6,12 @@
 
 ### Removed
 
+- **Event Detection Backend**: Legacy event/holiday detection code fully removed from backend
+  - Event detection logic removed from classification service
+  - Event detection signals and weights removed from scoring engine
+  - Event-related API endpoints removed
+  - Backend now relies exclusively on PolicyEngine for all content classification
+  - See database cleanup in #228
 - **Event Detection System**: Deprecated event/holiday detection has been fully removed
   - Event detection is now handled exclusively through PolicyEngine presets (migrated in v0.37.0)
   - Libraries no longer have event detection type/subtype fields in the UI or database
