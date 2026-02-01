@@ -48,7 +48,6 @@ describe('SignalCollector', () => {
             expect(SIGNAL_TYPES.GENRE_MATCH).toBe('genre_match');
             expect(SIGNAL_TYPES.SOURCE_LIBRARY).toBe('source_library');
             expect(SIGNAL_TYPES.MANUAL_CORRECTION).toBe('manual_correction');
-            expect(SIGNAL_TYPES.EVENT_DETECTION).toBe('event_detection');
             expect(SIGNAL_TYPES.CUSTOM_RULE).toBe('custom_rule');
             expect(SIGNAL_TYPES.EXISTING_MEDIA).toBe('existing_media');
             expect(SIGNAL_TYPES.CONTENT_ANALYSIS).toBe('content_analysis');

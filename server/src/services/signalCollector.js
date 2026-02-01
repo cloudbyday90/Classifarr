@@ -24,7 +24,6 @@ const SIGNAL_TYPES = {
     PATTERN_CERTIFICATION: 'pattern_certification', // Pattern from certification
     SOURCE_LIBRARY: 'source_library',        // Item came from known Plex library
     MANUAL_CORRECTION: 'manual_correction',  // User previously corrected this TMDB ID
-    EVENT_DETECTION: 'event_detection',      // Holiday/sports/special content detected
     CUSTOM_RULE: 'custom_rule',              // Custom rule matched
     EXISTING_MEDIA: 'existing_media',        // Already exists in media server
     CONTENT_ANALYSIS: 'content_analysis',    // Content type analysis result
@@ -440,9 +439,6 @@ class SignalCollector {
                     break;
                 case SIGNAL_TYPES.MANUAL_CORRECTION:
                     line += `User previously corrected to "${signal.library?.name}"`;
-                    break;
-                case SIGNAL_TYPES.EVENT_DETECTION:
-                    line += `${signal.data.eventType} content detected - suggests "${signal.library?.name}"`;
                     break;
                 case SIGNAL_TYPES.CUSTOM_RULE:
                     line += `Rule matched: ${signal.data.matchedRule || signal.data.reason} → "${signal.library?.name}"`;

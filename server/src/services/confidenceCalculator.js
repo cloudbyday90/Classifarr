@@ -26,7 +26,6 @@ const DEFAULT_WEIGHTS = {
     [SIGNAL_TYPES.EXACT_MATCH]: 100,         // Previously confirmed for this TMDB ID
     [SIGNAL_TYPES.SEMANTIC_SIMILARITY]: 75,  // RAG-based similarity (dynamic: 50-90)
     [SIGNAL_TYPES.PROFILE_SCORE]: 60,        // Library profile match (v0.38.0+)
-    [SIGNAL_TYPES.EVENT_DETECTION]: 30,      // Holiday/sports detection
     [SIGNAL_TYPES.COLLECTION_MATCH]: 25,     // Franchise consistency
     [SIGNAL_TYPES.LEARNED_PATTERN]: 20,      // AI-learned patterns
     [SIGNAL_TYPES.CONTENT_ANALYSIS]: 15,     // Content type analysis
