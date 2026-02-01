@@ -98,15 +98,19 @@ describe('useServiceStatusStore', () => {
     })
 
     it('sets loading state during fetch', async () => {
-      api.getSystemHealth.mockImplementation(() => new Promise(() => {}))
+      let resolvePromise
+      api.getSystemHealth.mockImplementation(() => new Promise((resolve) => {
+        resolvePromise = resolve
+      }))
 
       const store = useServiceStatusStore()
       const promise = store.fetchServiceStatus()
 
       expect(store.isLoading).toBe(true)
 
-      // Cleanup
-      await Promise.race([promise, new Promise(resolve => setTimeout(resolve, 0))])
+      // Cleanup - resolve the promise to avoid timeout
+      resolvePromise({ data: { database: 'connected' } })
+      await promise
     })
 
     it('handles errors gracefully', async () => {

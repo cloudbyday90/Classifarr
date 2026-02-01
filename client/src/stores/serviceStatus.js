@@ -122,15 +122,18 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
 
   // Start auto-refresh (every 30 seconds)
   const startAutoRefresh = () => {
+    // Only start if not already running
+    if (autoRefreshInterval.value) {
+      return
+    }
+    
     // Fetch immediately
     fetchServiceStatus()
     
     // Then refresh every 30 seconds
-    if (!autoRefreshInterval.value) {
-      autoRefreshInterval.value = setInterval(() => {
-        fetchServiceStatus()
-      }, 30000) // 30 seconds
-    }
+    autoRefreshInterval.value = setInterval(() => {
+      fetchServiceStatus()
+    }, 30000) // 30 seconds
   }
 
   // Stop auto-refresh
