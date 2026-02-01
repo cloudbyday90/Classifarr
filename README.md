@@ -7,6 +7,7 @@ Classifarr is an intelligent media classification platform that automatically ro
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
 ![Version](https://img.shields.io/badge/version-v0.41.0--alpha-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
+![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)
 
 ## ✨ Features
 

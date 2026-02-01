@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Test Coverage Improvements** (Fixes #227)
+  - Added integration tests for Sonarr season mapping with `include_specials` flag
+  - Added coverage reporting scripts for server and client (`npm run test:coverage`)
+  - Added coverage badge to README
+  - Added `docs/testing/coverage.md` with comprehensive testing guide
+  - Added logger mocking to suppress expected error noise in tests
+  - Added test to verify expected errors log as warnings (404s don't log as errors)
+  - Added coverage thresholds for server: 80% lines, 75% functions, 70% branches
+  - Added CI test scripts with `npm run test:ci`
 - **Backup & Restore System** (Fixes #186)
   - Encrypted config backups with AES-256-GCM encryption
   - Export/import with replace or merge modes
@@ -135,6 +144,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added comprehensive integration tests for 404 handling
 
 ### Removed
+- **Legacy Event Detection Tests** (Fixes #227)
+  - Removed deprecated event detection integration tests
+  - Removed `event-detection-removal.test.js` (event detection retired in v0.41.0)
+  - All event detection test suites cleaned up
 
 - **Event Detection Frontend UI**: Removed all legacy event/holiday detection UI controls and code
   - Removed event_type field and operators from SmartRuleForm component
