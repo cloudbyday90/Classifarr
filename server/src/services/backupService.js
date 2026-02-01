@@ -553,7 +553,10 @@ class BackupService {
         await client.query(
           `INSERT INTO ollama_config (host, port, model) 
            VALUES ($1, $2, $3) 
-           ON CONFLICT DO NOTHING`,
+           ON CONFLICT (id) DO UPDATE SET
+             host = EXCLUDED.host,
+             port = EXCLUDED.port,
+             model = EXCLUDED.model`,
           [config.host, config.port, config.model]
         );
       }
@@ -563,7 +566,8 @@ class BackupService {
         await client.query(
           `INSERT INTO tmdb_config (api_key) 
            VALUES ($1) 
-           ON CONFLICT DO NOTHING`,
+           ON CONFLICT (id) DO UPDATE SET
+             api_key = EXCLUDED.api_key`,
           [config.api_key]
         );
       }
