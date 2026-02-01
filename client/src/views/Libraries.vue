@@ -13,21 +13,24 @@
 
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold">Libraries</h1>
-      <Button 
-        @click="syncLibraries" 
-        :disabled="!syncStore.canStartSync"
-        :loading="syncStore.isRunning && syncStore.type === SYNC_TYPE.LIBRARY_SYNC"
-      >
-        <template v-if="syncStore.isRunning && syncStore.type === SYNC_TYPE.LIBRARY_SYNC">
-          Syncing... {{ syncStore.progress }}%
-        </template>
-        <template v-else-if="syncStore.isRunning">
-          {{ syncStore.statusText }}
-        </template>
-        <template v-else>
-          🔄 Sync Libraries
-        </template>
-      </Button>
+      <div class="relative">
+        <Button 
+          @click="handleSyncClick" 
+          :disabled="!syncStore.canStartSync || !canSyncLibraries"
+          :loading="syncStore.isRunning && syncStore.type === SYNC_TYPE.LIBRARY_SYNC"
+          :title="!canSyncLibraries ? lockdownTooltip : undefined"
+        >
+          <template v-if="syncStore.isRunning && syncStore.type === SYNC_TYPE.LIBRARY_SYNC">
+            Syncing... {{ syncStore.progress }}%
+          </template>
+          <template v-else-if="syncStore.isRunning">
+            {{ syncStore.statusText }}
+          </template>
+          <template v-else>
+            <span v-if="!canSyncLibraries">🔒 </span>🔄 Sync Libraries
+          </template>
+        </Button>
+      </div>
     </div>
 
     <!-- Progress bar during sync -->
@@ -94,6 +97,8 @@ import { storeToRefs } from 'pinia'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSyncStatusStore, SYNC_TYPE } from '@/stores/syncStatus'
 import { useToast } from '@/stores/toast'
+import { useServiceRequirements } from '@/composables/useServiceRequirements'
+import { useServiceLockdownDialog } from '@/composables/useServiceLockdownToast'
 import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -109,6 +114,10 @@ const { libraries, loading } = storeToRefs(librariesStore)
 const syncStore = useSyncStatusStore()
 const toast = useToast()
 
+// Service lockdown for media server
+const { canUseFeature: canSyncLibraries, lockdownTooltip, firstUnavailableService } = useServiceRequirements(['mediaServer'])
+const { showLockdownNotification } = useServiceLockdownDialog()
+
 onMounted(async () => {
   await librariesStore.fetchLibraries()
   syncStore.startPolling()
@@ -117,6 +126,16 @@ onMounted(async () => {
 onUnmounted(() => {
   syncStore.stopPolling()
 })
+
+const handleSyncClick = () => {
+  // Check if media server is available
+  if (!canSyncLibraries.value) {
+    showLockdownNotification(firstUnavailableService.value)
+    return
+  }
+  
+  syncLibraries()
+}
 
 const syncLibraries = async () => {
   try {

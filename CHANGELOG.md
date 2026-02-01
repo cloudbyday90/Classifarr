@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Service Lockdown System** (Fixes #206)
+  - Pinia store for tracking service health from `/api/system/health`
+  - Auto-refresh service status every 30 seconds
+  - Composable for checking service dependencies before enabling features
+  - Buttons/features automatically disabled when required services unavailable
+  - Clear tooltips: "Configure [Service] to enable this feature"
+  - Direct navigation to settings pages with one-click configuration links
+  - Lock icons (🔒) shown on disabled features
+  - Applied to: Library Sync (requires Media Server), Batch Reclassify (requires AI Provider), Dashboard Quick Actions
+  - 44 comprehensive tests covering stores and composables
 - **Dashboard Accessibility & Testing** (Fixes #204)
   - Added ARIA labels to all loading, error, and empty states
   - Added ARIA live regions for dynamic content updates (polite for loading, assertive for errors)

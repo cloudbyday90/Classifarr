@@ -16,14 +16,44 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 import App from '../App.vue';
+import api from '@/api'
+
+// Mock the API
+vi.mock('@/api', () => ({
+  default: {
+    getSystemHealth: vi.fn()
+  }
+}))
 
 describe('App.vue', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    // Mock the API response
+    api.getSystemHealth.mockResolvedValue({
+      data: {
+        database: 'connected',
+        mediaServer: 'not_configured',
+        radarr: 'not_configured',
+        sonarr: 'not_configured',
+        ollama: 'not_configured',
+        tmdb: 'not_configured',
+        omdb: 'not_configured',
+        discordBot: 'not_configured',
+        tavily: 'not_configured',
+        queueWorker: 'healthy',
+        details: {}
+      }
+    })
+  })
+
   it('renders without crashing', () => {
     const wrapper = mount(App, {
       global: {
+        plugins: [createPinia()],
         stubs: {
           RouterView: true,
           Toast: true
@@ -36,6 +66,7 @@ describe('App.vue', () => {
   it('contains router-view component', () => {
     const wrapper = mount(App, {
       global: {
+        plugins: [createPinia()],
         stubs: {
           RouterView: true,
           Toast: true
@@ -48,6 +79,7 @@ describe('App.vue', () => {
   it('contains Toast component', () => {
     const wrapper = mount(App, {
       global: {
+        plugins: [createPinia()],
         stubs: {
           RouterView: true,
           Toast: true

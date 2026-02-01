@@ -6,6 +6,20 @@
 
 ### Added
 
+- **🔒 Service Status Awareness**: Intelligent feature lockdown based on service availability
+  - ✅ **Smart Button Disabling**: Buttons automatically disabled when required services are unavailable
+  - ✅ **Clear Tooltips**: Helpful messages explain what's needed (e.g., "Configure AI Provider to enable this feature")
+  - ✅ **One-Click Configuration**: Direct links to settings pages for quick setup
+  - ✅ **Lock Icons (🔒)**: Visual indicators on disabled features
+  - ✅ **Affected Features**:
+    - Library Sync (requires Media Server)
+    - AI Batch Reclassification (requires AI Provider)
+    - Dashboard Quick Actions (Classify Media, Manage Libraries)
+  - ✅ **Auto-Refresh**: Service status checked every 30 seconds
+  - ✅ **44 Tests**: Comprehensive test coverage for stores and composables
+  - **For Users**: No more confusing errors when clicking features that require unconfigured services
+  - **For Users**: Clear guidance on what needs to be configured
+  - **For Users**: One-click navigation to the right settings page
 - **🎯 Dashboard Accessibility & Testing**: Complete accessibility features and testing
   - ✅ **Screen Reader Support**: Compatible with NVDA, JAWS, and VoiceOver
   - ✅ **Full Keyboard Navigation**: Navigate entire dashboard without a mouse
