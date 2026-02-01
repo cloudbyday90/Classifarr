@@ -2847,4 +2847,246 @@ router.get('/provider-lock/status', async (req, res) => {
   }
 });
 
+// ============================================
+// UNIFIED CONFIDENCE SETTINGS (Issue #241)
+// ============================================
+
+/**
+ * GET /api/settings/confidence
+ * Get all confidence-related settings
+ */
+router.get('/confidence', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT setting_key, setting_value, description, default_value
+      FROM confidence_settings
+      ORDER BY setting_key
+    `);
+    
+    const settings = result.rows.reduce((acc, row) => {
+      acc[row.setting_key] = {
+        value: row.setting_value,
+        description: row.description,
+        default: row.default_value
+      };
+      return acc;
+    }, {});
+    
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve settings' });
+  }
+});
+
+/**
+ * PUT /api/settings/confidence
+ * Update confidence settings (admin only)
+ */
+router.put('/confidence', async (req, res) => {
+  const client = await db.pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    const updates = req.body;
+    const userId = req.user?.id || null;
+    const changeReason = req.body._reason || 'Manual update';
+    
+    for (const [key, newValue] of Object.entries(updates)) {
+      if (key.startsWith('_')) continue; // Skip metadata
+      
+      // Get current value for audit
+      const current = await client.query(
+        'SELECT setting_value FROM confidence_settings WHERE setting_key = $1',
+        [key]
+      );
+      
+      const oldValue = current.rows[0]?.setting_value;
+      
+      // Update setting
+      await client.query(`
+        UPDATE confidence_settings
+        SET setting_value = $1, updated_at = NOW()
+        WHERE setting_key = $2
+      `, [newValue.toString(), key]);
+      
+      // Audit log
+      await client.query(`
+        INSERT INTO confidence_settings_audit
+        (setting_key, old_value, new_value, changed_by, change_reason, ip_address)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [key, oldValue, newValue.toString(), userId, changeReason, req.ip]);
+    }
+    
+    await client.query('COMMIT');
+    
+    res.json({ success: true, message: 'Settings updated successfully' });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Failed to update settings' });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * GET /api/settings/confidence/history
+ * Get change history for audit (admin only)
+ */
+router.get('/confidence/history', async (req, res) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+    
+    const result = await db.query(`
+      SELECT 
+        csa.*,
+        u.username as changed_by_username
+      FROM confidence_settings_audit csa
+      LEFT JOIN users u ON csa.changed_by = u.id
+      ORDER BY csa.changed_at DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve history' });
+  }
+});
+
+/**
+ * POST /api/settings/confidence/revert/:auditId
+ * Revert to a previous setting value (admin only)
+ */
+router.post('/confidence/revert/:auditId', async (req, res) => {
+  const client = await db.pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    const { auditId } = req.params;
+    const userId = req.user?.id || null;
+    
+    // Get the audit entry
+    const auditResult = await client.query(
+      'SELECT * FROM confidence_settings_audit WHERE id = $1',
+      [auditId]
+    );
+    
+    if (auditResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Audit entry not found' });
+    }
+    
+    const audit = auditResult.rows[0];
+    
+    // Revert to old value
+    await client.query(`
+      UPDATE confidence_settings
+      SET setting_value = $1, updated_at = NOW()
+      WHERE setting_key = $2
+    `, [audit.old_value, audit.setting_key]);
+    
+    // Log the revert action
+    await client.query(`
+      INSERT INTO confidence_settings_audit
+      (setting_key, old_value, new_value, changed_by, change_reason, ip_address)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [
+      audit.setting_key,
+      audit.new_value,
+      audit.old_value,
+      userId,
+      `Reverted from audit entry ${auditId}`,
+      req.ip
+    ]);
+    
+    await client.query('COMMIT');
+    
+    res.json({ success: true, message: 'Setting reverted successfully' });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Failed to revert setting' });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * POST /api/settings/confidence/export
+ * Export all settings as JSON (admin only)
+ */
+router.post('/confidence/export', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM confidence_settings');
+    
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      exportedBy: req.user?.username || 'unknown',
+      settings: result.rows
+    };
+    
+    res.json(exportData);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to export settings' });
+  }
+});
+
+/**
+ * POST /api/settings/confidence/import
+ * Import settings from JSON (admin only)
+ */
+router.post('/confidence/import', async (req, res) => {
+  const client = await db.pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    const { settings } = req.body;
+    const userId = req.user?.id || null;
+    
+    for (const setting of settings) {
+      // Get current value for audit
+      const current = await client.query(
+        'SELECT setting_value FROM confidence_settings WHERE setting_key = $1',
+        [setting.setting_key]
+      );
+      
+      const oldValue = current.rows[0]?.setting_value;
+      
+      // Update setting
+      await client.query(`
+        UPDATE confidence_settings
+        SET setting_value = $1, updated_at = NOW()
+        WHERE setting_key = $2
+      `, [setting.setting_value, setting.setting_key]);
+      
+      // Audit log
+      await client.query(`
+        INSERT INTO confidence_settings_audit
+        (setting_key, old_value, new_value, changed_by, change_reason, ip_address)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [
+        setting.setting_key,
+        oldValue,
+        setting.setting_value,
+        userId,
+        'Imported from configuration file',
+        req.ip
+      ]);
+    }
+    
+    await client.query('COMMIT');
+    
+    res.json({ success: true, message: 'Settings imported successfully' });
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'Failed to import settings' });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;
