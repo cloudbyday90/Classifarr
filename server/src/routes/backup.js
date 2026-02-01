@@ -207,24 +207,53 @@ router.get('/download/:filename', async (req, res) => {
     const BACKUP_DIR = process.env.BACKUP_DIR || '/app/data/backups';
     const filepath = path.join(BACKUP_DIR, filename);
 
-    // Log audit
-    await backupService.logAudit(
-      'download',
-      backup.type,
-      filename,
-      'success',
-      {
-        userId: req.user?.id,
-        ipAddress: req.ip,
-        fileSize: backup.size
-      }
-    );
-
-    res.download(filepath, filename, (err) => {
+    res.download(filepath, filename, async (err) => {
       if (err) {
         logger.error('Download failed', { filename, error: err.message });
+
+        // Log audit as failure
+        try {
+          await backupService.logAudit(
+            'download',
+            backup.type,
+            filename,
+            'failed',
+            {
+              userId: req.user?.id,
+              ipAddress: req.ip,
+              fileSize: backup.size,
+              error: err.message
+            }
+          );
+        } catch (auditError) {
+          logger.error('Failed to log download audit (failure)', {
+            filename,
+            error: auditError.message
+          });
+        }
+
         if (!res.headersSent) {
           res.status(500).json({ error: 'Download failed' });
+        }
+      } else {
+        // Log audit as success only after download completes
+        try {
+          await backupService.logAudit(
+            'download',
+            backup.type,
+            filename,
+            'success',
+            {
+              userId: req.user?.id,
+              ipAddress: req.ip,
+              fileSize: backup.size
+            }
+          );
+        } catch (auditError) {
+          logger.error('Failed to log download audit (success)', {
+            filename,
+            error: auditError.message
+          });
         }
       }
     });

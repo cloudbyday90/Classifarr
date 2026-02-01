@@ -342,8 +342,7 @@ class BackupService {
   async restoreBackup(filename, options = {}) {
     const { 
       password = null, 
-      mode = 'replace', // 'replace' or 'merge'
-      userId = null 
+      mode = 'replace' // 'replace' or 'merge'
     } = options;
 
     const backupData = await this.readBackup(filename, password);
@@ -354,7 +353,7 @@ class BackupService {
 
     logger.info('Starting restore', { filename, mode, version: backupData.version });
 
-    const client = await db.connect();
+    const client = await db.pool.connect();
     
     try {
       await client.query('BEGIN');
@@ -402,49 +401,67 @@ class BackupService {
         }
       }
 
-      // Restore Radarr/Sonarr configs
+      // Restore Radarr/Sonarr configs with explicit column whitelisting for security
       if (backupData.data.radarrConfigs) {
+        const radarrAllowedColumns = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
+        
         for (const config of backupData.data.radarrConfigs) {
           const { id, created_at, updated_at, last_sync, ...data } = config;
-          const keys = Object.keys(data);
-          const values = Object.values(data);
+          
+          // Filter to only allowed columns
+          const keys = Object.keys(data).filter(key => radarrAllowedColumns.includes(key));
+          const values = keys.map(key => data[key]);
           const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
           
-          await client.query(
-            `INSERT INTO radarr_config (${keys.join(', ')}) VALUES (${placeholders})`,
-            values
-          );
+          if (keys.length > 0) {
+            await client.query(
+              `INSERT INTO radarr_config (${keys.join(', ')}) VALUES (${placeholders})`,
+              values
+            );
+          }
         }
       }
 
       if (backupData.data.sonarrConfigs) {
+        const sonarrAllowedColumns = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
+        
         for (const config of backupData.data.sonarrConfigs) {
           const { id, created_at, updated_at, last_sync, ...data } = config;
-          const keys = Object.keys(data);
-          const values = Object.values(data);
+          
+          // Filter to only allowed columns
+          const keys = Object.keys(data).filter(key => sonarrAllowedColumns.includes(key));
+          const values = keys.map(key => data[key]);
           const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
           
-          await client.query(
-            `INSERT INTO sonarr_config (${keys.join(', ')}) VALUES (${placeholders})`,
-            values
-          );
+          if (keys.length > 0) {
+            await client.query(
+              `INSERT INTO sonarr_config (${keys.join(', ')}) VALUES (${placeholders})`,
+              values
+            );
+          }
         }
       }
 
-      // Restore libraries
+      // Restore libraries with explicit column whitelisting for security
       const libraryIdMap = new Map(); // old ID -> new ID
       if (backupData.data.libraries) {
+        const libraryAllowedColumns = ['name', 'type', 'media_server_id', 'external_id', 'is_active', 'sync_enabled'];
+        
         for (const library of backupData.data.libraries) {
           const { id: oldId, created_at, updated_at, last_sync, ...data } = library;
-          const keys = Object.keys(data);
-          const values = Object.values(data);
+          
+          // Filter to only allowed columns
+          const keys = Object.keys(data).filter(key => libraryAllowedColumns.includes(key));
+          const values = keys.map(key => data[key]);
           const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
           
-          const result = await client.query(
-            `INSERT INTO libraries (${keys.join(', ')}) VALUES (${placeholders}) RETURNING id`,
-            values
-          );
-          libraryIdMap.set(oldId, result.rows[0].id);
+          if (keys.length > 0) {
+            const result = await client.query(
+              `INSERT INTO libraries (${keys.join(', ')}) VALUES (${placeholders}) RETURNING id`,
+              values
+            );
+            libraryIdMap.set(oldId, result.rows[0].id);
+          }
         }
       }
 
@@ -572,8 +589,86 @@ class BackupService {
         );
       }
 
-      // Generate new API key for security
+      // Restore OMDb config
+      if (backupData.data.omdbConfig) {
+        const config = backupData.data.omdbConfig;
+        await client.query(
+          `INSERT INTO omdb_config (api_key, is_active, daily_limit) 
+           VALUES ($1, $2, $3) 
+           ON CONFLICT (id) DO UPDATE SET
+             api_key = EXCLUDED.api_key,
+             is_active = EXCLUDED.is_active,
+             daily_limit = EXCLUDED.daily_limit`,
+          [config.api_key, config.is_active, config.daily_limit]
+        );
+      }
+
+      // Restore AI config
+      if (backupData.data.aiConfig) {
+        const config = backupData.data.aiConfig;
+        await client.query(
+          `INSERT INTO ai_config (provider, api_key, model, base_url) 
+           VALUES ($1, $2, $3, $4) 
+           ON CONFLICT (id) DO UPDATE SET
+             provider = EXCLUDED.provider,
+             api_key = EXCLUDED.api_key,
+             model = EXCLUDED.model,
+             base_url = EXCLUDED.base_url`,
+          [config.provider, config.api_key, config.model, config.base_url]
+        );
+      }
+
+      // Restore webhook config
+      if (backupData.data.webhookConfig) {
+        const config = backupData.data.webhookConfig;
+        await client.query(
+          `INSERT INTO webhook_config (webhook_key, enabled) 
+           VALUES ($1, $2) 
+           ON CONFLICT (id) DO UPDATE SET
+             webhook_key = EXCLUDED.webhook_key,
+             enabled = EXCLUDED.enabled`,
+          [config.webhook_key, config.enabled]
+        );
+      }
+
+      // Restore general settings
+      if (backupData.data.settings) {
+        for (const setting of backupData.data.settings) {
+          await client.query(
+            `INSERT INTO settings (key, value) 
+             VALUES ($1, $2) 
+             ON CONFLICT (key) DO UPDATE SET
+               value = EXCLUDED.value`,
+            [setting.key, setting.value]
+          );
+        }
+      }
+
+      // Restore library labels (after libraries are restored)
+      if (backupData.data.libraryLabels) {
+        for (const label of backupData.data.libraryLabels) {
+          const newLibraryId = libraryIdMap.get(label.library_id);
+          if (!newLibraryId) continue;
+          
+          await client.query(
+            `INSERT INTO library_labels (library_id, label) 
+             VALUES ($1, $2)`,
+            [newLibraryId, label.label]
+          );
+        }
+      }
+
+      // Generate new API key for security and persist it
       const newApiKey = crypto.randomBytes(32).toString('hex');
+      const apiKeyHash = crypto.createHash('sha256').update(newApiKey).digest('hex');
+      const apiKeyPrefix = newApiKey.substring(0, 8);
+      
+      // Store the new API key in api_keys table
+      await client.query(
+        `INSERT INTO api_keys (name, key_hash, key_prefix, permissions, is_active)
+         VALUES ($1, $2, $3, $4, $5)`,
+        ['Restored System API Key', apiKeyHash, apiKeyPrefix, JSON.stringify(['*']), true]
+      );
       
       await client.query('COMMIT');
       

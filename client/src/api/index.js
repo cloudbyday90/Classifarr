@@ -578,10 +578,7 @@ export default {
     return apiClient.post(`/scheduler/${id}/run`)
   },
 
-  // Backup
-  exportBackup() {
-    return apiClient.get('/backup/export')
-  },
+  // Backup & Restore
   createBackup(options) {
     return apiClient.post('/backup/export', options)
   },
@@ -594,14 +591,8 @@ export default {
   deleteBackup(filename) {
     return apiClient.delete(`/backup/${filename}`)
   },
-  importBackup(data, options = {}) {
-    return apiClient.post('/backup/import', { data, options })
-  },
   restoreBackup(filename, password, mode) {
     return apiClient.post('/backup/import', { filename, password, mode })
-  },
-  previewBackup(data) {
-    return apiClient.post('/backup/preview', { data })
   },
   previewBackupFile(filename, password) {
     return apiClient.post('/backup/preview', { filename, password })

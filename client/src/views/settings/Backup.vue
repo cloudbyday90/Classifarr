@@ -330,19 +330,25 @@
     <div class="text-xs text-gray-500 space-y-1 bg-gray-900 rounded-lg p-4">
       <p class="font-medium text-gray-400 mb-2">ℹ️ What's Backed Up:</p>
       <ul class="list-disc list-inside space-y-1">
-        <li>Users (usernames, roles - passwords excluded)</li>
         <li>Service connections (Plex, Emby, Jellyfin, Radarr, Sonarr with API keys)</li>
-        <li>Libraries, policies, custom rules, and presets</li>
+        <li>Libraries, policies, custom rules, presets, and library labels</li>
         <li>Confidence settings and auto-learned preferences</li>
         <li>Scheduled tasks and path mappings</li>
+        <li>All service configurations (Ollama, TMDB, OMDb, AI, Webhooks)</li>
+        <li>General system settings</li>
         <li>Discovered patterns (optional)</li>
       </ul>
-      <p class="font-medium text-gray-400 mt-3 mb-2">🚫 What's NOT Backed Up:</p>
+      <p class="font-medium text-gray-400 mt-3 mb-2">🚫 What's NOT Backed Up or Restored:</p>
       <ul class="list-disc list-inside space-y-1">
+        <li>User accounts (must be manually recreated for security)</li>
         <li>Classification history and statistics</li>
         <li>Embeddings and queue state</li>
-        <li>User passwords (must be reset after restore)</li>
-        <li>Classifarr API keys (regenerated on restore)</li>
+        <li>User passwords</li>
+      </ul>
+      <p class="font-medium text-gray-400 mt-3 mb-2">🔑 After Restore:</p>
+      <ul class="list-disc list-inside space-y-1">
+        <li>A new API key is generated and displayed - save it immediately</li>
+        <li>Update any external integrations with the new API key</li>
       </ul>
     </div>
   </div>

@@ -9,17 +9,18 @@
 - **💾 Backup & Restore System** (#186)
   - **Encrypted by Default**: AES-256-GCM encryption with PBKDF2 key derivation (100k iterations)
   - **Complete Configuration Backup**: 
-    - ✅ Users (usernames, roles)
     - ✅ Service connections (Plex, Emby, Jellyfin, Radarr, Sonarr with API keys)
-    - ✅ Libraries, policies, custom rules, presets
+    - ✅ Libraries, policies, custom rules, presets, library labels
     - ✅ Confidence settings and auto-learned preferences
     - ✅ Scheduled tasks, path mappings
+    - ✅ All service configurations (Ollama, TMDB, OMDb, AI, Webhooks)
+    - ✅ General system settings
     - ✅ Discovered patterns (optional)
-  - **What's NOT Backed Up**:
+  - **What's NOT Backed Up or Restored**:
+    - ❌ User accounts (must be manually recreated for security)
     - ❌ Classification history and statistics
     - ❌ Embeddings and queue state
-    - ❌ User passwords (must be reset after restore)
-    - ❌ Classifarr API keys (regenerated on restore)
+    - ❌ User passwords
   - **Restore Modes**:
     - 🔄 **Replace Mode**: Wipe existing config and restore from backup (default)
     - 🔀 **Merge Mode**: Keep existing data, add items from backup
@@ -32,7 +33,7 @@
   - **Security Features**:
     - 🔐 Password strength validation (minimum 8 characters)
     - ⚠️ Security warning for plaintext backups
-    - 🔑 New API keys generated on restore for security
+    - 🔑 New API key generated and persisted on restore
   - **Storage**: Backups stored in `/app/data/backups`
   - **UI**: Settings → System → Backup & Restore
   - **For Users**: Protect your configuration with encrypted backups
