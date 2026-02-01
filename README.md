@@ -1058,7 +1058,21 @@ File logging can be disabled by setting `FILE_LOGGING_ENABLED=false`.
 
 ## 📝 License
 
-GNU General Public License v3.0 - see [LICENSE](LICENSE)
+Classifarr is licensed under GPL-3.0. See [LICENSE](LICENSE) for details.
+
+### Copyright Compliance
+
+All source files must include current copyright headers. To check compliance:
+
+```bash
+npm run check-copyright
+```
+
+To update copyright years (run annually on January 1st):
+
+```bash
+npm run update-copyright
+```
 
 ## 🔗 Links
 
