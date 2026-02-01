@@ -32,6 +32,17 @@ jest.mock('fs', () => ({
 const fs = require('fs').promises;
 const backupService = require('../services/backupService');
 
+// Global mock cleanup - applies to all test suites
+beforeEach(() => {
+  // Reset all mocks before each test
+  jest.clearAllMocks();
+});
+
+afterEach(() => {
+  // Clean up after each test
+  jest.resetAllMocks();
+});
+
 describe('BackupService - Encryption/Decryption', () => {
   const testData = {
     version: '2.0',
@@ -125,16 +136,6 @@ describe('BackupService - Encryption/Decryption', () => {
 });
 
 describe('BackupService - Password Validation', () => {
-  beforeEach(() => {
-    // Reset all mocks before each test
-    jest.clearAllMocks();
-  });
-
-  afterEach(() => {
-    // Clean up after each test
-    jest.resetAllMocks();
-  });
-
   test('should reject password shorter than 8 characters', async () => {
     await expect(
       backupService.createBackup({
@@ -336,16 +337,6 @@ describe('BackupService - Error Handling', () => {
 });
 
 describe('BackupService - Filesystem Operations', () => {
-  beforeEach(() => {
-    // Reset all mocks before each test
-    jest.clearAllMocks();
-  });
-
-  afterEach(() => {
-    // Clean up after each test
-    jest.resetAllMocks();
-  });
-
   test('should handle directory creation success', async () => {
     // Mock successful directory creation
     fs.mkdir.mockResolvedValue(undefined);
