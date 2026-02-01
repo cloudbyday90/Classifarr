@@ -454,16 +454,15 @@ class AutoLearningService {
      */
     async calculateNetConfidence(libraryId, value, type) {
         try {
-            // Query feedback log for this signal
-            // We need to check classification_history for the metadata
+            // Query feedback log directly - it already contains item_metadata
+            // No need to join to classification_history which can cause duplication
             const result = await db.query(`
                 SELECT 
-                    pfl.selected_library_id,
-                    pfl.was_correction,
-                    ch.item_metadata
-                FROM policy_feedback_log pfl
-                JOIN classification_history ch ON pfl.tmdb_id = ch.tmdb_id
-                WHERE pfl.prompted_at >= NOW() - $1::interval
+                    selected_library_id,
+                    was_correction,
+                    item_metadata
+                FROM policy_feedback_log
+                WHERE prompted_at >= NOW() - $1::interval
             `, [`${DEFAULT_THRESHOLDS.learningLookbackDays} days`]);
             
             let confirmCount = 0;
