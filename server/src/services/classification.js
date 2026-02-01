@@ -1436,8 +1436,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
     // Build classification_details for metadata
     const classificationDetails = {
       policy_name: result.policyResult?.library?.policy_name || null,
-      scores: result.policyResult?.library?.scores || { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
-      weights: result.policyResult?.library?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+      scores: result.policyResult?.scores || { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
+      weights: result.policyResult?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
       processing_time_ms: startTime ? Date.now() - startTime : null
     };
 

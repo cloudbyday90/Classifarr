@@ -531,3 +531,130 @@ describe('PolicyEngine -> AI flow', () => {
     );
   });
 });
+
+describe('Classification Details Storage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    db.query.mockResolvedValue({ rows: [] });
+    tmdbService.getMovieDetails.mockResolvedValue({ title: 'Test Movie', genres: [] });
+    tmdbService.getCertification.mockResolvedValue('PG');
+    policyQuestionBuilder.build.mockResolvedValue(null);
+    contentTypeAnalyzer.analyze.mockResolvedValue({ analyzed: false });
+
+    db.query.mockImplementation((text) => {
+      const query = typeof text === 'string' ? text : '';
+      if (query.includes('FROM libraries')) {
+        return { rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] };
+      }
+      if (query.includes('INSERT INTO classification_history') || query.includes('INSERT INTO logs') || query.includes('INSERT INTO error_logs')) {
+        return { rows: [{ id: 12345, error_id: 67890 }] };
+      }
+      return { rows: [] };
+    });
+  });
+
+  test('should store classification_details with scores and weights in metadata', async () => {
+    const mockPolicyResult = {
+      action: 'auto_classify',
+      library: {
+        library_id: 1,
+        library_name: 'Movies',
+        policy_id: 11,
+        policy_name: 'Movies Policy'
+      },
+      confidence: 85,
+      method: 'policy_engine',
+      scores: { preset: 80, profile: 70, pattern: 0, rag: 0, history: 0 },
+      weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 85,
+        policy_id: 11,
+        policy_name: 'Movies Policy',
+        scores: { preset: 80, profile: 70, pattern: 0, rag: 0, history: 0 },
+        weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 }
+      }]
+    };
+
+    policyEngine.evaluateItem.mockResolvedValue(mockPolicyResult);
+
+    await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 },
+      taskId: 'task-456'
+    });
+
+    // Verify that INSERT INTO classification_history was called
+    const insertCalls = db.query.mock.calls.filter(call => 
+      typeof call[0] === 'string' && call[0].includes('INSERT INTO classification_history')
+    );
+
+    expect(insertCalls.length).toBeGreaterThan(0);
+
+    // Get the metadata parameter (10th parameter, index 9)
+    const metadataParam = insertCalls[0][1][9];
+    const metadata = JSON.parse(metadataParam);
+
+    // Verify classification_details exists with correct structure
+    expect(metadata.classification_details).toBeDefined();
+    expect(metadata.classification_details.scores).toEqual({
+      preset: 80,
+      profile: 70,
+      pattern: 0,
+      rag: 0,
+      history: 0
+    });
+    expect(metadata.classification_details.weights).toEqual({
+      preset: 0.35,
+      profile: 0.25,
+      pattern: 0.15,
+      rag: 0.15,
+      history: 0.10
+    });
+    expect(metadata.classification_details.policy_name).toBe('Movies Policy');
+    expect(metadata.classification_details.processing_time_ms).toBeDefined();
+  });
+
+  test('should use default scores and weights when policyResult is missing', async () => {
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'manual',
+      confidence: 0,
+      ranked: []
+    });
+
+    // Mock confidence calculator to avoid undefined error
+    confidenceCalculator.calculate.mockReturnValue({ confidence: 50, suggestedLibrary: null });
+    confidenceCalculator.toAIContext.mockReturnValue('');
+
+    await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 }
+    });
+
+    const insertCalls = db.query.mock.calls.filter(call => 
+      typeof call[0] === 'string' && call[0].includes('INSERT INTO classification_history')
+    );
+
+    expect(insertCalls.length).toBeGreaterThan(0);
+
+    const metadataParam = insertCalls[0][1][9];
+    const metadata = JSON.parse(metadataParam);
+
+    // Verify default values are used
+    expect(metadata.classification_details).toBeDefined();
+    expect(metadata.classification_details.scores).toEqual({
+      preset: 0,
+      profile: 0,
+      pattern: 0,
+      rag: 0,
+      history: 0
+    });
+    expect(metadata.classification_details.weights).toEqual({
+      preset: 0.35,
+      profile: 0.25,
+      pattern: 0.15,
+      rag: 0.15,
+      history: 0.10
+    });
+  });
+});
