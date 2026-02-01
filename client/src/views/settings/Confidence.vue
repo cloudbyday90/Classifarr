@@ -37,7 +37,7 @@
             <label class="font-medium">Auto-Classify Threshold</label>
             <span class="text-2xl font-bold text-green-400">{{ policySettings.autoClassifyThreshold }}%</span>
           </div>
-          <p class="text-sm text-gray-400">High-confidence items above this threshold are automatically classified, saving you time on obvious matches.</p>
+          <p class="text-sm text-gray-400">High-confidence items at or above this threshold are automatically classified, saving you time on obvious matches.</p>
           <Slider
             v-model="policySettings.autoClassifyThreshold"
             :min="70"
@@ -351,7 +351,7 @@
 <script setup>
 import { ref, onMounted, reactive, computed } from 'vue'
 import { useToast } from '@/stores/toast'
-import axios from 'axios'
+import api from '@/api'
 
 // Components
 import Card from '@/components/common/Card.vue'
@@ -402,7 +402,7 @@ onMounted(async () => {
 async function loadSettings() {
   try {
     console.log('Loading confidence settings...')
-    const response = await axios.get('/api/settings/confidence')
+    const response = await api.get('/api/settings/confidence')
     console.log('Settings loaded:', response.data)
     const data = response.data
     
@@ -464,7 +464,7 @@ async function loadSettings() {
 
 async function loadAuditHistory() {
   try {
-    const response = await axios.get('/api/settings/confidence/history', {
+    const response = await api.get('/api/settings/confidence/history', {
       params: { limit: 20 }
     })
     auditHistory.value = response.data || []
@@ -497,7 +497,7 @@ async function saveAllSettings() {
     }
     
     console.log('Sending payload:', payload)
-    const response = await axios.put('/api/settings/confidence', payload)
+    const response = await api.put('/api/settings/confidence', payload)
     console.log('Settings saved successfully:', response.data)
     
     toast.success('Settings saved successfully')
@@ -516,7 +516,7 @@ async function revertSetting(auditId) {
   }
   
   try {
-    await axios.post(`/api/settings/confidence/revert/${auditId}`)
+    await api.post(`/api/settings/confidence/revert/${auditId}`)
     toast.success('Setting reverted')
     await loadSettings()
     await loadAuditHistory()
@@ -528,7 +528,7 @@ async function revertSetting(auditId) {
 
 async function exportSettings() {
   try {
-    const response = await axios.post('/api/settings/confidence/export')
+    const response = await api.post('/api/settings/confidence/export')
     const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
