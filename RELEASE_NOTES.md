@@ -2,9 +2,46 @@
 
 ## [Unreleased] v0.41.0-alpha
 
-**Title: Event Detection System Removal**
+**Title: Discord Intelligence & Learning + Event Detection System Removal**
 
 ### Added
+
+- **🧠 Discord Verification Learning & Policy Auto-Enhancement** (#240)
+  - **Smart Discord Thresholds**: Different notification types based on confidence
+    - ✅ **85%+ confidence**: Info-only message (no buttons needed) - system is highly confident
+    - ⚠️ **60-84% confidence**: Quick Yes/No verification - system wants confirmation
+    - ❓ **Below 60%**: Detailed breakdown with top 3 options - system needs help
+  - **Enhanced Discord Notifications**: Rich context for better decisions
+    - 📊 **Signal breakdown**: See what contributed (Preset, Profile, Pattern, RAG, History scores)
+    - 🎯 **Top 3 alternative libraries**: Quick view of other matches with scores
+    - 🎭 **Matched genres**: What genres triggered the policy
+    - 📚 **Similar items**: Shows 3 similar titles already in this library
+    - 🔍 **Content analysis**: Detected content type if available
+  - **Automatic Learning** 🎓: System learns from your feedback
+    - ✅ Confirm a classification → genres/keywords become "preferred" for that library
+    - 📈 After 3+ confirmations of same genre, similar items auto-route with higher confidence
+    - 🔑 After 5+ confirmations of keywords, they're added to preference list
+    - 🏢 After 2+ confirmations of studio, it's added to preferences
+    - 🔄 Corrections teach system what belongs where - signals transfer to correct library
+    - 💬 User feedback toasts show exactly what system learned
+  - **Safety & Conflict Prevention** 🛡️:
+    - ⚠️ Conflict detection: Won't learn genre already in exclude list
+    - 📊 Confidence threshold: Requires 75% confirmation rate before learning
+    - 📜 Audit trail: Complete history of all auto-learned preferences
+    - 👤 Rate limiting: 50 learns/user/day, 20 learns/library/hour
+    - 📅 Learning lookback: Analyzes last 30 days of feedback
+  - **Admin Controls**:
+    - 🎛️ Review all auto-learned preferences in new admin page
+    - ↩️ Revert any learned preference with one click
+    - 📋 Conflict tracking shows blocked contradictory rules
+    - 📈 Rate limit monitoring prevents runaway learning
+  - **For Users**: Discord notifications now provide full context for decisions
+  - **For Users**: System automatically learns your preferences over time
+  - **For Users**: Fewer manual confirmations as system gets smarter
+  - **For Admins**: Full control over auto-learned preferences
+  - **Technical**: New tables (`auto_learned_preferences`, `learning_conflicts`, `learning_rate_limits`)
+  - **Technical**: New service (`autoLearningService.js`) manages preference learning
+  - **Technical**: Enhanced RAG integration for similar item discovery
 
 - **🔒 Service Status Awareness**: Intelligent feature lockdown based on service availability
   - ✅ **Smart Button Disabling**: Buttons automatically disabled when required services are unavailable

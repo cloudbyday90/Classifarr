@@ -479,6 +479,65 @@ class RAGRetriever {
 
         return lines.join('\n');
     }
+
+    /**
+     * Find similar items in a specific library for Discord notifications
+     * @param {string} title - Title to search for
+     * @param {number} libraryId - Library ID to filter by
+     * @param {number} limit - Max results to return
+     * @returns {Promise<Array>} Similar items in the library
+     */
+    async findSimilarItems(title, libraryId, limit = 3) {
+        try {
+            // Check if RAG is enabled
+            const enabled = await embeddingRouter.isEnabled();
+            if (!enabled) {
+                return [];
+            }
+
+            // Check minimum embeddings
+            const hasMinimum = await embeddingService.hasMinimumEmbeddings();
+            if (!hasMinimum) {
+                return [];
+            }
+
+            // Create simple metadata object for embedding
+            const metadata = { title };
+            const text = embeddingService.formatForEmbedding(metadata);
+            const queryResult = await embeddingRouter.embed(text);
+
+            // Convert to pgvector format
+            const vectorString = `[${queryResult.embedding.join(',')}]`;
+
+            // Search only in the specified library
+            const result = await db.query(`
+                SELECT 
+                    ch.title,
+                    ch.media_type,
+                    1 - (ce.embedding <=> $1::vector) as similarity
+                FROM classification_embeddings ce
+                JOIN classification_history ch ON ce.classification_id = ch.id
+                WHERE ce.is_stale = false
+                AND ch.library_id = $2
+                AND ch.title != $3
+                ORDER BY ce.embedding <=> $1::vector
+                LIMIT $4
+            `, [vectorString, libraryId, title, limit]);
+
+            return result.rows.map(row => ({
+                title: row.title,
+                mediaType: row.media_type,
+                similarity: Math.round(row.similarity * 100) / 100
+            }));
+        } catch (error) {
+            logger.debug('Failed to find similar items', { 
+                error: error.message,
+                libraryId,
+                title
+            });
+            return [];
+        }
+    }
 }
 
 module.exports = new RAGRetriever();
