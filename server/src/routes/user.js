@@ -68,8 +68,8 @@ router.patch('/profile', authenticateToken, profileUpdateLimiter, async (req, re
   try {
     const { username } = req.body;
     
-    if (!username || username.length < 3) {
-      return res.status(400).json({ error: 'Username must be at least 3 characters' });
+    if (!username || username.length < 3 || username.length > 50) {
+      return res.status(400).json({ error: 'Username must be between 3 and 50 characters' });
     }
     
     // Check if username already exists

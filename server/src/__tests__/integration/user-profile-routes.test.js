@@ -170,7 +170,19 @@ describe('User Profile Routes Integration Tests', () => {
                 .expect(400);
 
             expect(response.body).toHaveProperty('error');
-            expect(response.body.error).toContain('at least 3 characters');
+            expect(response.body.error).toContain('between 3 and 50 characters');
+        });
+
+        test('should reject username longer than 50 characters', async () => {
+            const longUsername = 'a'.repeat(51);
+            const response = await request(app)
+                .patch('/api/user/profile')
+                .set('Authorization', `Bearer ${testToken}`)
+                .send({ username: longUsername })
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error');
+            expect(response.body.error).toContain('between 3 and 50 characters');
         });
 
         test('should reject duplicate username', async () => {

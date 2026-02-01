@@ -1,6 +1,6 @@
 <!--
   Classifarr - AI-powered media classification for the *arr ecosystem
-  Copyright (C) 2026 cloudbyday90
+  Copyright (C) 2025 cloudbyday90
   
   This program is free software: licensed under GPL-3.0
   See LICENSE file for details.
@@ -199,8 +199,8 @@ const canChangePassword = computed(() => {
 const saveUsername = async () => {
   usernameError.value = ''
   
-  if (!username.value || username.value.length < 3) {
-    usernameError.value = 'Username must be at least 3 characters'
+  if (!username.value || username.value.length < 3 || username.value.length > 50) {
+    usernameError.value = 'Username must be between 3 and 50 characters'
     return
   }
   

@@ -179,7 +179,7 @@ router.get('/session', authenticateToken, authLimiter, async (req, res) => {
     
     res.json({
       started: user.rows[0].last_login,
-      ip: req.ip || req.connection.remoteAddress,
+      ip: req.ip || req.socket.remoteAddress,
       userAgent: req.get('User-Agent'),
       createdAt: user.rows[0].created_at
     });
