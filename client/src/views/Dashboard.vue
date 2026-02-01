@@ -8,6 +8,9 @@
 
 <template>
   <div class="space-y-6">
+    <!-- Skip to main content -->
+    <a href="#main-content" class="skip-to-main">Skip to main content</a>
+    
     <!-- Setup Banner (disabled for v0.30.0 - will enable after bugs fixed) -->
     <!-- <SetupBanner /> -->
     
@@ -17,43 +20,75 @@
     <!-- pgvector Variant Banner -->
     <PgvectorVariantBanner />
 
+    <!-- Main content with ID for skip link -->
+    <main id="main-content" tabindex="-1">
+
     <!-- Header with Refresh and Timestamp -->
     <div class="flex items-center justify-between">
       <h1 class="text-3xl font-bold">Dashboard</h1>
       
       <div class="flex items-center gap-3">
         <!-- Offline indicator -->
-        <span v-if="isOffline" class="text-xs text-yellow-500 flex items-center gap-1">
+        <span v-if="isOffline" class="text-xs text-yellow-500 flex items-center gap-1" role="status" aria-live="polite">
           📡 Offline
         </span>
         
         <!-- Updating indicator (when showing stale cached data) -->
-        <span v-else-if="isStale" class="text-xs text-gray-400 animate-pulse">
+        <span v-else-if="isStale" class="text-xs text-gray-400 animate-pulse" role="status" aria-live="polite">
           ⏳ Updating...
         </span>
         
-        <span v-if="lastUpdated" class="text-sm text-gray-400">
+        <span 
+          v-if="lastUpdated" 
+          class="text-sm text-gray-400"
+          role="status"
+          aria-live="polite"
+          :aria-label="`Dashboard last updated ${formatRelativeTime(lastUpdated)}`"
+        >
           Updated {{ formatRelativeTime(lastUpdated) }}
         </span>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="grid grid-cols-2 md:grid-cols-5 gap-4">
-      <div v-for="i in 5" :key="i" class="bg-gray-800 p-4 rounded-lg border border-gray-700 animate-pulse">
+    <div 
+      v-if="loading" 
+      class="grid grid-cols-2 md:grid-cols-5 gap-4"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading dashboard statistics"
+    >
+      <div 
+        v-for="i in 5" 
+        :key="i" 
+        class="bg-gray-800 p-4 rounded-lg border border-gray-700 animate-pulse"
+        aria-hidden="true"
+      >
         <div class="h-4 bg-gray-700 rounded-sm w-3/4 mb-2"></div>
         <div class="h-8 bg-gray-600 rounded-sm w-1/2"></div>
       </div>
+      <span class="sr-only">Loading dashboard data, please wait...</span>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="bg-red-900/30 border border-red-700 rounded-lg p-6">
+    <div 
+      v-else-if="error" 
+      class="bg-red-900/30 border border-red-700 rounded-lg p-6"
+      role="alert"
+      aria-live="assertive"
+    >
       <div class="flex items-start gap-3">
-        <span class="text-red-400 text-2xl">⚠️</span>
+        <span class="text-red-400 text-2xl" aria-hidden="true">⚠️</span>
         <div>
-          <h3 class="font-semibold text-red-300">Failed to Load Dashboard</h3>
-          <p class="text-sm text-red-400/80 mt-1">{{ error }}</p>
-          <Button @click="loadDashboard" variant="secondary" size="sm" class="mt-3">
+          <h3 class="font-semibold text-red-300" id="error-heading" tabindex="-1">Failed to Load Dashboard</h3>
+          <p class="text-sm text-red-400/80 mt-1" id="error-description">{{ error }}</p>
+          <Button 
+            @click="loadDashboard" 
+            variant="secondary" 
+            size="sm" 
+            class="mt-3"
+            aria-describedby="error-description"
+          >
             🔄 Retry
           </Button>
         </div>
@@ -61,19 +96,32 @@
     </div>
 
     <!-- Empty State - No Libraries -->
-    <div v-else-if="!loading && librariesStore.libraries.length === 0" class="bg-blue-900/20 border border-blue-700 rounded-lg p-8 text-center">
-      <div class="text-6xl mb-4">📚</div>
-      <h2 class="text-2xl font-bold text-blue-300 mb-2">Welcome to Classifarr!</h2>
+    <div 
+      v-else-if="!loading && librariesStore.libraries.length === 0" 
+      class="bg-blue-900/20 border border-blue-700 rounded-lg p-8 text-center"
+      role="region"
+      aria-labelledby="welcome-heading"
+    >
+      <div class="text-6xl mb-4" aria-hidden="true">📚</div>
+      <h2 class="text-2xl font-bold text-blue-300 mb-2" id="welcome-heading">Welcome to Classifarr!</h2>
       <p class="text-blue-400/80 mb-6 max-w-2xl mx-auto">
         To get started, you'll need to connect your media server (Plex, Emby, or Jellyfin) and sync your libraries.
       </p>
       
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button @click="$router.push({ path: '/settings', query: { tab: 'mediaserver' } })" class="px-6 py-3">
+      <div class="flex flex-col sm:flex-row gap-4 justify-center" role="group" aria-label="Getting started actions">
+        <Button 
+          @click="$router.push({ path: '/settings', query: { tab: 'mediaserver' } })" 
+          class="px-6 py-3"
+          aria-label="Connect your media server to begin"
+        >
           📺 Connect Media Server
         </Button>
         <a :href="GITHUB_WIKI_URL" target="_blank" rel="noopener noreferrer">
-          <Button variant="secondary" class="px-6 py-3 w-full">
+          <Button 
+            variant="secondary" 
+            class="px-6 py-3 w-full"
+            aria-label="View documentation to learn more"
+          >
             📖 View Documentation
           </Button>
         </a>
@@ -176,33 +224,61 @@
         <!-- Quick Actions -->
         <Card title="Quick Actions">
           <div class="grid grid-cols-2 gap-3">
-            <router-link to="/request" class="p-4 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-lg text-center transition-colors">
-              <div class="text-2xl mb-2">🎬</div>
+            <router-link 
+              to="/request" 
+              class="p-4 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-lg text-center transition-colors touch-manipulation"
+              aria-label="Classify media content"
+            >
+              <div class="text-2xl mb-2" aria-hidden="true">🎬</div>
               <div class="text-sm font-semibold">Classify Media</div>
             </router-link>
             
-            <router-link to="/libraries" class="p-4 bg-green-900/20 hover:bg-green-900/30 border border-green-700/30 rounded-lg text-center transition-colors">
-              <div class="text-2xl mb-2">📚</div>
+            <router-link 
+              to="/libraries" 
+              class="p-4 bg-green-900/20 hover:bg-green-900/30 border border-green-700/30 rounded-lg text-center transition-colors touch-manipulation"
+              aria-label="Manage your media libraries"
+            >
+              <div class="text-2xl mb-2" aria-hidden="true">📚</div>
               <div class="text-sm font-semibold">Manage Libraries</div>
             </router-link>
             
-            <router-link to="/settings" class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors">
-              <div class="text-2xl mb-2">⚙️</div>
+            <router-link 
+              to="/settings" 
+              class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors touch-manipulation"
+              aria-label="Configure settings"
+            >
+              <div class="text-2xl mb-2" aria-hidden="true">⚙️</div>
               <div class="text-sm font-semibold">Settings</div>
             </router-link>
             
-            <router-link to="/statistics" class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors">
-              <div class="text-2xl mb-2">📊</div>
+            <router-link 
+              to="/statistics" 
+              class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors touch-manipulation"
+              aria-label="View statistics"
+            >
+              <div class="text-2xl mb-2" aria-hidden="true">📊</div>
               <div class="text-sm font-semibold">Statistics</div>
             </router-link>
             
-            <a :href="GITHUB_WIKI_URL" target="_blank" rel="noopener noreferrer" class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors">
-              <div class="text-2xl mb-2">📖</div>
+            <a 
+              :href="GITHUB_WIKI_URL" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              class="p-4 bg-gray-700/50 hover:bg-gray-700/70 border border-gray-600 rounded-lg text-center transition-colors touch-manipulation"
+              aria-label="View documentation on GitHub wiki"
+            >
+              <div class="text-2xl mb-2" aria-hidden="true">📖</div>
               <div class="text-sm font-semibold">Documentation</div>
             </a>
             
-            <a :href="DISCORD_INVITE_URL" target="_blank" rel="noopener noreferrer" class="p-4 bg-indigo-900/20 hover:bg-indigo-900/30 border border-indigo-700/30 rounded-lg text-center transition-colors">
-              <div class="text-2xl mb-2">💬</div>
+            <a 
+              :href="DISCORD_INVITE_URL" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              class="p-4 bg-indigo-900/20 hover:bg-indigo-900/30 border border-indigo-700/30 rounded-lg text-center transition-colors touch-manipulation"
+              aria-label="Join Discord community"
+            >
+              <div class="text-2xl mb-2" aria-hidden="true">💬</div>
               <div class="text-sm font-semibold">Discord</div>
             </a>
           </div>
@@ -267,11 +343,12 @@
       </div>
     </div>
     </template>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDocumentVisibility } from '@vueuse/core'
 import { useLibrariesStore } from '@/stores/libraries'
@@ -469,4 +546,37 @@ const getMethodTooltip = (method) => {
   }
   return tooltips[method] || 'Classification method'
 }
+
+// ============================================
+// Keyboard Navigation
+// ============================================
+const handleKeyboard = (event) => {
+  // Ctrl/Cmd + R: Refresh dashboard
+  if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+    event.preventDefault()
+    loadDashboard()
+  }
+  
+  // Escape: Dismiss error (if shown)
+  if (event.key === 'Escape' && error.value) {
+    error.value = null
+  }
+}
+
+// Focus management on error
+watch(error, (newError) => {
+  if (newError) {
+    nextTick(() => {
+      document.getElementById('error-heading')?.focus()
+    })
+  }
+})
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyboard)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyboard)
+})
 </script>
