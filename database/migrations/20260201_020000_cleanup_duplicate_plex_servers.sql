@@ -42,11 +42,30 @@ BEGIN
 
         SELECT COUNT(*) INTO library_count
         FROM libraries
-        WHERE media_server_id != active_server_id;
+        WHERE media_server_id IN (
+            SELECT id FROM media_server
+            WHERE type = 'plex' AND id != active_server_id
+        );
 
         -- Log what we're doing
         RAISE NOTICE 'Cleanup: Keeping Plex server ID %, removing % duplicate server(s) and % orphaned libraries',
             active_server_id, duplicate_count, library_count;
+
+        -- Update radarr_config and sonarr_config to point to active_server_id
+        -- if they currently point to a duplicate Plex server that will be deleted
+        UPDATE radarr_config
+        SET media_server_id = active_server_id
+        WHERE media_server_id IN (
+            SELECT id FROM media_server
+            WHERE type = 'plex' AND id != active_server_id
+        );
+
+        UPDATE sonarr_config
+        SET media_server_id = active_server_id
+        WHERE media_server_id IN (
+            SELECT id FROM media_server
+            WHERE type = 'plex' AND id != active_server_id
+        );
 
         -- Delete libraries belonging to duplicate/inactive servers
         -- This will cascade to related tables

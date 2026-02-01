@@ -282,40 +282,22 @@ router.post('/save-server', async (req, res) => {
 
         await client.query('BEGIN');
 
-        // Check if a server with the same URL already exists
-        const existingResult = await client.query(
-            'SELECT id FROM media_server WHERE url = $1 LIMIT 1',
-            [url]
-        );
+        // Deactivate all other Plex servers before upserting this one
+        await client.query('UPDATE media_server SET is_active = false WHERE type = $1 AND url != $2', ['plex', url]);
 
-        let result;
-        if (existingResult.rows.length > 0) {
-            // UPDATE existing server instead of creating duplicate
-            const serverId = existingResult.rows[0].id;
-            
-            // Deactivate all other servers
-            await client.query('UPDATE media_server SET is_active = false WHERE id != $1', [serverId]);
-            
-            // Update the existing server
-            result = await client.query(
-                `UPDATE media_server 
-                 SET name = $1, api_key = $2, is_active = true, updated_at = NOW()
-                 WHERE id = $3
-                 RETURNING id, type, name, url, is_active, created_at, updated_at`,
-                [name, token, serverId]
-            );
-        } else {
-            // INSERT new server (first time connection)
-            // Deactivate all existing servers
-            await client.query('UPDATE media_server SET is_active = false');
-            
-            result = await client.query(
-                `INSERT INTO media_server (type, name, url, api_key, is_active)
-                 VALUES ($1, $2, $3, $4, true)
-                 RETURNING id, type, name, url, is_active, created_at, updated_at`,
-                ['plex', name, url, token]
-            );
-        }
+        // Atomically insert or update the Plex server for this URL
+        // Uses unique constraint on (type, url) added in migration 20260201_015000
+        const result = await client.query(
+            `INSERT INTO media_server (type, name, url, api_key, is_active)
+             VALUES ($1, $2, $3, $4, true)
+             ON CONFLICT (type, url) DO UPDATE
+             SET name = EXCLUDED.name,
+                 api_key = EXCLUDED.api_key,
+                 is_active = true,
+                 updated_at = NOW()
+             RETURNING id, type, name, url, is_active, created_at, updated_at`,
+            ['plex', name, url, token]
+        );
 
         await client.query('COMMIT');
 
