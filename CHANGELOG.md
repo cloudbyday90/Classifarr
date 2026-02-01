@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Comprehensive Confidence Settings Page** (Fixes #241)
+  - Unified UI for all confidence thresholds (policy, Discord, learning)
+  - Visual sliders with real-time threshold previews
+  - Threshold flow visualization showing auto-classify, prompt, and manual ranges
+  - Complete audit trail of all configuration changes
+  - Revert to previous settings functionality
+  - Export/import configuration as JSON
+  - Auto-learning rate limiting controls
+  - Conflict resolution strategy configuration
+  - Default values: 85% auto-classify, 60% verify, conservative learning thresholds
 - **Discord Verification Learning & Policy Auto-Enhancement** (Fixes #240)
   - Smart Discord thresholds: 85%+ = info-only, 60-84% = verify, <60% = detailed
   - Enhanced Discord notifications with signal breakdown, top 3 libraries, similar items
