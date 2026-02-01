@@ -2,6 +2,7 @@
   "scripts": {
     "check-copyright": "node scripts/check-copyright.js",
     "update-copyright": "node scripts/update-copyright.js",
+    "add-copyright-headers": "node scripts/add-copyright-headers.js",
     "generate-contributors": "node scripts/generate-contributors.js"
   },
   "dependencies": {
