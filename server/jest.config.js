@@ -22,7 +22,10 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/index.js',
-    '!src/**/__tests__/**'
+    '!src/**/__tests__/**',
+    '!src/**/*.test.js',
+    '!src/migrations/**',
+    '!src/cli/**'
   ],
   testMatch: [
     '**/src/**/__tests__/**/*.test.js'
@@ -31,5 +34,15 @@ module.exports = {
     '/node_modules/',
     '/src/__tests__/integration/'
   ],
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup/mockLogger.js'],
+  coverageThresholds: {
+    global: {
+      branches: 70,
+      functions: 75,
+      lines: 80,
+      statements: 80
+    }
+  },
+  coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
   verbose: true
 };

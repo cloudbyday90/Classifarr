@@ -7,8 +7,13 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "node ./scripts/run-jest.mjs --runInBand",
+    "test:unit": "node ./scripts/run-jest.mjs --testPathPattern=__tests__/unit",
     "test:integration": "node ./scripts/run-jest.mjs -c jest.integration.config.js",
+    "test:coverage": "node ./scripts/run-jest.mjs --coverage",
+    "test:coverage:unit": "node ./scripts/run-jest.mjs --testPathPattern=__tests__/unit --coverage",
+    "test:coverage:integration": "node ./scripts/run-jest.mjs -c jest.integration.config.js --coverage",
     "test:watch": "node ./scripts/run-jest.mjs --watch",
+    "test:ci": "node ./scripts/run-jest.mjs --ci --coverage --maxWorkers=2",
     "check-copyright": "node ../scripts/check-copyright.js",
     "update-copyright": "node ../scripts/update-copyright.js",
     "generate-contributors": "node ../scripts/generate-contributors.js"

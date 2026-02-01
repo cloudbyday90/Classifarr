@@ -1,5 +1,17 @@
 {
+  "name": "classifarr",
+  "version": "0.41.0-alpha",
+  "private": true,
   "scripts": {
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "cd server && npm test",
+    "test:client": "cd client && npm test",
+    "test:coverage": "npm run test:coverage:server && npm run test:coverage:client",
+    "test:coverage:server": "cd server && npm run test:coverage",
+    "test:coverage:client": "cd client && npm run test:coverage",
+    "test:ci": "npm run test:ci:server && npm run test:ci:client",
+    "test:ci:server": "cd server && npm run test:ci",
+    "test:ci:client": "cd client && npm run test:ci",
     "check-copyright": "node scripts/check-copyright.js",
     "update-copyright": "node scripts/update-copyright.js",
     "add-copyright-headers": "node scripts/add-copyright-headers.js",
