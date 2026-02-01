@@ -27,6 +27,7 @@ const mediaPatternAnalyzer = require('../services/mediaPatternAnalyzer');
 const libraryProfileService = require('../services/libraryProfileService');
 const { createLogger } = require('../utils/logger');
 const { authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
+const { LibraryNotFoundError } = require('../utils/errors');
 
 const router = express.Router();
 const logger = createLogger('libraries');
@@ -519,6 +520,12 @@ router.post('/:id/sync', requireReadWrite, async (req, res) => {
 
     res.json(result);
   } catch (error) {
+    // Handle library not found as 404
+    if (error instanceof LibraryNotFoundError) {
+      return res.status(404).json(error.toJSON());
+    }
+
+    // Log unexpected errors
     logger.error('Sync failed', { error: error.message });
     res.status(500).json({
       success: false,

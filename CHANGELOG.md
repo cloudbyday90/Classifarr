@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Sync Error Handling**: Improved error handling for sync endpoints
+  - Added explicit HTTP 404 responses for missing libraries in sync operations
+  - Created `LibraryNotFoundError` for type-safe error handling
+  - Reduced log noise: missing-library cases now log as warnings instead of errors
+  - Standardized JSON error response format for sync endpoints
+  - Added integration tests for 404 error paths and log validation
+  - Improved troubleshooting and debugging for sync operations
+
 ### Removed
 
 - **Event Detection Frontend UI**: Removed all legacy event/holiday detection UI controls and code
