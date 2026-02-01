@@ -277,9 +277,11 @@ describe('useServiceStatusStore', () => {
       const store = useServiceStatusStore()
       store.startAutoRefresh()
 
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
 
       expect(api.getSystemHealth).toHaveBeenCalled()
+      
+      store.stopAutoRefresh()
     })
 
     it('refreshes every 30 seconds', async () => {
@@ -292,13 +294,14 @@ describe('useServiceStatusStore', () => {
       const store = useServiceStatusStore()
       store.startAutoRefresh()
 
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
       const initialCallCount = api.getSystemHealth.mock.calls.length
 
-      vi.advanceTimersByTime(30000)
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(30000)
 
       expect(api.getSystemHealth.mock.calls.length).toBeGreaterThan(initialCallCount)
+      
+      store.stopAutoRefresh()
     })
 
     it('does not start multiple intervals', async () => {
@@ -313,10 +316,12 @@ describe('useServiceStatusStore', () => {
       store.startAutoRefresh()
       store.startAutoRefresh()
 
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
 
-      // Should only call once per interval
-      expect(api.getSystemHealth.mock.calls.length).toBeLessThan(5)
+      // Should only call once initially
+      expect(api.getSystemHealth.mock.calls.length).toBe(1)
+      
+      store.stopAutoRefresh()
     })
 
     it('stops auto-refresh correctly', async () => {
@@ -329,16 +334,16 @@ describe('useServiceStatusStore', () => {
       const store = useServiceStatusStore()
       store.startAutoRefresh()
 
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(0)
       const callCountBeforeStop = api.getSystemHealth.mock.calls.length
 
       store.stopAutoRefresh()
 
-      vi.advanceTimersByTime(60000)
-      await vi.runAllTimersAsync()
+      await vi.advanceTimersByTimeAsync(60000)
 
       expect(api.getSystemHealth.mock.calls.length).toBe(callCountBeforeStop)
     })
+  })
   })
 
   describe('isSystemHealthy', () => {
