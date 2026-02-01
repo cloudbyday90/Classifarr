@@ -78,11 +78,6 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
           status: response.data.queueWorker,
           details: response.data.details?.queueWorker
         },
-        // RAG is part of the database/system
-        rag: {
-          status: response.data.database === 'connected' ? 'configured' : response.data.database,
-          details: response.data.details?.database
-        },
         webhook: {
           status: 'unknown', // Webhook doesn't have a health check endpoint yet
           details: null

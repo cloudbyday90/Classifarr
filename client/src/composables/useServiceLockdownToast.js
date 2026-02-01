@@ -17,47 +17,18 @@
  */
 
 import { useRouter } from 'vue-router'
-
-// Service-to-settings URL mapping (same as in useServiceRequirements)
-const SERVICE_SETTINGS_MAP = {
-  rag: '/settings?tab=rag',
-  aiProvider: '/settings?tab=ai',
-  mediaServer: '/settings?tab=mediaserver',
-  radarr: '/settings?tab=radarr',
-  sonarr: '/settings?tab=sonarr',
-  tmdb: '/settings?tab=tmdb',
-  omdb: '/settings?tab=omdb',
-  discordBot: '/settings?tab=discord',
-  webhook: '/settings?tab=webhooks',
-  tavily: '/settings?tab=tavily',
-  queueWorker: '/system/health'
-}
-
-// Human-readable service names
-const SERVICE_NAMES = {
-  rag: 'RAG/Embeddings',
-  aiProvider: 'AI Provider',
-  mediaServer: 'Media Server',
-  radarr: 'Radarr',
-  sonarr: 'Sonarr',
-  tmdb: 'TMDB',
-  omdb: 'OMDb',
-  discordBot: 'Discord Bot',
-  webhook: 'Webhook',
-  tavily: 'Tavily',
-  queueWorker: 'Queue Worker'
-}
+import { SERVICE_SETTINGS_MAP, SERVICE_NAMES } from '@/constants/serviceConfig'
 
 /**
- * Composable for showing service lockdown notifications
+ * Composable for showing service lockdown dialogs
  * Shows a browser confirm dialog with option to navigate to settings
  */
-export function useServiceLockdownToast() {
+export function useServiceLockdownDialog() {
   const router = useRouter()
 
   /**
-   * Show lockdown notification for a service
-   * @param {string} serviceKey - The service key (e.g., 'rag', 'mediaServer')
+    * Show lockdown dialog for a service
+   * @param {string} serviceKey - The service key (e.g., 'aiProvider', 'mediaServer')
    * @returns {boolean} - True if user confirmed to go to settings
    */
   const showLockdownNotification = (serviceKey) => {

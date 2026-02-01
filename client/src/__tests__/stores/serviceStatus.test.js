@@ -91,7 +91,6 @@ describe('useServiceStatusStore', () => {
       expect(store.serviceHealth.database.status).toBe('connected')
       expect(store.serviceHealth.mediaServer.status).toBe('connected')
       expect(store.serviceHealth.aiProvider.status).toBe('configured')
-      expect(store.serviceHealth.rag.status).toBe('configured')
       expect(store.lastFetch).not.toBeNull()
       expect(store.isLoading).toBe(false)
       expect(store.error).toBeNull()
@@ -122,34 +121,6 @@ describe('useServiceStatusStore', () => {
 
       expect(store.error).toBe('Network error')
       expect(store.isLoading).toBe(false)
-    })
-
-    it('maps RAG status based on database status', async () => {
-      api.getSystemHealth.mockResolvedValueOnce({
-        data: {
-          database: 'connected',
-          details: { database: {} }
-        }
-      })
-
-      const store = useServiceStatusStore()
-      await store.fetchServiceStatus()
-
-      expect(store.serviceHealth.rag.status).toBe('configured')
-    })
-
-    it('handles disconnected database for RAG', async () => {
-      api.getSystemHealth.mockResolvedValueOnce({
-        data: {
-          database: 'disconnected',
-          details: { database: {} }
-        }
-      })
-
-      const store = useServiceStatusStore()
-      await store.fetchServiceStatus()
-
-      expect(store.serviceHealth.rag.status).toBe('disconnected')
     })
   })
 

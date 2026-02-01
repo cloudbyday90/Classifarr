@@ -19,36 +19,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useServiceStatusStore } from '@/stores/serviceStatus'
-
-// Service-to-settings URL mapping
-const SERVICE_SETTINGS_MAP = {
-  rag: '/settings?tab=rag',
-  aiProvider: '/settings?tab=ai',
-  mediaServer: '/settings?tab=mediaserver',
-  radarr: '/settings?tab=radarr',
-  sonarr: '/settings?tab=sonarr',
-  tmdb: '/settings?tab=tmdb',
-  omdb: '/settings?tab=omdb',
-  discordBot: '/settings?tab=discord',
-  webhook: '/settings?tab=webhooks',
-  tavily: '/settings?tab=tavily',
-  queueWorker: '/system/health'
-}
-
-// Human-readable service names
-const SERVICE_NAMES = {
-  rag: 'RAG/Embeddings',
-  aiProvider: 'AI Provider',
-  mediaServer: 'Media Server',
-  radarr: 'Radarr',
-  sonarr: 'Sonarr',
-  tmdb: 'TMDB',
-  omdb: 'OMDb',
-  discordBot: 'Discord Bot',
-  webhook: 'Webhook',
-  tavily: 'Tavily',
-  queueWorker: 'Queue Worker'
-}
+import { SERVICE_SETTINGS_MAP, SERVICE_NAMES } from '@/constants/serviceConfig'
 
 /**
  * Composable for checking service requirements and handling lockdown states
@@ -56,7 +27,6 @@ const SERVICE_NAMES = {
  * @param {Array<string>} requiredServices - Array of service keys required for a feature
  * @param {Object} options - Configuration options
  * @param {boolean} options.allowDegraded - Allow degraded services (default: false)
- * @param {boolean} options.allowConfigured - Allow services with 'configured' status (default: true)
  * @returns {Object} Service requirement helpers
  */
 export function useServiceRequirements(requiredServices = [], options = {}) {
@@ -64,8 +34,7 @@ export function useServiceRequirements(requiredServices = [], options = {}) {
   const serviceStatusStore = useServiceStatusStore()
   
   const {
-    allowDegraded = false,
-    allowConfigured = true
+    allowDegraded = false
   } = options
 
   // Check if a single service is available

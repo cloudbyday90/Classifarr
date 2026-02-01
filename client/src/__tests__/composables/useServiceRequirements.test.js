@@ -84,10 +84,10 @@ describe('useServiceRequirements composable', () => {
 
     it('returns false when service is unhealthy', () => {
       serviceStatusStore.serviceHealth = {
-        rag: { status: 'unhealthy' }
+        tmdb: { status: 'unhealthy' }
       }
 
-      const { canUseFeature } = useServiceRequirements(['rag'])
+      const { canUseFeature } = useServiceRequirements(['tmdb'])
       expect(canUseFeature.value).toBe(false)
     })
   })
@@ -141,10 +141,10 @@ describe('useServiceRequirements composable', () => {
       serviceStatusStore.serviceHealth = {
         mediaServer: { status: 'connected' },
         aiProvider: { status: 'not_configured' },
-        rag: { status: 'error' }
+        tmdb: { status: 'error' }
       }
 
-      const { firstUnavailableService } = useServiceRequirements(['mediaServer', 'aiProvider', 'rag'])
+      const { firstUnavailableService } = useServiceRequirements(['mediaServer', 'aiProvider', 'tmdb'])
       expect(firstUnavailableService.value).toBe('aiProvider')
     })
 
@@ -177,13 +177,13 @@ describe('useServiceRequirements composable', () => {
       expect(lockdownTooltip.value).toBe('Configure AI Provider to enable this feature')
     })
 
-    it('returns message for RAG service', () => {
+    it('returns message for TMDB service', () => {
       serviceStatusStore.serviceHealth = {
-        rag: { status: 'error' }
+        tmdb: { status: 'error' }
       }
 
-      const { lockdownTooltip } = useServiceRequirements(['rag'])
-      expect(lockdownTooltip.value).toBe('Configure RAG/Embeddings to enable this feature')
+      const { lockdownTooltip } = useServiceRequirements(['tmdb'])
+      expect(lockdownTooltip.value).toBe('Configure TMDB to enable this feature')
     })
 
     it('returns message for Media Server', () => {
@@ -237,10 +237,10 @@ describe('useServiceRequirements composable', () => {
   })
 
   describe('navigateToSettings', () => {
-    it('navigates to RAG settings', () => {
+    it('navigates to TMDB settings', () => {
       const { navigateToSettings } = useServiceRequirements([])
-      navigateToSettings('rag')
-      expect(mockPush).toHaveBeenCalledWith('/settings?tab=rag')
+      navigateToSettings('tmdb')
+      expect(mockPush).toHaveBeenCalledWith('/settings?tab=tmdb')
     })
 
     it('navigates to AI settings', () => {
@@ -311,10 +311,10 @@ describe('useServiceRequirements composable', () => {
       serviceStatusStore.serviceHealth = {
         mediaServer: { status: 'connected' },
         aiProvider: { status: 'healthy' },
-        rag: { status: 'configured' }
+        tmdb: { status: 'configured' }
       }
 
-      const { canUseFeature } = useServiceRequirements(['mediaServer', 'aiProvider', 'rag'])
+      const { canUseFeature } = useServiceRequirements(['mediaServer', 'aiProvider', 'tmdb'])
       expect(canUseFeature.value).toBe(true)
     })
 
@@ -322,10 +322,10 @@ describe('useServiceRequirements composable', () => {
       serviceStatusStore.serviceHealth = {
         mediaServer: { status: 'connected' },
         aiProvider: { status: 'not_configured' },
-        rag: { status: 'configured' }
+        tmdb: { status: 'configured' }
       }
 
-      const { canUseFeature } = useServiceRequirements(['mediaServer', 'aiProvider', 'rag'])
+      const { canUseFeature } = useServiceRequirements(['mediaServer', 'aiProvider', 'tmdb'])
       expect(canUseFeature.value).toBe(false)
     })
   })
