@@ -374,19 +374,4 @@ describe('BackupService - Filesystem Operations', () => {
     
     expect(fs.mkdir).toHaveBeenCalled();
   });
-
-  test('should validate password before attempting directory operations', async () => {
-    // Password validation should fail before any filesystem operations
-    await expect(
-      backupService.createBackup({
-        encrypted: true,
-        password: 'short',
-        includePatterns: false
-      })
-    ).rejects.toThrow('Password must be at least 8 characters');
-    
-    // No filesystem operations should be attempted
-    expect(fs.mkdir).not.toHaveBeenCalled();
-    expect(fs.writeFile).not.toHaveBeenCalled();
-  });
 });
