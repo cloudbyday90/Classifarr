@@ -43,6 +43,15 @@ const CACHE_TTL = 60000; // 60 seconds
  */
 class AutoLearningService {
     /**
+     * Clear the settings cache (called when settings are updated)
+     */
+    clearCache() {
+        settingsCache = null;
+        settingsCacheTime = 0;
+        logger.info('Learning settings cache cleared');
+    }
+
+    /**
      * Get learning settings from database (with caching)
      * @returns {Promise<object>} Learning settings
      */

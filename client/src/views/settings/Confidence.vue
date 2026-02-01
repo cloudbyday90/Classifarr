@@ -9,6 +9,17 @@
 <template>
   <div class="confidence-settings-page space-y-8">
     
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+        <p class="text-gray-400 mt-4">Loading settings...</p>
+      </div>
+    </div>
+
+    <!-- Content (only shown when not loading) -->
+    <template v-else>
+    
     <!-- ==================== SECTION 1: Policy Engine Thresholds ==================== -->
     <Card>
       <template #header>
@@ -315,6 +326,8 @@
         <span v-else>💾 Save All Settings</span>
       </Button>
     </div>
+    
+    </template><!-- End of v-else for loading -->
   </div>
 </template>
 
@@ -356,10 +369,12 @@ const learningSettings = reactive({
 })
 
 const auditHistory = ref([])
+const loading = ref(true)
 
 onMounted(async () => {
   await loadSettings()
   await loadAuditHistory()
+  loading.value = false
 })
 
 async function loadSettings() {
@@ -367,46 +382,57 @@ async function loadSettings() {
     const response = await axios.get('/api/settings/confidence')
     const data = response.data
     
-    // Parse and populate settings
+    // Parse and populate settings with fallbacks
     if (data.policy_auto_classify_threshold) {
-      policySettings.autoClassifyThreshold = parseInt(data.policy_auto_classify_threshold.value) || 85
+      const value = parseInt(data.policy_auto_classify_threshold.value)
+      policySettings.autoClassifyThreshold = !isNaN(value) ? value : 85
     }
     if (data.policy_prompt_threshold) {
-      policySettings.promptThreshold = parseInt(data.policy_prompt_threshold.value) || 60
+      const value = parseInt(data.policy_prompt_threshold.value)
+      policySettings.promptThreshold = !isNaN(value) ? value : 60
     }
     if (data.discord_auto_route_threshold) {
-      discordSettings.autoRouteThreshold = parseInt(data.discord_auto_route_threshold.value) || 85
+      const value = parseInt(data.discord_auto_route_threshold.value)
+      discordSettings.autoRouteThreshold = !isNaN(value) ? value : 85
     }
     if (data.discord_verify_threshold) {
-      discordSettings.verificationThreshold = parseInt(data.discord_verify_threshold.value) || 60
+      const value = parseInt(data.discord_verify_threshold.value)
+      discordSettings.verificationThreshold = !isNaN(value) ? value : 60
     }
     if (data.learning_genre_threshold) {
-      learningSettings.genreLearnThreshold = parseInt(data.learning_genre_threshold.value) || 3
+      const value = parseInt(data.learning_genre_threshold.value)
+      learningSettings.genreLearnThreshold = !isNaN(value) ? value : 3
     }
     if (data.learning_keyword_threshold) {
-      learningSettings.keywordLearnThreshold = parseInt(data.learning_keyword_threshold.value) || 5
+      const value = parseInt(data.learning_keyword_threshold.value)
+      learningSettings.keywordLearnThreshold = !isNaN(value) ? value : 5
     }
     if (data.learning_studio_threshold) {
-      learningSettings.studioLearnThreshold = parseInt(data.learning_studio_threshold.value) || 2
+      const value = parseInt(data.learning_studio_threshold.value)
+      learningSettings.studioLearnThreshold = !isNaN(value) ? value : 2
     }
     if (data.learning_min_confidence_rate) {
-      learningSettings.minConfidenceRate = parseInt(data.learning_min_confidence_rate.value) || 75
+      const value = parseInt(data.learning_min_confidence_rate.value)
+      learningSettings.minConfidenceRate = !isNaN(value) ? value : 75
     }
     if (data.learning_conflict_strategy) {
       learningSettings.conflictResolutionStrategy = data.learning_conflict_strategy.value || 'escalate'
     }
     if (data.learning_auto_resolve_threshold) {
-      learningSettings.autoResolveThreshold = parseInt(data.learning_auto_resolve_threshold.value) || 7
+      const value = parseInt(data.learning_auto_resolve_threshold.value)
+      learningSettings.autoResolveThreshold = !isNaN(value) ? value : 7
     }
     if (data.learning_max_per_user_day) {
-      learningSettings.maxLearnsPerUserPerDay = parseInt(data.learning_max_per_user_day.value) || 50
+      const value = parseInt(data.learning_max_per_user_day.value)
+      learningSettings.maxLearnsPerUserPerDay = !isNaN(value) ? value : 50
     }
     if (data.learning_max_per_library_hour) {
-      learningSettings.maxLearnsPerLibraryPerHour = parseInt(data.learning_max_per_library_hour.value) || 20
+      const value = parseInt(data.learning_max_per_library_hour.value)
+      learningSettings.maxLearnsPerLibraryPerHour = !isNaN(value) ? value : 20
     }
   } catch (error) {
     console.error('Failed to load settings:', error)
-    toast.error('Failed to load settings')
+    toast.error('Failed to load settings. Showing default values. Please refresh to try again.')
   }
 }
 
@@ -519,16 +545,23 @@ function formatDate(dateString) {
 }
 
 function validateThresholds() {
-  // Ensure auto-classify threshold is always higher than prompt threshold
+  // Ensure auto-classify threshold is always at least 5% higher than prompt threshold
   if (policySettings.autoClassifyThreshold <= policySettings.promptThreshold) {
-    // Adjust prompt threshold to be 5% lower
-    policySettings.promptThreshold = Math.max(40, policySettings.autoClassifyThreshold - 5)
-    toast.warning('Auto-classify threshold must be higher than prompt threshold')
+    // Adjust auto-classify threshold to be at least 5% higher than prompt threshold
+    policySettings.autoClassifyThreshold = Math.min(95, policySettings.promptThreshold + 5)
+    toast.warning('Auto-classify threshold must be at least 5% higher than prompt threshold')
   }
   
-  // Ensure prompt threshold is at least 5% higher than 0
+  // Ensure prompt threshold is at least 5%
   if (policySettings.promptThreshold < 5) {
     policySettings.promptThreshold = 5
+  }
+  
+  // Ensure there's a valid gap between thresholds for the display
+  const gap = policySettings.autoClassifyThreshold - policySettings.promptThreshold
+  if (gap < 1) {
+    // If somehow they're equal (shouldn't happen with above logic), fix it
+    policySettings.autoClassifyThreshold = Math.min(95, policySettings.promptThreshold + 5)
   }
 }
 </script>

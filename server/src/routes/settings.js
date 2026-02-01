@@ -34,8 +34,11 @@ const embeddingRouter = require('../services/embeddingRouter');
 const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
 const startupService = require('../services/startupService');
 const pathTestService = require('../services/pathTestService');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
+const logger = createLogger('SettingsRoutes');
 
 // ============================================
 // SETUP STATUS (for dashboard banner)
@@ -2854,8 +2857,9 @@ router.get('/provider-lock/status', async (req, res) => {
 /**
  * GET /api/settings/confidence
  * Get all confidence-related settings
+ * Requires authentication
  */
-router.get('/confidence', async (req, res) => {
+router.get('/confidence', authenticateToken, async (req, res) => {
   try {
     const result = await db.query(`
       SELECT setting_key, setting_value, description, default_value
@@ -2874,6 +2878,7 @@ router.get('/confidence', async (req, res) => {
     
     res.json(settings);
   } catch (error) {
+    logger.error('Failed to get confidence settings', { error: error.message });
     res.status(500).json({ error: 'Failed to retrieve settings' });
   }
 });
@@ -2882,7 +2887,7 @@ router.get('/confidence', async (req, res) => {
  * PUT /api/settings/confidence
  * Update confidence settings (admin only)
  */
-router.put('/confidence', async (req, res) => {
+router.put('/confidence', authenticateToken, requireAdmin, async (req, res) => {
   const client = await db.pool.connect();
   
   try {
@@ -2892,23 +2897,45 @@ router.put('/confidence', async (req, res) => {
     const userId = req.user?.id || null;
     const changeReason = req.body._reason || 'Manual update';
     
+    // Validate that settings exist before updating
+    const existingKeys = await client.query(
+      'SELECT setting_key FROM confidence_settings'
+    );
+    const validKeys = new Set(existingKeys.rows.map(row => row.setting_key));
+    
     for (const [key, newValue] of Object.entries(updates)) {
       if (key.startsWith('_')) continue; // Skip metadata
       
-      // Get current value for audit
+      // Validate key exists
+      if (!validKeys.has(key)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Unknown confidence setting key: ${key}` });
+      }
+      
+      // Validate value type
+      if (newValue === null || newValue === undefined) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Invalid value for setting: ${key}` });
+      }
+      
+      // Get current value for audit (with row lock to prevent race conditions)
       const current = await client.query(
-        'SELECT setting_value FROM confidence_settings WHERE setting_key = $1',
+        'SELECT setting_value FROM confidence_settings WHERE setting_key = $1 FOR UPDATE',
         [key]
       );
       
       const oldValue = current.rows[0]?.setting_value;
       
       // Update setting
-      await client.query(`
+      const updateResult = await client.query(`
         UPDATE confidence_settings
         SET setting_value = $1, updated_at = NOW()
         WHERE setting_key = $2
       `, [newValue.toString(), key]);
+      
+      if (updateResult.rowCount === 0) {
+        throw new Error(`Failed to update setting: ${key}`);
+      }
       
       // Audit log
       await client.query(`
@@ -2920,10 +2947,30 @@ router.put('/confidence', async (req, res) => {
     
     await client.query('COMMIT');
     
+    // Clear cache in autoLearningService
+    try {
+      const autoLearningService = require('../services/autoLearningService');
+      if (autoLearningService.clearCache) {
+        autoLearningService.clearCache();
+      }
+    } catch (err) {
+      logger.warn('Could not clear autoLearningService cache', { error: err.message });
+    }
+    
+    logger.info('Confidence settings updated', {
+      userId,
+      changesCount: Object.keys(updates).filter(k => !k.startsWith('_')).length
+    });
+    
     res.json({ success: true, message: 'Settings updated successfully' });
     
   } catch (error) {
     await client.query('ROLLBACK');
+    logger.error('Failed to update confidence settings', { 
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id
+    });
     res.status(500).json({ error: 'Failed to update settings' });
   } finally {
     client.release();
@@ -2934,9 +2981,27 @@ router.put('/confidence', async (req, res) => {
  * GET /api/settings/confidence/history
  * Get change history for audit (admin only)
  */
-router.get('/confidence/history', async (req, res) => {
+router.get('/confidence/history', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { limit = 50, offset = 0 } = req.query;
+    const rawLimit = req.query.limit;
+    const rawOffset = req.query.offset;
+
+    const limit = rawLimit === undefined ? 50 : parseInt(rawLimit, 10);
+    const offset = rawOffset === undefined ? 0 : parseInt(rawOffset, 10);
+
+    const MAX_LIMIT = 1000;
+
+    if (
+      !Number.isInteger(limit) ||
+      !Number.isInteger(offset) ||
+      limit <= 0 ||
+      limit > MAX_LIMIT ||
+      offset < 0
+    ) {
+      return res.status(400).json({
+        error: `Invalid pagination parameters. 'limit' must be a positive integer up to ${MAX_LIMIT}, and 'offset' must be a non-negative integer.`
+      });
+    }
     
     const result = await db.query(`
       SELECT 
@@ -2950,6 +3015,7 @@ router.get('/confidence/history', async (req, res) => {
     
     res.json(result.rows);
   } catch (error) {
+    logger.error('Failed to retrieve confidence settings history', { error: error.message });
     res.status(500).json({ error: 'Failed to retrieve history' });
   }
 });
@@ -2958,7 +3024,7 @@ router.get('/confidence/history', async (req, res) => {
  * POST /api/settings/confidence/revert/:auditId
  * Revert to a previous setting value (admin only)
  */
-router.post('/confidence/revert/:auditId', async (req, res) => {
+router.post('/confidence/revert/:auditId', authenticateToken, requireAdmin, async (req, res) => {
   const client = await db.pool.connect();
   
   try {
@@ -2974,6 +3040,7 @@ router.post('/confidence/revert/:auditId', async (req, res) => {
     );
     
     if (auditResult.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Audit entry not found' });
     }
     
@@ -3002,10 +3069,22 @@ router.post('/confidence/revert/:auditId', async (req, res) => {
     
     await client.query('COMMIT');
     
+    logger.info('Setting reverted successfully', {
+      auditId,
+      settingKey: audit.setting_key,
+      userId
+    });
+    
     res.json({ success: true, message: 'Setting reverted successfully' });
     
   } catch (error) {
     await client.query('ROLLBACK');
+    logger.error('Failed to revert setting', { 
+      error: error.message,
+      stack: error.stack,
+      auditId: req.params.auditId,
+      userId: req.user?.id
+    });
     res.status(500).json({ error: 'Failed to revert setting' });
   } finally {
     client.release();
@@ -3016,7 +3095,7 @@ router.post('/confidence/revert/:auditId', async (req, res) => {
  * POST /api/settings/confidence/export
  * Export all settings as JSON (admin only)
  */
-router.post('/confidence/export', async (req, res) => {
+router.post('/confidence/export', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM confidence_settings');
     
@@ -3029,6 +3108,10 @@ router.post('/confidence/export', async (req, res) => {
     
     res.json(exportData);
   } catch (error) {
+    logger.error('Failed to export settings', { 
+      error: error.message,
+      userId: req.user?.id
+    });
     res.status(500).json({ error: 'Failed to export settings' });
   }
 });
@@ -3037,7 +3120,7 @@ router.post('/confidence/export', async (req, res) => {
  * POST /api/settings/confidence/import
  * Import settings from JSON (admin only)
  */
-router.post('/confidence/import', async (req, res) => {
+router.post('/confidence/import', authenticateToken, requireAdmin, async (req, res) => {
   const client = await db.pool.connect();
   
   try {
@@ -3045,6 +3128,35 @@ router.post('/confidence/import', async (req, res) => {
     
     const { settings } = req.body;
     const userId = req.user?.id || null;
+    
+    // Validate input
+    if (!Array.isArray(settings)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Settings must be an array' });
+    }
+    
+    // Get valid setting keys
+    const existingKeys = await client.query(
+      'SELECT setting_key FROM confidence_settings'
+    );
+    const validKeys = new Set(existingKeys.rows.map(row => row.setting_key));
+    
+    // Validate all settings before importing
+    for (const setting of settings) {
+      if (!setting.setting_key || !validKeys.has(setting.setting_key)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: `Invalid or unknown setting key: ${setting.setting_key}` 
+        });
+      }
+      
+      if (setting.setting_value === null || setting.setting_value === undefined) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          error: `Invalid value for setting: ${setting.setting_key}` 
+        });
+      }
+    }
     
     for (const setting of settings) {
       // Get current value for audit
@@ -3079,10 +3191,21 @@ router.post('/confidence/import', async (req, res) => {
     
     await client.query('COMMIT');
     
+    logger.info('Settings imported successfully', {
+      userId,
+      settingsCount: settings.length
+    });
+    
     res.json({ success: true, message: 'Settings imported successfully' });
     
   } catch (error) {
     await client.query('ROLLBACK');
+    logger.error('Failed to import confidence settings', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      ip: req.ip
+    });
     res.status(500).json({ error: 'Failed to import settings' });
   } finally {
     client.release();
