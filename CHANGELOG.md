@@ -135,6 +135,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added "Last updated" timestamp with relative time display
   - Enhanced Recent Classifications with method, timestamp, and clickable details
   - Improved accessibility and mobile responsiveness across all dashboard elements
+
+### Fixed
+
+- **Plex OAuth Duplicate Servers Bug** (Fixes #257)
+  - `/api/plex/save-server` now updates existing server instead of always inserting new one
+  - Checks for existing server by URL before creating duplicate
+  - Added migration 20260201_020000 to clean up existing duplicates automatically
+  - Prevents library duplication when reconnecting via OAuth
+  - Added comprehensive integration tests for OAuth flow
+
 ### Improved
 - **Sync Error Handling** (Fixes #226)
   - All sync endpoints now return HTTP 404 with `{ error: "Library not found" }` for missing libraries

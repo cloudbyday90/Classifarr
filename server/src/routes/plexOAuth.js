@@ -282,14 +282,20 @@ router.post('/save-server', async (req, res) => {
 
         await client.query('BEGIN');
 
-        // Deactivate existing servers
-        await client.query('UPDATE media_server SET is_active = false');
+        // Deactivate all other Plex servers before upserting this one
+        await client.query('UPDATE media_server SET is_active = false WHERE type = $1 AND url != $2', ['plex', url]);
 
-        // Insert new server
+        // Atomically insert or update the Plex server for this URL
+        // Uses unique constraint on (type, url) added in migration 20260201_015000
         const result = await client.query(
             `INSERT INTO media_server (type, name, url, api_key, is_active)
-       VALUES ($1, $2, $3, $4, true)
-       RETURNING id, type, name, url, is_active, created_at`,
+             VALUES ($1, $2, $3, $4, true)
+             ON CONFLICT (type, url) DO UPDATE
+             SET name = EXCLUDED.name,
+                 api_key = EXCLUDED.api_key,
+                 is_active = true,
+                 updated_at = NOW()
+             RETURNING id, type, name, url, is_active, created_at, updated_at`,
             ['plex', name, url, token]
         );
 
