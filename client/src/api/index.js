@@ -582,11 +582,29 @@ export default {
   exportBackup() {
     return apiClient.get('/backup/export')
   },
+  createBackup(options) {
+    return apiClient.post('/backup/export', options)
+  },
+  listBackups() {
+    return apiClient.get('/backup/list')
+  },
+  downloadBackup(filename) {
+    return apiClient.get(`/backup/download/${filename}`, { responseType: 'blob' })
+  },
+  deleteBackup(filename) {
+    return apiClient.delete(`/backup/${filename}`)
+  },
   importBackup(data, options = {}) {
     return apiClient.post('/backup/import', { data, options })
   },
+  restoreBackup(filename, password, mode) {
+    return apiClient.post('/backup/import', { filename, password, mode })
+  },
   previewBackup(data) {
     return apiClient.post('/backup/preview', { data })
+  },
+  previewBackupFile(filename, password) {
+    return apiClient.post('/backup/preview', { filename, password })
   },
 
   // Queue Settings

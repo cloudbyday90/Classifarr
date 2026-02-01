@@ -2,222 +2,340 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * Backup/restore routes for rules and settings
+ * Backup/restore routes for configuration data
  */
 
 const express = require('express');
 const router = express.Router();
-const db = require('../config/database');
+const path = require('path');
+const backupService = require('../services/backupService');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('BackupRoutes');
 
-const BACKUP_VERSION = '1.0';
+// All backup routes require admin access
+router.use(authenticateToken);
+router.use(requireAdmin);
 
 /**
  * @swagger
  * /api/backup/export:
- *   get:
- *     summary: Export rules and settings as JSON
+ *   post:
+ *     summary: Create and export configuration backup
+ *     description: Creates encrypted or plaintext backup with all configuration data
  */
-router.get('/export', async (req, res) => {
-    try {
-        const [
-            libraries,
-            libraryLabels,
-            customRules,
-            learningPatterns,
-            labelPresets,
-            scheduledTasks
-        ] = await Promise.all([
-            db.query('SELECT * FROM libraries ORDER BY id'),
-            db.query('SELECT * FROM library_labels ORDER BY id'),
-            db.query('SELECT * FROM library_custom_rules ORDER BY id'),
-            db.query('SELECT * FROM learning_patterns ORDER BY id'),
-            db.query('SELECT * FROM label_presets ORDER BY id'),
-            db.query('SELECT * FROM scheduled_tasks ORDER BY id')
-        ]);
+router.post('/export', async (req, res) => {
+  try {
+    const { 
+      encrypted = true, 
+      password, 
+      includePatterns = true 
+    } = req.body;
 
-        const backup = {
-            version: BACKUP_VERSION,
-            exportedAt: new Date().toISOString(),
-            data: {
-                libraries: libraries.rows,
-                libraryLabels: libraryLabels.rows,
-                customRules: customRules.rows,
-                learningPatterns: learningPatterns.rows,
-                labelPresets: labelPresets.rows,
-                scheduledTasks: scheduledTasks.rows
-            },
-            meta: {
-                libraryCount: libraries.rows.length,
-                customRulesCount: customRules.rows.length,
-                learningPatternsCount: learningPatterns.rows.length
-            }
-        };
-
-        logger.info('Exported backup', backup.meta);
-
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Content-Disposition', `attachment; filename="classifarr-backup-${new Date().toISOString().split('T')[0]}.json"`);
-        res.json(backup);
-    } catch (error) {
-        logger.error('Export failed', { error: error.message });
-        res.status(500).json({ error: error.message });
+    // Validate password for encrypted backups
+    if (encrypted && (!password || password.length < 8)) {
+      return res.status(400).json({ 
+        error: 'Password must be at least 8 characters for encrypted backups' 
+      });
     }
+
+    // Create backup
+    const result = await backupService.createBackup({
+      encrypted,
+      password,
+      includePatterns
+    });
+
+    // Log audit
+    await backupService.logAudit(
+      'export',
+      encrypted ? 'encrypted' : 'plaintext',
+      result.filename,
+      'success',
+      {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        fileSize: result.size,
+        metadata: { includePatterns }
+      }
+    );
+
+    logger.info('Backup created', { 
+      filename: result.filename, 
+      encrypted, 
+      user: req.user?.username 
+    });
+
+    res.json({
+      success: true,
+      filename: result.filename,
+      size: result.size,
+      encrypted,
+      timestamp: result.timestamp
+    });
+  } catch (error) {
+    logger.error('Export failed', { error: error.message });
+    
+    await backupService.logAudit(
+      'export',
+      req.body.encrypted ? 'encrypted' : 'plaintext',
+      'failed',
+      'failed',
+      {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        error: error.message
+      }
+    );
+    
+    res.status(500).json({ error: error.message });
+  }
 });
 
 /**
  * @swagger
  * /api/backup/import:
  *   post:
- *     summary: Import rules and settings from JSON backup
+ *     summary: Import and restore configuration from backup
  */
 router.post('/import', async (req, res) => {
-    try {
-        const { data, options = {} } = req.body;
-        const { mergeMode = 'skip' } = options; // 'skip', 'overwrite', or 'merge'
+  try {
+    const { 
+      filename, 
+      password, 
+      mode = 'replace' // 'replace' or 'merge'
+    } = req.body;
 
-        if (!data) {
-            return res.status(400).json({ error: 'No backup data provided' });
-        }
-
-        const results = {
-            customRules: { imported: 0, skipped: 0 },
-            learningPatterns: { imported: 0, skipped: 0 },
-            scheduledTasks: { imported: 0, skipped: 0 }
-        };
-
-        // Import custom rules
-        if (data.customRules?.length) {
-            for (const rule of data.customRules) {
-                try {
-                    const exists = await db.query(
-                        'SELECT id FROM library_custom_rules WHERE name = $1 AND library_id = $2',
-                        [rule.name, rule.library_id]
-                    );
-
-                    if (exists.rows.length > 0 && mergeMode === 'skip') {
-                        results.customRules.skipped++;
-                        continue;
-                    }
-
-                    if (exists.rows.length > 0 && mergeMode === 'overwrite') {
-                        await db.query(
-                            `UPDATE library_custom_rules SET rule_json = $1, description = $2, is_active = $3, updated_at = NOW()
-               WHERE name = $4 AND library_id = $5`,
-                            [rule.rule_json, rule.description, rule.is_active, rule.name, rule.library_id]
-                        );
-                    } else if (exists.rows.length === 0) {
-                        await db.query(
-                            `INSERT INTO library_custom_rules (library_id, name, description, rule_json, is_active)
-               VALUES ($1, $2, $3, $4, $5)`,
-                            [rule.library_id, rule.name, rule.description, rule.rule_json, rule.is_active ?? true]
-                        );
-                    }
-                    results.customRules.imported++;
-                } catch (e) {
-                    logger.warn('Failed to import custom rule', { name: rule.name, error: e.message });
-                }
-            }
-        }
-
-        // Import learning patterns
-        if (data.learningPatterns?.length) {
-            for (const pattern of data.learningPatterns) {
-                try {
-                    const exists = await db.query(
-                        'SELECT id FROM learning_patterns WHERE tmdb_id = $1 AND media_type = $2',
-                        [pattern.tmdb_id, pattern.media_type]
-                    );
-
-                    if (exists.rows.length > 0 && mergeMode === 'skip') {
-                        results.learningPatterns.skipped++;
-                        continue;
-                    }
-
-                    if (exists.rows.length > 0) {
-                        await db.query(
-                            `UPDATE learning_patterns SET library_id = $1, confidence = $2, method = $3, updated_at = NOW()
-               WHERE tmdb_id = $4 AND media_type = $5`,
-                            [pattern.library_id, pattern.confidence, pattern.method, pattern.tmdb_id, pattern.media_type]
-                        );
-                    } else {
-                        await db.query(
-                            `INSERT INTO learning_patterns (tmdb_id, media_type, library_id, title, confidence, method)
-               VALUES ($1, $2, $3, $4, $5, $6)`,
-                            [pattern.tmdb_id, pattern.media_type, pattern.library_id, pattern.title, pattern.confidence, pattern.method]
-                        );
-                    }
-                    results.learningPatterns.imported++;
-                } catch (e) {
-                    logger.warn('Failed to import learning pattern', { tmdb_id: pattern.tmdb_id, error: e.message });
-                }
-            }
-        }
-
-        // Import scheduled tasks
-        if (data.scheduledTasks?.length) {
-            for (const task of data.scheduledTasks) {
-                try {
-                    const exists = await db.query(
-                        'SELECT id FROM scheduled_tasks WHERE name = $1',
-                        [task.name]
-                    );
-
-                    if (exists.rows.length > 0 && mergeMode === 'skip') {
-                        results.scheduledTasks.skipped++;
-                        continue;
-                    }
-
-                    if (exists.rows.length === 0) {
-                        await db.query(
-                            `INSERT INTO scheduled_tasks (name, task_type, library_id, interval_minutes, enabled)
-               VALUES ($1, $2, $3, $4, $5)`,
-                            [task.name, task.task_type, task.library_id, task.interval_minutes, task.enabled ?? true]
-                        );
-                        results.scheduledTasks.imported++;
-                    }
-                } catch (e) {
-                    logger.warn('Failed to import scheduled task', { name: task.name, error: e.message });
-                }
-            }
-        }
-
-        logger.info('Import completed', results);
-        res.json({ success: true, results });
-    } catch (error) {
-        logger.error('Import failed', { error: error.message });
-        res.status(500).json({ error: error.message });
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename is required' });
     }
+
+    // Validate filename
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    const result = await backupService.restoreBackup(filename, {
+      password,
+      mode,
+      userId: req.user?.id
+    });
+
+    // Log audit
+    await backupService.logAudit(
+      'import',
+      filename.endsWith('.enc.json') ? 'encrypted' : 'plaintext',
+      filename,
+      'success',
+      {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        metadata: { mode, stats: result.stats }
+      }
+    );
+
+    logger.info('Backup restored', { 
+      filename, 
+      mode, 
+      user: req.user?.username,
+      stats: result.stats 
+    });
+
+    res.json({
+      success: true,
+      newApiKey: result.newApiKey,
+      stats: result.stats
+    });
+  } catch (error) {
+    logger.error('Import failed', { error: error.message });
+    
+    await backupService.logAudit(
+      'import',
+      req.body.filename?.endsWith('.enc.json') ? 'encrypted' : 'plaintext',
+      req.body.filename || 'unknown',
+      'failed',
+      {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        error: error.message
+      }
+    );
+    
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/backup/list:
+ *   get:
+ *     summary: List all available backups
+ */
+router.get('/list', async (req, res) => {
+  try {
+    const backups = await backupService.listBackups();
+    res.json({ backups });
+  } catch (error) {
+    logger.error('Failed to list backups', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/backup/download/:filename:
+ *   get:
+ *     summary: Download a backup file
+ */
+router.get('/download/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    // Validate filename to prevent directory traversal
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    const backups = await backupService.listBackups();
+    const backup = backups.find(b => b.filename === filename);
+    
+    if (!backup) {
+      return res.status(404).json({ error: 'Backup not found' });
+    }
+
+    const BACKUP_DIR = process.env.BACKUP_DIR || '/app/data/backups';
+    const filepath = path.join(BACKUP_DIR, filename);
+
+    // Log audit
+    await backupService.logAudit(
+      'download',
+      backup.type,
+      filename,
+      'success',
+      {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        fileSize: backup.size
+      }
+    );
+
+    res.download(filepath, filename, (err) => {
+      if (err) {
+        logger.error('Download failed', { filename, error: err.message });
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Download failed' });
+        }
+      }
+    });
+  } catch (error) {
+    logger.error('Download failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
 });
 
 /**
  * @swagger
  * /api/backup/preview:
  *   post:
- *     summary: Preview what would be imported from backup
+ *     summary: Preview backup contents before restoring
  */
 router.post('/preview', async (req, res) => {
-    try {
-        const { data } = req.body;
+  try {
+    const { filename, password } = req.body;
 
-        if (!data) {
-            return res.status(400).json({ error: 'No backup data provided' });
-        }
-
-        const preview = {
-            customRules: data.customRules?.length || 0,
-            learningPatterns: data.learningPatterns?.length || 0,
-            scheduledTasks: data.scheduledTasks?.length || 0,
-            libraries: data.libraries?.length || 0,
-            labelPresets: data.labelPresets?.length || 0
-        };
-
-        res.json(preview);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename is required' });
     }
+
+    // Validate filename
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    const backupData = await backupService.readBackup(filename, password);
+
+    const preview = {
+      version: backupData.version,
+      exportedAt: backupData.exportedAt,
+      meta: backupData.meta,
+      itemCounts: {
+        users: backupData.data.users?.length || 0,
+        mediaServers: backupData.data.mediaServers?.length || 0,
+        libraries: backupData.data.libraries?.length || 0,
+        policies: backupData.data.libraryPolicies?.length || 0,
+        customRules: backupData.data.libraryCustomRules?.length || 0,
+        labelPresets: backupData.data.labelPresets?.length || 0,
+        scheduledTasks: backupData.data.scheduledTasks?.length || 0,
+        learningPatterns: backupData.data.learningPatterns?.length || 0,
+        autoLearnedPreferences: backupData.data.autoLearnedPreferences?.length || 0
+      }
+    };
+
+    res.json(preview);
+  } catch (error) {
+    logger.error('Preview failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/backup/:filename:
+ *   delete:
+ *     summary: Delete a backup file
+ */
+router.delete('/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+
+    // Validate filename
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    const backups = await backupService.listBackups();
+    const backup = backups.find(b => b.filename === filename);
+    
+    if (!backup) {
+      return res.status(404).json({ error: 'Backup not found' });
+    }
+
+    await backupService.deleteBackup(filename);
+
+    // Log audit
+    await backupService.logAudit(
+      'delete',
+      backup.type,
+      filename,
+      'success',
+      {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        fileSize: backup.size
+      }
+    );
+
+    logger.info('Backup deleted', { filename, user: req.user?.username });
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Delete failed', { error: error.message });
+    
+    await backupService.logAudit(
+      'delete',
+      'unknown',
+      req.params.filename,
+      'failed',
+      {
+        userId: req.user?.id,
+        ipAddress: req.ip,
+        error: error.message
+      }
+    );
+    
+    res.status(500).json({ error: error.message });
+  }
 });
 
 module.exports = router;
