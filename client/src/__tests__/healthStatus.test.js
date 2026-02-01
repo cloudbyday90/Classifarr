@@ -21,7 +21,10 @@ import {
   HEALTH_STATUS, 
   getStatusConfig, 
   getLatencyClass, 
-  getOverallHealth 
+  getOverallHealth,
+  calculateTrend,
+  getTrendArrow,
+  getTrendTooltip
 } from '../utils/healthStatus'
 
 describe('healthStatus.js', () => {
@@ -128,6 +131,121 @@ describe('healthStatus.js', () => {
       const result = getOverallHealth(services)
       expect(result.status).toBe('unhealthy')
       expect(result.unhealthy).toBe(1)
+    })
+  })
+
+  describe('calculateTrend', () => {
+    it('returns null when no previous state', () => {
+      const current = { status: 'healthy', responseTime: 100 }
+      const previous = null
+      expect(calculateTrend(current, previous)).toBeNull()
+    })
+
+    it('returns null when previous has no status', () => {
+      const current = { status: 'healthy', responseTime: 100 }
+      const previous = { responseTime: 50 }
+      expect(calculateTrend(current, previous)).toBeNull()
+    })
+
+    it('returns improving when status improves', () => {
+      const current = { status: 'healthy', responseTime: 100 }
+      const previous = { status: 'unhealthy', responseTime: 100 }
+      expect(calculateTrend(current, previous)).toBe('improving')
+    })
+
+    it('returns improving when status improves from connected to healthy', () => {
+      const current = { status: 'healthy', responseTime: 100 }
+      const previous = { status: 'connected', responseTime: 100 }
+      expect(calculateTrend(current, previous)).toBe('stable')
+    })
+
+    it('returns degrading when status degrades', () => {
+      const current = { status: 'unhealthy', responseTime: 100 }
+      const previous = { status: 'healthy', responseTime: 100 }
+      expect(calculateTrend(current, previous)).toBe('degrading')
+    })
+
+    it('returns degrading when status degrades from healthy to degraded', () => {
+      const current = { status: 'degraded', responseTime: 100 }
+      const previous = { status: 'healthy', responseTime: 100 }
+      expect(calculateTrend(current, previous)).toBe('degrading')
+    })
+
+    it('returns stable when status is same and no latency change', () => {
+      const current = { status: 'healthy', responseTime: 100 }
+      const previous = { status: 'healthy', responseTime: 105 }
+      expect(calculateTrend(current, previous)).toBe('stable')
+    })
+
+    it('returns improving when latency improves significantly', () => {
+      const current = { status: 'healthy', responseTime: 50 }
+      const previous = { status: 'healthy', responseTime: 150 }
+      expect(calculateTrend(current, previous)).toBe('improving')
+    })
+
+    it('returns degrading when latency degrades significantly', () => {
+      const current = { status: 'healthy', responseTime: 150 }
+      const previous = { status: 'healthy', responseTime: 50 }
+      expect(calculateTrend(current, previous)).toBe('degrading')
+    })
+
+    it('returns stable when latency change is below threshold', () => {
+      const current = { status: 'healthy', responseTime: 100 }
+      const previous = { status: 'healthy', responseTime: 130 }
+      expect(calculateTrend(current, previous)).toBe('stable')
+    })
+
+    it('handles connected and disconnected statuses', () => {
+      const current = { status: 'connected', responseTime: 100 }
+      const previous = { status: 'disconnected', responseTime: 100 }
+      expect(calculateTrend(current, previous)).toBe('improving')
+    })
+
+    it('handles not_configured status', () => {
+      const current = { status: 'healthy', responseTime: 100 }
+      const previous = { status: 'not_configured', responseTime: null }
+      expect(calculateTrend(current, previous)).toBe('improving')
+    })
+  })
+
+  describe('getTrendArrow', () => {
+    it('returns up arrow for improving trend', () => {
+      expect(getTrendArrow('improving')).toBe('↗️')
+    })
+
+    it('returns down arrow for degrading trend', () => {
+      expect(getTrendArrow('degrading')).toBe('↘️')
+    })
+
+    it('returns right arrow for stable trend', () => {
+      expect(getTrendArrow('stable')).toBe('→')
+    })
+
+    it('returns empty string for null/unknown trend', () => {
+      expect(getTrendArrow(null)).toBe('')
+      expect(getTrendArrow('unknown')).toBe('')
+    })
+  })
+
+  describe('getTrendTooltip', () => {
+    it('returns stable message for stable trend', () => {
+      const service = { trend: 'stable' }
+      expect(getTrendTooltip(service)).toBe('Status is stable')
+    })
+
+    it('returns stable message for no trend', () => {
+      const service = {}
+      expect(getTrendTooltip(service)).toBe('Status is stable')
+    })
+
+    it('returns improving message for improving trend', () => {
+      const service = { trend: 'improving' }
+      expect(getTrendTooltip(service)).toBe('Status is improving')
+    })
+
+    it('returns degrading message for degrading trend', () => {
+      const service = { trend: 'degrading' }
+      expect(getTrendTooltip(service)).toBe('Status is degrading')
     })
   })
 })

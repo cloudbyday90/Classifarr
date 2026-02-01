@@ -47,9 +47,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New database tables: `auto_learned_preferences`, `learning_conflicts`, `learning_rate_limits`
   - New service: `autoLearningService.js` for managing preference learning
   - Enhanced RAG integration with `findSimilarItems()` method for Discord context
-
-
-### Added
+- **System Health Dashboard Enhancements** (Fixes #184)
+  - **Trend Tracking**: Visual indicators (↗️/↘️/→) show service health direction over time
+  - **Last Successful Check**: Track when services were last healthy to diagnose outage duration
+  - **Smart Trend Detection**: Calculates trends from both status changes and latency variations (>50ms threshold)
+  - **Per-Instance Monitoring**: Individual trend indicators for Radarr/Sonarr instances
+  - **Historical Context**: "Last healthy: Xm ago" timestamps for degraded/unhealthy services
+  - **Enhanced Tooltips**: Include trend status and last healthy information
+  - **Backend Tracking**: All health check functions preserve previous state (previousStatus, previousResponseTime)
+  - **Frontend Utilities**: New trend calculation functions (calculateTrend, getTrendArrow, getTrendTooltip)
+  - **Clean UX**: Trend arrows only shown when status is not stable to reduce visual clutter
+  - **Comprehensive Testing**: 33 new tests for trend calculations, all 283 frontend and 826 backend tests passing
+  - Helps users quickly identify if services are improving, degrading, or stable
+  - Professional-grade monitoring dashboard with temporal context
 - **Service Lockdown System** (Fixes #206)
   - Pinia store for tracking service health from `/api/system/health`
   - Auto-refresh service status every 30 seconds
