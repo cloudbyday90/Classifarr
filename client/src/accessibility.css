@@ -44,14 +44,24 @@
   top: 0;
 }
 
-/* Ensure minimum touch target sizes on mobile */
+/* Ensure minimum touch target sizes on mobile for interactive elements */
+/* Excludes inline links to prevent layout issues */
 @media (max-width: 768px) {
   button,
-  a,
-  input,
+  a:not(.inline-link),
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
   select,
-  textarea {
+  .touch-target {
     min-height: 44px;
+  }
+  
+  button,
+  a.touch-target,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
     min-width: 44px;
   }
 }

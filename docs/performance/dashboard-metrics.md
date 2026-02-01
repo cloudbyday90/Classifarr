@@ -1,5 +1,8 @@
 # Dashboard Performance Metrics
 
+> **Note:** This document records performance optimizations implemented in PR #209 (Dashboard UX Improvements).
+> These optimizations were already in place before the accessibility enhancements in PR #238.
+
 ## API Call Optimization
 
 ### Before (Sequential):

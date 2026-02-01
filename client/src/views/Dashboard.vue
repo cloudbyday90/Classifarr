@@ -28,21 +28,19 @@
       <h1 class="text-3xl font-bold">Dashboard</h1>
       
       <div class="flex items-center gap-3">
-        <!-- Offline indicator -->
+        <!-- Status indicators - only one aria-live region for mutually exclusive states -->
         <span v-if="isOffline" class="text-xs text-yellow-500 flex items-center gap-1" role="status" aria-live="polite">
           📡 Offline
         </span>
         
-        <!-- Updating indicator (when showing stale cached data) -->
         <span v-else-if="isStale" class="text-xs text-gray-400 animate-pulse" role="status" aria-live="polite">
           ⏳ Updating...
         </span>
         
+        <!-- Timestamp without aria-live since status is covered by offline/updating indicators -->
         <span 
           v-if="lastUpdated" 
           class="text-sm text-gray-400"
-          role="status"
-          aria-live="polite"
           :aria-label="`Dashboard last updated ${formatRelativeTime(lastUpdated)}`"
         >
           Updated {{ formatRelativeTime(lastUpdated) }}
@@ -551,23 +549,30 @@ const getMethodTooltip = (method) => {
 // Keyboard Navigation
 // ============================================
 const handleKeyboard = (event) => {
-  // Ctrl/Cmd + R: Refresh dashboard
-  if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+  // Ctrl/Cmd + Shift + D: Refresh dashboard (non-conflicting shortcut)
+  if ((event.ctrlKey || event.metaKey) && event.shiftKey && (event.key === 'd' || event.key === 'D')) {
     event.preventDefault()
     loadDashboard()
   }
   
   // Escape: Dismiss error (if shown)
-  if (event.key === 'Escape' && error.value) {
-    error.value = null
+  // Note: error is a computed property, so we clear the underlying dashboardError ref
+  if (event.key === 'Escape' && error.value && dashboardError.value) {
+    event.preventDefault()
+    // Trigger a refresh to clear the error state
+    loadDashboard()
   }
 }
 
 // Focus management on error
-watch(error, (newError) => {
-  if (newError) {
+// Only focus when error appears (not when it's cleared)
+watch(error, (newError, oldError) => {
+  if (newError && !oldError) {
     nextTick(() => {
-      document.getElementById('error-heading')?.focus()
+      const errorHeading = document.getElementById('error-heading')
+      if (errorHeading) {
+        errorHeading.focus()
+      }
     })
   }
 })
