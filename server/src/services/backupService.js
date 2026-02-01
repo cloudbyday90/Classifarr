@@ -33,6 +33,11 @@ const IV_LENGTH = 16;
 const KEY_LENGTH = 32;
 const AUTH_TAG_LENGTH = 16;
 
+// Allowed columns for restore operations (whitelist for SQL injection prevention)
+const RADARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
+const SONARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
+const LIBRARY_ALLOWED_COLUMNS = ['name', 'type', 'media_server_id', 'external_id', 'is_active', 'sync_enabled'];
+
 class BackupService {
   /**
    * Ensure backup directory exists
@@ -403,13 +408,11 @@ class BackupService {
 
       // Restore Radarr/Sonarr configs with explicit column whitelisting for security
       if (backupData.data.radarrConfigs) {
-        const radarrAllowedColumns = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
-        
         for (const config of backupData.data.radarrConfigs) {
           const { id, created_at, updated_at, last_sync, ...data } = config;
           
           // Filter to only allowed columns
-          const keys = Object.keys(data).filter(key => radarrAllowedColumns.includes(key));
+          const keys = Object.keys(data).filter(key => RADARR_ALLOWED_COLUMNS.includes(key));
           const values = keys.map(key => data[key]);
           const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
           
@@ -423,13 +426,11 @@ class BackupService {
       }
 
       if (backupData.data.sonarrConfigs) {
-        const sonarrAllowedColumns = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
-        
         for (const config of backupData.data.sonarrConfigs) {
           const { id, created_at, updated_at, last_sync, ...data } = config;
           
           // Filter to only allowed columns
-          const keys = Object.keys(data).filter(key => sonarrAllowedColumns.includes(key));
+          const keys = Object.keys(data).filter(key => SONARR_ALLOWED_COLUMNS.includes(key));
           const values = keys.map(key => data[key]);
           const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
           
@@ -445,13 +446,11 @@ class BackupService {
       // Restore libraries with explicit column whitelisting for security
       const libraryIdMap = new Map(); // old ID -> new ID
       if (backupData.data.libraries) {
-        const libraryAllowedColumns = ['name', 'type', 'media_server_id', 'external_id', 'is_active', 'sync_enabled'];
-        
         for (const library of backupData.data.libraries) {
           const { id: oldId, created_at, updated_at, last_sync, ...data } = library;
           
           // Filter to only allowed columns
-          const keys = Object.keys(data).filter(key => libraryAllowedColumns.includes(key));
+          const keys = Object.keys(data).filter(key => LIBRARY_ALLOWED_COLUMNS.includes(key));
           const values = keys.map(key => data[key]);
           const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
           
