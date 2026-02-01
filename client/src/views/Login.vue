@@ -66,12 +66,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
+import { useToast } from '@/stores/toast'
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 const form = ref({
   identifier: '',
@@ -85,6 +87,13 @@ const error = ref('')
 const canSubmit = computed(() => 
   form.value.identifier && form.value.password
 )
+
+// Check for expired session on mount
+onMounted(() => {
+  if (route.query.expired === 'true') {
+    toast.warning('Session expired. Please log in again.')
+  }
+})
 
 const login = async () => {
   if (!canSubmit.value) return

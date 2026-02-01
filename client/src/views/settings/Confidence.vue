@@ -37,7 +37,7 @@
             <label class="font-medium">Auto-Classify Threshold</label>
             <span class="text-2xl font-bold text-green-400">{{ policySettings.autoClassifyThreshold }}%</span>
           </div>
-          <p class="text-sm text-gray-400">Items scoring at or above this confidence are automatically routed without user intervention</p>
+          <p class="text-sm text-gray-400">High-confidence items at or above this threshold are automatically classified, saving you time on obvious matches.</p>
           <Slider
             v-model="policySettings.autoClassifyThreshold"
             :min="70"
@@ -50,17 +50,34 @@
         <!-- Prompt Threshold -->
         <div class="space-y-2">
           <div class="flex justify-between items-center">
-            <label class="font-medium">Prompt Confirmation Threshold</label>
+            <label class="font-medium">Policy Builder Threshold</label>
             <span class="text-2xl font-bold text-yellow-400">{{ policySettings.promptThreshold }}%</span>
           </div>
-          <p class="text-sm text-gray-400">Items between this and auto-classify threshold will prompt user for Yes/No confirmation</p>
+          <p class="text-sm text-gray-400">Low-confidence items (below this threshold) guide you through creating classification rules, so the system learns and improves over time.</p>
           <Slider
             v-model="policySettings.promptThreshold"
             :min="40"
-            :max="85"
+            :max="Math.max(40, policySettings.autoClassifyThreshold - 5)"
             :step="5"
             @update:modelValue="validateThresholds"
           />
+        </div>
+
+        <!-- Validation Warning -->
+        <div v-if="!isValid" class="p-3 bg-red-900/30 text-red-400 rounded-lg text-sm border border-red-500/30">
+          ⚠️ Invalid configuration: Auto-classify threshold must be at least 5% higher than policy builder threshold.
+        </div>
+
+        <!-- How It Works Summary -->
+        <div class="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+          <div class="flex items-start gap-3">
+            <div class="text-blue-400 text-xl">ℹ️</div>
+            <div class="flex-1">
+              <p class="text-sm text-gray-300">
+                <span class="font-semibold text-blue-400">How it works:</span> Items scoring {{ policySettings.autoClassifyThreshold }}% or higher are auto-classified. Items between {{ policySettings.promptThreshold }}% - {{ policySettings.autoClassifyThreshold - 1 }}% prompt you for Yes/No confirmation. Items below {{ policySettings.promptThreshold }}% guide you through the Policy Builder to create rules.
+              </p>
+            </div>
+          </div>
         </div>
 
         <!-- Threshold Ranges Visual -->
@@ -79,15 +96,15 @@
             <div class="text-yellow-400 text-2xl">?</div>
             <div class="flex-1">
               <div class="font-medium text-yellow-400">Prompt Confirm ({{ policySettings.promptThreshold }}% - {{ Math.max(policySettings.autoClassifyThreshold - 1, policySettings.promptThreshold) }}%)</div>
-              <div class="text-sm text-gray-400">Ask "Is this correct?"</div>
+              <div class="text-sm text-gray-400">Medium-confidence items prompt you for quick Yes/No confirmation before routing.</div>
             </div>
           </div>
           
           <div class="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded">
             <div class="text-red-400 text-2xl">⚠</div>
             <div class="flex-1">
-              <div class="font-medium text-red-400">Manual Selection (0% - {{ Math.max(policySettings.promptThreshold - 1, 0) }}%)</div>
-              <div class="text-sm text-gray-400">Show all options with AI guidance</div>
+              <div class="font-medium text-red-400">Policy Builder (0% - {{ Math.max(policySettings.promptThreshold - 1, 0) }}%)</div>
+              <div class="text-sm text-gray-400">Detailed signal breakdown with policy creation guidance</div>
             </div>
           </div>
         </div>
@@ -321,7 +338,7 @@
       <Button @click="resetToDefaults" variant="secondary" size="lg">
         🔄 Reset to Defaults
       </Button>
-      <Button @click="saveAllSettings" variant="primary" size="lg" :disabled="isSaving">
+      <Button @click="saveAllSettings" variant="primary" size="lg" :disabled="isSaving || !isValid">
         <span v-if="isSaving">Saving...</span>
         <span v-else>💾 Save All Settings</span>
       </Button>
@@ -332,9 +349,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import { useToast } from '@/stores/toast'
-import axios from 'axios'
+import api from '@/api'
 
 // Components
 import Card from '@/components/common/Card.vue'
@@ -371,6 +388,11 @@ const learningSettings = reactive({
 const auditHistory = ref([])
 const loading = ref(true)
 
+// Validation state for thresholds
+const isValid = computed(() => {
+  return policySettings.autoClassifyThreshold >= policySettings.promptThreshold + 5
+})
+
 onMounted(async () => {
   await loadSettings()
   await loadAuditHistory()
@@ -379,7 +401,9 @@ onMounted(async () => {
 
 async function loadSettings() {
   try {
-    const response = await axios.get('/api/settings/confidence')
+    console.log('Loading confidence settings...')
+    const response = await api.get('/api/settings/confidence')
+    console.log('Settings loaded:', response.data)
     const data = response.data
     
     // Parse and populate settings with fallbacks
@@ -430,15 +454,17 @@ async function loadSettings() {
       const value = parseInt(data.learning_max_per_library_hour.value)
       learningSettings.maxLearnsPerLibraryPerHour = !isNaN(value) ? value : 20
     }
+    
+    console.log('Parsed settings:', { policySettings, discordSettings, learningSettings })
   } catch (error) {
-    console.error('Failed to load settings:', error)
-    toast.error('Failed to load settings. Showing default values. Please refresh to try again.')
+    console.error('Failed to load confidence settings:', error)
+    toast.error('Failed to load settings: ' + (error.message || 'Unknown error'))
   }
 }
 
 async function loadAuditHistory() {
   try {
-    const response = await axios.get('/api/settings/confidence/history', {
+    const response = await api.get('/api/settings/confidence/history', {
       params: { limit: 20 }
     })
     auditHistory.value = response.data || []
@@ -451,7 +477,9 @@ async function loadAuditHistory() {
 async function saveAllSettings() {
   isSaving.value = true
   try {
-    await axios.put('/api/settings/confidence', {
+    console.log('Saving confidence settings...', { policySettings, discordSettings, learningSettings })
+    
+    const payload = {
       policy_auto_classify_threshold: policySettings.autoClassifyThreshold,
       policy_prompt_threshold: policySettings.promptThreshold,
       discord_auto_route_threshold: discordSettings.autoRouteThreshold,
@@ -466,13 +494,17 @@ async function saveAllSettings() {
       learning_max_per_user_day: learningSettings.maxLearnsPerUserPerDay,
       learning_max_per_library_hour: learningSettings.maxLearnsPerLibraryPerHour,
       _reason: 'Manual update from settings UI'
-    })
+    }
+    
+    console.log('Sending payload:', payload)
+    const response = await api.put('/api/settings/confidence', payload)
+    console.log('Settings saved successfully:', response.data)
     
     toast.success('Settings saved successfully')
     await loadAuditHistory()
   } catch (error) {
     console.error('Failed to save settings:', error)
-    toast.error('Failed to save settings')
+    toast.error('Failed to save settings: ' + (error.response?.data?.error || error.message || 'Unknown error'))
   } finally {
     isSaving.value = false
   }
@@ -484,7 +516,7 @@ async function revertSetting(auditId) {
   }
   
   try {
-    await axios.post(`/api/settings/confidence/revert/${auditId}`)
+    await api.post(`/api/settings/confidence/revert/${auditId}`)
     toast.success('Setting reverted')
     await loadSettings()
     await loadAuditHistory()
@@ -496,7 +528,7 @@ async function revertSetting(auditId) {
 
 async function exportSettings() {
   try {
-    const response = await axios.post('/api/settings/confidence/export')
+    const response = await api.post('/api/settings/confidence/export')
     const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -545,23 +577,18 @@ function formatDate(dateString) {
 }
 
 function validateThresholds() {
-  // Ensure auto-classify threshold is always at least 5% higher than prompt threshold
-  if (policySettings.autoClassifyThreshold <= policySettings.promptThreshold) {
-    // Adjust auto-classify threshold to be at least 5% higher than prompt threshold
-    policySettings.autoClassifyThreshold = Math.min(95, policySettings.promptThreshold + 5)
-    toast.warning('Auto-classify threshold must be at least 5% higher than prompt threshold')
-  }
-  
-  // Ensure prompt threshold is at least 5%
-  if (policySettings.promptThreshold < 5) {
-    policySettings.promptThreshold = 5
-  }
-  
-  // Ensure there's a valid gap between thresholds for the display
+  // Enforce minimum 5% gap between thresholds
   const gap = policySettings.autoClassifyThreshold - policySettings.promptThreshold
-  if (gap < 1) {
-    // If somehow they're equal (shouldn't happen with above logic), fix it
+  
+  if (gap < 5) {
+    // Adjust auto-classify threshold to maintain 5% gap
     policySettings.autoClassifyThreshold = Math.min(95, policySettings.promptThreshold + 5)
+    toast.warning('Auto-classify threshold must be at least 5% higher than policy builder threshold')
+  }
+  
+  // Ensure prompt threshold doesn't exceed auto - 5
+  if (policySettings.promptThreshold > policySettings.autoClassifyThreshold - 5) {
+    policySettings.promptThreshold = Math.max(40, policySettings.autoClassifyThreshold - 5)
   }
 }
 </script>

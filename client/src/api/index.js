@@ -41,6 +41,17 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   response => response,
   error => {
+    // Handle 401 Unauthorized - session expired
+    if (error.response?.status === 401) {
+      // Clear auth token
+      localStorage.removeItem('auth_token')
+      
+      // Redirect to login with expired flag
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login?expired=true'
+      }
+    }
+    
     console.error('API Error:', error)
     return Promise.reject(error)
   }
