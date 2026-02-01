@@ -20,8 +20,8 @@ const logger = createLogger('Migrations');
  */
 class MigrationRunner {
     constructor() {
-        this.migrationsDir = path.join(__dirname, '../../database/migrations');
-        this.schemaFile = path.join(__dirname, '../../database/schema/current.sql');
+        this.migrationsDir = path.join(__dirname, '../../../database/migrations');
+        this.schemaFile = path.join(__dirname, '../../../database/schema/current.sql');
     }
 
     /**
