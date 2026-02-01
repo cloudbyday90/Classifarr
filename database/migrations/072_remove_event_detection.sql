@@ -12,6 +12,8 @@ BEGIN;
 -- ============================================================================
 -- STEP 1: Remove event preset references from policies
 -- ============================================================================
+-- IMPORTANT: This must run BEFORE deleting content_presets (Step 2) because
+-- it references content_presets.key to find the preset IDs to delete.
 -- Clean up any policy_presets entries that reference event presets
 DELETE FROM policy_presets
 WHERE preset_id IN (
