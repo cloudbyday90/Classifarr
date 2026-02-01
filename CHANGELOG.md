@@ -116,13 +116,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added "Last updated" timestamp with relative time display
   - Enhanced Recent Classifications with method, timestamp, and clickable details
   - Improved accessibility and mobile responsiveness across all dashboard elements
-- **Sync Error Handling**: Improved error handling for sync endpoints
-  - Added explicit HTTP 404 responses for missing libraries in sync operations
-  - Created `LibraryNotFoundError` for type-safe error handling
-  - Reduced log noise: missing-library cases now log as warnings instead of errors
-  - Standardized JSON error response format for sync endpoints
-  - Added integration tests for 404 error paths and log validation
-  - Improved troubleshooting and debugging for sync operations
+### Improved
+- **Sync Error Handling** (Fixes #226)
+  - All sync endpoints now return HTTP 404 with `{ error: "Library not found" }` for missing libraries
+  - Reduced log noise: missing libraries logged as warnings instead of errors
+  - Consistent error format across `/api/libraries/:id/sync` and `/api/media-sync/sync/:libraryId`
+  - Extended 404 handling to `GET /api/media-sync/items/:libraryId`
+  - Added comprehensive integration tests for 404 handling
 
 ### Removed
 

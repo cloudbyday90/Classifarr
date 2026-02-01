@@ -391,6 +391,17 @@ class MediaSyncService {
     const { limit = 50, offset = 0 } = options;
 
     try {
+      // Check if library exists first
+      const libraryCheck = await db.query(
+        'SELECT id FROM libraries WHERE id = $1',
+        [libraryId]
+      );
+      
+      if (libraryCheck.rows.length === 0) {
+        logger.warn('Library not found when getting items', { libraryId });
+        throw new LibraryNotFoundError(libraryId);
+      }
+
       const result = await db.query(
         `SELECT * FROM media_server_items
          WHERE library_id = $1
@@ -409,8 +420,11 @@ class MediaSyncService {
         total: parseInt(countResult.rows[0].count)
       };
     } catch (error) {
-      logger.error(`Error getting library items`, { libraryId, error: error.message });
-      return { items: [], total: 0 };
+      // Don't log LibraryNotFoundError as error - already logged as warning
+      if (!(error instanceof LibraryNotFoundError)) {
+        logger.error(`Error getting library items`, { libraryId, error: error.message });
+      }
+      throw error;
     }
   }
 
