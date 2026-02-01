@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- (Empty - ready for next release)
+
+### Changed
+- (Empty - ready for next release)
+
+### Fixed
+- (Empty - ready for next release)
+
+### Removed
+- (Empty - ready for next release)
+
+---
+
+## [0.41.0-alpha] - 2026-02-01
+
+### Added
 - **Test Coverage Improvements** (Fixes #227)
   - Added integration tests for Sonarr season mapping with `include_specials` flag
   - Added coverage reporting scripts for server and client (`npm run test:coverage`)
@@ -172,6 +188,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed event detection UI elements from library detail page
   - Migration 072: Complete event detection system removal
   - Event detection functionality is now handled exclusively through PolicyEngine presets (migrated in v0.37.0)
+
+### Fixed
+- Classification signal breakdown data path in backend metadata storage (#236)
+- Shebang preservation in copyright header script (#237)
+- Migration file path resolution in test (#230)
+
+---
 
 ## [0.40.5d-alpha] - 2026-01-30
 

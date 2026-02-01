@@ -954,27 +954,42 @@ When you enable RAG, existing classification history can be backfilled to seed t
 
 ## 📚 Documentation
 
-### v0.37.0 Policy Engine Documentation
+### User Guides
+- [Migration Guide - v0.41.0-alpha](docs/migration/v0.41.0-alpha.md) - Upgrade instructions and breaking changes
+- [Migration Guide - v0.37.0](docs/migration/v037.md) - Upgrade from v0.36.x to v0.37.0
+- [Release Notes](RELEASE_NOTES.md) - What's new in each release
+- [Roadmap](docs/roadmap.md) - Planned features and priorities
+- [CHANGELOG](CHANGELOG.md) - Detailed change history
 
-**Quick Start:**
-- [Migration Guide](docs/migration/v037.md) - Upgrade from v0.36.x to v0.37.0
+### API Documentation
+- [API Overview](docs/api/README.md) - Complete API reference
+- [Authentication](docs/api/authentication.md) - JWT tokens and API keys
+- [Libraries](docs/api/libraries.md) - Library management
+- [Media Sync](docs/api/media-sync.md) - Sync operations
+- [System Health](docs/api/system.md) - Health monitoring
+- [Classification](docs/api/classification.md) - Classification operations
+- [Webhooks](docs/api/webhooks.md) - Webhook integration
+- [Error Handling](docs/api/errors.md) - Error codes and responses
+- [Examples](docs/api/examples/) - cURL, JavaScript, Python examples
+
+### Policy Engine (v0.37.0+)
 - [Policy Engine Architecture](docs/architecture/policy-engine.md) - How the Policy Engine works
 - [Content Presets Reference](docs/presets/README.md) - All 168 presets explained
+- [Policy Builder](#-policy-builder) - Visual policy configuration
+- [Policy Statistics & Tuning](#-policy-statistics--tuning) - AI-generated improvements
 
-**API Documentation:**
-- [API Overview](docs/api/README.md) - Authentication, pagination, rate limiting
-- [Authentication API](docs/api/authentication.md) - JWT tokens, API keys, permissions
-- [System Health API](docs/api/system-health.md) - Service monitoring, health checks, trends
-- [Libraries API](docs/api/libraries.md) - Library management and configuration
-- [Media Sync API](docs/api/media-sync.md) - Media server synchronization
-- [Policies API](docs/api/policies.md) - Create and manage policies
-- [Classification API](docs/api/classification.md) - Classification requests and results
-- [Webhooks API](docs/api/webhooks.md) - Webhook endpoints for Overseerr/Jellyseerr
-- [Error Handling](docs/api/errors.md) - Error codes, formats, and troubleshooting
-- [Code Examples](docs/api/examples.md) - Complete integration examples
-- Full API docs: `http://localhost:21324/api/docs` (Swagger UI)
+### Setup & Configuration
+- [Plex Setup](PLEX_SETUP.md) - Connect Plex media server
+- [Discord Bot Setup](DISCORD_SETUP.md) - Configure Discord notifications
+- [Authentication](AUTHENTICATION.md) - User management
+- [UnRaid Guide](unraid/README.md) - UnRaid deployment
 
-**Key Concepts:**
+### Development
+- [Contributing](CONTRIBUTING.md) - How to contribute
+- [Testing Guide](docs/testing/coverage.md) - Running tests and coverage
+- [Database Migrations](docs/migrations.md) - Schema management
+
+### Key Concepts
 
 | Topic | Description | Link |
 |-------|-------------|------|
@@ -983,16 +998,7 @@ When you enable RAG, existing classification history can be backfilled to seed t
 | **Patterns** | Auto-discovered from user feedback | [Architecture](docs/architecture/policy-engine.md#pattern-scoring) |
 | **RAG** | Semantic similarity matching | [Architecture](docs/architecture/policy-engine.md#rag-scoring) |
 | **Tuning** | AI-generated policy improvements | [Tuning Dashboard](#-policy-statistics--tuning) |
-| **Migration** | Upgrading from v0.36.x | [Migration Guide](docs/migration/v037.md) |
 | **Health Monitoring** | Real-time service health tracking | [System Health](#-system-health-monitoring) |
-
-### Additional Guides
-
-- [Plex Setup](PLEX_SETUP.md) - Connect Plex media server
-- [Discord Bot Setup](DISCORD_SETUP.md) - Configure Discord notifications
-- [Authentication](AUTHENTICATION.md) - User management
-- [UnRaid Guide](unraid/README.md) - UnRaid deployment
-- [Database Migrations](docs/migrations.md) - Schema management
 
 ## 🎮 Discord Bot
 
