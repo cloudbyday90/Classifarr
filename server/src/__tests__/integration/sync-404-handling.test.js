@@ -160,4 +160,43 @@ describe('Sync 404 Handling Integration Tests', () => {
       });
     });
   });
+
+  describe('GET /api/media-sync/items/:libraryId', () => {
+    it('should return 404 for missing library', async () => {
+      const response = await request(app)
+        .get('/api/media-sync/items/99999')
+        .expect(404);
+
+      expect(response.body).toEqual({
+        error: 'Library not found'
+      });
+    });
+
+    it('should not log errors for expected 404s on GET', async () => {
+      const { createLogger } = require('../../utils/logger');
+      const mockLogger = createLogger();
+
+      // Clear previous calls
+      mockLogger.error.mockClear();
+      mockLogger.warn.mockClear();
+
+      await request(app)
+        .get('/api/media-sync/items/99999')
+        .expect(404);
+
+      // The service layer logs a warning (not an error)
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it('should return empty items array for existing library with no items', async () => {
+      // Use the existing library from beforeAll (id=1)
+      // It should have no media_server_items associated with it
+      const response = await request(app)
+        .get('/api/media-sync/items/1')
+        .expect(200);
+
+      expect(response.body.items).toEqual([]);
+      expect(response.body.total).toBe(0);
+    });
+  });
 });

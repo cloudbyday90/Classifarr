@@ -77,6 +77,10 @@ router.post('/sync/:libraryId', requireReadWrite, async (req, res) => {
 /**
  * @route GET /api/media-sync/items/:libraryId
  * @desc Get synced items for a library
+ * @param {number} libraryId.path.required - Library ID
+ * @returns {object} 200 - List of items with pagination
+ * @returns {object} 404 - Library not found { "error": "Library not found" }
+ * @returns {object} 500 - Server error
  */
 router.get('/items/:libraryId', async (req, res) => {
   try {
@@ -90,6 +94,11 @@ router.get('/items/:libraryId', async (req, res) => {
 
     res.json(result);
   } catch (error) {
+    // Handle library not found as 404
+    if (error instanceof LibraryNotFoundError) {
+      return res.status(404).json(error.toJSON());
+    }
+    
     logger.error('Error getting library items', { error: error.message });
     res.status(500).json({
       error: error.message,

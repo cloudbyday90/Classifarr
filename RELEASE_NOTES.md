@@ -159,11 +159,10 @@
   - Live "last updated" timestamps show data freshness
   - Enhanced classification history with more details and clickable items
   - Better accessibility and mobile experience
-- **Sync Error Handling**: Better error messages and handling for sync operations
-  - Sync endpoints now return clear HTTP 404 errors when libraries don't exist
-  - Reduced log noise for expected error cases
-  - Easier troubleshooting with standardized error responses
-  - More reliable CI/test runs without false-positive errors
+- **Sync Error Handling**: Better error messages and handling for sync operations (#226)
+  - **Sync Endpoints**: Missing library errors now return clear HTTP 404 responses instead of generic 500 errors
+  - **Cleaner Logs**: Expected errors (like missing libraries) no longer clutter error logs
+  - **Easier Debugging**: Consistent error format makes troubleshooting sync issues simpler
 
 ### Removed
 
