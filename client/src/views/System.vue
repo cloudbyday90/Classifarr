@@ -131,6 +131,45 @@
             {{ service.error }}
           </div>
 
+          <!-- Circuit Breaker Status (OMDb only) -->
+          <div v-if="service.key === 'omdb' && service.circuitBreaker" class="mt-2">
+            <!-- Circuit OPEN State -->
+            <div v-if="service.circuitBreaker.state === 'OPEN'" class="p-2 bg-red-900/20 border border-red-700 rounded-sm">
+              <div class="flex items-center gap-2 text-xs text-red-400 mb-1">
+                <span class="text-sm">🔴</span>
+                <span class="font-semibold">Circuit Breaker: OPEN</span>
+              </div>
+              <div class="text-xs text-gray-400">
+                <div v-if="service.circuitBreaker.nextAttempt">
+                  Next retry: {{ formatNextAttempt(service.circuitBreaker.nextAttempt) }}
+                </div>
+                <div>Failures: {{ service.circuitBreaker.failureCount }}</div>
+              </div>
+              <button 
+                @click="resetOmdbCircuit" 
+                class="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors"
+              >
+                Reset Circuit Breaker
+              </button>
+            </div>
+            
+            <!-- Circuit HALF_OPEN State -->
+            <div v-else-if="service.circuitBreaker.state === 'HALF_OPEN'" class="p-2 bg-yellow-900/20 border border-yellow-700 rounded-sm">
+              <div class="flex items-center gap-2 text-xs text-yellow-400">
+                <span class="text-sm">🟡</span>
+                <span class="font-semibold">Testing recovery...</span>
+              </div>
+            </div>
+            
+            <!-- Warning when failures exist but not OPEN -->
+            <div v-else-if="service.circuitBreaker.failureCount > 0" class="p-2 bg-yellow-900/10 border border-yellow-800 rounded-sm">
+              <div class="flex items-center gap-2 text-xs text-yellow-500">
+                <span class="text-sm">⚠️</span>
+                <span>{{ service.circuitBreaker.failureCount }} consecutive failure{{ service.circuitBreaker.failureCount > 1 ? 's' : '' }}</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Instance Details for Radarr/Sonarr -->
           <div v-if="service.instances && service.instances.length > 0" class="mt-3">
             <button 
@@ -600,6 +639,7 @@ const loadHealth = async (silent = false) => {
           lastCheck: healthDetails.value.omdb?.lastCheck,
           lastSuccessfulCheck: healthDetails.value.omdb?.lastSuccessfulCheck,
           error: healthDetails.value.omdb?.error,
+          circuitBreaker: healthDetails.value.omdb?.circuitBreaker,
           trend: calculateTrend(
             { 
               status: normalizeStatus(statusMap.omdb), 
@@ -789,6 +829,32 @@ const formatCpuFlag = (value) => {
   if (value === 'false' || value === false) return 'No'
   if (!value) return 'Unknown'
   return String(value)
+}
+
+const formatNextAttempt = (timestamp) => {
+  if (!timestamp) return 'unknown'
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diffMs = date - now
+  
+  if (diffMs <= 0) return 'now'
+  
+  const diffSecs = Math.floor(diffMs / 1000)
+  if (diffSecs < 60) return `${diffSecs}s`
+  
+  const diffMins = Math.floor(diffSecs / 60)
+  return `${diffMins}m ${diffSecs % 60}s`
+}
+
+const resetOmdbCircuit = async () => {
+  try {
+    await api.post('/settings/omdb/circuit-breaker/reset')
+    // Refresh health status to show updated state
+    await refreshHealth()
+  } catch (error) {
+    console.error('Failed to reset OMDb circuit breaker:', error)
+    // Could add a toast notification here if available
+  }
 }
 
 onMounted(() => {

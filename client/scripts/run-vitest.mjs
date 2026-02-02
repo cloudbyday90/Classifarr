@@ -8,16 +8,15 @@ const __dirname = dirname(__filename)
 const vitestPath = resolve(__dirname, '../node_modules/vitest/vitest.mjs')
 const args = process.argv.slice(2)
 
+// Clean up NODE_OPTIONS - remove flags that can't be in NODE_OPTIONS
 const nodeOptions = (process.env.NODE_OPTIONS || '')
   .split(' ')
   .filter(Boolean)
-
-if (!nodeOptions.includes('--no-experimental-webstorage')) {
-  nodeOptions.push('--no-experimental-webstorage')
-}
+  .filter(opt => !opt.startsWith('--no-experimental-webstorage') && !opt.startsWith('--localstorage-file'))
 
 process.env.NODE_OPTIONS = nodeOptions.join(' ')
 
+// Just run vitest without experimental flags (not needed in Node 20)
 const child = spawn(process.execPath, [vitestPath, ...args], {
   stdio: 'inherit',
   env: process.env,

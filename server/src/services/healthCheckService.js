@@ -14,6 +14,7 @@ const tmdbService = require('./tmdb');
 const tavilyService = require('./tavily');
 const omdbService = require('./omdb');
 const discordBotService = require('./discordBot');
+const omdbCircuitBreaker = require('../utils/omdbCircuitBreaker');
 
 // Cache for health status
 let healthCache = {
@@ -572,13 +573,31 @@ async function checkOMDb() {
     try {
         const config = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
 
+        // Get circuit breaker status
+        const circuitStatus = omdbCircuitBreaker.getStatus();
+
         if (config.rows.length === 0 || !config.rows[0].api_key) {
             healthCache.omdb = {
                 status: 'not configured',
                 lastCheck: new Date().toISOString(),
                 lastSuccessfulCheck: previous.lastSuccessfulCheck,
                 previousStatus: previous.status,
-                previousResponseTime: previous.responseTime
+                previousResponseTime: previous.responseTime,
+                circuitBreaker: circuitStatus
+            };
+            return healthCache.omdb;
+        }
+
+        // Check if circuit is OPEN
+        if (circuitStatus.state === 'OPEN') {
+            healthCache.omdb = {
+                status: 'circuit_open',
+                lastCheck: new Date().toISOString(),
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime,
+                circuitBreaker: circuitStatus,
+                error: `Circuit breaker is OPEN. Next retry: ${circuitStatus.nextAttempt ? new Date(circuitStatus.nextAttempt).toISOString() : 'unknown'}`
             };
             return healthCache.omdb;
         }
@@ -594,16 +613,19 @@ async function checkOMDb() {
             responseTime: result.time,
             previousStatus: previous.status,
             previousResponseTime: previous.responseTime,
-            error: result.error
+            error: result.error,
+            circuitBreaker: circuitStatus
         };
     } catch (error) {
+        const circuitStatus = omdbCircuitBreaker.getStatus();
         healthCache.omdb = {
             status: 'error',
             lastCheck: new Date().toISOString(),
             lastSuccessfulCheck: previous.lastSuccessfulCheck,
             error: error.message,
             previousStatus: previous.status,
-            previousResponseTime: previous.responseTime
+            previousResponseTime: previous.responseTime,
+            circuitBreaker: circuitStatus
         };
     }
 
