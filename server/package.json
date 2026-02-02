@@ -26,18 +26,18 @@
     "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
+    "discord.js": "^14.25.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.22.1",
     "express-rate-limit": "^8.2.1",
-    "helmet": "^7.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
     "node-cron": "^4.2.1",
-    "pg": "^8.17.1",
+    "pg": "^8.18.0",
     "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.0"
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11.11.0",
@@ -46,6 +46,10 @@
     "pg-mem": "^3.0.5",
     "supertest": "^7.2.2",
     "testcontainers": "^11.11.0"
+  },
+  "overrides": {
+    "undici": ">=6.23.0",
+    "glob": ">=10.0.0"
   }
 }
 

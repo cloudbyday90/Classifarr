@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Dependency Updates** (Fixes #294 - Comprehensive Dependency Audit and Update)
+  - Standardized axios version across all workspaces (root, server, client) to `^1.13.4`
+  - Updated server dependencies to latest compatible versions:
+    - express: `^4.18.2` → `^4.22.1` (latest 4.x)
+    - discord.js: `^14.14.1` → `^14.25.1` (latest 14.x)
+    - dotenv: `^16.3.1` → `^17.2.3` (latest)
+    - helmet: `^7.1.0` → `^7.2.0`
+    - jsonwebtoken: `^9.0.2` → `^9.0.3`
+    - pg: `^8.17.1` → `^8.18.0`
+    - swagger-ui-express: `^5.0.0` → `^5.0.1`
+    - morgan: `^1.10.0` → `^1.10.1`
+  - Updated client dependencies:
+    - vue-router: `^4.2.5` → `^4.6.4` (latest 4.x)
+
+### Fixed
+- **Security Vulnerabilities**
+  - Resolved high severity undici vulnerability (CVE-2026-22036, CVSS 7.5) - unbounded decompression chain DoS attack by adding package override `undici >= 6.23.0`
+  - Resolved deprecated glob warnings by adding package override `glob >= 10.0.0`
+  - All npm audit checks now pass with 0 vulnerabilities
+  - Note: Remaining lodash.get and lodash.isequal deprecation warnings are from transitive dependencies (swagger-parser/z-schema) and do not pose security risks
+
 ### Added
 - (Empty - ready for next release)
 
