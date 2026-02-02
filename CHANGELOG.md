@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Security Vulnerabilities**
-  - Resolved 4 moderate severity vulnerabilities in undici by adding package override `undici >= 6.23.0`
+  - Resolved high severity undici vulnerability (CVE-2026-22036, CVSS 7.5) - unbounded decompression chain DoS attack by adding package override `undici >= 6.23.0`
   - Resolved deprecated glob warnings by adding package override `glob >= 10.0.0`
   - All npm audit checks now pass with 0 vulnerabilities
   - Note: Remaining lodash.get and lodash.isequal deprecation warnings are from transitive dependencies (swagger-parser/z-schema) and do not pose security risks

@@ -11,10 +11,11 @@ Comprehensive dependency audit and update addressing Issue #294 for Node.js 24.1
   - Server: `^1.13.4` (unchanged)
   - Client: `^1.13.4` (unchanged)
 
-- **dotenv**: Verified latest version
-  - Root: `^17.2.3` (already latest - issue description was incorrect about this version not existing)
+- **dotenv**: Verified latest version and clarified version discrepancy
+  - Root: `^17.2.3` (already latest)
   - Server: `^16.3.1` → `^17.2.3` (updated to match root and use latest)
   - Client: N/A
+  - **Note**: The original issue description stated "dotenv: ^17.2.3 ← This version does not exist! Latest stable is 16.x" but this was incorrect. dotenv 17.x was released in early 2025, with 17.2.3 being the current latest version as of February 2026. Version 17.0.0 introduced new features while maintaining backward compatibility.
 
 ### 2. Server Dependency Updates
 All updates stayed within compatible minor/patch versions (no breaking changes):
@@ -49,16 +50,18 @@ Packages already at latest: vue (^3.5.27), pinia (^3.0.4), axios (^1.13.4), sock
 
 ### Vulnerabilities Addressed
 
-1. **undici < 6.23.0** (Moderate Severity - CVE-2024-XXXXX)
-   - **Issue**: Unbounded decompression chain in HTTP responses on Node.js Fetch API via Content-Encoding leads to resource exhaustion
+1. **undici < 6.23.0** (High Severity - CVE-2026-22036)
+   - **Issue**: Unbounded decompression chain in HTTP responses on Node.js Fetch API via Content-Encoding leads to resource exhaustion (DoS)
+   - **CVSS Score**: 7.5 (High)
    - **Affected**: discord.js dependency chain
    - **Resolution**: Added package override `"undici": ">=6.23.0"` in server/package.json
-   - **Result**: Forces all instances of undici to use version 7.20.0 (latest)
+   - **Result**: Forces all instances of undici to use version 7.20.0 (latest), eliminating the vulnerability
+   - **Reference**: [GitHub Advisory GHSA-g9mf-h72j-4rw9](https://github.com/advisories/GHSA-g9mf-h72j-4rw9)
 
 2. **glob@7.x deprecated warnings** 
    - **Issue**: Multiple dependencies using deprecated glob@7.x which has known issues
    - **Resolution**: Added package override `"glob": ">=10.0.0"` in server/package.json
-   - **Result**: Forces all instances of glob to use version 10.5.0, eliminating inflight dependency
+   - **Result**: Forces all instances of glob to use version 13.0.0 (root) and 10.3.10+ (server dependencies), eliminating inflight dependency
 
 ### After Updates
 ```
@@ -138,6 +141,10 @@ Major version updates were identified but **not applied** to avoid breaking chan
 3. **Regular dependency audits**: Run `npm outdated` and `npm audit` monthly to catch new vulnerabilities early.
 
 4. **Node.js version**: The repo specifies Node.js 24.11.0 in engines, but the build environment is running Node.js 20.20.0. Consider updating build environment.
+
+## Engine Requirements Note
+
+**npm version requirement**: The package.json files specify `"npm": ">=10.0.0"` in the engines field. This was already the requirement in the base commit (221f20c) from PR #296 which standardized on Node.js 24.11.0 LTS and npm 10.0.0+. The package-lock.json files reflect this same requirement. This is correct as npm 11.x has not been released as of February 2026 - npm 10.x is the current stable version accompanying Node.js 24.x LTS.
 
 ## References
 
