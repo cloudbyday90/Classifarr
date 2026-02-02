@@ -1315,6 +1315,26 @@ router.get('/omdb/health', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/settings/omdb/circuit-breaker/reset:
+ *   post:
+ *     summary: Reset OMDb circuit breaker
+ *     tags: [Settings]
+ *     responses:
+ *       200:
+ *         description: Circuit breaker reset successfully
+ */
+router.post('/omdb/circuit-breaker/reset', requireAdmin, (req, res) => {
+  try {
+    const omdbCircuitBreaker = require('../utils/omdbCircuitBreaker');
+    omdbCircuitBreaker.reset();
+    res.json({ success: true, message: 'OMDb circuit breaker reset' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================
 // NOTIFICATION CONFIGURATION
 // ============================================

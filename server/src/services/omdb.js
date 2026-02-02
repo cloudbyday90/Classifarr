@@ -11,6 +11,8 @@
 const axios = require('axios');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const circuitBreaker = require('../utils/omdbCircuitBreaker');
+const { calculateBackoff } = require('../utils/retryUtils');
 
 const logger = createLogger('OMDbService');
 
@@ -187,53 +189,73 @@ class OMDbService {
         let configId = null;
         const maxRetries = 2;
 
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
-                // Enforce rate limit managed by DB
-                const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
-                configId = id;
+                // Execute with circuit breaker protection
+                return await circuitBreaker.execute(async () => {
+                    // Enforce rate limit managed by DB
+                    const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
+                    configId = id;
 
-                const params = {
-                    apikey: validApiKey,
-                    t: title,
-                    type: type === 'tv' ? 'series' : type,
-                    plot: 'short'
-                };
+                    const params = {
+                        apikey: validApiKey,
+                        t: title,
+                        type: type === 'tv' ? 'series' : type,
+                        plot: 'short'
+                    };
 
-                if (year) {
-                    params.y = year;
-                }
+                    if (year) {
+                        params.y = year;
+                    }
 
-                logger.debug('OMDb lookup by title', { title, year, type, attempt });
+                    logger.debug('OMDb lookup by title', { title, year, type, attempt: attempt + 1 });
 
-                const response = await axios.get(this.baseUrl, {
-                    params,
-                    timeout: 15000, // 15 second timeout
+                    const response = await axios.get(this.baseUrl, {
+                        params,
+                        timeout: 15000, // 15 second timeout
+                    });
+
+                    if (response.data.Response === 'True') {
+                        // Increment counter only on successful response
+                        await this.incrementUsageCounter(configId);
+                        return this.formatResponse(response.data);
+                    } else {
+                        logger.debug('OMDb not found', { title, error: response.data.Error });
+                        return null;
+                    }
                 });
-
-                if (response.data.Response === 'True') {
-                    // Increment counter only on successful response
-                    await this.incrementUsageCounter(configId);
-                    return this.formatResponse(response.data);
-                } else {
-                    logger.debug('OMDb not found', { title, error: response.data.Error });
-                    return null;
-                }
             } catch (error) {
                 const status = error.response?.status;
                 const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
                 const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
+                const isCircuitOpen = error.code === 'CIRCUIT_BREAKER_OPEN';
+
+                // Don't retry if circuit is open - throw immediately to trigger fallback
+                if (isCircuitOpen) {
+                    logger.warn('OMDb circuit breaker is OPEN', {
+                        title,
+                        nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'unknown'
+                    });
+                    throw error;
+                }
 
                 // Retry on timeout or Cloudflare errors
-                if ((isTimeout || isCloudflareError) && attempt < maxRetries) {
+                if ((isTimeout || isCloudflareError) && attempt < maxRetries - 1) {
+                    const delay = calculateBackoff(attempt, {
+                        baseDelay: 1000,
+                        multiplier: 2,
+                        maxDelay: 10000
+                    });
+                    
                     logger.warn('OMDb API timeout/error, retrying', {
                         title,
-                        attempt,
+                        attempt: attempt + 1,
                         status,
-                        code: error.code
+                        code: error.code,
+                        delayMs: delay
                     });
-                    // Wait before retry (exponential backoff)
-                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    
+                    await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
                 }
 
@@ -242,15 +264,15 @@ class OMDbService {
                     throw new OMDbLimitReachedError('OMDb API Unauthorized: Check API Key or Limits');
                 }
 
-                // Log but don't throw for network errors - return null so enrichment continues
+                // Throw network errors to trigger Tavily fallback
                 if (isTimeout || isCloudflareError) {
-                    logger.warn('OMDb API unavailable, skipping enrichment', {
+                    logger.warn('OMDb API unavailable after retries', {
                         title,
                         status,
                         code: error.code,
                         message: error.message
                     });
-                    return null; // Graceful degradation
+                    throw error; // Throw to trigger fallback
                 }
 
                 // Handle SSL/certificate errors gracefully
@@ -258,18 +280,22 @@ class OMDbService {
                     error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
                     error.message?.includes('certificate');
                 if (isCertError) {
-                    logger.warn('OMDb SSL certificate issue, skipping enrichment', {
+                    logger.warn('OMDb SSL certificate issue', {
                         title,
                         error: error.message
                     });
-                    return null; // Graceful degradation
+                    throw error; // Throw to trigger fallback
                 }
 
                 logger.error('OMDb API error', { title, error: error.message });
                 throw error;
             }
         }
-        return null; // Fallback
+        
+        // If we exhausted retries, throw an error to trigger fallback
+        const error = new Error('OMDb API failed after retries');
+        error.code = 'MAX_RETRIES_EXCEEDED';
+        throw error;
     }
 
     /**
@@ -280,28 +306,42 @@ class OMDbService {
     async getByIMDBId(imdbId, apiKey) {
         let configId = null;
         try {
-            logger.debug('OMDb lookup by IMDB ID', { imdbId });
+            // Execute with circuit breaker protection
+            return await circuitBreaker.execute(async () => {
+                logger.debug('OMDb lookup by IMDB ID', { imdbId });
 
-            const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
-            configId = id;
+                const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
+                configId = id;
 
-            const response = await axios.get(this.baseUrl, {
-                params: {
-                    apikey: validApiKey,
-                    i: imdbId,
-                    plot: 'short'
+                const response = await axios.get(this.baseUrl, {
+                    params: {
+                        apikey: validApiKey,
+                        i: imdbId,
+                        plot: 'short'
+                    },
+                    timeout: 15000 // 15 second timeout
+                });
+
+                if (response.data.Response === 'True') {
+                    // Increment counter only on successful response
+                    await this.incrementUsageCounter(configId);
+                    return this.formatResponse(response.data);
+                } else {
+                    return null;
                 }
             });
-
-            if (response.data.Response === 'True') {
-                // Increment counter only on successful response
-                await this.incrementUsageCounter(configId);
-                return this.formatResponse(response.data);
-            } else {
-                return null;
-            }
         } catch (error) {
-            logger.error('OMDb API error', { imdbId, error: error.message });
+            const isCircuitOpen = error.code === 'CIRCUIT_BREAKER_OPEN';
+            
+            if (isCircuitOpen) {
+                logger.warn('OMDb circuit breaker is OPEN', {
+                    imdbId,
+                    nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'unknown'
+                });
+            } else {
+                logger.error('OMDb API error', { imdbId, error: error.message });
+            }
+            
             throw error;
         }
     }

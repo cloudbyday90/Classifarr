@@ -38,6 +38,7 @@ function mapServiceStatus(status) {
       return 'healthy';
     case 'partial':
     case 'degraded':
+    case 'circuit_open':
       return 'degraded';
     case 'error':
     case 'disconnected':
