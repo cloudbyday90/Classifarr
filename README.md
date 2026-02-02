@@ -169,7 +169,7 @@ v0.37.0 introduces the **Policy-Driven Classification Engine**:
 > **Note:** If you're using Docker (recommended for production), you can skip to [Docker Prerequisites](#prerequisites) below. This section is for developers running Classifarr locally.
 
 - **Node.js >= 24.11.0 LTS**
-- **npm >= 11.8.0**
+- **npm >= 10.0.0**
 
 #### Install Node.js 24 LTS
 

@@ -4,7 +4,7 @@ This guide helps developers upgrade their local environment to Node.js 24.11.0 L
 
 ## Why Upgrade?
 
-- **Production Consistency**: Our Docker containers run Node.js 24.11.0
+- **Production Consistency**: Our Docker containers are standardized on Node.js 24.11.0
 - **CI/CD Alignment**: GitHub Actions now requires Node.js 24.11.0+
 - **Modern Features**: Leverage stability improvements and new APIs
 - **Test Compatibility**: Our test runners use Node.js 24+ flags
@@ -28,7 +28,7 @@ nvm alias default 24.11.0  # Set as default
 
 ```bash
 node --version  # Should show v24.11.0 or higher
-npm --version   # Should show v11.8.0 or higher
+npm --version   # Should show v10.0.0 or higher
 ```
 
 ### 3. Clean and Reinstall Dependencies

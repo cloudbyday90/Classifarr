@@ -12,13 +12,29 @@ const nodeOptions = (process.env.NODE_OPTIONS || '')
   .split(' ')
   .filter(Boolean)
 
-// Only add --no-experimental-webstorage on Node.js v24+
-const nodeMajorVersion = Number(process.versions.node.split('.')[0])
-if (nodeMajorVersion >= 24 && !nodeOptions.includes('--no-experimental-webstorage')) {
-  nodeOptions.push('--no-experimental-webstorage')
+const sanitizedOptions = []
+for (let i = 0; i < nodeOptions.length; i += 1) {
+  const option = nodeOptions[i]
+  if (option === '--localstorage-file') {
+    i += 1
+    continue
+  }
+  if (option.startsWith('--localstorage-file=')) {
+    continue
+  }
+  if (option === '--no-experimental-webstorage' || option.startsWith('--no-experimental-webstorage=')) {
+    continue
+  }
+  sanitizedOptions.push(option)
 }
 
-process.env.NODE_OPTIONS = nodeOptions.join(' ')
+// Only add --no-experimental-webstorage on Node.js v24+
+const nodeMajorVersion = Number(process.versions.node.split('.')[0])
+if (nodeMajorVersion >= 24 && !sanitizedOptions.includes('--no-experimental-webstorage')) {
+  sanitizedOptions.push('--no-experimental-webstorage')
+}
+
+process.env.NODE_OPTIONS = sanitizedOptions.join(' ')
 
 const child = spawn(process.execPath, [vitestPath, ...args], {
   stdio: 'inherit',
