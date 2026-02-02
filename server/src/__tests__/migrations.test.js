@@ -5,38 +5,59 @@
  */
 
 const path = require('path');
-const { getMigrationSortKey, compareMigrations } = require('../config/migrations');
 
 describe('Migration Path Resolution', () => {
     const originalEnv = process.env;
 
-    beforeEach(() => {
-        // Reset environment before each test
-        process.env = { ...originalEnv };
-    });
-
-    afterAll(() => {
-        // Restore original environment
+    afterEach(() => {
+        // Restore original environment after each test
         process.env = originalEnv;
     });
 
     test('should resolve migrations directory to absolute path', () => {
-        // The constructor should use path.resolve(), not path.join()
-        const expectedPath = path.resolve(__dirname, '../../../database/migrations');
-        
-        // Verify the path is absolute (starts with / on Unix or drive letter on Windows)
-        expect(path.isAbsolute(expectedPath)).toBe(true);
+        // Use isolateModules to get a fresh instance
+        jest.isolateModules(() => {
+            const migrationRunner = require('../config/migrations');
+            
+            // Verify the resolved path is absolute
+            expect(path.isAbsolute(migrationRunner.migrationsDir)).toBe(true);
+            
+            // Verify it resolves to the expected default path
+            const expectedPath = path.resolve(__dirname, '../../../database/migrations');
+            expect(migrationRunner.migrationsDir).toBe(expectedPath);
+        });
     });
 
     test('should support MIGRATIONS_DIR environment variable override', () => {
         const customPath = '/custom/migrations/path';
-        process.env.MIGRATIONS_DIR = customPath;
         
-        // The constructor should respect the env var
-        // Note: We can't test the actual constructor here without refactoring,
-        // but this documents the expected behavior
-        expect(process.env.MIGRATIONS_DIR).toBe(customPath);
+        // Use isolateModules to get a fresh instance with new env var
+        jest.isolateModules(() => {
+            process.env.MIGRATIONS_DIR = customPath;
+            const migrationRunner = require('../config/migrations');
+            
+            // Verify the constructor respected the env var override
+            expect(migrationRunner.migrationsDir).toBe(customPath);
+        });
     });
+
+    test('should support SCHEMA_FILE environment variable override', () => {
+        const customSchemaPath = '/custom/schema/current.sql';
+        
+        // Use isolateModules to get a fresh instance with new env var
+        jest.isolateModules(() => {
+            process.env.SCHEMA_FILE = customSchemaPath;
+            const migrationRunner = require('../config/migrations');
+            
+            // Verify the constructor respected the env var override
+            expect(migrationRunner.schemaFile).toBe(customSchemaPath);
+        });
+    });
+});
+
+describe('Migration Sorting', () => {
+    // Import helper functions for testing
+    const { getMigrationSortKey, compareMigrations } = require('../config/migrations');
 
     test('getMigrationSortKey should handle numeric migrations', () => {
         expect(getMigrationSortKey('001_initial.sql')).toBe('00000000_000000_0000000001');
