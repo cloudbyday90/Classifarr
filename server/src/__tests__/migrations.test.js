@@ -23,7 +23,7 @@ describe('Migration Path Resolution', () => {
             expect(path.isAbsolute(migrationRunner.migrationsDir)).toBe(true);
             
             // Verify it resolves to the expected default path
-            const expectedPath = path.resolve(__dirname, '../../../database/migrations');
+            const expectedPath = path.resolve(__dirname, '../../database/migrations');
             expect(migrationRunner.migrationsDir).toBe(expectedPath);
         });
     });

@@ -102,8 +102,8 @@ function compareMigrations(a, b) {
 class MigrationRunner {
     constructor() {
         // Use path.resolve() to always get absolute path, with optional env var override
-        this.migrationsDir = process.env.MIGRATIONS_DIR || path.resolve(__dirname, '../../../database/migrations');
-        this.schemaFile = process.env.SCHEMA_FILE || path.resolve(__dirname, '../../../database/schema/current.sql');
+        this.migrationsDir = process.env.MIGRATIONS_DIR || path.resolve(__dirname, '../../database/migrations');
+        this.schemaFile = process.env.SCHEMA_FILE || path.resolve(__dirname, '../../database/schema/current.sql');
         
         // Log the resolved paths for debugging
         logger.debug('[Migrations] Migrations directory: ' + this.migrationsDir);
