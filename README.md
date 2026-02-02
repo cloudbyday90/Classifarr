@@ -164,6 +164,27 @@ v0.37.0 introduces the **Policy-Driven Classification Engine**:
 
 ## 🚀 Quick Start
 
+### Prerequisites for Local Development
+
+> **Note:** If you're using Docker (recommended for production), you can skip to [Docker Prerequisites](#prerequisites) below. This section is for developers running Classifarr locally.
+
+- **Node.js >= 24.11.0 LTS**
+- **npm >= 11.8.0**
+
+#### Install Node.js 24 LTS
+
+Using nvm (recommended):
+```bash
+nvm install 24.11.0
+nvm use 24.11.0
+```
+
+Or download from [nodejs.org](https://nodejs.org/)
+
+#### Why Node.js 24?
+
+Our test runners and build tools leverage Node.js 24+ features like `--no-experimental-webstorage` for stability. Running older versions may cause test failures or unexpected behavior. See [Node.js 24 Migration Guide](docs/nodejs-24-migration.md) for detailed upgrade instructions.
+
 ### Prerequisites
 
 - Docker and Docker Compose

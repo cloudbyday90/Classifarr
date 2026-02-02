@@ -28,8 +28,12 @@ for (let i = 0; i < nodeOptions.length; i += 1) {
   sanitizedOptions.push(option)
 }
 
-// Don't add webstorage option for Node versions that don't support it
-// Just clean up NODE_OPTIONS and run jest
+// Only add --no-experimental-webstorage on Node.js v24+
+const nodeMajorVersion = Number(process.versions.node.split('.')[0])
+if (nodeMajorVersion >= 24 && !sanitizedOptions.includes('--no-experimental-webstorage')) {
+  sanitizedOptions.push('--no-experimental-webstorage')
+}
+
 process.env.NODE_OPTIONS = sanitizedOptions.join(' ')
 
 const child = spawn(process.execPath, [jestPath, ...args], {
