@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
-    "@vueuse/core": "^14.1.0",
+    "@vueuse/core": "^14.2.0",
     "axios": "^1.13.4",
     "pinia": "^3.0.4",
     "socket.io-client": "^4.8.3",
