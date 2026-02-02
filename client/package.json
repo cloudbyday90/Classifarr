@@ -12,7 +12,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node ./scripts/run-vitest.mjs run",
-    "test:unit": "node ./scripts/run-vitest.mjs run --dir src/__tests__/unit",
+    "test:unit": "node ./scripts/run-vitest.mjs run --dir src/__tests__",
     "test:coverage": "node ./scripts/run-vitest.mjs run --coverage",
     "test:ui": "node ./scripts/run-vitest.mjs --ui",
     "test:watch": "node ./scripts/run-vitest.mjs",
