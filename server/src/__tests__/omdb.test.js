@@ -23,6 +23,26 @@ jest.mock('../utils/logger', () => ({
     }))
 }));
 
+// Mock circuit breaker
+const mockCircuitBreaker = {
+    execute: jest.fn(async (fn) => {
+        // Execute the function and let any errors propagate
+        return await fn();
+    }),
+    getStatus: jest.fn(() => ({
+        state: 'CLOSED',
+        failureCount: 0
+    })),
+    reset: jest.fn(),
+    shouldTripBreaker: jest.fn(() => true)
+};
+
+jest.mock('../utils/omdbCircuitBreaker', () => mockCircuitBreaker);
+
+jest.mock('../utils/retryUtils', () => ({
+    calculateBackoff: jest.fn((attempt) => 1000 * Math.pow(2, attempt))
+}));
+
 const db = require('../config/database');
 const omdbService = require('../services/omdb');
 
@@ -33,7 +53,7 @@ describe('OMDbService', () => {
     });
 
     describe('Cloudflare Error Handling', () => {
-        it('should retry and return null on Cloudflare 523 errors', async () => {
+        it('should retry and throw on Cloudflare 523 errors', async () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
@@ -47,19 +67,28 @@ describe('OMDbService', () => {
 
             mockAxios.get.mockRejectedValue({
                 response: { status: 523 },
-                message: 'Request failed with status code 523'
+                message: 'Request failed with status code 523',
+                code: undefined  // Explicitly no error code
             });
 
             const incrementSpy = jest.spyOn(omdbService, 'incrementUsageCounter');
 
-            const result = await omdbService.getByTitle('The Goldbergs', 2013, 'series');
-
-            expect(result).toBeNull();
+            // Should now throw instead of returning null to trigger Tavily fallback
+            try {
+                const result = await omdbService.getByTitle('The Goldbergs', 2013, 'series');
+                // If we get here, test fails
+                fail(`Expected error to be thrown, but got result: ${JSON.stringify(result)}`);
+            } catch (error) {
+                // Error was thrown as expected
+                expect(error).toBeDefined();
+            }
+            
+            // Should retry once before throwing
             expect(mockAxios.get).toHaveBeenCalledTimes(2);
             expect(incrementSpy).not.toHaveBeenCalled();
         });
 
-        it('should retry and return null on other Cloudflare errors (520, 521, 522)', async () => {
+        it('should retry and throw on other Cloudflare errors (520, 521, 522)', async () => {
             const today = new Date().toISOString().split('T')[0];
             const cloudflareErrors = [520, 521, 522];
 
@@ -78,14 +107,23 @@ describe('OMDbService', () => {
 
                 mockAxios.get.mockRejectedValue({
                     response: { status: statusCode },
-                    message: `Request failed with status code ${statusCode}`
+                    message: `Request failed with status code ${statusCode}`,
+                    code: undefined  // Explicitly no error code
                 });
 
                 const incrementSpy = jest.spyOn(omdbService, 'incrementUsageCounter');
 
-                const result = await omdbService.getByTitle('Test Movie', 2020, 'movie');
-
-                expect(result).toBeNull();
+                // Should now throw instead of returning null to trigger Tavily fallback
+                try {
+                    const result = await omdbService.getByTitle('Test Movie', 2020, 'movie');
+                    // If we get here, test fails
+                    fail(`Expected error to be thrown for status ${statusCode}, but got result: ${JSON.stringify(result)}`);
+                } catch (error) {
+                    // Error was thrown as expected
+                    expect(error).toBeDefined();
+                }
+                
+                // Should retry once before throwing
                 expect(mockAxios.get).toHaveBeenCalledTimes(2);
                 expect(incrementSpy).not.toHaveBeenCalled();
             }
