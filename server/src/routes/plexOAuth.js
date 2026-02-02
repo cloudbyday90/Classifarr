@@ -274,7 +274,7 @@ router.post('/find-connection', async (req, res) => {
 router.post('/save-server', async (req, res) => {
     const client = await db.pool.connect();
     try {
-        const { name, url, token } = req.body;
+        const { name, url, token, clientIdentifier } = req.body;
 
         if (!name || !url || !token) {
             return res.status(400).json({ error: 'name, url, and token are required' });
@@ -282,16 +282,41 @@ router.post('/save-server', async (req, res) => {
 
         await client.query('BEGIN');
 
-        // Deactivate existing servers
-        await client.query('UPDATE media_server SET is_active = false');
+        // Deactivate all other Plex servers before upserting this one
+        // Note: With clientIdentifier, we can be more precise, but keeping "active" logic simple for now
+        await client.query('UPDATE media_server SET is_active = false WHERE type = $1', ['plex']);
 
-        // Insert new server
-        const result = await client.query(
-            `INSERT INTO media_server (type, name, url, api_key, is_active)
-       VALUES ($1, $2, $3, $4, true)
-       RETURNING id, type, name, url, is_active, created_at`,
-            ['plex', name, url, token]
-        );
+        let result;
+
+        if (clientIdentifier) {
+            // Upsert based on client_identifier (Stable)
+            result = await client.query(
+                `INSERT INTO media_server (type, name, url, api_key, client_identifier, is_active)
+                 VALUES ($1, $2, $3, $4, $5, true)
+                 ON CONFLICT (client_identifier) WHERE client_identifier IS NOT NULL DO UPDATE
+                 SET name = EXCLUDED.name,
+                     url = EXCLUDED.url,
+                     api_key = EXCLUDED.api_key,
+                     is_active = true,
+                     updated_at = NOW()
+                 RETURNING id, type, name, url, is_active, created_at, updated_at`,
+                ['plex', name, url, token, clientIdentifier]
+            );
+        } else {
+            // Fallback to URL-based upsert for manual entry or legacy (Unstable if URL changes)
+            // Uses the idx_media_server_type_url_legacy index
+            result = await client.query(
+                `INSERT INTO media_server (type, name, url, api_key, is_active)
+                 VALUES ($1, $2, $3, $4, true)
+                 ON CONFLICT (type, url) WHERE client_identifier IS NULL DO UPDATE
+                 SET name = EXCLUDED.name,
+                     api_key = EXCLUDED.api_key,
+                     is_active = true,
+                     updated_at = NOW()
+                 RETURNING id, type, name, url, is_active, created_at, updated_at`,
+                ['plex', name, url, token]
+            );
+        }
 
         await client.query('COMMIT');
 

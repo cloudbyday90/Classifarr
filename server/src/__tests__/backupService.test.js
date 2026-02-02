@@ -16,7 +16,32 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// Mock fs module to avoid environment-specific filesystem behavior
+jest.mock('fs', () => ({
+  promises: {
+    mkdir: jest.fn(),
+    writeFile: jest.fn(),
+    readFile: jest.fn(),
+    readdir: jest.fn(),
+    unlink: jest.fn(),
+    access: jest.fn(),
+    stat: jest.fn(),
+  }
+}));
+
+const fs = require('fs').promises;
 const backupService = require('../services/backupService');
+
+// Global mock cleanup - applies to all test suites
+beforeEach(() => {
+  // Reset all mocks before each test
+  jest.clearAllMocks();
+});
+
+afterEach(() => {
+  // Clean up after each test
+  jest.resetAllMocks();
+});
 
 describe('BackupService - Encryption/Decryption', () => {
   const testData = {
@@ -119,17 +144,28 @@ describe('BackupService - Password Validation', () => {
         includePatterns: false
       })
     ).rejects.toThrow('Password must be at least 8 characters');
+    
+    // Should fail before attempting directory creation
+    expect(fs.mkdir).not.toHaveBeenCalled();
   });
 
   test('should accept password with exactly 8 characters', async () => {
-    // This will fail at ensureBackupDirectory in test environment, but validates password
+    // Mock directory creation to fail so we can verify password validation passed
+    fs.mkdir.mockRejectedValue({
+      code: 'EACCES',
+      message: 'Permission denied'
+    });
+    
     await expect(
       backupService.createBackup({
         encrypted: true,
         password: '12345678',
         includePatterns: false
       })
-    ).rejects.toThrow(); // Will throw directory error, not password error
+    ).rejects.toThrow('Failed to create backup directory');
+    
+    // Password validation should pass, so mkdir should be called
+    expect(fs.mkdir).toHaveBeenCalled();
   });
 
   test('should reject empty password for encrypted backup', async () => {
@@ -140,16 +176,27 @@ describe('BackupService - Password Validation', () => {
         includePatterns: false
       })
     ).rejects.toThrow('Password must be at least 8 characters');
+    
+    // Should fail before attempting directory creation
+    expect(fs.mkdir).not.toHaveBeenCalled();
   });
 
   test('should allow plaintext backup without password', async () => {
-    // This will fail at ensureBackupDirectory, but validates password logic
+    // Mock directory creation to fail so we can verify password validation passed
+    fs.mkdir.mockRejectedValue({
+      code: 'EACCES',
+      message: 'Permission denied'
+    });
+    
     await expect(
       backupService.createBackup({
         encrypted: false,
         includePatterns: false
       })
-    ).rejects.toThrow(); // Will throw directory error, not password error
+    ).rejects.toThrow('Failed to create backup directory');
+    
+    // Password validation should pass (no password required for plaintext), so mkdir should be called
+    expect(fs.mkdir).toHaveBeenCalled();
   });
 });
 
@@ -286,5 +333,45 @@ describe('BackupService - Error Handling', () => {
     expect(() => {
       backupService.decrypt(tampered, password);
     }).toThrow();
+  });
+});
+
+describe('BackupService - Filesystem Operations', () => {
+  test('should handle directory creation success', async () => {
+    // Mock successful directory creation
+    fs.mkdir.mockResolvedValue(undefined);
+    
+    await expect(backupService.ensureBackupDirectory()).resolves.toBeUndefined();
+    
+    expect(fs.mkdir).toHaveBeenCalledWith(
+      expect.stringContaining('backups'),
+      { recursive: true }
+    );
+  });
+
+  test('should handle directory creation failure with EACCES', async () => {
+    // Mock mkdir to fail with permission error
+    fs.mkdir.mockRejectedValue({
+      code: 'EACCES',
+      message: 'Permission denied'
+    });
+    
+    await expect(backupService.ensureBackupDirectory())
+      .rejects.toThrow('Failed to create backup directory');
+    
+    expect(fs.mkdir).toHaveBeenCalled();
+  });
+
+  test('should handle directory creation failure with ENOSPC', async () => {
+    // Mock mkdir to fail with no space error
+    fs.mkdir.mockRejectedValue({
+      code: 'ENOSPC',
+      message: 'No space left on device'
+    });
+    
+    await expect(backupService.ensureBackupDirectory())
+      .rejects.toThrow('Failed to create backup directory');
+    
+    expect(fs.mkdir).toHaveBeenCalled();
   });
 });

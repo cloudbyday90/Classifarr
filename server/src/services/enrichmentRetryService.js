@@ -36,6 +36,11 @@ class EnrichmentRetryService {
 
             logger.debug('Queued item for enrichment retry', { mediaItemId, enrichmentType, reason });
         } catch (error) {
+            // Handle race condition: Item deleted while queueing
+            if (error.code === '23503') { // foreign_key_violation
+                logger.warn('Skipping retry queue for deleted item', { mediaItemId });
+                return;
+            }
             logger.error('Failed to queue item for retry', { error: error.message, mediaItemId });
         }
     }

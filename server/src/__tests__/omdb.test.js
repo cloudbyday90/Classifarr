@@ -32,29 +32,63 @@ describe('OMDbService', () => {
         jest.clearAllMocks();
     });
 
-    it('should retry and return null on Cloudflare 523 errors', async () => {
-        const today = new Date().toISOString().split('T')[0];
-        db.query.mockResolvedValue({
-            rows: [{
-                id: 1,
-                api_key: 'test-key',
-                last_reset_date: today,
-                requests_today: 0,
-                daily_limit: 1000
-            }]
+    describe('Cloudflare Error Handling', () => {
+        it('should retry and return null on Cloudflare 523 errors', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockAxios.get.mockRejectedValue({
+                response: { status: 523 },
+                message: 'Request failed with status code 523'
+            });
+
+            const incrementSpy = jest.spyOn(omdbService, 'incrementUsageCounter');
+
+            const result = await omdbService.getByTitle('The Goldbergs', 2013, 'series');
+
+            expect(result).toBeNull();
+            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            expect(incrementSpy).not.toHaveBeenCalled();
         });
 
-        mockAxios.get.mockRejectedValue({
-            response: { status: 523 },
-            message: 'Request failed with status code 523'
+        it('should retry and return null on other Cloudflare errors (520, 521, 522)', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            const cloudflareErrors = [520, 521, 522];
+
+            for (const statusCode of cloudflareErrors) {
+                jest.clearAllMocks();
+                
+                db.query.mockResolvedValue({
+                    rows: [{
+                        id: 1,
+                        api_key: 'test-key',
+                        last_reset_date: today,
+                        requests_today: 0,
+                        daily_limit: 1000
+                    }]
+                });
+
+                mockAxios.get.mockRejectedValue({
+                    response: { status: statusCode },
+                    message: `Request failed with status code ${statusCode}`
+                });
+
+                const incrementSpy = jest.spyOn(omdbService, 'incrementUsageCounter');
+
+                const result = await omdbService.getByTitle('Test Movie', 2020, 'movie');
+
+                expect(result).toBeNull();
+                expect(mockAxios.get).toHaveBeenCalledTimes(2);
+                expect(incrementSpy).not.toHaveBeenCalled();
+            }
         });
-
-        const incrementSpy = jest.spyOn(omdbService, 'incrementUsageCounter');
-
-        const result = await omdbService.getByTitle('The Goldbergs', 2013, 'series');
-
-        expect(result).toBeNull();
-        expect(mockAxios.get).toHaveBeenCalledTimes(2);
-        expect(incrementSpy).not.toHaveBeenCalled();
     });
 });
