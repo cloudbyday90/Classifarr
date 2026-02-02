@@ -8,15 +8,34 @@ const __dirname = dirname(__filename)
 const vitestPath = resolve(__dirname, '../node_modules/vitest/vitest.mjs')
 const args = process.argv.slice(2)
 
-// Clean up NODE_OPTIONS - remove flags that can't be in NODE_OPTIONS
 const nodeOptions = (process.env.NODE_OPTIONS || '')
   .split(' ')
   .filter(Boolean)
-  .filter(opt => !opt.startsWith('--no-experimental-webstorage') && !opt.startsWith('--localstorage-file'))
 
-process.env.NODE_OPTIONS = nodeOptions.join(' ')
+const sanitizedOptions = []
+for (let i = 0; i < nodeOptions.length; i += 1) {
+  const option = nodeOptions[i]
+  if (option === '--localstorage-file') {
+    i += 1
+    continue
+  }
+  if (option.startsWith('--localstorage-file=')) {
+    continue
+  }
+  if (option === '--no-experimental-webstorage' || option.startsWith('--no-experimental-webstorage=')) {
+    continue
+  }
+  sanitizedOptions.push(option)
+}
 
-// Just run vitest without experimental flags (not needed in Node 20)
+// Only add --no-experimental-webstorage on Node.js v24+
+const nodeMajorVersion = Number(process.versions.node.split('.')[0])
+if (nodeMajorVersion >= 24 && !sanitizedOptions.includes('--no-experimental-webstorage')) {
+  sanitizedOptions.push('--no-experimental-webstorage')
+}
+
+process.env.NODE_OPTIONS = sanitizedOptions.join(' ')
+
 const child = spawn(process.execPath, [vitestPath, ...args], {
   stdio: 'inherit',
   env: process.env,
