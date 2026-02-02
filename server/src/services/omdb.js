@@ -228,13 +228,16 @@ class OMDbService {
                 const status = error.response?.status;
                 const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
                 const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
-                const isCircuitOpen = error.code === 'CIRCUIT_BREAKER_OPEN';
+                const isCircuitBlocked = error.code === 'CIRCUIT_BREAKER_OPEN' || 
+                                        error.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED' || 
+                                        error.code === 'CIRCUIT_BREAKER_REJECTED';
 
-                // Don't retry if circuit is open - throw immediately to trigger fallback
-                if (isCircuitOpen) {
-                    logger.warn('OMDb circuit breaker is OPEN', {
+                // Don't retry if circuit breaker is blocking - throw immediately to trigger fallback
+                if (isCircuitBlocked) {
+                    logger.warn('OMDb circuit breaker blocked request', {
                         title,
-                        nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'unknown'
+                        code: error.code,
+                        nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'N/A'
                     });
                     throw error;
                 }
@@ -291,11 +294,6 @@ class OMDbService {
                 throw error;
             }
         }
-        
-        // If we exhausted retries, throw an error to trigger fallback
-        const error = new Error('OMDb API failed after retries');
-        error.code = 'MAX_RETRIES_EXCEEDED';
-        throw error;
     }
 
     /**

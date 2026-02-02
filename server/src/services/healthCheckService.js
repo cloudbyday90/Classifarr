@@ -104,9 +104,9 @@ let healthCache = {
     }
 };
 
-// Heartbeat interval (default: 2 minutes)
+// Heartbeat interval (default: 15 minutes)
 let heartbeatInterval = null;
-const DEFAULT_HEARTBEAT_MS = 2 * 60 * 1000;
+const DEFAULT_HEARTBEAT_MS = 15 * 60 * 1000;
 
 // Track start time for uptime calculation
 const startTime = Date.now();

@@ -48,14 +48,33 @@ async function execute(fn) {
     // Check if circuit allows the request
     if (!omdbCircuitBreaker.isAllowed()) {
         const status = omdbCircuitBreaker.getStatus();
-        const error = new Error('OMDb circuit breaker is OPEN');
-        error.code = 'CIRCUIT_BREAKER_OPEN';
-        error.nextAttempt = status.lastFailureTime + omdbCircuitBreaker.recoveryTimeout;
-        logger.warn('OMDb circuit breaker blocked request', {
+        
+        let error;
+        let logMeta = {
             state: status.state,
-            failureCount: status.failureCount,
-            nextAttempt: new Date(error.nextAttempt).toISOString()
-        });
+            failureCount: status.failureCount
+        };
+
+        if (status.state === 'OPEN') {
+            error = new Error('OMDb circuit breaker is OPEN');
+            error.code = 'CIRCUIT_BREAKER_OPEN';
+            // For OPEN state, next attempt is based on last failure time and recovery timeout
+            error.nextAttempt = status.lastFailureTime + omdbCircuitBreaker.recoveryTimeout;
+            logMeta.nextAttempt = new Date(error.nextAttempt).toISOString();
+        } else if (status.state === 'HALF_OPEN') {
+            // In HALF_OPEN, denial may be due to halfOpenMaxAttempts being exceeded (throttling)
+            error = new Error('OMDb circuit breaker is HALF_OPEN and maximum concurrent attempts have been reached');
+            error.code = 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED';
+            // Do not derive nextAttempt from lastFailureTime in HALF_OPEN throttling scenario
+            error.nextAttempt = null;
+        } else {
+            // Fallback for any other non-allowed state
+            error = new Error('OMDb circuit breaker is not allowing requests');
+            error.code = 'CIRCUIT_BREAKER_REJECTED';
+            error.nextAttempt = null;
+        }
+
+        logger.warn('OMDb circuit breaker blocked request', logMeta);
         throw error;
     }
 
