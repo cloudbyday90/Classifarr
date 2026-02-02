@@ -6,6 +6,75 @@ _(No unreleased changes - ready for next version)_
 
 ---
 
+## [v0.41.1-alpha] - 2026-02-02
+
+**Release Date:** February 2, 2026
+
+This release strengthens core reliability with a new OMDb Circuit Breaker, standardizes on Node.js 24 LTS, vastly improves dependency hygiene, and fixes several stability issues.
+
+---
+
+## 🎯 Highlights
+
+### 🛡️ Major OMDb Reliability Improvements
+
+We've significantly improved metadata enrichment reliability with industry-standard circuit breaker patterns, extended error handling, and fallback prioritization fixes.
+
+- **Circuit Breaker:** Automatically detects OMDb outages and recovers after a cool-off period.
+- **Visual Status:** System Health dashboard now clearly shows connection states (OPEN/CLOSED).
+- **Better Fallbacks:** OMDb timeouts now trigger Tavily fallback correctly.
+
+### 🔧 Node.js 24 LTS Standardization
+
+All environments (Docker, CI/CD, local development) now use Node.js 24.11.0+ for consistency and modern feature support. This eliminates "works on my machine" issues and future-proofs the stack.
+
+### 📦 Dependency Hygiene
+
+Updated 12+ packages including `axios`, `express`, and `discord.js` with security fixes and performance improvements. Audit clean with 0 vulnerabilities.
+
+### 🧪 Test Script Standardization
+
+We've robustified our development tools:
+
+- Standardized `npm run test` commands across both Client and Server.
+- Fixed invalid path references in test scripts.
+- Enforced safe execution (sequential) for integration tests to prevent database conflicts.
+
+---
+
+## 🔥 Critical Fixes
+
+### OMDb Circuit Breaker Pattern (PR #293)
+
+**Problem:** OMDb timeouts were returning null instead of throwing errors, preventing fallbacks.
+**Solution:**
+✅ Industry-standard 3-state circuit breaker (CLOSED → OPEN → HALF_OPEN)
+✅ Automatic recovery after 30-second cool-off period
+✅ Visual indicators in System Health dashboard (🔴 OPEN, 🟡 HALF_OPEN)
+✅ Breaking change: Now throws errors on timeouts to enable Tavily fallback
+
+### Enhanced OMDb Reliability
+
+- **Cloudflare Error Handling:** Extended retry logic to cover all transient Cloudflare errors (520, 521, 522, 523).
+- **Rating Normalization:** OMDb (MPAA) is now the #1 priority source for content ratings, ensuring accuracy.
+
+---
+
+## 📊 Statistics
+
+- **Test Coverage:** 1,573 tests passing (848 server, 287 client, 438 integration)
+- **Security Scan:** 0 vulnerabilities
+- **Dependency Updates:** 12+ packages updated
+
+---
+
+## 🚨 Breaking Changes
+
+- **OMDb Error Handling:** The OMDb service now throws errors instead of returning null on timeouts to enable Tavily fallback.
+- **Node.js Version:** Minimum required version is now Node.js 24.11.0+.
+
+---
+
 ## [0.41.0-alpha] - 2026-02-01
 
 **Release Date:** February 1, 2026
@@ -17,30 +86,36 @@ This release delivers major improvements to system monitoring, documentation, us
 ## 🎯 Highlights
 
 ### 📊 System Health & Monitoring
+
 - **Health Dashboard Trends (#184):** Visual trend indicators (↗️↘️→) show if services are improving or degrading
 - **Last Successful Check:** Track when services were last healthy to diagnose outage duration
 - **Per-Instance Monitoring:** Individual health tracking for Radarr/Sonarr instances
 
 ### 🔒 Service Awareness
+
 - **Service Lockdown System (#206):** Features auto-disable when required services are unavailable
 - **Clear User Guidance:** Tooltips explain requirements and link directly to settings
 
 ### 🤖 Smart Automation
+
 - **Discord Verification Learning (#240):** System learns from user feedback to improve future classifications
 - **Auto-Enhancement:** Genres, keywords, and studios automatically added to policy preferences
 - **Rate Limiting:** Prevents runaway learning with user and library limits
 
 ### ⚙️ Configuration Management
+
 - **Unified Confidence Settings (#241):** All thresholds in one intuitive interface
 - **Visual Threshold Flow:** See auto-classify, prompt, and manual ranges at a glance
 - **Audit Trail:** Track and revert configuration changes
 
 ### 💾 Backup & Restore
+
 - **Encrypted Backups (#186):** AES-256-GCM encryption for config backups
 - **Replace or Merge:** Choose how to apply backups
 - **Complete Audit:** Track all backup operations
 
 ### 📚 Documentation
+
 - **Comprehensive API Docs (#188):** Complete API reference with examples
 - **Testing Coverage (#227):** 80% line coverage, 75% function coverage enforced
 - **Accessibility (#204):** WCAG 2.1 AA compliant dashboard
@@ -50,26 +125,31 @@ This release delivers major improvements to system monitoring, documentation, us
 ## ✨ New Features
 
 ### System & Monitoring
+
 - System Health Dashboard with trend tracking (#184)
 - Service lockdown for unavailable dependencies (#206)
 - Sync error hygiene with proper 404 handling (#226)
 
 ### Automation & Learning
+
 - Discord verification learning from user feedback (#240)
 - Auto-learned preferences with conflict detection
 - Smart Discord thresholds (85%+ auto-route, 60-84% verify, <60% detailed)
 
 ### Configuration
+
 - Unified confidence settings page (#241)
 - Backup & restore system with encryption (#186)
 - User profile settings page (#187)
 
 ### User Experience
+
 - Classification signal breakdown in history (#185)
 - Dashboard accessibility improvements (#204)
 - Copyright compliance automation (#198)
 
 ### Documentation
+
 - Comprehensive API documentation (#188)
 - Testing coverage enforcement (#227)
 - Migration guides and release notes
@@ -79,16 +159,19 @@ This release delivers major improvements to system monitoring, documentation, us
 ## 🔧 Improvements
 
 ### Error Handling
+
 - Sync endpoints return 404 for missing libraries (#226)
 - Consistent error format: `{ "error": "..." }`
 - Reduced log noise for expected failures
 
 ### Testing & Quality
+
 - 80% line coverage, 75% function coverage (#227)
 - Integration tests for all major features
 - Logger mocking for clean test output
 
 ### Security
+
 - Copyright compliance CI checks (#198)
 - Password strength enforcement
 - Rate limiting on sensitive endpoints
@@ -98,6 +181,7 @@ This release delivers major improvements to system monitoring, documentation, us
 ## 🗑️ Removed
 
 ### Event Detection System Retirement
+
 - **Database:** Removed event_detection_type and event_sub_type columns (migration 072) (#228)
 - **Backend:** Removed detectEventContent() and all event detection code (#229)
 - **Frontend:** Removed all event/holiday UI controls (#225)
@@ -154,7 +238,7 @@ See [Roadmap](docs/roadmap.md) for details.
 
 ## v0.40.5d-alpha
 
-**Title: *arr Quality Profile Respect Fix**
+**Title: \*arr Quality Profile Respect Fix**
 
 ### Fixes
 

@@ -8,44 +8,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **Dependency Updates** (Fixes #294 - Comprehensive Dependency Audit and Update)
-  - Standardized axios version across all workspaces (root, server, client) to `^1.13.4`
-  - Updated server dependencies to latest compatible versions:
-    - express: `^4.18.2` → `^4.22.1` (latest 4.x)
-    - discord.js: `^14.14.1` → `^14.25.1` (latest 14.x)
-    - dotenv: `^16.3.1` → `^17.2.3` (latest)
-    - helmet: `^7.1.0` → `^7.2.0`
-    - jsonwebtoken: `^9.0.2` → `^9.0.3`
-    - pg: `^8.17.1` → `^8.18.0`
-    - swagger-ui-express: `^5.0.0` → `^5.0.1`
-    - morgan: `^1.10.0` → `^1.10.1`
-  - Updated client dependencies:
-    - vue-router: `^4.2.5` → `^4.6.4` (latest 4.x)
 
-### Fixed
-- **Security Vulnerabilities**
-  - Resolved high severity undici vulnerability (CVE-2026-22036, CVSS 7.5) - unbounded decompression chain DoS attack by adding package override `undici >= 6.23.0`
-  - Resolved deprecated glob warnings by adding package override `glob >= 10.0.0`
-  - All npm audit checks now pass with 0 vulnerabilities
-  - Note: Remaining lodash.get and lodash.isequal deprecation warnings are from transitive dependencies (swagger-parser/z-schema) and do not pose security risks
-
-### Added
-- (Empty - ready for next release)
-
-### Changed
 - (Empty - ready for next release)
 
 ### Fixed
-- (Empty - ready for next release)
 
-### Removed
 - (Empty - ready for next release)
 
 ---
 
+## [v0.41.1-alpha] - 2026-02-02
+
+### Added
+- **OMDb Circuit Breaker** (PR #293)
+  - Implemented 3-state circuit breaker (CLOSED, OPEN, HALF_OPEN) for OMDb service
+  - Added automatic recovery after 30-second cool-off period
+  - Added visual indicators in System Health dashboard (Open/Half-Open states)
+  - Added admin reset endpoint for manual intervention
+  - Improved error handling: Timeouts now throw errors to trigger Tavily fallback instead of returning null
+- **Node.js 24 LTS Support** (PR #296)
+  - Standardized all environments (Docker, CI/CD, Dev) to Node.js 24.11.0+
+  - Added `.nvmrc` and proper engines field enforcement
+  - Added `docs/nodejs-24-migration.md` guide
+- **Test Script Standardization**
+  - Standardized `npm run test` scripts for consistency across client and server
+  - Server: `npm run test:unit` now correctly uses `jest.config.js` (removed invalid path pattern)
+  - Server: `npm run test:integration` now runs with `--runInBand` by default to prevent race conditions
+  - Client: `npm run test:unit` now correctly targets `src/__tests__` instead of non-existent subfolder
+
+### Changed
+- **Dependency Updates** (Fixes #294 - Comprehensive Dependency Audit and Update)
+  - Standardized axios version across all workspaces (root, server, client) to `^1.13.4`
+  - Updated server dependencies to latest compatible versions:
+    - express: `^4.18.2` â†’ `^4.22.1` (latest 4.x)
+    - discord.js: `^14.14.1` â†’ `^14.25.1` (latest 14.x)
+    - dotenv: `^16.3.1` â†’ `^17.2.3` (latest)
+    - helmet: `^7.1.0` â†’ `^7.2.0`
+    - jsonwebtoken: `^9.0.2` â†’ `^9.0.3`
+    - pg: `^8.17.1` â†’ `^8.18.0`
+    - swagger-ui-express: `^5.0.0` â†’ `^5.0.1`
+    - morgan: `^1.10.0` â†’ `^1.10.1`
+  - Updated client dependencies:
+    - vue-router: `^4.2.5` â†’ `^4.6.4` (latest 4.x)
+
+### Fixed
+- **Cloudflare Error Handling** (PR #252)
+  - Extended retry logic to cover all primary Cloudflare error codes (520, 521, 522, 523)
+  - Added comprehensive test coverage for error scenarios
+- **Rating Normalization Priority** (PR #134)
+  - Updated rating priority chain: OMDb (MPAA) â†’ TMDB â†’ Normalized Age â†’ NR
+  - Ensures most reliable MPAA ratings are preferred over generic age ratings
+- **Dependency Hygiene** (PR #297)
+  - Updated 12+ packages including `axios`, `express`, `pg`, `discord.js`
+  - Resolved 4 moderate security vulnerabilities via overrides (undici, glob)
 ## [0.41.0-alpha] - 2026-02-01
 
 ### Added
+
 - **Test Coverage Improvements** (Fixes #227)
   - Added integration tests for Sonarr season mapping with `include_specials` flag
   - Added coverage reporting scripts for server and client (`npm run test:coverage`)
@@ -232,6 +251,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Event detection functionality is now handled exclusively through PolicyEngine presets (migrated in v0.37.0)
 
 ### Fixed
+
 - Classification signal breakdown data path in backend metadata storage (#236)
 - Shebang preservation in copyright header script (#237)
 - Migration file path resolution in test (#230)
