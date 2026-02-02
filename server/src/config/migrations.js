@@ -101,9 +101,33 @@ function compareMigrations(a, b) {
  */
 class MigrationRunner {
     constructor() {
-        // Use path.resolve() to always get absolute path, with optional env var override
-        this.migrationsDir = process.env.MIGRATIONS_DIR || path.resolve(__dirname, '../../../database/migrations');
-        this.schemaFile = process.env.SCHEMA_FILE || path.resolve(__dirname, '../../../database/schema/current.sql');
+        // Resolve paths intelligently for both Local development and Docker environments
+        // Local:  server/src/config/migrations.js -> ../../../database/migrations
+        // Docker: /app/src/config/migrations.js   -> ../../database/migrations
+        
+        const localMigrationsPath = path.resolve(__dirname, '../../../database/migrations');
+        const dockerMigrationsPath = path.resolve(__dirname, '../../database/migrations');
+        
+        const localSchemaPath = path.resolve(__dirname, '../../../database/schema/current.sql');
+        const dockerSchemaPath = path.resolve(__dirname, '../../database/schema/current.sql');
+
+        // Determine correct migrations directory
+        if (process.env.MIGRATIONS_DIR) {
+            this.migrationsDir = process.env.MIGRATIONS_DIR;
+        } else if (fs.existsSync(dockerMigrationsPath)) {
+            this.migrationsDir = dockerMigrationsPath;
+        } else {
+            this.migrationsDir = localMigrationsPath;
+        }
+
+        // Determine correct schema file
+        if (process.env.SCHEMA_FILE) {
+            this.schemaFile = process.env.SCHEMA_FILE;
+        } else if (fs.existsSync(dockerSchemaPath)) {
+            this.schemaFile = dockerSchemaPath;
+        } else {
+            this.schemaFile = localSchemaPath;
+        }
         
         // Log the resolved paths for debugging
         logger.debug('[Migrations] Migrations directory: ' + this.migrationsDir);

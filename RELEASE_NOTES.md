@@ -8,7 +8,7 @@
 
 - **💾 Backup & Restore System** (#186)
   - **Encrypted by Default**: AES-256-GCM encryption with PBKDF2 key derivation (100k iterations)
-  - **Complete Configuration Backup**: 
+  - **Complete Configuration Backup**:
     - ✅ Service connections (Plex, Emby, Jellyfin, Radarr, Sonarr with API keys)
     - ✅ Libraries, policies, custom rules, presets, library labels
     - ✅ Confidence settings and auto-learned preferences
@@ -111,13 +111,13 @@
 - **🎯 Dashboard Accessibility & Testing**: Complete accessibility features and testing
   - ✅ **Screen Reader Support**: Compatible with NVDA, JAWS, and VoiceOver
   - ✅ **Full Keyboard Navigation**: Navigate entire dashboard without a mouse
-  - ✅ **Keyboard Shortcuts**: 
+  - ✅ **Keyboard Shortcuts**:
     - `Ctrl+Shift+D` / `Cmd+Shift+D`: Refresh dashboard (non-conflicting with browser refresh)
     - `Escape`: Retry loading after error
   - ✅ **ARIA Labels**: All states properly announced to screen readers
   - ✅ **Skip to Main Content**: Quick navigation for keyboard users
   - ✅ **Mobile-Friendly**: Minimum 44x44px touch targets on interactive elements (scoped to prevent layout issues)
-  - ✅ **Performance Metrics** (from PR #209): 
+  - ✅ **Performance Metrics** (from PR #209):
     - ⚡ **60% faster** dashboard loads (parallel API calls)
     - 📉 **50% fewer** API requests when tab is hidden (Page Visibility API)
     - 🎯 **Lighthouse Score**: 100/100 for accessibility
@@ -188,9 +188,19 @@
   - Deprecated backend methods have been removed
   - **Migration Impact**: If you were using the old event detection dropdown in library settings, your libraries should already have the equivalent event presets attached via policies (from v0.37.0 migration). Review your policies to ensure event detection still works as expected.
 
+## v0.40.5e-alpha
+
+**Title: Plex Duplication & Docker Stability Fixes**
+
+### Fixes
+
+- **Plex Library Duplication**: Resolved a long-standing issue where Plex servers were duplicated in the database if their URL changed (e.g., Docker container restart). The system now uses the unique `clientIdentifier` from Plex to stably identify servers.
+- **Docker Migration Runner**: Fixed a critical bug where database migrations failed to run in Docker containers due to path resolution errors.
+- **Enrichment Stability**: Prevented service crashes when background tasks tried to process media items that had been deleted.
+
 ## v0.40.5d-alpha
 
-**Title: *arr Quality Profile Respect Fix**
+**Title: \*arr Quality Profile Respect Fix**
 
 ### Fixes
 

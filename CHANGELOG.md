@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - **Test Coverage Improvements** (Fixes #227)
   - Added integration tests for Sonarr season mapping with `include_specials` flag
   - Added coverage reporting scripts for server and client (`npm run test:coverage`)
@@ -123,7 +124,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive backend integration tests for all profile operations
   - **Full backward compatibility**: Existing admin and user accounts can immediately use the profile page to update their credentials
 
-
 ### Changed
 
 - **Dashboard UX Improvements**: Major polish and efficiency upgrades
@@ -138,6 +138,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Plex Server Duplication**: Fixed duplicated `media_server` entries by using stable `clientIdentifier` instead of URL for uniqueness.
+- **Migration Path Resolution**: Critical fix for migration runner failure in Docker environments due to incorrect path resolution.
+- **Enrichment Retry Foreign Key Handling**: Fixed service crash when attempting to queue retries for items that were deleted during processing (FK violation).
 - **Migration Runner Path Resolution in Docker** (Fixes #259)
   - Migration runner now uses `path.resolve()` instead of `path.join()` for absolute paths
   - Added `MIGRATIONS_DIR` and `SCHEMA_FILE` environment variable support for custom paths
@@ -152,6 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added comprehensive integration tests for OAuth flow
 
 ### Improved
+
 - **Sync Error Handling** (Fixes #226)
   - All sync endpoints now return HTTP 404 with `{ error: "Library not found" }` for missing libraries
   - Reduced log noise: missing libraries logged as warnings instead of errors
@@ -160,6 +164,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added comprehensive integration tests for 404 handling
 
 ### Removed
+
 - **Legacy Event Detection Tests** (Fixes #227)
   - Removed deprecated event detection integration tests
   - Removed `event-detection-removal.test.js` (event detection retired in v0.41.0)

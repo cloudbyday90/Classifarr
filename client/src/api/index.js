@@ -133,8 +133,8 @@ export default {
   findPlexConnection(server) {
     return apiClient.post('/plex/find-connection', { server })
   },
-  savePlexServer(name, url, token) {
-    return apiClient.post('/plex/save-server', { name, url, token })
+  savePlexServer(name, url, token, clientIdentifier) {
+    return apiClient.post('/plex/save-server', { name, url, token, clientIdentifier })
   },
 
   // Jellyfin Auth

@@ -872,7 +872,7 @@ const saveSelectedConnection = async (conn) => {
     const connectionUrl = conn.uri
     
     // Save the server
-    await api.savePlexServer(server.name, connectionUrl, server.accessToken)
+    await api.savePlexServer(server.name, connectionUrl, server.accessToken, server.clientIdentifier)
     
     // Update local config
     config.value.name = server.name
@@ -1024,7 +1024,7 @@ const confirmPlexServer = async () => {
     }
     
     // Save the server
-    await api.savePlexServer(server.name, connectionUrl, server.accessToken)
+    await api.savePlexServer(server.name, connectionUrl, server.accessToken, server.clientIdentifier)
     
     // Update local config
     config.value.name = server.name
