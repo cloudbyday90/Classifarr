@@ -50,7 +50,7 @@ npm --prefix server run test:integration
 ```
 
 ## Phase 7: Rollout
-- [ ] Run migrations locally
+- [x] Run migrations locally
 - [x] Update `database/schema/current.sql`
 - [x] Update docs/README with new configuration
 - [x] Update `CHANGELOG.md` with technical changes (target version: v0.41.2-alpha)
