@@ -19,10 +19,10 @@ const FILE_PATTERNS = [
   'server/**/*.js',
   'client/src/**/*.{js,vue}',
   'database/migrations/**/*.sql',
-  'scripts/**/*.js',
-  '!**/node_modules/**',
-  '!**/dist/**'
+  'scripts/**/*.js'
 ];
+
+const IGNORE_PATTERNS = ['**/node_modules/**', '**/dist/**', '**/build/**'];
 
 const PATTERNS = {
   js: /Copyright \(C\) (\d{4}|\d{4}-\d{4}) (cloudbyday90|Classifarr Contributors)/g,
@@ -47,7 +47,9 @@ function updateFile(filePath) {
 function main() {
   console.log(`\n🔄 Updating copyright headers to ${NEW_PATTERN}...\n`);
   
-  const files = FILE_PATTERNS.flatMap(pattern => glob.sync(pattern));
+  const files = FILE_PATTERNS.flatMap(pattern =>
+    glob.sync(pattern, { nodir: true, ignore: IGNORE_PATTERNS })
+  );
   let updated = 0;
   
   files.forEach(file => {

@@ -19,11 +19,10 @@ const FILE_PATTERNS = [
   'server/**/*.js',
   'client/src/**/*.{js,vue}',
   'database/migrations/**/*.sql',
-  'scripts/**/*.js',
-  '!**/node_modules/**',
-  '!**/dist/**',
-  '!**/build/**'
+  'scripts/**/*.js'
 ];
+
+const IGNORE_PATTERNS = ['**/node_modules/**', '**/dist/**', '**/build/**'];
 
 function checkFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf8');
@@ -46,7 +45,9 @@ function checkFile(filePath) {
 }
 
 function main() {
-  const files = FILE_PATTERNS.flatMap(pattern => glob.sync(pattern));
+  const files = FILE_PATTERNS.flatMap(pattern =>
+    glob.sync(pattern, { nodir: true, ignore: IGNORE_PATTERNS })
+  );
   const errors = [];
   
   files.forEach(file => {
