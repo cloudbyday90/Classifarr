@@ -1433,11 +1433,22 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const libraryId = isAwaitingDecision ? null : (result.library?.id || null);
     const libraryName = isAwaitingDecision ? null : (result.library?.name || null);
 
+    const ragContext = result.ragContext || result.signalContext?.ragContext || null;
+    const ragTopMatch = ragContext?.similarItems?.[0] || null;
+    const ragDetails = ragTopMatch ? {
+      combined_similarity: ragTopMatch.similarity ?? null,
+      text_similarity: ragTopMatch.textSimilarity ?? null,
+      image_similarity: ragTopMatch.imageSimilarity ?? null,
+      text_weight: ragTopMatch.textWeight ?? null,
+      image_weight: ragTopMatch.imageWeight ?? null
+    } : null;
+
     // Build classification_details for metadata
     const classificationDetails = {
       policy_name: result.policyResult?.library?.policy_name || null,
       scores: result.policyResult?.scores || { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
       weights: result.policyResult?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+      rag_details: ragDetails,
       processing_time_ms: startTime ? Date.now() - startTime : null
     };
 

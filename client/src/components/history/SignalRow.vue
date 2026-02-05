@@ -11,9 +11,12 @@
     class="flex items-center justify-between py-1"
     :class="score > 0 ? 'text-white' : 'opacity-40 text-gray-500'"
   >
-    <div class="flex items-center gap-2">
+    <div class="flex items-start gap-2">
       <span>{{ icon }}</span>
-      <span class="w-16">{{ label }}</span>
+      <div class="flex flex-col">
+        <span class="w-16">{{ label }}</span>
+        <span v-if="detail" class="text-xs text-gray-400 leading-tight">{{ detail }}</span>
+      </div>
     </div>
     <div class="flex items-center gap-3">
       <template v-if="score > 0">
@@ -41,7 +44,8 @@ defineProps({
   icon: { type: String, required: true },
   label: { type: String, required: true },
   score: { type: Number, default: 0 },
-  weight: { type: Number, default: 0 }
+  weight: { type: Number, default: 0 },
+  detail: { type: String, default: '' }
 })
 
 const getBarColor = (score) => {

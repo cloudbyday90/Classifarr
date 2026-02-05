@@ -193,7 +193,7 @@
               <SignalRow icon="⚙️" label="Preset"  :score="signalScores.preset"  :weight="signalWeights.preset" />
               <SignalRow icon="📊" label="Profile" :score="signalScores.profile" :weight="signalWeights.profile" />
               <SignalRow icon="📚" label="Pattern" :score="signalScores.pattern" :weight="signalWeights.pattern" />
-              <SignalRow icon="🧠" label="RAG"     :score="signalScores.rag"     :weight="signalWeights.rag" />
+              <SignalRow icon="🧠" label="RAG"     :score="signalScores.rag"     :weight="signalWeights.rag" :detail="ragSignalDetail" />
               <SignalRow icon="📖" label="History" :score="signalScores.history" :weight="signalWeights.history" />
             </div>
             <div class="mt-3 pt-3 border-t border-gray-700 flex justify-between">
@@ -399,6 +399,27 @@ const signalWeights = computed(() => {
   return parsedMetadata.value?.classification_details?.weights || {
     preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10
   }
+})
+
+const ragSignalDetail = computed(() => {
+  const details = parsedMetadata.value?.classification_details?.rag_details
+  if (!details) return ''
+  const parts = []
+  if (Number.isFinite(details.combined_similarity)) {
+    parts.push(`Combined ${Math.round(details.combined_similarity * 100)}%`)
+  }
+  if (Number.isFinite(details.text_similarity)) {
+    parts.push(`Text ${Math.round(details.text_similarity * 100)}%`)
+  }
+  if (Number.isFinite(details.image_similarity)) {
+    parts.push(`Image ${Math.round(details.image_similarity * 100)}%`)
+  }
+  if (Number.isFinite(details.text_weight) || Number.isFinite(details.image_weight)) {
+    const textWeight = Number.isFinite(details.text_weight) ? details.text_weight : 0
+    const imageWeight = Number.isFinite(details.image_weight) ? details.image_weight : 0
+    parts.push(`W ${textWeight.toFixed(2)}/${imageWeight.toFixed(2)}`)
+  }
+  return parts.join(' • ')
 })
 
 // Check if signal breakdown should be shown (only for policy engine methods with actual scores)
