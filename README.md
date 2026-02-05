@@ -1,168 +1,117 @@
-# Classifarr
+﻿# Classifarr
 
 **Policy-Driven Media Classification for the *arr Ecosystem**
 
-Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr/Seer to the correct Radarr/Sonarr library. **v0.41.0-alpha** introduces the revolutionary Policy Engine—a transparent, configurable system that combines 168 content presets, auto-discovered patterns, semantic similarity (RAG), and learning from your decisions. Now featuring real-time health monitoring with trend indicators, comprehensive error handling, and enhanced system observability. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
+Classifarr is an intelligent media classification platform that automatically routes incoming requests from Overseerr/Jellyseerr/Seer to the correct Radarr/Sonarr library. **v0.41.0-alpha** introduces the revolutionary Policy Engineâ€”a transparent, configurable system that combines 168 content presets, auto-discovered patterns, semantic similarity (RAG), and learning from your decisions. Now featuring real-time health monitoring with trend indicators, comprehensive error handling, and enhanced system observability. Everything runs in a single self-contained Docker container with embedded PostgreSQL.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
 ![Version](https://img.shields.io/badge/version-v0.41.0--alpha-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 ![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)
 
-## ✨ Features
+## Features
 
-### 🎯 v0.37.0 Policy Engine
-- **⚡ AI Skip Logic** - 70-80% faster classifications, skips AI calls when confident (≥85%)
-- **📋 168 Content Presets** - Pre-built definitions for genres, ratings, themes, studios, eras, and more
-- **🎨 Visual Policy Builder** - Drag-and-drop preset selection with weight adjustments
-- **📊 Policy Statistics Dashboard** - Real-time accuracy tracking and trend analysis
-- **💡 AI-Powered Tuning Suggestions** - System suggests policy improvements based on feedback
-- **🔄 Feedback Learning Loop** - Automatically discovers patterns from user decisions
-- **⚙️ Configurable Scoring Weights** - Adjust preset, pattern, RAG, and history weights per policy
-- **🎭 Transparent Classification** - See exactly why each item was classified where it was
-- **💰 Cost Reduction** - 70-80% reduction in AI API costs with intelligent skip logic
+Classifarr focuses on fast, explainable media classification with deep control over policy and AI usage.
 
-### 🏥 System Health & Monitoring (v0.41.0-alpha)
-- **📊 Real-Time Service Health** - Monitor all services (Media Server, AI providers, TMDB, Webhook, etc.)
-- **📈 Trend Indicators** - Visual arrows showing service health trends (↗️ improving, ↘️ degrading, → stable)
-- **⏱️ Last Successful Check** - Track when each service last responded successfully
-- **🎯 Service Icons** - Quick visual identification of each service type
-- **⚡ Latency Tracking** - Response time monitoring with color-coded status (green < 1s, yellow < 3s, red ≥3s)
-- **🔄 Auto-Refresh** - Health status updates every 30 seconds automatically
-- **🔢 Instance Details** - Monitor multi-instance setups (Radarr/Sonarr)
-- **🔍 Filter & Search** - Find specific services quickly
-- **💀 Loading Skeletons** - Smooth loading experience during health checks
-- **📴 Offline Support** - View cached health data when offline
+- Policy-driven classification engine with 168 presets, patterns, and configurable weights
+- Transparent scoring breakdowns and classification explanations
+- AI skip logic to reduce API usage and cost
+- RAG semantic search using text embeddings for history-aware decisions
+- Optional image embeddings for poster similarity
+- Multi-provider AI support (OpenAI, Gemini, OpenRouter, Ollama) with budgets and rate controls
+- Real-time system health monitoring with trends and latency
+- Robust error handling with consistent API responses
+- Secure authentication with API keys and permissioned access
+- Media server integration for Plex/Emby/Jellyfin plus Radarr/Sonarr routing
+- Embedded PostgreSQL with pgvector and automated migrations
+- Discord notifications, webhooks, and activity dashboards
+- Single-container deployment with Docker Compose
 
-### 🛡️ Enhanced Error Handling (v0.41.0-alpha)
-- **🎯 Consistent 404 Responses** - Structured error messages for all "not found" scenarios
-- **⚛️ Atomic Sync Operations** - Rollback on failure to prevent partial states
-- **📋 Structured Errors** - Standard error format with codes, messages, and details
-- **🔇 Reduced Log Noise** - Only log actionable errors, not expected conditions
-- **🔍 Better Troubleshooting** - Clear error messages with suggested fixes
-
-### 🔒 Service Connection Locking (v0.40.6-alpha)
-- **🔐 Media Server Lockdown** - Prevent accidental disconnection of active media servers
-- **🛡️ Instance Protection** - Lock media server instances (Radarr/Sonarr) when in use
-- **💓 Heartbeat Monitoring** - Track service health and connection status
-- **🔓 Provider Lock Status** - Visual indicators for locked connections
-
-### 🔍 Classification Transparency (v0.40.0-alpha)
-- **🎯 Signal Breakdown** - See which signals contributed to the classification decision
-- **⚙️ 5-Engine Analysis** - View scores from Preset, Pattern, RAG, History, and AI engines
-- **⏱️ Processing Time** - Track how long each classification took
-- **📊 Visual Scoring** - Color-coded confidence indicators
-- **⚖️ Weight Multipliers** - See how policy weights affected final scores
-- **📌 Source Indicators** - Know whether decision came from policy formula or AI validation
-
-### ⚡ Dashboard Performance (v0.40.0-alpha)
-- **💾 SWR Caching** - Smart caching with stale-while-revalidate pattern
-- **🔄 Parallel API Calls** - Fetch multiple resources simultaneously
-- **🔗 Cross-Tab Sync** - Keep data synchronized across browser tabs
-- **📴 Offline Support** - View cached data when server is unreachable
-- **🔁 Auto-Retry** - Exponential backoff for failed requests
-- **📊 Smart Polling** - Efficient background updates without excessive requests
-- **💀 Loading States** - Skeleton screens and loading indicators
-
-### 🔐 Core Features
-- **Secure Authentication** - JWT-based login with first-run setup wizard
-- **API Key Management** - Create, view, rotate, and revoke API keys with permission levels
-- **Multi-Server Support** - Plex, Emby, and Jellyfin with OAuth flows
-- **Multi-provider AI** - OpenAI, Gemini, OpenRouter, Ollama with budget controls
-- **RAG Semantic Search** - Learns from history using Reciprocal Rank Fusion algorithm
-- **Pattern Discovery** - Auto-detect studio, keyword, and genre associations
-- **Embedded PostgreSQL** - All data in a single volume, auto-initialized
-- **Health Monitoring** - Real-time service status with trend indicators and latency tracking
-- **Discord Bot** - Real-time notifications with interactive buttons
-- **Webhook Integration** - Automatic processing of Overseerr requests
-- **Comprehensive API** - Full REST API with consistent error handling and documentation
-- **🐳 Single Container** - Just `docker compose up -d`
-
-## 🏗️ Architecture
+## ðŸ—ï¸ Architecture
 
 v0.37.0 introduces the **Policy-Driven Classification Engine**:
 
 ```
-┌─────────────┐
-│  Overseerr  │
-│   /Seer     │
-└──────┬──────┘
-       │ Webhook
-       ▼
-┌──────────────────────────────────────────────────────────┐
-│          CLASSIFARR (Single Container)                   │
-│                                                          │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │          Policy-Driven Classification Engine       │ │
-│  │                                                    │ │
-│  │  Step 1: Authoritative Signals (100% confidence)  │ │
-│  │    ✓ Already in media server                      │ │
-│  │    ✓ User manually corrected                      │ │
-│  │    ✓ Exact TMDB match from history                │ │
-│  │                                                    │ │
-│  │  Step 2: Policy Evaluation (Formula-based)        │ │
-│  │    ┌────────────────────────────────────────────┐ │ │
-│  │    │ Score = (Preset × 0.40) +                  │ │ │
-│  │    │         (Pattern × 0.25) +                 │ │ │
-│  │    │         (RAG × 0.20) +                     │ │ │
-│  │    │         (History × 0.15)                   │ │ │
-│  │    │                                            │ │ │
-│  │    │ • 168 Content Presets                      │ │ │
-│  │    │ • Auto-Discovered Patterns                 │ │ │
-│  │    │ • Semantic Similarity (RAG)                │ │ │
-│  │    │ • Historical Accuracy                      │ │ │
-│  │    └────────────────────────────────────────────┘ │ │
-│  │                                                    │ │
-│  │  Step 3: Action Determination                      │ │
-│  │    ≥85%: Auto-classify                             │ │
-│  │    60-84%: Prompt for confirmation                 │ │
-│  │    40-59%: Prompt to select from top 3             │ │
-│  │    <40%: Manual classification required            │ │
-│  │                                                    │ │
-│  │  Step 4: AI Validation (Optional, 60-90% scores)   │ │
-│  │    AI confirms or adjusts formula suggestion       │ │
-│  │                                                    │ │
-│  │  Step 5: Feedback & Learning                       │ │
-│  │    • Record decision to feedback log               │ │
-│  │    • Discover new patterns                         │ │
-│  │    • Generate tuning suggestions                   │ │
-│  │    • Update accuracy statistics                    │ │
-│  └────────────────────────────────────────────────────┘ │
-│                                                          │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │   Media Server Sync (Plex/Emby/Jellyfin)          │ │
-│  └────────────────────────────────────────────────────┘ │
-│                                                          │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │   Embedded PostgreSQL                              │ │
-│  │   • Policies & Presets                             │ │
-│  │   • Discovered Patterns                            │ │
-│  │   • Feedback & Learning Stats                      │ │
-│  │   • Classification History                         │ │
-│  └────────────────────────────────────────────────────┘ │
-└───────────────┬──────────────────────────────────────────┘
-                │ Routes to
-         ┌──────┴──────┐
-         ▼             ▼
-  ┌───────────┐  ┌───────────┐
-  │  Radarr   │  │  Sonarr   │
-  └───────────┘  └───────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Overseerr  â”‚
+â”‚   /Seer     â”‚
+â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
+       â”‚ Webhook
+       â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚          CLASSIFARR (Single Container)                   â”‚
+â”‚                                                          â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚
+â”‚  â”‚          Policy-Driven Classification Engine       â”‚ â”‚
+â”‚  â”‚                                                    â”‚ â”‚
+â”‚  â”‚  Step 1: Authoritative Signals (100% confidence)  â”‚ â”‚
+â”‚  â”‚    âœ“ Already in media server                      â”‚ â”‚
+â”‚  â”‚    âœ“ User manually corrected                      â”‚ â”‚
+â”‚  â”‚    âœ“ Exact TMDB match from history                â”‚ â”‚
+â”‚  â”‚                                                    â”‚ â”‚
+â”‚  â”‚  Step 2: Policy Evaluation (Formula-based)        â”‚ â”‚
+â”‚  â”‚    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚ â”‚
+â”‚  â”‚    â”‚ Score = (Preset Ã— 0.40) +                  â”‚ â”‚ â”‚
+â”‚  â”‚    â”‚         (Pattern Ã— 0.25) +                 â”‚ â”‚ â”‚
+â”‚  â”‚    â”‚         (RAG Ã— 0.20) +                     â”‚ â”‚ â”‚
+â”‚  â”‚    â”‚         (History Ã— 0.15)                   â”‚ â”‚ â”‚
+â”‚  â”‚    â”‚                                            â”‚ â”‚ â”‚
+â”‚  â”‚    â”‚ â€¢ 168 Content Presets                      â”‚ â”‚ â”‚
+â”‚  â”‚    â”‚ â€¢ Auto-Discovered Patterns                 â”‚ â”‚ â”‚
+â”‚  â”‚    â”‚ â€¢ Semantic Similarity (RAG)                â”‚ â”‚ â”‚
+â”‚  â”‚    â”‚ â€¢ Historical Accuracy                      â”‚ â”‚ â”‚
+â”‚  â”‚    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜ â”‚ â”‚
+â”‚  â”‚                                                    â”‚ â”‚
+â”‚  â”‚  Step 3: Action Determination                      â”‚ â”‚
+â”‚  â”‚    â‰¥85%: Auto-classify                             â”‚ â”‚
+â”‚  â”‚    60-84%: Prompt for confirmation                 â”‚ â”‚
+â”‚  â”‚    40-59%: Prompt to select from top 3             â”‚ â”‚
+â”‚  â”‚    <40%: Manual classification required            â”‚ â”‚
+â”‚  â”‚                                                    â”‚ â”‚
+â”‚  â”‚  Step 4: AI Validation (Optional, 60-90% scores)   â”‚ â”‚
+â”‚  â”‚    AI confirms or adjusts formula suggestion       â”‚ â”‚
+â”‚  â”‚                                                    â”‚ â”‚
+â”‚  â”‚  Step 5: Feedback & Learning                       â”‚ â”‚
+â”‚  â”‚    â€¢ Record decision to feedback log               â”‚ â”‚
+â”‚  â”‚    â€¢ Discover new patterns                         â”‚ â”‚
+â”‚  â”‚    â€¢ Generate tuning suggestions                   â”‚ â”‚
+â”‚  â”‚    â€¢ Update accuracy statistics                    â”‚ â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜ â”‚
+â”‚                                                          â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚
+â”‚  â”‚   Media Server Sync (Plex/Emby/Jellyfin)          â”‚ â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜ â”‚
+â”‚                                                          â”‚
+â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚
+â”‚  â”‚   Embedded PostgreSQL                              â”‚ â”‚
+â”‚  â”‚   â€¢ Policies & Presets                             â”‚ â”‚
+â”‚  â”‚   â€¢ Discovered Patterns                            â”‚ â”‚
+â”‚  â”‚   â€¢ Feedback & Learning Stats                      â”‚ â”‚
+â”‚  â”‚   â€¢ Classification History                         â”‚ â”‚
+â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜ â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                â”‚ Routes to
+         â”Œâ”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”
+         â–¼             â–¼
+  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+  â”‚  Radarr   â”‚  â”‚  Sonarr   â”‚
+  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### Why the Policy Engine?
 
-**Old way (v0.36.x):** AI decides → You hope it's right → Fix mistakes later
+**Old way (v0.36.x):** AI decides â†’ You hope it's right â†’ Fix mistakes later
 
-**New way (v0.37.0):** Formula calculates → AI validates → System learns → You see exactly why
+**New way (v0.37.0):** Formula calculates â†’ AI validates â†’ System learns â†’ You see exactly why
 
 **Benefits:**
-- 📊 **Transparent** - See full breakdown of why items were classified
-- ⚙️ **Configurable** - Adjust weights and thresholds per library
-- 💰 **Efficient** - 60-85% reduction in AI API calls
-- 🎯 **Accurate** - Learns from every decision you make
-- 🔍 **Explainable** - Know what signals matched and why
+- ðŸ“Š **Transparent** - See full breakdown of why items were classified
+- âš™ï¸ **Configurable** - Adjust weights and thresholds per library
+- ðŸ’° **Efficient** - 60-85% reduction in AI API calls
+- ðŸŽ¯ **Accurate** - Learns from every decision you make
+- ðŸ” **Explainable** - Know what signals matched and why
 
-## 🚀 Quick Start
+## ðŸš€ Quick Start
 
 ### Prerequisites for Local Development
 
@@ -192,6 +141,8 @@ Our test runners and build tools leverage Node.js 24+ features like `--no-experi
 - OMDb API Key ([Get one here](https://www.omdbapi.com/apikey.aspx)) - enhances metadata
 - Plex/Emby/Jellyfin media server
 - Ollama instance OR cloud AI API key (OpenAI, Gemini, OpenRouter)
+- Optional: Image Embedding Service (for poster embeddings)  
+  [classifarr-image-embedding-service](https://github.com/cloudbyday90/classifarr-image-embedding-service)
 - Discord Bot Token (optional, for notifications)
 
 ### Installation
@@ -296,7 +247,7 @@ Open `http://localhost:21324`
 5. **Configure AI Provider** (recommended) - Choose Ollama, OpenAI, Gemini, or OpenRouter
 6. **Configure Discord** (optional) - For notifications and corrections
 
-## 🔐 API Authentication
+## ðŸ” API Authentication
 
 Classifarr supports two authentication methods for secure access:
 
@@ -308,7 +259,7 @@ For third-party integrations, automation, and external tools.
 
 #### Creating an API Key
 
-1. Go to **Settings** → **Security**
+1. Go to **Settings** â†’ **Security**
 2. Click **Create New API Key**
 3. Set a descriptive name and permission level:
    - **Read-Write**: Full access to all endpoints
@@ -343,28 +294,28 @@ curl -X POST http://localhost:21324/api/libraries/1/sync \
 - **Rotate keys periodically** - Revoke old keys and create new ones
 - **Revoke unused keys** - Delete keys that are no longer in use
 - **Never commit keys** to version control
-- **Monitor usage** - Check "Last Used" timestamps in Settings → Security
+- **Monitor usage** - Check "Last Used" timestamps in Settings â†’ Security
 
 #### Default API Key
 
 On first startup, Classifarr auto-generates a read-write API key named "Default API Key". The full key is displayed in the server logs:
 
 ```
-✓ Auto-generated default API key
+âœ“ Auto-generated default API key
   Prefix: clf_abc1...
   Full key: clf_abc123xyz...
-  You can view this key again in Settings → Security.
+  You can view this key again in Settings â†’ Security.
 ```
 
-You can view this key again later in **Settings** → **Security** by clicking the eye icon.
+You can view this key again later in **Settings** â†’ **Security** by clicking the eye icon.
 
-## 🏥 System Health Monitoring
+## ðŸ¥ System Health Monitoring
 
 Classifarr includes comprehensive real-time health monitoring for all integrated services, accessible via the UI and API.
 
 ### Health Dashboard
 
-Navigate to **System** → **Health** to view:
+Navigate to **System** â†’ **Health** to view:
 - **Service Status** - Current operational state of each service
 - **Trend Indicators** - Visual arrows showing health trends over time
 - **Last Successful Check** - When the service last responded successfully
@@ -375,18 +326,18 @@ Navigate to **System** → **Health** to view:
 
 | Status | Icon | Description |
 |--------|------|-------------|
-| `healthy` | 🟢 | Service is operational and responding normally |
-| `degraded` | 🟡 | Service is responding but with elevated latency or partial failures |
-| `unhealthy` | 🔴 | Service is not responding or returning errors |
-| `unknown` | ⚪ | Service has not been checked yet or status is indeterminate |
+| `healthy` | ðŸŸ¢ | Service is operational and responding normally |
+| `degraded` | ðŸŸ¡ | Service is responding but with elevated latency or partial failures |
+| `unhealthy` | ðŸ”´ | Service is not responding or returning errors |
+| `unknown` | âšª | Service has not been checked yet or status is indeterminate |
 
 ### Trend Indicators
 
 | Indicator | Meaning |
 |-----------|---------|
-| ↗️ | Service health is improving (consecutive successful checks) |
-| ↘️ | Service health is degrading (recent failures or increased latency) |
-| → | Service health is stable (consistent performance) |
+| â†—ï¸ | Service health is improving (consecutive successful checks) |
+| â†˜ï¸ | Service health is degrading (recent failures or increased latency) |
+| â†’ | Service health is stable (consistent performance) |
 
 ### Auto-Refresh
 
@@ -397,7 +348,7 @@ The health dashboard automatically refreshes every 30 seconds to provide real-ti
 For automated monitoring and integrations, see the [System Health API Documentation](docs/api/system-health.md).
 
 
-## 🎯 How Classification Works (v0.37.0)
+## ðŸŽ¯ How Classification Works (v0.37.0)
 
 The Policy Engine uses a **formula-first, AI-validates** approach:
 
@@ -414,10 +365,10 @@ Items with these signals skip all other evaluation:
 Each library has a policy that evaluates items using four weighted signals:
 
 ```
-Final Score = (Preset Score × 0.40) + 
-              (Pattern Score × 0.25) + 
-              (RAG Score × 0.20) + 
-              (History Score × 0.15)
+Final Score = (Preset Score Ã— 0.40) + 
+              (Pattern Score Ã— 0.25) + 
+              (RAG Score Ã— 0.20) + 
+              (History Score Ã— 0.15)
 ```
 
 #### Preset Score (40% weight)
@@ -432,13 +383,13 @@ Matches against 168 pre-built content definitions:
 
 Each preset checks multiple signals (certifications, genres, keywords, studios, years, etc.)
 
-**Example:** A movie with PG rating + Animation genre + "disney" keyword → Matches `family_friendly` preset (95%)
+**Example:** A movie with PG rating + Animation genre + "disney" keyword â†’ Matches `family_friendly` preset (95%)
 
 #### Pattern Score (25% weight)
 Auto-discovered patterns from your feedback:
-- **Studio Patterns**: "A24 films → Indie library" (85% confidence)
-- **Keyword Patterns**: "christmas" in title → Holiday library (92% confidence)
-- **Genre Patterns**: "Documentary + Crime" → True Crime library (78% confidence)
+- **Studio Patterns**: "A24 films â†’ Indie library" (85% confidence)
+- **Keyword Patterns**: "christmas" in title â†’ Holiday library (92% confidence)
+- **Genre Patterns**: "Documentary + Crime" â†’ True Crime library (78% confidence)
 
 Patterns learn from corrections:
 - Correct prediction: +5% confidence (max 95%)
@@ -452,7 +403,7 @@ Semantic similarity to previously classified items:
 - Higher similarity = higher confidence
 - Requires 50+ embeddings to activate
 
-**Example:** "Inception" is similar to "Interstellar" which you classified to "Sci-Fi Movies" → 82% RAG score
+**Example:** "Inception" is similar to "Interstellar" which you classified to "Sci-Fi Movies" â†’ 82% RAG score
 
 #### History Score (15% weight)
 Policy's historical accuracy on similar content:
@@ -466,12 +417,12 @@ Based on the final score:
 
 | Score | Action | AI Call | Behavior |
 |-------|--------|---------|----------|
-| ≥85% | **Auto-Classify** | ❌ Skipped | Immediately routed to library (70-80% faster) |
-| 60-84% | **Prompt Confirm** | ❌ Skipped | "Is this correct?" (Discord/Web) |
-| 40-59% | **Prompt Select** | ✅ Used | AI helps pick from top 3 options |
-| <40% | **Manual** | ✅ Used | AI provides guidance for manual selection |
+| â‰¥85% | **Auto-Classify** | âŒ Skipped | Immediately routed to library (70-80% faster) |
+| 60-84% | **Prompt Confirm** | âŒ Skipped | "Is this correct?" (Discord/Web) |
+| 40-59% | **Prompt Select** | âœ… Used | AI helps pick from top 3 options |
+| <40% | **Manual** | âœ… Used | AI provides guidance for manual selection |
 
-**Performance Benefit:** Most classifications (≥85% confidence) skip AI entirely, reducing latency from 3+ seconds to ~300ms.
+**Performance Benefit:** Most classifications (â‰¥85% confidence) skip AI entirely, reducing latency from 3+ seconds to ~300ms.
 
 ### Step 4: AI Validation (When Needed)
 
@@ -493,13 +444,13 @@ Every decision feeds back into the system:
 
 **Result:** System gets smarter with every classification you review.
 
-## 📋 Policy Builder
+## ðŸ“‹ Policy Builder
 
 Create and configure classification policies through the visual interface:
 
 ### Creating a Policy
 
-1. Go to **Settings** → **Policies**
+1. Go to **Settings** â†’ **Policies**
 2. Click **Create Policy**
 3. Select target library
 4. Choose content presets from categories:
@@ -561,13 +512,13 @@ Create and configure classification policies through the visual interface:
 
 **See full preset reference:** [docs/presets/README.md](docs/presets/README.md)
 
-## 📊 Policy Statistics & Tuning
+## ðŸ“Š Policy Statistics & Tuning
 
 Monitor and optimize your policies with the Stats Dashboard:
 
 ### Stats Dashboard
 
-Access via **Dashboard** → **Policy Stats**
+Access via **Dashboard** â†’ **Policy Stats**
 
 **Overview Cards:**
 - Total classification decisions
@@ -578,7 +529,7 @@ Access via **Dashboard** → **Policy Stats**
 **Per-Policy Stats:**
 - Accuracy rate (7-day, 30-day, all-time)
 - Decision breakdown (auto, prompted, manual, corrections)
-- Trend indicators (📈 improving, 📉 declining, ➡️ stable)
+- Trend indicators (ðŸ“ˆ improving, ðŸ“‰ declining, âž¡ï¸ stable)
 - Click to view detailed breakdown
 
 **Live Activity Feed:**
@@ -596,14 +547,14 @@ Access via **Dashboard** → **Policy Stats**
 
 The system analyzes your feedback and suggests improvements:
 
-Access via **Settings** → **Tuning**
+Access via **Settings** â†’ **Tuning**
 
 **Suggestion Types:**
 1. **Adjust Weight** - "Increase pattern weight by 10%"
 2. **Add Preset** - "Add 'horror_comedy' preset"
 3. **Remove Preset** - "Remove 'family_friendly' (low accuracy)"
 4. **Adjust Threshold** - "Lower auto-classify to 80%"
-5. **Create Pattern** - "Add studio pattern: A24 → Indie"
+5. **Create Pattern** - "Add studio pattern: A24 â†’ Indie"
 6. **Modify Signal** - "Exclude Horror genre from preset"
 
 **For Each Suggestion:**
@@ -618,7 +569,7 @@ Access via **Settings** → **Tuning**
 2. Generates suggestion: "Remove family_friendly preset (underperforming)"
 3. You review: Supporting evidence shows it's matching teen content
 4. You apply suggestion
-5. Accuracy improves from 78% → 85%
+5. Accuracy improves from 78% â†’ 85%
 6. System tracks improvement in stats
 
 ### Pattern Discovery
@@ -627,32 +578,32 @@ Patterns are automatically discovered from your decisions:
 
 **When you classify items:**
 - System tracks studios, keywords, genres, collections
-- Identifies recurring associations (e.g., "Warner Bros → Action Movies" appears 10 times)
+- Identifies recurring associations (e.g., "Warner Bros â†’ Action Movies" appears 10 times)
 - Calculates confidence based on consistency
 - Auto-approves patterns above 85% confidence
 - Prompts you to review patterns 60-84% confidence
 
 **Managing Patterns (v0.37.0+):**
-- Manual pattern management via **Settings** → **Patterns** is **deprecated** and will be removed in a future release
+- Manual pattern management via **Settings** â†’ **Patterns** is **deprecated** and will be removed in a future release
 - Use the **Visual Policy Builder** to control how discovered patterns influence classification (via presets and weighting)
 - Patterns continue to automatically integrate into policy scoring, and low-performing patterns (<30%) are auto-deprecated by the system
 
-## 🔄 Migration from v0.36.x
+## ðŸ”„ Migration from v0.36.x
 
 If you're upgrading from v0.36.x, see the comprehensive migration guide:
 
-**[Migration Guide: v0.36.x → v0.37.0](docs/migration/v037.md)**
+**[Migration Guide: v0.36.x â†’ v0.37.0](docs/migration/v037.md)**
 
 ### Key Changes
 
 1. **Legacy Rules Deprecated**
    - Use Migration Wizard to convert rules to policies
-   - Timeline: v0.37 (tools available) → v0.38 (warnings) → v0.39 (removed)
+   - Timeline: v0.37 (tools available) â†’ v0.38 (warnings) â†’ v0.39 (removed)
 
 2. **Event Detection Deprecated**
    - Replaced by seasonal/genre presets
    - `christmas_holiday`, `halloween`, `sports_doc`, etc.
-   - Timeline: v0.37 (tools available) → v0.38 (warnings) → v0.39 (removed)
+   - Timeline: v0.37 (tools available) â†’ v0.38 (warnings) â†’ v0.39 (removed)
 
 3. **New Policy System**
    - Default policies auto-created for each library
@@ -665,11 +616,11 @@ If you're upgrading from v0.36.x, see the comprehensive migration guide:
 2. **Auto-Migrate** - Bulk migration with top suggestions
 3. **Manual** - Create policies from scratch
 
-## 🔄 Clear & Re-sync
+## ðŸ”„ Clear & Re-sync
 
 When you need a fresh start:
 
-1. Go to **Settings** → **Queue**
+1. Go to **Settings** â†’ **Queue**
 2. Click **Clear & Re-sync All**
 
 This will:
@@ -679,7 +630,7 @@ This will:
 - Resync libraries from your media server
 - Re-queue all items for classification
 
-## ⚙️ Settings Overview
+## âš™ï¸ Settings Overview
 
 ### General
 - Application settings and preferences
@@ -718,9 +669,9 @@ This will:
 
 ### AI Providers
 
-Classifarr supports multiple AI providers for validation and edge cases. Configure in **Settings** → **AI**.
+Classifarr supports multiple AI providers for validation and edge cases. Configure in **Settings** â†’ **AI**.
 
-> **Note:** With the Policy Engine, AI is used primarily for validation (60-90% confidence scores) and edge cases. Most classifications (≥85%) are handled by the formula, reducing AI costs by 60-85%.
+> **Note:** With the Policy Engine, AI is used primarily for validation (60-90% confidence scores) and edge cases. Most classifications (â‰¥85%) are handled by the formula, reducing AI costs by 60-85%.
 
 #### Provider Options
 
@@ -740,16 +691,16 @@ For cloud providers, set monthly spending limits:
 
 ---
 
-### 🏆 Recommended Models by Use Case
+### ðŸ† Recommended Models by Use Case
 
 #### Local (Ollama) - Best by VRAM
 
 | VRAM | Model | Speed | Accuracy | Notes |
 |------|-------|-------|----------|-------|
-| **4GB** | `phi3:3.8b` | ⚡ Fastest | Good | Best for low-end GPUs |
-| **6GB** | `mistral:7b` | ⚡ Very Fast | Good | Popular, well-tested |
-| **8GB** | `llama3.3:8b` | ⚡ Very Fast | High | **Recommended** - latest Llama on Ollama |
-| **8GB** | `qwen2.5:7b` | ⚡ Very Fast | High | Strong multilingual, STEM tasks, 128k context |
+| **4GB** | `phi3:3.8b` | âš¡ Fastest | Good | Best for low-end GPUs |
+| **6GB** | `mistral:7b` | âš¡ Very Fast | Good | Popular, well-tested |
+| **8GB** | `llama3.3:8b` | âš¡ Very Fast | High | **Recommended** - latest Llama on Ollama |
+| **8GB** | `qwen2.5:7b` | âš¡ Very Fast | High | Strong multilingual, STEM tasks, 128k context |
 | **12GB** | `qwen2.5:14b` | Fast | Very High | Excellent reasoning, 128k context |
 | **16GB** | `deepseek-r1:14b` | Fast | Very High | Advanced reasoning, distilled from 671B |
 | **24GB+** | `qwen2.5:32b` | Medium | Highest | Top open source performance |
@@ -764,8 +715,8 @@ For cloud providers, set monthly spending limits:
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `gpt-5-mini` | $0.25 in / $2.00 out | ⚡ Fastest | **Best Value** - cost-effective GPT-5 |
-| `gpt-5-nano` | $0.05 in / $0.40 out | ⚡ Ultra Fast | Ultra low-cost, high-volume tasks |
+| `gpt-5-mini` | $0.25 in / $2.00 out | âš¡ Fastest | **Best Value** - cost-effective GPT-5 |
+| `gpt-5-nano` | $0.05 in / $0.40 out | âš¡ Ultra Fast | Ultra low-cost, high-volume tasks |
 | `gpt-5` | $1.25 in / $10.00 out | Fast | Standard GPT-5, excellent quality |
 | `gpt-5.1` | $1.25 in / $10.00 out | Fast | Enhanced GPT-5, improved reasoning |
 | `gpt-5.2` | $1.75 in / $14.00 out | Fast | **Latest** (Dec 2025) - best accuracy, 400K context |
@@ -780,9 +731,9 @@ For cloud providers, set monthly spending limits:
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `gemini-3-flash` | $0.10 in / $0.40 out | ⚡ Fastest | **Latest** (Dec 2025) - 3x faster, best value |
+| `gemini-3-flash` | $0.10 in / $0.40 out | âš¡ Fastest | **Latest** (Dec 2025) - 3x faster, best value |
 | `gemini-3-pro` | $1.25 in / $5.00 out | Fast | Latest flagship, advanced reasoning |
-| `gemini-1.5-flash` | $0.075 in / $0.30 out | ⚡ Fast | Stable, 1M token context |
+| `gemini-1.5-flash` | $0.075 in / $0.30 out | âš¡ Fast | Stable, 1M token context |
 | `gemini-1.5-pro` | $1.25 in / $5.00 out | Fast | 2M token context, complex analysis |
 
 > **Gemini Recommendation:** `gemini-3-flash` for best performance/cost ratio.
@@ -794,7 +745,7 @@ For cloud providers, set monthly spending limits:
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `claude-haiku-4.5` | $0.80 in / $4.00 out | ⚡ Very Fast | **Best Value** - fastest Claude, high-throughput |
+| `claude-haiku-4.5` | $0.80 in / $4.00 out | âš¡ Very Fast | **Best Value** - fastest Claude, high-throughput |
 | `claude-sonnet-4.5` | $3.00 in / $15.00 out | Fast | **Recommended** - balanced speed/accuracy |
 | `claude-opus-4.5` | $15.00 in / $75.00 out | Medium | Maximum intelligence, complex reasoning |
 
@@ -809,10 +760,10 @@ OpenRouter provides unified access to 200+ models. Best picks for classification
 
 | Model | Cost (per 1M tokens) | Speed | Best For |
 |-------|---------------------|-------|----------|
-| `meta-llama/llama-4-maverick:free` | FREE | ⚡ Fast | **Best Free Option** - MoE, 1M context |
-| `google/gemini-3-flash:free` | FREE (limited) | ⚡ Fastest | Free Gemini 3 latest |
-| `openai/gpt-5-mini` | $0.25 in / $2.00 out | ⚡ Fast | Latest GPT, cost-effective |
-| `google/gemini-3-flash` | $0.10 in / $0.40 out | ⚡ Fastest | Latest Gemini, best value |
+| `meta-llama/llama-4-maverick:free` | FREE | âš¡ Fast | **Best Free Option** - MoE, 1M context |
+| `google/gemini-3-flash:free` | FREE (limited) | âš¡ Fastest | Free Gemini 3 latest |
+| `openai/gpt-5-mini` | $0.25 in / $2.00 out | âš¡ Fast | Latest GPT, cost-effective |
+| `google/gemini-3-flash` | $0.10 in / $0.40 out | âš¡ Fastest | Latest Gemini, best value |
 | `anthropic/claude-sonnet-4.5` | $3.00 in / $15.00 out | Fast | Latest Claude, premium quality |
 | `openai/gpt-5.2` | $1.75 in / $14.00 out | Fast | Latest GPT flagship |
 | `qwen/qwen-2.5-72b-instruct` | $0.35 in / $0.40 out | Fast | Strong multilingual |
@@ -838,7 +789,7 @@ OpenRouter provides unified access to 200+ models. Best picks for classification
 
 ---
 
-### 🔮 Semantic Search (RAG)
+### ðŸ”® Semantic Search (RAG)
 
 RAG (Retrieval-Augmented Generation) is Classifarr's learning system that uses your classification history to improve future decisions. Instead of treating each new request in isolation, Classifarr remembers how you classified similar content and uses that knowledge to make better decisions.
 
@@ -855,36 +806,36 @@ Traditional rule-based systems struggle with edge cases. RAG solves this by lear
 
 ```
 New Request: "Encanto (2021)"
-        │
-        ▼
-┌────────────────────────────────────┐
-│  1. Generate Embedding Vector      │
-│     (title, genres, studio, etc.)  │
-└─────────────┬──────────────────────┘
-              │
-              ▼
-┌────────────────────────────────────┐
-│  2. Search Classification History  │
-│     using pgvector similarity      │
-│                                    │
-│     Found similar:                 │
-│     • "Moana" → Family (92% match) │
-│     • "Coco" → Family (89% match)  │
-│     • "Frozen" → Family (87% match)│
-└─────────────┬──────────────────────┘
-              │
-              ▼
-┌────────────────────────────────────┐
-│  3. Inject Context into AI Prompt  │
-│     "Similar items went to Family" │
-└─────────────┬──────────────────────┘
-              │
-              ▼
-┌────────────────────────────────────┐
-│  4. AI makes informed decision     │
-│     → Routes to Family library     │
-│        with 90% confidence         │
-└────────────────────────────────────┘
+        â”‚
+        â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  1. Generate Embedding Vector      â”‚
+â”‚     (title, genres, studio, etc.)  â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+              â”‚
+              â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  2. Search Classification History  â”‚
+â”‚     using pgvector similarity      â”‚
+â”‚                                    â”‚
+â”‚     Found similar:                 â”‚
+â”‚     â€¢ "Moana" â†’ Family (92% match) â”‚
+â”‚     â€¢ "Coco" â†’ Family (89% match)  â”‚
+â”‚     â€¢ "Frozen" â†’ Family (87% match)â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+              â”‚
+              â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  3. Inject Context into AI Prompt  â”‚
+â”‚     "Similar items went to Family" â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+              â”‚
+              â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  4. AI makes informed decision     â”‚
+â”‚     â†’ Routes to Family library     â”‚
+â”‚        with 90% confidence         â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 #### Classification Flow Integration
@@ -894,17 +845,17 @@ RAG integrates into the signal-based classification chain:
 1. **Exact Match (100%)**: Previously classified TMDB ID or learned correction
 2. **Pattern Match (90%)**: Title rules, genre patterns
 3. **Franchise Match (85%)**: Other items from same collection
-4. **🔮 RAG Similarity (50-90%)**: Similar past classifications ← *NEW*
+4. **ðŸ”® RAG Similarity (50-90%)**: Similar past classifications â† *NEW*
 5. **AI Analysis**: Falls back to AI with RAG context injected
 
 RAG confidence dynamically adjusts based on match quality:
-- **3+ unanimous matches with 90%+ similarity** → 90% confidence
-- **2+ unanimous matches with 80%+ similarity** → 80% confidence  
-- **Any match above 70% similarity** → 70% confidence
+- **3+ unanimous matches with 90%+ similarity** â†’ 90% confidence
+- **2+ unanimous matches with 80%+ similarity** â†’ 80% confidence  
+- **Any match above 70% similarity** â†’ 70% confidence
 
 #### Setup
 
-1. Go to **Settings** → **AI** → **🔮 Semantic Search (RAG)**
+1. Go to **Settings** â†’ **AI** â†’ **ðŸ”® Semantic Search (RAG)**
 2. Enable RAG
 3. Choose your **Embedding Provider** (Ollama recommended - free!)
 4. Select an embedding model from the dropdown
@@ -916,8 +867,8 @@ RAG confidence dynamically adjusts based on match quality:
 
 | Model | Dims | Size | Best For |
 |-------|------|------|----------|
-| `nomic-embed-text` ⭐ | 768 | 274MB | **Recommended** - High-quality, 8192 token context, open source |
-| `mxbai-embed-large` ⭐ | 1024 | 670MB | State-of-the-art retrieval performance |
+| `nomic-embed-text` â­ | 768 | 274MB | **Recommended** - High-quality, 8192 token context, open source |
+| `mxbai-embed-large` â­ | 1024 | 670MB | State-of-the-art retrieval performance |
 | `snowflake-arctic-embed2` | 1024 | 1.1GB | Latest Snowflake model, multilingual |
 | `bge-m3` | 1024 | 1.1GB | Multi-lingual, multi-granularity embeddings |
 | `all-minilm` | 384 | 46MB | **Fastest** - Low resource usage, good quality |
@@ -934,7 +885,7 @@ ollama pull mxbai-embed-large
 **OpenAI:**
 | Model | Dims | Cost (per 1M tokens) | Notes |
 |-------|------|---------------------|-------|
-| `text-embedding-3-small` ⭐ | 1536 | $0.02 | **Best value** - excellent quality |
+| `text-embedding-3-small` â­ | 1536 | $0.02 | **Best value** - excellent quality |
 | `text-embedding-3-large` | 3072 | $0.13 | Highest quality, top leaderboard performance |
 
 **Voyage AI:**
@@ -954,6 +905,13 @@ ollama pull mxbai-embed-large
 | `embed-v3-multilingual` | 1024 | $0.10 | Excellent multilingual support |
 
 > **Recommendation:** Use `nomic-embed-text` with Ollama (free, self-hosted) or `text-embedding-3-small` with OpenAI for best results.
+
+#### Image Embeddings (Optional)
+
+Classifarr can also generate **image embeddings** (posters/cover art) to improve semantic matching for visually similar titles. If you want to enable this, run the companion image embedding service and configure it in **Settings â†’ RAG & Embeddings â†’ Image Embeddings**.
+
+- **Service repo:** [classifarr-image-embedding-service](https://github.com/cloudbyday90/classifarr-image-embedding-service)
+- Includes Docker setup, model list, and API docs for `/health`, `/models`, and `/embed-image`.
 
 #### Backfilling
 
@@ -983,7 +941,7 @@ When you enable RAG, existing classification history can be backfilled to seed t
 - Bot token and channel configuration
 - Notification preferences
 
-## 📚 Documentation
+## ðŸ“š Documentation
 
 ### User Guides
 - [Migration Guide - v0.41.0-alpha](docs/migration/v0.41.0-alpha.md) - Upgrade instructions and breaking changes
@@ -1032,17 +990,17 @@ When you enable RAG, existing classification history can be backfilled to seed t
 | **Tuning** | AI-generated policy improvements | [Tuning Dashboard](#-policy-statistics--tuning) |
 | **Health Monitoring** | Real-time service health tracking | [System Health](#-system-health-monitoring) |
 
-## 🎮 Discord Bot
+## ðŸŽ® Discord Bot
 
 Real-time notifications with interactive buttons:
 
-- **✓ Correct** - Confirm classification
-- **→ Alt Library** - Quick correction
+- **âœ“ Correct** - Confirm classification
+- **â†’ Alt Library** - Quick correction
 - **Library Dropdown** - Select any library
 
 Corrections feed into the learning system for improved future accuracy.
 
-## 📊 API Documentation
+## ðŸ“Š API Documentation
 
 Full interactive API documentation available at: `http://localhost:21324/api/docs` (Swagger UI)
 
@@ -1104,7 +1062,7 @@ Full interactive API documentation available at: `http://localhost:21324/api/doc
 
 **See full API reference:** [docs/api/README.md](docs/api/README.md)
 
-## 🐳 Deployment
+## ðŸ³ Deployment
 
 ### Pre-built Images
 
@@ -1129,7 +1087,7 @@ See deployment guides:
 
 
 
-## 🐛 Troubleshooting
+## ðŸ› Troubleshooting
 
 ### Health Monitoring Issues
 
@@ -1170,13 +1128,13 @@ If you receive a 404 error with a structured response like:
 - Review recent changes that may have affected the resource
 
 ### Classification Issues
-1. Check **Settings** → **Queue** for pending items
+1. Check **Settings** â†’ **Queue** for pending items
 2. Verify TMDB API key in settings
 3. Check container logs: `docker logs classifarr`
 4. Use **Clear & Re-sync** for fresh start
 
 ### Media Server Not Syncing
-1. Test connection in **Settings** → **Media Server**
+1. Test connection in **Settings** â†’ **Media Server**
 2. Click **Sync Libraries** to manually refresh
 3. Check that libraries are accessible
 
@@ -1198,7 +1156,7 @@ If you receive a 404 error with a structured response like:
 - Use the health monitoring dashboard to check sync service status
 
 ### AI Not Working
-1. Go to **Settings** → **AI** and test connection
+1. Go to **Settings** â†’ **AI** and test connection
 2. **For Ollama:** 
    - Enter your Ollama host (IP address or container name)
    - Default is `localhost` - change if Ollama runs on a different machine
@@ -1253,7 +1211,7 @@ Classifarr writes logs to multiple locations:
 
 File logging can be disabled by setting `FILE_LOGGING_ENABLED=false`.
 
-## 🤝 Contributing
+## ðŸ¤ Contributing
 
 1. Fork the repository
 2. Create feature branch: `git checkout -b feature/NewFeature`
@@ -1261,7 +1219,7 @@ File logging can be disabled by setting `FILE_LOGGING_ENABLED=false`.
 4. Push: `git push origin feature/NewFeature`
 5. Open Pull Request
 
-## 📝 License
+## ðŸ“ License
 
 Classifarr is licensed under GPL-3.0. See [LICENSE](LICENSE) for details.
 
@@ -1279,7 +1237,7 @@ To update copyright years (run annually on January 1st):
 npm run update-copyright
 ```
 
-## 🔗 Links
+## ðŸ”— Links
 
 - [GitHub Repository](https://github.com/cloudbyday90/Classifarr)
 - [GitHub Container Registry](https://github.com/cloudbyday90/Classifarr/pkgs/container/classifarr)
@@ -1289,4 +1247,5 @@ npm run update-copyright
 
 ---
 
-Made with ❤️ for the *arr community
+Made with â¤ï¸ for the *arr community
+
