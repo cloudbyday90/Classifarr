@@ -37,8 +37,11 @@
       <div class="flex items-center justify-between text-sm">
         <div class="flex items-center gap-6">
           <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/40 text-xs uppercase tracking-wide">
+              Text Embeddings
+            </span>
             <span :class="['w-2 h-2 rounded-full', statusBar.providerOnline ? 'bg-green-500' : 'bg-red-500']"></span>
-            <span class="text-gray-400">Provider:</span>
+            <span class="text-gray-400">Status:</span>
             <span :class="statusBar.providerOnline ? 'text-green-400' : 'text-red-400'">
               {{ statusBar.providerOnline ? 'Online' : 'Offline' }}
             </span>
@@ -63,7 +66,7 @@
     </div>
 
     <!-- Tab Content -->
-    <component :is="currentTabComponent" />
+    <component :is="currentTabComponent" @navigate="activeTab = $event" />
   </div>
 </template>
 
@@ -71,6 +74,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
 import OverviewTab from './rag/OverviewTab.vue'
+import TextEmbeddingsTab from './rag/TextEmbeddingsTab.vue'
+import ImageEmbeddingsTab from './rag/ImageEmbeddingsTab.vue'
 import BackfillTab from './rag/BackfillTab.vue'
 import AdvancedTab from './rag/AdvancedTab.vue'
 
@@ -78,10 +83,11 @@ const activeTab = ref('overview')
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: '📊', component: OverviewTab },
+  { id: 'text', label: 'Text Embeddings', icon: '🔤', component: TextEmbeddingsTab },
+  { id: 'images', label: 'Image Embeddings', icon: '🖼️', component: ImageEmbeddingsTab },
   { id: 'backfill', label: 'Backfill', icon: '⏱️', component: BackfillTab },
   { id: 'advanced', label: 'Advanced', icon: '⚙️', component: AdvancedTab }
 ]
-
 const currentTabComponent = computed(() => {
   return tabs.find(t => t.id === activeTab.value)?.component
 })
@@ -130,3 +136,4 @@ onUnmounted(() => {
   }
 })
 </script>
+

@@ -18,6 +18,7 @@
 
 const { createLogger, sanitizeData, getSystemContext, setLoggerDb } = require('../utils/logger');
 const db = require('../config/database');
+const { withConsoleSpy } = require('./setup/consoleHelpers');
 
 // Mock the database module
 jest.mock('../config/database', () => ({
@@ -98,68 +99,68 @@ describe('Logger', () => {
 
   describe('error logging', () => {
     test('should persist error to database', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
       const errorId = '123e4567-e89b-12d3-a456-426614174000';
-      db.query.mockResolvedValue({
-        rows: [{ error_id: errorId }]
+      await withConsoleSpy('error', { suppress: true }, async () => {
+        db.query.mockResolvedValue({
+          rows: [{ error_id: errorId }]
+        });
+
+        const result = await logger.error('Test error', { code: 500 });
+
+        expect(db.query).toHaveBeenCalled();
+        expect(result).toBe(errorId);
       });
-
-      const result = await logger.error('Test error', { code: 500 });
-
-      expect(db.query).toHaveBeenCalled();
-      expect(result).toBe(errorId);
-      consoleSpy.mockRestore();
     });
 
     test('should handle database failures gracefully', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
-      db.query.mockRejectedValue(new Error('Database error'));
+      await withConsoleSpy('error', { suppress: true }, async () => {
+        db.query.mockRejectedValue(new Error('Database error'));
 
-      const result = await logger.error('Test error');
+        const result = await logger.error('Test error');
 
-      expect(result).toBeNull();
-      consoleSpy.mockRestore();
+        expect(result).toBeNull();
+      });
     });
 
     test('should capture request context when provided', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
       const errorId = '123e4567-e89b-12d3-a456-426614174000';
-      db.query.mockResolvedValue({
-        rows: [{ error_id: errorId }]
+      await withConsoleSpy('error', { suppress: true }, async () => {
+        db.query.mockResolvedValue({
+          rows: [{ error_id: errorId }]
+        });
+
+        const mockReq = {
+          method: 'GET',
+          url: '/test',
+          path: '/test',
+          params: {},
+          query: {},
+          get: jest.fn(() => 'test-agent'),
+          ip: '127.0.0.1'
+        };
+
+        await logger.error('Test error', {}, { req: mockReq });
+
+        const callArgs = db.query.mock.calls[0];
+        expect(callArgs[0]).toContain('INSERT INTO error_log');
+        expect(callArgs[1]).toHaveLength(7); // level, module, message, stack_trace, request_context, system_context, metadata
       });
-
-      const mockReq = {
-        method: 'GET',
-        url: '/test',
-        path: '/test',
-        params: {},
-        query: {},
-        get: jest.fn(() => 'test-agent'),
-        ip: '127.0.0.1'
-      };
-
-      await logger.error('Test error', {}, { req: mockReq });
-
-      const callArgs = db.query.mock.calls[0];
-      expect(callArgs[0]).toContain('INSERT INTO error_log');
-      expect(callArgs[1]).toHaveLength(7); // level, module, message, stack_trace, request_context, system_context, metadata
-      consoleSpy.mockRestore();
     });
   });
 
   describe('warn logging', () => {
     test('should persist warning to database', async () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
       const errorId = '123e4567-e89b-12d3-a456-426614174000';
-      db.query.mockResolvedValue({
-        rows: [{ error_id: errorId }]
+      await withConsoleSpy('warn', { suppress: true }, async () => {
+        db.query.mockResolvedValue({
+          rows: [{ error_id: errorId }]
+        });
+
+        const result = await logger.warn('Test warning', { code: 400 });
+
+        expect(db.query).toHaveBeenCalled();
+        expect(result).toBe(errorId);
       });
-
-      const result = await logger.warn('Test warning', { code: 400 });
-
-      expect(db.query).toHaveBeenCalled();
-      expect(result).toBe(errorId);
-      consoleSpy.mockRestore();
     });
   });
 

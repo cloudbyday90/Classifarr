@@ -19,6 +19,15 @@
 const axios = require('axios');
 
 class PlexService {
+  buildPosterUrl(baseUrl, apiKey, path) {
+    if (!path) return null;
+    const trimmedBase = baseUrl.replace(/\/+$/, '');
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const url = `${trimmedBase}${normalizedPath}`;
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}X-Plex-Token=${encodeURIComponent(apiKey)}`;
+  }
+
   async testConnection(url, apiKey) {
     try {
       const response = await axios.get(`${url}/identity`, {
@@ -92,6 +101,7 @@ class PlexService {
           rating: item.rating,
           summary: item.summary,
           thumb: item.thumb,
+          posterPath: this.buildPosterUrl(url, apiKey, item.thumb || item.parentThumb || item.grandparentThumb)
         },
         total: container.totalSize,
       }));

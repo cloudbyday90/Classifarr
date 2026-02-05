@@ -27,6 +27,7 @@ jest.mock('../utils/rateLimiter', () => ({
 
 const db = require('../config/database');
 const tmdbService = require('../services/tmdb');
+const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 describe('TMDBService', () => {
     let consoleErrorSpy;
@@ -35,11 +36,11 @@ describe('TMDBService', () => {
         jest.restoreAllMocks();
         jest.clearAllMocks();
         tmdbService.apiKey = null; // Reset cached key
-        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        consoleErrorSpy = createConsoleSpy('error', { suppress: true });
     });
 
     afterEach(() => {
-        consoleErrorSpy.mockRestore();
+        consoleErrorSpy.restore();
     });
 
     describe('getApiKey', () => {

@@ -18,8 +18,8 @@
               {{ stats.providerOnline ? 'Online' : 'Offline' }}
             </p>
           </div>
-          <span :class="['text-3xl', stats.providerOnline ? 'text-green-400' : 'text-red-400']">
-            {{ stats.providerOnline ? '✓' : '✗' }}
+          <span :class="['text-sm font-semibold', stats.providerOnline ? 'text-green-400' : 'text-red-400']">
+            {{ stats.providerOnline ? 'ON' : 'OFF' }}
           </span>
         </div>
       </div>
@@ -32,7 +32,7 @@
               {{ formatNumber(stats?.totalEmbeddings) }}
             </p>
           </div>
-          <span class="text-3xl text-blue-400">💾</span>
+          <span class="text-sm font-semibold text-blue-400">TOTAL</span>
         </div>
       </div>
 
@@ -44,8 +44,8 @@
               {{ formatNumber(stats?.pendingCount) }}
             </p>
           </div>
-          <span :class="['text-3xl', (stats?.pendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
-            ⏱️
+          <span :class="['text-sm font-semibold', (stats?.pendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
+            PEND
           </span>
         </div>
       </div>
@@ -58,144 +58,170 @@
               {{ formatNumber(stats?.failedCount) }}
             </p>
           </div>
-          <span :class="['text-3xl', (stats?.failedCount || 0) > 0 ? 'text-red-400' : 'text-green-400']">
-            {{ (stats?.failedCount || 0) > 0 ? '⚠️' : '✓' }}
+          <span :class="['text-sm font-semibold', (stats?.failedCount || 0) > 0 ? 'text-red-400' : 'text-green-400']">
+            {{ (stats?.failedCount || 0) > 0 ? 'ERR' : 'OK' }}
           </span>
         </div>
       </div>
     </div>
 
-    <!-- Provider Settings -->
-    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <h3 class="text-lg font-semibold text-white mb-4">Embedding Provider</h3>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">Mode</label>
-          <select
-            v-model="config.mode"
-            @change="saveConfig"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="same">Same as Classification</option>
-            <option value="separate_ollama">Separate Ollama Instance</option>
-            <option value="cloud">Cloud Provider</option>
-          </select>
+    <!-- Image Embedding Status -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-400">Image Provider</p>
+            <p :class="[
+              'text-2xl font-bold mt-1',
+              !stats.imageEnabled ? 'text-gray-400' : (stats.imageProviderOnline ? 'text-green-400' : 'text-red-400')
+            ]">
+              {{ stats.imageEnabled ? (stats.imageProviderOnline ? 'Online' : 'Offline') : 'Disabled' }}
+            </p>
+            <p v-if="stats.imageEnabled" class="text-xs text-gray-500 mt-1">
+              {{ stats.imageProvider }} {{ stats.imageModel ? `(${stats.imageModel})` : '' }}
+            </p>
+          </div>
+          <span :class="[
+            'text-sm font-semibold',
+            !stats.imageEnabled ? 'text-gray-400' : (stats.imageProviderOnline ? 'text-green-400' : 'text-red-400')
+          ]">
+            {{ stats.imageEnabled ? (stats.imageProviderOnline ? 'ON' : 'OFF') : 'OFF' }}
+          </span>
         </div>
+      </div>
 
-        <!-- Embedding Model for Same as Classification mode -->
-        <div v-if="config.mode === 'same'" class="space-y-2">
-          <label class="block text-sm font-medium text-gray-300 mb-2">Embedding Model</label>
-          <select
-            v-model="config.embedding_model"
-            class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          >
-            <option v-for="model in recommendedModels" :key="model.name" :value="model.name">
-              {{ model.name }} - {{ model.description }}
-            </option>
-          </select>
-          <p class="text-xs text-gray-400">Uses the same Ollama server as your AI classification provider</p>
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-400">Image Embeddings</p>
+            <p class="text-2xl font-bold text-white mt-1">
+              {{ formatNumber(stats?.imageTotalEmbeddings) }}
+            </p>
+          </div>
+          <span class="text-sm font-semibold text-blue-400">IMG</span>
         </div>
+      </div>
 
-        <!-- Separate Ollama Config -->
-        <div v-if="config.mode === 'separate_ollama'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
-          <h4 class="font-medium text-white">Ollama Configuration</h4>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Host</label>
-              <input
-                v-model="config.ollama_host"
-                type="text"
-                placeholder="192.168.1.100"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Port</label>
-              <input
-                v-model.number="config.ollama_port"
-                type="number"
-                placeholder="11434"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
-              <select
-                v-model="config.ollama_model"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              >
-                <option v-for="model in recommendedModels" :key="model.name" :value="model.name">
-                  {{ model.name }} - {{ model.description }}
-                </option>
-              </select>
-            </div>
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-400">Image Pending</p>
+            <p :class="['text-2xl font-bold mt-1', (stats?.imagePendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
+              {{ formatNumber(stats?.imagePendingCount) }}
+            </p>
+          </div>
+          <span :class="['text-sm font-semibold', (stats?.imagePendingCount || 0) > 0 ? 'text-yellow-400' : 'text-green-400']">
+            PEND
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Text Embedding Summary -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
+      <h3 class="text-lg font-semibold text-white">Text Embedding Summary</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Provider</p>
+          <div class="flex items-center gap-2">
+            <p class="text-white font-medium">{{ textProviderLabel }}</p>
+            <span :class="modeBadgeClass(config.mode)">{{ formatMode(config.mode) }}</span>
           </div>
         </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Model</p>
+          <p class="text-white font-medium">{{ textModelLabel }}</p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Similarity</p>
+          <p class="text-white font-medium">{{ formatPercent(config.rag_similarity_threshold) }}</p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Text Weight</p>
+          <p class="text-white font-medium">{{ formatPercent(config.rag_text_weight) }}</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Mode</p>
+          <p class="text-white font-medium">{{ formatMode(config.mode) }}</p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Min History</p>
+          <p class="text-white font-medium">{{ config.rag_min_history_count }}</p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Weight Split</p>
+          <p class="text-white font-medium">{{ formatPercent(config.rag_text_weight) }} / {{ formatPercent(config.rag_image_weight) }}</p>
+        </div>
+      </div>
+    </div>
 
-        <!-- Cloud Provider Config -->
-        <div v-if="config.mode === 'cloud'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
-          <h4 class="font-medium text-white">Cloud Provider Configuration</h4>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Provider</label>
-              <select
-                v-model="config.cloud_provider"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select provider</option>
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Google Gemini</option>
-                <option value="voyage">Voyage AI</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="cohere">Cohere</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">API Key</label>
-              <input
-                v-model="config.cloud_api_key"
-                type="password"
-                placeholder="Enter API key"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
-              <input
-                v-model="config.cloud_model"
-                type="text"
-                placeholder="text-embedding-3-small"
-                class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+    <!-- Image Embedding Summary -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
+      <h3 class="text-lg font-semibold text-white">Image Embedding Summary</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Provider</p>
+          <div class="flex items-center gap-2">
+            <p class="text-white font-medium">{{ stats.imageProvider || 'unknown' }}</p>
+            <span :class="modeBadgeClass(config.image_mode)">{{ formatMode(config.image_mode) }}</span>
           </div>
         </div>
-
-        <!-- Actions -->
-        <div class="flex items-center gap-3">
-          <button
-            @click="testConnection"
-            :disabled="testing"
-            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ testing ? 'Testing...' : 'Test Connection' }}
-          </button>
-          <button
-            @click="saveConfig"
-            :disabled="saving"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ saving ? 'Saving...' : 'Save Configuration' }}
-          </button>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Model</p>
+          <p class="text-white font-medium">{{ stats.imageModel || 'default' }}</p>
         </div>
-
-        <!-- Test Result -->
-        <div v-if="testResult" :class="[
-          'p-4 rounded-lg',
-          testResult.success ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'
-        ]">
-          {{ testResult.success ? `✓ Connected successfully (${testResult.dims} dimensions)` : `✗ ${testResult.error}` }}
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Image Size</p>
+          <p class="text-white font-medium">{{ config.image_size }} px</p>
         </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Rate Limit</p>
+          <p class="text-white font-medium">{{ config.image_rps }} rps / {{ config.image_concurrency }} conc</p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Manual Backfill</p>
+          <p class="text-white font-medium">{{ backfillStatus.manual.status || 'idle' }}</p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Idle Backfill</p>
+          <p class="text-white font-medium">
+            {{ backfillStatus.idle.isRunning ? 'running' : (backfillStatus.idle.config?.idle_backfill_enabled ? 'enabled' : 'disabled') }}
+          </p>
+        </div>
+        <div class="bg-gray-700/30 rounded-lg p-3">
+          <p class="text-gray-400">Scheduled Backfill</p>
+          <p class="text-white font-medium">
+            {{ backfillStatus.scheduled.enabled ? `enabled (${backfillStatus.scheduled.time})` : 'disabled' }}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button
+          @click="reembedImages"
+          :disabled="reembeddingImages"
+          class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ reembeddingImages ? 'Re-embedding...' : 'Re-embed Images' }}
+        </button>
+        <button
+          @click="emit('navigate', 'backfill')"
+          class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+        >
+          Open Backfill Tab
+        </button>
+        <button
+          @click="loadStats"
+          class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+        >
+          Refresh Stats
+        </button>
+        <p class="text-xs text-gray-400">Re-embedding clears image vectors so backfill regenerates them.</p>
       </div>
     </div>
 
@@ -232,12 +258,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import api from '@/api'
-import { CheckCircleIcon, XCircleIcon, CpuChipIcon, ServerStackIcon, ClockIcon } from '@heroicons/vue/24/outline'
 import { useToast } from '@/stores/toast'
 
-const props = defineProps(['provider'])
+const emit = defineEmits(['navigate'])
 const toast = useToast()
 
 const loading = ref(true)
@@ -247,52 +272,76 @@ const stats = ref({
   pendingEmbeddings: 0,
   failed24h: 0,
   providerOnline: false,
+  imageEnabled: false,
+  imageProviderOnline: false,
+  imageTotalEmbeddings: 0,
+  imagePendingCount: 0,
+  imageProvider: 'unknown',
+  imageModel: null,
   heartbeatActive: false,
   queueSize: 0,
   lastEmbeddingTime: null
 })
 const config = ref({
+  primary_provider: 'none',
   mode: 'same',
   embedding_model: 'nomic-embed-text',
-  ollama_host: '',
-  ollama_port: 11434,
   ollama_model: 'nomic-embed-text',
   cloud_provider: '',
-  cloud_api_key: '',
-  cloud_model: ''
+  cloud_model: '',
+  rag_similarity_threshold: 0.7,
+  rag_text_weight: 0.7,
+  rag_image_weight: 0.3,
+  rag_min_history_count: 50,
+  image_mode: 'disabled',
+  image_size: 512,
+  image_rps: 2,
+  image_concurrency: 2
 })
 const recentActivity = ref([])
-const testing = ref(false)
-const saving = ref(false)
-const testResult = ref(null)
+const reembeddingImages = ref(false)
+const backfillStatus = ref({
+  manual: { status: 'idle' },
+  idle: { isRunning: false, config: null },
+  scheduled: { enabled: false, time: '02:00' },
+  pending: 0
+})
 
-// Recommended Ollama embedding models
-const recommendedModels = ref([
-  { name: 'nomic-embed-text', description: '⭐ Recommended - 768 dims, fast' },
-  { name: 'nomic-embed-text-v1.5', description: '768 dims, improved quality' },
-  { name: 'mxbai-embed-large', description: 'State-of-art - 1024 dims' },
-  { name: 'snowflake-arctic-embed2', description: 'Enterprise grade - 1024 dims' },
-  { name: 'bge-m3', description: 'Multilingual - 1024 dims' },
-  { name: 'bge-large', description: 'High precision - 1024 dims' },
-  { name: 'all-minilm', description: 'Very fast - 384 dims' },
-  { name: 'paraphrase-multilingual', description: 'Multilingual - 768 dims' }
-])
+const textProviderLabel = computed(() => {
+  const mode = config.value.mode
+  if (mode === 'cloud') {
+    return config.value.cloud_provider || 'cloud'
+  }
+  if (mode === 'separate_ollama') {
+    return 'ollama'
+  }
+  return config.value.primary_provider || 'classification'
+})
+
+const textModelLabel = computed(() => {
+  const mode = config.value.mode
+  if (mode === 'cloud') {
+    return config.value.cloud_model || 'default'
+  }
+  if (mode === 'separate_ollama') {
+    return config.value.ollama_model || 'default'
+  }
+  return config.value.embedding_model || 'default'
+})
 
 const loadStats = async () => {
   try {
     loading.value = true
-    
-    // Error handler for failed API calls - returns empty data object to prevent crashes
+
     const handleApiError = () => ({ data: {} })
-    
-    const [overviewRes, configRes] = await Promise.all([
+
+    const [overviewRes, configRes, backfillRes] = await Promise.all([
       api.get('/rag/status').catch(handleApiError),
-      api.get('/settings/ai').catch(handleApiError)
+      api.get('/settings/ai').catch(handleApiError),
+      api.get('/rag/backfill/status').catch(handleApiError)
     ])
-    
-    // Safely extract with defaults
-    
-    // Merge with defaults instead of replacing
+
+    const imageData = overviewRes.data?.image || {}
     stats.value = {
       ...overviewRes.data?.stats,
       providerOnline: overviewRes.data?.providerOnline ?? false,
@@ -300,99 +349,67 @@ const loadStats = async () => {
       pendingCount: overviewRes.data?.stats?.pendingCount ?? overviewRes.data?.stats?.pendingRetries ?? 0,
       failedCount: 0,
       avgGenerationTime: 0,
-      lastEmbeddingTime: null
+      lastEmbeddingTime: null,
+      imageEnabled: imageData.enabled ?? false,
+      imageProviderOnline: imageData.providerOnline ?? false,
+      imageTotalEmbeddings: imageData.stats?.total ?? 0,
+      imagePendingCount: imageData.stats?.pending ?? 0,
+      imageProvider: imageData.provider || 'unknown',
+      imageModel: imageData.model || null
     }
-    
+
     recentActivity.value = overviewRes.data?.recentActivity || []
-    
-    // Load provider configuration with defaults
+    backfillStatus.value = {
+      manual: backfillRes.data?.manual || { status: 'idle' },
+      idle: backfillRes.data?.idle || { isRunning: false, config: null },
+      scheduled: backfillRes.data?.scheduled || { enabled: false, time: '02:00' },
+      pending: backfillRes.data?.pending || 0
+    }
+
     const data = configRes.data || {}
+    const rawImageMode = data.image_embedding_provider_mode || 'disabled'
+    const normalizedImageMode = rawImageMode === 'local'
+      ? 'separate_local'
+      : (['disabled', 'separate_local', 'cloud'].includes(rawImageMode) ? rawImageMode : 'disabled')
     config.value = {
+      primary_provider: data.primary_provider || 'none',
       mode: data.embedding_provider_mode || 'same',
       embedding_model: data.embedding_model || 'nomic-embed-text',
-      ollama_host: data.embedding_ollama_host || '',
-      ollama_port: data.embedding_ollama_port || 11434,
       ollama_model: data.embedding_ollama_model || 'nomic-embed-text',
       cloud_provider: data.embedding_cloud_provider || '',
-      cloud_api_key: data.embedding_cloud_api_key || '',
-      cloud_model: data.embedding_cloud_model || ''
+      cloud_model: data.embedding_cloud_model || '',
+      rag_similarity_threshold: Number(data.rag_similarity_threshold ?? 0.7),
+      rag_text_weight: Number(data.rag_text_weight ?? 0.7),
+      rag_image_weight: Number(data.rag_image_weight ?? 0.3),
+      rag_min_history_count: Number(data.rag_min_history_count ?? 50),
+      image_mode: normalizedImageMode,
+      image_local_host: data.image_embedding_local_host || '',
+      image_size: Number(data.image_embedding_image_size ?? 512),
+      image_rps: Number(data.image_embedding_rps ?? 2),
+      image_concurrency: Number(data.image_embedding_concurrency ?? 2)
     }
   } catch (error) {
     console.error('Failed to load overview:', error)
-    // Keep default empty values to prevent component crash while displaying graceful fallback UI
   } finally {
     loading.value = false
   }
 }
 
-const loadActivity = async () => {
-  try {
-    const res = await api.get('/rag/activity')
-    recentActivity.value = res.data
-  } catch (error) {
-    console.error('Failed to load activity:', error)
+const reembedImages = async () => {
+  if (!confirm('Re-embed all images? This will clear stored image embeddings and backfill will regenerate them.')) {
+    return
   }
-}
 
-const testConnection = async () => {
-  testing.value = true
-  testResult.value = null
-  
+  reembeddingImages.value = true
   try {
-    const response = await api.post('/rag/test-connection', {
-      mode: config.value.mode,
-      host: config.value.ollama_host,
-      port: config.value.ollama_port,
-      model: config.value.mode === 'same' ? config.value.embedding_model : config.value.ollama_model
-    })
-    
-    if (response.data.success) {
-      testResult.value = { 
-        success: true, 
-        dims: response.data.dims,
-        message: `Connected successfully (${response.data.latency}ms)` 
-      }
-      toast.success(`Connected successfully (${response.data.dims} dimensions, ${response.data.latency}ms)`)
-    } else {
-      testResult.value = { success: false, error: response.data.error || 'Connection failed' }
-      toast.error(response.data.error || 'Connection failed')
-    }
+    const response = await api.reembedImages()
+    toast.success(`Cleared ${response.data?.cleared ?? 0} image embeddings`)
+    await loadStats()
   } catch (error) {
-    testResult.value = {
-      success: false,
-      error: error.response?.data?.error || error.message
-    }
-    toast.error(error.response?.data?.error || error.message)
+    console.error('Failed to re-embed images:', error)
+    toast.error(error.response?.data?.error || 'Failed to re-embed images')
   } finally {
-    testing.value = false
-  }
-}
-
-const saveConfig = async () => {
-  saving.value = true
-  
-  try {
-    await api.put('/settings/ai', {
-      rag_enabled: true, // Enable RAG when saving embedding configuration
-      embedding_provider_mode: config.value.mode,
-      embedding_model: config.value.embedding_model,
-      embedding_ollama_host: config.value.ollama_host,
-      embedding_ollama_port: config.value.ollama_port,
-      embedding_ollama_model: config.value.ollama_model,
-      embedding_cloud_provider: config.value.cloud_provider,
-      embedding_cloud_api_key: config.value.cloud_api_key,
-      embedding_cloud_model: config.value.cloud_model
-    })
-    toast.success('RAG configuration saved successfully')
-    
-    // Refresh stats to check provider status
-    setTimeout(loadStats, 1000)
-    
-  } catch (error) {
-    console.error('Failed to save config:', error)
-    toast.error(error.response?.data?.error || 'Failed to save configuration')
-  } finally {
-    saving.value = false
+    reembeddingImages.value = false
   }
 }
 
@@ -401,16 +418,33 @@ const formatNumber = (num) => {
   return num.toLocaleString()
 }
 
-const formatTime = (time) => {
-  if (!time) return 'Never'
-  const date = new Date(time)
-  const now = new Date()
-  const diff = now - date
-  
-  if (diff < 60000) return 'Just now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-  return `${Math.floor(diff / 86400000)}d ago`
+const formatPercent = (value) => {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return 'n/a'
+  if (num > 1) return `${Math.round(num)}%`
+  return `${Math.round(num * 100)}%`
+}
+
+const formatMode = (mode) => {
+  if (mode === 'separate_ollama' || mode === 'separate_local') return 'separate'
+  if (mode === 'disabled') return 'disabled'
+  return mode || 'same'
+}
+
+const modeBadgeClass = (mode) => {
+  switch (mode) {
+    case 'disabled':
+      return 'px-2 py-0.5 rounded-full text-xs bg-gray-600/30 text-gray-300 border border-gray-600/50'
+    case 'cloud':
+      return 'px-2 py-0.5 rounded-full text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+    case 'separate_ollama':
+    case 'separate_local':
+      return 'px-2 py-0.5 rounded-full text-xs bg-purple-500/20 text-purple-300 border border-purple-500/40'
+    case 'same':
+      return 'px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-300 border border-blue-500/40'
+    default:
+      return 'px-2 py-0.5 rounded-full text-xs bg-gray-500/20 text-gray-300 border border-gray-500/40'
+  }
 }
 
 const formatTimestamp = (timestamp) => {
@@ -428,3 +462,5 @@ onMounted(() => {
   loadStats()
 })
 </script>
+
+

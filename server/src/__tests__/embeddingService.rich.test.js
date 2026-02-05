@@ -18,6 +18,7 @@
 
 const embeddingService = require('../services/embeddingService');
 const embeddingRouter = require('../services/embeddingRouter');
+const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 jest.mock('../services/embeddingRouter');
 jest.mock('../config/database');
@@ -34,11 +35,11 @@ describe('EmbeddingService - Rich Embeddings', () => {
     let consoleErrorSpy;
 
     beforeAll(() => {
-        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        consoleErrorSpy = createConsoleSpy('error', { suppress: true });
     });
 
     afterAll(() => {
-        consoleErrorSpy.mockRestore();
+        consoleErrorSpy.restore();
     });
 
     beforeEach(() => {

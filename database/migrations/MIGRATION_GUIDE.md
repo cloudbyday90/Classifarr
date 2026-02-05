@@ -13,6 +13,8 @@ Migrations are automatically run on application startup by the `MigrationRunner`
 - Used for migrations 001-076
 - Still supported for backward compatibility
 - **Do NOT create new numeric migrations**
+ - CI enforcement: `scripts/check-migrations.js` blocks any new numeric files
+ - Legacy allowlist: `database/migrations/LEGACY_MIGRATIONS.txt`
 
 **Example:** `076_remove_duplicate_discord_thresholds.sql`
 

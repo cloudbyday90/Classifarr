@@ -6,8 +6,10 @@
  * See LICENSE file for details.
  */
 
+const crypto = require('crypto');
 const db = require('../config/database');
 const embeddingRouter = require('./embeddingRouter');
+const imageEmbeddingProvider = require('./imageEmbeddingProvider');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('EmbeddingService');
@@ -21,6 +23,96 @@ class EmbeddingService {
         // Embedding format version for migration tracking
         this.EMBEDDING_FORMAT_VERSION = 2;
         this.isProviderOffline = false;
+    }
+
+    hashValue(value) {
+        return crypto.createHash('sha256').update(value).digest('hex');
+    }
+
+    resolvePosterUrl(metadata) {
+        const raw = metadata?.poster_path || metadata?.posterPath;
+        if (!raw) return null;
+        if (/^https?:\/\//i.test(raw)) return raw;
+        return `https://image.tmdb.org/t/p/w500${raw}`;
+    }
+
+    async resolvePosterUrlForClassification(classificationId, metadata) {
+        const direct = this.resolvePosterUrl(metadata);
+        if (direct) return direct;
+        if (!classificationId) return null;
+
+        try {
+            const result = await db.query(`
+                SELECT msi.metadata->>'posterPath' AS poster_path
+                FROM classification_history ch
+                JOIN media_server_items msi
+                  ON msi.tmdb_id = ch.tmdb_id
+                 AND msi.media_type = ch.media_type
+                WHERE ch.id = $1
+                ORDER BY msi.last_synced DESC
+                LIMIT 1
+            `, [classificationId]);
+
+            const posterPath = result.rows[0]?.poster_path;
+            if (posterPath) {
+                return posterPath;
+            }
+        } catch (error) {
+            logger.debug('Failed to resolve poster URL from media server cache', {
+                classificationId,
+                error: error.message
+            });
+        }
+
+        return null;
+    }
+
+    async getExistingImageEmbeddingMeta(classificationId) {
+        try {
+            const result = await db.query(`
+                SELECT
+                    image_embedding_hash,
+                    image_model,
+                    image_embedding_size,
+                    image_embedding IS NOT NULL AS has_image
+                FROM classification_embeddings
+                WHERE classification_id = $1
+            `, [classificationId]);
+
+            return result.rows[0] || null;
+        } catch (error) {
+            logger.warn('Failed to load existing image embedding metadata', {
+                classificationId,
+                error: error.message
+            });
+            return null;
+        }
+    }
+
+    shouldReuseImageEmbedding(existing, imageHash, imageModel, imageSize) {
+        if (!existing || !existing.has_image) {
+            return false;
+        }
+
+        return (
+            existing.image_embedding_hash === imageHash &&
+            existing.image_model === imageModel &&
+            Number(existing.image_embedding_size) === Number(imageSize)
+        );
+    }
+
+    async shouldIncludeImageEmbeddings(config = null) {
+        const resolvedConfig = config || await imageEmbeddingProvider.getConfig();
+        if (!resolvedConfig) {
+            return false;
+        }
+
+        const weight = Number(resolvedConfig.rag_image_weight ?? 0);
+        if (!Number.isFinite(weight) || weight <= 0) {
+            return false;
+        }
+
+        return imageEmbeddingProvider.isConfigured(resolvedConfig);
     }
 
     /**
@@ -215,6 +307,16 @@ class EmbeddingService {
             // Store embedding
             const stored = await this.storeEmbedding(classificationId, result);
 
+            // Best-effort image embedding (non-blocking for text)
+            try {
+                await this.generateImageEmbedding(classificationId, metadata);
+            } catch (imageError) {
+                logger.warn('Image embedding failed', {
+                    classificationId,
+                    error: imageError.message
+                });
+            }
+
             logger.info('Embedding generated and stored', {
                 classificationId,
                 dims: result.dims,
@@ -248,6 +350,166 @@ class EmbeddingService {
 
             // Add to retry queue only for non-connection errors
             await this.addToRetryQueue(classificationId, error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Generate and store image embedding only (no text regeneration)
+     */
+    async generateImageEmbedding(classificationId, metadata) {
+        const posterUrl = await this.resolvePosterUrlForClassification(classificationId, metadata);
+        if (!posterUrl) {
+            return null;
+        }
+
+        const imageConfig = await imageEmbeddingProvider.getConfig();
+        const includeImage = await this.shouldIncludeImageEmbeddings(imageConfig);
+        if (!includeImage) {
+            return null;
+        }
+
+        const imageModel = imageEmbeddingProvider.getEffectiveModel(imageConfig);
+        const imageSize = imageEmbeddingProvider.getEffectiveSize(imageConfig);
+        const imageHash = this.hashValue(posterUrl);
+        const existingImage = await this.getExistingImageEmbeddingMeta(classificationId);
+
+        if (this.shouldReuseImageEmbedding(existingImage, imageHash, imageModel, imageSize)) {
+            logger.debug('Reusing cached image embedding', { classificationId });
+            return { reused: true };
+        }
+
+        try {
+            const imageResult = await imageEmbeddingProvider.embedImageFromUrl(posterUrl);
+            return await this.storeImageEmbedding(classificationId, imageResult, {
+                imageHash,
+                imageSize,
+                posterUrl
+            });
+        } catch (error) {
+            const isConnectionError = error.message.includes('ECONNREFUSED') ||
+                error.message.includes('ETIMEDOUT') ||
+                error.message.includes('fetch failed');
+
+            if (isConnectionError) {
+                throw new Error('PROVIDER_OFFLINE');
+            }
+
+            throw error;
+        }
+    }
+
+    /**
+     * Store image embedding fields (best-effort; does not change text embedding)
+     */
+    async storeImageEmbedding(classificationId, imageResult, { imageHash, imageSize, posterUrl } = {}) {
+        if (!imageResult || !Array.isArray(imageResult.embedding)) {
+            return null;
+        }
+
+        const vectorString = `[${imageResult.embedding.join(',')}]`;
+
+        try {
+            await db.query(`
+                UPDATE classification_embeddings
+                SET image_embedding = $2::vector,
+                    image_embedding_dims = $3,
+                    image_provider = $4,
+                    image_model = $5,
+                    image_embedding_hash = $6,
+                    image_embedding_size = $7,
+                    image_embedding_source_url = $8,
+                    updated_at = NOW()
+                WHERE classification_id = $1
+            `, [
+                classificationId,
+                vectorString,
+                imageResult.dims,
+                imageResult.provider,
+                imageResult.model,
+                imageHash || null,
+                imageSize || imageResult.size || null,
+                posterUrl || null
+            ]);
+
+            return {
+                classificationId,
+                dims: imageResult.dims,
+                provider: imageResult.provider
+            };
+        } catch (error) {
+            const isDimensionMismatch =
+                (error.message.includes('expected') && error.message.includes('dimensions')) ||
+                (error.message.includes('different') && error.message.includes('vector') && error.message.includes('dimensions'));
+
+            if (isDimensionMismatch) {
+                const targetDims = imageResult.dims;
+                logger.warn(`Image embedding dimension mismatch detected (Target: ${targetDims}). Auto-healing image vector schema...`);
+
+                try {
+                    await db.query('BEGIN');
+                    await db.query('DROP INDEX IF EXISTS idx_embeddings_image_hnsw');
+                    await db.query('DROP INDEX IF EXISTS idx_embeddings_image_present');
+                    await db.query('DROP INDEX IF EXISTS idx_embeddings_image_hash');
+                    await db.query('ALTER TABLE classification_embeddings DROP COLUMN image_embedding');
+                    await db.query(`ALTER TABLE classification_embeddings ADD COLUMN image_embedding vector(${targetDims})`);
+                    await db.query(`
+                        CREATE INDEX IF NOT EXISTS idx_embeddings_image_hnsw
+                        ON classification_embeddings USING hnsw (image_embedding vector_cosine_ops)
+                        WITH (m = 16, ef_construction = 64)
+                    `);
+                    await db.query(`
+                        CREATE INDEX IF NOT EXISTS idx_embeddings_image_present
+                        ON classification_embeddings (image_provider, image_model)
+                        WHERE image_embedding IS NOT NULL
+                    `);
+                    await db.query(`
+                        CREATE INDEX IF NOT EXISTS idx_embeddings_image_hash
+                        ON classification_embeddings (image_embedding_hash, image_model, image_embedding_size)
+                        WHERE image_embedding_hash IS NOT NULL
+                    `);
+                    await db.query('COMMIT');
+
+                    logger.info(`Image vector schema auto-healed to vector(${targetDims}). Retrying storage...`);
+
+                    await db.query(`
+                        UPDATE classification_embeddings
+                        SET image_embedding = $2::vector,
+                            image_embedding_dims = $3,
+                            image_provider = $4,
+                            image_model = $5,
+                            image_embedding_hash = $6,
+                            image_embedding_size = $7,
+                            image_embedding_source_url = $8,
+                            updated_at = NOW()
+                        WHERE classification_id = $1
+                    `, [
+                        classificationId,
+                        vectorString,
+                        imageResult.dims,
+                        imageResult.provider,
+                        imageResult.model,
+                        imageHash || null,
+                        imageSize || imageResult.size || null,
+                        posterUrl || null
+                    ]);
+
+                    return {
+                        classificationId,
+                        dims: imageResult.dims,
+                        provider: imageResult.provider
+                    };
+                } catch (healError) {
+                    await db.query('ROLLBACK');
+                    logger.error('Failed to auto-heal image embedding schema', {
+                        classificationId,
+                        error: healError.message
+                    });
+                    return null;
+                }
+            }
+
+            logger.error('Failed to store image embedding', { classificationId, error: error.message });
             return null;
         }
     }
@@ -457,19 +719,9 @@ class EmbeddingService {
                 SELECT COUNT(*) as pending FROM embedding_retry_queue WHERE status = 'pending'
             `);
 
-            // Count items in classification_history that don't have embeddings yet
-            // This matches the query used by manualBackfillService.getPendingCount()
-            const pendingResult = await db.query(`
-                SELECT COUNT(*) as count
-                FROM classification_history ch
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM classification_embeddings ce
-                    WHERE ce.classification_id = ch.id
-                )
-            `);
-
             const stats = result.rows[0];
-            const actualPending = parseInt(pendingResult.rows[0].count) || 0;
+            const includeImage = await this.shouldIncludeImageEmbeddings();
+            const actualPending = await this.getPendingCount({ includeImage });
 
             return {
                 total: parseInt(stats.total) || 0,
@@ -483,6 +735,146 @@ class EmbeddingService {
         } catch (error) {
             logger.error('Failed to get embedding stats', { error: error.message });
             return null;
+        }
+    }
+
+    /**
+     * Get image embedding statistics
+     */
+    async getImageStats() {
+        try {
+            const posterCondition = "NULLIF(COALESCE(ch.metadata->>'poster_path', ch.metadata->>'posterPath', msi.metadata->>'posterPath', msi.metadata->>'poster_path'), '') IS NOT NULL";
+            const result = await db.query(`
+                SELECT
+                    COUNT(*) FILTER (WHERE ce.image_embedding IS NOT NULL) as total,
+                    COUNT(*) FILTER (
+                        WHERE ce.image_embedding IS NULL
+                        AND ${posterCondition}
+                    ) as pending
+                FROM classification_history ch
+                LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
+                LEFT JOIN media_server_items msi
+                  ON msi.tmdb_id = ch.tmdb_id
+                 AND msi.media_type = ch.media_type
+            `);
+
+            return {
+                total: parseInt(result.rows[0]?.total || 0),
+                pending: parseInt(result.rows[0]?.pending || 0)
+            };
+        } catch (error) {
+            logger.error('Failed to get image embedding stats', { error: error.message });
+            return { total: 0, pending: 0 };
+        }
+    }
+
+    /**
+     * Get count of pending embeddings
+     */
+    async getPendingCount({ includeImage = false } = {}) {
+        try {
+            const posterCondition = "NULLIF(COALESCE(ch.metadata->>'poster_path', ch.metadata->>'posterPath', msi.metadata->>'posterPath', msi.metadata->>'poster_path'), '') IS NOT NULL";
+            const imageClause = includeImage
+                ? ` OR (ce.id IS NOT NULL AND ce.image_embedding IS NULL AND ${posterCondition})`
+                : '';
+
+            const result = await db.query(`
+                SELECT COUNT(*) as count
+                FROM classification_history ch
+                LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
+                LEFT JOIN media_server_items msi
+                  ON msi.tmdb_id = ch.tmdb_id
+                 AND msi.media_type = ch.media_type
+                WHERE ce.id IS NULL${imageClause}
+            `);
+
+            return parseInt(result.rows[0].count) || 0;
+        } catch (error) {
+            logger.error('Failed to get pending count', { error: error.message });
+            return 0;
+        }
+    }
+
+    /**
+     * Get pending embeddings breakdown (text vs image)
+     */
+    async getPendingBreakdown() {
+        try {
+            const posterCondition = "NULLIF(COALESCE(ch.metadata->>'poster_path', ch.metadata->>'posterPath', msi.metadata->>'posterPath', msi.metadata->>'poster_path'), '') IS NOT NULL";
+            const result = await db.query(`
+                SELECT
+                    COUNT(*) FILTER (WHERE ce.id IS NULL) AS pending_text,
+                    COUNT(*) FILTER (
+                        WHERE ce.id IS NOT NULL
+                        AND ce.image_embedding IS NULL
+                        AND ${posterCondition}
+                    ) AS pending_image
+                FROM classification_history ch
+                LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
+                LEFT JOIN media_server_items msi
+                  ON msi.tmdb_id = ch.tmdb_id
+                 AND msi.media_type = ch.media_type
+            `);
+
+            const pendingText = parseInt(result.rows[0]?.pending_text || 0);
+            const pendingImage = parseInt(result.rows[0]?.pending_image || 0);
+            return {
+                text: pendingText,
+                image: pendingImage,
+                total: pendingText + pendingImage
+            };
+        } catch (error) {
+            logger.error('Failed to get pending breakdown', { error: error.message });
+            return { text: 0, image: 0, total: 0 };
+        }
+    }
+
+    /**
+     * Get pending embeddings
+     */
+    async getPendingEmbeddings({ limit = 10, includeImage = false } = {}) {
+        try {
+            const posterCondition = "NULLIF(COALESCE(ch.metadata->>'poster_path', ch.metadata->>'posterPath', msi.metadata->>'posterPath', msi.metadata->>'poster_path'), '') IS NOT NULL";
+            const needsImageExpr = includeImage
+                ? `(ce.id IS NOT NULL AND ce.image_embedding IS NULL AND ${posterCondition})`
+                : 'false';
+            const imageClause = includeImage
+                ? ` OR (ce.id IS NOT NULL AND ce.image_embedding IS NULL AND ${posterCondition})`
+                : '';
+
+            const result = await db.query(`
+                SELECT
+                    ch.id,
+                    ch.title,
+                    ch.media_type,
+                    ch.library_name,
+                    ch.metadata,
+                    (ce.id IS NULL) AS needs_text,
+                    ${needsImageExpr} AS needs_image
+                FROM classification_history ch
+                LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
+                LEFT JOIN media_server_items msi
+                  ON msi.tmdb_id = ch.tmdb_id
+                 AND msi.media_type = ch.media_type
+                WHERE ce.id IS NULL${imageClause}
+                ORDER BY ch.created_at DESC
+                LIMIT $1
+            `, [limit]);
+
+            return result.rows.map(row => ({
+                id: row.id,
+                title: row.title,
+                media_type: row.media_type,
+                library_name: row.library_name,
+                needsText: row.needs_text === true,
+                needsImage: row.needs_image === true,
+                metadata: typeof row.metadata === 'string'
+                    ? JSON.parse(row.metadata)
+                    : row.metadata
+            }));
+        } catch (error) {
+            logger.error('Failed to get pending embeddings', { error: error.message });
+            return [];
         }
     }
 

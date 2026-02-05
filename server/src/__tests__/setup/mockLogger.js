@@ -7,6 +7,13 @@
  */
 
 // Mock logger to suppress console output in tests
+const { createConsoleSpy } = require('./consoleHelpers');
+
+const infoSpy = createConsoleSpy('info', { suppress: true });
+const warnSpy = createConsoleSpy('warn', { suppress: true });
+const errorSpy = createConsoleSpy('error', { suppress: true });
+const debugSpy = createConsoleSpy('debug', { suppress: true });
+
 const mockLogger = {
   info: jest.fn(),
   warn: jest.fn(),
@@ -16,10 +23,10 @@ const mockLogger = {
 
 // Spy on actual logger for verification tests
 const spyLogger = {
-  info: jest.spyOn(console, 'info').mockImplementation(),
-  warn: jest.spyOn(console, 'warn').mockImplementation(),
-  error: jest.spyOn(console, 'error').mockImplementation(),
-  debug: jest.spyOn(console, 'debug').mockImplementation()
+  info: infoSpy.spy,
+  warn: warnSpy.spy,
+  error: errorSpy.spy,
+  debug: debugSpy.spy
 };
 
 // Restore original logger for specific tests

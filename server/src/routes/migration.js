@@ -118,6 +118,9 @@ router.post('/rules/:id/migrate', async (req, res) => {
         res.json(result);
     } catch (error) {
         logger.error('Error migrating rule', { ruleId: req.params.id, error: error.message });
+        if (error.status) {
+            return res.status(error.status).json({ error: error.message, code: error.code });
+        }
         res.status(500).json({ error: error.message });
     }
 });

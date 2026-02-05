@@ -10,6 +10,7 @@ import api from '../api'
 
 vi.mock('../api', () => ({
   default: {
+    getAIConfig: vi.fn(),
     getSystemHealth: vi.fn(),
     getSystemStatus: vi.fn(),
     post: vi.fn()
@@ -59,6 +60,7 @@ describe('System.vue', () => {
   })
 
   const mountSystem = async (statusOverrides = {}) => {
+    api.getAIConfig.mockResolvedValue({ data: {} })
     api.getSystemHealth.mockResolvedValue({ data: baseHealth })
     api.getSystemStatus.mockResolvedValue({ data: { ...baseStatus, ...statusOverrides } })
 

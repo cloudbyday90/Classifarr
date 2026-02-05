@@ -20,6 +20,7 @@ const request = require('supertest');
 const express = require('express');
 const db = require('../config/database');
 const healthCheckService = require('../services/healthCheckService');
+const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 // Mock the database module
 jest.mock('../config/database', () => ({
@@ -50,7 +51,7 @@ describe('Health Endpoints', () => {
 
   beforeEach(() => {
     // Suppress console.error during tests
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleErrorSpy = createConsoleSpy('error', { suppress: true });
 
     // Create a minimal Express app with the health endpoints
     app = express();
@@ -65,7 +66,7 @@ describe('Health Endpoints', () => {
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
+    consoleErrorSpy.restore();
   });
 
   describe('GET /api/system/health/live', () => {
@@ -145,7 +146,8 @@ describe('Health Endpoints', () => {
 
     test('should return 200 and health status when database is connected', async () => {
       healthCheckService.getHealthCache.mockReturnValue({
-        database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 }
+        database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 },
+        imageEmbeddings: { status: 'disabled', lastCheck: new Date().toISOString() }
       });
       healthCheckService.getUptime.mockReturnValue(302400); // 3d 14h in seconds
       healthCheckService.checkQueueWorker.mockResolvedValue({
@@ -164,6 +166,7 @@ describe('Health Endpoints', () => {
       expect(response.body.version).toBeDefined();
       expect(response.body.uptime).toBe(302400);
       expect(response.body.database).toBe('connected');
+      expect(response.body.imageEmbeddings).toBe('disabled');
       expect(response.body.timestamp).toBeDefined();
     });
 

@@ -6,6 +6,7 @@
  */
 
 const db = require('../config/database');
+const embeddingService = require('./embeddingService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('SchedulerService');
@@ -100,12 +101,8 @@ class SchedulerService {
             if (!ragEnabled) return;
 
             // Check how many items still need embeddings
-            const pendingResult = await db.query(`
-                SELECT COUNT(*) as pending FROM classification_history ch
-                LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
-                WHERE ce.id IS NULL
-            `);
-            const pendingCount = parseInt(pendingResult.rows[0]?.pending || 0);
+            const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+            const pendingCount = await embeddingService.getPendingCount({ includeImage });
 
             if (pendingCount === 0) return;
 
@@ -132,32 +129,33 @@ class SchedulerService {
      */
     async runRagBackfill() {
         try {
-            const embeddingService = require('./embeddingService');
-
-            // Get classifications without embeddings (batch of 10)
-            const result = await db.query(`
-                SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
-                FROM classification_history ch
-                LEFT JOIN classification_embeddings ce ON ch.id = ce.classification_id
-                WHERE ce.id IS NULL
-                LIMIT 10
-            `);
+            const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+            const pending = await embeddingService.getPendingEmbeddings({
+                limit: 10,
+                includeImage
+            });
 
             let processed = 0;
             let failed = 0;
 
-            for (const row of result.rows) {
+            for (const row of pending) {
                 try {
-                    const metadata = typeof row.metadata === 'string'
-                        ? JSON.parse(row.metadata)
-                        : row.metadata || {};
-
-                    await embeddingService.generateAndStore(row.id, {
-                        ...metadata,
-                        title: row.title,
-                        media_type: row.media_type,
-                        library_name: row.library_name
-                    });
+                    const metadata = row.metadata || {};
+                    if (row.needsText) {
+                        await embeddingService.generateAndStore(row.id, {
+                            ...metadata,
+                            title: row.title,
+                            media_type: row.media_type,
+                            library_name: row.library_name
+                        });
+                    } else if (row.needsImage) {
+                        await embeddingService.generateImageEmbedding(row.id, {
+                            ...metadata,
+                            title: row.title,
+                            media_type: row.media_type,
+                            library_name: row.library_name
+                        });
+                    }
                     processed++;
                 } catch (error) {
                     failed++;

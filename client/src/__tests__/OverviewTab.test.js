@@ -141,19 +141,30 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
     });
   });
 
-  describe('Issue 2: Test Connection displays dimensions correctly', () => {
-    it('displays dimensions in success message after test connection', async () => {
-      const mockStatusData = { 
-        data: { 
-          providerOnline: true, 
-          stats: {}, 
-          recentActivity: [] 
-        } 
+  describe('Issue 2: Image summary renders sizing and mode', () => {
+    it('displays image size and model in the summary', async () => {
+      const mockStatusData = {
+        data: {
+          providerOnline: true,
+          stats: {},
+          recentActivity: [],
+          image: {
+            enabled: true,
+            providerOnline: true,
+            provider: 'local',
+            model: 'ViT-L-14',
+            stats: { total: 1, pending: 0 }
+          }
+        }
       };
-      const mockConfigData = { 
-        data: { 
-          embedding_provider_mode: 'same' 
-        } 
+      const mockConfigData = {
+        data: {
+          embedding_provider_mode: 'same',
+          image_embedding_provider_mode: 'separate_local',
+          image_embedding_image_size: 512,
+          image_embedding_rps: 2,
+          image_embedding_concurrency: 2
+        }
       };
 
       api.get.mockImplementation((url) => {
@@ -162,42 +173,34 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         return Promise.reject(new Error('Unknown URL'));
       });
 
-      api.post.mockResolvedValue({
-        data: {
-          success: true,
-          dims: 768,
-          latency: 123,
-          provider: 'ollama',
-          model: 'nomic-embed-text'
-        }
-      });
-
       const wrapper = mountComponent();
       await flushPromises();
 
-      const testButton = wrapper.findAll('button').find(b => b.text().includes('Test Connection'));
-      expect(testButton).toBeDefined();
-      
-      await testButton.trigger('click');
-      await flushPromises();
-
-      // Should show dimensions in the test result
-      expect(wrapper.text()).toContain('768');
-      expect(wrapper.text()).toContain('dimensions');
+      expect(wrapper.text()).toContain('Image Embedding Summary');
+      expect(wrapper.text()).toContain('ViT-L-14');
+      expect(wrapper.text()).toContain('512 px');
     });
 
-    it('handles test connection failure gracefully', async () => {
-      const mockStatusData = { 
-        data: { 
-          providerOnline: true, 
-          stats: {}, 
-          recentActivity: [] 
-        } 
+    it('shows disabled image mode gracefully', async () => {
+      const mockStatusData = {
+        data: {
+          providerOnline: true,
+          stats: {},
+          recentActivity: [],
+          image: {
+            enabled: false,
+            providerOnline: false,
+            provider: 'unknown',
+            model: null,
+            stats: { total: 0, pending: 0 }
+          }
+        }
       };
-      const mockConfigData = { 
-        data: { 
-          embedding_provider_mode: 'same' 
-        } 
+      const mockConfigData = {
+        data: {
+          embedding_provider_mode: 'same',
+          image_embedding_provider_mode: 'disabled'
+        }
       };
 
       api.get.mockImplementation((url) => {
@@ -206,22 +209,11 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         return Promise.reject(new Error('Unknown URL'));
       });
 
-      api.post.mockResolvedValue({
-        data: {
-          success: false,
-          error: 'Connection failed'
-        }
-      });
-
       const wrapper = mountComponent();
       await flushPromises();
 
-      const testButton = wrapper.findAll('button').find(b => b.text().includes('Test Connection'));
-      await testButton.trigger('click');
-      await flushPromises();
-
-      // Should show error message
-      expect(wrapper.text()).toContain('Connection failed');
+      expect(wrapper.text()).toContain('Disabled');
+      expect(wrapper.text()).toContain('Image Embedding Summary');
     });
   });
 
@@ -344,7 +336,8 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
       expect(wrapper.exists()).toBe(true);
       expect(wrapper.text()).toContain('Provider Status');
       expect(wrapper.text()).toContain('Total Embeddings');
-      expect(wrapper.text()).toContain('Embedding Provider');
+      expect(wrapper.text()).toContain('Text Embedding Summary');
+      expect(wrapper.text()).toContain('Image Embedding Summary');
     });
 
     it('renders without crashing when API returns empty object', async () => {

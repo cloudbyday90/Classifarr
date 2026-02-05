@@ -18,6 +18,7 @@
 
 const request = require('supertest');
 const express = require('express');
+const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 // 1. Mock Logger FIRST to catch any early logs
 jest.mock('../utils/logger', () => ({
@@ -71,13 +72,13 @@ describe('Classification Routes - Pending Resolution', () => {
   let consoleErrorSpy;
 
   beforeAll(() => {
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = createConsoleSpy('warn', { suppress: true });
+    consoleErrorSpy = createConsoleSpy('error', { suppress: true });
   });
 
   afterAll(() => {
-    consoleWarnSpy.mockRestore();
-    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.restore();
+    consoleErrorSpy.restore();
   });
 
   beforeEach(() => {

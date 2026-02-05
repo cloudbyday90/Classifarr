@@ -67,6 +67,7 @@
           <option value="degraded">Degraded Only</option>
           <option value="unhealthy">Issues Only</option>
           <option value="not_configured">Not Configured</option>
+          <option value="disabled">Disabled</option>
         </select>
       </div>
 
@@ -364,6 +365,7 @@ const healthServices = ref([
   { name: 'Radarr', key: 'radarr', status: 'unknown', description: 'Movie management', responseTime: null, lastCheck: null },
   { name: 'Sonarr', key: 'sonarr', status: 'unknown', description: 'TV show management', responseTime: null, lastCheck: null },
   { name: 'AI Provider', key: 'ollama', status: 'unknown', description: 'Ollama/OpenAI/Anthropic', responseTime: null, lastCheck: null },
+  { name: 'Image Embeddings', key: 'imageEmbeddings', status: 'unknown', description: 'Local image embedding service', responseTime: null, lastCheck: null },
   { name: 'Queue Worker', key: 'queueWorker', status: 'unknown', description: 'Task processing', responseTime: null, lastCheck: null },
   { name: 'TMDB', key: 'tmdb', status: 'unknown', description: 'Movie/TV metadata', responseTime: null, lastCheck: null },
   { name: 'OMDb', key: 'omdb', status: 'unknown', description: 'Movie/TV enrichment', responseTime: null, lastCheck: null },
@@ -415,6 +417,7 @@ const normalizeStatus = (status) => {
   if (statusLower === 'configured') return 'degraded'
   if (statusLower === 'disconnected' || statusLower === 'error') return 'unhealthy'
   if (statusLower === 'not configured') return 'not_configured'
+  if (statusLower === 'disabled') return 'disabled'
   
   return status
 }
@@ -479,11 +482,31 @@ const loadHealth = async (silent = false) => {
   error.value = null
   
   try {
-    const response = await api.getSystemHealth()
+    const [response, aiConfigResponse] = await Promise.all([
+      api.getSystemHealth(),
+      api.getAIConfig().catch(() => ({ data: {} }))
+    ])
     
     if (response.data) {
       const statusMap = response.data
       healthDetails.value = statusMap.details || {}
+      const aiConfig = aiConfigResponse?.data || {}
+      const aiProviderLabel = healthDetails.value.ollama?.provider
+        ? healthDetails.value.ollama.provider
+        : 'Ollama/OpenAI/Anthropic'
+      const aiDescription = aiProviderLabel
+      const imageEmbedProvider = healthDetails.value.imageEmbeddings?.provider || 'unknown'
+      const imageEmbedMode = healthDetails.value.imageEmbeddings?.mode || aiConfig.image_embedding_provider_mode || 'disabled'
+      const imageEmbedDescriptionParts = []
+      if (imageEmbedProvider && imageEmbedProvider !== 'unknown') {
+        imageEmbedDescriptionParts.push(`Provider: ${imageEmbedProvider}`)
+      }
+      if (imageEmbedMode) {
+        imageEmbedDescriptionParts.push(`Mode: ${imageEmbedMode}`)
+      }
+      const imageEmbedDescription = imageEmbedDescriptionParts.length > 0
+        ? imageEmbedDescriptionParts.join(' • ')
+        : 'Local image embedding service'
       
       healthServices.value = [
         { 
@@ -584,7 +607,7 @@ const loadHealth = async (silent = false) => {
           name: 'AI Provider', 
           key: 'ollama',
           status: normalizeStatus(statusMap.ollama), 
-          description: healthDetails.value.ollama?.provider ? healthDetails.value.ollama.provider : 'Ollama/OpenAI/Anthropic',
+          description: aiDescription,
           responseTime: healthDetails.value.ollama?.responseTime,
           lastCheck: healthDetails.value.ollama?.lastCheck,
           lastSuccessfulCheck: healthDetails.value.ollama?.lastSuccessfulCheck,
@@ -597,6 +620,26 @@ const loadHealth = async (silent = false) => {
             { 
               status: normalizeStatus(healthDetails.value.ollama?.previousStatus), 
               responseTime: healthDetails.value.ollama?.previousResponseTime 
+            }
+          )
+        },
+        { 
+          name: 'Image Embeddings', 
+          key: 'imageEmbeddings',
+          status: normalizeStatus(statusMap.imageEmbeddings), 
+          description: imageEmbedDescription,
+          responseTime: healthDetails.value.imageEmbeddings?.responseTime,
+          lastCheck: healthDetails.value.imageEmbeddings?.lastCheck,
+          lastSuccessfulCheck: healthDetails.value.imageEmbeddings?.lastSuccessfulCheck,
+          error: healthDetails.value.imageEmbeddings?.error,
+          trend: calculateTrend(
+            { 
+              status: normalizeStatus(statusMap.imageEmbeddings), 
+              responseTime: healthDetails.value.imageEmbeddings?.responseTime 
+            },
+            { 
+              status: normalizeStatus(healthDetails.value.imageEmbeddings?.previousStatus), 
+              responseTime: healthDetails.value.imageEmbeddings?.previousResponseTime 
             }
           )
         },
@@ -765,6 +808,12 @@ const getServiceTooltip = (service) => {
   }
   if (service.trend && service.trend !== 'stable') {
     tooltip += `\nTrend: ${service.trend}`
+  }
+  if (service.key === 'imageEmbeddings' && service.description) {
+    const parts = service.description.split(' • ').filter(Boolean)
+    parts.forEach((part) => {
+      tooltip += `\n${part}`
+    })
   }
   return tooltip
 }

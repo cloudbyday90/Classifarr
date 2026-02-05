@@ -11,6 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 describe('Database Resilience', () => {
     describe('Static Analysis - No process.exit in database.js', () => {
@@ -58,12 +59,12 @@ describe('Database Resilience', () => {
             processExitCalled = false;
             jest.clearAllMocks();
             // Suppress console.error to keep test output clean and prevent false positives
-            consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+            consoleSpy = createConsoleSpy('error', { suppress: true });
         });
 
         afterEach(() => {
             if (consoleSpy) {
-                consoleSpy.mockRestore();
+                consoleSpy.restore();
             }
         });
 
@@ -88,7 +89,7 @@ describe('Database Resilience', () => {
             // Verify process.exit was NOT called
             expect(process.exit).not.toHaveBeenCalled();
             expect(processExitCalled).toBe(false);
-            expect(consoleSpy).toHaveBeenCalled();
+            expect(consoleSpy.spy).toHaveBeenCalled();
         });
 
         it('should handle ECONNRESET errors gracefully', () => {
@@ -108,7 +109,7 @@ describe('Database Resilience', () => {
 
             // Application should continue running
             expect(process.exit).not.toHaveBeenCalled();
-            expect(consoleSpy).toHaveBeenCalled();
+            expect(consoleSpy.spy).toHaveBeenCalled();
         });
 
         it('should handle connection terminated errors gracefully', () => {
@@ -123,7 +124,7 @@ describe('Database Resilience', () => {
             mockPool.emit('error', new Error('Connection terminated unexpectedly'));
 
             expect(process.exit).not.toHaveBeenCalled();
-            expect(consoleSpy).toHaveBeenCalled();
+            expect(consoleSpy.spy).toHaveBeenCalled();
         });
     });
 

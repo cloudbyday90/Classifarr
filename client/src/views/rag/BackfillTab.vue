@@ -101,7 +101,13 @@
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-lg font-semibold text-white mb-1">Idle Backfill</h3>
+          <div class="flex items-center gap-2">
+            <h3 class="text-lg font-semibold text-white mb-1">Idle Backfill</h3>
+            <span
+              class="text-xs text-gray-500 cursor-help"
+              title="Image backfill runs only when image embeddings are enabled."
+            >ⓘ</span>
+          </div>
           <p class="text-sm text-gray-400">Process embeddings during idle periods</p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
@@ -138,7 +144,13 @@
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-lg font-semibold text-white mb-1">Scheduled Backfill</h3>
+          <div class="flex items-center gap-2">
+            <h3 class="text-lg font-semibold text-white mb-1">Scheduled Backfill</h3>
+            <span
+              class="text-xs text-gray-500 cursor-help"
+              title="Image backfill runs only when image embeddings are enabled."
+            >ⓘ</span>
+          </div>
           <p class="text-sm text-gray-400">Run large batch backfill on schedule</p>
         </div>
         <label class="relative inline-flex items-center cursor-pointer">
@@ -189,6 +201,11 @@
         <div>
           <span class="text-gray-400">Pending Embeddings:</span>
           <span class="ml-2 text-2xl font-bold text-white">{{ manualStatus.pending }}</span>
+        </div>
+        <div class="text-sm text-gray-400">
+          <span>Text {{ manualStatus.pendingText }}</span>
+          <span class="mx-2 text-gray-600">•</span>
+          <span>Image {{ manualStatus.pendingImage }}</span>
         </div>
       </div>
 
@@ -272,7 +289,7 @@ const backfill = ref({
   idle_enabled: true,
   idle_threshold: 30000,
   idle_batch_size: 10,
-  scheduled_enabled: false,
+  scheduled_enabled: true,
   scheduled_time: '02:00',
   scheduled_batch_size: 100,
   scheduled_max_duration_min: 60
@@ -289,6 +306,8 @@ const manualStatus = ref({
   processed: 0,
   total: 0,
   pending: 0,
+  pendingText: 0,
+  pendingImage: 0,
   progress: 0,
   eta: null
 })
@@ -333,12 +352,15 @@ const loadManualStatus = async () => {
   try {
     const response = await api.get('/rag/backfill/status')
     const manual = response.data.manual
+    const breakdown = response.data.pendingBreakdown || {}
 
     manualStatus.value = {
       status: manual.status || 'idle',
       processed: manual.processed || 0,
       total: manual.total || 0,
       pending: response.data.pending || 0,
+      pendingText: breakdown.text ?? 0,
+      pendingImage: breakdown.image ?? 0,
       progress: manual.total > 0 ? (manual.processed / manual.total) * 100 : 0,
       eta: manual.eta || null
     }
@@ -434,7 +456,7 @@ const formatDuration = (ms) => {
 
 const formatETA = (eta) => {
   if (!eta) return 'N/A'
-  return formatDuration(eta)
+  return formatDuration(eta * 1000)
 }
 
 onMounted(() => {

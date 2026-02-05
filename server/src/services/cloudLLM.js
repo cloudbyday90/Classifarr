@@ -173,6 +173,72 @@ class CloudLLMService {
     }
 
     /**
+     * Get available embedding models from the provider
+     */
+    async getEmbeddingModels(config) {
+        try {
+            // Gemini uses different API format
+            if (config.primary_provider === 'gemini') {
+                return await this.getGeminiEmbeddingModels(config);
+            }
+
+            const endpoint = this.getEndpoint(config);
+            const response = await axios.get(`${endpoint}/models`, {
+                headers: this.getHeaders(config),
+                timeout: 10000
+            });
+
+            const models = response.data?.data || [];
+
+            const embeddingModels = models
+                .filter(m => /embed|embedding/i.test(m.id || ''))
+                .map(m => ({
+                    id: m.id,
+                    name: m.id,
+                    owned_by: m.owned_by
+                }))
+                .sort((a, b) => a.id.localeCompare(b.id));
+
+            return embeddingModels;
+        } catch (error) {
+            logger.error('Failed to get embedding models', { error: error.message });
+            return [];
+        }
+    }
+
+    /**
+     * Get Gemini embedding models
+     */
+    async getGeminiEmbeddingModels(config) {
+        try {
+            const response = await axios.get(
+                `https://generativelanguage.googleapis.com/v1beta/models?key=${config.api_key}`,
+                { timeout: 10000 }
+            );
+
+            const models = response.data?.models || [];
+
+            return models
+                .filter(m => {
+                    const name = (m.name || '').toLowerCase();
+                    const display = (m.displayName || '').toLowerCase();
+                    const methods = (m.supportedGenerationMethods || []).map(method => method.toLowerCase());
+                    return name.includes('embedding') ||
+                        display.includes('embedding') ||
+                        methods.some(method => method.includes('embed'));
+                })
+                .map(m => ({
+                    id: m.name.replace('models/', ''),
+                    name: m.displayName || m.name.replace('models/', ''),
+                    description: m.description
+                }));
+        } catch (error) {
+            logger.error('Failed to get Gemini embedding models', { error: error.message });
+            return [];
+        }
+    }
+
+    /**
      * Get Gemini models
      */
     async getGeminiModels(config) {

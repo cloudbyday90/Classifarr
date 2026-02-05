@@ -18,6 +18,7 @@
 
 const db = require('../../config/database');
 const legacyMigration = require('../../services/legacyMigration');
+const { withConsoleSpy } = require('../setup/consoleHelpers');
 
 describe('Legacy Migration Integration Tests', () => {
     let testLibraryId;
@@ -206,7 +207,11 @@ describe('Legacy Migration Integration Tests', () => {
                 preset_id: presetId
             };
 
-            await legacyMigration.migrateRule(ruleId, migrationChoice, null);
+            await withConsoleSpy('log', async ({ getMessages }) => {
+                await legacyMigration.migrateRule(ruleId, migrationChoice, null);
+                expect(getMessages()).toContain('Rule migrated successfully');
+                expect(getMessages()).toContain('migrationType');
+            });
 
             // Verify rule is marked as migrated
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);
@@ -237,7 +242,11 @@ describe('Legacy Migration Integration Tests', () => {
                 }
             };
 
-            await legacyMigration.migrateRule(ruleId, migrationChoice, null);
+            await withConsoleSpy('log', async ({ getMessages }) => {
+                await legacyMigration.migrateRule(ruleId, migrationChoice, null);
+                expect(getMessages()).toContain('Rule migrated successfully');
+                expect(getMessages()).toContain('migrationType');
+            });
 
             // Verify rule is marked as migrated
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);
@@ -258,14 +267,22 @@ describe('Legacy Migration Integration Tests', () => {
 
             const ruleId = ruleResult.rows[0].id;
 
-            const migrationChoice = {
-                type: 'preset',
-                preset_id: 9999 // Non-existent preset
-            };
+            await withConsoleSpy('error', async ({ getMessages }) => {
+                const migrationChoice = {
+                    type: 'preset',
+                    preset_id: 9999 // Non-existent preset
+                };
 
-            await expect(
-                legacyMigration.migrateRule(ruleId, migrationChoice, null)
-            ).rejects.toThrow();
+                await expect(
+                    legacyMigration.migrateRule(ruleId, migrationChoice, null)
+                ).rejects.toMatchObject({
+                    code: 'PRESET_NOT_FOUND',
+                    status: 404
+                });
+
+                expect(getMessages()).toContain('Migration failed');
+                expect(getMessages()).toContain('Preset not found: 9999');
+            });
 
             // Verify rule is NOT marked as migrated
             const rule = await db.query('SELECT * FROM library_custom_rules WHERE id = $1', [ruleId]);

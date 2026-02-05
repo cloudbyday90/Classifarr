@@ -117,31 +117,11 @@ class ScheduledBackfillService {
      * Get pending embeddings
      */
     async getPendingEmbeddings(limit) {
-        try {
-            const result = await db.query(`
-                SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
-                FROM classification_history ch
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM classification_embeddings ce
-                    WHERE ce.classification_id = ch.id
-                )
-                ORDER BY ch.created_at DESC
-                LIMIT $1
-            `, [limit]);
-
-            return result.rows.map(row => ({
-                id: row.id,
-                title: row.title,
-                media_type: row.media_type,
-                library_name: row.library_name,
-                metadata: typeof row.metadata === 'string'
-                    ? JSON.parse(row.metadata)
-                    : row.metadata
-            }));
-        } catch (error) {
-            logger.error('Failed to get pending embeddings', { error: error.message });
-            return [];
-        }
+        const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+        return await embeddingService.getPendingEmbeddings({
+            limit,
+            includeImage
+        });
     }
 
     /**
@@ -165,6 +145,7 @@ class ScheduledBackfillService {
         this.isRunning = true;
         const startTime = Date.now();
         let processed = 0;
+        const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
 
         logger.info('Starting scheduled backfill', {
             batchSize: this.schedule.batchSize,
@@ -181,7 +162,10 @@ class ScheduledBackfillService {
 
         try {
             while (Date.now() - startTime < this.schedule.maxDuration) {
-                const pending = await this.getPendingEmbeddings(this.schedule.batchSize);
+                const pending = await embeddingService.getPendingEmbeddings({
+                    limit: this.schedule.batchSize,
+                    includeImage
+                });
 
                 if (pending.length === 0) {
                     logger.info('No more pending embeddings');
@@ -195,12 +179,21 @@ class ScheduledBackfillService {
                     }
 
                     try {
-                        await embeddingService.generateAndStore(item.id, {
-                            ...item.metadata,
-                            title: item.title,
-                            media_type: item.media_type,
-                            library_name: item.library_name
-                        });
+                        if (item.needsText) {
+                            await embeddingService.generateAndStore(item.id, {
+                                ...item.metadata,
+                                title: item.title,
+                                media_type: item.media_type,
+                                library_name: item.library_name
+                            });
+                        } else if (item.needsImage) {
+                            await embeddingService.generateImageEmbedding(item.id, {
+                                ...item.metadata,
+                                title: item.title,
+                                media_type: item.media_type,
+                                library_name: item.library_name
+                            });
+                        }
                         processed++;
 
                         // Update progress every 10 items

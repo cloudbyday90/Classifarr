@@ -365,7 +365,7 @@ class QueueService {
                     if (enrichPayload.itemId && (!enrichTmdbId || !enrichSourceLibraryId)) {
                         try {
                             const itemResult = await this.db.query(
-                                `SELECT msi.tmdb_id, msi.library_id, l.name as library_name 
+                                `SELECT msi.tmdb_id, msi.library_id, msi.metadata, l.name as library_name 
                                  FROM media_server_items msi 
                                  LEFT JOIN libraries l ON msi.library_id = l.id 
                                  WHERE msi.id = $1`,
@@ -381,6 +381,17 @@ class QueueService {
                                 }
                                 if (!enrichSourceLibraryName && row.library_name) {
                                     enrichSourceLibraryName = row.library_name;
+                                }
+                                if (!enrichPayload.posterPath && row.metadata) {
+                                    const itemMetadata = typeof row.metadata === 'string'
+                                        ? JSON.parse(row.metadata)
+                                        : row.metadata;
+                                    if (itemMetadata?.posterPath) {
+                                        enrichPayload.posterPath = itemMetadata.posterPath;
+                                    }
+                                    if (!enrichPayload.poster_path && itemMetadata?.poster_path) {
+                                        enrichPayload.poster_path = itemMetadata.poster_path;
+                                    }
                                 }
                                 this.logger.info('Self-heal: Retrieved missing metadata from database', {
                                     itemId: enrichPayload.itemId,
@@ -1782,6 +1793,7 @@ class QueueService {
                     tmdb_id: item.tmdb_id,
                     tvdb_id: item.tvdb_id,  // Pass for TVDB→TMDB conversion
                     imdb_id: item.imdb_id,  // Pass for IMDB→TMDB conversion
+                    posterPath: item.metadata?.posterPath || null,
                     itemId: item.id, // Pass internal ID for efficient updating
                     source_library_id: item.library_id, // Already in this library - just enriching
                     source_library_name: item.library_name,

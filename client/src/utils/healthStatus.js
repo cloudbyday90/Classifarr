@@ -52,6 +52,15 @@ export const HEALTH_STATUS = {
     textClass: 'text-gray-400',
     icon: '⚙️'
   },
+  disabled: {
+    label: 'Disabled',
+    badgeVariant: 'default',
+    dotClass: 'bg-gray-500',
+    borderClass: 'border-gray-700',
+    bgClass: 'bg-gray-900/20',
+    textClass: 'text-gray-400',
+    icon: '⛔'
+  },
   unknown: {
     label: 'Unknown',
     badgeVariant: 'default',

@@ -378,4 +378,135 @@ describe('RAG API Integration Tests', () => {
             expect(response.body.error).toContain('Invalid hours parameter');
         });
     });
+
+    describe('GET /api/rag/backfill/status', () => {
+        beforeEach(async () => {
+            await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
+            await pool.query('TRUNCATE TABLE classification_history RESTART IDENTITY CASCADE');
+            await pool.query('TRUNCATE TABLE media_server_items RESTART IDENTITY CASCADE');
+            await pool.query('TRUNCATE TABLE libraries RESTART IDENTITY CASCADE');
+            await pool.query('TRUNCATE TABLE media_server RESTART IDENTITY CASCADE');
+
+            await pool.query(`
+                UPDATE ai_provider_config
+                SET rag_enabled = true,
+                    rag_image_weight = 0.5,
+                    image_embedding_provider_mode = 'separate_local',
+                    image_embedding_local_host = 'localhost',
+                    image_embedding_local_port = 8000
+                WHERE id = 1
+            `);
+        });
+
+        it('returns pendingBreakdown with text and image counts', async () => {
+            const mediaServer = await pool.query(`
+                INSERT INTO media_server (type, name, url, api_key)
+                VALUES ('plex', 'Test Plex', 'http://localhost:32400', 'abc')
+                RETURNING id
+            `);
+            const library = await pool.query(`
+                INSERT INTO libraries (media_server_id, external_id, name, media_type)
+                VALUES ($1, 'lib1', 'Movies', 'movie')
+                RETURNING id
+            `, [mediaServer.rows[0].id]);
+
+            const classificationOne = await pool.query(`
+                INSERT INTO classification_history (tmdb_id, media_type, title)
+                VALUES (100, 'movie', 'Pending Text')
+                RETURNING id
+            `);
+            const classificationTwo = await pool.query(`
+                INSERT INTO classification_history (tmdb_id, media_type, title)
+                VALUES (200, 'movie', 'Pending Image')
+                RETURNING id
+            `);
+
+            const dimsResult = await pool.query(`
+                SELECT format_type(att.atttypid, att.atttypmod) AS type
+                FROM pg_attribute att
+                WHERE att.attrelid = 'classification_embeddings'::regclass
+                  AND att.attname = 'embedding'
+                  AND NOT att.attisdropped
+                LIMIT 1
+            `);
+            const typeString = dimsResult.rows[0]?.type || '';
+            const match = typeString.match(/\((\d+)\)/);
+            const dims = match ? Number(match[1]) : 768;
+
+            await pool.query(`
+                INSERT INTO classification_embeddings (classification_id, embedding, embedding_dims, provider, model)
+                VALUES ($1, ARRAY(SELECT 0.0 FROM generate_series(1, $2))::vector, $2, 'test', 'model')
+            `, [classificationTwo.rows[0].id, dims]);
+
+            await pool.query(`
+                INSERT INTO media_server_items (media_server_id, library_id, external_id, tmdb_id, title, media_type, metadata)
+                VALUES ($1, $2, 'ext1', 200, 'Pending Image', 'movie', $3::jsonb)
+            `, [
+                mediaServer.rows[0].id,
+                library.rows[0].id,
+                JSON.stringify({ posterPath: 'https://example.com/poster.jpg' })
+            ]);
+
+            const response = await request(app)
+                .get('/api/rag/backfill/status')
+                .expect(200);
+
+            expect(response.body).toHaveProperty('pendingBreakdown');
+            expect(response.body.pendingBreakdown).toEqual({ text: 1, image: 1, total: 2 });
+            expect(response.body.pending).toBe(2);
+        });
+    });
+
+    describe('GET /api/rag/image-models-cache', () => {
+        it('returns cached models for matching local config', async () => {
+            await pool.query(`
+                UPDATE ai_provider_config
+                SET image_embedding_provider_mode = 'separate_local',
+                    image_embedding_local_host = 'localhost',
+                    image_embedding_local_port = 8000,
+                    image_embedding_models_cache = $1::jsonb
+                WHERE id = 1
+            `, [JSON.stringify({
+                local: {
+                    host: 'localhost',
+                    port: 8000,
+                    models: [{ id: 'vit-l-14', name: 'ViT-L-14' }],
+                    fetched_at: '2026-02-05T00:00:00Z'
+                }
+            })]);
+
+            const response = await request(app)
+                .get('/api/rag/image-models-cache')
+                .expect(200);
+
+            expect(response.body.cacheHit).toBe(true);
+            expect(response.body.scope).toBe('local');
+            expect(response.body.models).toEqual([{ id: 'vit-l-14', name: 'ViT-L-14' }]);
+        });
+
+        it('returns empty cache when config does not match', async () => {
+            await pool.query(`
+                UPDATE ai_provider_config
+                SET image_embedding_provider_mode = 'separate_local',
+                    image_embedding_local_host = 'localhost',
+                    image_embedding_local_port = 8000,
+                    image_embedding_models_cache = $1::jsonb
+                WHERE id = 1
+            `, [JSON.stringify({
+                local: {
+                    host: 'other-host',
+                    port: 8001,
+                    models: [{ id: 'vit-l-14', name: 'ViT-L-14' }],
+                    fetched_at: '2026-02-05T00:00:00Z'
+                }
+            })]);
+
+            const response = await request(app)
+                .get('/api/rag/image-models-cache')
+                .expect(200);
+
+            expect(response.body.cacheHit).toBe(false);
+            expect(response.body.models).toEqual([]);
+        });
+    });
 });

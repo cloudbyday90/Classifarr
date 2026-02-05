@@ -32,16 +32,17 @@ const sonarrService = require('../services/sonarr');
 const libraryMappingService = require('../services/libraryMappingService');
 const plexService = require('../services/plex');
 const db = require('../config/database');
+const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 describe('Reclassification Service', () => {
     let consoleErrorSpy;
 
     beforeAll(() => {
-        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        consoleErrorSpy = createConsoleSpy('error', { suppress: true });
     });
 
     afterAll(() => {
-        consoleErrorSpy.mockRestore();
+        consoleErrorSpy.restore();
     });
 
     beforeEach(() => {

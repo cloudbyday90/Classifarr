@@ -616,6 +616,67 @@ describe('Classification Details Storage', () => {
     expect(metadata.classification_details.processing_time_ms).toBeDefined();
   });
 
+  test('should store rag_details when RAG context is available', async () => {
+    const mockPolicyResult = {
+      action: 'prompt_confirm',
+      confidence: 85,
+      method: 'policy_engine',
+      scores: { preset: 80, profile: 70, pattern: 0, rag: 10, history: 0 },
+      weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 85,
+        policy_id: 11,
+        policy_name: 'Movies Policy',
+        scores: { preset: 80, profile: 70, pattern: 0, rag: 10, history: 0 },
+        weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 }
+      }],
+      ragCache: {
+        matches: [{
+          similarity: 0.88,
+          textSimilarity: 0.84,
+          imageSimilarity: 0.92,
+          textWeight: 0.6,
+          imageWeight: 0.4,
+          libraryId: 1,
+          libraryName: 'Movies'
+        }],
+        timestamp: Date.now()
+      }
+    };
+
+    policyEngine.evaluateItem.mockResolvedValue(mockPolicyResult);
+    jest.spyOn(classificationService, 'aiClassify').mockResolvedValue({
+      library: { id: 1, name: 'Movies' },
+      confidence: 85,
+      verified_by_ai: false,
+      needs_clarification: false
+    });
+
+    await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 },
+      taskId: 'task-789'
+    });
+
+    const insertCalls = db.query.mock.calls.filter(call =>
+      typeof call[0] === 'string' && call[0].includes('INSERT INTO classification_history')
+    );
+
+    expect(insertCalls.length).toBeGreaterThan(0);
+
+    const metadataParam = insertCalls[0][1][9];
+    const metadata = JSON.parse(metadataParam);
+
+    expect(metadata.classification_details.rag_details).toEqual({
+      combined_similarity: 0.88,
+      text_similarity: 0.84,
+      image_similarity: 0.92,
+      text_weight: 0.6,
+      image_weight: 0.4
+    });
+  });
+
   test('should use default scores and weights when policyResult is missing', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'manual',

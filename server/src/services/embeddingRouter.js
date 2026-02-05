@@ -63,6 +63,8 @@ class EmbeddingRouter {
                     embedding_provider,
                     embedding_model,
                     rag_similarity_threshold,
+                    rag_text_weight,
+                    rag_image_weight,
                     rag_backfill_budget_type,
                     rag_backfill_budget_value,
                     rag_min_history_count,
@@ -86,7 +88,21 @@ class EmbeddingRouter {
                     embedding_ollama_model,
                     embedding_cloud_provider,
                     embedding_cloud_api_key,
-                    embedding_cloud_model
+                    embedding_cloud_model,
+                    image_embedding_provider_mode,
+                    image_embedding_local_host,
+                    image_embedding_local_port,
+                    image_embedding_local_model,
+                    image_embedding_cloud_provider,
+                    image_embedding_cloud_api_key,
+                    image_embedding_cloud_model,
+                    image_embedding_cloud_api_endpoint,
+                    image_embedding_image_size,
+                    image_embedding_rps,
+                    image_embedding_concurrency,
+                    image_embedding_batch_size,
+                    image_embedding_cache_ttl_hours,
+                    image_embedding_cache_max_mb
                 FROM ai_provider_config 
                 WHERE id = 1
             `);

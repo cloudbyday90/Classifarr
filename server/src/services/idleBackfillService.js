@@ -23,6 +23,7 @@ class IdleBackfillService {
         this.batchSize = 10;
         this.config = null;
         this.manualBackfillService = null; // Will be set by orchestrator
+        this.includeImage = false;
     }
 
     /**
@@ -68,52 +69,17 @@ class IdleBackfillService {
      * Get pending embeddings count
      */
     async getPendingCount() {
-        try {
-            const result = await db.query(`
-                SELECT COUNT(*) as count
-                FROM classification_history ch
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM classification_embeddings ce
-                    WHERE ce.classification_id = ch.id
-                )
-            `);
-
-            return parseInt(result.rows[0].count) || 0;
-        } catch (error) {
-            logger.error('Failed to get pending count', { error: error.message });
-            return 0;
-        }
+        return await embeddingService.getPendingCount({ includeImage: this.includeImage });
     }
 
     /**
      * Get pending embeddings
      */
     async getPendingEmbeddings(limit = 10) {
-        try {
-            const result = await db.query(`
-                SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
-                FROM classification_history ch
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM classification_embeddings ce
-                    WHERE ce.classification_id = ch.id
-                )
-                ORDER BY ch.created_at DESC
-                LIMIT $1
-            `, [limit]);
-
-            return result.rows.map(row => ({
-                id: row.id,
-                title: row.title,
-                media_type: row.media_type,
-                library_name: row.library_name,
-                metadata: typeof row.metadata === 'string'
-                    ? JSON.parse(row.metadata)
-                    : row.metadata
-            }));
-        } catch (error) {
-            logger.error('Failed to get pending embeddings', { error: error.message });
-            return [];
-        }
+        return await embeddingService.getPendingEmbeddings({
+            limit,
+            includeImage: this.includeImage
+        });
     }
 
     /**
@@ -146,6 +112,8 @@ class IdleBackfillService {
                 logger.info('Idle backfill NOT started: Already running');
                 return;
             }
+
+            this.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
 
             // Check for pending items BEFORE setting isRunning
             const pendingCount = await this.getPendingCount();
@@ -203,12 +171,21 @@ class IdleBackfillService {
                         }
 
                         try {
-                            await embeddingService.generateAndStore(item.id, {
-                                ...item.metadata,
-                                title: item.title,
-                                media_type: item.media_type,
-                                library_name: item.library_name
-                            });
+                            if (item.needsText) {
+                                await embeddingService.generateAndStore(item.id, {
+                                    ...item.metadata,
+                                    title: item.title,
+                                    media_type: item.media_type,
+                                    library_name: item.library_name
+                                });
+                            } else if (item.needsImage) {
+                                await embeddingService.generateImageEmbedding(item.id, {
+                                    ...item.metadata,
+                                    title: item.title,
+                                    media_type: item.media_type,
+                                    library_name: item.library_name
+                                });
+                            }
                             totalProcessed++;
 
                             // Update run progress

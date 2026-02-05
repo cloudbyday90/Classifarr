@@ -26,6 +26,7 @@ jest.mock('fs', () => ({
 
 const db = require('../config/database');
 const { createLogger, sanitizeData, getSystemContext, setLoggerDb } = require('../utils/logger');
+const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 describe('Logger', () => {
     let logger;
@@ -36,13 +37,13 @@ describe('Logger', () => {
         jest.clearAllMocks();
         setLoggerDb(db);
         logger = createLogger('TestModule');
-        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        consoleErrorSpy = createConsoleSpy('error', { suppress: true });
+        consoleWarnSpy = createConsoleSpy('warn', { suppress: true });
     });
 
     afterEach(() => {
-        consoleErrorSpy.mockRestore();
-        consoleWarnSpy.mockRestore();
+        consoleErrorSpy.restore();
+        consoleWarnSpy.restore();
     });
 
     describe('createLogger', () => {
@@ -89,8 +90,8 @@ describe('Logger', () => {
 
             await logger.error('Important error message', { key: 'value' });
 
-            expect(consoleErrorSpy).toHaveBeenCalled();
-            expect(consoleErrorSpy.mock.calls[0][0]).toContain('Important error message');
+            expect(consoleErrorSpy.spy).toHaveBeenCalled();
+            expect(consoleErrorSpy.spy.mock.calls[0][0]).toContain('Important error message');
         });
     });
 
@@ -113,13 +114,13 @@ describe('Logger', () => {
 
     describe('info()', () => {
         test('should log to console', () => {
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleSpy = createConsoleSpy('log', { suppress: true });
 
             logger.info('Info message', { key: 'value' });
 
-            expect(consoleSpy).toHaveBeenCalled();
-            expect(consoleSpy.mock.calls[0][0]).toContain('Info message');
-            consoleSpy.mockRestore();
+            expect(consoleSpy.spy).toHaveBeenCalled();
+            expect(consoleSpy.spy.mock.calls[0][0]).toContain('Info message');
+            consoleSpy.restore();
         });
     });
 
@@ -127,12 +128,12 @@ describe('Logger', () => {
         test('should log to console when debug level is enabled', () => {
             const debugLogger = createLogger('DebugModule');
             debugLogger.level = 3; // DEBUG level
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleSpy = createConsoleSpy('log', { suppress: true });
 
             debugLogger.debug('Debug message', { key: 'value' });
 
-            expect(consoleSpy).toHaveBeenCalled();
-            consoleSpy.mockRestore();
+            expect(consoleSpy.spy).toHaveBeenCalled();
+            consoleSpy.restore();
         });
     });
 

@@ -18,6 +18,7 @@
     "test:coverage:integration": "node ./scripts/run-jest.mjs -c jest.integration.config.js --coverage",
     "test:watch": "node ./scripts/run-jest.mjs --watch",
     "test:ci": "node ./scripts/run-jest.mjs --ci --coverage --maxWorkers=2",
+    "lint:tests": "eslint \"src/__tests__/**/*.js\"",
     "check-copyright": "node ../scripts/check-copyright.js",
     "update-copyright": "node ../scripts/update-copyright.js",
     "generate-contributors": "node ../scripts/generate-contributors.js"
@@ -41,6 +42,7 @@
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11.11.0",
+    "eslint": "9.39.2",
     "jest": "^30.2.0",
     "nodemon": "^3.0.2",
     "pg-mem": "^3.0.5",

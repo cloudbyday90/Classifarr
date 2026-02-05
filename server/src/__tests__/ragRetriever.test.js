@@ -51,14 +51,19 @@ describe('RAGRetriever', () => {
         it('should return similar items when found', async () => {
             // Mock embedding generation
             embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingService.resolvePosterUrl.mockReturnValue('https://example.com/poster.jpg');
+            imageEmbeddingProvider.embedImageFromUrl.mockResolvedValue({ embedding: [0.2, 0.3], dims: 2 });
+            imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'local' });
+            imageEmbeddingProvider.isConfigured.mockReturnValue(true);
 
             // Mock DB search result
             db.query.mockResolvedValue({
                 rows: [
                     {
                         classification_id: 1,
-                        combined_similarity: 0.95,
+                        combined_similarity: 0.93,
                         text_similarity: 0.95,
+                        image_similarity: 0.92,
                         title: 'Test',
                         media_type: 'movie'
                     }
@@ -68,12 +73,20 @@ describe('RAGRetriever', () => {
             // Mock config enabled and threshold
             embeddingRouter.isEnabled.mockResolvedValue(true);
             embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
-            embeddingRouter.getConfig.mockResolvedValue({ rag_similarity_threshold: 0.7 });
+            embeddingRouter.getConfig.mockResolvedValue({ 
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 0.6,
+                rag_image_weight: 0.4
+            });
 
             const results = await ragRetriever.semanticSearch({ title: 'Query' });
 
             expect(results).toHaveLength(1);
-            expect(results[0].similarity).toBe(0.95);
+            expect(results[0].similarity).toBe(0.93);
+            expect(results[0].textSimilarity).toBe(0.95);
+            expect(results[0].imageSimilarity).toBe(0.92);
+            expect(results[0].textWeight).toBe(0.6);
+            expect(results[0].imageWeight).toBe(0.4);
         });
 
         it('should return empty array if no embedding generated', async () => {
@@ -105,6 +118,40 @@ describe('RAGRetriever', () => {
 
             await ragRetriever.semanticSearch({ title: 'Query', poster_path: '/poster.jpg' });
 
+            expect(imageEmbeddingProvider.embedImageFromUrl).not.toHaveBeenCalled();
+        });
+
+        it('should fall back to text-only when no poster is available', async () => {
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            db.query.mockResolvedValue({
+                rows: [
+                    {
+                        classification_id: 1,
+                        combined_similarity: 0.9,
+                        text_similarity: 0.9,
+                        image_similarity: null,
+                        title: 'Test',
+                        media_type: 'movie'
+                    }
+                ]
+            });
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 0.7,
+                rag_image_weight: 0.3
+            });
+            embeddingService.formatForEmbedding.mockReturnValue('query');
+            embeddingService.resolvePosterUrl.mockReturnValue(null);
+            imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'separate_local' });
+            imageEmbeddingProvider.isConfigured.mockReturnValue(true);
+
+            const results = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            expect(results).toHaveLength(1);
+            expect(results[0].similarity).toBe(0.9);
+            expect(results[0].imageSimilarity).toBeNull();
             expect(imageEmbeddingProvider.embedImageFromUrl).not.toHaveBeenCalled();
         });
     });

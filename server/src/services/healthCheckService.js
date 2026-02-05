@@ -101,6 +101,16 @@ let healthCache = {
         responseTime: null,
         previousStatus: null,
         previousResponseTime: null
+    },
+    imageEmbeddings: {
+        status: 'unknown',
+        lastCheck: null,
+        lastSuccessfulCheck: null,
+        responseTime: null,
+        provider: 'unknown',
+        mode: 'disabled',
+        previousStatus: null,
+        previousResponseTime: null
     }
 };
 
@@ -748,6 +758,109 @@ async function checkRAG() {
 }
 
 /**
+ * Check image embedding provider status
+ */
+async function checkImageEmbeddings() {
+    const previous = { ...healthCache.imageEmbeddings };
+
+    try {
+        const result = await db.query(`
+            SELECT
+                image_embedding_provider_mode,
+                image_embedding_local_host,
+                image_embedding_local_port,
+                image_embedding_cloud_provider
+            FROM ai_provider_config
+            WHERE id = 1
+        `);
+
+        if (result.rows.length === 0) {
+            healthCache.imageEmbeddings = {
+                status: 'not configured',
+                lastCheck: new Date().toISOString(),
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                provider: 'unknown',
+                mode: 'disabled',
+                previousStatus: previous.status
+            };
+            return healthCache.imageEmbeddings;
+        }
+
+        const config = result.rows[0];
+        const rawMode = (config.image_embedding_provider_mode || 'disabled').toLowerCase();
+        const mode = rawMode === 'local'
+            ? 'separate_local'
+            : (['disabled', 'separate_local', 'cloud'].includes(rawMode) ? rawMode : 'disabled');
+        let provider = 'unknown';
+
+        if (mode === 'disabled') {
+            healthCache.imageEmbeddings = {
+                status: 'disabled',
+                lastCheck: new Date().toISOString(),
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                provider: 'disabled',
+                mode,
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
+            };
+            return healthCache.imageEmbeddings;
+        }
+
+        if (mode === 'cloud') {
+            provider = config.image_embedding_cloud_provider || 'cloud';
+        } else if (mode === 'separate_local') {
+            provider = 'local';
+        }
+
+        let success = false;
+        let responseTime = 0;
+        let error = null;
+
+        if (provider === 'local' && config.image_embedding_local_host) {
+            const host = config.image_embedding_local_host;
+            const port = config.image_embedding_local_port || 8000;
+            const url = `http://${host}:${port}/health`;
+            const start = Date.now();
+
+            try {
+                const response = await require('axios').get(url, { timeout: 5000 });
+                responseTime = Date.now() - start;
+                success = response.status >= 200 && response.status < 300;
+            } catch (err) {
+                responseTime = Date.now() - start;
+                error = err.message;
+            }
+        } else if (provider === 'cloud') {
+            // Cloud: treat as configured if provider set, but don't ping paid APIs
+            success = !!config.image_embedding_cloud_provider;
+        }
+
+        healthCache.imageEmbeddings = {
+            status: success ? 'connected' : (provider === 'unknown' ? 'not configured' : 'disconnected'),
+            lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: success ? new Date().toISOString() : previous.lastSuccessfulCheck,
+            responseTime: responseTime || null,
+            provider,
+            mode,
+            error,
+            previousStatus: previous.status,
+            previousResponseTime: previous.responseTime
+        };
+    } catch (error) {
+        healthCache.imageEmbeddings = {
+            status: 'error',
+            lastCheck: new Date().toISOString(),
+            lastSuccessfulCheck: previous.lastSuccessfulCheck,
+            error: error.message,
+            provider: 'unknown',
+            previousStatus: previous.status
+        };
+    }
+
+    return healthCache.imageEmbeddings;
+}
+
+/**
  * Run all health checks
  */
 async function runAllHealthChecks() {
@@ -760,6 +873,7 @@ async function runAllHealthChecks() {
         checkDiscordBot(),
         checkOllama(),
         checkRAG(),
+        checkImageEmbeddings(),
         checkRadarr(),
         checkSonarr(),
         checkMediaServer(),
@@ -889,13 +1003,14 @@ async function getAllServicesHealth() {
     }
 
     // Run all checks in parallel
-    const [database, mediaServer, radarr, sonarr, aiProvider, queueWorker] = await Promise.all([
+    const [database, mediaServer, radarr, sonarr, aiProvider, queueWorker, imageEmbeddings] = await Promise.all([
         checkDatabase(),
         checkMediaServer(),
         checkRadarr(),
         checkSonarr(),
         checkOllama(),
-        checkQueueWorker()
+        checkQueueWorker(),
+        checkImageEmbeddings()
     ]);
 
     const result = {
@@ -904,6 +1019,7 @@ async function getAllServicesHealth() {
         radarr,
         sonarr,
         aiProvider,
+        imageEmbeddings,
         queueWorker,
         timestamp: new Date().toISOString()
     };
@@ -927,6 +1043,7 @@ module.exports = {
     checkOMDb,
     checkTavily,
     checkQueueWorker,
+    checkImageEmbeddings,
     runAllHealthChecks,
     getAllServicesHealth,
     getHealthCache,

@@ -113,6 +113,7 @@ describe('useServiceStatusStore', () => {
     })
 
     it('handles errors gracefully', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const error = new Error('Network error')
       api.getSystemHealth.mockRejectedValueOnce(error)
 
@@ -121,6 +122,7 @@ describe('useServiceStatusStore', () => {
 
       expect(store.error).toBe('Network error')
       expect(store.isLoading).toBe(false)
+      consoleSpy.mockRestore()
     })
   })
 

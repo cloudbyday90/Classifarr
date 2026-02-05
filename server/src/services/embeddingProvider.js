@@ -11,6 +11,7 @@
 const axios = require('axios');
 const db = require('../config/database');
 const ollamaService = require('./ollama');
+const cloudLLMService = require('./cloudLLM');
 const providerLock = require('./providerLock');
 const { createLogger } = require('../utils/logger');
 const { withRetry, isRetryableError } = require('../utils/retryUtils');
@@ -979,6 +980,45 @@ class EmbeddingProvider {
      */
     getProviderDefaults() {
         return PROVIDER_DEFAULTS;
+    }
+
+    /**
+     * Get available embedding models for a provider
+     * @param {object} options - Provider options
+     * @param {string} options.provider - Provider name (openai, gemini, voyage, openrouter, cohere)
+     * @param {string} options.api_key - API key (if required)
+     * @param {string} options.api_endpoint - Custom endpoint (optional)
+     * @returns {Promise<Array<{id: string, name: string}>>}
+     */
+    async getEmbeddingModels({ provider, api_key, api_endpoint } = {}) {
+        const normalizedProvider = (provider || '').toLowerCase();
+        if (!normalizedProvider) {
+            return [];
+        }
+
+        switch (normalizedProvider) {
+            case 'openai':
+            case 'openrouter':
+            case 'litellm':
+            case 'custom':
+                return await cloudLLMService.getEmbeddingModels({
+                    primary_provider: normalizedProvider,
+                    api_endpoint,
+                    api_key
+                });
+            case 'gemini':
+                return await cloudLLMService.getEmbeddingModels({
+                    primary_provider: 'gemini',
+                    api_key
+                });
+            case 'voyage':
+            case 'cohere': {
+                const defaults = PROVIDER_DEFAULTS[normalizedProvider]?.models || [];
+                return defaults.map(id => ({ id, name: id }));
+            }
+            default:
+                return [];
+        }
     }
 }
 

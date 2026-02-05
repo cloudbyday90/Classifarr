@@ -19,6 +19,12 @@
 const axios = require('axios');
 
 class JellyfinService {
+  buildPosterUrl(baseUrl, apiKey, itemId) {
+    if (!itemId) return null;
+    const trimmedBase = baseUrl.replace(/\/+$/, '');
+    return `${trimmedBase}/Items/${itemId}/Images/Primary?api_key=${encodeURIComponent(apiKey)}`;
+  }
+
   async testConnection(url, apiKey) {
     try {
       const response = await axios.get(`${url}/System/Info`, {
@@ -89,6 +95,7 @@ class JellyfinService {
         metadata: {
           rating: item.CommunityRating,
           summary: item.Overview,
+          posterPath: this.buildPosterUrl(url, apiKey, item.Id),
         },
         total: response.data.TotalRecordCount,
       }));

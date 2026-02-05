@@ -62,6 +62,11 @@ Tests run automatically on:
 npm run test:ci
 ```
 
+**Test Guardrails:**
+```bash
+node scripts/check-test-console-spies.js
+```
+
 **Coverage Reports:**
 - HTML: `server/coverage/index.html`
 - LCOV: `server/coverage/lcov.info`
@@ -104,12 +109,14 @@ diff baseline.json server/coverage/coverage-summary.json
 1. Mock external dependencies (database, APIs)
 2. Use descriptive test names: `it('should return 404 when library not found')`
 3. Test happy path + error cases
-4. Suppress expected error logs using `mockLogger`
-5. Clean up mocks in `afterEach()`
+4. For expected console output, use `consoleHelpers` and assert on messages
+5. Only suppress console output when it is not part of test intent
+6. Clean up mocks in `afterEach()`
 
 ### Example Test Template
 ```javascript
 const { mockLogger, clearLoggerMocks } = require('../setup/mockLogger');
+const { withConsoleSpy } = require('../setup/consoleHelpers');
 
 describe('Feature Name', () => {
   beforeEach(() => {
@@ -134,6 +141,16 @@ describe('Feature Name', () => {
   it('should handle error case gracefully', async () => {
     // Test error handling
   });
+
+  it('should log expected warning', async () => {
+    await withConsoleSpy('warn', async ({ getMessages }) => {
+      // Act
+      await myFunctionThatWarns();
+
+      // Assert
+      expect(getMessages()).toContain('Expected warning');
+    });
+  });
 });
 ```
 
@@ -156,6 +173,16 @@ cd server && npx jest --clearCache
 // Use mockLogger from setup
 const { mockLogger } = require('../setup/mockLogger');
 ```
+
+If the log output is part of the behavior under test, use:
+```javascript
+const { withConsoleSpy } = require('../setup/consoleHelpers');
+```
+
+### Expected Logs (Integration Tests)
+- `LegacyMigration` emits error logs when preset validation fails (missing or unauthorized presets). These are asserted in integration tests and are expected.
+- `MigrationRoute` emits error logs for the same preset validation failures (404/403 paths).
+- `mediaSync` emits a warning when a library sync is attempted for a missing library ID in negative-path tests.
 
 ## References
 - Jest Documentation: https://jestjs.io/

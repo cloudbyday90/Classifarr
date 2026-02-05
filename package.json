@@ -16,6 +16,7 @@
     "update-copyright": "node scripts/update-copyright.js",
     "add-copyright-headers": "node scripts/add-copyright-headers.js",
     "generate-contributors": "node scripts/generate-contributors.js",
+    "migration:check": "node scripts/check-migrations.js",
     "migration:create": "node scripts/create-migration.js",
     "db:dump-schema": "node scripts/dump-schema.js"
   },

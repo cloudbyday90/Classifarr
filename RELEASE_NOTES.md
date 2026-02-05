@@ -6,6 +6,62 @@ _(No unreleased changes - ready for next version)_
 
 ---
 
+## [v0.41.2-alpha] - 2026-02-05
+
+**Release Date:** February 5, 2026
+
+This release delivers Issue #289: multimodal RAG with image embeddings, plus cleaner configuration flows and migration governance improvements. (Closes #289)
+
+---
+
+## 🎯 Highlights
+
+### 🖼️ Multimodal RAG (Image Embeddings)
+
+We now support image embeddings for poster similarity and combine them with text embeddings during retrieval.
+
+- **Image Embedding Provider Layer** with cloud and local support
+- **Per‑image metadata storage** (model, size, hash, source URL)
+- **Weighted text + image similarity** for better ambiguous title retrieval
+- **Safe defaults**: image embeddings disabled by default
+
+### ⚙️ Simpler Image Embedding Configuration
+
+The settings UI now separates image configuration and defaults to **Disabled**, reducing accidental compute costs. Local hosting is simplified to a **custom host/port** option only.
+
+### 🧭 Migration Governance & Schema Snapshot
+
+We now enforce timestamped migrations and ship a database schema snapshot for fast fresh installs.
+
+- `scripts/check-migrations.js` verifies naming rules
+- `database/schema/current.sql` captures the full schema after migrations
+
+---
+
+## ✨ New Features
+
+- Image embedding configuration fields (size, rate limits, cache)
+- Image embeddings stored in `classification_embeddings` with model/size/hash metadata
+- Combined text + image scoring in RAG retrieval
+- New summary/status UI for image embeddings
+- Directives and execution documentation foundations
+
+---
+
+## 🔧 Improvements
+
+- Default image embedding mode is `disabled`
+- Removed the “same host as text embeddings” image mode
+- Simplified Docker Compose by removing image‑embedder stack and docker socket proxy
+- Expanded tests to cover image embedding defaults and status
+
+---
+
+## 🧪 Testing
+
+- Server: All tests passing
+- Client: All tests passing
+
 ## [v0.41.1-alpha] - 2026-02-02
 
 **Release Date:** February 2, 2026

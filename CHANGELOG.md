@@ -17,6 +17,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.41.2-alpha] - 2026-02-05
+
+### Added
+- **Multimodal RAG (Image Embeddings)** (Issue #289, Closes #289)
+  - Image embedding configuration fields and migrations (size, rate limits, cache)
+  - Image embedding provider service for cloud/local providers
+  - Image embedding storage on `classification_embeddings` with model/size/hash metadata
+  - Combined text + image similarity scoring during retrieval
+- **Image Embedding UI**
+  - Separate image embedding configuration with disabled mode default
+  - Overview summary for text + image embedding status
+  - Re-embed images action and image backfill status
+- **Migration Governance**
+  - Timestamped migration support + legacy allowlist
+  - Migration validation script `scripts/check-migrations.js`
+- **Repo Workflow Foundations**
+  - `directives/` and `execution/` with comprehensive READMEs
+  - Database schema snapshot `database/schema/current.sql`
+
+### Changed
+- **Image Embedding Modes**
+  - Default image embedding mode is now `disabled`
+  - Removed “same host as text embeddings” option
+  - Simplified local hosting to custom host/port only
+- **Docker Compose Simplification**
+  - Removed image-embedder stack and docker socket proxy from compose files
+  - Local image embedder moved to optional external service
+- **Tests**
+  - Updated server and client tests to cover new image embedding defaults and status
+
+### Fixed
+- **Test Noise**
+  - Reduced console error noise in client tests (service status error handling)
+
+---
+
 ## [v0.41.1-alpha] - 2026-02-02
 
 ### Added

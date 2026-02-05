@@ -16,7 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-/* eslint-disable no-console */
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

@@ -36,6 +36,27 @@ const createTestComponent = (selectedItemData) => {
         }
       })
 
+      const ragSignalDetail = computed(() => {
+        const details = parsedMetadata.value?.classification_details?.rag_details
+        if (!details) return ''
+        const parts = []
+        if (Number.isFinite(details.combined_similarity)) {
+          parts.push(`Combined ${Math.round(details.combined_similarity * 100)}%`)
+        }
+        if (Number.isFinite(details.text_similarity)) {
+          parts.push(`Text ${Math.round(details.text_similarity * 100)}%`)
+        }
+        if (Number.isFinite(details.image_similarity)) {
+          parts.push(`Image ${Math.round(details.image_similarity * 100)}%`)
+        }
+        if (Number.isFinite(details.text_weight) || Number.isFinite(details.image_weight)) {
+          const textWeight = Number.isFinite(details.text_weight) ? details.text_weight : 0
+          const imageWeight = Number.isFinite(details.image_weight) ? details.image_weight : 0
+          parts.push(`W ${textWeight.toFixed(2)}/${imageWeight.toFixed(2)}`)
+        }
+        return parts.join(' â€¢ ')
+      })
+
       const shouldShowSignalBreakdown = computed(() => {
         if (!signalScores.value) return false
         const hasNonZeroScore = Object.values(signalScores.value).some(score => score > 0)
@@ -46,6 +67,7 @@ const createTestComponent = (selectedItemData) => {
         selectedItem,
         signalScores,
         signalWeights,
+        ragSignalDetail,
         shouldShowSignalBreakdown
       }
     },
@@ -61,7 +83,7 @@ const createTestComponent = (selectedItemData) => {
             <SignalRow icon="⚙️" label="Preset"  :score="signalScores.preset"  :weight="signalWeights.preset" />
             <SignalRow icon="📊" label="Profile" :score="signalScores.profile" :weight="signalWeights.profile" />
             <SignalRow icon="📚" label="Pattern" :score="signalScores.pattern" :weight="signalWeights.pattern" />
-            <SignalRow icon="🧠" label="RAG"     :score="signalScores.rag"     :weight="signalWeights.rag" />
+            <SignalRow icon="🧠" label="RAG"     :score="signalScores.rag"     :weight="signalWeights.rag" :detail="ragSignalDetail" />
             <SignalRow icon="📖" label="History" :score="signalScores.history" :weight="signalWeights.history" />
           </div>
           <div class="mt-3 pt-3 border-t border-gray-700 flex justify-between">
@@ -127,6 +149,33 @@ describe('History View - Signal Breakdown', () => {
       
       expect(wrapper.text()).toContain('Combined Score:')
       expect(wrapper.text()).toContain('85%')
+    })
+
+    it('renders RAG details when rag_details are present', () => {
+      const TestComponent = createTestComponent({
+        metadata: {
+          classification_details: {
+            scores: { preset: 80, profile: 70, pattern: 0, rag: 40, history: 0 },
+            weights: { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
+            rag_details: {
+              combined_similarity: 0.91,
+              text_similarity: 0.85,
+              image_similarity: 0.95,
+              text_weight: 0.6,
+              image_weight: 0.4
+            }
+          }
+        },
+        confidence: 78
+      })
+
+      const wrapper = mount(TestComponent)
+      const ragRow = wrapper.findAllComponents(SignalRow)[3]
+
+      expect(ragRow.text()).toContain('Combined 91%')
+      expect(ragRow.text()).toContain('Text 85%')
+      expect(ragRow.text()).toContain('Image 95%')
+      expect(ragRow.text()).toContain('W 0.60/0.40')
     })
 
     it('uses default weights when weights are missing', () => {
@@ -228,3 +277,4 @@ describe('History View - Signal Breakdown', () => {
     })
   })
 })
+

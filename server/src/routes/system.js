@@ -160,6 +160,7 @@ router.get('/health', async (req, res) => {
       omdb: health.omdb?.status || 'unknown',
       discordBot: health.discordBot?.status || 'unknown',
       tavily: health.tavily?.status || 'unknown',
+      imageEmbeddings: health.imageEmbeddings?.status || 'unknown',
       queueWorker: queueWorker.status,
       details: {
         database: dbHealth,
@@ -167,6 +168,7 @@ router.get('/health', async (req, res) => {
         radarr: health.radarr,
         sonarr: health.sonarr,
         ollama: health.ollama,
+        imageEmbeddings: health.imageEmbeddings,
         tmdb: health.tmdb,
         omdb: health.omdb,
         discordBot: health.discordBot,

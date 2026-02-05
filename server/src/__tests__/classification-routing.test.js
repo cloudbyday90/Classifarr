@@ -34,19 +34,20 @@ const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
 const tmdbService = require('../services/tmdb');
 const classificationService = require('../services/classification');
+const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 describe('ClassificationService - routeToArr mapping fallback', () => {
   let consoleWarnSpy;
   let consoleErrorSpy;
 
   beforeAll(() => {
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = createConsoleSpy('warn', { suppress: true });
+    consoleErrorSpy = createConsoleSpy('error', { suppress: true });
   });
 
   afterAll(() => {
-    consoleWarnSpy.mockRestore();
-    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.restore();
+    consoleErrorSpy.restore();
   });
 
   beforeEach(() => {

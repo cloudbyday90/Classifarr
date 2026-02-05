@@ -478,6 +478,21 @@ export default {
   getAIModels(data) {
     return apiClient.post('/settings/ai/models', data)
   },
+  getRagEmbeddingModels(data) {
+    return apiClient.post('/rag/embedding-models', data)
+  },
+  testImageEmbeddingConnection(data) {
+    return apiClient.post('/rag/image-test-connection', data)
+  },
+  getImageEmbeddingModelsCache() {
+    return apiClient.get('/rag/image-models-cache')
+  },
+  getImageEmbeddingLocalModels(host, port) {
+    return apiClient.get('/rag/image-models', { params: { host, port } })
+  },
+  reembedImages() {
+    return apiClient.post('/rag/reembed-images')
+  },
   getAIUsage() {
     return apiClient.get('/settings/ai/usage')
   },

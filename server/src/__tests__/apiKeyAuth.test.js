@@ -22,6 +22,7 @@ process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789
 const { authenticateApiKey, authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
 const apiKeyService = require('../services/apiKeyService');
 const authService = require('../services/auth');
+const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 // Mock the services
 jest.mock('../services/apiKeyService');
@@ -32,11 +33,11 @@ describe('API Key Authentication Middleware', () => {
   let consoleErrorSpy;
 
   beforeAll(() => {
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleErrorSpy = createConsoleSpy('error', { suppress: true });
   });
 
   afterAll(() => {
-    consoleErrorSpy.mockRestore();
+    consoleErrorSpy.restore();
   });
 
   beforeEach(() => {

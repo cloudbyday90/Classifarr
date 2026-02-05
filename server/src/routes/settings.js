@@ -2242,6 +2242,8 @@ router.get('/ai', async (req, res) => {
         embedding_provider: 'auto',
         embedding_model: '',
         rag_similarity_threshold: 0.70,
+        rag_text_weight: 0.70,
+        rag_image_weight: 0.30,
         rag_min_history_count: 50,
         rag_backfill_budget_type: 'percentage',
         rag_backfill_budget_value: 25,
@@ -2262,7 +2264,24 @@ router.get('/ai', async (req, res) => {
         embedding_ollama_model: '',
         embedding_cloud_provider: '',
         embedding_cloud_api_key: '',
-        embedding_cloud_model: ''
+        embedding_cloud_model: '',
+        // Image embedding provider configuration
+        image_embedding_provider_mode: 'disabled',
+        image_embedding_local_host: '',
+        image_embedding_local_port: 8000,
+        image_embedding_local_model: '',
+        image_embedding_cloud_provider: '',
+        image_embedding_cloud_api_key: '',
+        image_embedding_cloud_model: '',
+        image_embedding_cloud_api_endpoint: '',
+        image_embedding_image_size: 512,
+        image_embedding_rps: 2,
+        image_embedding_concurrency: 2,
+        image_embedding_batch_size: 1,
+        image_embedding_cache_ttl_hours: 24,
+        image_embedding_cache_max_mb: 1024,
+        image_embedding_models_cache: null,
+        image_embedding_models_cache_updated_at: null
       });
     }
 
@@ -2274,6 +2293,10 @@ router.get('/ai', async (req, res) => {
     // Mask embedding cloud API key
     if (config.embedding_cloud_api_key) {
       config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
+    }
+    // Mask image embedding cloud API key
+    if (config.image_embedding_cloud_api_key) {
+      config.image_embedding_cloud_api_key = maskToken(config.image_embedding_cloud_api_key);
     }
 
     res.json(config);
@@ -2312,6 +2335,8 @@ router.put('/ai', async (req, res) => {
       embedding_provider,
       embedding_model,
       rag_similarity_threshold,
+      rag_text_weight,
+      rag_image_weight,
       rag_min_history_count,
       rag_backfill_budget_type,
       rag_backfill_budget_value,
@@ -2327,7 +2352,22 @@ router.put('/ai', async (req, res) => {
       embedding_ollama_model,
       embedding_cloud_provider,
       embedding_cloud_api_key,
-      embedding_cloud_model
+      embedding_cloud_model,
+      // Image embedding provider configuration
+      image_embedding_provider_mode,
+      image_embedding_local_host,
+      image_embedding_local_port,
+      image_embedding_local_model,
+      image_embedding_cloud_provider,
+      image_embedding_cloud_api_key,
+      image_embedding_cloud_model,
+      image_embedding_cloud_api_endpoint,
+      image_embedding_image_size,
+      image_embedding_rps,
+      image_embedding_concurrency,
+      image_embedding_batch_size,
+      image_embedding_cache_ttl_hours,
+      image_embedding_cache_max_mb
     } = req.body;
 
     // Fetch existing config to use as fallback for undefined values (partial updates)
@@ -2348,6 +2388,24 @@ router.put('/ai', async (req, res) => {
       finalEmbeddingCloudApiKey = existing.embedding_cloud_api_key || '';
     } else if (embedding_cloud_api_key === undefined) {
       finalEmbeddingCloudApiKey = existing.embedding_cloud_api_key || '';
+    }
+
+    // Handle image embedding cloud API key - don't update if masked
+    let finalImageEmbeddingCloudApiKey = image_embedding_cloud_api_key;
+    if (isMaskedToken(image_embedding_cloud_api_key)) {
+      finalImageEmbeddingCloudApiKey = existing.image_embedding_cloud_api_key || '';
+    } else if (image_embedding_cloud_api_key === undefined) {
+      finalImageEmbeddingCloudApiKey = existing.image_embedding_cloud_api_key || '';
+    }
+
+    let normalizedImageEmbeddingMode = image_embedding_provider_mode;
+    if (normalizedImageEmbeddingMode !== undefined) {
+      if (normalizedImageEmbeddingMode === 'local') {
+        normalizedImageEmbeddingMode = 'separate_local';
+      }
+      if (!['disabled', 'separate_local', 'cloud'].includes(normalizedImageEmbeddingMode)) {
+        normalizedImageEmbeddingMode = 'disabled';
+      }
     }
 
     // Check if embedding model changed - if so, clear existing embeddings (dimension incompatibility)
@@ -2408,16 +2466,21 @@ router.put('/ai', async (req, res) => {
                 ollama_fallback_enabled, ollama_for_basic_tasks, ollama_for_budget_exhausted,
                 ollama_host, ollama_port, ollama_model,
                 rag_enabled, embedding_provider, embedding_model,
-                rag_similarity_threshold, rag_min_history_count,
+                rag_similarity_threshold, rag_text_weight, rag_image_weight, rag_min_history_count,
                 rag_backfill_budget_type, rag_backfill_budget_value,
                 formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight,
                 embedding_provider_mode, embedding_ollama_host, embedding_ollama_port, embedding_ollama_model,
                 embedding_cloud_provider, embedding_cloud_api_key, embedding_cloud_model,
+                image_embedding_provider_mode, image_embedding_local_host, image_embedding_local_port, image_embedding_local_model,
+                image_embedding_cloud_provider, image_embedding_cloud_api_key, image_embedding_cloud_model,
+                image_embedding_cloud_api_endpoint,
+                image_embedding_image_size, image_embedding_rps, image_embedding_concurrency, image_embedding_batch_size,
+                image_embedding_cache_ttl_hours, image_embedding_cache_max_mb,
                 updated_at
             ) VALUES (
                 1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
                 $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-                $31, $32, $33, NOW()
+                $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, NOW()
             )
             ON CONFLICT (id) DO UPDATE SET
                 primary_provider = EXCLUDED.primary_provider,
@@ -2439,6 +2502,8 @@ router.put('/ai', async (req, res) => {
                 embedding_provider = EXCLUDED.embedding_provider,
                 embedding_model = EXCLUDED.embedding_model,
                 rag_similarity_threshold = EXCLUDED.rag_similarity_threshold,
+                rag_text_weight = EXCLUDED.rag_text_weight,
+                rag_image_weight = EXCLUDED.rag_image_weight,
                 rag_min_history_count = EXCLUDED.rag_min_history_count,
                 rag_backfill_budget_type = EXCLUDED.rag_backfill_budget_type,
                 rag_backfill_budget_value = EXCLUDED.rag_backfill_budget_value,
@@ -2453,6 +2518,20 @@ router.put('/ai', async (req, res) => {
                 embedding_cloud_provider = EXCLUDED.embedding_cloud_provider,
                 embedding_cloud_api_key = EXCLUDED.embedding_cloud_api_key,
                 embedding_cloud_model = EXCLUDED.embedding_cloud_model,
+                image_embedding_provider_mode = EXCLUDED.image_embedding_provider_mode,
+                image_embedding_local_host = EXCLUDED.image_embedding_local_host,
+                image_embedding_local_port = EXCLUDED.image_embedding_local_port,
+                image_embedding_local_model = EXCLUDED.image_embedding_local_model,
+                image_embedding_cloud_provider = EXCLUDED.image_embedding_cloud_provider,
+                image_embedding_cloud_api_key = EXCLUDED.image_embedding_cloud_api_key,
+                image_embedding_cloud_model = EXCLUDED.image_embedding_cloud_model,
+                image_embedding_cloud_api_endpoint = EXCLUDED.image_embedding_cloud_api_endpoint,
+                image_embedding_image_size = EXCLUDED.image_embedding_image_size,
+                image_embedding_rps = EXCLUDED.image_embedding_rps,
+                image_embedding_concurrency = EXCLUDED.image_embedding_concurrency,
+                image_embedding_batch_size = EXCLUDED.image_embedding_batch_size,
+                image_embedding_cache_ttl_hours = EXCLUDED.image_embedding_cache_ttl_hours,
+                image_embedding_cache_max_mb = EXCLUDED.image_embedding_cache_max_mb,
                 updated_at = NOW()
             RETURNING *
         `, [
@@ -2475,6 +2554,8 @@ router.put('/ai', async (req, res) => {
       embedding_provider ?? existing.embedding_provider ?? 'auto',
       embedding_model ?? existing.embedding_model ?? '',
       rag_similarity_threshold ?? existing.rag_similarity_threshold ?? 0.70,
+      rag_text_weight ?? existing.rag_text_weight ?? 0.70,
+      rag_image_weight ?? existing.rag_image_weight ?? 0.30,
       rag_min_history_count ?? existing.rag_min_history_count ?? 50,
       rag_backfill_budget_type ?? existing.rag_backfill_budget_type ?? 'percentage',
       rag_backfill_budget_value ?? existing.rag_backfill_budget_value ?? 25,
@@ -2488,24 +2569,75 @@ router.put('/ai', async (req, res) => {
       embedding_ollama_model ?? existing.embedding_ollama_model ?? '',
       embedding_cloud_provider ?? existing.embedding_cloud_provider ?? '',
       finalEmbeddingCloudApiKey || '',
-      embedding_cloud_model ?? existing.embedding_cloud_model ?? ''
+      embedding_cloud_model ?? existing.embedding_cloud_model ?? '',
+      normalizedImageEmbeddingMode ?? existing.image_embedding_provider_mode ?? 'disabled',
+      image_embedding_local_host ?? existing.image_embedding_local_host ?? '',
+      image_embedding_local_port ?? existing.image_embedding_local_port ?? 8000,
+      image_embedding_local_model ?? existing.image_embedding_local_model ?? '',
+      image_embedding_cloud_provider ?? existing.image_embedding_cloud_provider ?? '',
+      finalImageEmbeddingCloudApiKey || '',
+      image_embedding_cloud_model ?? existing.image_embedding_cloud_model ?? '',
+      image_embedding_cloud_api_endpoint ?? existing.image_embedding_cloud_api_endpoint ?? '',
+      image_embedding_image_size ?? existing.image_embedding_image_size ?? 512,
+      image_embedding_rps ?? existing.image_embedding_rps ?? 2,
+      image_embedding_concurrency ?? existing.image_embedding_concurrency ?? 2,
+      image_embedding_batch_size ?? existing.image_embedding_batch_size ?? 1,
+      image_embedding_cache_ttl_hours ?? existing.image_embedding_cache_ttl_hours ?? 24,
+      image_embedding_cache_max_mb ?? existing.image_embedding_cache_max_mb ?? 1024
     ]);
 
-    // Clear config cache
-    aiRouterService.clearCache();
-    ollamaService.resetConfig(); // Clear Ollama config cache to pick up ollama_host/ollama_port changes
+      // Clear config cache
+      aiRouterService.clearCache();
+      ollamaService.resetConfig(); // Clear Ollama config cache to pick up ollama_host/ollama_port changes
 
-    // Invalidate embedding caches
-    embeddingProvider.resetConfig();
-    embeddingRouter.resetConfig();
+      // Invalidate embedding caches
+      embeddingProvider.resetConfig();
+      embeddingRouter.resetConfig();
 
-    const config = result.rows[0];
-    if (config.api_key) {
-      config.api_key = maskToken(config.api_key);
-    }
+      const config = result.rows[0];
+      const localConfigChanged = (
+        (existing.image_embedding_local_host || '') !== (config.image_embedding_local_host || '') ||
+        Number(existing.image_embedding_local_port || 8000) !== Number(config.image_embedding_local_port || 8000)
+      );
+      const cloudConfigChanged = (
+        (existing.image_embedding_cloud_provider || '') !== (config.image_embedding_cloud_provider || '') ||
+        (existing.image_embedding_cloud_api_endpoint || '') !== (config.image_embedding_cloud_api_endpoint || '')
+      );
+
+      if (localConfigChanged || cloudConfigChanged) {
+        try {
+          const currentCache = existing.image_embedding_models_cache || {};
+          const nextCache = { ...currentCache };
+          if (localConfigChanged) {
+            delete nextCache.local;
+          }
+          if (cloudConfigChanged) {
+            delete nextCache.cloud;
+          }
+
+          await db.query(`
+            UPDATE ai_provider_config
+            SET image_embedding_models_cache = $1,
+                image_embedding_models_cache_updated_at = NOW()
+            WHERE id = 1
+          `, [nextCache]);
+          config.image_embedding_models_cache = nextCache;
+          config.image_embedding_models_cache_updated_at = new Date().toISOString();
+        } catch (cacheError) {
+          // Best-effort cache reset; do not fail request
+        }
+      }
+
+      if (config.api_key) {
+        config.api_key = maskToken(config.api_key);
+      }
     // Mask embedding cloud API key
     if (config.embedding_cloud_api_key) {
       config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
+    }
+    // Mask image embedding cloud API key
+    if (config.image_embedding_cloud_api_key) {
+      config.image_embedding_cloud_api_key = maskToken(config.image_embedding_cloud_api_key);
     }
 
     res.json(config);
@@ -2784,6 +2916,9 @@ router.get('/media-path-config', async (req, res) => {
 //   - embedding_provider_mode (same/separate_ollama/cloud)
 //   - embedding_ollama_host, embedding_ollama_port, embedding_ollama_model
 //   - embedding_cloud_provider, embedding_cloud_api_key, embedding_cloud_model
+//   - image_embedding_provider_mode (separate_local/cloud/disabled)
+//   - image_embedding_local_host, image_embedding_local_port, image_embedding_local_model
+//   - image_embedding_cloud_provider, image_embedding_cloud_api_key, image_embedding_cloud_model
 // ============================================
 
 // ============================================

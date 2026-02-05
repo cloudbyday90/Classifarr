@@ -8,6 +8,7 @@ services:
     # pgvector auto-selects AVX when supported, otherwise uses generic build
     image: ghcr.io/cloudbyday90/classifarr:latest
     container_name: classifarr
+    user: "${PUID:-99}:${PGID:-100}"
     ports:
       - "21324:21324"
     environment:
@@ -30,6 +31,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    networks:
+      - classifarr_internal
     # Optional: Assign to a specific UnRaid network
     # network_mode: br0
     # Optional: CPU/Memory limits
@@ -40,3 +43,7 @@ services:
     #       memory: 2G
     #     reservations:
     #       memory: 512M
+
+networks:
+  classifarr_internal:
+    name: classifarr_internal

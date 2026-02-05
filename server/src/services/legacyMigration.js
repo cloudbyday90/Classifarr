@@ -21,6 +21,13 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('LegacyMigration');
 
+const createMigrationError = (message, code, status) => {
+    const error = new Error(message);
+    error.code = code;
+    error.status = status;
+    return error;
+};
+
 class LegacyMigration {
     
     /**
@@ -334,14 +341,48 @@ class LegacyMigration {
         await db.query('BEGIN');
         
         try {
-            if (migrationChoice.type === 'preset') {
-                // Attach preset to library's policy
-                const policy = await this.getOrCreatePolicy(ruleData.library_id);
-                
-                await db.query(`
-                    INSERT INTO policy_presets (policy_id, preset_id, weight)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (policy_id, preset_id) DO NOTHING
+              if (migrationChoice.type === 'preset') {
+                  // Attach preset to library's policy
+                  const policy = await this.getOrCreatePolicy(ruleData.library_id);
+
+                  if (!migrationChoice.preset_id) {
+                      throw createMigrationError(
+                          'Preset id is required for preset migration',
+                          'PRESET_ID_REQUIRED',
+                          400
+                      );
+                  }
+
+                  const presetResult = await db.query(
+                      'SELECT id, is_system, is_public, user_id FROM content_presets WHERE id = $1',
+                      [migrationChoice.preset_id]
+                  );
+
+                  if (presetResult.rows.length === 0) {
+                      throw createMigrationError(
+                          `Preset not found: ${migrationChoice.preset_id}`,
+                          'PRESET_NOT_FOUND',
+                          404
+                      );
+                  }
+
+                  const preset = presetResult.rows[0];
+                  const isAllowed = preset.is_system
+                      || preset.is_public
+                      || (userId && preset.user_id === userId);
+
+                  if (!isAllowed) {
+                      throw createMigrationError(
+                          'Preset is not accessible to the current user',
+                          'PRESET_NOT_ALLOWED',
+                          403
+                      );
+                  }
+
+                  await db.query(`
+                      INSERT INTO policy_presets (policy_id, preset_id, weight)
+                      VALUES ($1, $2, $3)
+                      ON CONFLICT (policy_id, preset_id) DO NOTHING
                 `, [policy.id, migrationChoice.preset_id, 1.0]);
                 
             } else if (migrationChoice.type === 'override') {

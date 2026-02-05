@@ -27,7 +27,8 @@ class ManualBackfillService {
             eta: null,
             batchSize: 50,
             error: null,
-            runId: null
+            runId: null,
+            includeImage: false
         };
         this.isProcessing = false; // Flag to prevent concurrent runBackfill() calls
     }
@@ -35,53 +36,20 @@ class ManualBackfillService {
     /**
      * Get count of pending embeddings
      */
-    async getPendingCount() {
-        try {
-            const result = await db.query(`
-                SELECT COUNT(*) as count
-                FROM classification_history ch
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM classification_embeddings ce
-                    WHERE ce.classification_id = ch.id
-                )
-            `);
-
-            return parseInt(result.rows[0].count) || 0;
-        } catch (error) {
-            logger.error('Failed to get pending count', { error: error.message });
-            return 0;
-        }
+    async getPendingCount(includeImage = null) {
+        const resolvedIncludeImage = includeImage ?? await embeddingService.shouldIncludeImageEmbeddings();
+        return await embeddingService.getPendingCount({ includeImage: resolvedIncludeImage });
     }
 
     /**
      * Get pending embeddings
      */
-    async getPendingEmbeddings(limit) {
-        try {
-            const result = await db.query(`
-                SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
-                FROM classification_history ch
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM classification_embeddings ce
-                    WHERE ce.classification_id = ch.id
-                )
-                ORDER BY ch.created_at DESC
-                LIMIT $1
-            `, [limit]);
-
-            return result.rows.map(row => ({
-                id: row.id,
-                title: row.title,
-                media_type: row.media_type,
-                library_name: row.library_name,
-                metadata: typeof row.metadata === 'string'
-                    ? JSON.parse(row.metadata)
-                    : row.metadata
-            }));
-        } catch (error) {
-            logger.error('Failed to get pending embeddings', { error: error.message });
-            return [];
-        }
+    async getPendingEmbeddings(limit, includeImage = null) {
+        const resolvedIncludeImage = includeImage ?? await embeddingService.shouldIncludeImageEmbeddings();
+        return await embeddingService.getPendingEmbeddings({
+            limit,
+            includeImage: resolvedIncludeImage
+        });
     }
 
     /**
@@ -99,7 +67,8 @@ class ManualBackfillService {
         }
 
         this.state.batchSize = options.batchSize || 50;
-        this.state.total = await this.getPendingCount();
+        this.state.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+        this.state.total = await this.getPendingCount(this.state.includeImage);
         this.state.processed = 0;
         this.state.startTime = Date.now();
         this.state.status = 'running';
@@ -159,7 +128,7 @@ class ManualBackfillService {
                     break;
                 }
 
-                const pending = await this.getPendingEmbeddings(this.state.batchSize);
+                const pending = await this.getPendingEmbeddings(this.state.batchSize, this.state.includeImage);
 
                 if (pending.length === 0) {
                     logger.info('No more pending embeddings');
@@ -172,12 +141,21 @@ class ManualBackfillService {
                     }
 
                     try {
-                        await embeddingService.generateAndStore(item.id, {
-                            ...item.metadata,
-                            title: item.title,
-                            media_type: item.media_type,
-                            library_name: item.library_name
-                        });
+                        if (item.needsText) {
+                            await embeddingService.generateAndStore(item.id, {
+                                ...item.metadata,
+                                title: item.title,
+                                media_type: item.media_type,
+                                library_name: item.library_name
+                            });
+                        } else if (item.needsImage) {
+                            await embeddingService.generateImageEmbedding(item.id, {
+                                ...item.metadata,
+                                title: item.title,
+                                media_type: item.media_type,
+                                library_name: item.library_name
+                            });
+                        }
                         this.state.processed++;
                         this.updateETA();
 
@@ -290,7 +268,8 @@ class ManualBackfillService {
             eta: null,
             batchSize: 50,
             error: null,
-            runId: null
+            runId: null,
+            includeImage: false
         };
         this.isProcessing = false;
         logger.info('Manual backfill state cleared');
@@ -314,7 +293,10 @@ class ManualBackfillService {
      */
     async getStatus() {
         // Dynamically calculate total to handle items added during backfill
-        const currentPending = await this.getPendingCount();
+        const includeImage = this.state.status === 'running' || this.state.status === 'paused'
+            ? this.state.includeImage
+            : await embeddingService.shouldIncludeImageEmbeddings();
+        const currentPending = await this.getPendingCount(includeImage);
         // Calculate dynamic total as processed + pending to account for items
         // that may have been added during the backfill process (e.g., new classifications)
         const dynamicTotal = this.state.processed + currentPending;

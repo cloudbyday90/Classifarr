@@ -12,14 +12,67 @@ const db = require('../config/database');
 const embeddingService = require('../services/embeddingService');
 const embeddingRouter = require('../services/embeddingRouter');
 const embeddingProvider = require('../services/embeddingProvider');
+const imageEmbeddingProvider = require('../services/imageEmbeddingProvider');
 const ragRetriever = require('../services/ragRetriever');
 const embeddingMigrationService = require('../services/embeddingMigrationService');
 const patternMiningService = require('../services/patternMiningService');
 const ragLogger = require('../utils/ragLogger');
 const { createLogger } = require('../utils/logger');
 const ollamaService = require('../services/ollama');
+const { isMaskedToken } = require('../utils/tokenMasking');
 
 const logger = createLogger('RAG API');
+
+const updateImageModelsCache = async ({ scope, payload }) => {
+    try {
+        const result = await db.query(
+            'SELECT image_embedding_models_cache FROM ai_provider_config WHERE id = 1'
+        );
+        const current = result.rows[0]?.image_embedding_models_cache || {};
+        const next = {
+            ...current,
+            [scope]: {
+                ...payload,
+                fetched_at: new Date().toISOString()
+            }
+        };
+
+        await db.query(
+            `UPDATE ai_provider_config
+             SET image_embedding_models_cache = $1,
+                 image_embedding_models_cache_updated_at = NOW()
+             WHERE id = 1`,
+            [next]
+        );
+    } catch (error) {
+        logger.warn('Failed to update image models cache', { error: error.message });
+    }
+};
+
+const resolveImageModelsCache = (config) => {
+    const cache = config?.image_embedding_models_cache || {};
+    const mode = imageEmbeddingProvider.normalizeMode(config?.image_embedding_provider_mode);
+
+    if (mode === 'cloud') {
+        const entry = cache.cloud || null;
+        if (!entry) return null;
+        const providerMatch = (entry.provider || '') === (config?.image_embedding_cloud_provider || '');
+        const endpointMatch = (entry.api_endpoint || '') === (config?.image_embedding_cloud_api_endpoint || '');
+        if (!providerMatch || !endpointMatch) return null;
+        return { scope: 'cloud', entry };
+    }
+
+    if (mode === 'separate_local') {
+        const entry = cache.local || null;
+        if (!entry) return null;
+        const hostMatch = (entry.host || '') === (config?.image_embedding_local_host || '');
+        const portMatch = Number(entry.port || 8000) === Number(config?.image_embedding_local_port || 8000);
+        if (!hostMatch || !portMatch) return null;
+        return { scope: 'local', entry };
+    }
+
+    return null;
+};
 
 /**
  * POST /api/rag/test-connection
@@ -101,6 +154,30 @@ router.get('/status', async (req, res) => {
         }
         const providerOnline = circuitOk && providerConfigured;
 
+        const imageConfig = await imageEmbeddingProvider.getConfig();
+        const imageStats = await embeddingService.getImageStats();
+        const imageProviderConfigured = imageEmbeddingProvider.isConfigured(imageConfig);
+        const rawImageMode = imageConfig?.image_embedding_provider_mode || 'disabled';
+        const imageProviderMode = rawImageMode === 'local'
+            ? 'separate_local'
+            : (['disabled', 'separate_local', 'cloud'].includes(rawImageMode) ? rawImageMode : 'disabled');
+        const imageWeight = Number(config?.rag_image_weight ?? 0);
+        const imageEnabled = Number.isFinite(imageWeight) && imageWeight > 0;
+        const imageModeDisabled = imageProviderMode === 'disabled';
+        const imageProviderOnline = !imageModeDisabled && imageEnabled && imageProviderConfigured;
+        let imageProvider = 'unknown';
+        if (imageModeDisabled) {
+            imageProvider = 'disabled';
+        } else if (imageProviderMode === 'cloud') {
+            imageProvider = imageConfig?.image_embedding_cloud_provider || 'cloud';
+        } else if (imageProviderMode === 'separate_local' || imageProviderMode === 'local') {
+            imageProvider = 'local';
+        } else {
+            imageProvider = imageConfig?.image_embedding_cloud_provider
+                || (imageConfig?.image_embedding_local_host ? 'local' : 'unknown');
+        }
+        const imageModel = imageConfig ? imageEmbeddingProvider.getEffectiveModel(imageConfig) : null;
+
         res.json({
             enabled: config?.rag_enabled || false,
             provider: config?.embedding_provider || 'auto',
@@ -110,6 +187,15 @@ router.get('/status', async (req, res) => {
             circuitBreaker: circuitStatus,
             hasMinimumEmbeddings: hasMinimum,
             minimumRequired: config?.rag_min_history_count || 50,
+            image: {
+                enabled: imageModeDisabled ? false : imageEnabled,
+                providerOnline: imageProviderOnline,
+                providerConfigured: imageModeDisabled ? false : imageProviderConfigured,
+                providerMode: imageProviderMode,
+                provider: imageProvider,
+                model: imageModel,
+                stats: imageStats
+            },
             pgvectorVariant,
             pgvectorBuild,
             cpuAvx,
@@ -129,6 +215,174 @@ router.get('/models', async (req, res) => {
     try {
         const models = embeddingRouter.getRecommendedModels();
         res.json(models);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/image-test-connection
+ * Test image embedding connection with supplied config
+ */
+router.post('/image-test-connection', async (req, res) => {
+    try {
+        const {
+            mode,
+            local_host,
+            local_port,
+            local_model,
+            cloud_provider,
+            cloud_api_key,
+            cloud_model,
+            cloud_api_endpoint,
+            image_size
+        } = req.body || {};
+
+        const normalizedMode = imageEmbeddingProvider.normalizeMode(mode);
+
+        if (normalizedMode === 'disabled') {
+            return res.json({ success: false, error: 'Image embeddings are disabled' });
+        }
+
+        if (normalizedMode === 'separate_local') {
+            const host = (local_host || '').trim();
+            const port = Number(local_port || 8000);
+
+            if (!host) {
+                return res.json({ success: false, error: 'Local host is required' });
+            }
+
+            const models = await imageEmbeddingProvider.getLocalModels({
+                image_embedding_local_host: host,
+                image_embedding_local_port: port
+            });
+
+            const selected = (local_model || '').trim();
+            const match = models.find(model => (model.id || model.name) === selected);
+
+            return res.json({
+                success: true,
+                provider: 'local',
+                model: selected || match?.id || null,
+                dims: match?.dims || null,
+                image_size: image_size || null,
+                modelsCount: models.length
+            });
+        }
+
+        if (normalizedMode === 'cloud') {
+            const provider = (cloud_provider || '').trim();
+            if (!provider) {
+                return res.json({ success: false, error: 'Cloud provider is required' });
+            }
+
+            let apiKey = cloud_api_key;
+            if (!apiKey || isMaskedToken(apiKey)) {
+                const storedConfig = await imageEmbeddingProvider.getConfig();
+                apiKey = storedConfig?.image_embedding_cloud_api_key || '';
+            }
+
+            const models = await embeddingProvider.getEmbeddingModels({
+                provider,
+                api_key: apiKey,
+                api_endpoint: cloud_api_endpoint
+            });
+
+            const selected = (cloud_model || '').trim();
+            const match = models.find(model => (model.id || model.name) === selected);
+
+            return res.json({
+                success: true,
+                provider,
+                model: selected || match?.id || null,
+                modelsCount: models.length
+            });
+        }
+
+        return res.json({ success: false, error: 'Unsupported image embedding mode' });
+    } catch (error) {
+        return res.json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/embedding-models
+ * Get available embedding models for cloud providers
+ */
+router.post('/embedding-models', async (req, res) => {
+    try {
+        const { provider, api_key, api_endpoint, kind } = req.body || {};
+        const config = await embeddingRouter.getConfig();
+
+        const isImage = kind === 'image';
+        const selectedProvider = provider || (isImage
+            ? config?.image_embedding_cloud_provider
+            : config?.embedding_cloud_provider);
+        if (!selectedProvider) {
+            return res.json({ models: [] });
+        }
+
+        let actualApiKey = api_key;
+        if (!actualApiKey || isMaskedToken(actualApiKey)) {
+            actualApiKey = isImage
+                ? (config?.image_embedding_cloud_api_key || '')
+                : (config?.embedding_cloud_api_key || '');
+        }
+
+        const models = await embeddingProvider.getEmbeddingModels({
+            provider: selectedProvider,
+            api_key: actualApiKey,
+            api_endpoint
+        });
+
+        if (isImage) {
+            await updateImageModelsCache({
+                scope: 'cloud',
+                payload: {
+                    provider: selectedProvider,
+                    api_endpoint: api_endpoint || '',
+                    models
+                }
+            });
+        }
+
+        res.json({ models });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/image-models
+ * Get available local image embedding models
+ */
+router.get('/image-models', async (req, res) => {
+    try {
+        const { host, port } = req.query || {};
+        const config = await imageEmbeddingProvider.getConfig();
+
+        const localHost = host || config?.image_embedding_local_host || '';
+        const localPort = Number(port || config?.image_embedding_local_port || 8000);
+
+        if (!localHost) {
+            return res.json({ models: [] });
+        }
+
+        const models = await imageEmbeddingProvider.getLocalModels({
+            image_embedding_local_host: localHost,
+            image_embedding_local_port: localPort
+        });
+
+        await updateImageModelsCache({
+            scope: 'local',
+            payload: {
+                host: localHost,
+                port: localPort,
+                models
+            }
+        });
+
+        res.json({ models });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -171,33 +425,33 @@ router.post('/test', async (req, res) => {
 router.post('/backfill/start', async (req, res) => {
     try {
         const { limit = 100 } = req.body;
-
-        // Get classifications without embeddings
-        const result = await db.query(`
-            SELECT ch.id, ch.title, ch.media_type, ch.library_name, ch.metadata
-            FROM classification_history ch
-            WHERE NOT EXISTS (
-                SELECT 1 FROM classification_embeddings ce
-                WHERE ce.classification_id = ch.id
-            )
-            LIMIT $1
-        `, [limit]);
+        const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+        const pending = await embeddingService.getPendingEmbeddings({
+            limit,
+            includeImage
+        });
 
         let processed = 0;
         let failed = 0;
 
-        for (const row of result.rows) {
+        for (const row of pending) {
             try {
-                const metadata = typeof row.metadata === 'string'
-                    ? JSON.parse(row.metadata)
-                    : row.metadata;
-
-                await embeddingService.generateAndStore(row.id, {
-                    ...metadata,
-                    title: row.title,
-                    media_type: row.media_type,
-                    library_name: row.library_name
-                });
+                const metadata = row.metadata || {};
+                if (row.needsText) {
+                    await embeddingService.generateAndStore(row.id, {
+                        ...metadata,
+                        title: row.title,
+                        media_type: row.media_type,
+                        library_name: row.library_name
+                    });
+                } else if (row.needsImage) {
+                    await embeddingService.generateImageEmbedding(row.id, {
+                        ...metadata,
+                        title: row.title,
+                        media_type: row.media_type,
+                        library_name: row.library_name
+                    });
+                }
                 processed++;
             } catch (error) {
                 failed++;
@@ -208,7 +462,7 @@ router.post('/backfill/start', async (req, res) => {
             success: true,
             processed,
             failed,
-            remaining: result.rows.length - processed
+            remaining: pending.length - processed
         });
     } catch (error) {
         logger.error('Backfill failed', { error: error.message });
@@ -723,12 +977,14 @@ router.get('/backfill/status', async (req, res) => {
         const manualStatus = await manualBackfillService.getStatus();
         const idleStatus = idleBackfillService.getStatus();
         const scheduleConfig = scheduledBackfillService.getSchedule();
+        const pendingBreakdown = await embeddingService.getPendingBreakdown();
 
         res.json({
             manual: manualStatus,
             idle: idleStatus,
             scheduled: scheduleConfig,
-            pending
+            pending,
+            pendingBreakdown
         });
     } catch (error) {
         logger.error('Failed to get backfill status', { error: error.message });
@@ -754,7 +1010,7 @@ router.get('/backfill/schedule', async (req, res) => {
 
         if (config.rows.length === 0) {
             return res.json({
-                scheduled_backfill_enabled: false,
+                scheduled_backfill_enabled: true,
                 scheduled_backfill_time: '02:00',
                 scheduled_backfill_days: '0,1,2,3,4,5,6',
                 scheduled_backfill_batch_size: 100,
@@ -956,15 +1212,8 @@ router.get('/overview', async (req, res) => {
             SELECT COUNT(*) as total FROM classification_embeddings
         `);
 
-        // Get pending count
-        const pendingResult = await db.query(`
-            SELECT COUNT(*) as count
-            FROM classification_history ch
-            WHERE NOT EXISTS (
-                SELECT 1 FROM classification_embeddings ce
-                WHERE ce.classification_id = ch.id
-            )
-        `);
+        const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+        const pendingCount = await embeddingService.getPendingCount({ includeImage });
 
         // Get failed count (last 24 hours)
         const failedResult = await db.query(`
@@ -995,7 +1244,7 @@ router.get('/overview', async (req, res) => {
             providerOnline,
             stats: {
                 totalEmbeddings: parseInt(embeddingsResult.rows[0].total) || 0,
-                pendingCount: parseInt(pendingResult.rows[0].count) || 0,
+                pendingCount: pendingCount || 0,
                 failedCount: parseInt(failedResult.rows[0].count) || 0,
                 avgGenerationTime: Math.round(parseFloat(metricsResult.rows[0]?.avg_time) || 0),
                 lastEmbeddingTime: metricsResult.rows[0]?.last_time || null
@@ -1304,6 +1553,63 @@ router.post('/clear-embeddings', async (req, res) => {
 });
 
 /**
+ * GET /api/rag/image-models-cache
+ * Get cached image embedding models for the active config (if any)
+ */
+router.get('/image-models-cache', async (req, res) => {
+    try {
+        const config = await imageEmbeddingProvider.getConfig();
+        if (!config) {
+            return res.json({ models: [], fetchedAt: null, cacheHit: false });
+        }
+
+        const match = resolveImageModelsCache(config);
+        if (!match) {
+            return res.json({ models: [], fetchedAt: null, cacheHit: false });
+        }
+
+        return res.json({
+            models: match.entry.models || [],
+            fetchedAt: match.entry.fetched_at || null,
+            cacheHit: true,
+            scope: match.scope
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /api/rag/reembed-images
+ * Clear image embeddings only to force re-embedding
+ */
+router.post('/reembed-images', async (req, res) => {
+    try {
+        const result = await db.query(`
+            UPDATE classification_embeddings
+            SET image_embedding = NULL,
+                image_embedding_dims = NULL,
+                image_provider = NULL,
+                image_model = NULL,
+                image_embedding_hash = NULL,
+                image_embedding_size = NULL,
+                image_embedding_source_url = NULL,
+                updated_at = NOW()
+        `);
+
+        await db.query(`
+            INSERT INTO rag_logs (level, type, message)
+            VALUES ('warning', 'system', 'Image embeddings cleared by user for re-embedding')
+        `);
+
+        res.json({ success: true, cleared: result.rowCount });
+    } catch (error) {
+        logger.error('Failed to clear image embeddings', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * POST /api/rag/reset-config
  * Reset RAG configuration to defaults (danger zone)
  */
@@ -1322,7 +1628,7 @@ router.post('/reset-config', async (req, res) => {
                 idle_backfill_enabled = true,
                 idle_threshold = 30000,
                 idle_batch_size = 10,
-                scheduled_backfill_enabled = false,
+                scheduled_backfill_enabled = true,
                 scheduled_backfill_time = '02:00',
                 scheduled_backfill_days = '0,1,2,3,4,5,6',
                 scheduled_backfill_batch_size = 100,

@@ -33,10 +33,21 @@ jobs:
             server/package.json
             client/package.json
 
+      - name: Validate migration naming
+        run: node scripts/check-migrations.js
+
       - name: Install server dependencies
         run: |
           cd server
           npm ci
+
+      - name: Check test console spies
+        run: node scripts/check-test-console-spies.js
+
+      - name: Lint server tests
+        run: |
+          cd server
+          npm run lint:tests
 
       - name: Install client dependencies
         run: |

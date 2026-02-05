@@ -23,6 +23,7 @@ const apiKeysRouter = require('../../routes/apiKeys');
 const librariesRouter = require('../../routes/libraries');
 const { authenticateTokenOrApiKey, requireReadWrite } = require('../../middleware/apiKeyAuth');
 const authService = require('../../services/auth');
+const { withConsoleSpy } = require('../setup/consoleHelpers');
 
 // Create test app for API key management
 const app = express();
@@ -427,14 +428,18 @@ describe('API Keys Integration Tests', () => {
         });
 
         test('read_write key should access POST endpoints', async () => {
-            // Note: This will fail if library doesn't exist, but should not fail on permission
-            const response = await request(protectedApp)
-                .post('/api/libraries/999999/sync')
-                .set('X-API-Key', testApiKey)
-                .send({});
+            await withConsoleSpy('warn', async ({ getMessages }) => {
+                // Note: This will fail if library doesn't exist, but should not fail on permission
+                const response = await request(protectedApp)
+                    .post('/api/libraries/999999/sync')
+                    .set('X-API-Key', testApiKey)
+                    .send({});
 
-            // Should get 404 (not found) or 500 (error), not 403 (forbidden)
-            expect(response.status).not.toBe(403);
+                // Should get 404 (not found) or 500 (error), not 403 (forbidden)
+                expect(response.status).not.toBe(403);
+
+                expect(getMessages()).toContain('Library not found during sync');
+            });
         });
     });
 

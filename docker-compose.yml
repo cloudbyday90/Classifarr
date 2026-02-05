@@ -6,6 +6,7 @@ services:
     image: ghcr.io/cloudbyday90/classifarr:latest
     # pgvector auto-selects AVX when supported, otherwise uses generic build
     container_name: classifarr
+    user: "1000:1000"
     ports:
       - "21324:21324"
     environment:
@@ -38,3 +39,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    networks:
+      - classifarr_internal
+
+networks:
+  classifarr_internal:
+    name: classifarr_internal
