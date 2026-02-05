@@ -51,10 +51,10 @@ npm --prefix server run test:integration
 
 ## Phase 7: Rollout
 - [ ] Run migrations locally
-- [ ] Update `database/schema/current.sql`
-- [ ] Update docs/README with new configuration
-- [ ] Update `CHANGELOG.md` with technical changes (target version: v0.41.2-alpha)
-- [ ] Update `RELEASE_NOTES.md` with high-level changes (target version: v0.41.2-alpha)
+- [x] Update `database/schema/current.sql`
+- [x] Update docs/README with new configuration
+- [x] Update `CHANGELOG.md` with technical changes (target version: v0.41.2-alpha)
+- [x] Update `RELEASE_NOTES.md` with high-level changes (target version: v0.41.2-alpha)
 - [ ] Verify CI passes
 
 ## Dependencies
