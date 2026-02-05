@@ -297,7 +297,20 @@ class AIPromptBuilder {
         // Show top similar items
         for (const item of data.similarItems.slice(0, 5)) {
             const similarity = item.similarity || item.score || 0;
-            lines.push(`  "${item.title}" → ${item.libraryName} (${Math.round(similarity * 100)}% similar)`);
+            const textSimilarity = item.textSimilarity;
+            const imageSimilarity = item.imageSimilarity;
+            const hasImageSignal = imageSimilarity !== null && imageSimilarity !== undefined;
+
+            if (hasImageSignal) {
+                const textPct = Math.round((textSimilarity || 0) * 100);
+                const imagePct = Math.round(imageSimilarity * 100);
+                const combinedPct = Math.round(similarity * 100);
+                lines.push(
+                    `  "${item.title}" → ${item.libraryName} (${combinedPct}% combined; text ${textPct}%, image ${imagePct}%)`
+                );
+            } else {
+                lines.push(`  "${item.title}" → ${item.libraryName} (${Math.round(similarity * 100)}% similar)`);
+            }
         }
 
         // Show RAG suggestion if available

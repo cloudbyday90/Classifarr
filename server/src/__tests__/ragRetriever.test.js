@@ -19,10 +19,16 @@
 const ragRetriever = require('../services/ragRetriever');
 const embeddingService = require('../services/embeddingService');
 const embeddingRouter = require('../services/embeddingRouter');
+const imageEmbeddingProvider = require('../services/imageEmbeddingProvider');
 const db = require('../config/database');
 
 jest.mock('../services/embeddingService');
 jest.mock('../services/embeddingRouter');
+jest.mock('../services/imageEmbeddingProvider', () => ({
+    embedImageFromUrl: jest.fn(),
+    getConfig: jest.fn(),
+    isConfigured: jest.fn()
+}));
 jest.mock('../config/database');
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
@@ -36,6 +42,9 @@ jest.mock('../utils/logger', () => ({
 describe('RAGRetriever', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        imageEmbeddingProvider.embedImageFromUrl.mockResolvedValue(null);
+        imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'disabled' });
+        imageEmbeddingProvider.isConfigured.mockReturnValue(false);
     });
 
     describe('semanticSearch', () => {
@@ -48,7 +57,8 @@ describe('RAGRetriever', () => {
                 rows: [
                     {
                         classification_id: 1,
-                        similarity: 0.95,
+                        combined_similarity: 0.95,
+                        text_similarity: 0.95,
                         title: 'Test',
                         media_type: 'movie'
                     }
@@ -76,6 +86,26 @@ describe('RAGRetriever', () => {
 
             const results = await ragRetriever.semanticSearch({ title: '' });
             expect(results).toEqual([]);
+        });
+
+        it('should skip image embedding when image mode is disabled', async () => {
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            db.query.mockResolvedValue({ rows: [] });
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 0.7,
+                rag_image_weight: 0.3
+            });
+            embeddingService.formatForEmbedding.mockReturnValue('query');
+            embeddingService.resolvePosterUrl.mockReturnValue('https://example.com/poster.jpg');
+            imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'disabled' });
+            imageEmbeddingProvider.isConfigured.mockReturnValue(false);
+
+            await ragRetriever.semanticSearch({ title: 'Query', poster_path: '/poster.jpg' });
+
+            expect(imageEmbeddingProvider.embedImageFromUrl).not.toHaveBeenCalled();
         });
     });
 
@@ -138,6 +168,25 @@ describe('RAGRetriever', () => {
             expect(result).toContain('Movie A');
             expect(result).toContain('Movies');
             expect(result).toContain('95%');
+        });
+
+        it('should include image similarity when available', () => {
+            const matches = [
+                {
+                    title: 'Movie A',
+                    libraryName: 'Movies',
+                    similarity: 0.9,
+                    textSimilarity: 0.88,
+                    imageSimilarity: 0.92,
+                    libraryId: 1
+                }
+            ];
+
+            const result = ragRetriever.formatForAIContext(matches);
+
+            expect(result).toContain('combined');
+            expect(result).toContain('text 88%');
+            expect(result).toContain('image 92%');
         });
 
         it('should return empty string for no matches', () => {

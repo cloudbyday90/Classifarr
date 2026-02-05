@@ -9,6 +9,7 @@
 const db = require('../config/database');
 const embeddingRouter = require('./embeddingRouter');
 const embeddingService = require('./embeddingService');
+const imageEmbeddingProvider = require('./imageEmbeddingProvider');
 const { createLogger } = require('../utils/logger');
 const ragLogger = require('../utils/ragLogger');
 
@@ -38,6 +39,26 @@ class RAGRetriever {
             const config = await embeddingRouter.getConfig();
             const embeddingCount = await this.getEmbeddingCount();
             const threshold = config?.rag_similarity_threshold || 0.70;
+            let textWeight = Number(config?.rag_text_weight ?? 0.70);
+            let imageWeight = Number(config?.rag_image_weight ?? 0.30);
+            if (!Number.isFinite(textWeight)) textWeight = 0.70;
+            if (!Number.isFinite(imageWeight)) imageWeight = 0.30;
+            textWeight = Math.max(0, textWeight);
+            imageWeight = Math.max(0, imageWeight);
+            const imageConfig = await imageEmbeddingProvider.getConfig();
+            const imageMode = imageConfig?.image_embedding_provider_mode || 'disabled';
+            const imageConfigured = imageEmbeddingProvider.isConfigured(imageConfig);
+            if (imageMode === 'disabled' || !imageConfigured) {
+                imageWeight = 0;
+            }
+            const weightSum = textWeight + imageWeight;
+            if (weightSum > 0) {
+                textWeight /= weightSum;
+                imageWeight /= weightSum;
+            } else {
+                textWeight = 1;
+                imageWeight = 0;
+            }
             const minRequired = config?.rag_min_history_count || 50;
 
             // Check minimum embeddings threshold
@@ -65,26 +86,72 @@ class RAGRetriever {
             // Convert to pgvector format
             const vectorString = `[${queryResult.embedding.join(',')}]`;
 
-            // Perform similarity search
+            // Attempt image embedding (best-effort)
+            let imageVectorString = null;
+            const posterUrl = embeddingService.resolvePosterUrl(metadata);
+            if (posterUrl && imageWeight > 0) {
+                try {
+                    const imageResult = await imageEmbeddingProvider.embedImageFromUrl(posterUrl);
+                    if (imageResult?.embedding?.length) {
+                        imageVectorString = `[${imageResult.embedding.join(',')}]`;
+                    }
+                } catch (imageError) {
+                    logger.debug('Image embedding skipped', { error: imageError.message });
+                }
+            }
+
+            // Two-phase retrieval:
+            // 1) Pull top-K by text similarity
+            // 2) Re-rank by combined (text + image) similarity
+            const candidateLimit = Math.min(Math.max(limit * 5, 25), 200);
+
             const result = await db.query(`
-                SELECT 
-                    ce.id,
-                    ce.classification_id,
-                    ch.title,
-                    ch.media_type,
-                    ch.library_id,
-                    ch.library_name,
-                    ch.method,
-                    ch.confidence,
-                    ch.created_at,
-                    1 - (ce.embedding <=> $1::vector) as similarity
-                FROM classification_embeddings ce
-                JOIN classification_history ch ON ce.classification_id = ch.id
-                WHERE ce.is_stale = false
-                AND ch.library_id IS NOT NULL
-                ORDER BY ce.embedding <=> $1::vector
-                LIMIT $2
-            `, [vectorString, limit]);
+                WITH candidates AS (
+                    SELECT
+                        ce.id,
+                        ce.classification_id,
+                        ch.title,
+                        ch.media_type,
+                        ch.library_id,
+                        ch.library_name,
+                        ch.method,
+                        ch.confidence,
+                        ch.created_at,
+                        1 - (ce.embedding <=> $1::vector) as text_similarity,
+                        ce.image_embedding
+                    FROM classification_embeddings ce
+                    JOIN classification_history ch ON ce.classification_id = ch.id
+                    WHERE ce.is_stale = false
+                    AND ch.library_id IS NOT NULL
+                    ORDER BY text_similarity DESC
+                    LIMIT $5
+                )
+                SELECT
+                    c.id,
+                    c.classification_id,
+                    c.title,
+                    c.media_type,
+                    c.library_id,
+                    c.library_name,
+                    c.method,
+                    c.confidence,
+                    c.created_at,
+                    c.text_similarity,
+                    CASE
+                        WHEN $2::vector IS NULL OR c.image_embedding IS NULL THEN NULL
+                        ELSE 1 - (c.image_embedding <=> $2::vector)
+                    END as image_similarity,
+                    CASE
+                        WHEN $2::vector IS NULL OR c.image_embedding IS NULL
+                            THEN c.text_similarity
+                        ELSE
+                            ($3 * c.text_similarity) +
+                            ($4 * (1 - (c.image_embedding <=> $2::vector)))
+                    END as combined_similarity
+                FROM candidates c
+                ORDER BY combined_similarity DESC
+                LIMIT $6
+            `, [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit]);
 
             if (result.rows.length === 0) {
                 logger.info('RAG search returned no results', { 
@@ -95,8 +162,10 @@ class RAGRetriever {
             }
 
             // Filter by threshold and format results
+            const normalizedTextWeight = Math.round(textWeight * 100) / 100;
+            const normalizedImageWeight = Math.round(imageWeight * 100) / 100;
             const matches = result.rows
-                .filter(row => row.similarity >= threshold)
+                .filter(row => row.combined_similarity >= threshold)
                 .map(row => ({
                     classificationId: row.classification_id,
                     title: row.title,
@@ -105,14 +174,20 @@ class RAGRetriever {
                     libraryName: row.library_name,
                     method: row.method,
                     confidence: row.confidence,
-                    similarity: Math.round(row.similarity * 100) / 100,
+                    similarity: Math.round(row.combined_similarity * 100) / 100,
+                    textSimilarity: Math.round((row.text_similarity ?? 0) * 100) / 100,
+                    imageSimilarity: row.image_similarity === null || row.image_similarity === undefined
+                        ? null
+                        : Math.round(row.image_similarity * 100) / 100,
+                    textWeight: normalizedTextWeight,
+                    imageWeight: normalizedImageWeight,
                     date: row.created_at
                 }));
 
             if (matches.length === 0 && result.rows.length > 0) {
                 logger.info('RAG results below threshold', { 
                     title: metadata.title,
-                    topSimilarity: result.rows[0]?.similarity || 0,
+                    topSimilarity: result.rows[0]?.combined_similarity || 0,
                     threshold,
                     totalResults: result.rows.length
                 });
@@ -469,7 +544,14 @@ class RAGRetriever {
 
         const lines = ['Similar past classifications:'];
         for (const match of matches.slice(0, 3)) {
-            lines.push(`- "${match.title}" → ${match.libraryName} (${Math.round(match.similarity * 100)}% similar)`);
+            const similarity = match.similarity || 0;
+            if (match.imageSimilarity !== null && match.imageSimilarity !== undefined) {
+                const textPct = Math.round((match.textSimilarity || 0) * 100);
+                const imagePct = Math.round(match.imageSimilarity * 100);
+                lines.push(`- "${match.title}" → ${match.libraryName} (${Math.round(similarity * 100)}% combined; text ${textPct}%, image ${imagePct}%)`);
+            } else {
+                lines.push(`- "${match.title}" → ${match.libraryName} (${Math.round(similarity * 100)}% similar)`);
+            }
         }
 
         const suggested = this.getSuggestedLibrary(matches);
