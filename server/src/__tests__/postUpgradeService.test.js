@@ -51,14 +51,19 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs - TRUNCATE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_logs
                 .mockResolvedValueOnce({ rowCount: 5 }) // backfill_library_name
-                .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete - backfill_library_name
+                .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - backfill_library_name
+                .mockResolvedValueOnce({ rowCount: 2 }) // clear_stale_retry_queue
+                .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_stale_retry_queue
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete - clear_logs (v0.41.2)
 
             // Mock fs operations for clear_logs
             fs.readdir.mockResolvedValue([]);
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(2); // Both tasks should execute
+            expect(result.executed).toBe(4); // All tasks should execute
             expect(result.skipped).toBe(0);
         });
 
@@ -69,14 +74,16 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({
                     rows: [
                         { task_id: 'clear_logs_0393' },
-                        { task_id: 'backfill_library_name_0393' }
+                        { task_id: 'backfill_library_name_0393' },
+                        { task_id: 'clear_stale_retry_queue_0393' },
+                        { task_id: 'clear_logs_0412' }
                     ]
                 }); // getExecutedTaskIds
 
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(0);
-            expect(result.skipped).toBe(2);
+            expect(result.skipped).toBe(4);
         });
 
         it('should handle partial execution when some tasks fail', async () => {
@@ -86,12 +93,17 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rows: [] }) // getExecutedTaskIds
                 .mockRejectedValueOnce(new Error('Failed to truncate')) // clear_logs fails
                 .mockResolvedValueOnce({ rowCount: 5 }) // backfill_library_name succeeds
-                .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete for successful task
+                .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for backfill
+                .mockResolvedValueOnce({ rowCount: 2 }) // clear_stale_retry_queue succeeds
+                .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for clear_stale_retry_queue
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete for clear_logs (v0.41.2)
 
             const result = await postUpgradeService.runPendingTasks();
 
             // Only the successful task should be counted
-            expect(result.executed).toBe(1);
+            expect(result.executed).toBe(3);
         });
     });
 

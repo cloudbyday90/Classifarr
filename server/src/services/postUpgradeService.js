@@ -34,6 +34,13 @@ const POST_UPGRADE_TASKS = {
             action: 'clear_stale_retry_queue',
             description: 'Remove orphaned entries from embedding retry queue'
         }
+    ],
+    '0.41.2': [
+        {
+            id: 'clear_logs_0412',
+            action: 'clear_logs',
+            description: 'Clear logs for fresh start in v0.41.2-alpha'
+        }
     ]
 };
 
