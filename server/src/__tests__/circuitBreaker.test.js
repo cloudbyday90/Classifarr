@@ -16,14 +16,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Mock logger
+const mockLogger = {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+};
+
 jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        error: jest.fn(),
-        warn: jest.fn(),
-        debug: jest.fn()
-    })
+    createLogger: () => mockLogger
 }));
 
 const CircuitBreaker = require('../services/circuitBreaker');
@@ -33,6 +34,7 @@ describe('CircuitBreaker', () => {
     let circuitBreaker;
 
     beforeEach(() => {
+        jest.clearAllMocks();
         circuitBreaker = new CircuitBreaker({
             failureThreshold: 3,
             recoveryTimeout: 1000,
@@ -73,6 +75,16 @@ describe('CircuitBreaker', () => {
 
             circuitBreaker.recordFailure(new Error('test'));
             expect(circuitBreaker.state).toBe(STATES.OPEN);
+        });
+
+        it('should pass the original error object to logger.warn for stack trace persistence', () => {
+            const err = new Error('timeout of 15000ms exceeded');
+            circuitBreaker.recordFailure(err);
+
+            expect(mockLogger.warn).toHaveBeenCalled();
+            const call = mockLogger.warn.mock.calls[0];
+            expect(call[0]).toBe('Circuit breaker recorded failure');
+            expect(call[2]?.error).toBe(err);
         });
     });
 

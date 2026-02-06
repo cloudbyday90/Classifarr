@@ -155,7 +155,7 @@ class CircuitBreaker {
             failureCount: this.failureCount,
             threshold: this.failureThreshold,
             error: error.message
-        });
+        }, { error });
 
         if (this.state === STATES.HALF_OPEN && !this._isTransitioning) {
             // Failed during recovery - go back to OPEN
