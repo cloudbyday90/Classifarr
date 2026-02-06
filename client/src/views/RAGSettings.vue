@@ -18,7 +18,7 @@
         <button
           v-for="tab in tabs"
           :key="tab.id"
-          @click="activeTab = tab.id"
+          @click="setActiveTab(tab.id)"
           :class="[
             'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors',
             activeTab === tab.id
@@ -87,20 +87,19 @@
     </div>
 
     <!-- Tab Content -->
-    <component :is="currentTabComponent" @navigate="activeTab = $event" />
+    <component :is="currentTabComponent" @navigate="setActiveTab" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
 import OverviewTab from './rag/OverviewTab.vue'
 import TextEmbeddingsTab from './rag/TextEmbeddingsTab.vue'
 import ImageEmbeddingsTab from './rag/ImageEmbeddingsTab.vue'
 import BackfillTab from './rag/BackfillTab.vue'
 import AdvancedTab from './rag/AdvancedTab.vue'
-
-const activeTab = ref('overview')
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: '📊', component: OverviewTab },
@@ -109,6 +108,37 @@ const tabs = [
   { id: 'backfill', label: 'Backfill', icon: '⏱️', component: BackfillTab },
   { id: 'advanced', label: 'Advanced', icon: '⚙️', component: AdvancedTab }
 ]
+
+const route = useRoute()
+const router = useRouter()
+
+const validTabIds = new Set(tabs.map(t => t.id))
+const normalizeTabId = (tabId) => (validTabIds.has(tabId) ? tabId : 'overview')
+
+const activeTab = ref(normalizeTabId(String(route.query.tab || 'overview')))
+
+const setActiveTab = async (tabId) => {
+  const nextTab = normalizeTabId(String(tabId || 'overview'))
+  activeTab.value = nextTab
+
+  const nextQuery = { ...route.query }
+  if (nextTab === 'overview') {
+    delete nextQuery.tab
+  } else {
+    nextQuery.tab = nextTab
+  }
+
+  await router.replace({ query: nextQuery })
+}
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    const normalized = normalizeTabId(String(tab || 'overview'))
+    if (activeTab.value !== normalized) activeTab.value = normalized
+  },
+)
+
 const currentTabComponent = computed(() => {
   return tabs.find(t => t.id === activeTab.value)?.component
 })
