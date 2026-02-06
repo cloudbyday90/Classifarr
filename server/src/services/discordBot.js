@@ -645,15 +645,37 @@ class DiscordBotService {
       const requireAllConfirmations =
         await clarificationService.isRequireAllConfirmationsEnabled();
 
-      // Get confidence tier
-      const tier = await clarificationService.getTierForConfidence(
-        result.confidence,
-      );
+      // Prefer per-policy thresholds when available (matches the UI Policy Engine thresholds).
+      // Fall back to DB-driven global confidence tiers when policy context is missing.
+      let policyThresholds = null;
+      const ranked = result?.policyResult?.ranked || [];
+      const libraryId = result?.library?.id;
+      if (Array.isArray(ranked) && ranked.length > 0 && libraryId) {
+        const row = ranked.find((r) => r && r.library_id === libraryId);
+        if (
+          row &&
+          typeof row.auto_classify_threshold === "number" &&
+          typeof row.prompt_threshold === "number"
+        ) {
+          policyThresholds = {
+            auto_classify_threshold: row.auto_classify_threshold,
+            prompt_threshold: row.prompt_threshold,
+          };
+        }
+      }
+
+      const tier =
+        clarificationService.getTierFromPolicyThresholds(
+          result.confidence,
+          policyThresholds,
+          requireAllConfirmations,
+        ) || (await clarificationService.getTierForConfidence(result.confidence));
 
       console.log("[Discord] Tier lookup result", {
         confidence: result.confidence,
         tier: tier ? tier.tier : "null",
         action: tier ? tier.action : "null",
+        policyThresholds: policyThresholds || "none",
       });
 
       if (!tier) {

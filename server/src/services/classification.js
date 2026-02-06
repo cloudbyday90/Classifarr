@@ -175,8 +175,27 @@ class ClassificationService {
       // Check if user requires all confirmations
       const requireAllConfirmations = await clarificationService.isRequireAllConfirmationsEnabled();
 
-      // Route to Radarr/Sonarr only if confidence is high enough AND user doesn't require all confirmations
-      if (result.library && result.library.arr_type && result.confidence >= 90 && !requireAllConfirmations) {
+      // Route to Radarr/Sonarr only if the policy auto-classify threshold is met (or policy already auto-classified),
+      // and the user doesn't require confirmations.
+      let policyAutoThreshold = null;
+      const ranked = result?.policyResult?.ranked || [];
+      if (Array.isArray(ranked) && ranked.length > 0 && result.library?.id) {
+        const row = ranked.find((r) => r && r.library_id === result.library.id);
+        if (row && typeof row.auto_classify_threshold === 'number') {
+          policyAutoThreshold = row.auto_classify_threshold;
+        }
+      }
+
+      const shouldAutoRoute =
+        !!result.library &&
+        !!result.library.arr_type &&
+        !requireAllConfirmations &&
+        (
+          result.method === 'policy_auto' ||
+          (typeof policyAutoThreshold === 'number' && result.confidence >= policyAutoThreshold)
+        );
+
+      if (shouldAutoRoute) {
         await this.routeToArr(metadata, result.library);
       }
 

@@ -105,6 +105,56 @@ class ClarificationService {
   }
 
   /**
+   * Derive a Discord "tier" from PolicyEngine thresholds (per-policy).
+   *
+   * This is intentionally separate from the DB-driven `confidence_thresholds` table:
+   * - Policy thresholds are configured per library policy (auto_classify_threshold / prompt_threshold)
+   * - Discord tiers historically used global `confidence_thresholds`, which can conflict with policy settings
+   *
+   * Returns `null` when thresholds are missing or when confidence is below the policy prompt threshold,
+   * so callers can fall back to the DB-driven tier logic.
+   *
+   * @param {number} confidence
+   * @param {{auto_classify_threshold:number, prompt_threshold:number}|null} thresholds
+   * @param {boolean} requireAllConfirmations
+   * @returns {object|null}
+   */
+  getTierFromPolicyThresholds(
+    confidence,
+    thresholds,
+    requireAllConfirmations = false,
+  ) {
+    if (!thresholds) return null;
+
+    const auto = clampConfidence(thresholds.auto_classify_threshold);
+    const prompt = clampConfidence(thresholds.prompt_threshold);
+    const roundedConfidence = Math.round(clampConfidence(confidence));
+
+    // If the user requires confirmations, never return the "auto" tier.
+    if (!requireAllConfirmations && roundedConfidence >= auto) {
+      return {
+        tier: 'auto',
+        action: 'auto_route',
+        description: 'Policy threshold met - auto route',
+        min_confidence: auto,
+        max_confidence: 100,
+      };
+    }
+
+    if (roundedConfidence >= prompt) {
+      return {
+        tier: 'verify',
+        action: 'verify_buttons',
+        description: 'Policy threshold met - verify',
+        min_confidence: prompt,
+        max_confidence: Math.max(auto - 1, prompt),
+      };
+    }
+
+    return null;
+  }
+
+  /**
    * Match clarification questions to metadata
    * @param {object} metadata - Media metadata
    * @param {number} maxQuestions - Maximum questions to return

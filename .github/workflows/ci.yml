@@ -247,31 +247,52 @@ jobs:
 
       - name: Get and delete old Docker Hub tags (keep last 5)
         run: |
-          # Get all tags sorted by last_updated
-          TAGS=$(curl -s -H "Authorization: Bearer ${{ steps.docker-token.outputs.token }}" \
-            "https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/tags?page_size=100" \
-            | jq -r '.results | sort_by(.last_updated) | .[].name')
+          set -euo pipefail
           
-          # Count tags (exclude 'latest')
-          TAG_COUNT=$(echo "$TAGS" | grep -v "^latest$" | wc -l)
-          KEEP_COUNT=5
-          
-          if [ "$TAG_COUNT" -gt "$KEEP_COUNT" ]; then
-            DELETE_COUNT=$((TAG_COUNT - KEEP_COUNT))
-            echo "Deleting $DELETE_COUNT old tags from Docker Hub..."
-            
-            # Get oldest tags to delete (excluding 'latest')
-            TAGS_TO_DELETE=$(echo "$TAGS" | grep -v "^latest$" | head -n $DELETE_COUNT)
-            
-            for TAG in $TAGS_TO_DELETE; do
-              echo "Deleting tag: $TAG"
-              curl -s -X DELETE \
-                -H "Authorization: Bearer ${{ steps.docker-token.outputs.token }}" \
-                "https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/tags/$TAG/"
-            done
-          else
-            echo "Only $TAG_COUNT tags exist, keeping all (minimum is $KEEP_COUNT)"
+          TOKEN="${{ steps.docker-token.outputs.token }}"
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Docker Hub token is missing/invalid. Ensure DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets are set."
+            exit 1
           fi
+          
+          KEEP_COUNT=5
+          REPO="cloudbyday90/classifarr"
+          
+          # Fetch all tags (paginated), then delete everything except:
+          # - latest (if present)
+          # - the newest $KEEP_COUNT tags by last_updated (excluding latest)
+          NEXT_URL="https://hub.docker.com/v2/repositories/${REPO}/tags?page_size=100"
+          ALL="[]"
+          
+          while [ -n "$NEXT_URL" ] && [ "$NEXT_URL" != "null" ]; do
+            RESP="$(curl --fail-with-body -fsSL -H "Authorization: Bearer ${TOKEN}" "$NEXT_URL")"
+            ALL="$(jq -s ".[0] + .[1].results" <(echo "$ALL") <(echo "$RESP"))"
+            NEXT_URL="$(echo "$RESP" | jq -r ".next")"
+          done
+          
+          TAGS_SORTED="$(echo "$ALL" | jq -r "sort_by(.last_updated) | .[].name")"
+          TAG_COUNT="$(echo "$TAGS_SORTED" | grep -v "^latest$" | wc -l | tr -d " ")"
+          
+          echo "Docker Hub tags (excluding latest): $TAG_COUNT"
+          
+          if [ "$TAG_COUNT" -le "$KEEP_COUNT" ]; then
+            echo "Only $TAG_COUNT tags exist, keeping all (minimum is $KEEP_COUNT)"
+            exit 0
+          fi
+          
+          DELETE_COUNT="$((TAG_COUNT - KEEP_COUNT))"
+          echo "Deleting $DELETE_COUNT old tags from Docker Hub (keeping newest $KEEP_COUNT + latest)..."
+          
+          TAGS_TO_DELETE="$(echo "$TAGS_SORTED" | grep -v "^latest$" | head -n "$DELETE_COUNT")"
+          
+          while IFS= read -r TAG; do
+            [ -z "$TAG" ] && continue
+            echo "Deleting tag: $TAG"
+            curl --fail-with-body -fsSL -X DELETE \
+              -H "Authorization: Bearer ${TOKEN}" \
+              "https://hub.docker.com/v2/repositories/${REPO}/tags/${TAG}/" >/dev/null
+            sleep 0.1
+          done <<< "$TAGS_TO_DELETE"
 
   cleanup-old-releases-manual:
     name: Cleanup Old Container Images (Manual)
@@ -300,28 +321,49 @@ jobs:
 
       - name: Get and delete old Docker Hub tags (keep last 5)
         run: |
-          # Get all tags sorted by last_updated
-          TAGS=$(curl -s -H "Authorization: Bearer ${{ steps.docker-token.outputs.token }}" \
-            "https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/tags?page_size=100" \
-            | jq -r '.results | sort_by(.last_updated) | .[].name')
+          set -euo pipefail
           
-          # Count tags (exclude 'latest')
-          TAG_COUNT=$(echo "$TAGS" | grep -v "^latest$" | wc -l)
-          KEEP_COUNT=5
-          
-          if [ "$TAG_COUNT" -gt "$KEEP_COUNT" ]; then
-            DELETE_COUNT=$((TAG_COUNT - KEEP_COUNT))
-            echo "Deleting $DELETE_COUNT old tags from Docker Hub..."
-            
-            # Get oldest tags to delete (excluding 'latest')
-            TAGS_TO_DELETE=$(echo "$TAGS" | grep -v "^latest$" | head -n $DELETE_COUNT)
-            
-            for TAG in $TAGS_TO_DELETE; do
-              echo "Deleting tag: $TAG"
-              curl -s -X DELETE \
-                -H "Authorization: Bearer ${{ steps.docker-token.outputs.token }}" \
-                "https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/tags/$TAG/"
-            done
-          else
-            echo "Only $TAG_COUNT tags exist, keeping all (minimum is $KEEP_COUNT)"
+          TOKEN="${{ steps.docker-token.outputs.token }}"
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Docker Hub token is missing/invalid. Ensure DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets are set."
+            exit 1
           fi
+          
+          KEEP_COUNT=5
+          REPO="cloudbyday90/classifarr"
+          
+          # Fetch all tags (paginated), then delete everything except:
+          # - latest (if present)
+          # - the newest $KEEP_COUNT tags by last_updated (excluding latest)
+          NEXT_URL="https://hub.docker.com/v2/repositories/${REPO}/tags?page_size=100"
+          ALL="[]"
+          
+          while [ -n "$NEXT_URL" ] && [ "$NEXT_URL" != "null" ]; do
+            RESP="$(curl --fail-with-body -fsSL -H "Authorization: Bearer ${TOKEN}" "$NEXT_URL")"
+            ALL="$(jq -s ".[0] + .[1].results" <(echo "$ALL") <(echo "$RESP"))"
+            NEXT_URL="$(echo "$RESP" | jq -r ".next")"
+          done
+          
+          TAGS_SORTED="$(echo "$ALL" | jq -r "sort_by(.last_updated) | .[].name")"
+          TAG_COUNT="$(echo "$TAGS_SORTED" | grep -v "^latest$" | wc -l | tr -d " ")"
+          
+          echo "Docker Hub tags (excluding latest): $TAG_COUNT"
+          
+          if [ "$TAG_COUNT" -le "$KEEP_COUNT" ]; then
+            echo "Only $TAG_COUNT tags exist, keeping all (minimum is $KEEP_COUNT)"
+            exit 0
+          fi
+          
+          DELETE_COUNT="$((TAG_COUNT - KEEP_COUNT))"
+          echo "Deleting $DELETE_COUNT old tags from Docker Hub (keeping newest $KEEP_COUNT + latest)..."
+          
+          TAGS_TO_DELETE="$(echo "$TAGS_SORTED" | grep -v "^latest$" | head -n "$DELETE_COUNT")"
+          
+          while IFS= read -r TAG; do
+            [ -z "$TAG" ] && continue
+            echo "Deleting tag: $TAG"
+            curl --fail-with-body -fsSL -X DELETE \
+              -H "Authorization: Bearer ${TOKEN}" \
+              "https://hub.docker.com/v2/repositories/${REPO}/tags/${TAG}/" >/dev/null
+            sleep 0.1
+          done <<< "$TAGS_TO_DELETE"

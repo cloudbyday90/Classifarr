@@ -209,6 +209,54 @@ describe('ClarificationService', () => {
     });
   });
 
+  describe('getTierFromPolicyThresholds', () => {
+    test('should return auto tier when confidence meets policy auto threshold', () => {
+      const tier = clarificationService.getTierFromPolicyThresholds(
+        85,
+        { auto_classify_threshold: 85, prompt_threshold: 60 },
+        false
+      );
+
+      expect(tier).toBeDefined();
+      expect(tier.tier).toBe('auto');
+      expect(tier.action).toBe('auto_route');
+    });
+
+    test('should return verify tier when confidence meets policy prompt threshold but not auto threshold', () => {
+      const tier = clarificationService.getTierFromPolicyThresholds(
+        75,
+        { auto_classify_threshold: 85, prompt_threshold: 60 },
+        false
+      );
+
+      expect(tier).toBeDefined();
+      expect(tier.tier).toBe('verify');
+      expect(tier.action).toBe('verify_buttons');
+    });
+
+    test('should return null when confidence is below policy prompt threshold (caller should fall back)', () => {
+      const tier = clarificationService.getTierFromPolicyThresholds(
+        55,
+        { auto_classify_threshold: 85, prompt_threshold: 60 },
+        false
+      );
+
+      expect(tier).toBeNull();
+    });
+
+    test('should not return auto tier when requireAllConfirmations is enabled', () => {
+      const tier = clarificationService.getTierFromPolicyThresholds(
+        95,
+        { auto_classify_threshold: 85, prompt_threshold: 60 },
+        true
+      );
+
+      // With confirmations required, we never return the auto tier.
+      expect(tier).toBeDefined();
+      expect(tier.tier).toBe('verify');
+    });
+  });
+
   describe('matchQuestions', () => {
     test('should match questions by keywords', async () => {
       const mockQuestions = [
