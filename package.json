@@ -25,6 +25,6 @@
     "dotenv": "^17.2.3"
   },
   "devDependencies": {
-    "glob": "^13.0.0"
+    "glob": "^13.0.1"
   }
 }
