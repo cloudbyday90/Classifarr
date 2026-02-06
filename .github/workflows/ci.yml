@@ -41,6 +41,11 @@ jobs:
           cd server
           npm ci
 
+      - name: Audit server runtime dependencies
+        run: |
+          cd server
+          npm audit --omit=dev
+
       - name: Check test console spies
         run: node scripts/check-test-console-spies.js
 
@@ -53,6 +58,11 @@ jobs:
         run: |
           cd client
           npm ci
+
+      - name: Audit client runtime dependencies
+        run: |
+          cd client
+          npm audit --omit=dev
 
       - name: Run server tests
         run: |
@@ -184,7 +194,6 @@ jobs:
             cloudbyday90/classifarr
           tags: |
             type=ref,event=tag
-            type=raw,value=latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

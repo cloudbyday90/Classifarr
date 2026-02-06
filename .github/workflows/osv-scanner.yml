@@ -1,0 +1,26 @@
+name: OSV Dependency Scan
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  pr-scan:
+    name: OSV Scan (PR)
+    if: github.event_name == 'pull_request'
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.3.1
+
+  release-scan:
+    name: OSV Scan (Tag Release)
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.1
+    with:
+      fail-on-vuln: true
+
