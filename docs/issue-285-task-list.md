@@ -43,15 +43,15 @@
   - [x] Ensure error logs persist the real upstream stack trace (`logger.*(..., { error })`)
 
 ## Phase 1: Directive and Execution Pipeline (Offline)
-- [ ] Add SOP: `directives/issue-285-retriever-finetuning.md`
-- [ ] Create deterministic scripts under `execution/`:
-  - [ ] `execution/export_issue_285_dataset.py`
-  - [ ] `execution/build_issue_285_pairs.py`
-  - [ ] `execution/train_issue_285_retriever.py`
-  - [ ] `execution/eval_issue_285_retriever.py`
-  - [ ] `execution/package_issue_285_model.py`
-- [ ] Ensure scripts write outputs to `.tmp/issue-285/`
-- [ ] Add script usage docs (inputs, outputs, required env)
+- [x] Add SOP: `directives/issue-285-retriever-finetuning.md`
+- [x] Create deterministic scripts under `execution/`:
+  - [x] `execution/export_issue_285_dataset.mjs`
+  - [x] `execution/build_issue_285_pairs.mjs`
+  - [x] `execution/train_issue_285_retriever.mjs`
+  - [x] `execution/eval_issue_285_retriever.mjs`
+  - [x] `execution/package_issue_285_model.mjs`
+- [x] Ensure scripts write outputs to `.tmp/issue-285/`
+- [x] Add script usage docs (inputs, outputs, required env)
 - [ ] Validate reproducibility with fixed seeds and deterministic splits
 
 ## Phase 2: Data and Benchmark Assets
