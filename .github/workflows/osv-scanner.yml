@@ -7,20 +7,39 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: read
-  security-events: write
-
 jobs:
+  pr-scan-dependabot:
+    name: OSV Scan (PR, Dependabot)
+    if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: OSV scan (no SARIF upload for Dependabot)
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.2
+        with:
+          scan-args: |-
+            --recursive
+            ./
+
   pr-scan:
     name: OSV Scan (PR)
-    if: github.event_name == 'pull_request'
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.3.1
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.3.2
 
   release-scan:
     name: OSV Scan (Tag Release)
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.1
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.2
     with:
       fail-on-vuln: true
-
