@@ -265,7 +265,7 @@ jobs:
           ALL="[]"
           
           while [ -n "$NEXT_URL" ] && [ "$NEXT_URL" != "null" ]; do
-            RESP="$(curl --fail-with-body -fsSL -H "Authorization: Bearer ${TOKEN}" "$NEXT_URL")"
+            RESP="$(curl --fail-with-body -sSL -H "Authorization: Bearer ${TOKEN}" "$NEXT_URL")"
             ALL="$(jq -s ".[0] + .[1].results" <(echo "$ALL") <(echo "$RESP"))"
             NEXT_URL="$(echo "$RESP" | jq -r ".next")"
           done
@@ -288,7 +288,7 @@ jobs:
           while IFS= read -r TAG; do
             [ -z "$TAG" ] && continue
             echo "Deleting tag: $TAG"
-            curl --fail-with-body -fsSL -X DELETE \
+            curl --fail-with-body -sSL -X DELETE \
               -H "Authorization: Bearer ${TOKEN}" \
               "https://hub.docker.com/v2/repositories/${REPO}/tags/${TAG}/" >/dev/null
             sleep 0.1
@@ -339,7 +339,7 @@ jobs:
           ALL="[]"
           
           while [ -n "$NEXT_URL" ] && [ "$NEXT_URL" != "null" ]; do
-            RESP="$(curl --fail-with-body -fsSL -H "Authorization: Bearer ${TOKEN}" "$NEXT_URL")"
+            RESP="$(curl --fail-with-body -sSL -H "Authorization: Bearer ${TOKEN}" "$NEXT_URL")"
             ALL="$(jq -s ".[0] + .[1].results" <(echo "$ALL") <(echo "$RESP"))"
             NEXT_URL="$(echo "$RESP" | jq -r ".next")"
           done
@@ -362,7 +362,7 @@ jobs:
           while IFS= read -r TAG; do
             [ -z "$TAG" ] && continue
             echo "Deleting tag: $TAG"
-            curl --fail-with-body -fsSL -X DELETE \
+            curl --fail-with-body -sSL -X DELETE \
               -H "Authorization: Bearer ${TOKEN}" \
               "https://hub.docker.com/v2/repositories/${REPO}/tags/${TAG}/" >/dev/null
             sleep 0.1
