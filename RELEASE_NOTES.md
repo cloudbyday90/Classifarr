@@ -6,6 +6,29 @@ _(No unreleased changes - ready for next version)_
 
 ---
 
+## [v0.41.2a-alpha] - 2026-02-06
+
+**Title: Hotfixes and CI Reliability**
+
+> [!IMPORTANT]
+> If you rely on remote poster URLs for the image embedder, note that the companion image embedding service now disables remote URLs by default and requires explicit allowlisting. (See its `v0.0.1.1-alpha` notes.)
+
+### Improvements
+- Improved OMDb resilience for transient network failures.
+- RAG status UI refinements for clearer diagnostics.
+- CI hardening for Dependabot scans and release-tag-only Docker pushes.
+
+### Fixes
+- Learning patterns schema alignment (prevents runtime DB column errors).
+- Preserve circuit breaker stack traces in logs for better debugging.
+
+### Dependency Updates
+- `dotenv` (root + server)
+- `glob` (dev)
+- `pg-mem` (server dev)
+
+---
+
 ## [v0.41.2-alpha] - 2026-02-06
 
 **Release Date:** February 6, 2026
