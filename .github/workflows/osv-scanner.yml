@@ -15,7 +15,7 @@ jobs:
   pr-scan:
     name: OSV Scan (PR)
     if: github.event_name == 'pull_request'
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.3.1
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.3.2
 
   release-scan:
     name: OSV Scan (Tag Release)
