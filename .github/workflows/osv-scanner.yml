@@ -20,7 +20,7 @@ jobs:
   release-scan:
     name: OSV Scan (Tag Release)
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.1
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.2
     with:
       fail-on-vuln: true
 
