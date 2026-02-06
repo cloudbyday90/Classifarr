@@ -34,16 +34,16 @@
 
     <!-- Status Bar -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3">
-      <div class="flex items-center justify-between text-sm">
-        <div class="flex items-center gap-6">
+      <div class="space-y-2 text-sm">
+        <div class="flex flex-wrap items-center gap-6">
           <div class="flex items-center gap-2">
             <span class="inline-flex items-center px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/40 text-xs uppercase tracking-wide">
               Text Embeddings
             </span>
-            <span :class="['w-2 h-2 rounded-full', statusBar.providerOnline ? 'bg-green-500' : 'bg-red-500']"></span>
+            <span :class="['w-2 h-2 rounded-full', statusBar.textOnline ? 'bg-green-500' : 'bg-red-500']"></span>
             <span class="text-gray-400">Status:</span>
-            <span :class="statusBar.providerOnline ? 'text-green-400' : 'text-red-400'">
-              {{ statusBar.providerOnline ? 'Online' : 'Offline' }}
+            <span :class="statusBar.textOnline ? 'text-green-400' : 'text-red-400'">
+              {{ statusBar.textOnline ? 'Online' : 'Offline' }}
             </span>
           </div>
           <div class="flex items-center gap-2">
@@ -55,11 +55,32 @@
           </div>
           <div class="flex items-center gap-2">
             <span class="text-gray-400">📊 Queue:</span>
-            <span class="text-white">{{ statusBar.queueLength }}</span>
+            <span class="text-white">{{ formatNumber(statusBar.queueText) }}</span>
           </div>
           <div class="flex items-center gap-2">
             <span class="text-gray-400">📁 Total:</span>
-            <span class="text-white">{{ formatNumber(statusBar.totalEmbeddings) }}</span>
+            <span class="text-white">{{ formatNumber(statusBar.totalTextEmbeddings) }}</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-6">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/40 text-xs uppercase tracking-wide">
+              Image Embeddings
+            </span>
+            <span :class="['w-2 h-2 rounded-full', statusBar.imageOnline ? 'bg-green-500' : 'bg-red-500']"></span>
+            <span class="text-gray-400">Status:</span>
+            <span :class="statusBar.imageOnline ? 'text-green-400' : 'text-red-400'">
+              {{ statusBar.imageOnline ? 'Online' : 'Offline' }}
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-400">ðŸ“Š Queue:</span>
+            <span class="text-white">{{ formatNumber(statusBar.queueImage) }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-gray-400">ðŸ“ Total:</span>
+            <span class="text-white">{{ formatNumber(statusBar.totalImageEmbeddings) }}</span>
           </div>
         </div>
       </div>
@@ -93,26 +114,35 @@ const currentTabComponent = computed(() => {
 })
 
 const statusBar = ref({
-  providerOnline: false,
+  textOnline: false,
+  imageOnline: false,
   heartbeatActive: false,
-  queueLength: 0,
-  totalEmbeddings: 0
+  queueText: 0,
+  queueImage: 0,
+  totalTextEmbeddings: 0,
+  totalImageEmbeddings: 0
 })
 
 let statusInterval = null
 
 const loadStatusBar = async () => {
   try {
-    const [statusRes, backfillRes] = await Promise.all([
+    const [statusRes, backfillRes, heartbeatRes] = await Promise.all([
       api.get('/api/rag/status'),
-      api.get('/api/rag/backfill/status')
+      api.get('/api/rag/backfill/status'),
+      api.get('/api/system/heartbeat')
     ])
 
+    const pendingBreakdown = backfillRes.data.pendingBreakdown || { text: 0, image: 0 }
+
     statusBar.value = {
-      providerOnline: statusRes.data.circuitBreaker?.state !== 'OPEN',
-      heartbeatActive: true, // TODO: Get from heartbeat service
-      queueLength: backfillRes.data.pending || 0,
-      totalEmbeddings: statusRes.data.stats?.total || 0
+      textOnline: statusRes.data.providerOnline === true,
+      imageOnline: statusRes.data.image?.providerOnline === true,
+      heartbeatActive: heartbeatRes.data?.active === true,
+      queueText: pendingBreakdown.text || 0,
+      queueImage: pendingBreakdown.image || 0,
+      totalTextEmbeddings: statusRes.data.stats?.total || 0,
+      totalImageEmbeddings: statusRes.data.image?.stats?.total || 0
     }
   } catch (error) {
     console.error('Failed to load status bar:', error)
