@@ -15,5 +15,8 @@ local_test_*.js
 # Test output files
 test_output*.txt
 test_results*.json
+
+# Intermediate processing artifacts
+.tmp/
 # Local AI tooling config
 opencode.jsonc
