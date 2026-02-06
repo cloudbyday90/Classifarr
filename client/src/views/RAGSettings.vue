@@ -115,7 +115,10 @@ const router = useRouter()
 const validTabIds = new Set(tabs.map(t => t.id))
 const normalizeTabId = (tabId) => (validTabIds.has(tabId) ? tabId : 'overview')
 
-const activeTab = ref(normalizeTabId(String(route.query.tab || 'overview')))
+// NOTE: Settings.vue uses `?tab=` to select the Settings page section.
+// RAG Settings is a nested tab UI, so we store its state in `?ragTab=` to avoid collisions.
+const QUERY_KEY = 'ragTab'
+const activeTab = ref(normalizeTabId(String(route.query[QUERY_KEY] || 'overview')))
 
 const setActiveTab = async (tabId) => {
   const nextTab = normalizeTabId(String(tabId || 'overview'))
@@ -123,16 +126,16 @@ const setActiveTab = async (tabId) => {
 
   const nextQuery = { ...route.query }
   if (nextTab === 'overview') {
-    delete nextQuery.tab
+    delete nextQuery[QUERY_KEY]
   } else {
-    nextQuery.tab = nextTab
+    nextQuery[QUERY_KEY] = nextTab
   }
 
   await router.replace({ query: nextQuery })
 }
 
 watch(
-  () => route.query.tab,
+  () => route.query[QUERY_KEY],
   (tab) => {
     const normalized = normalizeTabId(String(tab || 'overview'))
     if (activeTab.value !== normalized) activeTab.value = normalized
