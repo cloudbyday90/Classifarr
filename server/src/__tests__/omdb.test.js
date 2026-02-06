@@ -129,4 +129,31 @@ describe('OMDbService', () => {
             }
         });
     });
+
+    describe('Transient Network Error Handling', () => {
+        it('should retry once on ECONNRESET/socket hang up and then throw to trigger fallback', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockAxios.get.mockRejectedValue({
+                message: 'socket hang up',
+                code: 'ECONNRESET'
+            });
+
+            // Should now throw (after retry) to trigger Tavily fallback path
+            await expect(
+                omdbService.getByTitle('Cinderella II: Dreams Come True', 2002, 'movie')
+            ).rejects.toBeDefined();
+
+            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+        });
+    });
 });

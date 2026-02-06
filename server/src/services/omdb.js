@@ -156,9 +156,13 @@ class OMDbService {
                 };
             }
 
+            const msg = (error.message || '').toLowerCase();
             const isNetworkError = error.code === 'ECONNREFUSED' ||
                 error.code === 'ENOTFOUND' ||
-                error.code === 'ETIMEDOUT';
+                error.code === 'ETIMEDOUT' ||
+                error.code === 'ECONNRESET' ||
+                error.code === 'EAI_AGAIN' ||
+                msg.includes('socket hang up');
 
             if (isNetworkError) {
                 return {
@@ -225,12 +229,19 @@ class OMDbService {
                     }
                 });
             } catch (error) {
-                const status = error.response?.status;
-                const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
-                const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
-                const isCircuitBlocked = error.code === 'CIRCUIT_BREAKER_OPEN' || 
-                                        error.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED' || 
-                                        error.code === 'CIRCUIT_BREAKER_REJECTED';
+            const status = error.response?.status;
+            const msg = (error.message || '').toLowerCase();
+            const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+            const isTransientNetworkError = isTimeout ||
+                error.code === 'ECONNRESET' ||
+                error.code === 'EAI_AGAIN' ||
+                error.code === 'ENOTFOUND' ||
+                error.code === 'ECONNREFUSED' ||
+                msg.includes('socket hang up');
+            const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
+            const isCircuitBlocked = error.code === 'CIRCUIT_BREAKER_OPEN' || 
+                                    error.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED' || 
+                                    error.code === 'CIRCUIT_BREAKER_REJECTED';
 
                 // Don't retry if circuit breaker is blocking - throw immediately to trigger fallback
                 if (isCircuitBlocked) {
@@ -238,43 +249,44 @@ class OMDbService {
                         title,
                         code: error.code,
                         nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'N/A'
-                    });
+                    }, { error });
                     throw error;
                 }
 
-                // Retry on timeout or Cloudflare errors
-                if ((isTimeout || isCloudflareError) && attempt < maxRetries - 1) {
+                // Retry on transient network errors or Cloudflare errors
+                if ((isTransientNetworkError || isCloudflareError) && attempt < maxRetries - 1) {
                     const delay = calculateBackoff(attempt, {
                         baseDelay: 1000,
                         multiplier: 2,
                         maxDelay: 10000
                     });
                     
-                    logger.warn('OMDb API timeout/error, retrying', {
+                    logger.warn('OMDb API transient error, retrying', {
                         title,
                         attempt: attempt + 1,
                         status,
                         code: error.code,
+                        message: error.message,
                         delayMs: delay
-                    });
+                    }, { error });
                     
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
                 }
 
                 if (status === 401) {
-                    logger.error('OMDb API Unauthorized (401)', { error: error.message });
+                    logger.error('OMDb API Unauthorized (401)', { error: error.message }, { error });
                     throw new OMDbLimitReachedError('OMDb API Unauthorized: Check API Key or Limits');
                 }
 
                 // Throw network errors to trigger Tavily fallback
-                if (isTimeout || isCloudflareError) {
+                if (isTransientNetworkError || isCloudflareError) {
                     logger.warn('OMDb API unavailable after retries', {
                         title,
                         status,
                         code: error.code,
                         message: error.message
-                    });
+                    }, { error });
                     throw error; // Throw to trigger fallback
                 }
 
@@ -286,11 +298,11 @@ class OMDbService {
                     logger.warn('OMDb SSL certificate issue', {
                         title,
                         error: error.message
-                    });
+                    }, { error });
                     throw error; // Throw to trigger fallback
                 }
 
-                logger.error('OMDb API error', { title, error: error.message });
+                logger.error('OMDb API error', { title, error: error.message }, { error });
                 throw error;
             }
         }
@@ -335,9 +347,9 @@ class OMDbService {
                 logger.warn('OMDb circuit breaker is OPEN', {
                     imdbId,
                     nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'unknown'
-                });
+                }, { error });
             } else {
-                logger.error('OMDb API error', { imdbId, error: error.message });
+                logger.error('OMDb API error', { imdbId, error: error.message }, { error });
             }
             
             throw error;
