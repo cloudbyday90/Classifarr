@@ -17,6 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.41.2c-alpha] - 2026-02-06
+
+### Changed
+- UI: preserve active RAG Settings tab on refresh (via `?tab=`).
+- UI: rename "Policy Engine - Classification Thresholds" to "Classification Thresholds".
+- Repo: ignore `.tmp/` intermediate artifacts.
+
+### Fixed
+- RAG Settings: refreshing no longer resets the view back to Overview.
+
+---
+
 ## [v0.41.2b-alpha] - 2026-02-06
 
 ### Added

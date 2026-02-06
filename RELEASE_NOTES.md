@@ -6,6 +6,23 @@ _(No unreleased changes - ready for next version)_
 
 ---
 
+## [v0.41.2c-alpha] - 2026-02-06
+
+**Title: RAG Settings UX Polish**
+
+### Fixes
+- RAG Settings: preserve the active tab on refresh (uses a `?tab=` query param).
+
+### Improvements
+- Settings: renamed "Policy Engine - Classification Thresholds" to "Classification Thresholds".
+- Repo hygiene: ignore `.tmp/` intermediate artifacts.
+
+### Testing
+- Server: unit + integration tests passing.
+- Client: all tests passing.
+
+---
+
 ## [v0.41.2b-alpha] - 2026-02-06
 
 **Title: Threshold Alignment and CI Cleanup**
