@@ -9,24 +9,24 @@
   - [x] Provider scope lock:
     - [x] local-first fine-tuned serving via extended existing embedding service
     - [x] Ollama retained as baseline/fallback
-- [ ] Confirm benchmark gates for rollout:
-  - [ ] Train eligibility gate:
-    - [ ] `>= 12,000` labeled samples
-    - [ ] `18-month` time window
-    - [ ] `>= 8` libraries with `>= 150` samples each
-    - [ ] no library > `40%` after balancing
-    - [ ] `>= 2,000` hard negatives
-  - [ ] Rollout benchmark gate:
-    - [ ] holdout `>= 2,500`
-    - [ ] major-library floor `>= 75` each
-    - [ ] Recall@10 uplift `>= 5%`
-    - [ ] top-1 regression per major library `<= 2%`
-    - [ ] p95 latency regression `<= 25%`
-- [ ] Confirm integrity policy for v1:
+- [x] Confirm benchmark gates for rollout:
+  - [x] Train eligibility gate:
+    - [x] `>= 12,000` labeled samples
+    - [x] `18-month` time window
+    - [x] `>= 8` libraries with `>= 150` samples each
+    - [x] no library > `40%` after balancing
+    - [x] `>= 2,000` hard negatives
+  - [x] Rollout benchmark gate:
+    - [x] holdout `>= 2,500`
+    - [x] major-library floor `>= 75` each
+    - [x] Recall@10 uplift `>= 5%`
+    - [x] top-1 regression per major library `<= 2%`
+    - [x] p95 latency regression `<= 25%`
+- [x] Confirm integrity policy for v1:
   - [x] checksum (`sha256`) verification required
   - [x] signature verification required (detached signature)
   - [x] trusted public key distribution + rotation approach defined
-- [ ] Lock v1 defaults (best-practice):
+- [x] Lock v1 defaults (best-practice):
   - [x] `embedding_update_channel='stable'`
   - [x] `embedding_update_mode='notify'`
   - [x] `embedding_update_check_interval_hours=12`
@@ -38,7 +38,7 @@
   - [x] OSV scan on tag releases (fail on any findings)
   - [x] `npm audit --omit=dev` gates for `server/` and `client/`
 - [x] Define required environment variables and add placeholders to `.env.example`
-- [ ] Hardening (observed in production logs):
+- [x] Hardening (observed in production logs):
   - [x] Treat `ECONNRESET` / "socket hang up" as transient for OMDb and retry once before falling back
   - [x] Ensure error logs persist the real upstream stack trace (`logger.*(..., { error })`)
 

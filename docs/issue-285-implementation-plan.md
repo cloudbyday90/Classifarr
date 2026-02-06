@@ -137,6 +137,33 @@ Validated against current standards and vendor guidance on 2026-02-06.
   - Require token-based service authentication for fine-tuned runtime endpoints in v1.
   - Keep mTLS as optional hardening for later phase.
 
+### 2026 Best-Practice Notes (Why These Defaults)
+This v1 design intentionally implements the minimal subset of a secure update system:
+
+- Integrity and authenticity:
+  - `sha256` ensures integrity (bit-for-bit).
+  - Detached signatures ensure authenticity (publisher identity via trusted key allowlist).
+- Anti-rollback / anti-freeze:
+  - Full TUF would provide stronger guarantees (timestamp/snapshot roles, consistent snapshots, robust rollback/freeze protections).
+  - For v1 we approximate the essentials:
+    - monotonic version progression by channel
+    - hard max download size
+    - short poll interval + ETag caching
+    - explicit rollback path with auditing
+  - If we see real-world attack surface (or need delegated trust / key compromise blast-radius reduction), TUF becomes the v2 path.
+- Provenance:
+  - GitHub supports signed release attestations and build/asset attestations (Sigstore-backed) that can be verified offline.
+  - These are optional hardening steps for v1 (verify when available), and recommended defaults for CI/CD.
+
+### References (Best-Practice, 2026)
+- SLSA v1.2 specification: https://slsa.dev/spec/v1.2/
+- The Update Framework specification (latest): https://theupdateframework.github.io/specification/latest/
+- GitHub Docs: Using artifact attestations to establish provenance for builds:
+  - https://docs.github.com/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds
+- GitHub Docs: Verifying attestations offline:
+  - https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/verifying-attestations-offline
+- Sigstore Cosign (offline verification notes): https://github.com/sigstore/cosign
+
 ## Dependency and Supply Chain Policy (v1)
 Goal: any new dependencies introduced for Issue 285 must be compatible with Node `>=24.11.0`, be actively maintained, and introduce zero known vulnerabilities at time of merge.
 
