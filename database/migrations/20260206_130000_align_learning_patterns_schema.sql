@@ -1,3 +1,9 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ * Licensed under GPL-3.0 - See LICENSE file for details.
+ */
+
 -- Align learning_patterns schema with current server usage.
 -- Adds media_type + metadata + created_by and enforces a stable uniqueness key
 -- so `ON CONFLICT (tmdb_id, media_type, pattern_type)` works consistently.
@@ -34,4 +40,3 @@ BEGIN
       UNIQUE (tmdb_id, media_type, pattern_type);
   END IF;
 END $$;
-
