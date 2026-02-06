@@ -65,6 +65,10 @@ Text embedding generation and routing:
 - Treat training as an offline pipeline with strict validation gates.
 - Prefer reversible rollout:
   - index new vectors side-by-side or mark stale and re-embed in controlled batches.
+- Everything is optional:
+  - If RAG is disabled or not configured, Classifarr must behave like it does today.
+  - If text embeddings are disabled/unconfigured, do not enqueue embedding retries or block classification.
+  - If image embeddings are disabled/unconfigured, text-only RAG still functions (when enabled) and the rest of the app is unaffected.
 
 ## Scope and Non-Goals
 In scope:

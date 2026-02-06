@@ -44,12 +44,14 @@ describe('EmbeddingService', () => {
         jest.restoreAllMocks();
         // clearAllMocks is also good for mock fns, but restore handles spies
         jest.clearAllMocks();
+        embeddingRouter.isEnabled.mockResolvedValue(true);
         imageEmbeddingProvider.getConfig.mockResolvedValue(null);
         imageEmbeddingProvider.isConfigured.mockReturnValue(false);
     });
 
     describe('generateAndStore', () => {
         it('should generate embedding via router', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
             embeddingRouter.embed.mockResolvedValue({
                 embedding: [0.1, 0.2, 0.3],
                 dims: 3,
@@ -66,6 +68,23 @@ describe('EmbeddingService', () => {
 
             expect(embeddingRouter.embed).toHaveBeenCalledWith(expect.stringContaining('Test Title'));
             expect(result).toEqual({ id: 1 });
+        });
+
+        it('should no-op when RAG is disabled', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(false);
+
+            const storeSpy = jest.spyOn(embeddingService, 'storeEmbedding');
+            const retrySpy = jest.spyOn(embeddingService, 'addToRetryQueue');
+
+            const result = await embeddingService.generateAndStore(1, {
+                title: 'Test Title',
+                overview: 'Test Overview'
+            });
+
+            expect(result).toBeNull();
+            expect(embeddingRouter.embed).not.toHaveBeenCalled();
+            expect(storeSpy).not.toHaveBeenCalled();
+            expect(retrySpy).not.toHaveBeenCalled();
         });
 
         it('should handle errors gracefully', async () => {

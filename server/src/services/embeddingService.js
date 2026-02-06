@@ -287,6 +287,14 @@ class EmbeddingService {
      */
     async generateAndStore(classificationId, metadata) {
         try {
+            // Embeddings are strictly optional. If RAG is disabled, do not treat this as an error and
+            // do not enqueue retries. This keeps Classifarr behavior identical to pre-RAG installs.
+            const ragEnabled = await embeddingRouter.isEnabled();
+            if (!ragEnabled) {
+                logger.debug('RAG disabled; skipping embedding generation', { classificationId });
+                return null;
+            }
+
             // Format metadata for embedding
             const text = this.formatForEmbedding(metadata);
 
