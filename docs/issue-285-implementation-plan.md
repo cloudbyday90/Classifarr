@@ -503,6 +503,34 @@ Each trained artifact must include:
 - Classifarr consumes this runtime via custom local endpoint configuration.
 - Existing Ollama route remains baseline and fallback path.
 
+### Local Runtime Robustness (Implemented in `classifarr-image-embedding-service`, 2026-02-06)
+To ensure the local runtime behaves predictably under load (CPU/GPU contention, model warmup, concurrent requests), we implemented first-class backpressure and observability in the image embedding microservice. This is required groundwork before we add text fine-tuned endpoints and model update mechanics.
+
+Implemented items:
+- **Concurrency limiter and bounded queue** (`IMAGE_EMBEDDER_CONCURRENCY`, `IMAGE_EMBEDDER_MAX_QUEUE`, `IMAGE_EMBEDDER_MAX_WAIT_SECONDS`).
+  - `concurrency` caps in-flight embedding computations to avoid VRAM thrash or CPU saturation.
+  - `max_queue` bounds how many requests can wait; `0` means fail-fast (no waiting).
+  - `max_wait_seconds` bounds per-request waiting time; exceed returns `504`.
+- **Writer-preference read/write lock** in the runtime.
+  - All embed calls acquire the shared lock today.
+  - Exclusive lock path is in place for future operations that must not interleave with embeddings (model load/update/apply/rollback).
+- **Queue/pressure visibility**:
+  - `/health` includes a `queue` object (concurrency, in_flight, waiting, etc.).
+  - `/embed-image` includes `X-Queue-*` headers on success, and also on `429/504` errors.
+  - `429` includes `Retry-After` so callers can back off deterministically.
+- **Config correctness fix**: settings now read env vars at `Settings()` instantiation time (not import time), which is important for predictable runtime behavior and offline tests.
+- **Offline tests** covering queue semantics: serialize-with-wait, fail-fast, and wait-timeout behaviors.
+
+Files (microservice):
+- `src/image_embedder/queue.py`
+- `src/image_embedder/main.py`
+- `src/image_embedder/config.py`
+- `tests/test_queueing.py`
+
+Classifarr integration note (when we wire this in for text fine-tuned):
+- Treat `429` as overload and honor `Retry-After` (or apply exponential backoff with a cap).
+- Treat `504` as "capacity wait exceeded" (not a hard failure); retry with backoff or defer to backfill/idle runner.
+
 ### Settings/Config
 Add model registration fields (either DB table or JSON config):
 - `embedding_finetuned_enabled` (bool)
@@ -552,6 +580,13 @@ Optional management endpoints:
 - `POST /models/text/download`
 - `POST /models/text/apply`
 - `POST /models/text/rollback`
+
+#### Optional Runtime Hardening (Not Required for v1, Recommended)
+These are low-risk improvements that make the runtime easier to operate and safer to extend:
+- Add a typed `GET /stats` endpoint (same data as `/health.queue` and `X-Queue-*` headers) for cheap polling.
+- Add request correlation (e.g., `X-Request-Id` middleware) and include it in structured logs and error bodies.
+- Add an explicit exclusive operation endpoint for text model lifecycle (e.g., `POST /models/text/reload`), implemented using the existing exclusive lock path so no embeddings are in-flight during model swaps.
+- Add a "warmup" operation (embed a tiny synthetic input) after loading a model and report warm status in `/health`.
 
 ### Backfill/Re-embed
 - mark existing text embeddings stale when model changes.
@@ -684,6 +719,10 @@ Rollout benchmark gate:
 - circuit breaker behavior still correct.
 - RAG disabled path unchanged.
 - no behavior drift for existing text/image embedding settings.
+- microservice backpressure behavior is stable:
+  - `429` + `Retry-After` on overload when `max_queue=0`
+  - `504` when waiting exceeds `max_wait_seconds`
+  - queue stats present in `/health` and `X-Queue-*` headers
 
 ## Rollout Plan
 1. Add scripts + directive + docs.
