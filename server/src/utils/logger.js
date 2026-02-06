@@ -295,6 +295,35 @@ class Logger {
     this.level = LOG_LEVELS[process.env.LOG_LEVEL || 'INFO'];
   }
 
+  // Try to extract an upstream Error object from common metadata shapes.
+  // We persist the stack trace separately from metadata so operators can debug failures.
+  static extractError(data, options = {}) {
+    if (options?.error instanceof Error) return options.error;
+    if (!data || typeof data !== 'object') return null;
+
+    const candidates = [
+      data.error,
+      data.err,
+      data.exception,
+      data.cause
+    ];
+
+    for (const c of candidates) {
+      if (c instanceof Error) return c;
+    }
+
+    // Sometimes callers pass `{ error: { message, stack } }`
+    const maybe = data.error;
+    if (maybe && typeof maybe === 'object' && typeof maybe.stack === 'string') {
+      const e = new Error(maybe.message || 'Upstream error');
+      e.name = maybe.name || e.name;
+      e.stack = maybe.stack;
+      return e;
+    }
+
+    return null;
+  }
+
   formatMessage(level, message, data) {
     const timestamp = new Date().toISOString();
     let log = `[${timestamp}] [${level}] [${this.module}] ${message}`;
@@ -307,11 +336,12 @@ class Logger {
     if (!db || typeof db.query !== 'function') return null;
 
     try {
+      const upstreamError = Logger.extractError(data, options);
       const sanitizedData = sanitizeData(data);
       const systemContext = getSystemContext();
       const requestContext = options.req ? getRequestContext(options.req) : null;
 
-      const stack = options.error?.stack || new Error().stack;
+      const stack = upstreamError?.stack || new Error().stack;
 
       const result = await db.query(
         `INSERT INTO error_log (level, module, message, stack_trace, request_context, system_context, metadata)

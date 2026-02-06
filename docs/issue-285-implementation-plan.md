@@ -730,8 +730,8 @@ None. All current design questions are resolved.
 - RAG practices paper: https://arxiv.org/abs/2501.07391
 - Sentence Transformers training docs: https://www.sbert.net/docs/training/overview.html
 - Pyserini/OpenNIR ecosystem: https://github.com/castorini/pyserini
-- SLSA v1.0 requirements: https://slsa.dev/spec/v1.0/requirements
-- TUF specification: https://theupdateframework.github.io/specification/v1.0.26/
+- SLSA v1.1 requirements: https://slsa.dev/spec/v1.1/requirements
+- TUF specification (latest): https://theupdateframework.github.io/specification/latest/
 - Sigstore Cosign verify guidance: https://docs.sigstore.dev/cosign/verifying/verify/
 - GitHub artifact attestations (concepts): https://docs.github.com/en/enterprise-cloud%40latest/actions/concepts/security/artifact-attestations
 - GitHub offline attestation verification: https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/verifying-attestations-offline

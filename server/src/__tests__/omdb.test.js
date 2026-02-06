@@ -156,4 +156,30 @@ describe('OMDbService', () => {
             expect(mockAxios.get).toHaveBeenCalledTimes(2);
         });
     });
+
+    describe('IMDB ID transient retries', () => {
+        it('should retry once on transient network error for getByIMDBId', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockAxios.get.mockRejectedValue({
+                message: 'socket hang up',
+                code: 'ECONNRESET'
+            });
+
+            await expect(
+                omdbService.getByIMDBId('tt0133093')
+            ).rejects.toBeDefined();
+
+            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+        });
+    });
 });

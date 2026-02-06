@@ -1,14 +1,14 @@
 # Issue 285 Task List
 
 ## Phase 0: Design Freeze and Guardrails
-- [ ] Review `docs/issue-285-implementation-plan.md` and lock v1 design decisions:
-  - [ ] Option A cutover model strategy (single active model)
-  - [ ] GitHub Release assets as artifact source
-  - [ ] Definitions-style update manifest (`stable` default)
-  - [ ] Activation preflight requirements (health + dims + latency)
-  - [ ] Provider scope lock:
-    - [ ] local-first fine-tuned serving via extended existing embedding service
-    - [ ] Ollama retained as baseline/fallback
+- [x] Review `docs/issue-285-implementation-plan.md` and lock v1 design decisions:
+  - [x] Option A cutover model strategy (single active model)
+  - [x] GitHub Release assets as artifact source
+  - [x] Definitions-style update manifest (`stable` default)
+  - [x] Activation preflight requirements (health + dims + latency)
+  - [x] Provider scope lock:
+    - [x] local-first fine-tuned serving via extended existing embedding service
+    - [x] Ollama retained as baseline/fallback
 - [ ] Confirm benchmark gates for rollout:
   - [ ] Train eligibility gate:
     - [ ] `>= 12,000` labeled samples
@@ -23,24 +23,24 @@
     - [ ] top-1 regression per major library `<= 2%`
     - [ ] p95 latency regression `<= 25%`
 - [ ] Confirm integrity policy for v1:
-  - [ ] checksum (`sha256`) verification required
-  - [ ] signature verification required (detached signature)
-  - [ ] trusted public key distribution + rotation approach defined
+  - [x] checksum (`sha256`) verification required
+  - [x] signature verification required (detached signature)
+  - [x] trusted public key distribution + rotation approach defined
 - [ ] Lock v1 defaults (best-practice):
-  - [ ] `embedding_update_channel='stable'`
-  - [ ] `embedding_update_mode='notify'`
-  - [ ] `embedding_update_check_interval_hours=12`
-  - [ ] token-based service auth required for fine-tuned runtime endpoints
-  - [ ] auto-rollback on post-apply health regression enabled
-- [ ] Add CI enforcement for dependency security (best-practice):
-  - [ ] Dependabot for npm (`/`, `/server`, `/client`) and GitHub Actions
-  - [ ] OSV scan on pull requests (fail on newly introduced findings)
-  - [ ] OSV scan on tag releases (fail on any findings)
-  - [ ] `npm audit --omit=dev` gates for `server/` and `client/`
-- [ ] Define required environment variables and add placeholders to `.env.example`
+  - [x] `embedding_update_channel='stable'`
+  - [x] `embedding_update_mode='notify'`
+  - [x] `embedding_update_check_interval_hours=12`
+  - [x] token-based service auth required for fine-tuned runtime endpoints
+  - [x] auto-rollback on post-apply health regression enabled
+- [x] Add CI enforcement for dependency security (best-practice):
+  - [x] Dependabot for npm (`/`, `/server`, `/client`) and GitHub Actions
+  - [x] OSV scan on pull requests (fail on newly introduced findings)
+  - [x] OSV scan on tag releases (fail on any findings)
+  - [x] `npm audit --omit=dev` gates for `server/` and `client/`
+- [x] Define required environment variables and add placeholders to `.env.example`
 - [ ] Hardening (observed in production logs):
-  - [ ] Treat `ECONNRESET` / "socket hang up" as transient for OMDb and retry once before falling back
-  - [ ] Ensure error logs persist the real upstream stack trace (`logger.*(..., { error })`)
+  - [x] Treat `ECONNRESET` / "socket hang up" as transient for OMDb and retry once before falling back
+  - [x] Ensure error logs persist the real upstream stack trace (`logger.*(..., { error })`)
 
 ## Phase 1: Directive and Execution Pipeline (Offline)
 - [ ] Add SOP: `directives/issue-285-retriever-finetuning.md`

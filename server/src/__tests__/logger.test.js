@@ -93,6 +93,33 @@ describe('Logger', () => {
             expect(consoleErrorSpy.spy).toHaveBeenCalled();
             expect(consoleErrorSpy.spy.mock.calls[0][0]).toContain('Important error message');
         });
+
+        test('should persist upstream error stack when provided in options', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ error_id: 'stack-uuid-789' }]
+            });
+
+            const upstream = new Error('Upstream boom');
+            await logger.error('Test error', { key: 'value' }, { error: upstream });
+
+            expect(db.query).toHaveBeenCalled();
+            const params = db.query.mock.calls[0][1];
+            // stack_trace is the 4th parameter in the INSERT call
+            expect(params[3]).toBe(upstream.stack);
+        });
+
+        test('should persist upstream error stack when provided in metadata', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ error_id: 'stack-uuid-790' }]
+            });
+
+            const upstream = new Error('Upstream in metadata');
+            await logger.error('Test error', { error: upstream });
+
+            expect(db.query).toHaveBeenCalled();
+            const params = db.query.mock.calls[0][1];
+            expect(params[3]).toBe(upstream.stack);
+        });
     });
 
     describe('warn() resilience', () => {

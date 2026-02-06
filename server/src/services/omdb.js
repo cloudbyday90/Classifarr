@@ -315,44 +315,111 @@ class OMDbService {
      */
     async getByIMDBId(imdbId, apiKey) {
         let configId = null;
-        try {
-            // Execute with circuit breaker protection
-            return await circuitBreaker.execute(async () => {
-                logger.debug('OMDb lookup by IMDB ID', { imdbId });
+        const maxRetries = 2; // Total attempts = 1 initial + 1 retry
 
-                const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
-                configId = id;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                // Execute with circuit breaker protection
+                return await circuitBreaker.execute(async () => {
+                    logger.debug('OMDb lookup by IMDB ID', { imdbId, attempt: attempt + 1 });
 
-                const response = await axios.get(this.baseUrl, {
-                    params: {
-                        apikey: validApiKey,
-                        i: imdbId,
-                        plot: 'short'
-                    },
-                    timeout: 15000 // 15 second timeout
-                });
+                    const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
+                    configId = id;
 
-                if (response.data.Response === 'True') {
-                    // Increment counter only on successful response
-                    await this.incrementUsageCounter(configId);
-                    return this.formatResponse(response.data);
-                } else {
+                    const response = await axios.get(this.baseUrl, {
+                        params: {
+                            apikey: validApiKey,
+                            i: imdbId,
+                            plot: 'short'
+                        },
+                        timeout: 15000 // 15 second timeout
+                    });
+
+                    if (response.data.Response === 'True') {
+                        // Increment counter only on successful response
+                        await this.incrementUsageCounter(configId);
+                        return this.formatResponse(response.data);
+                    }
+
                     return null;
+                });
+            } catch (error) {
+                const status = error.response?.status;
+                const msg = (error.message || '').toLowerCase();
+                const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+                const isTransientNetworkError = isTimeout ||
+                    error.code === 'ECONNRESET' ||
+                    error.code === 'EAI_AGAIN' ||
+                    error.code === 'ENOTFOUND' ||
+                    error.code === 'ECONNREFUSED' ||
+                    msg.includes('socket hang up');
+                const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
+                const isCircuitBlocked = error.code === 'CIRCUIT_BREAKER_OPEN' ||
+                    error.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED' ||
+                    error.code === 'CIRCUIT_BREAKER_REJECTED';
+
+                // Don't retry if circuit breaker is blocking - throw immediately to trigger fallback
+                if (isCircuitBlocked) {
+                    logger.warn('OMDb circuit breaker blocked request (IMDB ID)', {
+                        imdbId,
+                        code: error.code,
+                        nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'N/A'
+                    }, { error });
+                    throw error;
                 }
-            });
-        } catch (error) {
-            const isCircuitOpen = error.code === 'CIRCUIT_BREAKER_OPEN';
-            
-            if (isCircuitOpen) {
-                logger.warn('OMDb circuit breaker is OPEN', {
-                    imdbId,
-                    nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'unknown'
-                }, { error });
-            } else {
+
+                // Retry once on transient network errors or Cloudflare errors
+                if ((isTransientNetworkError || isCloudflareError) && attempt < maxRetries - 1) {
+                    const delay = calculateBackoff(attempt, {
+                        baseDelay: 1000,
+                        multiplier: 2,
+                        maxDelay: 10000
+                    });
+
+                    logger.warn('OMDb API transient error (IMDB ID), retrying', {
+                        imdbId,
+                        attempt: attempt + 1,
+                        status,
+                        code: error.code,
+                        message: error.message,
+                        delayMs: delay
+                    }, { error });
+
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+
+                if (status === 401) {
+                    logger.error('OMDb API Unauthorized (401)', { error: error.message }, { error });
+                    throw new OMDbLimitReachedError('OMDb API Unauthorized: Check API Key or Limits');
+                }
+
+                // Throw network errors to trigger Tavily fallback
+                if (isTransientNetworkError || isCloudflareError) {
+                    logger.warn('OMDb API unavailable after retries (IMDB ID)', {
+                        imdbId,
+                        status,
+                        code: error.code,
+                        message: error.message
+                    }, { error });
+                    throw error;
+                }
+
+                // Handle SSL/certificate errors gracefully
+                const isCertError = error.code === 'CERT_HAS_EXPIRED' ||
+                    error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
+                    error.message?.includes('certificate');
+                if (isCertError) {
+                    logger.warn('OMDb SSL certificate issue (IMDB ID)', {
+                        imdbId,
+                        error: error.message
+                    }, { error });
+                    throw error;
+                }
+
                 logger.error('OMDb API error', { imdbId, error: error.message }, { error });
+                throw error;
             }
-            
-            throw error;
         }
     }
 

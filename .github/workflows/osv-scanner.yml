@@ -32,6 +32,9 @@ jobs:
       security-events: write
       actions: read
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.3.2
+    with:
+      # Fail PRs that introduce new vulnerabilities (the reusable PR workflow compares base vs head).
+      fail-on-vuln: true
 
   release-scan:
     name: OSV Scan (Tag Release)
