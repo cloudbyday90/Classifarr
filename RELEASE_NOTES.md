@@ -6,9 +6,9 @@ _(No unreleased changes - ready for next version)_
 
 ---
 
-## [v0.41.2-alpha] - 2026-02-05
+## [v0.41.2-alpha] - 2026-02-06
 
-**Release Date:** February 5, 2026
+**Release Date:** February 6, 2026
 
 This release delivers Issue #289: multimodal RAG with image embeddings, plus cleaner configuration flows and migration governance improvements. (Closes #289)
 
@@ -54,6 +54,8 @@ We now enforce timestamped migrations and ship a database schema snapshot for fa
 - Removed the “same host as text embeddings” image mode
 - Simplified Docker Compose by removing image‑embedder stack and docker socket proxy
 - Expanded tests to cover image embedding defaults and status
+- Cleaned Unraid template XML by removing redundant sections per selfhosters guidance
+- Hardened copyright tooling (safe globbing, ignore `node_modules`) and resolved audit findings
 
 ---
 

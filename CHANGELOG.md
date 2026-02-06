@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v0.41.2-alpha] - 2026-02-05
+## [v0.41.2-alpha] - 2026-02-06
 
 ### Added
 - **Multimodal RAG (Image Embeddings)** (Issue #289, Closes #289)
@@ -46,10 +46,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Local image embedder moved to optional external service
 - **Tests**
   - Updated server and client tests to cover new image embedding defaults and status
+- **Unraid Template Cleanup**
+  - Removed redundant XML sections (`Networking`, `Data`, `Environment`, `Shell`, empty `PostArgs`) for cleaner templates
 
 ### Fixed
 - **Test Noise**
   - Reduced console error noise in client tests (service status error handling)
+- **Copyright Tooling**
+  - Avoid scanning `node_modules` and handle directory matches safely
+- **Dependency Hygiene**
+  - Resolved npm audit findings after dependency install
 
 ---
 
