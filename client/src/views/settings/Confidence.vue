@@ -23,7 +23,7 @@
     <!-- ==================== SECTION 1: Policy Engine Thresholds ==================== -->
     <Card>
       <template #header>
-        <h2 class="text-xl font-semibold">🎯 Policy Engine - Classification Thresholds</h2>
+        <h2 class="text-xl font-semibold">🎯 Classification Thresholds</h2>
       </template>
 
       <p class="text-gray-400 mb-6">
