@@ -647,7 +647,7 @@ class ClassificationService {
     }
 
     // Step 1: Check exact match (previously corrected TMDB ID)
-    const exactMatch = await this.checkExactMatch(metadata.tmdb_id);
+    const exactMatch = await this.checkExactMatch(metadata.tmdb_id, mediaType);
     if (exactMatch) {
       return {
         library: libraries.find(l => l.id === exactMatch.library_id),
@@ -1014,12 +1014,20 @@ class ClassificationService {
     }
   }
 
-  async checkExactMatch(tmdbId) {
+  async checkExactMatch(tmdbId, mediaType = null) {
+    const params = [tmdbId];
+    let where = `tmdb_id = $1 AND pattern_type = 'exact_match'`;
+
+    if (mediaType) {
+      params.push(mediaType);
+      where += ` AND media_type = $2`;
+    }
+
     const result = await db.query(
       `SELECT library_id FROM learning_patterns 
-       WHERE tmdb_id = $1 AND pattern_type = 'exact_match' 
+       WHERE ${where}
        ORDER BY updated_at DESC LIMIT 1`,
-      [tmdbId]
+      params
     );
     return result.rows[0] || null;
   }

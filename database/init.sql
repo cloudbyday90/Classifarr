@@ -465,14 +465,18 @@ CREATE TABLE classification_corrections (
 CREATE TABLE learning_patterns (
     id SERIAL PRIMARY KEY,
     tmdb_id INTEGER,
+    media_type VARCHAR(20) NOT NULL DEFAULT 'unknown',
     library_id INTEGER REFERENCES libraries (id) ON DELETE CASCADE,
     pattern_type VARCHAR(50),
     pattern_data JSONB,
     confidence DECIMAL(5, 2),
     usage_count INTEGER DEFAULT 0,
     success_rate DECIMAL(5, 2) DEFAULT 100.00,
+    metadata JSONB,
+    created_by VARCHAR(100),
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (tmdb_id, media_type, pattern_type)
 );
 
 -- ===========================================

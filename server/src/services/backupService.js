@@ -570,16 +570,46 @@ class BackupService {
         for (const pattern of backupData.data.learningPatterns) {
           const newLibraryId = libraryIdMap.get(pattern.library_id);
           if (!newLibraryId) continue;
-          
+
+          // Backups may come from older versions. Prefer the canonical columns when present.
+          const mediaType = pattern.media_type || 'unknown';
+          const patternType = pattern.pattern_type || 'exact_match';
+          const patternData = pattern.pattern_data ?? null;
+          const confidence = pattern.confidence ?? 100;
+          const usageCount = pattern.usage_count ?? 0;
+          const successRate = pattern.success_rate ?? 100.0;
+          const metadata = pattern.metadata ?? null;
+          const createdBy = pattern.created_by ?? null;
+          const createdAt = pattern.created_at ?? null;
+          const updatedAt = pattern.updated_at ?? null;
+
           await client.query(
-            `INSERT INTO learning_patterns (tmdb_id, media_type, library_id, title, confidence, method) 
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (tmdb_id, media_type) DO UPDATE SET
+            `INSERT INTO learning_patterns
+             (tmdb_id, media_type, library_id, pattern_type, pattern_data, confidence, usage_count, success_rate, metadata, created_by, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11, NOW()), COALESCE($12, NOW()))
+             ON CONFLICT (tmdb_id, media_type, pattern_type) DO UPDATE SET
                library_id = EXCLUDED.library_id,
+               pattern_data = EXCLUDED.pattern_data,
                confidence = EXCLUDED.confidence,
-               method = EXCLUDED.method`,
-            [pattern.tmdb_id, pattern.media_type, newLibraryId, pattern.title, 
-             pattern.confidence, pattern.method]
+               usage_count = EXCLUDED.usage_count,
+               success_rate = EXCLUDED.success_rate,
+               metadata = EXCLUDED.metadata,
+               created_by = EXCLUDED.created_by,
+               updated_at = NOW()`,
+            [
+              pattern.tmdb_id,
+              mediaType,
+              newLibraryId,
+              patternType,
+              patternData,
+              confidence,
+              usageCount,
+              successRate,
+              metadata,
+              createdBy,
+              createdAt,
+              updatedAt,
+            ]
           );
         }
       }

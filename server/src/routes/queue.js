@@ -450,8 +450,8 @@ router.post('/tasks/:id/classify', requireReadWrite, async (req, res) => {
                 `INSERT INTO learning_patterns 
                  (tmdb_id, media_type, library_id, pattern_type, confidence, metadata, created_by)
                  VALUES ($1, $2, $3, 'exact_match', 100, $4, $5)
-                 ON CONFLICT (tmdb_id, pattern_type) 
-                 DO UPDATE SET library_id = $3, confidence = 100, updated_at = NOW()`,
+                 ON CONFLICT (tmdb_id, media_type, pattern_type) 
+                 DO UPDATE SET library_id = $3, confidence = 100, metadata = $4, created_by = $5, updated_at = NOW()`,
                 [tmdbId, mediaType, library_id, JSON.stringify({ title, resolved_by }), resolved_by]
             );
         }

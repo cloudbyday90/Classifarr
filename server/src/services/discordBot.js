@@ -1272,19 +1272,19 @@ class DiscordBotService {
   async extractLearningPatterns(classificationId, libraryId) {
     try {
       const result = await db.query(
-        "SELECT tmdb_id, metadata FROM classification_history WHERE id = $1",
+        "SELECT tmdb_id, media_type, metadata FROM classification_history WHERE id = $1",
         [classificationId],
       );
 
       if (result.rows.length > 0) {
-        const { tmdb_id, metadata } = result.rows[0];
+        const { tmdb_id, media_type, metadata } = result.rows[0];
 
         // Store exact match pattern
         await db.query(
-          `INSERT INTO learning_patterns (tmdb_id, library_id, pattern_type, pattern_data, confidence)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO learning_patterns (tmdb_id, media_type, library_id, pattern_type, pattern_data, confidence)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT DO NOTHING`,
-          [tmdb_id, libraryId, "exact_match", metadata, 100.0],
+          [tmdb_id, media_type || "unknown", libraryId, "exact_match", metadata, 100.0],
         );
       }
     } catch (error) {
@@ -1719,21 +1719,22 @@ class DiscordBotService {
   ) {
     try {
       const result = await db.query(
-        "SELECT tmdb_id, metadata, title FROM classification_history WHERE id = $1",
+        "SELECT tmdb_id, media_type, metadata, title FROM classification_history WHERE id = $1",
         [classificationId],
       );
 
       if (result.rows.length > 0) {
-        const { tmdb_id, metadata, title } = result.rows[0];
+        const { tmdb_id, media_type, metadata, title } = result.rows[0];
 
         // Store exact match pattern with high confidence
         await db.query(
-          `INSERT INTO learning_patterns (tmdb_id, library_id, pattern_type, pattern_data, confidence)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (tmdb_id, pattern_type) 
-           DO UPDATE SET library_id = $2, confidence = $5, updated_at = NOW()`,
+          `INSERT INTO learning_patterns (tmdb_id, media_type, library_id, pattern_type, pattern_data, confidence)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (tmdb_id, media_type, pattern_type) 
+           DO UPDATE SET library_id = $3, confidence = $6, updated_at = NOW()`,
           [
             tmdb_id,
+            media_type || "unknown",
             libraryId,
             "exact_match",
             { ...metadata, clarification_response: selectedOption },

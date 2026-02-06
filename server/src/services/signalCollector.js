@@ -332,7 +332,7 @@ class SignalCollector {
 
         // 7. Exact Match Signal
         if (detectors.checkExactMatch) {
-            const exactMatch = await detectors.checkExactMatch(metadata.tmdb_id);
+            const exactMatch = await detectors.checkExactMatch(metadata.tmdb_id, metadata.media_type);
             if (exactMatch) {
                 const exactLib = libraries.find(l => l.id === exactMatch.library_id);
                 if (exactLib) {

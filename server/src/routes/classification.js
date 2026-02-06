@@ -201,7 +201,7 @@ router.post('/corrections', async (req, res) => {
 
     // Get original classification
     const classResult = await db.query(
-      'SELECT library_id, tmdb_id, metadata FROM classification_history WHERE id = $1',
+      'SELECT library_id, tmdb_id, media_type, metadata FROM classification_history WHERE id = $1',
       [classification_id]
     );
 
@@ -209,7 +209,7 @@ router.post('/corrections', async (req, res) => {
       return res.status(404).json({ error: 'Classification not found' });
     }
 
-    const { library_id: original_library_id, tmdb_id, metadata } = classResult.rows[0];
+    const { library_id: original_library_id, tmdb_id, media_type, metadata } = classResult.rows[0];
 
     // Update classification with library_id and library_name
     await db.query(
@@ -232,10 +232,10 @@ router.post('/corrections', async (req, res) => {
 
     // Extract learning pattern
     await db.query(
-      `INSERT INTO learning_patterns (tmdb_id, library_id, pattern_type, pattern_data, confidence)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO learning_patterns (tmdb_id, media_type, library_id, pattern_type, pattern_data, confidence)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT DO NOTHING`,
-      [tmdb_id, corrected_library_id, 'exact_match', metadata, 100.00]
+      [tmdb_id, media_type || 'unknown', corrected_library_id, 'exact_match', metadata, 100.00]
     );
 
     // Pattern reinforcement - async, don't wait
