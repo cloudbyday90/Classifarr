@@ -17,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.41.2b-alpha] - 2026-02-06
+
+### Added
+- CI/CD: workflow dispatch mode to run Docker cleanup without running the full pipeline.
+- Tests: regression coverage for policy-based auto-routing thresholds.
+
+### Changed
+- Discord: confidence tier selection now prefers per-policy thresholds when available.
+- Classification: auto-routing now respects the PolicyEngine auto-classify threshold (not a hardcoded 90%).
+- CI/CD: Docker Hub tag cleanup now paginates and fails fast on HTTP errors.
+
+### Fixed
+- Docker cleanup: keep `latest` plus the newest 5 tags (by `last_updated`) on Docker Hub.
+
+---
+
 ## [v0.41.2a-alpha] - 2026-02-06
 
 ### Added

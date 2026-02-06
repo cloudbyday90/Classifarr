@@ -6,6 +6,29 @@ _(No unreleased changes - ready for next version)_
 
 ---
 
+## [v0.41.2b-alpha] - 2026-02-06
+
+**Title: Threshold Alignment and CI Cleanup**
+
+### Highlights
+- 🎯 Discord prompts now respect your PolicyEngine thresholds (auto vs verify vs policy-builder).
+- 🧭 Auto-routing no longer relies on a hardcoded 90% confidence; it uses your configured policy threshold.
+- 🧹 Docker cleanup keeps `latest` plus the newest 5 tags and supports a cleanup-only workflow run.
+
+### Fixes
+- Discord: reduce unnecessary Yes/No verification when confidence meets the policy auto-classify threshold.
+- Routing: align auto-route behavior with policy thresholds and `require_all_confirmations`.
+
+### CI/CD
+- Improved Docker Hub cleanup reliability (pagination + fail-fast HTTP handling).
+- Added a manual cleanup mode for running tag cleanup without the full CI pipeline.
+
+### Testing
+- Server: unit + integration tests passing.
+- Client: all tests passing.
+
+---
+
 ## [v0.41.2a-alpha] - 2026-02-06
 
 **Title: Hotfixes and CI Reliability**
