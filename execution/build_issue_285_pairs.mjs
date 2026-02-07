@@ -15,6 +15,7 @@ import process from 'node:process';
 import {
   ensureDir,
   formatEmbeddingTextV2,
+  loadDotenv,
   mulberry32,
   nowIsoUtc,
   parseArgs,
@@ -340,6 +341,8 @@ function countByLibrary(records) {
 }
 
 async function main() {
+  await loadDotenv();
+
   const args = parseArgs(process.argv.slice(2), {
     dataset: { type: 'string', default: '.tmp/issue-285/dataset/dataset.jsonl' },
     libraries: { type: 'string', default: '.tmp/issue-285/dataset/libraries.json' },

@@ -16,6 +16,7 @@ import process from 'node:process';
 import { createRequire } from 'node:module';
 import {
   ensureDir,
+  loadDotenv,
   nowIsoUtc,
   parseArgs,
   sha256Hex,
@@ -71,6 +72,9 @@ function pickPublicFields(metadata) {
 }
 
 async function main() {
+  // Allow local execution via repo-root .env (optional). Does not override process env.
+  await loadDotenv();
+
   const args = parseArgs(process.argv.slice(2), {
     outDir: { type: 'string', default: '.tmp/issue-285/dataset' },
     sinceDays: { type: 'int', default: 548 },

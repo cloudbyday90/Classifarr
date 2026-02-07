@@ -13,6 +13,47 @@ export function nowIsoUtc() {
   return new Date().toISOString();
 }
 
+function parseDotenvValue(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return '';
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    return s.slice(1, -1);
+  }
+  return s;
+}
+
+export async function loadDotenv(dotenvPath = path.resolve('.env'), opts = {}) {
+  // Minimal .env loader for execution scripts.
+  // - Ignores blank lines and lines starting with '#'
+  // - Supports KEY=VALUE only (no export, multiline, or escapes)
+  // - Does not override existing env vars unless opts.override=true
+  const override = Boolean(opts.override);
+
+  try {
+    await fsp.access(dotenvPath);
+  } catch {
+    return {};
+  }
+
+  const parsed = {};
+  const body = await fsp.readFile(dotenvPath, 'utf8');
+  for (const line of body.split(/\r?\n/)) {
+    const s = line.trim();
+    if (!s || s.startsWith('#')) continue;
+    const eq = s.indexOf('=');
+    if (eq <= 0) continue;
+    const key = s.slice(0, eq).trim();
+    const val = parseDotenvValue(s.slice(eq + 1));
+    if (!key) continue;
+    parsed[key] = val;
+    if (override || process.env[key] === undefined) {
+      process.env[key] = val;
+    }
+  }
+
+  return parsed;
+}
+
 export async function ensureDir(dirPath) {
   await fsp.mkdir(dirPath, { recursive: true });
 }

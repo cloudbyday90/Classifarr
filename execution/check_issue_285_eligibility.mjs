@@ -20,7 +20,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
-import { ensureDir, nowIsoUtc, parseArgs, readJson, readJsonl, writeJson } from './issue_285/lib.mjs';
+import { ensureDir, loadDotenv, nowIsoUtc, parseArgs, readJson, readJsonl, writeJson } from './issue_285/lib.mjs';
 
 function countByLib(records) {
   const m = new Map();
@@ -39,6 +39,8 @@ function pct(x) {
 }
 
 async function main() {
+  await loadDotenv();
+
   const args = parseArgs(process.argv.slice(2), {
     dataset: { type: 'string', default: '.tmp/issue-285/dataset/dataset.jsonl' },
     datasetMeta: { type: 'string', default: '.tmp/issue-285/dataset/meta.json' },
@@ -177,4 +179,3 @@ main().catch((e) => {
   console.error(e?.stack || String(e));
   process.exit(3);
 });
-
