@@ -6,6 +6,27 @@ _(No unreleased changes - ready for next version)_
 
 ---
 
+## [v0.41.2d-alpha] - 2026-02-07
+
+**Title: Fresh Install Snapshot Fix**
+
+> [!IMPORTANT]
+> If you attempted a fresh install on `v0.41.2c-alpha` and hit database schema errors during setup, wipe your persisted data (e.g. delete your `data/` volume/folder) and start again on `v0.41.2d-alpha`.
+
+### Fixes
+- Fresh installs: schema snapshot initialization now tolerates UTF-8 BOM and ensures `schema_migrations` exists.
+- Setup: `/login` now redirects to `/setup-account` when no users exist yet (fresh install).
+- RAG Settings: status bar now reflects real-time status (no more Offline/Online mismatch).
+
+### Improvements
+- RAG Settings: status bar icon labels render correctly.
+
+### Testing
+- Server: all tests passing.
+- Client: all tests passing.
+
+---
+
 ## [v0.41.2c-alpha] - 2026-02-06
 
 **Title: RAG Settings UX Polish**

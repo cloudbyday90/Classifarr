@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.41.2d-alpha] - 2026-02-07
+
+### Changed
+- DB: schema snapshot loader strips UTF-8 BOM and ensures `schema_migrations` exists during fresh installs.
+- UI: RAG Settings status bar uses the correct API routes for status/backfill/heartbeat.
+
+### Fixed
+- Fresh installs: schema snapshot no longer fails on startup due to BOM/missing `schema_migrations` and will fall back to migrations when needed.
+- Setup: `/login` now redirects to `/setup-account` when no users exist yet (avoids a fresh-install dead-end).
+- UI: RAG Settings status bar icon labels no longer render as garbled characters.
+
+---
+
 ## [v0.41.2c-alpha] - 2026-02-06
 
 ### Changed
