@@ -1,4 +1,4 @@
-﻿-- Classifarr Database Schema Snapshot
+-- Classifarr Database Schema Snapshot
 -- Generated: 2026-02-05T17:22:26.9449695-05:00
 -- Latest Migration: 20260205_112500_add_image_embedding_models_cache.sql
 -- 

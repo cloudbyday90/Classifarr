@@ -182,7 +182,9 @@ class MigrationRunner {
         logger.info('[Migrations] 🆕 Fresh install detected - loading schema snapshot');
         logger.info('[Migrations] ⚡ This is much faster than running 76+ individual migrations');
 
-        const schemaSQL = fs.readFileSync(this.schemaFile, 'utf8');
+        // Windows editors sometimes introduce a UTF-8 BOM (U+FEFF), which Postgres treats as an
+        // unexpected token at the beginning of the first statement.
+        const schemaSQL = fs.readFileSync(this.schemaFile, 'utf8').replace(/^\uFEFF/, '');
         
         const client = await db.pool.connect();
         try {
@@ -192,9 +194,14 @@ class MigrationRunner {
             logger.info('[Migrations] ✅ Database initialized from schema snapshot');
             return true;
         } catch (error) {
-            await client.query('ROLLBACK');
+            try {
+                await client.query('ROLLBACK');
+            } catch (rollbackError) {
+                logger.error('[Migrations] Snapshot rollback failed:', rollbackError.message);
+            }
             logger.error('[Migrations] Schema snapshot failed:', error.message);
-            throw error;
+            // Fall back to running individual migrations when snapshot load fails.
+            return false;
         } finally {
             client.release();
         }
@@ -249,7 +256,7 @@ class MigrationRunner {
      */
     async applyMigration(filename) {
         const filepath = path.join(this.migrationsDir, filename);
-        const sql = fs.readFileSync(filepath, 'utf8');
+        const sql = fs.readFileSync(filepath, 'utf8').replace(/^\uFEFF/, '');
 
         // Run migration in a transaction
         const client = await db.pool.connect();
@@ -293,7 +300,14 @@ class MigrationRunner {
             if (!rows[0].exists) {
                 // FRESH INSTALL - Try schema snapshot first
                 const allFiles = this.getMigrationFiles();
-                const usedSnapshot = await this.initializeFreshInstall();
+                let usedSnapshot = false;
+                try {
+                    usedSnapshot = await this.initializeFreshInstall();
+                } catch (error) {
+                    // initializeFreshInstall should return false on failure, but keep a defensive fallback.
+                    logger.error('[Migrations] Fresh install snapshot threw unexpectedly:', error.message);
+                    usedSnapshot = false;
+                }
                 if (usedSnapshot) {
                     // All migrations are marked as applied by the snapshot
                     return { applied: allFiles.length, total: allFiles.length, method: 'snapshot' };
