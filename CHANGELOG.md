@@ -60,9 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.41.2a-alpha] - 2026-02-06
 
-### Added
-- Issue #285 planning docs (implementation plan + task list).
-
 ### Changed
 - CI/CD: improved Dependabot OSV scan behavior; Docker images publish on release tags only.
 - UI: refinements to RAG status strip presentation.
