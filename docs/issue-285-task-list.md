@@ -68,6 +68,27 @@
 - [ ] Package artifact + metadata + checksum for release asset upload
   - [ ] include detached signature artifact and algorithm metadata
 
+### Phase 2a: Trainer Repo Gaps (classifarr-retriever-trainer)
+These are additional offline pipeline requirements that live in `cloudbyday90/classifarr-retriever-trainer` and are required to fully satisfy the Phase 0 guardrails and the Issue 285 artifact/update contract.
+
+- [ ] Add a deterministic "train eligibility gate" step (before training/candidate approval):
+  - [ ] `>= 12,000` labeled samples (from `.tmp/issue-285/dataset/*`)
+  - [ ] `18-month` time window assumption is represented in exported dataset meta and validated by the gate
+  - [ ] `>= 8` libraries with `>= 150` samples each
+  - [ ] no library > `40%` after balancing
+  - [ ] `>= 2,000` hard negatives (from `.tmp/issue-285/pairs/*`)
+- [ ] Training: decide + implement explicit negative/hard-negative usage (or lock v1 to positives + in-batch negatives and document clearly).
+- [ ] Add latency benchmark outputs + gate (Phase 0 requires p95 latency regression `<= 25%` vs baseline):
+  - [ ] record p50/p95 latency for baseline and candidate on a deterministic sample set
+  - [ ] fail the rollout gate if regression exceeds threshold
+- [ ] Extend packaged artifact metadata to meet the "Artifact Contract":
+  - [ ] tokenizer/version and base model identifiers recorded
+  - [ ] dataset snapshot id (or explicit SHA-based snapshot reference) recorded
+  - [ ] training + eval metrics included (or shipped alongside and referenced from `model-meta.json`)
+  - [ ] compatibility notes (expected endpoint/provider mode, expected dims) recorded
+- [ ] Bring `models-manifest.json` up to the plan's manifest contract (channels, URLs, signature URL/alg/key id, notes URL, min Classifarr version), and add deterministic tooling to update/generate it from packaged artifacts + release info.
+- [ ] Update SOP docs to make the trainer repo the canonical train/eval/package path (and keep HTTP-embedder eval as optional/legacy).
+
 ## Phase 3: Schema and Config (Runtime)
 - [ ] Add timestamped migration for fine-tuned config fields in `ai_provider_config`:
   - [ ] `embedding_finetuned_enabled`

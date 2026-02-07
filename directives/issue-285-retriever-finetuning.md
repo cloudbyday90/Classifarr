@@ -29,6 +29,14 @@ Every script should emit:
 - A `meta.json` describing inputs, hashes, seed, counts, and runtime version.
 - Machine-readable outputs (JSON/JSONL) with stable schemas.
 
+## Reproducibility Check (Recommended)
+Goal: verify deterministic splits and byte-for-byte reproducible packaging on this machine.
+
+Command:
+```powershell
+node execution/verify_issue_285_reproducibility.mjs
+```
+
 ## Step 1: Export Dataset
 Goal: export labeled examples from `classification_history` with corrections applied.
 
@@ -78,7 +86,41 @@ Notes:
   - a local Python environment
 - The output must be exportable for inference in `classifarr-image-embedding-service`.
 
-Command (planner only, generates a reproducible training config file):
+Canonical path (recommended): use the dedicated trainer repo `cloudbyday90/classifarr-retriever-trainer` for train/eval/package.
+
+Important: `classifarr-retriever-trainer` expects the same `.tmp/issue-285/*` inputs that you generated in Steps 1-2. You can either:
+- copy `.tmp/issue-285/` into the trainer repo at `.tmp/issue-285/`, or
+- pass explicit `--dataset/--profiles/--pairsDir/--outModelDir/...` paths to point at this repo's `.tmp/issue-285/` outputs.
+
+All `python execution\\...` commands below are intended to run from the trainer repo root.
+Note: the trainer's `--outModelDir` must be empty (or not exist) before training.
+
+Trainer repo (recommended, one command):
+```powershell
+python execution\\run_issue_285_pipeline.py `
+  --modelId classifarr-rag-embed-v1.0.0 `
+  --version 1.0.0 `
+  --dims auto `
+  --gatesProfile rollout `
+  --pairsDir <path-to-classifarr>\\.tmp\\issue-285\\pairs `
+  --dataset <path-to-classifarr>\\.tmp\\issue-285\\dataset\\dataset.jsonl `
+  --profiles <path-to-classifarr>\\.tmp\\issue-285\\pairs\\library_profiles.json `
+  --outModelDir <path-to-classifarr>\\.tmp\\issue-285\\artifacts\\model_candidate `
+  --evalDir <path-to-classifarr>\\.tmp\\issue-285\\eval `
+  --releaseDir <path-to-classifarr>\\.tmp\\issue-285\\artifacts\\release
+```
+
+Trainer repo (training only):
+```powershell
+python execution\\train_issue_285_retriever.py `
+  --pairsDir <path-to-classifarr>\\.tmp\\issue-285\\pairs `
+  --outModelDir <path-to-classifarr>\\.tmp\\issue-285\\artifacts\\model_candidate `
+  --baseModel sentence-transformers/all-MiniLM-L6-v2 `
+  --seed 285 `
+  --epochs 1
+```
+
+Optional (legacy): planner-only config generation (this repo).
 ```powershell
 node execution/train_issue_285_retriever.mjs `
   --pairsDir .tmp/issue-285/pairs `
@@ -93,7 +135,21 @@ Expected outputs:
 ## Step 4: Offline Evaluation
 Goal: compare baseline vs candidate with retrieval metrics.
 
-Command:
+Canonical path (recommended): use the trainer repo eval which is fully contained (no HTTP embedder required) and evaluates retrieval as `query -> library_profile.description` using `.tmp/issue-285/pairs/library_profiles.json`.
+
+```powershell
+python execution\\eval_issue_285_retriever_local.py `
+  --dataset <path-to-classifarr>\\.tmp\\issue-285\\dataset\\dataset.jsonl `
+  --profiles <path-to-classifarr>\\.tmp\\issue-285\\pairs\\library_profiles.json `
+  --outDir <path-to-classifarr>\\.tmp\\issue-285\\eval `
+  --seed 285 `
+  --baselineModelId sentence-transformers/all-MiniLM-L6-v2 `
+  --candidateModelDir <path-to-classifarr>\\.tmp\\issue-285\\artifacts\\model_candidate `
+  --k 10 `
+  --maxQueries 1000
+```
+
+Optional (legacy): HTTP-embedder-based eval (this repo). This requires a service that implements `POST /embed-text` and is useful for service-level latency checks.
 ```powershell
 node execution/eval_issue_285_retriever.mjs `
   --dataset .tmp/issue-285/dataset/dataset.jsonl `
@@ -114,7 +170,18 @@ Expected outputs:
 ## Step 5: Package + Sign Artifact
 Goal: create a release-ready artifact with checksum and signature.
 
-Command:
+Canonical path (recommended): package from the trainer repo (deterministic).
+```powershell
+python execution\\package_issue_285_model.py `
+  --modelDir <path-to-classifarr>\\.tmp\\issue-285\\artifacts\\model_candidate `
+  --outDir <path-to-classifarr>\\.tmp\\issue-285\\artifacts\\release `
+  --modelId classifarr-rag-embed-v1.0.0 `
+  --version 1.0.0 `
+  --dims <DIMS> `
+  --privateKeyPath <path-to-classifarr>\\.tmp\\issue-285\\keys\\signing_ed25519.pem
+```
+
+Optional (legacy): Node packager (this repo).
 ```powershell
 node execution/package_issue_285_model.mjs `
   --modelDir .tmp/issue-285/artifacts/model_candidate `
@@ -130,6 +197,7 @@ Expected outputs:
 - `.tmp/issue-285/artifacts/release/model.tar.gz.sha256`
 - `.tmp/issue-285/artifacts/release/model.tar.gz.sig`
 - `.tmp/issue-285/artifacts/release/model-meta.json`
+- `.tmp/issue-285/artifacts/release/provenance.json` (trainer repo)
 
 ## Step 6: Publish (GitHub Release Assets)
 Goal: attach the artifact + signature + checksum to a GitHub Release tag for the model repo.
@@ -140,6 +208,7 @@ Checklist:
   - `model.tar.gz.sha256`
   - `model.tar.gz.sig`
   - `model-meta.json`
+  - `provenance.json` (if present)
 - Update `models-manifest.json` for the `stable` channel with:
   - `asset_url`, `sha256`, `signature_url`, `key_id`, `dims`
 

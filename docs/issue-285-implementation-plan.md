@@ -37,6 +37,40 @@ Fine-tune the text embedding retriever on Classifarr's domain-specific classific
 - [ ] Ensure scripts write intermediates to `.tmp/` and are fully reproducible.
 - [ ] Document script inputs/outputs and required env vars.
 
+## Dedicated Trainer Repo (classifarr-retriever-trainer)
+We now maintain a dedicated repo for the Python-based offline pipeline that actually trains/evals/packages the Issue 285 retriever artifacts:
+- Repo: `cloudbyday90/classifarr-retriever-trainer`
+- Inputs still come from this Classifarr repo under `.tmp/issue-285/` (dataset + pairs).
+
+### What It Already Covers (Trainer Repo)
+- Local-first training (SentenceTransformers) + CUDA-capable Dockerfiles (local build only; no published images).
+- Fully-contained offline eval against `pairs/library_profiles.json` descriptions (no HTTP embedder required).
+- Rollout gate checker (holdout size, Recall@k uplift, major-library top-1 regression cap).
+- Deterministic packaging (`model.tar.gz`, `.sha256`, optional `ed25519` detached signature) plus provenance capture.
+- One-command pipeline runner (train -> eval -> gates -> package).
+
+### Expanded Gaps (Trainer Repo) Relative To Issue 285 Plan/SOP
+These are requirements/guardrails from `docs/issue-285-task-list.md` and `directives/issue-285-retriever-finetuning.md` that are not yet implemented (or not fully represented) in `classifarr-retriever-trainer`:
+
+- Train eligibility gate implementation:
+  - Enforce Phase 0 eligibility checks deterministically before training/candidate approval (min labeled samples, min libraries, per-library balance cap, hard-negative counts, time window assumptions).
+  - Prefer reading counts from `.tmp/issue-285/dataset/meta.json` + `.tmp/issue-285/pairs/meta.json` when present (or compute directly from JSONL inputs).
+- Explicit negatives/hard-negatives utilization in training:
+  - The plan requires building positives + negatives for contrastive learning; trainer training currently relies on positives with in-batch negatives only.
+  - Decide and document: either consume explicit negatives/hard negatives (and/or add hard-negative mining) or explicitly lock v1 to MNRL-only behavior.
+- Latency benchmark gate:
+  - Phase 0 rollout gates include p95 latency regression `<= 25%` vs baseline; trainer does not measure embed latency today.
+  - Add a reproducible benchmark step that records p50/p95 per-text latency (baseline vs candidate) on a fixed evaluation sample and surfaces pass/fail.
+- Artifact contract completeness in packaged metadata:
+  - Issue 285 artifact contract calls for tokenizer/version, dataset snapshot id, training/eval metrics, and compatibility notes to ship with the artifact.
+  - Trainer currently writes provenance, dims, and hashes; it should also persist (or embed references to) training config + eval outputs and explicitly record tokenizer/model config versions.
+- Manifest contract/tooling:
+  - `models-manifest.json` is a placeholder today; it does not match the full manifest contract in this plan (channels, URLs, notes/min-version, signature URL/alg/key id).
+  - Add deterministic tooling to update/generate the manifest from packaged artifacts and release info (reduce manual error).
+- SOP alignment:
+  - The SOP in `directives/issue-285-retriever-finetuning.md` includes an HTTP-embedder-based eval step; trainer uses a fully local eval and different retrieval target (library profile descriptions).
+  - Clarify the canonical path in SOP docs (recommended: point train/eval/package steps at the trainer repo and keep the HTTP eval as optional/legacy).
+
 ## Current State (Code Map)
 Text embedding generation and routing:
 1. `server/src/services/embeddingService.js`
