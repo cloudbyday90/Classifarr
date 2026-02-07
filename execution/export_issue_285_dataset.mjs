@@ -14,6 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { createRequire } from 'node:module';
+import fsp from 'node:fs/promises';
 import {
   ensureDir,
   loadDotenv,
@@ -31,8 +32,9 @@ function buildDbConfig() {
   const port = process.env.POSTGRES_PORT ? Number(process.env.POSTGRES_PORT) : 5432;
   const database = process.env.POSTGRES_DB;
   const user = process.env.POSTGRES_USER;
-  const password = process.env.POSTGRES_PASSWORD;
-  if (!host || !database || !user || !password) return null;
+  // Password may be empty when using local trust auth (e.g., embedded Postgres in Docker image).
+  const password = process.env.POSTGRES_PASSWORD ?? '';
+  if (!host || !database || !user) return null;
   return { host, port, database, user, password };
 }
 
@@ -101,8 +103,28 @@ async function main() {
   };
 
   // Resolve pg from server/ dependencies (not root).
-  const requireFromServer = createRequire(path.join(process.cwd(), 'server', 'package.json'));
-  const { Client } = requireFromServer('pg');
+  // In dev (repo), `server/package.json` exists. In the Docker image, only `/app/package.json` is present.
+  const requireBaseCandidates = [
+    path.join(process.cwd(), 'server', 'package.json'),
+    path.join(process.cwd(), 'package.json'),
+    '/app/package.json',
+  ];
+  let requireBase = null;
+  for (const cand of requireBaseCandidates) {
+    try {
+      await fsp.access(cand);
+      requireBase = cand;
+      break;
+    } catch {
+      // ignore
+    }
+  }
+  if (!requireBase) {
+    console.error('Unable to resolve package.json for pg dependency (tried server/package.json and /app/package.json)');
+    process.exit(2);
+  }
+  const requireFrom = createRequire(requireBase);
+  const { Client } = requireFrom('pg');
 
   const client = new Client(dbConfig);
   try {
