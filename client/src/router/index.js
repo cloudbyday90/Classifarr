@@ -127,8 +127,8 @@ const router = createRouter({
 
 // Navigation guard to check setup status and authentication
 router.beforeEach(async (to, from, next) => {
-  // Skip for auth-related pages
-  if (to.name === 'Login' || to.name === 'SetupAccount' || to.name === 'SetupWizard') {
+  // Always allow setup pages through to avoid redirect loops.
+  if (to.name === 'SetupAccount' || to.name === 'SetupWizard') {
     next()
     return
   }
@@ -138,12 +138,24 @@ router.beforeEach(async (to, from, next) => {
     const setupResponse = await fetch('/api/setup/status')
     const setupData = await setupResponse.json()
 
-    if (setupData.setupRequired && to.name !== 'SetupAccount') {
-      next('/setup-account')
+    // If no users exist yet, force the initial admin creation flow.
+    // This includes redirecting away from /login, which would otherwise be a dead-end.
+    if (setupData.setupRequired) {
+      if (to.name !== 'SetupAccount') {
+        next('/setup-account')
+        return
+      }
+      next()
       return
     }
 
-    // If setup is complete, check for valid authentication token
+    // Setup is complete; allow /login, but protect all other routes.
+    if (to.name === 'Login') {
+      next()
+      return
+    }
+
+    // Check for valid authentication token
     if (!setupData.setupRequired) {
       const token = localStorage.getItem('auth_token')
 
