@@ -19,6 +19,13 @@ param(
   [int]$HardNegativesPerExample = 2,
   [double]$MaxLibraryShare = 0.4,
 
+  # Eligibility gate overrides (defaults match execution/check_issue_285_eligibility.mjs).
+  # For smaller personal libraries, you can lower these (example: -MinLabeledSamples 6000 -MinLibraries 7).
+  [int]$MinLabeledSamples = 12000,
+  [int]$MinLibraries = 8,
+  [int]$MinSamplesPerLibrary = 150,
+  [int]$MinHardNegatives = 2000,
+
   [switch]$KeepRunning
 )
 
@@ -125,7 +132,12 @@ $eligCmd = @(
   "--dataset", "/app/.tmp/issue-285/dataset/dataset.jsonl",
   "--datasetMeta", "/app/.tmp/issue-285/dataset/meta.json",
   "--pairsDir", "/app/.tmp/issue-285/pairs",
-  "--outDir", "/app/.tmp/issue-285/eligibility"
+  "--outDir", "/app/.tmp/issue-285/eligibility",
+  "--minLabeledSamples", "$MinLabeledSamples",
+  "--minLibraries", "$MinLibraries",
+  "--minSamplesPerLibrary", "$MinSamplesPerLibrary",
+  "--maxLibraryShare", "$MaxLibraryShare",
+  "--minHardNegatives", "$MinHardNegatives"
 )
 Run-Checked "eligibility gate" { docker exec $ContainerName @eligCmd }
 

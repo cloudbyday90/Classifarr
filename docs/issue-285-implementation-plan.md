@@ -719,11 +719,11 @@ Decision for v1:
 
 ### Benchmark Eligibility and Rollout Thresholds (Locked)
 Train eligibility gate:
-- Minimum total labeled samples: `12,000`
+- Minimum total labeled samples: **target** `12,000` (can be lowered for smaller personal libraries; record the chosen threshold and expect weaker generalization)
 - Time window: most recent `18 months`
-- Active library coverage: at least `8` libraries with `>= 150` samples each
+- Active library coverage: **target** at least `8` libraries with `>= 150` samples each (can be lowered if you have fewer well-populated libraries)
 - Class balance cap: no single library exceeds `40%` after balancing
-- Hard negatives: at least `2,000`
+- Hard negatives: at least `2,000` (scale down if total dataset is smaller)
 
 Rollout benchmark gate:
 - Frozen holdout size: `>= 2,500`

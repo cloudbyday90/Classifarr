@@ -11,11 +11,11 @@
     - [x] Ollama retained as baseline/fallback
 - [x] Confirm benchmark gates for rollout:
   - [x] Train eligibility gate:
-    - [x] `>= 12,000` labeled samples
+    - [x] **Target** `>= 12,000` labeled samples (can be lowered for smaller personal libraries; record the chosen threshold)
     - [x] `18-month` time window
-    - [x] `>= 8` libraries with `>= 150` samples each
+    - [x] **Target** `>= 8` libraries with `>= 150` samples each (can be lowered if you have fewer well-populated libraries)
     - [x] no library > `40%` after balancing
-    - [x] `>= 2,000` hard negatives
+    - [x] `>= 2,000` hard negatives (scale down if total dataset is smaller)
   - [x] Rollout benchmark gate:
     - [x] holdout `>= 2,500`
     - [x] major-library floor `>= 75` each
@@ -72,11 +72,12 @@
 These are additional offline pipeline requirements that live in `cloudbyday90/classifarr-retriever-trainer` and are required to fully satisfy the Phase 0 guardrails and the Issue 285 artifact/update contract.
 
 - [ ] Add a deterministic "train eligibility gate" step (before training/candidate approval):
-  - [ ] `>= 12,000` labeled samples (from `.tmp/issue-285/dataset/*`)
+  - [ ] **Target** `>= 12,000` labeled samples (from `.tmp/issue-285/dataset/*`)
   - [ ] `18-month` time window assumption is represented in exported dataset meta and validated by the gate
-  - [ ] `>= 8` libraries with `>= 150` samples each
+  - [ ] **Target** `>= 8` libraries with `>= 150` samples each
   - [ ] no library > `40%` after balancing
   - [ ] `>= 2,000` hard negatives (from `.tmp/issue-285/pairs/*`)
+  - [ ] If you cannot reach the targets, explicitly record the adjusted thresholds used (e.g. `minLabeledSamples=6000`, `minLibraries=7`) and proceed with stricter eval/rollout gates.
 - [ ] Training: decide + implement explicit negative/hard-negative usage (or lock v1 to positives + in-batch negatives and document clearly).
 - [ ] Add latency benchmark outputs + gate (Phase 0 requires p95 latency regression `<= 25%` vs baseline):
   - [ ] record p50/p95 latency for baseline and candidate on a deterministic sample set
