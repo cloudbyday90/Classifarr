@@ -52,7 +52,7 @@
   - [x] `execution/package_issue_285_model.mjs`
 - [x] Ensure scripts write outputs to `.tmp/issue-285/`
 - [x] Add script usage docs (inputs, outputs, required env)
-- [ ] Validate reproducibility with fixed seeds and deterministic splits
+- [x] Validate reproducibility with fixed seeds and deterministic splits (`node execution/verify_issue_285_reproducibility.mjs`)
 
 ## Phase 2: Data and Benchmark Assets
 - [ ] Export anonymized dataset from `classification_history`
