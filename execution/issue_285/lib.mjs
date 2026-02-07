@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { createGzip } from 'node:zlib';
 
 export function nowIsoUtc() {
   return new Date().toISOString();
@@ -207,5 +208,157 @@ export function formatEmbeddingTextV2(metadata, opts = {}) {
   }
 
   return parts.join(' | ').trim();
+}
+
+function writeOctal(buf, offset, length, value) {
+  // Tar header numeric fields are octal ASCII, typically NUL-terminated.
+  const s = value.toString(8);
+  const padded = s.padStart(length - 1, '0').slice(- (length - 1));
+  buf.write(padded, offset, length - 1, 'ascii');
+  buf[offset + length - 1] = 0; // NUL terminator
+}
+
+function tarHeader({ name, size, typeflag, mode, mtime }) {
+  // Minimal USTAR header for reproducible archives.
+  // https://www.gnu.org/software/tar/manual/html_node/Standard.html
+  const header = Buffer.alloc(512, 0);
+
+  const normalized = name.replace(/\\/g, '/');
+  let n = normalized;
+  let prefix = '';
+
+  if (Buffer.byteLength(n, 'utf8') > 100) {
+    // Split into prefix/name if possible (max 155/100).
+    const idx = n.lastIndexOf('/');
+    if (idx <= 0) {
+      throw new Error(`Path too long for tar header (no prefix split): ${n}`);
+    }
+    prefix = n.slice(0, idx);
+    n = n.slice(idx + 1);
+    if (Buffer.byteLength(n, 'utf8') > 100 || Buffer.byteLength(prefix, 'utf8') > 155) {
+      throw new Error(`Path too long for tar header: ${normalized}`);
+    }
+  }
+
+  header.write(n, 0, 100, 'utf8');
+  writeOctal(header, 100, 8, mode);
+  writeOctal(header, 108, 8, 0); // uid
+  writeOctal(header, 116, 8, 0); // gid
+  writeOctal(header, 124, 12, size);
+  writeOctal(header, 136, 12, mtime);
+
+  // checksum field is initially spaces.
+  header.fill(0x20, 148, 156);
+
+  header.write(String(typeflag || '0')[0], 156, 1, 'ascii');
+
+  header.write('ustar\0', 257, 6, 'ascii');
+  header.write('00', 263, 2, 'ascii');
+
+  if (prefix) header.write(prefix, 345, 155, 'utf8');
+
+  // Compute checksum.
+  let sum = 0;
+  for (let i = 0; i < 512; i++) sum += header[i];
+  const chk = sum.toString(8).padStart(6, '0');
+  header.write(chk, 148, 6, 'ascii');
+  header[154] = 0; // NUL
+  header[155] = 0x20; // space
+
+  return header;
+}
+
+async function writeToStream(stream, buf) {
+  if (buf.length === 0) return;
+  if (stream.write(buf)) return;
+  await new Promise((resolve, reject) => {
+    stream.once('drain', resolve);
+    stream.once('error', reject);
+  });
+}
+
+async function streamFileToStream(filePath, outStream) {
+  const rs = fs.createReadStream(filePath);
+  try {
+    for await (const chunk of rs) {
+      await writeToStream(outStream, chunk);
+    }
+  } finally {
+    try { rs.destroy(); } catch {}
+  }
+}
+
+export async function deterministicTarGzDirectory(srcDir, outTarGzPath) {
+  // Create a deterministic .tar.gz without relying on system tar behavior.
+  // Rules:
+  // - File order: sorted lexicographically by POSIX relative path.
+  // - Header metadata: uid/gid=0, mtime=0, fixed mode (dirs 755, files 644).
+  // - gzip header mtime=0.
+  const root = path.resolve(srcDir);
+  await ensureDir(path.dirname(outTarGzPath));
+
+  const outStream = fs.createWriteStream(outTarGzPath);
+  const gzip = createGzip({ level: 9, mtime: 0 });
+  gzip.pipe(outStream);
+
+  const entries = [];
+
+  async function walk(absDir, relDir) {
+    const dirents = await fsp.readdir(absDir, { withFileTypes: true });
+    dirents.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    for (const d of dirents) {
+      const abs = path.join(absDir, d.name);
+      const rel = relDir ? `${relDir}/${d.name}` : d.name;
+      if (d.isSymbolicLink()) {
+        throw new Error(`Symlinks are not supported for packaging: ${rel}`);
+      }
+      if (d.isDirectory()) {
+        entries.push({ kind: 'dir', rel });
+        await walk(abs, rel);
+      } else if (d.isFile()) {
+        entries.push({ kind: 'file', rel, abs });
+      }
+    }
+  }
+
+  await walk(root, '');
+  entries.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
+
+  try {
+    // Ensure top-level "." directory exists in archive viewers (optional but harmless).
+    await writeToStream(gzip, tarHeader({ name: './', size: 0, typeflag: '5', mode: 0o755, mtime: 0 }));
+
+    for (const e of entries) {
+      if (e.kind === 'dir') {
+        const dirName = `${e.rel.replace(/\\/g, '/')}/`;
+        await writeToStream(gzip, tarHeader({ name: dirName, size: 0, typeflag: '5', mode: 0o755, mtime: 0 }));
+        continue;
+      }
+
+      const st = await fsp.stat(e.abs);
+      const size = Number(st.size);
+      await writeToStream(gzip, tarHeader({ name: e.rel, size, typeflag: '0', mode: 0o644, mtime: 0 }));
+      await streamFileToStream(e.abs, gzip);
+
+      const pad = (512 - (size % 512)) % 512;
+      if (pad) await writeToStream(gzip, Buffer.alloc(pad, 0));
+    }
+
+    // Two 512-byte blocks of zeros mark end-of-archive.
+    await writeToStream(gzip, Buffer.alloc(1024, 0));
+
+    await new Promise((resolve, reject) => {
+      outStream.on('error', reject);
+      gzip.on('error', reject);
+      outStream.on('close', resolve);
+      gzip.end();
+    });
+  } catch (e) {
+    // Best-effort cleanup of partially written file.
+    try { outStream.destroy(); } catch {}
+    try { gzip.destroy(); } catch {}
+    try { await fsp.unlink(outTarGzPath); } catch {}
+    throw e;
+  }
 }
 

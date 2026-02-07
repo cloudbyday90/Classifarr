@@ -30,7 +30,7 @@ import {
   parseArgs,
   readJsonl,
   sha256Hex,
-  stableStringify,
+  sha256FileHex,
   writeJson,
 } from './issue_285/lib.mjs';
 
@@ -124,6 +124,17 @@ async function main() {
     process.exit(2);
   }
 
+  // Sort records to keep split/subset selection stable even if dataset.jsonl order changes.
+  records.sort((a, b) => {
+    const ak = a.tmdb_id ? `tmdb:${a.tmdb_id}` : `id:${a.id}`;
+    const bk = b.tmdb_id ? `tmdb:${b.tmdb_id}` : `id:${b.id}`;
+    if (ak < bk) return -1;
+    if (ak > bk) return 1;
+    const ai = Number(a.id) || 0;
+    const bi = Number(b.id) || 0;
+    return ai - bi;
+  });
+
   const split = splitByStableHash(records, args.seed);
   const corpus = split[args.corpusSplit];
   const queries = split[args.querySplit];
@@ -210,7 +221,9 @@ async function main() {
     args,
     inputs: {
       dataset: datasetPath,
-      dataset_sha256_hint: sha256Hex(stableStringify(records.slice(0, 1000))),
+      dataset_sha256: await sha256FileHex(datasetPath),
+      corpus_subset_keys_sha256: sha256Hex(corpusSubset.map(r => (r.tmdb_id ? `tmdb:${r.tmdb_id}` : `id:${r.id}`)).join('\n')),
+      query_subset_keys_sha256: sha256Hex(querySubset.map(r => (r.tmdb_id ? `tmdb:${r.tmdb_id}` : `id:${r.id}`)).join('\n')),
     },
   };
 

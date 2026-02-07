@@ -21,7 +21,7 @@ import {
   readJson,
   readJsonl,
   sha256Hex,
-  stableStringify,
+  sha256FileHex,
   writeJson,
   writeJsonl,
 } from './issue_285/lib.mjs';
@@ -117,8 +117,9 @@ function buildDerivedLibraryProfiles(records, libraries) {
 
 function chooseNegatives(rng, candidateLibIds, positiveLibId, count) {
   const pool = candidateLibIds.filter(id => id !== positiveLibId);
+  const target = Math.min(count, pool.length);
   const picked = new Set();
-  while (picked.size < count && pool.length > 0) {
+  while (picked.size < target && pool.length > 0) {
     const idx = Math.floor(rng() * pool.length);
     picked.add(pool[idx]);
   }
@@ -202,6 +203,18 @@ async function main() {
     process.exit(2);
   }
 
+  // Sort records to guarantee stable output ordering even if the input JSONL is re-ordered.
+  // This also ensures RNG consumption order is deterministic.
+  records.sort((a, b) => {
+    const ak = a.tmdb_id ? `tmdb:${a.tmdb_id}` : `id:${a.id}`;
+    const bk = b.tmdb_id ? `tmdb:${b.tmdb_id}` : `id:${b.id}`;
+    if (ak < bk) return -1;
+    if (ak > bk) return 1;
+    const ai = Number(a.id) || 0;
+    const bi = Number(b.id) || 0;
+    return ai - bi;
+  });
+
   const split = splitByStableHash(records, args.seed);
   const profiles = buildDerivedLibraryProfiles(split.train, libraries);
   const profilesById = new Map(profiles.map(p => [String(p.id), p]));
@@ -210,11 +223,15 @@ async function main() {
   const validPairs = buildPairs(split.valid, profilesById, args);
   const testPairs = buildPairs(split.test, profilesById, args);
 
-  await writeJsonl(path.join(outDir, 'train.jsonl'), trainPairs);
-  await writeJsonl(path.join(outDir, 'valid.jsonl'), validPairs);
-  await writeJsonl(path.join(outDir, 'test.jsonl'), testPairs);
+  const trainPath = path.join(outDir, 'train.jsonl');
+  const validPath = path.join(outDir, 'valid.jsonl');
+  const testPath = path.join(outDir, 'test.jsonl');
+  const profilesPath = path.join(outDir, 'library_profiles.json');
 
-  await writeJson(path.join(outDir, 'library_profiles.json'), profiles);
+  await writeJsonl(trainPath, trainPairs);
+  await writeJsonl(validPath, validPairs);
+  await writeJsonl(testPath, testPairs);
+  await writeJson(profilesPath, profiles);
 
   const meta = {
     generated_at: nowIsoUtc(),
@@ -224,8 +241,8 @@ async function main() {
     inputs: {
       dataset: datasetPath,
       libraries: librariesPath,
-      dataset_sha256: sha256Hex(stableStringify(records.slice(0, 1000))), // cheap stability hint
-      libraries_sha256: sha256Hex(stableStringify(libraries)),
+      dataset_sha256: await sha256FileHex(datasetPath),
+      libraries_sha256: await sha256FileHex(librariesPath),
     },
     counts: {
       dataset_rows: records.length,
@@ -239,6 +256,14 @@ async function main() {
         train: trainPairs.length,
         valid: validPairs.length,
         test: testPairs.length,
+      },
+    },
+    outputs: {
+      sha256: {
+        train: await sha256FileHex(trainPath),
+        valid: await sha256FileHex(validPath),
+        test: await sha256FileHex(testPath),
+        library_profiles: await sha256FileHex(profilesPath),
       },
     },
   };

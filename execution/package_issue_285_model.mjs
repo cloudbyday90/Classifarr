@@ -18,12 +18,9 @@ import path from 'node:path';
 import process from 'node:process';
 import crypto from 'node:crypto';
 import fsp from 'node:fs/promises';
-import { createReadStream, createWriteStream } from 'node:fs';
-import { pipeline } from 'node:stream/promises';
-import { createGzip } from 'node:zlib';
-import { spawn } from 'node:child_process';
 
 import {
+  deterministicTarGzDirectory,
   ensureDir,
   nowIsoUtc,
   parseArgs,
@@ -39,33 +36,6 @@ async function fileExists(p) {
   } catch {
     return false;
   }
-}
-
-async function tarGzDirectory(modelDir, outTarGzPath) {
-  // Use system tar if available (fast, stable). Fallback to a clear error if not present.
-  // Windows dev environments commonly have bsdtar or GNU tar via Git Bash; in containers tar exists.
-  return await new Promise((resolve, reject) => {
-    const outStream = createWriteStream(outTarGzPath);
-    const gzip = createGzip({ level: 9 });
-
-    const tar = spawn('tar', ['-cf', '-', '-C', modelDir, '.'], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let stderr = '';
-    tar.stderr.on('data', (d) => { stderr += d.toString(); });
-
-    pipeline(tar.stdout, gzip, outStream)
-      .then(() => resolve())
-      .catch((e) => {
-        reject(new Error(`tar pipeline failed: ${e.message}; stderr=${stderr.trim()}`));
-      });
-
-    tar.on('error', (e) => reject(new Error(`tar spawn failed: ${e.message}`)));
-    tar.on('close', (code) => {
-      if (code !== 0) reject(new Error(`tar exited with code ${code}: ${stderr.trim()}`));
-    });
-  });
 }
 
 async function readPrivateKey(privateKeyPath) {
@@ -104,7 +74,7 @@ async function main() {
   const sigPath = `${archivePath}.sig`;
   const metaPath = path.join(outDir, 'model-meta.json');
 
-  await tarGzDirectory(modelDir, archivePath);
+  await deterministicTarGzDirectory(modelDir, archivePath);
   const sha256 = await sha256FileHex(archivePath);
   await writeText(shaPath, `${sha256}  ${path.basename(archivePath)}\n`);
 
