@@ -23,7 +23,7 @@ vi.mock('../api', () => ({
 
 const mockApiGet = (overrides = {}) => {
   api.get.mockImplementation((url) => {
-    if (url === '/api/rag/status') {
+    if (url === '/rag/status') {
       return Promise.resolve({
         data: {
           providerOnline: true,
@@ -33,7 +33,7 @@ const mockApiGet = (overrides = {}) => {
         }
       })
     }
-    if (url === '/api/rag/backfill/status') {
+    if (url === '/rag/backfill/status') {
       return Promise.resolve({
         data: {
           pendingBreakdown: { text: 0, image: 0 },
@@ -41,7 +41,7 @@ const mockApiGet = (overrides = {}) => {
         }
       })
     }
-    if (url === '/api/system/heartbeat') {
+    if (url === '/system/heartbeat') {
       return Promise.resolve({
         data: { active: true, ...overrides.heartbeat }
       })

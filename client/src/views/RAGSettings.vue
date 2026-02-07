@@ -75,11 +75,11 @@
             </span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-gray-400">ðŸ“Š Queue:</span>
+            <span class="text-gray-400">📊 Queue:</span>
             <span class="text-white">{{ formatNumber(statusBar.queueImage) }}</span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-gray-400">ðŸ“ Total:</span>
+            <span class="text-gray-400">📁 Total:</span>
             <span class="text-white">{{ formatNumber(statusBar.totalImageEmbeddings) }}</span>
           </div>
         </div>
@@ -161,9 +161,10 @@ let statusInterval = null
 const loadStatusBar = async () => {
   try {
     const [statusRes, backfillRes, heartbeatRes] = await Promise.all([
-      api.get('/api/rag/status'),
-      api.get('/api/rag/backfill/status'),
-      api.get('/api/system/heartbeat')
+      // api client has baseURL '/api' already
+      api.get('/rag/status'),
+      api.get('/rag/backfill/status'),
+      api.get('/system/heartbeat')
     ])
 
     const pendingBreakdown = backfillRes.data.pendingBreakdown || { text: 0, image: 0 }
