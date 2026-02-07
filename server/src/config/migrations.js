@@ -185,10 +185,19 @@ class MigrationRunner {
         // Windows editors sometimes introduce a UTF-8 BOM (U+FEFF), which Postgres treats as an
         // unexpected token at the beginning of the first statement.
         const schemaSQL = fs.readFileSync(this.schemaFile, 'utf8').replace(/^\uFEFF/, '');
-        
+         
         const client = await db.pool.connect();
         try {
             await client.query('BEGIN');
+            // Snapshot files are expected to INSERT into schema_migrations, but they may not
+            // include the table definition because we normally create it in code.
+            await client.query(`
+              CREATE TABLE IF NOT EXISTS schema_migrations (
+                id SERIAL PRIMARY KEY,
+                filename VARCHAR(255) UNIQUE NOT NULL,
+                applied_at TIMESTAMP DEFAULT NOW()
+              )
+            `);
             await client.query(schemaSQL);
             await client.query('COMMIT');
             logger.info('[Migrations] ✅ Database initialized from schema snapshot');
@@ -297,20 +306,15 @@ class MigrationRunner {
                 ) as exists
             `);
 
+            let usedSnapshot = false;
             if (!rows[0].exists) {
                 // FRESH INSTALL - Try schema snapshot first
-                const allFiles = this.getMigrationFiles();
-                let usedSnapshot = false;
                 try {
                     usedSnapshot = await this.initializeFreshInstall();
                 } catch (error) {
                     // initializeFreshInstall should return false on failure, but keep a defensive fallback.
                     logger.error('[Migrations] Fresh install snapshot threw unexpectedly:', error.message);
                     usedSnapshot = false;
-                }
-                if (usedSnapshot) {
-                    // All migrations are marked as applied by the snapshot
-                    return { applied: allFiles.length, total: allFiles.length, method: 'snapshot' };
                 }
             }
 
@@ -323,7 +327,7 @@ class MigrationRunner {
 
             if (pending.length === 0) {
                 logger.info('[Migrations] Database is up to date (' + applied.length + ' migrations applied)');
-                return { applied: 0, total: applied.length, method: 'migrations' };
+                return { applied: 0, total: applied.length, method: usedSnapshot ? 'snapshot' : 'migrations' };
             }
 
             logger.info('[Migrations] Found ' + pending.length + ' pending migration(s)');
@@ -344,7 +348,7 @@ class MigrationRunner {
             }
 
             logger.info('[Migrations] Successfully applied ' + successCount + ' migration(s)');
-            return { applied: successCount, total: applied.length + successCount, method: 'migrations' };
+            return { applied: successCount, total: applied.length + successCount, method: usedSnapshot ? 'snapshot+migrations' : 'migrations' };
         } catch (error) {
             logger.error('[Migrations] Migration runner error: ' + error.message);
             throw error;
