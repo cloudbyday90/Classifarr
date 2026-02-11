@@ -2,58 +2,66 @@
 
 ## [v0.41.3-alpha] - 2026-02-11
 
-**Title: Smarter Low-Confidence Classification (Immediate Apply)**
+**Title: Smarter Low-Confidence Routing**
 
 > [!IMPORTANT]
-> This release activates the enhanced low-confidence flow automatically. No observation window is required, and `apply` is the default mode after upgrade.
+> This upgrade is active by default after update. No observation window is required.
 
-### What This Release Changes
-- Low-confidence items now run a bounded second pass that extracts targeted identifiers (keywords/genres/studios/cast) and re-runs the Policy Engine once.
-- The second pass only adopts results when measurable improvement gates are met; otherwise baseline behavior is preserved (fail-open).
-- `rag_retrieval_loop_enabled=true`, `policy_recheck_below_prompt_threshold_enabled=true`, and `rag_loop_rollout_mode=apply` are now defaulted and backfilled by migration.
+### 🎉 What You’ll Notice
+- More low-confidence items can now resolve automatically with a smarter second check.
+- Better safety: if quality trends regress, Classifarr can automatically switch to a safer diagnostic mode.
+- Cleaner operations: less noisy warnings and clearer request error responses.
 
-### Automatic Safety and Rollback
-- Added automatic `apply -> shadow` fallback controls based on live apply-mode health thresholds (sample floor, consecutive breaches, cooldown).
-- Added optional auto-recover controls to re-attempt `shadow -> apply` on a newer app version.
-- Added stage-level resilience breakers for optional second-pass stages (`tmdb_enrichment`, `rag_pass2`, `ai_rerun`) so timeouts/busy/offline states skip the stage instead of failing classification.
+### 📊 Quick Visual
+```text
+Classification flow
+Pass 1 🧠  →  Targeted Pass 2 🔎  →  Apply only if better ✅
+                     ↘ not better / unavailable → keep safe baseline 🛡️
 
-### Visibility and Diagnostics
-- Expanded `error_log` observability (`classification_id`, `error_stage`, `reason_code`, `correlation_id`, `sql_state`) with query indexes for diagnostics.
-- Added richer RAG loop trace/query support for rollout analysis (`mode`, outcome indexes, fallback incident payload exposure).
-- Added release-scoped post-upgrade cleanup task `clear_logs_0413` so upgraded `v0.41.3-alpha` instances start with a clean warnings/errors baseline.
+Safety flow
+apply 🟢  ──(sustained regression detected)──▶  shadow 🛡️
+```
 
-### UI/UX Improvements
-- Added `rag_loop_auto_fallback_enabled` and `rag_loop_auto_recover_enabled` controls in Classification settings.
-- Added preset adoption context in policy selection cards (`Used in X policies`).
+### ✨ Highlights
+- Immediate-apply low-confidence enhancement is now on by default.
+- New automatic fallback + optional auto-re-enable controls are available in settings.
+- Policy preset picker now shows usage context (`Used in X policies`) to make selection easier.
 
-### Reliability Fixes Included
-- Invalid JSON payloads now return a clean 400 response without noisy error IDs.
-- OMDb circuit-breaker throttle events are now log-throttled/downgraded to reduce warning spam when HALF_OPEN is saturated.
+### 🔧 Reliability Improvements
+- Invalid JSON requests now return a cleaner, user-friendly 400 response.
+- OMDb HALF_OPEN throttle warnings are reduced to prevent log spam.
+- Added release-scoped log reset for cleaner post-upgrade baseline visibility.
 
-### Testing Coverage Added
-- Integration coverage for apply/shadow parity, automatic fallback, and auto-recover behavior.
-- Unit coverage for RAG loop config normalization, helper gating, metrics collector, resilience manager, and enhanced logging paths.
+### 👥 Who This Helps
+- **General users:** fewer manual interventions on tricky/ambiguous items.
+- **Operators/admins:** safer rollout behavior, clearer fallback diagnostics, and less noisy logs.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full implementation notes, test scope, and migration-level details.
 
 ---
 
 ## [v0.41.2d-alpha] - 2026-02-07
 
-**Title: Fresh Install Snapshot Fix**
+**Title: Fresh Install Recovery Update**
 
 > [!IMPORTANT]
-> If you attempted a fresh install on `v0.41.2c-alpha` and hit database schema errors during setup, wipe your persisted data (e.g. delete your `data/` volume/folder) and start again on `v0.41.2d-alpha`.
+> If `v0.41.2c-alpha` failed during first-time setup, start fresh on `v0.41.2d-alpha` using a clean data folder/volume.
 
-### Fixes
-- Fresh installs: schema snapshot initialization now tolerates UTF-8 BOM and ensures `schema_migrations` exists.
-- Setup: `/login` now redirects to `/setup-account` when no users exist yet (fresh install).
-- RAG Settings: status bar now reflects real-time status (no more Offline/Online mismatch).
+### ✅ What This Solves
+- Fresh installs are now more reliable during database initialization.
+- First-login setup flow is fixed (`/login` now correctly routes new installs).
+- RAG status display is now consistent and readable.
 
-### Improvements
-- RAG Settings: status bar icon labels render correctly.
+### 📈 Quick Snapshot
+```text
+Fresh install reliability   ██████████
+Setup flow clarity          █████████░
+RAG status clarity          █████████░
+```
 
-### Testing
-- Server: all tests passing.
-- Client: all tests passing.
+### 📚 Want Technical Details?
+See `CHANGELOG.md` (`v0.41.2d-alpha`) for exact fixes and implementation notes.
 
 ---
 
@@ -61,122 +69,112 @@
 
 **Title: RAG Settings UX Polish**
 
-### Fixes
-- RAG Settings: preserve the active tab on refresh (uses a `?tab=` query param).
+### 🎨 What Improved
+- RAG Settings now keeps your current tab on refresh.
+- Confidence settings naming is clearer and easier to understand.
+- Project housekeeping improved (`.tmp/` intermediate files ignored).
 
-### Improvements
-- Settings: renamed "Policy Engine - Classification Thresholds" to "Classification Thresholds".
-- Repo hygiene: ignore `.tmp/` intermediate artifacts.
+### 📈 Quick Snapshot
+```text
+Settings usability          ████████░░
+Navigation consistency      █████████░
+Repo cleanliness            ████████░░
+```
 
-### Testing
-- Server: unit + integration tests passing.
-- Client: all tests passing.
+### 📚 Want Technical Details?
+See `CHANGELOG.md` (`v0.41.2c-alpha`) for exact route/UI updates.
 
 ---
 
 ## [v0.41.2b-alpha] - 2026-02-06
 
-**Title: Threshold Alignment and CI Cleanup**
+**Title: Smarter Threshold Alignment**
 
-### Highlights
-- 🎯 Discord prompts now respect your PolicyEngine thresholds (auto vs verify vs policy-builder).
-- 🧭 Auto-routing no longer relies on a hardcoded 90% confidence; it uses your configured policy threshold.
-- 🧹 Docker cleanup keeps `latest` plus the newest 5 tags and supports a cleanup-only workflow run.
+### 🎯 What You’ll Notice
+- Discord verification prompts better match your configured policy thresholds.
+- Auto-routing now respects policy configuration instead of fixed confidence assumptions.
+- CI cleanup behavior is more reliable and easier to run manually when needed.
 
-### Fixes
-- Discord: reduce unnecessary Yes/No verification when confidence meets the policy auto-classify threshold.
-- Routing: align auto-route behavior with policy thresholds and `require_all_confirmations`.
+### 📊 Quick Visual
+```text
+Before: fixed threshold assumptions ⚠️
+After : policy-driven routing rules ✅
+```
 
-### CI/CD
-- Improved Docker Hub cleanup reliability (pagination + fail-fast HTTP handling).
-- Added a manual cleanup mode for running tag cleanup without the full CI pipeline.
+### 📈 Quick Snapshot
+```text
+Routing consistency         █████████░
+Discord prompt quality      ████████░░
+CI cleanup reliability      ████████░░
+```
 
-### Testing
-- Server: unit + integration tests passing.
-- Client: all tests passing.
+### 📚 Want Technical Details?
+See `CHANGELOG.md` (`v0.41.2b-alpha`) for threshold and CI behavior specifics.
 
 ---
 
 ## [v0.41.2a-alpha] - 2026-02-06
 
-**Title: Hotfixes and CI Reliability**
+**Title: Reliability Hotfix Pack**
 
 > [!IMPORTANT]
-> If you rely on remote poster URLs for the image embedder, note that the companion image embedding service now disables remote URLs by default and requires explicit allowlisting. (See its `v0.0.1.1-alpha` notes.)
+> If you depend on remote poster URLs for external image embedding services, review companion service allowlist settings.
 
-### Improvements
-- Improved OMDb resilience for transient network failures.
-- RAG status UI refinements for clearer diagnostics.
-- CI hardening for Dependabot scans and release-tag-only Docker pushes.
+### 🛠️ What Improved
+- Better resilience for temporary OMDb/network instability.
+- Cleaner and clearer RAG status diagnostics.
+- CI workflow hardening for more predictable release behavior.
+- Important schema/logging fixes to reduce hidden operational issues.
 
-### Fixes
-- Learning patterns schema alignment (prevents runtime DB column errors).
-- Preserve circuit breaker stack traces in logs for better debugging.
+### 📈 Quick Snapshot
+```text
+Service resilience          ████████░░
+Diagnostics clarity         ████████░░
+CI stability                ████████░░
+```
 
-### Dependency Updates
-- `dotenv` (root + server)
-- `glob` (dev)
-- `pg-mem` (server dev)
+### 📚 Want Technical Details?
+See `CHANGELOG.md` (`v0.41.2a-alpha`) for dependency and fix details.
 
 ---
 
 ## [v0.41.2-alpha] - 2026-02-06
 
-**Release Date:** February 6, 2026
+**Title: Multimodal RAG Launch (Image + Text)**
 
-This release delivers Issue #289: multimodal RAG with image embeddings, plus cleaner configuration flows and migration governance improvements. (Closes #289)
+This release introduced image-aware retrieval for harder classification cases and made configuration safer by default.
 
----
+### 🖼️ Big Upgrade
+- Classifarr can combine **text + image context** during retrieval.
+- This improves matching quality for ambiguous titles with similar names.
+- Image embedding mode defaults to disabled, so users stay in control of compute/cost.
 
-## 🎯 Highlights
+### 🧭 Platform Improvements
+- Cleaner image embedding settings flow (simpler setup path).
+- Stronger migration governance with timestamp checks and schema snapshot discipline.
+- Better release hygiene and template cleanup.
 
-### 🖼️ Multimodal RAG (Image Embeddings)
+### 📊 Quick Visual
+```text
+Retrieval context
+Before: text only  📄
+After : text + image 📄🖼️
 
-We now support image embeddings for poster similarity and combine them with text embeddings during retrieval.
+Safety defaults
+Image mode default: OFF ✅
+```
 
-- **Image Embedding Provider Layer** with cloud and local support
-- **Per‑image metadata storage** (model, size, hash, source URL)
-- **Weighted text + image similarity** for better ambiguous title retrieval
-- **Safe defaults**: image embeddings disabled by default
+### 📈 Quick Snapshot
+```text
+Retrieval quality potential  █████████░
+Config safety by default     ██████████
+Migration governance         ████████░░
+```
 
-### ⚙️ Simpler Image Embedding Configuration
-
-The settings UI now separates image configuration and defaults to **Disabled**, reducing accidental compute costs. Local hosting is simplified to a **custom host/port** option only.
-
-### 🧭 Migration Governance & Schema Snapshot
-
-We now enforce timestamped migrations and ship a database schema snapshot for fast fresh installs.
-
-- `scripts/check-migrations.js` verifies naming rules
-- `database/schema/current.sql` captures the full schema after migrations
-
----
-
-## ✨ New Features
-
-- Image embedding configuration fields (size, rate limits, cache)
-- Image embeddings stored in `classification_embeddings` with model/size/hash metadata
-- Combined text + image scoring in RAG retrieval
-- New summary/status UI for image embeddings
-- Directives and execution documentation foundations
+### 📚 Want Technical Details?
+See `CHANGELOG.md` (`v0.41.2-alpha`) for full schema, API, and testing detail.
 
 ---
-
-## 🔧 Improvements
-
-- Default image embedding mode is `disabled`
-- Removed the “same host as text embeddings” image mode
-- Simplified Docker Compose by removing image‑embedder stack and docker socket proxy
-- Expanded tests to cover image embedding defaults and status
-- Cleaned Unraid template XML by removing redundant sections per selfhosters guidance
-- Hardened copyright tooling (safe globbing, ignore `node_modules`) and resolved audit findings
-
----
-
-## 🧪 Testing
-
-- Server: All tests passing
-- Client: All tests passing
 
 ## [v0.41.1-alpha] - 2026-02-02
 

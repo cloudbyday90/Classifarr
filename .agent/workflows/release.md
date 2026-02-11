@@ -26,29 +26,59 @@ git tag --sort=-v:refname | head -5
 
 ## 3. Update RELEASE_NOTES.md
 
-Add new section at the TOP of the file with format:
-```markdown
+Add new section at the TOP of the file.
+
+Audience: general public (not engineers).
+Goal: easy-to-read highlights, not a technical dump.
+
+Required style:
+- Write for non-technical readers first.
+- Use emojis in section headers to improve scanability.
+- Include at least one simple visual block (mini graph/progress bar/table).
+- Title should describe user value, not issue number.
+- Keep internals in `CHANGELOG.md` (migrations, schema, test internals, file-level details).
+
+Use this format:
+````markdown
 ## v0.XX.0-alpha
-**Title: Brief Description**
+**Title: User-facing value statement**
 
-> [!IMPORTANT]  (if breaking changes or required actions)
-> Required action message here
+> [!IMPORTANT] (only if there is required action)
+> Short plain-language action message.
 
-### Breaking Changes (if any)
-- Description
+### 🎉 What You’ll Notice
+- Short user-facing outcome
+- Short user-facing outcome
+- Short user-facing outcome
 
-### New Features
-- Feature 1
-- Feature 2
+### 📊 Quick Visual
+```text
+Impact Snapshot
+Reliability  [█████████░] 90%
+Speed        [████████░░] 80%
+Coverage     [███████░░░] 70%
+```
 
-### Improvements
-- Improvement 1
+### ✨ Highlights
+- Major change in plain language
+- Major change in plain language
 
-### Fixes
-- Fix 1
+### 🔧 Reliability Improvements
+- Stability/reliability improvement
+- Stability/reliability improvement
+
+### 👥 Who This Helps
+- End users: ...
+- Operators/admins: ...
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
 
 ---
-```
+````
+
+Do not copy changelog sections verbatim into release notes.
+Keep technical details (migrations, internals, test matrices) in `CHANGELOG.md`.
 
 ## 4. Commit Changes
 
@@ -89,10 +119,10 @@ Create an actual release on GitHub (tags alone don't appear as releases).
 
 // turbo
 ```bash
-gh release create vX.X.X-alpha --title "vX.X.X-alpha: Title" --generate-notes --latest
+gh release create vX.X.X-alpha --title "vX.X.X-alpha: Title" --notes-file RELEASE_NOTES.md --latest
 ```
 
-> **Note:** The `--generate-notes` flag auto-generates notes from commits. For custom notes, use `--notes "Your notes here"` or `--notes-file RELEASE_NOTES.md` instead.
+> **Note:** Prefer curated notes from `RELEASE_NOTES.md`. Do not rely on `--generate-notes` for public releases.
 
 **Or manually via web UI:**
 
@@ -134,3 +164,6 @@ Minimum files to modify for ANY release:
 - **Alpha releases use format**: `v0.XX.0-alpha`
 - **Stable releases use format**: `vX.X.X`
 - **Always check git status before committing** to ensure all intended files are staged
+- **Release notes style**: use emojis, quick visual block(s), and plain-language outcomes
+- **Separation of concerns**: `RELEASE_NOTES.md` = public highlights, `CHANGELOG.md` = technical detail
+- **Title guidance**: release-note titles should be benefit-focused (avoid issue-centric titles like `Issue #275`)
