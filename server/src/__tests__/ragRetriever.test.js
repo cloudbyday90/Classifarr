@@ -45,6 +45,8 @@ describe('RAGRetriever', () => {
         imageEmbeddingProvider.embedImageFromUrl.mockResolvedValue(null);
         imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'disabled' });
         imageEmbeddingProvider.isConfigured.mockReturnValue(false);
+        embeddingService.formatForEmbedding.mockReturnValue('query');
+        embeddingService.resolvePosterUrl.mockReturnValue(null);
     });
 
     describe('semanticSearch', () => {
@@ -101,6 +103,21 @@ describe('RAGRetriever', () => {
             expect(results).toEqual([]);
         });
 
+        it('should rethrow semantic errors when throwOnError is enabled', async () => {
+            embeddingRouter.embed.mockRejectedValue(new Error('embed failed'));
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            await expect(
+                ragRetriever.semanticSearch({ title: 'Query' }, 5, { throwOnError: true })
+            ).rejects.toThrow('embed failed');
+        });
+
         it('should skip image embedding when image mode is disabled', async () => {
             embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
             db.query.mockResolvedValue({ rows: [] });
@@ -153,6 +170,68 @@ describe('RAGRetriever', () => {
             expect(results[0].similarity).toBe(0.9);
             expect(results[0].imageSimilarity).toBeNull();
             expect(imageEmbeddingProvider.embedImageFromUrl).not.toHaveBeenCalled();
+        });
+
+        it('should return unfiltered candidates when threshold filtering is disabled', async () => {
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            db.query.mockResolvedValue({
+                rows: [
+                    {
+                        classification_id: 1,
+                        combined_similarity: 0.42,
+                        text_similarity: 0.42,
+                        image_similarity: null,
+                        title: 'Low Similarity Match',
+                        media_type: 'movie'
+                    }
+                ]
+            });
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            const candidates = await ragRetriever.semanticSearchCandidates({ title: 'Query' }, 25);
+
+            expect(candidates).toHaveLength(1);
+            expect(candidates[0].similarity).toBe(0.42);
+        });
+
+        it('should build expanded pass2 query text deterministically', async () => {
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            db.query.mockResolvedValue({ rows: [] });
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+            embeddingService.formatForEmbedding.mockReturnValue('base text');
+
+            await ragRetriever.semanticSearch({
+                title: 'Original Title',
+                original_title: 'Original Alt',
+                original_language: 'ja',
+                keywords: ['anime']
+            }, 5, {
+                pass: 'pass2',
+                useExpandedQuery: true,
+                applyThreshold: false,
+                expansionOptions: {
+                    aliasEnabled: true,
+                    aliasMaxTerms: 2,
+                    aliasMinTokenLength: 2
+                }
+            });
+
+            expect(embeddingRouter.embed).toHaveBeenCalledTimes(1);
+            const queryText = embeddingRouter.embed.mock.calls[0][0];
+            expect(queryText).toContain('Aliases:');
+            expect(queryText).toContain('Evidence Keywords:');
         });
     });
 
@@ -265,6 +344,16 @@ describe('RAGRetriever', () => {
         it('should return empty for no search terms', async () => {
             const results = await ragRetriever.fullTextSearch({});
             expect(results).toEqual([]);
+        });
+    });
+
+    describe('hybridSearch', () => {
+        it('should rethrow errors when throwOnError is enabled', async () => {
+            embeddingRouter.getConfig.mockRejectedValue(new Error('config failure'));
+
+            await expect(
+                ragRetriever.hybridSearch({ title: 'Query' }, 5, { throwOnError: true })
+            ).rejects.toThrow('config failure');
         });
     });
 

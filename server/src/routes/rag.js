@@ -16,10 +16,12 @@ const imageEmbeddingProvider = require('../services/imageEmbeddingProvider');
 const ragRetriever = require('../services/ragRetriever');
 const embeddingMigrationService = require('../services/embeddingMigrationService');
 const patternMiningService = require('../services/patternMiningService');
+const ragLoopMetricsCollector = require('../services/ragLoopMetricsCollector');
 const ragLogger = require('../utils/ragLogger');
 const { createLogger } = require('../utils/logger');
 const ollamaService = require('../services/ollama');
 const { isMaskedToken } = require('../utils/tokenMasking');
+const { getRagLoopDefaultConfig, validateAndNormalizeRagLoopConfig } = require('../utils/ragLoopConfig');
 
 const logger = createLogger('RAG API');
 
@@ -669,6 +671,139 @@ router.get('/metrics', async (req, res) => {
         res.json(metrics);
     } catch (error) {
         logger.error('Failed to get RAG metrics', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/loop/latest-fallback-incident
+ * Returns the latest sanitized automatic fallback incident payload for operator reporting.
+ */
+router.get('/loop/latest-fallback-incident', async (req, res) => {
+    try {
+        const defaults = getRagLoopDefaultConfig();
+        let configRow = {};
+
+        try {
+            const result = await db.query(`
+                SELECT
+                    rag_loop_rollout_mode,
+                    rag_loop_auto_fallback_enabled,
+                    rag_loop_auto_fallback_min_apply_samples,
+                    rag_loop_auto_fallback_consecutive_breaches,
+                    rag_loop_auto_fallback_cooldown_ms,
+                    rag_loop_auto_recover_enabled,
+                    rag_loop_auto_fallback_breach_count,
+                    rag_loop_auto_fallback_last_breach_at,
+                    rag_loop_auto_fallback_last_triggered_at,
+                    rag_loop_auto_fallback_cooldown_until,
+                    rag_loop_auto_fallback_last_incident_id,
+                    rag_loop_auto_fallback_last_incident_payload,
+                    rag_loop_auto_fallback_last_version,
+                    rag_loop_auto_recover_last_attempt_version,
+                    rag_loop_auto_recover_last_attempt_at
+                FROM ai_provider_config
+                WHERE id = 1
+            `);
+            configRow = result.rows[0] || {};
+        } catch (configError) {
+            if (!['42P01', '42703'].includes(configError.code)) {
+                throw configError;
+            }
+            configRow = {};
+        }
+
+        const { normalizedConfig } = validateAndNormalizeRagLoopConfig(
+            { ...defaults, ...configRow },
+            { ...defaults, ...configRow }
+        );
+
+        let incident = null;
+        if (
+            configRow.rag_loop_auto_fallback_last_incident_payload &&
+            typeof configRow.rag_loop_auto_fallback_last_incident_payload === 'object' &&
+            !Array.isArray(configRow.rag_loop_auto_fallback_last_incident_payload)
+        ) {
+            incident = {
+                ...configRow.rag_loop_auto_fallback_last_incident_payload
+            };
+        }
+
+        if (incident) {
+            if (!incident.incident_id && configRow.rag_loop_auto_fallback_last_incident_id) {
+                incident.incident_id = configRow.rag_loop_auto_fallback_last_incident_id;
+            }
+            if (!incident.triggered_at && configRow.rag_loop_auto_fallback_last_triggered_at) {
+                incident.triggered_at = configRow.rag_loop_auto_fallback_last_triggered_at;
+            }
+        }
+
+        res.json({
+            incident,
+            rollout_mode: normalizedConfig.rag_loop_rollout_mode,
+            fallback_state: {
+                auto_fallback_enabled: normalizedConfig.rag_loop_auto_fallback_enabled,
+                auto_recover_enabled: normalizedConfig.rag_loop_auto_recover_enabled,
+                breach_count: Math.max(0, Number(configRow.rag_loop_auto_fallback_breach_count || 0)),
+                cooldown_until: configRow.rag_loop_auto_fallback_cooldown_until || null,
+                last_triggered_at: configRow.rag_loop_auto_fallback_last_triggered_at || null,
+                last_fallback_version: configRow.rag_loop_auto_fallback_last_version || null,
+                last_recover_attempt_version: configRow.rag_loop_auto_recover_last_attempt_version || null,
+                last_recover_attempt_at: configRow.rag_loop_auto_recover_last_attempt_at || null
+            },
+            checked_at: new Date().toISOString()
+        });
+    } catch (error) {
+        logger.error('Failed to get rag loop latest fallback incident', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /api/rag/loop/promotion-readiness
+ * Read-only shadow promotion metrics and gate thresholds for Issue 275 rollout.
+ */
+router.get('/loop/promotion-readiness', async (req, res) => {
+    try {
+        const defaults = getRagLoopDefaultConfig();
+        let configRow = {};
+
+        try {
+            const result = await db.query(`
+                SELECT
+                    rag_loop_shadow_min_samples,
+                    rag_loop_shadow_max_error_rate_delta,
+                    rag_loop_shadow_max_p95_latency_delta_ms
+                FROM ai_provider_config
+                WHERE id = 1
+            `);
+            configRow = result.rows[0] || {};
+        } catch (configError) {
+            // Compatibility fallback for environments that have not applied Issue 275 schema.
+            if (!['42P01', '42703'].includes(configError.code)) {
+                throw configError;
+            }
+            configRow = {};
+        }
+
+        const { normalizedConfig } = validateAndNormalizeRagLoopConfig(
+            { ...defaults, ...configRow },
+            { ...defaults, ...configRow }
+        );
+        const readiness = ragLoopMetricsCollector.canPromote(normalizedConfig);
+
+        res.json({
+            ready: readiness.ready,
+            metrics: readiness.metrics,
+            gates: {
+                min_samples: normalizedConfig.rag_loop_shadow_min_samples,
+                max_error_rate_delta: normalizedConfig.rag_loop_shadow_max_error_rate_delta,
+                max_p95_latency_delta_ms: normalizedConfig.rag_loop_shadow_max_p95_latency_delta_ms
+            },
+            checked_at: new Date().toISOString()
+        });
+    } catch (error) {
+        logger.error('Failed to get rag loop promotion readiness', { error: error.message });
         res.status(500).json({ error: error.message });
     }
 });

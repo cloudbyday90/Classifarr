@@ -245,11 +245,11 @@ class OMDbService {
 
                 // Don't retry if circuit breaker is blocking - throw immediately to trigger fallback
                 if (isCircuitBlocked) {
-                    logger.warn('OMDb circuit breaker blocked request', {
+                    logger.debug('OMDb circuit breaker blocked request', {
                         title,
                         code: error.code,
                         nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'N/A'
-                    }, { error });
+                    });
                     throw error;
                 }
 
@@ -360,11 +360,11 @@ class OMDbService {
 
                 // Don't retry if circuit breaker is blocking - throw immediately to trigger fallback
                 if (isCircuitBlocked) {
-                    logger.warn('OMDb circuit breaker blocked request (IMDB ID)', {
+                    logger.debug('OMDb circuit breaker blocked request (IMDB ID)', {
                         imdbId,
                         code: error.code,
                         nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'N/A'
-                    }, { error });
+                    });
                     throw error;
                 }
 

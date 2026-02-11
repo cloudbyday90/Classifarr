@@ -53,6 +53,9 @@
               <div class="text-xs text-gray-400">
                 {{ preset.match_score }}% match
               </div>
+              <div class="text-[11px] text-gray-500 truncate">
+                {{ formatUsageLabel(getPresetUsageCount(preset)) }}
+              </div>
             </div>
           </div>
         </div>
@@ -105,6 +108,12 @@
           <div class="flex-1 min-w-0">
             <div class="font-medium truncate">{{ preset.name }}</div>
             <div class="text-xs text-gray-400 truncate">{{ preset.description || preset.category }}</div>
+            <div
+              v-if="preset.source !== 'custom'"
+              class="text-[11px] text-gray-500 truncate"
+            >
+              {{ formatUsageLabel(getPresetUsageCount(preset)) }}
+            </div>
           </div>
           <span 
             v-if="preset.source === 'custom'" 
@@ -789,6 +798,38 @@ const categoryTabs = computed(() => {
   
   return categories;
 });
+
+const presetUsageMap = computed(() => {
+  const usageByPresetId = new Map();
+  allPresets.value.forEach((preset) => {
+    const parsedId = Number.parseInt(preset.id, 10);
+    const parsedUsageCount = Number.parseInt(preset.usage_count, 10);
+    if (Number.isFinite(parsedId) && parsedId > 0) {
+      usageByPresetId.set(parsedId, Number.isFinite(parsedUsageCount) && parsedUsageCount > 0 ? parsedUsageCount : 0);
+    }
+  });
+  return usageByPresetId;
+});
+
+const getPresetUsageCount = (preset) => {
+  const directUsageCount = Number.parseInt(preset?.usage_count, 10);
+  if (Number.isFinite(directUsageCount) && directUsageCount >= 0) {
+    return directUsageCount;
+  }
+
+  const presetId = Number.parseInt(preset?.id ?? preset?.preset_id, 10);
+  if (!Number.isFinite(presetId) || presetId < 1) {
+    return 0;
+  }
+
+  return presetUsageMap.value.get(presetId) ?? 0;
+};
+
+const formatUsageLabel = (usageCount) => {
+  const parsedCount = Number.parseInt(usageCount, 10);
+  const count = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 0;
+  return `Used in ${count} ${count === 1 ? 'policy' : 'policies'}`;
+};
 
 // Filtered available presets (not yet selected)
 const filteredAvailablePresets = computed(() => {

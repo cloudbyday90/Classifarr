@@ -171,7 +171,7 @@ beforeAll(async () => {
             fs.unlinkSync(tempSqlFile);
         }
     }
-}, 120000); // 120 second timeout for container startup
+}, 300000); // 5 minute timeout for container startup in CI/slow environments
 
 // Global teardown - stop container
 afterAll(async () => {

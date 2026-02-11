@@ -36,6 +36,11 @@ const startupService = require('../services/startupService');
 const pathTestService = require('../services/pathTestService');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { createLogger } = require('../utils/logger');
+const {
+  getRagLoopDefaultConfig,
+  validateAndNormalizeRagLoopConfig,
+  validateIssue275PayloadKeys
+} = require('../utils/ragLoopConfig');
 
 const router = express.Router();
 const logger = createLogger('SettingsRoutes');
@@ -2281,11 +2286,14 @@ router.get('/ai', async (req, res) => {
         image_embedding_cache_ttl_hours: 24,
         image_embedding_cache_max_mb: 1024,
         image_embedding_models_cache: null,
-        image_embedding_models_cache_updated_at: null
+        image_embedding_models_cache_updated_at: null,
+        ...getRagLoopDefaultConfig()
       });
     }
 
     const config = result.rows[0];
+    const { normalizedConfig } = validateAndNormalizeRagLoopConfig(config, config);
+    Object.assign(config, normalizedConfig);
     // Mask API key
     if (config.api_key) {
       config.api_key = maskToken(config.api_key);
@@ -2303,7 +2311,11 @@ router.get('/ai', async (req, res) => {
   } catch (error) {
     // Table might not exist
     if (error.code === '42P01') {
-      return res.json({ primary_provider: 'none', table_not_ready: true });
+      return res.json({
+        primary_provider: 'none',
+        table_not_ready: true,
+        ...getRagLoopDefaultConfig()
+      });
     }
     res.status(500).json({ error: error.message });
   }
@@ -2313,7 +2325,20 @@ router.get('/ai', async (req, res) => {
  * Update AI provider configuration
  */
 router.put('/ai', async (req, res) => {
+  const issue275KeyValidation = validateIssue275PayloadKeys(req.body || {});
+  if (!issue275KeyValidation.valid) {
+    return res.status(400).json({
+      error: 'Invalid Issue 275 configuration keys in payload',
+      unknown_issue275_keys: issue275KeyValidation.unknownKeys,
+      disallowed_v11_keys: issue275KeyValidation.disallowedKeys
+    });
+  }
+
+  const client = await db.pool.connect();
+
   try {
+    await client.query('BEGIN');
+
     const {
       primary_provider,
       api_endpoint,
@@ -2371,8 +2396,17 @@ router.put('/ai', async (req, res) => {
     } = req.body;
 
     // Fetch existing config to use as fallback for undefined values (partial updates)
-    const existingResult = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
+    const existingResult = await client.query('SELECT * FROM ai_provider_config WHERE id = 1');
     const existing = existingResult.rows[0] || {};
+
+    const { normalizedConfig: normalizedRagLoopConfig, warnings: ragLoopWarnings } =
+      validateAndNormalizeRagLoopConfig(req.body, existing);
+
+    if (ragLoopWarnings.length > 0) {
+      logger.warn('Issue 275 config values normalized to safe bounds/defaults', {
+        warnings: ragLoopWarnings
+      });
+    }
 
     // Handle API key - don't update if masked
     let finalApiKey = api_key;
@@ -2418,11 +2452,8 @@ router.put('/ai', async (req, res) => {
 
     if (modelChanged && existing.embedding_model) {
       // Clear embeddings - dimensions will be incompatible
-      const { createLogger } = require('../utils/logger');
-      const logger = createLogger('SettingsAPI');
-      
       try {
-        await db.query('DELETE FROM classification_embeddings');
+        await client.query('DELETE FROM classification_embeddings');
         logger.warn('Embedding model changed - cleared existing embeddings', {
           oldMode: existing.embedding_provider_mode,
           newMode: embedding_provider_mode || existing.embedding_provider_mode,
@@ -2440,9 +2471,8 @@ router.put('/ai', async (req, res) => {
     const hasWeights = providedWeights.some(w => w !== undefined);
 
     if (hasWeights) {
-      // Get current weights from database for any not provided
-      const current = await db.query('SELECT formula_pattern_weight, formula_rule_weight, formula_rag_weight, formula_history_weight FROM ai_provider_config WHERE id = 1');
-      const currentWeights = current.rows[0] || {};
+      // Use existing weights from the currently loaded row for partial updates
+      const currentWeights = existing || {};
 
       const finalPatternWeight = formula_pattern_weight ?? currentWeights.formula_pattern_weight ?? 0.40;
       const finalRuleWeight = formula_rule_weight ?? currentWeights.formula_rule_weight ?? 0.30;
@@ -2452,6 +2482,7 @@ router.put('/ai', async (req, res) => {
       const sum = finalPatternWeight + finalRuleWeight + finalRagWeight + finalHistoryWeight;
 
       if (sum < 0.99 || sum > 1.01) {
+        await client.query('ROLLBACK');
         return res.status(400).json({
           error: `Formula weights must sum to 1.0 (currently ${sum.toFixed(2)}). Adjust the weights so they total 100%.`,
           currentSum: sum
@@ -2459,7 +2490,7 @@ router.put('/ai', async (req, res) => {
       }
     }
 
-    const result = await db.query(`
+    await client.query(`
             INSERT INTO ai_provider_config (
                 id, primary_provider, api_endpoint, api_key, model, temperature, max_tokens,
                 monthly_budget_usd, budget_alert_threshold, pause_on_budget_exhausted,
@@ -2533,7 +2564,6 @@ router.put('/ai', async (req, res) => {
                 image_embedding_cache_ttl_hours = EXCLUDED.image_embedding_cache_ttl_hours,
                 image_embedding_cache_max_mb = EXCLUDED.image_embedding_cache_max_mb,
                 updated_at = NOW()
-            RETURNING *
         `, [
       primary_provider ?? existing.primary_provider ?? 'none',
       api_endpoint ?? existing.api_endpoint ?? '',
@@ -2586,51 +2616,69 @@ router.put('/ai', async (req, res) => {
       image_embedding_cache_max_mb ?? existing.image_embedding_cache_max_mb ?? 1024
     ]);
 
-      // Clear config cache
-      aiRouterService.clearCache();
-      ollamaService.resetConfig(); // Clear Ollama config cache to pick up ollama_host/ollama_port changes
+    const ragLoopKeys = Object.keys(normalizedRagLoopConfig);
+    if (ragLoopKeys.length > 0) {
+      const ragAssignments = ragLoopKeys
+        .map((key, index) => `${key} = $${index + 1}`)
+        .join(', ');
+      const ragValues = ragLoopKeys.map(key => normalizedRagLoopConfig[key]);
 
-      // Invalidate embedding caches
-      embeddingProvider.resetConfig();
-      embeddingRouter.resetConfig();
+      await client.query(`
+        UPDATE ai_provider_config
+        SET ${ragAssignments},
+            updated_at = NOW()
+        WHERE id = 1
+      `, ragValues);
+    }
 
-      const config = result.rows[0];
-      const localConfigChanged = (
-        (existing.image_embedding_local_host || '') !== (config.image_embedding_local_host || '') ||
-        Number(existing.image_embedding_local_port || 8000) !== Number(config.image_embedding_local_port || 8000)
-      );
-      const cloudConfigChanged = (
-        (existing.image_embedding_cloud_provider || '') !== (config.image_embedding_cloud_provider || '') ||
-        (existing.image_embedding_cloud_api_endpoint || '') !== (config.image_embedding_cloud_api_endpoint || '')
-      );
+    const latestResult = await client.query('SELECT * FROM ai_provider_config WHERE id = 1');
+    const config = latestResult.rows[0];
+    const localConfigChanged = (
+      (existing.image_embedding_local_host || '') !== (config.image_embedding_local_host || '') ||
+      Number(existing.image_embedding_local_port || 8000) !== Number(config.image_embedding_local_port || 8000)
+    );
+    const cloudConfigChanged = (
+      (existing.image_embedding_cloud_provider || '') !== (config.image_embedding_cloud_provider || '') ||
+      (existing.image_embedding_cloud_api_endpoint || '') !== (config.image_embedding_cloud_api_endpoint || '')
+    );
 
-      if (localConfigChanged || cloudConfigChanged) {
-        try {
-          const currentCache = existing.image_embedding_models_cache || {};
-          const nextCache = { ...currentCache };
-          if (localConfigChanged) {
-            delete nextCache.local;
-          }
-          if (cloudConfigChanged) {
-            delete nextCache.cloud;
-          }
+    if (localConfigChanged || cloudConfigChanged) {
+      try {
+        const currentCache = existing.image_embedding_models_cache || {};
+        const nextCache = { ...currentCache };
+        if (localConfigChanged) {
+          delete nextCache.local;
+        }
+        if (cloudConfigChanged) {
+          delete nextCache.cloud;
+        }
 
-          await db.query(`
+        await client.query(`
             UPDATE ai_provider_config
             SET image_embedding_models_cache = $1,
                 image_embedding_models_cache_updated_at = NOW()
             WHERE id = 1
           `, [nextCache]);
-          config.image_embedding_models_cache = nextCache;
-          config.image_embedding_models_cache_updated_at = new Date().toISOString();
-        } catch (cacheError) {
-          // Best-effort cache reset; do not fail request
-        }
+        config.image_embedding_models_cache = nextCache;
+        config.image_embedding_models_cache_updated_at = new Date().toISOString();
+      } catch (cacheError) {
+        // Best-effort cache reset; do not fail request
       }
+    }
 
-      if (config.api_key) {
-        config.api_key = maskToken(config.api_key);
-      }
+    await client.query('COMMIT');
+
+    // Clear config cache after successful commit
+    aiRouterService.clearCache();
+    ollamaService.resetConfig(); // Clear Ollama config cache to pick up ollama_host/ollama_port changes
+
+    // Invalidate embedding caches
+    embeddingProvider.resetConfig();
+    embeddingRouter.resetConfig();
+
+    if (config.api_key) {
+      config.api_key = maskToken(config.api_key);
+    }
     // Mask embedding cloud API key
     if (config.embedding_cloud_api_key) {
       config.embedding_cloud_api_key = maskToken(config.embedding_cloud_api_key);
@@ -2642,7 +2690,16 @@ router.put('/ai', async (req, res) => {
 
     res.json(config);
   } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      logger.error('Failed to rollback AI settings update transaction', {
+        error: rollbackError.message
+      });
+    }
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 

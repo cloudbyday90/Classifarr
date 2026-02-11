@@ -217,6 +217,11 @@ describe('Policies API Integration Tests', () => {
 
             expect(Array.isArray(response.body)).toBe(true);
             expect(response.body.length).toBeGreaterThan(0);
+            response.body.forEach(preset => {
+                expect(preset).toHaveProperty('usage_count');
+                expect(Number.isInteger(preset.usage_count)).toBe(true);
+                expect(preset.usage_count).toBeGreaterThanOrEqual(0);
+            });
         });
 
         test('should filter by category', async () => {

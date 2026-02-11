@@ -275,17 +275,23 @@ router.get('/all', async (req, res) => {
 
         let query = `
             SELECT 
-                id, 
-                key, 
-                name, 
-                description, 
-                icon, 
-                category, 
-                signals,
-                is_system,
-                display_order,
+                cp.id, 
+                cp.key, 
+                cp.name, 
+                cp.description, 
+                cp.icon, 
+                cp.category, 
+                cp.signals,
+                cp.is_system,
+                cp.display_order,
+                COALESCE(ppu.usage_count, 0)::int AS usage_count,
                 'builtin' as source
-            FROM content_presets
+            FROM content_presets cp
+            LEFT JOIN (
+                SELECT preset_id, COUNT(*)::int AS usage_count
+                FROM policy_presets
+                GROUP BY preset_id
+            ) ppu ON ppu.preset_id = cp.id
             WHERE 1=1
         `;
         let params = [];
@@ -314,6 +320,7 @@ router.get('/all', async (req, res) => {
                     signals,
                     false as is_system,
                     0 as display_order,
+                    0 as usage_count,
                     'custom' as source
                 FROM custom_presets
                 WHERE 1=1

@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+const path = require('path');
+const { randomUUID } = require('crypto');
 const db = require('../config/database');
 const tmdbService = require('./tmdb');
 const ollamaService = require('./ollama');
@@ -41,8 +43,43 @@ const libraryProfileService = require('./libraryProfileService');
 const aiPromptBuilder = require('./aiPromptBuilder');
 const aiResponseParser = require('./aiResponseParser');
 const { createLogger } = require('../utils/logger');
+const ragLogger = require('../utils/ragLogger');
+const { mapSecondPassError } = require('../utils/ragErrorHandler');
+const ragLoopMetricsCollector = require('./ragLoopMetricsCollector');
+const ragLoopResilienceManager = require('./ragLoopResilienceManager');
+const { validateAndNormalizeRagLoopConfig } = require('../utils/ragLoopConfig');
+const {
+  RAG_LOOP_FALLBACK_ACTIONS,
+  RAG_LOOP_REASON_CODES,
+  applyOrShadowDecision,
+  buildRagLoopTrace,
+  classifyDbSqlState,
+  comparePassResults,
+  detectRagConflict,
+  evaluatePolicyRecheckGate,
+  expandRetrievalMetadata,
+  extractVerifiableEvidence,
+  getRecheckEligibility,
+  getMetadataCompleteness,
+  isRetryableDbConflictError,
+  isAiRerunEligible,
+  isLearningEligible,
+  isMetadataEnrichmentEligible,
+  resolvePolicyContextOrFallback,
+  resolveConflictDecision,
+  selectRetryStrategy,
+  shouldTriggerSecondPass,
+  summarizePassDiagnostics
+} = require('../utils/ragLoopHelpers');
 
 const logger = createLogger('classification');
+const ROOT_PACKAGE_PATH = path.resolve(__dirname, '../../../package.json');
+let APP_VERSION = 'unknown';
+try {
+  APP_VERSION = require(ROOT_PACKAGE_PATH).version || 'unknown';
+} catch {
+  APP_VERSION = 'unknown';
+}
 
 // Constants
 // Retry delay between failed classification attempts when AI is unavailable.
@@ -50,6 +87,8 @@ const logger = createLogger('classification');
 // (TMDB, LLMs, etc.) while still allowing eventual progress without manual intervention.
 // Configurable via this constant - adjust based on your provider rate limits and needs.
 const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+const RAG_LOOP_MIN_TIMEOUT_MS = 1000;
+const RAG_LOOP_MAX_TIMEOUT_MS = 10000;
 
 class ClassificationService {
   async classify(overseerrPayload) {
@@ -152,6 +191,7 @@ class ClassificationService {
 
       // Log to database
       const classificationId = await this.logClassification(metadata, result, startTime);
+      await this.persistRagLoopStageEvents({ classificationId, metadata, result });
 
       // Reinforce patterns (if any were used in classification)
       if (result.signalContext && result.signalContext.patternSignals) {
@@ -349,6 +389,9 @@ class ClassificationService {
         original_language: details.original_language,
         poster_path: details.poster_path,
         backdrop_path: details.backdrop_path,
+        belongs_to_collection: details.belongs_to_collection || null,
+        production_companies: Array.isArray(details.production_companies) ? details.production_companies : [],
+        cast: Array.isArray(details.credits?.cast) ? details.credits.cast.slice(0, 10) : [],
       };
     } catch (error) {
       throw new Error(`Failed to enrich metadata: ${error.message}`);
@@ -370,6 +413,1142 @@ class ClassificationService {
       // Default to true if column doesn't exist yet (migration not run)
       return true;
     }
+  }
+
+  async getRagLoopConfig() {
+    try {
+      const result = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
+      const row = result.rows[0] || {};
+      const normalized = validateAndNormalizeRagLoopConfig(row).normalizedConfig;
+      return {
+        ...normalized,
+        rag_loop_auto_fallback_breach_count: Math.max(0, Number(row.rag_loop_auto_fallback_breach_count || 0)),
+        rag_loop_auto_fallback_last_breach_at: row.rag_loop_auto_fallback_last_breach_at || null,
+        rag_loop_auto_fallback_last_triggered_at: row.rag_loop_auto_fallback_last_triggered_at || null,
+        rag_loop_auto_fallback_cooldown_until: row.rag_loop_auto_fallback_cooldown_until || null,
+        rag_loop_auto_fallback_last_incident_id: row.rag_loop_auto_fallback_last_incident_id || null,
+        rag_loop_auto_fallback_last_incident_payload: row.rag_loop_auto_fallback_last_incident_payload || null,
+        rag_loop_auto_fallback_last_version: row.rag_loop_auto_fallback_last_version || null,
+        rag_loop_auto_recover_last_attempt_version: row.rag_loop_auto_recover_last_attempt_version || null,
+        rag_loop_auto_recover_last_attempt_at: row.rag_loop_auto_recover_last_attempt_at || null
+      };
+    } catch (error) {
+      logger.warn('Failed to load rag loop config, using defaults', { error: error.message });
+      return {
+        ...validateAndNormalizeRagLoopConfig({}).normalizedConfig,
+        rag_loop_auto_fallback_breach_count: 0,
+        rag_loop_auto_fallback_last_breach_at: null,
+        rag_loop_auto_fallback_last_triggered_at: null,
+        rag_loop_auto_fallback_cooldown_until: null,
+        rag_loop_auto_fallback_last_incident_id: null,
+        rag_loop_auto_fallback_last_incident_payload: null,
+        rag_loop_auto_fallback_last_version: null,
+        rag_loop_auto_recover_last_attempt_version: null,
+        rag_loop_auto_recover_last_attempt_at: null
+      };
+    }
+  }
+
+  getCurrentAppVersion() {
+    return process.env.APP_VERSION || APP_VERSION || 'unknown';
+  }
+
+  getCurrentImageTag() {
+    return process.env.IMAGE_TAG || process.env.DOCKER_IMAGE_TAG || null;
+  }
+
+  async getRecentFallbackDiagnostics(limit = 20) {
+    try {
+      const boundedLimit = Math.max(1, Math.min(200, Number(limit) || 20));
+      const result = await db.query(`
+        SELECT reason_code, correlation_id
+        FROM error_log
+        WHERE module = 'RAG'
+        ORDER BY created_at DESC
+        LIMIT $1
+      `, [boundedLimit]);
+
+      const reasonCounts = {};
+      const correlationIds = [];
+      for (const row of result.rows || []) {
+        if (row.reason_code) {
+          reasonCounts[row.reason_code] = (reasonCounts[row.reason_code] || 0) + 1;
+        }
+        if (row.correlation_id && !correlationIds.includes(row.correlation_id)) {
+          correlationIds.push(row.correlation_id);
+        }
+      }
+
+      const topReasonCodes = Object.entries(reasonCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([reason_code, count]) => ({ reason_code, count }));
+
+      return {
+        topReasonCodes,
+        recentCorrelationIds: correlationIds.slice(0, 10)
+      };
+    } catch (error) {
+      return {
+        topReasonCodes: [],
+        recentCorrelationIds: []
+      };
+    }
+  }
+
+  buildAutoFallbackIncidentPayload({
+    incidentId,
+    triggeredAt,
+    evaluation,
+    previousMode,
+    nextMode,
+    currentVersion,
+    imageTag,
+    diagnostics,
+    stateSnapshot
+  }) {
+    return {
+      incident_id: incidentId,
+      triggered_at: triggeredAt,
+      from_mode: previousMode,
+      to_mode: nextMode,
+      app_version: currentVersion,
+      image_tag: imageTag || null,
+      node_version: process.version,
+      thresholds: evaluation.thresholds,
+      observed_metrics: {
+        ...evaluation.observedMetrics,
+        consecutive_breach_reason_codes: evaluation.breachReasonCodes
+      },
+      top_reason_codes: diagnostics.topReasonCodes,
+      recent_correlation_ids: diagnostics.recentCorrelationIds,
+      fallback_state: {
+        auto_fallback_enabled: stateSnapshot.autoFallbackEnabled,
+        auto_recover_enabled: stateSnapshot.autoRecoverEnabled,
+        cooldown_until: stateSnapshot.cooldownUntil || null
+      },
+      redaction_version: 1
+    };
+  }
+
+  async persistAutoFallbackBreachCount({
+    nextBreachCount,
+    breachDetected
+  }) {
+    try {
+      await db.query(`
+        UPDATE ai_provider_config
+        SET rag_loop_auto_fallback_breach_count = $1,
+            rag_loop_auto_fallback_last_breach_at = CASE WHEN $2::boolean THEN NOW() ELSE rag_loop_auto_fallback_last_breach_at END,
+            updated_at = NOW()
+        WHERE id = 1
+      `, [nextBreachCount, breachDetected === true]);
+    } catch (error) {
+      logger.warn('Failed to persist rag loop auto fallback breach count', { error: error.message });
+    }
+  }
+
+  async maybeApplyRolloutAutomation({
+    config,
+    decision,
+    correlationId,
+    sampleRecorded = false
+  }) {
+    const state = {
+      breachCount: Number(config.rag_loop_auto_fallback_breach_count || 0),
+      cooldownUntil: config.rag_loop_auto_fallback_cooldown_until,
+      lastFallbackVersion: config.rag_loop_auto_fallback_last_version,
+      lastRecoverAttemptVersion: config.rag_loop_auto_recover_last_attempt_version
+    };
+
+    const currentVersion = this.getCurrentAppVersion();
+    const autoRecoverEvaluation = ragLoopMetricsCollector.shouldAttemptAutoRecover({
+      config,
+      state,
+      currentVersion,
+      rolloutMode: decision.mode
+    });
+
+    if (autoRecoverEvaluation.shouldRecover) {
+      try {
+        await db.query(`
+          UPDATE ai_provider_config
+          SET rag_loop_rollout_mode = 'apply',
+              rag_loop_auto_fallback_breach_count = 0,
+              rag_loop_auto_fallback_cooldown_until = NULL,
+              rag_loop_auto_recover_last_attempt_version = $1,
+              rag_loop_auto_recover_last_attempt_at = NOW(),
+              updated_at = NOW()
+          WHERE id = 1
+        `, [currentVersion]);
+
+        await ragLogger.logStageEvent({
+          stage: 'gate',
+          outcome: 'applied',
+          reason_code: 'rollout_auto_recover_applied',
+          recoverable: true,
+          rollout_mode: 'shadow',
+          metadata: {
+            current_version: currentVersion,
+            previous_fallback_version: state.lastFallbackVersion || null
+          },
+          correlation_id: correlationId || null
+        });
+      } catch (error) {
+        logger.warn('Failed to auto-recover rag loop rollout mode', { error: error.message });
+      }
+      return;
+    }
+
+    if (decision.mode !== 'apply') {
+      return;
+    }
+    if (!sampleRecorded) {
+      return;
+    }
+
+    const evaluation = ragLoopMetricsCollector.evaluateAutoFallback({
+      config,
+      state
+    });
+
+    if (evaluation.shouldPersistBreachCount && !evaluation.shouldFallback) {
+      await this.persistAutoFallbackBreachCount({
+        nextBreachCount: evaluation.nextBreachCount,
+        breachDetected: evaluation.breachDetected
+      });
+    }
+
+    if (!evaluation.shouldFallback) {
+      return;
+    }
+
+    const incidentId = randomUUID();
+    const triggeredAt = new Date().toISOString();
+    const imageTag = this.getCurrentImageTag();
+    const diagnostics = await this.getRecentFallbackDiagnostics(50);
+    const incidentPayload = this.buildAutoFallbackIncidentPayload({
+      incidentId,
+      triggeredAt,
+      evaluation,
+      previousMode: 'apply',
+      nextMode: 'shadow',
+      currentVersion,
+      imageTag,
+      diagnostics,
+      stateSnapshot: {
+        autoFallbackEnabled: config.rag_loop_auto_fallback_enabled !== false,
+        autoRecoverEnabled: config.rag_loop_auto_recover_enabled === true,
+        cooldownUntil: config.rag_loop_auto_fallback_cooldown_until
+      }
+    });
+
+    try {
+      await db.query(`
+        UPDATE ai_provider_config
+        SET rag_loop_rollout_mode = 'shadow',
+            rag_loop_auto_fallback_breach_count = 0,
+            rag_loop_auto_fallback_last_breach_at = NOW(),
+            rag_loop_auto_fallback_last_triggered_at = NOW(),
+            rag_loop_auto_fallback_cooldown_until = NOW() + make_interval(secs => ($1::numeric / 1000.0)),
+            rag_loop_auto_fallback_last_incident_id = $2,
+            rag_loop_auto_fallback_last_incident_payload = $3::jsonb,
+            rag_loop_auto_fallback_last_version = $4,
+            updated_at = NOW()
+        WHERE id = 1
+      `, [
+        evaluation.thresholds.cooldown_ms,
+        incidentId,
+        JSON.stringify(incidentPayload),
+        currentVersion
+      ]);
+
+      await ragLogger.logStageEvent({
+        stage: 'gate',
+        outcome: 'error',
+        reason_code: 'rollout_auto_fallback_triggered',
+        fallback_action: 'mode_switched_shadow',
+        recoverable: false,
+        rollout_mode: 'apply',
+        correlation_id: correlationId || null,
+        metadata: {
+          incident_id: incidentId,
+          thresholds: evaluation.thresholds,
+          observed_metrics: evaluation.observedMetrics,
+          breach_reason_codes: evaluation.breachReasonCodes,
+          app_version: currentVersion,
+          image_tag: imageTag || null
+        }
+      });
+    } catch (error) {
+      logger.warn('Failed to apply rag loop auto fallback transition', { error: error.message });
+    }
+  }
+
+  resolveRagLoopTimeout(config = {}) {
+    const metadataTimeout = Number(config.policy_recheck_metadata_timeout_ms);
+    const computed = Number.isFinite(metadataTimeout) ? metadataTimeout + 3000 : 5000;
+    return Math.max(RAG_LOOP_MIN_TIMEOUT_MS, Math.min(RAG_LOOP_MAX_TIMEOUT_MS, computed));
+  }
+
+  async withTimeout(promise, timeoutMs, timeoutMessage = 'operation_timeout') {
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      return promise;
+    }
+
+    let timeoutHandle = null;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutHandle = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+    }
+  }
+
+  async sleep(ms) {
+    const delayMs = Number(ms);
+    if (!Number.isFinite(delayMs) || delayMs <= 0) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  async withRetryableDbConflict(operation, options = {}) {
+    const maxAttempts = Math.max(1, Number(options.maxAttempts || 1));
+    const baseDelayMs = Math.max(1, Number(options.baseDelayMs || 100));
+    let attempt = 0;
+    let lastError = null;
+
+    while (attempt < maxAttempts) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        const dbError = classifyDbSqlState(error);
+        const canRetry = isRetryableDbConflictError(error) && attempt < (maxAttempts - 1);
+
+        if (!canRetry) {
+          throw error;
+        }
+
+        const delayMs = Math.min(1000, baseDelayMs * Math.pow(2, attempt));
+        if (typeof options.onRetry === 'function') {
+          options.onRetry({
+            attempt: attempt + 1,
+            maxAttempts,
+            delayMs,
+            sqlState: dbError.sqlState,
+            reasonCode: dbError.reasonCode
+          });
+        }
+        await this.sleep(delayMs);
+      }
+
+      attempt += 1;
+    }
+
+    throw lastError || new Error('db_retry_attempts_exhausted');
+  }
+
+  isAiTransientAvailabilityError(error) {
+    const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+    const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
+
+    if (['ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EHOSTUNREACH', 'ENOTFOUND'].includes(code)) {
+      return true;
+    }
+
+    const patterns = [
+      'timeout waiting for lock',
+      'providerlock',
+      'ai is not available',
+      'budget exhausted',
+      'connection refused',
+      'connect econnrefused',
+      'service unavailable',
+      'temporarily unavailable',
+      'is currently loading',
+      'try again',
+      'model is busy',
+      'ollama'
+    ];
+
+    return patterns.some(pattern => message.includes(pattern));
+  }
+
+  buildPendingRetryResult({
+    confidence = 0,
+    libraries = [],
+    signalContext = null
+  }) {
+    return {
+      library: null,
+      confidence: Number.isFinite(Number(confidence)) ? Number(confidence) : 0,
+      method: 'queued_for_retry',
+      reason: 'AI temporarily unavailable or busy - queued for retry',
+      retry_after: new Date(Date.now() + RETRY_DELAY_MS),
+      retry_count: 0,
+      max_retries: 3,
+      libraries,
+      signalContext,
+      needs_retry: true
+    };
+  }
+
+  mergeMetadataForRecheck(originalMetadata, enrichedMetadata) {
+    if (!enrichedMetadata) {
+      return { ...originalMetadata };
+    }
+
+    const merged = { ...originalMetadata };
+    const copyIfMissing = (key) => {
+      const current = merged[key];
+      const incoming = enrichedMetadata[key];
+      const hasCurrent = Array.isArray(current)
+        ? current.length > 0
+        : !!current;
+
+      if (!hasCurrent && incoming) {
+        merged[key] = incoming;
+      }
+    };
+
+    copyIfMissing('genres');
+    copyIfMissing('keywords');
+    copyIfMissing('belongs_to_collection');
+    copyIfMissing('production_companies');
+    copyIfMissing('cast');
+    copyIfMissing('original_title');
+    copyIfMissing('overview');
+
+    return merged;
+  }
+
+  buildPolicyRecheckCandidate({
+    baselineResult,
+    libraries,
+    policyResult,
+    ragContext,
+    adoptionReason
+  }) {
+    const preferredLibraryId =
+      policyResult?.library?.library_id ||
+      policyResult?.ranked?.[0]?.library_id ||
+      baselineResult?.library?.id ||
+      null;
+    const nextLibrary = libraries.find((library) => library.id === preferredLibraryId) || baselineResult.library || null;
+    const nextAction = policyResult?.action || null;
+    const shouldClarify = nextAction === 'prompt_confirm' || nextAction === 'prompt_select';
+
+    return {
+      ...baselineResult,
+      library: nextLibrary,
+      confidence: Math.max(
+        Number(baselineResult?.confidence || 0),
+        Number(policyResult?.confidence || 0)
+      ),
+      method: nextAction === 'auto_classify' ? 'policy_auto' : 'policy_recheck',
+      reason: adoptionReason || `Policy re-check: ${nextAction || 'updated'}`,
+      needs_clarification: shouldClarify,
+      policyResult: policyResult || baselineResult.policyResult,
+      ragContext: ragContext || baselineResult.ragContext
+    };
+  }
+
+  buildAiRerunCandidate({
+    baselineResult,
+    aiRerunMatch,
+    libraries,
+    signalContext,
+    policyResult,
+    ragContext
+  }) {
+    return {
+      ...baselineResult,
+      ...aiRerunMatch,
+      method: aiRerunMatch.verified_by_ai ? 'ai_verified' : 'ai_rerun',
+      libraries: baselineResult.libraries || libraries,
+      signalContext: baselineResult.signalContext || signalContext || null,
+      policyResult: policyResult || baselineResult.policyResult || null,
+      ragContext: ragContext || baselineResult.ragContext || null
+    };
+  }
+
+  async evaluateRagLoopSecondPass({
+    metadata,
+    libraries,
+    baselineResult,
+    policyResult = null,
+    signalContext = null,
+    ragContext = null
+  }) {
+    const config = await this.getRagLoopConfig();
+    const rolloutMode = config.rag_loop_rollout_mode || 'shadow';
+    const correlationId = randomUUID();
+    const traceConfig = {
+      maxEvents: config.rag_loop_trace_max_events,
+      maxBytes: config.rag_loop_trace_max_bytes
+    };
+    const policyContext = resolvePolicyContextOrFallback({ policyResult });
+    const trigger = shouldTriggerSecondPass({
+      config,
+      policyResult,
+      aiResult: baselineResult,
+      signalContext
+    });
+
+    if (!config.rag_retrieval_loop_enabled) {
+      return baselineResult;
+    }
+
+    const loopStart = Date.now();
+    const loopTimeoutMs = this.resolveRagLoopTimeout(config);
+    const events = [];
+    const topN = Math.max(1, Number(config.rag_conflict_top_n || 5));
+    const candidateLimit = Math.max(1, Number(config.rag_loop_candidate_limit || 25));
+    const expansionOptions = {
+      identifierCaps: config.policy_recheck_identifier_caps,
+      aliasEnabled: config.rag_alias_expansion_enabled,
+      aliasMaxTerms: config.rag_alias_max_terms,
+      aliasMinTokenLength: config.rag_alias_min_token_length
+    };
+    const addEvent = ({
+      stage,
+      outcome,
+      reason,
+      reasonCode,
+      fallbackAction = null,
+      recoverable = true,
+      sqlState = null
+    }) => {
+      events.push({
+        stage,
+        outcome,
+        reason: reason || reasonCode || null,
+        reason_code: reasonCode || null,
+        fallback_action: fallbackAction,
+        recoverable,
+        sql_state: sqlState
+      });
+    };
+    const classifyStageError = (stage, error, fallbackReasonCode) => {
+      const mapped = mapSecondPassError({
+        stage,
+        fallbackReasonCode,
+        error
+      });
+      const message = typeof error?.message === 'string' ? error.message.trim() : '';
+      const messageCode = /^[a-z0-9_]+$/i.test(message) ? message : null;
+      return {
+        reasonCode: mapped.reasonCode || messageCode || fallbackReasonCode,
+        sqlState: mapped.sqlState,
+        recoverable: mapped.recoverable
+      };
+    };
+    const withRagLoopLogContext = (finalResult, strategy = null) => ({
+      ...finalResult,
+      ragLoopLogContext: {
+        correlationId,
+        mode: rolloutMode,
+        strategy: strategy || null,
+        trigger: trigger.trigger || null,
+        events: events.map((event) => ({ ...event }))
+      }
+    });
+
+    if (!trigger.run) {
+      addEvent({
+        stage: 'gate',
+        outcome: 'skipped',
+        reason: trigger.reason,
+        reasonCode: trigger.reason === 'feature_disabled'
+          ? RAG_LOOP_REASON_CODES.FEATURE_DISABLED
+          : (policyContext.hasPolicyContext ? RAG_LOOP_REASON_CODES.GATE_NOT_MET : RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING),
+        fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.GATE_SKIPPED
+      });
+
+      const trace = buildRagLoopTrace({
+        mode: rolloutMode,
+        ran: false,
+        trigger: trigger.trigger,
+        events,
+        traceConfig
+      });
+
+      const decision = applyOrShadowDecision({
+        baselineResult,
+        resolvedResult: baselineResult,
+        comparison: { adopt: false, reason: trigger.reason },
+        rolloutMode,
+        trace: config.rag_loop_trace_enabled ? trace : null
+      });
+      await this.maybeApplyRolloutAutomation({
+        config,
+        decision,
+        correlationId,
+        sampleRecorded: false
+      });
+      return withRagLoopLogContext(decision.finalResult);
+    }
+
+    const remainingBudget = () => Math.max(0, loopTimeoutMs - (Date.now() - loopStart));
+    let aiCallsUsed = 1;
+    let hadError = false;
+    const recheckEligibility = getRecheckEligibility(
+      {
+        trigger: trigger.trigger,
+        policyContext,
+        policyResult,
+        identifierCaps: config.policy_recheck_identifier_caps
+      },
+      metadata,
+      config
+    );
+
+    if (trigger.trigger === 'policy_prompt_select' && !recheckEligibility.eligible) {
+      addEvent({
+        stage: 'gate',
+        outcome: 'skipped',
+        reason: recheckEligibility.reasonCode,
+        reasonCode: recheckEligibility.reasonCode,
+        fallbackAction: recheckEligibility.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED
+      });
+
+      let trace = null;
+      if (config.rag_loop_trace_enabled) {
+        try {
+          trace = buildRagLoopTrace({
+            mode: rolloutMode,
+            ran: true,
+            trigger: trigger.trigger,
+            events,
+            traceConfig
+          });
+        } catch (error) {
+          logger.warn('Failed to build rag loop trace', {
+            correlationId,
+            stage: 'trace',
+            reason_code: RAG_LOOP_REASON_CODES.DB_UNKNOWN_FAILURE,
+            fallback_action: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED,
+            error: error.message
+          });
+          trace = null;
+        }
+      }
+
+      const decision = applyOrShadowDecision({
+        baselineResult,
+        resolvedResult: baselineResult,
+        comparison: { adopt: false, reason: recheckEligibility.reasonCode },
+        rolloutMode,
+        trace
+      });
+
+      ragLoopMetricsCollector.recordEvaluation({
+        rolloutMode: decision.mode,
+        wouldUpgrade: decision.wouldAdopt,
+        adopted: decision.adopted,
+        hadError,
+        latencyDeltaMs: (Date.now() - loopStart) - Number(baselineResult?.signalContext?.processingTimeMs || 0)
+      });
+      await this.maybeApplyRolloutAutomation({
+        config,
+        decision,
+        correlationId,
+        sampleRecorded: true
+      });
+
+      return withRagLoopLogContext(decision.finalResult);
+    }
+
+    const pass1Candidates = await this.withTimeout(
+      ragRetriever.semanticSearchCandidates(metadata, candidateLimit, {
+        pass: 'pass1',
+        throwOnError: true
+      }),
+      Math.max(1, remainingBudget()),
+      'rag_pass1_candidate_timeout'
+    ).catch((error) => {
+      hadError = true;
+      const stageError = classifyStageError('gate', error, 'rag_pass1_candidate_failed');
+      addEvent({
+        stage: 'gate',
+        outcome: 'error',
+        reason: error.message,
+        reasonCode: stageError.reasonCode,
+        recoverable: stageError.recoverable,
+        sqlState: stageError.sqlState
+      });
+      return [];
+    });
+
+    const pass1Conflict = config.rag_loop_conflict_detection_enabled
+      ? detectRagConflict(pass1Candidates, config)
+      : { isConflict: false, reason: 'conflict_detection_disabled' };
+    const pass1Matches = Array.isArray(ragContext?.similarItems) && ragContext.similarItems.length > 0
+      ? ragContext.similarItems
+      : pass1Candidates.slice(0, topN);
+    const pass1Diagnostics = summarizePassDiagnostics(pass1Matches, pass1Conflict, topN);
+    const metadataCompleteness = getMetadataCompleteness(metadata, config);
+    const strategySelection = selectRetryStrategy(pass1Diagnostics, metadataCompleteness, config);
+    addEvent({
+      stage: 'gate',
+      outcome: 'run',
+      reason: trigger.trigger,
+      reasonCode: trigger.trigger || RAG_LOOP_REASON_CODES.GATE_NOT_MET
+    });
+    addEvent({
+      stage: 'gate',
+      outcome: 'strategy_selected',
+      reason: strategySelection.reason,
+      reasonCode: strategySelection.reason
+    });
+
+    let workingMetadata = { ...metadata };
+    const enrichmentGate = isMetadataEnrichmentEligible({
+      trigger: trigger.trigger,
+      metadata: workingMetadata,
+      metadataCompleteness,
+      config,
+      attempts: 0
+    });
+
+    if (enrichmentGate.eligible && remainingBudget() > 0) {
+      const resilienceGate = ragLoopResilienceManager.canRun('tmdb_enrichment', config);
+      if (!resilienceGate.allowed) {
+        addEvent({
+          stage: 'enrichment',
+          outcome: 'skipped',
+          reason: resilienceGate.reasonCode,
+          reasonCode: resilienceGate.reasonCode,
+          fallbackAction: resilienceGate.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED
+        });
+      } else {
+        try {
+          const timeoutMs = Math.min(
+            Number(config.policy_recheck_metadata_timeout_ms || 2000),
+            Math.max(1, remainingBudget())
+          );
+          const enrichedMetadata = await this.withTimeout(
+            this.enrichWithTMDB(workingMetadata.tmdb_id, workingMetadata.media_type),
+            timeoutMs,
+            'metadata_enrichment_timeout'
+          );
+          workingMetadata = this.mergeMetadataForRecheck(workingMetadata, enrichedMetadata);
+          ragLoopResilienceManager.recordSuccess('tmdb_enrichment', config);
+          addEvent({
+            stage: 'enrichment',
+            outcome: 'applied',
+            reason: 'metadata_updated',
+            reasonCode: 'metadata_updated'
+          });
+        } catch (error) {
+          hadError = true;
+          ragLoopResilienceManager.recordFailure('tmdb_enrichment', error, config);
+      const stageError = classifyStageError('enrichment', error, 'metadata_enrichment_failed');
+          addEvent({
+            stage: 'enrichment',
+            outcome: 'skipped',
+            reason: error.message,
+            reasonCode: stageError.reasonCode,
+            fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED,
+            recoverable: stageError.recoverable,
+            sqlState: stageError.sqlState
+          });
+        }
+      }
+    } else {
+      addEvent({
+        stage: 'enrichment',
+        outcome: 'skipped',
+        reason: enrichmentGate.reason,
+        reasonCode: enrichmentGate.reason,
+        fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED
+      });
+    }
+
+    const expandedMetadata = expandRetrievalMetadata(workingMetadata, {
+      pass: 'pass2',
+      ...expansionOptions
+    });
+
+    let pass2Matches = [];
+    let pass2Enabled = false;
+    if (remainingBudget() > 0) {
+      const resilienceGate = ragLoopResilienceManager.canRun('rag_pass2', config);
+      if (!resilienceGate.allowed) {
+        addEvent({
+          stage: 'retrieval_pass2',
+          outcome: 'skipped',
+          reason: resilienceGate.reasonCode,
+          reasonCode: resilienceGate.reasonCode,
+          fallbackAction: resilienceGate.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED
+        });
+      } else {
+        pass2Enabled = true;
+        try {
+          const limit = Math.max(topN, 5);
+          if (strategySelection.strategy === 'semantic') {
+            pass2Matches = await this.withTimeout(
+              ragRetriever.semanticSearch(expandedMetadata, limit, {
+                pass: 'pass2',
+                applyThreshold: false,
+                useExpandedQuery: true,
+                throwOnError: true,
+                expansionOptions
+              }),
+              Math.max(1, remainingBudget()),
+              'rag_pass2_semantic_timeout'
+            );
+          } else {
+            pass2Matches = await this.withTimeout(
+              ragRetriever.hybridSearch(expandedMetadata, limit, {
+                pass: 'pass2',
+                applyThreshold: false,
+                useExpandedQuery: true,
+                throwOnError: true,
+                expansionOptions
+              }),
+              Math.max(1, remainingBudget()),
+              'rag_pass2_hybrid_timeout'
+            );
+          }
+          ragLoopResilienceManager.recordSuccess('rag_pass2', config);
+          addEvent({
+            stage: 'retrieval_pass2',
+            outcome: 'applied',
+            reason: strategySelection.strategy,
+            reasonCode: strategySelection.strategy
+          });
+        } catch (error) {
+          hadError = true;
+          ragLoopResilienceManager.recordFailure('rag_pass2', error, config);
+          const stageError = classifyStageError('retrieval_pass2', error, 'rag_pass2_failed');
+          addEvent({
+            stage: 'retrieval_pass2',
+            outcome: 'error',
+            reason: error.message,
+            reasonCode: stageError.reasonCode,
+            fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED,
+            recoverable: stageError.recoverable,
+            sqlState: stageError.sqlState
+          });
+          pass2Matches = [];
+        }
+      }
+    } else {
+      addEvent({
+        stage: 'retrieval_pass2',
+        outcome: 'skipped',
+        reason: 'loop_budget_exhausted',
+        reasonCode: 'loop_budget_exhausted',
+        fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED
+      });
+    }
+
+    const pass2Candidates = (pass2Enabled && remainingBudget() > 0)
+      ? await ragRetriever.semanticSearchCandidates(expandedMetadata, candidateLimit, {
+        pass: 'pass2',
+        useExpandedQuery: true,
+        throwOnError: true,
+        expansionOptions
+      }).catch((error) => {
+        hadError = true;
+        ragLoopResilienceManager.recordFailure('rag_pass2', error, config);
+        const stageError = classifyStageError('retrieval_pass2', error, 'rag_pass2_candidates_failed');
+        addEvent({
+          stage: 'retrieval_pass2',
+          outcome: 'error',
+          reason: error.message,
+          reasonCode: stageError.reasonCode,
+          fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED,
+          recoverable: stageError.recoverable,
+          sqlState: stageError.sqlState
+        });
+        return [];
+      })
+      : [];
+    const pass2Conflict = config.rag_loop_conflict_detection_enabled
+      ? detectRagConflict(pass2Candidates, config)
+      : { isConflict: false, reason: 'conflict_detection_disabled' };
+    const pass2Diagnostics = summarizePassDiagnostics(
+      pass2Matches.length > 0 ? pass2Matches : pass2Candidates.slice(0, topN),
+      pass2Conflict,
+      topN
+    );
+
+    const pass2RagContext = pass2Matches.length > 0
+      ? {
+        similarItems: pass2Matches.slice(0, 3),
+        suggestion: ragRetriever.getSuggestedLibrary(pass2Matches)
+      }
+      : ragContext;
+
+    let policyAfter = policyResult;
+    let policyGate = {
+      shouldAdopt: false,
+      actionUpgraded: false,
+      measurableImprovement: false,
+      reason: 'policy_not_run',
+      metrics: {}
+    };
+    let pass2Candidate = null;
+
+    if (trigger.trigger === 'policy_prompt_select' && remainingBudget() > 0) {
+      const evidence = extractVerifiableEvidence(expandedMetadata, config.policy_recheck_identifier_caps);
+      if (evidence.totalTokens > 0 || pass2Matches.length > 0) {
+        try {
+          policyAfter = await this.withRetryableDbConflict(
+            async () => this.withTimeout(
+              policyEngine.evaluateItem(expandedMetadata, {
+                ragCache: {
+                  matches: pass2Matches.slice(0, 5),
+                  timestamp: Date.now()
+                }
+              }),
+              Math.max(1, remainingBudget()),
+              'policy_recheck_timeout'
+            ),
+            {
+              maxAttempts: 2,
+              baseDelayMs: 75,
+              onRetry: ({ attempt, maxAttempts, delayMs, reasonCode, sqlState }) => {
+                addEvent({
+                  stage: 'policy_recheck',
+                  outcome: 'retry',
+                  reason: `retry_${attempt}_of_${maxAttempts}`,
+                  reasonCode,
+                  fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED,
+                  recoverable: true,
+                  sqlState
+                });
+              }
+            }
+          );
+          policyGate = evaluatePolicyRecheckGate({
+            policyBefore: policyResult,
+            policyAfter,
+            pass1Diagnostics,
+            pass2Diagnostics,
+            config
+          });
+
+          addEvent({
+            stage: 'policy_recheck',
+            outcome: policyGate.shouldAdopt ? 'accepted' : 'evaluated',
+            reason: policyGate.reason,
+            reasonCode: policyGate.reason,
+            fallbackAction: policyGate.shouldAdopt
+              ? null
+              : RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED
+          });
+
+          if (policyGate.shouldAdopt) {
+            pass2Candidate = this.buildPolicyRecheckCandidate({
+              baselineResult,
+              libraries,
+              policyResult: policyAfter,
+              ragContext: pass2RagContext,
+              adoptionReason: 'Policy re-check upgraded confidence'
+            });
+          }
+        } catch (error) {
+          hadError = true;
+          const stageError = classifyStageError('policy_recheck', error, 'policy_recheck_failed');
+          addEvent({
+            stage: 'policy_recheck',
+            outcome: 'error',
+            reason: error.message,
+            reasonCode: stageError.reasonCode,
+            fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED,
+            recoverable: stageError.recoverable,
+            sqlState: stageError.sqlState
+          });
+        }
+      } else {
+        addEvent({
+          stage: 'policy_recheck',
+          outcome: 'skipped',
+          reason: RAG_LOOP_REASON_CODES.NO_VERIFIABLE_EVIDENCE,
+          reasonCode: RAG_LOOP_REASON_CODES.NO_VERIFIABLE_EVIDENCE,
+          fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED
+        });
+      }
+    }
+
+    if (!pass2Candidate && remainingBudget() > 0) {
+      const resilienceGate = ragLoopResilienceManager.canRun('ai_rerun', config);
+      if (!resilienceGate.allowed) {
+        addEvent({
+          stage: 'ai_rerun',
+          outcome: 'skipped',
+          reason: resilienceGate.reasonCode,
+          reasonCode: resilienceGate.reasonCode,
+          fallbackAction: resilienceGate.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED
+        });
+      } else {
+        const aiRerunGate = isAiRerunEligible({
+          trigger: trigger.trigger,
+          aiCallsUsed,
+          config,
+          pass1Diagnostics,
+          pass2Diagnostics,
+          policyAfter
+        });
+
+        if (aiRerunGate.eligible) {
+          try {
+            aiCallsUsed += 1;
+            const aiRerunMatch = await this.withTimeout(
+              this.aiClassify(expandedMetadata, libraries, signalContext, {
+                mode: 'classify',
+                ragContext: pass2RagContext
+              }),
+              Math.max(1, remainingBudget()),
+              'ai_rerun_timeout'
+            );
+            pass2Candidate = this.buildAiRerunCandidate({
+              baselineResult,
+              aiRerunMatch,
+              libraries,
+              signalContext,
+              policyResult: policyAfter,
+              ragContext: pass2RagContext
+            });
+            ragLoopResilienceManager.recordSuccess('ai_rerun', config);
+            addEvent({
+              stage: 'ai_rerun',
+              outcome: 'applied',
+              reason: 'material_improvement',
+              reasonCode: 'material_improvement'
+            });
+          } catch (error) {
+            const isTransientAiAvailability = this.isAiTransientAvailabilityError(error);
+            if (!isTransientAiAvailability) {
+              hadError = true;
+              ragLoopResilienceManager.recordFailure('ai_rerun', error, config);
+            }
+            const stageError = classifyStageError('ai_rerun', error, 'ai_rerun_failed');
+            addEvent({
+              stage: 'ai_rerun',
+              outcome: isTransientAiAvailability ? 'skipped' : 'error',
+              reason: error.message,
+              reasonCode: isTransientAiAvailability ? 'ai_temporarily_unavailable' : stageError.reasonCode,
+              fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED,
+              recoverable: stageError.recoverable,
+              sqlState: stageError.sqlState
+            });
+          }
+        } else {
+          addEvent({
+            stage: 'ai_rerun',
+            outcome: 'skipped',
+            reason: aiRerunGate.reason,
+            reasonCode: aiRerunGate.reason,
+            fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED
+          });
+        }
+      }
+    } else {
+      addEvent({
+        stage: 'ai_rerun',
+        outcome: 'skipped',
+        reason: 'policy_candidate_selected',
+        reasonCode: 'policy_candidate_selected',
+        fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED
+      });
+    }
+
+    const comparison = comparePassResults({
+      baselineResult,
+      pass2Result: pass2Candidate,
+      policyGate,
+      pass1Diagnostics,
+      pass2Diagnostics,
+      config
+    });
+    const resolution = resolveConflictDecision({
+      baselineResult,
+      pass2Result: pass2Candidate,
+      comparison,
+      policyBefore: policyResult,
+      policyAfter,
+      pass2Conflict
+    });
+    const learning = isLearningEligible({
+      config,
+      rolloutMode,
+      secondPassApplied: comparison.adopt,
+      userValidated: false,
+      machineOnly: true
+    });
+    let trace = null;
+    if (config.rag_loop_trace_enabled) {
+      try {
+        trace = buildRagLoopTrace({
+          mode: rolloutMode,
+          ran: true,
+          trigger: trigger.trigger,
+          strategy: strategySelection.strategy,
+          events,
+          pass1Diagnostics,
+          pass2Diagnostics,
+          comparison,
+          resolution,
+          learning,
+          timing: {
+            total: Date.now() - loopStart
+          },
+          traceConfig
+        });
+      } catch (error) {
+        hadError = true;
+        addEvent({
+          stage: 'trace',
+          outcome: 'error',
+          reason: error.message,
+          reasonCode: 'trace_build_failed',
+          fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED
+        });
+        logger.warn('Failed to build rag loop trace', {
+          correlationId,
+          stage: 'trace',
+          reason_code: 'trace_build_failed',
+          fallback_action: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED,
+          error: error.message
+        });
+        trace = null;
+      }
+    }
+
+    const decision = applyOrShadowDecision({
+      baselineResult,
+      resolvedResult: resolution.resolvedResult,
+      comparison,
+      rolloutMode,
+      trace
+    });
+
+    ragLoopMetricsCollector.recordEvaluation({
+      rolloutMode: decision.mode,
+      wouldUpgrade: decision.wouldAdopt,
+      adopted: decision.adopted,
+      hadError,
+      latencyDeltaMs: (Date.now() - loopStart) - Number(baselineResult?.signalContext?.processingTimeMs || 0)
+    });
+    await this.maybeApplyRolloutAutomation({
+      config,
+      decision,
+      correlationId,
+      sampleRecorded: true
+    });
+
+    return withRagLoopLogContext(decision.finalResult, strategySelection.strategy);
   }
 
   async enrichWithWebSearch(metadata) {
@@ -805,51 +1984,56 @@ class ClassificationService {
           });
         }
 
+        let finalResult = await this.evaluateRagLoopSecondPass({
+          metadata,
+          libraries,
+          baselineResult: aiResult,
+          policyResult,
+          signalContext: policySignalContext,
+          ragContext
+        });
+        const effectiveRagContext = finalResult.ragContext || ragContext;
+
         // Ensure low-confidence results surface policy-driven clarifications
-        if (!aiResult.needs_clarification && aiResult.confidence < 70) {
+        if (!finalResult.needs_clarification && finalResult.confidence < 70) {
           const policyQuestion = await policyQuestionBuilder.build({
             metadata,
             policyResult: policyResult || null,
             libraries,
-            suggestedLibrary: aiResult.library || null,
-            ragContext,
-            aiResult
+            suggestedLibrary: finalResult.library || null,
+            ragContext: effectiveRagContext,
+            aiResult: finalResult
           });
 
           if (policyQuestion) {
-            aiResult.needs_clarification = true;
-            aiResult.clarification = policyQuestion;
-            aiResult.policy_question = policyQuestion;
-            aiResult.pending_reason = policyQuestion.problem_summary;
+            finalResult.needs_clarification = true;
+            finalResult.clarification = policyQuestion;
+            finalResult.policy_question = policyQuestion;
+            finalResult.pending_reason = policyQuestion.problem_summary;
           }
         }
 
-        return aiResult;
+        return finalResult;
       } catch (error) {
         logger.error('AI classification failed', { error: error.message });
 
         const fallbackConfidence = policySignalContext.confidence || 0;
         const suggestedLibrary = policySignalContext.suggestedLibrary;
+        const isTransientAiAvailability = this.isAiTransientAvailabilityError(error);
 
-        if (fallbackConfidence < 50) {
-          logger.info('AI unavailable with very low confidence - queuing for retry', {
+        if (isTransientAiAvailability || fallbackConfidence < 50) {
+          logger.info('AI unavailable/busy - queuing for retry', {
             confidence: fallbackConfidence,
             tmdbId: metadata.tmdb_id,
             title: metadata.title,
+            transient_ai_availability: isTransientAiAvailability
           });
 
-          return {
-            library: null,
+          return this.buildPendingRetryResult({
             confidence: fallbackConfidence,
-            method: 'queued_for_retry',
-            reason: 'AI temporarily unavailable - queued for retry',
-            retry_after: new Date(Date.now() + RETRY_DELAY_MS),
-            retry_count: 0,
-            max_retries: 3,
             libraries: libraries,
-            signalContext: policySignalContext,
-            needs_retry: true,
-          };
+            signalContext: policySignalContext
+          });
         }
 
         if (suggestedLibrary && fallbackConfidence >= 50) {
@@ -969,47 +2153,52 @@ class ClassificationService {
         });
       }
 
-      if (!aiResult.needs_clarification && aiResult.confidence < 70) {
+      let finalResult = await this.evaluateRagLoopSecondPass({
+        metadata,
+        libraries,
+        baselineResult: aiResult,
+        policyResult: policyResult || null,
+        signalContext,
+        ragContext
+      });
+      const effectiveRagContext = finalResult.ragContext || ragContext;
+
+      if (!finalResult.needs_clarification && finalResult.confidence < 70) {
         const policyQuestion = await policyQuestionBuilder.build({
           metadata,
           policyResult: metadata.policyResult || null,
           libraries,
-          suggestedLibrary: aiResult.library || null,
-          ragContext,
-          aiResult
+          suggestedLibrary: finalResult.library || null,
+          ragContext: effectiveRagContext,
+          aiResult: finalResult
         });
 
         if (policyQuestion) {
-          aiResult.needs_clarification = true;
-          aiResult.clarification = policyQuestion;
-          aiResult.policy_question = policyQuestion;
-          aiResult.pending_reason = policyQuestion.problem_summary;
+          finalResult.needs_clarification = true;
+          finalResult.clarification = policyQuestion;
+          finalResult.policy_question = policyQuestion;
+          finalResult.pending_reason = policyQuestion.problem_summary;
         }
       }
 
-      return aiResult;
+      return finalResult;
     } catch (error) {
       logger.error('AI classification failed', { error: error.message });
+      const isTransientAiAvailability = this.isAiTransientAvailabilityError(error);
 
-      if (confidenceResult.confidence < 50) {
-        logger.info('AI unavailable with very low confidence - queuing for retry', {
+      if (isTransientAiAvailability || confidenceResult.confidence < 50) {
+        logger.info('AI unavailable/busy - queuing for retry', {
           confidence: confidenceResult.confidence,
           tmdbId: metadata.tmdb_id,
           title: metadata.title,
+          transient_ai_availability: isTransientAiAvailability
         });
 
-        return {
-          library: null,
+        return this.buildPendingRetryResult({
           confidence: confidenceResult.confidence,
-          method: 'queued_for_retry',
-          reason: 'AI temporarily unavailable - queued for retry',
-          retry_after: new Date(Date.now() + RETRY_DELAY_MS),
-          retry_count: 0,
-          max_retries: 3,
           libraries: libraries,
-          signalContext: signalContext,
-          needs_retry: true,
-        };
+          signalContext
+        });
       }
 
       if (confidenceResult.suggestedLibrary && confidenceResult.confidence >= 50) {
@@ -1476,6 +2665,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
       scores: result.policyResult?.scores || { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
       weights: result.policyResult?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
       rag_details: ragDetails,
+      rag_loop_trace: result.ragLoopTrace || null,
       processing_time_ms: startTime ? Date.now() - startTime : null
     };
 
@@ -1578,6 +2768,68 @@ Think step by step, then respond with ONLY one of the formats above.`;
     }
 
     return classificationId;
+  }
+
+  async persistRagLoopStageEvents({ classificationId, metadata = {}, result = {} } = {}) {
+    try {
+      const logContext = result?.ragLoopLogContext || null;
+      const events = Array.isArray(logContext?.events)
+        ? logContext.events
+        : (Array.isArray(result?.ragLoopTrace?.events) ? result.ragLoopTrace.events : []);
+
+      if (!Array.isArray(events) || events.length === 0) {
+        return;
+      }
+
+      const rolloutMode = logContext?.mode || result?.ragLoopTrace?.mode || null;
+      const strategy = logContext?.strategy || result?.ragLoopTrace?.strategy || null;
+      const trigger = logContext?.trigger || result?.ragLoopTrace?.trigger || null;
+      const correlationId = logContext?.correlationId || null;
+
+      for (const rawEvent of events) {
+        if (!rawEvent || typeof rawEvent !== 'object') {
+          continue;
+        }
+
+        const sourceStage = typeof rawEvent.stage === 'string' ? rawEvent.stage : null;
+        const stage = (sourceStage === 'strategy' || sourceStage === 'retrieval_pass1')
+          ? 'gate'
+          : sourceStage;
+        const mappedError = mapSecondPassError({
+          stage,
+          reasonCode: rawEvent.reason_code || rawEvent.reason || null,
+          fallbackReasonCode: rawEvent.reason || null,
+          error: { code: rawEvent.sql_state || rawEvent.sqlState || null }
+        });
+
+        await ragLogger.logStageEvent({
+          classification_id: classificationId,
+          tmdb_id: metadata.tmdb_id || null,
+          media_type: metadata.media_type || null,
+          stage,
+          outcome: rawEvent.outcome || null,
+          reason_code: rawEvent.reason_code || rawEvent.reason || mappedError.reasonCode,
+          fallback_action: rawEvent.fallback_action || rawEvent.fallbackAction || null,
+          recoverable: rawEvent.recoverable === false ? false : mappedError.recoverable,
+          sql_state: rawEvent.sql_state || rawEvent.sqlState || mappedError.sqlState || null,
+          correlation_id: correlationId,
+          rollout_mode: rolloutMode,
+          strategy,
+          trigger,
+          metadata: {
+            tmdb_id: metadata.tmdb_id || null,
+            media_type: metadata.media_type || null,
+            title: metadata.title || null,
+            source_stage: sourceStage
+          }
+        });
+      }
+    } catch (error) {
+      logger.warn('Failed to persist rag loop stage logs', {
+        classificationId,
+        error: error.message
+      });
+    }
   }
 
   async routeToArr(metadata, library) {

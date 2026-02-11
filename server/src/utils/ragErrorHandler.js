@@ -17,6 +17,12 @@ const RAG_ERROR_TYPES = {
     HYBRID_SEARCH: 'hybrid_search',
     SEMANTIC_SEARCH: 'semantic_search',
     PATTERN_MINING: 'pattern_mining',
+    SECOND_PASS_GATE: 'second_pass_gate',
+    SECOND_PASS_ENRICHMENT: 'second_pass_enrichment',
+    SECOND_PASS_RETRIEVAL_PASS2: 'second_pass_retrieval_pass2',
+    SECOND_PASS_POLICY_RECHECK: 'second_pass_policy_recheck',
+    SECOND_PASS_AI_RERUN: 'second_pass_ai_rerun',
+    SECOND_PASS_TRACE: 'second_pass_trace',
     QUOTA_EXCEEDED: 'quota_exceeded',
     TIMEOUT: 'timeout',
     DIMENSION_MISMATCH: 'dimension_mismatch',
@@ -26,6 +32,150 @@ const RAG_ERROR_TYPES = {
     CONFIGURATION_ERROR: 'configuration_error',
     UNKNOWN: 'unknown'
 };
+
+const RAG_SECOND_PASS_STAGES = Object.freeze({
+    GATE: 'gate',
+    ENRICHMENT: 'enrichment',
+    RETRIEVAL_PASS2: 'retrieval_pass2',
+    POLICY_RECHECK: 'policy_recheck',
+    AI_RERUN: 'ai_rerun',
+    TRACE: 'trace'
+});
+
+const RAG_SECOND_PASS_REASON_CODES = Object.freeze({
+    DB_INTEGRITY_VIOLATION: 'db_integrity_violation',
+    DB_RETRYABLE_CONFLICT: 'db_retryable_conflict',
+    DB_SCHEMA_MISMATCH: 'db_schema_mismatch',
+    DB_UNKNOWN_FAILURE: 'db_unknown_failure',
+    GATE_NOT_MET: 'gate_not_met',
+    METADATA_ENRICHMENT_FAILED: 'metadata_enrichment_failed',
+    RAG_PASS2_FAILED: 'rag_pass2_failed',
+    POLICY_RECHECK_FAILED: 'policy_recheck_failed',
+    AI_RERUN_FAILED: 'ai_rerun_failed',
+    TRACE_BUILD_FAILED: 'trace_build_failed',
+    UNKNOWN_STAGE_FAILURE: 'unknown_stage_failure'
+});
+
+const SECOND_PASS_STAGE_TO_TYPE = Object.freeze({
+    [RAG_SECOND_PASS_STAGES.GATE]: RAG_ERROR_TYPES.SECOND_PASS_GATE,
+    [RAG_SECOND_PASS_STAGES.ENRICHMENT]: RAG_ERROR_TYPES.SECOND_PASS_ENRICHMENT,
+    [RAG_SECOND_PASS_STAGES.RETRIEVAL_PASS2]: RAG_ERROR_TYPES.SECOND_PASS_RETRIEVAL_PASS2,
+    [RAG_SECOND_PASS_STAGES.POLICY_RECHECK]: RAG_ERROR_TYPES.SECOND_PASS_POLICY_RECHECK,
+    [RAG_SECOND_PASS_STAGES.AI_RERUN]: RAG_ERROR_TYPES.SECOND_PASS_AI_RERUN,
+    [RAG_SECOND_PASS_STAGES.TRACE]: RAG_ERROR_TYPES.SECOND_PASS_TRACE
+});
+
+const SECOND_PASS_STAGE_DEFAULT_REASON = Object.freeze({
+    [RAG_SECOND_PASS_STAGES.GATE]: RAG_SECOND_PASS_REASON_CODES.GATE_NOT_MET,
+    [RAG_SECOND_PASS_STAGES.ENRICHMENT]: RAG_SECOND_PASS_REASON_CODES.METADATA_ENRICHMENT_FAILED,
+    [RAG_SECOND_PASS_STAGES.RETRIEVAL_PASS2]: RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_FAILED,
+    [RAG_SECOND_PASS_STAGES.POLICY_RECHECK]: RAG_SECOND_PASS_REASON_CODES.POLICY_RECHECK_FAILED,
+    [RAG_SECOND_PASS_STAGES.AI_RERUN]: RAG_SECOND_PASS_REASON_CODES.AI_RERUN_FAILED,
+    [RAG_SECOND_PASS_STAGES.TRACE]: RAG_SECOND_PASS_REASON_CODES.TRACE_BUILD_FAILED
+});
+
+function normalizeReasonCode(reasonCode) {
+    if (typeof reasonCode !== 'string') {
+        return null;
+    }
+
+    const normalized = reasonCode
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+    return normalized || null;
+}
+
+function normalizeSecondPassStage(stage) {
+    const value = typeof stage === 'string' ? stage.trim().toLowerCase() : '';
+    if (!value) {
+        return null;
+    }
+
+    return Object.values(RAG_SECOND_PASS_STAGES).includes(value) ? value : null;
+}
+
+function normalizeSqlState(error) {
+    const raw = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
+    if (!raw) {
+        return null;
+    }
+    return /^[A-Z0-9]{5}$/.test(raw) ? raw : null;
+}
+
+function mapSqlStateReason(sqlState) {
+    if (!sqlState) {
+        return {
+            reasonCode: null,
+            recoverable: true
+        };
+    }
+
+    if (sqlState.startsWith('23')) {
+        return {
+            reasonCode: RAG_SECOND_PASS_REASON_CODES.DB_INTEGRITY_VIOLATION,
+            recoverable: false
+        };
+    }
+
+    if (sqlState.startsWith('40')) {
+        return {
+            reasonCode: RAG_SECOND_PASS_REASON_CODES.DB_RETRYABLE_CONFLICT,
+            recoverable: true
+        };
+    }
+
+    if (sqlState.startsWith('42')) {
+        return {
+            reasonCode: RAG_SECOND_PASS_REASON_CODES.DB_SCHEMA_MISMATCH,
+            recoverable: false
+        };
+    }
+
+    return {
+        reasonCode: RAG_SECOND_PASS_REASON_CODES.DB_UNKNOWN_FAILURE,
+        recoverable: true
+    };
+}
+
+function mapSecondPassError({
+    stage = null,
+    reasonCode = null,
+    fallbackReasonCode = null,
+    error = null
+} = {}) {
+    const normalizedStage = normalizeSecondPassStage(stage);
+    const stageErrorType = normalizedStage ? SECOND_PASS_STAGE_TO_TYPE[normalizedStage] : null;
+    const sqlState = normalizeSqlState(error);
+    const sqlStateReason = mapSqlStateReason(sqlState);
+    const normalizedReason = normalizeReasonCode(reasonCode);
+    const normalizedFallbackReason = normalizeReasonCode(fallbackReasonCode);
+    const defaultReason = normalizedStage
+        ? SECOND_PASS_STAGE_DEFAULT_REASON[normalizedStage]
+        : RAG_SECOND_PASS_REASON_CODES.UNKNOWN_STAGE_FAILURE;
+
+    const mappedReasonCode =
+        sqlStateReason.reasonCode ||
+        normalizedReason ||
+        normalizedFallbackReason ||
+        defaultReason;
+
+    const recoverable = typeof error?.recoverable === 'boolean'
+        ? error.recoverable
+        : sqlStateReason.recoverable;
+
+    return {
+        stage: normalizedStage,
+        errorType: stageErrorType || categorizeError(error || new Error('unknown_stage_error')),
+        reasonCode: mappedReasonCode,
+        sqlState,
+        recoverable
+    };
+}
 
 /**
  * Custom RAG Error class
@@ -72,6 +222,23 @@ function categorizeError(error) {
     // Check if already a RAGError
     if (error instanceof RAGError) {
         return error.type;
+    }
+
+    // Second-pass stage hints
+    if (message.includes('policy recheck') || message.includes('policy_recheck')) {
+        return RAG_ERROR_TYPES.SECOND_PASS_POLICY_RECHECK;
+    }
+    if (message.includes('pass2') || message.includes('retrieval_pass2') || message.includes('second pass retrieval')) {
+        return RAG_ERROR_TYPES.SECOND_PASS_RETRIEVAL_PASS2;
+    }
+    if (message.includes('enrichment')) {
+        return RAG_ERROR_TYPES.SECOND_PASS_ENRICHMENT;
+    }
+    if (message.includes('ai rerun') || message.includes('ai_rerun')) {
+        return RAG_ERROR_TYPES.SECOND_PASS_AI_RERUN;
+    }
+    if (message.includes('trace build') || message.includes('trace_')) {
+        return RAG_ERROR_TYPES.SECOND_PASS_TRACE;
     }
     
     // Quota/rate limit errors
@@ -204,7 +371,12 @@ async function withRAGErrorHandling(operation, operationName, context = {}) {
 module.exports = {
     RAGError,
     RAG_ERROR_TYPES,
+    RAG_SECOND_PASS_REASON_CODES,
+    RAG_SECOND_PASS_STAGES,
     categorizeError,
     isRecoverable,
+    mapSecondPassError,
+    normalizeReasonCode,
+    normalizeSecondPassStage,
     withRAGErrorHandling
 };

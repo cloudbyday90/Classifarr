@@ -208,6 +208,55 @@
             <p class="text-gray-300">{{ selectedItem.reason || 'No reason recorded' }}</p>
           </div>
 
+          <!-- RAG Loop Trace -->
+          <div class="bg-background rounded-lg p-4 border border-gray-700">
+            <h4 class="font-semibold mb-3 text-cyan-400">🔁 Targeted Re-check Trace</h4>
+            <div v-if="ragLoopSummary.hasTrace" class="space-y-3">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Mode:</span>
+                  <span class="ml-2 text-gray-200">{{ ragLoopSummary.mode || 'shadow' }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Ran:</span>
+                  <span class="ml-2 text-gray-200">{{ ragLoopSummary.ran ? 'yes' : 'no' }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Trigger:</span>
+                  <span class="ml-2 text-gray-200">{{ ragLoopSummary.trigger || 'n/a' }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Strategy:</span>
+                  <span class="ml-2 text-gray-200">{{ ragLoopSummary.strategy || 'n/a' }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Top Similarity:</span>
+                  <span class="ml-2 text-gray-200">{{ ragLoopBeforeAfterLabel }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Decision:</span>
+                  <span class="ml-2 text-gray-200">{{ ragLoopDecisionLabel }}</span>
+                </div>
+              </div>
+              <div v-if="ragLoopSummary.events.length > 0">
+                <p class="text-xs text-gray-400 mb-1">Stage summary</p>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="(event, idx) in ragLoopSummary.events.slice(0, 8)"
+                    :key="`rag-loop-event-${idx}`"
+                    class="px-2 py-1 rounded bg-gray-800 text-xs text-gray-200 border border-gray-700"
+                  >
+                    {{ event.stage }}: {{ event.outcome }}
+                    <span v-if="event.reason" class="text-gray-400">({{ event.reason }})</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <p v-else class="text-sm text-gray-400">
+              No second-pass trace recorded for this item.
+            </p>
+          </div>
+
           <!-- Metadata -->
           <div v-if="selectedItem.metadata" class="bg-background rounded-lg p-4 border border-gray-700">
             <h4 class="font-semibold mb-3">📊 Metadata</h4>
@@ -309,6 +358,7 @@ import { useLibrariesStore } from '@/stores/libraries'
 import { useServiceRequirements } from '@/composables/useServiceRequirements'
 import { useServiceLockdownDialog } from '@/composables/useServiceLockdownToast'
 import api from '@/api'
+import { buildRagLoopTraceSummary } from '@/utils/ragLoopUi'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
@@ -420,6 +470,28 @@ const ragSignalDetail = computed(() => {
     parts.push(`W ${textWeight.toFixed(2)}/${imageWeight.toFixed(2)}`)
   }
   return parts.join(' • ')
+})
+
+const ragLoopSummary = computed(() => {
+  return buildRagLoopTraceSummary(parsedMetadata.value, selectedItem.value?.confidence)
+})
+
+const ragLoopDecisionLabel = computed(() => {
+  if (!ragLoopSummary.value.hasTrace) return null
+  if (ragLoopSummary.value.decisionOutcome === 'pass2') {
+    return 'Applied'
+  }
+  return `Skipped (${ragLoopSummary.value.decisionReason || 'baseline_preserved'})`
+})
+
+const ragLoopBeforeAfterLabel = computed(() => {
+  if (!ragLoopSummary.value.hasTrace) return null
+  const before = ragLoopSummary.value.beforeScorePercent
+  const after = ragLoopSummary.value.afterScorePercent
+  if (Number.isFinite(before) && Number.isFinite(after)) {
+    return `${before}% -> ${after}%`
+  }
+  return 'n/a'
 })
 
 // Check if signal breakdown should be shown (only for policy engine methods with actual scores)

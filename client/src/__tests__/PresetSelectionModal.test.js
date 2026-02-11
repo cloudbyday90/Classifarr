@@ -41,6 +41,7 @@ describe('PresetSelectionModal.vue', () => {
       icon: '🚀',
       category: 'genres',
       description: 'Science fiction content',
+      usage_count: 3,
       source: 'builtin'
     },
     {
@@ -49,6 +50,7 @@ describe('PresetSelectionModal.vue', () => {
       icon: '🌌',
       category: 'genres',
       description: 'Epic space adventures',
+      usage_count: 1,
       source: 'builtin'
     },
     {
@@ -126,6 +128,24 @@ describe('PresetSelectionModal.vue', () => {
       });
       await flushPromises();
       expect(wrapper.vm.allPresets.length).toBeGreaterThan(0);
+    });
+
+    it('shows preset usage count labels for built-in presets', async () => {
+      api.get.mockResolvedValue({ data: mockPresets });
+
+      const wrapper = mount(PresetSelectionModal, {
+        props: {
+          modelValue: true,
+          library: mockLibrary,
+          existingPresetIds: []
+        },
+        attachTo: document.body
+      });
+
+      await flushPromises();
+
+      expect(document.body.textContent).toContain('Used in 3 policies');
+      expect(document.body.textContent).toContain('Used in 1 policy');
     });
   });
 

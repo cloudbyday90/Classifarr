@@ -165,6 +165,9 @@
           </div>
           <h3 class="pending-title">{{ item.title }} ({{ item.year || 'N/A' }})</h3>
           <p class="pending-reason" v-if="item.pending_reason">{{ item.pending_reason }}</p>
+          <p v-if="getTargetedRecheckLine(item)" class="recheck-diagnostic">
+            {{ getTargetedRecheckLine(item) }}
+          </p>
           
           <!-- Policy Question -->
           <div v-if="item.policy_question" class="policy-question">
@@ -251,6 +254,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
+import { buildTargetedRecheckDiagnostic } from '@/utils/ragLoopUi'
 
 const stats = ref({
   pending: 0,
@@ -464,6 +468,10 @@ async function submitManualClassify() {
   } finally {
     classifyingTaskId.value = null
   }
+}
+
+function getTargetedRecheckLine(item) {
+  return buildTargetedRecheckDiagnostic(item?.metadata, item?.confidence)
 }
 
 function getTaskTitle(task) {
@@ -830,6 +838,13 @@ onUnmounted(() => {
   color: var(--text-secondary);
   font-size: 0.875rem;
   margin: 0 0 1rem 0;
+}
+
+.recheck-diagnostic {
+  color: #67e8f9;
+  font-size: 0.8125rem;
+  margin: 0 0 1rem 0;
+  line-height: 1.35;
 }
 
 .policy-question {

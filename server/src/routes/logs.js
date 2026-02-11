@@ -96,6 +96,36 @@ router.get('/', async (req, res, next) => {
       queryParams.push(req.query.resolved === 'true');
     }
 
+    const stage = req.query.error_stage || req.query.stage;
+    if (stage) {
+      whereConditions.push(`error_stage = $${paramCount++}`);
+      queryParams.push(stage);
+    }
+
+    const reasonCode = req.query.reason_code || req.query.reasonCode;
+    if (reasonCode) {
+      whereConditions.push(`reason_code = $${paramCount++}`);
+      queryParams.push(reasonCode);
+    }
+
+    const sqlState = req.query.sql_state || req.query.sqlState;
+    if (sqlState) {
+      whereConditions.push(`sql_state = $${paramCount++}`);
+      queryParams.push(sqlState.toUpperCase());
+    }
+
+    const classificationId = parseInt(req.query.classification_id || req.query.classificationId, 10);
+    if (Number.isInteger(classificationId) && classificationId > 0) {
+      whereConditions.push(`classification_id = $${paramCount++}`);
+      queryParams.push(classificationId);
+    }
+
+    const correlationId = req.query.correlation_id || req.query.correlationId;
+    if (correlationId) {
+      whereConditions.push(`correlation_id = $${paramCount++}`);
+      queryParams.push(correlationId);
+    }
+
     const whereClause = whereConditions.length > 0
       ? 'WHERE ' + whereConditions.join(' AND ')
       : '';
@@ -109,7 +139,7 @@ router.get('/', async (req, res, next) => {
 
     // Get paginated results
     const logsResult = await db.query(
-      `SELECT id, error_id, level, module, message, resolved, created_at
+      `SELECT id, error_id, level, module, message, resolved, created_at, classification_id, error_stage, reason_code, correlation_id, sql_state, rag_operation, recoverable
        FROM error_log
        ${whereClause}
        ORDER BY created_at DESC
@@ -243,6 +273,36 @@ router.get('/export', async (req, res, next) => {
     if (req.query.endDate) {
       whereConditions.push(`created_at <= $${paramCount++}`);
       queryParams.push(req.query.endDate);
+    }
+
+    const stage = req.query.error_stage || req.query.stage;
+    if (stage) {
+      whereConditions.push(`error_stage = $${paramCount++}`);
+      queryParams.push(stage);
+    }
+
+    const reasonCode = req.query.reason_code || req.query.reasonCode;
+    if (reasonCode) {
+      whereConditions.push(`reason_code = $${paramCount++}`);
+      queryParams.push(reasonCode);
+    }
+
+    const sqlState = req.query.sql_state || req.query.sqlState;
+    if (sqlState) {
+      whereConditions.push(`sql_state = $${paramCount++}`);
+      queryParams.push(sqlState.toUpperCase());
+    }
+
+    const classificationId = parseInt(req.query.classification_id || req.query.classificationId, 10);
+    if (Number.isInteger(classificationId) && classificationId > 0) {
+      whereConditions.push(`classification_id = $${paramCount++}`);
+      queryParams.push(classificationId);
+    }
+
+    const correlationId = req.query.correlation_id || req.query.correlationId;
+    if (correlationId) {
+      whereConditions.push(`correlation_id = $${paramCount++}`);
+      queryParams.push(correlationId);
     }
 
     const whereClause = whereConditions.length > 0

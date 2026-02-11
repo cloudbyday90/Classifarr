@@ -111,6 +111,67 @@
       </div>
     </Card>
 
+    <!-- ==================== SECTION 2: Rollout Safety Automation ==================== -->
+    <Card>
+      <template #header>
+        <h2 class="text-xl font-semibold">🛡️ Rollout Safety Automation</h2>
+      </template>
+
+      <p class="text-gray-400 mb-6">
+        Control hands-off safety behavior for Issue 275 second-pass rollout.
+      </p>
+
+      <div class="space-y-4">
+        <label class="flex items-start gap-3">
+          <input
+            v-model="ragLoopSettings.autoFallbackEnabled"
+            type="checkbox"
+            class="mt-1 w-4 h-4 rounded bg-gray-800 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+          />
+          <div>
+            <div class="font-medium">Automatic Safety Fallback</div>
+            <div class="text-sm text-gray-400">
+              Automatically switches rollout mode from <code>apply</code> to <code>shadow</code> when sustained regression gates are breached.
+            </div>
+          </div>
+        </label>
+
+        <label class="flex items-start gap-3">
+          <input
+            v-model="ragLoopSettings.autoRecoverEnabled"
+            type="checkbox"
+            class="mt-1 w-4 h-4 rounded bg-gray-800 border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+          />
+          <div>
+            <div class="font-medium">Auto Re-enable After Upgrade</div>
+            <div class="text-sm text-gray-400">
+              After fallback, automatically attempts one version-aware switch back to <code>apply</code> on a newer release.
+            </div>
+          </div>
+        </label>
+
+        <div v-if="fallbackIncident" class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg space-y-3">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-red-400 font-semibold">Automatic fallback detected</span>
+            <span class="text-sm text-gray-400">Incident: <code>{{ fallbackIncident.incident_id || 'unknown' }}</code></span>
+            <span class="text-sm text-gray-400">Triggered: {{ formatDate(fallbackIncident.triggered_at) }}</span>
+          </div>
+          <div class="text-sm text-gray-300">
+            Rollout switched from <code>{{ fallbackIncident.from_mode || 'apply' }}</code> to <code>{{ fallbackIncident.to_mode || 'shadow' }}</code>.
+            Copy the report and open an issue so we can diagnose and fix quickly.
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" @click="copyFallbackIncidentReport">
+              📋 Copy Report
+            </Button>
+            <Button size="sm" variant="secondary" @click="openFallbackIssue">
+              🐛 Open Issue
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Card>
+
     <!-- ==================== SECTION 2: Discord Notification Display Options ==================== -->
     <Card>
       <template #header>
@@ -354,6 +415,14 @@ const learningSettings = reactive({
   maxLearnsPerLibraryPerHour: 20
 })
 
+const ragLoopSettings = reactive({
+  autoFallbackEnabled: true,
+  autoRecoverEnabled: false
+})
+
+const fallbackIncident = ref(null)
+const fallbackState = ref(null)
+const fallbackCheckedAt = ref(null)
 const auditHistory = ref([])
 const loading = ref(true)
 
@@ -363,7 +432,11 @@ const isValid = computed(() => {
 })
 
 onMounted(async () => {
-  await loadSettings()
+  await Promise.all([
+    loadSettings(),
+    loadRagLoopSettings(),
+    loadFallbackIncident()
+  ])
   await loadAuditHistory()
   loading.value = false
 })
@@ -444,6 +517,86 @@ async function loadAuditHistory() {
   }
 }
 
+async function loadRagLoopSettings() {
+  try {
+    const response = await api.get('/api/settings/ai')
+    const data = response.data || {}
+    ragLoopSettings.autoFallbackEnabled = data.rag_loop_auto_fallback_enabled !== false
+    ragLoopSettings.autoRecoverEnabled = data.rag_loop_auto_recover_enabled === true
+  } catch (error) {
+    console.error('Failed to load rag loop safety settings:', error)
+  }
+}
+
+async function loadFallbackIncident() {
+  try {
+    const response = await api.get('/api/rag/loop/latest-fallback-incident')
+    fallbackIncident.value = response.data?.incident || null
+    fallbackState.value = response.data?.fallback_state || null
+    fallbackCheckedAt.value = response.data?.checked_at || null
+  } catch (error) {
+    fallbackIncident.value = null
+    fallbackState.value = null
+    fallbackCheckedAt.value = null
+  }
+}
+
+const fallbackIncidentReportText = computed(() => {
+  if (!fallbackIncident.value) return ''
+  return JSON.stringify({
+    incident: fallbackIncident.value,
+    fallback_state: fallbackState.value,
+    checked_at: fallbackCheckedAt.value
+  }, null, 2)
+})
+
+async function copyFallbackIncidentReport() {
+  if (!fallbackIncident.value) {
+    toast.warning('No fallback incident report is available')
+    return
+  }
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(fallbackIncidentReportText.value)
+      toast.success('Fallback report copied to clipboard')
+      return
+    }
+
+    const textArea = document.createElement('textarea')
+    textArea.value = fallbackIncidentReportText.value
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-9999px'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+    toast.success('Fallback report copied to clipboard')
+  } catch (error) {
+    console.error('Failed to copy fallback report:', error)
+    toast.error('Failed to copy fallback report')
+  }
+}
+
+function openFallbackIssue() {
+  if (!fallbackIncident.value || typeof window === 'undefined') {
+    return
+  }
+
+  const title = `[Auto Fallback] ${fallbackIncident.value.incident_id || 'Unknown Incident'}`
+  const body = [
+    'Automatic fallback report from Classifarr:',
+    '',
+    '```json',
+    fallbackIncidentReportText.value,
+    '```'
+  ].join('\n')
+
+  const url = `https://github.com/cloudbyday90/Classifarr/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 async function saveAllSettings() {
   isSaving.value = true
   try {
@@ -467,10 +620,15 @@ async function saveAllSettings() {
     
     console.log('Sending payload:', payload)
     const response = await api.put('/api/settings/confidence', payload)
+    await api.put('/api/settings/ai', {
+      rag_loop_auto_fallback_enabled: ragLoopSettings.autoFallbackEnabled,
+      rag_loop_auto_recover_enabled: ragLoopSettings.autoRecoverEnabled
+    })
     console.log('Settings saved successfully:', response.data)
     
     toast.success('Settings saved successfully')
     await loadAuditHistory()
+    await loadFallbackIncident()
   } catch (error) {
     console.error('Failed to save settings:', error)
     toast.error('Failed to save settings: ' + (error.response?.data?.error || error.message || 'Unknown error'))
@@ -529,6 +687,8 @@ async function resetToDefaults() {
   learningSettings.autoResolveThreshold = 7
   learningSettings.maxLearnsPerUserPerDay = 50
   learningSettings.maxLearnsPerLibraryPerHour = 20
+  ragLoopSettings.autoFallbackEnabled = true
+  ragLoopSettings.autoRecoverEnabled = false
   
   toast.info('Settings reset to defaults (not saved yet)')
 }

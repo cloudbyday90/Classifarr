@@ -106,6 +106,12 @@
           <div class="flex-1 min-w-0">
             <div class="font-medium truncate">{{ preset.name }}</div>
             <div class="text-xs text-gray-400 truncate">{{ preset.description || preset.category }}</div>
+            <div
+              v-if="preset.source === 'builtin'"
+              class="text-[11px] text-gray-500 truncate"
+            >
+              {{ formatUsageLabel(preset.usage_count) }}
+            </div>
           </div>
           <span 
             v-if="preset.source === 'custom'" 
@@ -269,6 +275,12 @@ function addAllSuggested() {
       selectedPresets.value.push(preset);
     }
   });
+}
+
+function formatUsageLabel(usageCount) {
+  const parsedCount = Number.parseInt(usageCount, 10);
+  const count = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 0;
+  return `Used in ${count} ${count === 1 ? 'policy' : 'policies'}`;
 }
 
 async function loadPresets() {

@@ -9,13 +9,15 @@
  */
 
 // Mock logger
+const mockLogger = {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn()
+};
+
 jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        error: jest.fn(),
-        warn: jest.fn(),
-        debug: jest.fn()
-    })
+    createLogger: () => mockLogger
 }));
 
 // Mock CircuitBreaker to avoid actual state management in tests
@@ -45,6 +47,10 @@ const omdbCircuitBreaker = require('../utils/omdbCircuitBreaker');
 describe('OMDb Circuit Breaker', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockLogger.info.mockClear();
+        mockLogger.warn.mockClear();
+        mockLogger.error.mockClear();
+        mockLogger.debug.mockClear();
         mockCircuitBreaker.isAllowed.mockReturnValue(true);
         mockCircuitBreaker.getStatus.mockReturnValue({
             state: 'CLOSED',
@@ -129,6 +135,27 @@ describe('OMDb Circuit Breaker', () => {
             
             await expect(omdbCircuitBreaker.execute(fn)).rejects.toThrow('OMDb circuit breaker is OPEN');
             expect(fn).not.toHaveBeenCalled();
+        });
+
+        it('should treat HALF_OPEN throttling as debug-only (not warn)', async () => {
+            mockCircuitBreaker.isAllowed.mockReturnValue(false);
+            mockCircuitBreaker.getStatus.mockReturnValue({
+                state: 'HALF_OPEN',
+                failureCount: 3,
+                lastFailureTime: Date.now()
+            });
+
+            const fn = jest.fn();
+
+            await expect(omdbCircuitBreaker.execute(fn)).rejects.toThrow(
+                'OMDb circuit breaker is HALF_OPEN and maximum concurrent attempts have been reached'
+            );
+            expect(fn).not.toHaveBeenCalled();
+            expect(mockLogger.warn).not.toHaveBeenCalled();
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'OMDb circuit breaker HALF_OPEN throttled request',
+                expect.objectContaining({ state: 'HALF_OPEN', failureCount: 3 })
+            );
         });
     });
 

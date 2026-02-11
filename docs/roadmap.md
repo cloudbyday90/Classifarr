@@ -1,13 +1,14 @@
 # Classifarr Development Roadmap
 
-This document outlines planned features and improvements, organized by engineering complexity and upcoming releases.
+This document outlines planned features and improvements, organized by engineering complexity.
 
-**Current Version:** v0.41.0-alpha  
-**Last Updated:** 2026-02-01
+Status labels:
+- `Active` = in normal roadmap consideration
+- `Deferred (v1.1+)` = intentionally deferred follow-up scope after current V1 stabilization
 
 ---
 
-## Recently Completed (v0.41.0-alpha)
+## Recently Completed
 
 ### System Health & Monitoring
 - ✅ System Health Dashboard with trend tracking (#184)
@@ -17,12 +18,14 @@ This document outlines planned features and improvements, organized by engineeri
 ### Automation & Learning
 - ✅ Discord verification learning (#240)
 - ✅ Unified confidence settings page (#241)
+- ✅ Low-confidence AI loop immediate-apply rollout with automatic safety fallback, incident diagnostics, and optional version-aware auto-recover (#275)
 
 ### User Experience
 - ✅ Classification signal breakdown (#185)
 - ✅ Dashboard accessibility (WCAG 2.1 AA) (#204)
 - ✅ User profile settings (#187)
 - ✅ Backup & restore system (#186)
+- ✅ Preset usage count display in preset picker (#241 follow-up)
 
 ### Documentation & Quality
 - ✅ Comprehensive API documentation (#188)
@@ -35,10 +38,19 @@ This document outlines planned features and improvements, organized by engineeri
   - Backend code removal (#229)
   - Frontend UI removal (#225)
 
+### Issue 275 Snapshot (Shipped vs Deferred)
+| Scope | Status | Notes |
+|---|---|---|
+| Immediate-apply low-confidence flow | ✅ Shipped | `apply` is active default behavior |
+| Automatic safety fallback (`apply` -> `shadow`) | ✅ Shipped | Enabled by default with sustained-breach guards |
+| Fallback incident diagnostics/report payload | ✅ Shipped | Copyable incident details for issue reporting |
+| Version-aware auto-recover toggle | ✅ Shipped | Optional, off by default, one attempt per version bump |
+| Per-policy RAG loop overrides | `Deferred (v1.1+)` | Follow-up tuning scope |
+| Advanced diagnostics dashboards | `Deferred (v1.1+)` | Follow-up observability depth |
+
 ---
 
 ## Low Complexity, High Impact
-**Target:** Next Minor Release (v0.42.0-alpha)
 
 ### User Experience Improvements
 - **Policy Name/Description Editing** (#241 follow-up)
@@ -46,13 +58,6 @@ This document outlines planned features and improvements, organized by engineeri
   - Solution: Add inline editing or "Edit Name" button
   - Effort: Low (UI-only change)
   - Impact: High (improves UX, addresses user feedback)
-
-- **Preset Usage Count Display** (#241 follow-up)
-  - Issue: Users don't see preset popularity
-  - Solution: Display "Used in X policies" in preset grid
-  - API: Already exists (\`/policies/presets/:id/usage\`)
-  - Effort: Low (frontend + API integration)
-  - Impact: Medium (helps users choose presets)
 
 - **Arr Settings Dropdown Cleanup** (UX polish)
   - Issue: Duplicate default options (e.g., "All Episodes (Default)" vs "All Episodes")
@@ -80,7 +85,6 @@ This document outlines planned features and improvements, organized by engineeri
 ---
 
 ## Medium Complexity, Important
-**Target:** Next 1-2 Releases (v0.42.0 - v0.43.0)
 
 ### Advanced Policy Analytics
 - **Heatmap of Confidence Over Time**
@@ -120,10 +124,20 @@ This document outlines planned features and improvements, organized by engineeri
   - Effort: Medium (UI + query optimization)
   - Impact: High (usability)
 
+### Deferred (v1.1+) - Issue 275 Follow-Up
+- **Per-Policy RAG Loop Overrides** (`Deferred (v1.1+)`)
+  - Scope: limited override keys for second-pass behavior (`enable`, `strategy`, `timeout`) with safe precedence
+  - Effort: Medium (settings contract + resolver + UI wiring)
+  - Impact: High (finer control for mixed-library environments)
+
+- **Operator Diagnostics in Settings/History** (`Deferred (v1.1+)`)
+  - Scope: richer trace filtering and stage-level operator diagnostics in existing views
+  - Effort: Medium
+  - Impact: Medium-High (faster operational triage)
+
 ---
 
 ## High Complexity or Research
-**Target:** Future/Major Releases (v0.44.0+)
 
 ### RAG Similarity Visualization
 **Status:** Design phase (open questions remain)
@@ -154,6 +168,22 @@ This document outlines planned features and improvements, organized by engineeri
 
 **Effort:** High (backend changes + new UI component + design decisions)
 **Impact:** High (transparency, trust in AI recommendations)
+
+### Deferred (v1.1+) - Issue 275 Follow-Up
+- **Advanced Diagnostics Dashboards** (`Deferred (v1.1+)`)
+  - Scope: breaker timeline, strategy distribution, promotion trends, trace reason-code filtering
+  - Effort: High
+  - Impact: High (rollout governance and observability depth)
+
+- **Trace Projection for Analytics** (`Deferred (v1.1+)`)
+  - Scope: project trace fields to dedicated analytics tables/materialized views
+  - Effort: High
+  - Impact: Medium-High (faster reporting without scanning raw metadata blobs)
+
+- **Schema Optimizations for Learning/Alias Paths** (`Deferred (v1.1+)`)
+  - Scope: optional fields like explicit `learning_eligible` and alias cache columns
+  - Effort: High
+  - Impact: Medium (operational clarity + query performance)
 
 ### Machine Learning Improvements
 - **User Feedback Loop**
@@ -205,14 +235,6 @@ This document outlines planned features and improvements, organized by engineeri
 
 ---
 
-## Release Cadence
-
-- **Alpha releases:** Every 2-4 weeks with new features
-- **Beta releases:** Quarterly with stability focus
-- **Stable releases:** Bi-annually with long-term support
-
----
-
 ## Feedback
 
 Have ideas for features or improvements? Please open an issue on GitHub or join our Discord community.
@@ -222,4 +244,6 @@ Have ideas for features or improvements? Please open an issue on GitHub or join 
 **Roadmap Notes:**
 - Items move between complexity tiers as design solidifies
 - Open issues are linked where available
+- Deferred `v1.1+` items are intentionally parked until V1 stabilization gates are satisfied
+- Issue 275 deferred items remain frozen while V1 apply-rollout telemetry is monitored for longer-term tuning
 - Community feedback prioritizes future work

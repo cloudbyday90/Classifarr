@@ -36,6 +36,7 @@ jest.mock('../../utils/logger', () => ({
 
 const express = require('express');
 const ragRouter = require('../../routes/rag');
+const ragLoopMetricsCollector = require('../../services/ragLoopMetricsCollector');
 const bodyParser = require('body-parser');
 
 // Don't mock the database module locally - allow it to use the global mock from setup.js
@@ -376,6 +377,110 @@ describe('RAG API Integration Tests', () => {
 
             expect(response.body).toHaveProperty('error');
             expect(response.body.error).toContain('Invalid hours parameter');
+        });
+    });
+
+    describe('GET /api/rag/loop/promotion-readiness', () => {
+        beforeEach(() => {
+            ragLoopMetricsCollector.reset();
+        });
+
+        it('returns promotion metrics payload with safe defaults', async () => {
+            const response = await request(app)
+                .get('/api/rag/loop/promotion-readiness')
+                .expect(200);
+
+            expect(response.body).toHaveProperty('ready');
+            expect(response.body).toHaveProperty('metrics');
+            expect(response.body).toHaveProperty('gates');
+            expect(response.body.metrics).toHaveProperty('shadow_sample_count');
+            expect(response.body.metrics).toHaveProperty('correction_delta');
+            expect(response.body.metrics).toHaveProperty('error_rate_delta');
+            expect(response.body.metrics).toHaveProperty('p95_latency_delta_ms');
+            expect(response.body.gates).toHaveProperty('min_samples');
+            expect(response.body.gates).toHaveProperty('max_error_rate_delta');
+            expect(response.body.gates).toHaveProperty('max_p95_latency_delta_ms');
+            expect(response.body).toHaveProperty('checked_at');
+        });
+
+        it('marks readiness true when shadow gates are satisfied', async () => {
+            await pool.query(`
+                UPDATE ai_provider_config
+                SET rag_loop_shadow_min_samples = 2,
+                    rag_loop_shadow_max_error_rate_delta = 0.5,
+                    rag_loop_shadow_max_p95_latency_delta_ms = 500
+                WHERE id = 1
+            `);
+
+            ragLoopMetricsCollector.recordEvaluation({
+                rolloutMode: 'shadow',
+                wouldUpgrade: true,
+                hadError: false,
+                latencyDeltaMs: 120
+            });
+            ragLoopMetricsCollector.recordEvaluation({
+                rolloutMode: 'shadow',
+                wouldUpgrade: false,
+                hadError: false,
+                latencyDeltaMs: 180
+            });
+
+            const response = await request(app)
+                .get('/api/rag/loop/promotion-readiness')
+                .expect(200);
+
+            expect(response.body.ready).toBe(true);
+            expect(response.body.metrics.shadow_sample_count).toBe(2);
+            expect(response.body.gates.min_samples).toBe(2);
+        });
+    });
+
+    describe('GET /api/rag/loop/latest-fallback-incident', () => {
+        it('returns empty incident payload when no fallback has been recorded', async () => {
+            await pool.query(`
+                UPDATE ai_provider_config
+                SET rag_loop_auto_fallback_last_incident_payload = NULL,
+                    rag_loop_auto_fallback_last_incident_id = NULL,
+                    rag_loop_auto_fallback_last_triggered_at = NULL
+                WHERE id = 1
+            `);
+
+            const response = await request(app)
+                .get('/api/rag/loop/latest-fallback-incident')
+                .expect(200);
+
+            expect(response.body.incident).toBeNull();
+            expect(response.body.fallback_state).toHaveProperty('auto_fallback_enabled');
+            expect(response.body).toHaveProperty('checked_at');
+        });
+
+        it('returns sanitized copy-ready incident payload when present', async () => {
+            await pool.query(`
+                UPDATE ai_provider_config
+                SET rag_loop_auto_fallback_last_incident_id = 'incident-abc',
+                    rag_loop_auto_fallback_last_triggered_at = '2026-02-11T10:00:00.000Z',
+                    rag_loop_auto_fallback_last_version = '0.41.2-alpha',
+                    rag_loop_auto_fallback_last_incident_payload = $1::jsonb
+                WHERE id = 1
+            `, [JSON.stringify({
+                incident_id: 'incident-abc',
+                triggered_at: '2026-02-11T10:00:00.000Z',
+                from_mode: 'apply',
+                to_mode: 'shadow',
+                app_version: '0.41.2-alpha',
+                thresholds: { max_error_rate_delta: 0.01 },
+                observed_metrics: { apply_sample_count: 25 }
+            })]);
+
+            const response = await request(app)
+                .get('/api/rag/loop/latest-fallback-incident')
+                .expect(200);
+
+            expect(response.body.incident).toBeTruthy();
+            expect(response.body.incident.incident_id).toBe('incident-abc');
+            expect(response.body.incident.from_mode).toBe('apply');
+            expect(response.body.incident.to_mode).toBe('shadow');
+            expect(response.body.fallback_state.last_fallback_version).toBe('0.41.2-alpha');
         });
     });
 

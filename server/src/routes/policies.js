@@ -34,26 +34,33 @@ router.get('/presets/all', async (req, res) => {
         const { category, search } = req.query;
 
         let query = `
-            SELECT *
-            FROM content_presets
+            SELECT
+                cp.*,
+                COALESCE(ppu.usage_count, 0)::int AS usage_count
+            FROM content_presets cp
+            LEFT JOIN (
+                SELECT preset_id, COUNT(*)::int AS usage_count
+                FROM policy_presets
+                GROUP BY preset_id
+            ) ppu ON ppu.preset_id = cp.id
             WHERE 1=1
         `;
         const params = [];
         let paramCount = 1;
 
         if (category) {
-            query += ` AND category = $${paramCount}`;
+            query += ` AND cp.category = $${paramCount}`;
             params.push(category);
             paramCount++;
         }
 
         if (search) {
-            query += ` AND (name ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
+            query += ` AND (cp.name ILIKE $${paramCount} OR cp.description ILIKE $${paramCount})`;
             params.push(`%${search}%`);
             paramCount++;
         }
 
-        query += ` ORDER BY category, display_order, name`;
+        query += ` ORDER BY cp.category, cp.display_order, cp.name`;
 
         const result = await db.query(query, params);
 

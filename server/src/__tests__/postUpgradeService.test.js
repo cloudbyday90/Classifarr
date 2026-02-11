@@ -56,14 +56,17 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_stale_retry_queue
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE error_log
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE app_log
-                .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete - clear_logs (v0.41.2)
+                .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_logs (v0.41.2)
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - TRUNCATE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete - clear_logs (v0.41.3)
 
             // Mock fs operations for clear_logs
             fs.readdir.mockResolvedValue([]);
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(4); // All tasks should execute
+            expect(result.executed).toBe(5); // All tasks should execute
             expect(result.skipped).toBe(0);
         });
 
@@ -76,14 +79,15 @@ describe('PostUpgradeService', () => {
                         { task_id: 'clear_logs_0393' },
                         { task_id: 'backfill_library_name_0393' },
                         { task_id: 'clear_stale_retry_queue_0393' },
-                        { task_id: 'clear_logs_0412' }
+                        { task_id: 'clear_logs_0412' },
+                        { task_id: 'clear_logs_0413' }
                     ]
                 }); // getExecutedTaskIds
 
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(0);
-            expect(result.skipped).toBe(4);
+            expect(result.skipped).toBe(5);
         });
 
         it('should handle partial execution when some tasks fail', async () => {
@@ -98,12 +102,15 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for clear_stale_retry_queue
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE error_log
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE app_log
-                .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete for clear_logs (v0.41.2)
+                .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for clear_logs (v0.41.2)
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - TRUNCATE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete for clear_logs (v0.41.3)
 
             const result = await postUpgradeService.runPendingTasks();
 
             // Only the successful task should be counted
-            expect(result.executed).toBe(3);
+            expect(result.executed).toBe(4);
         });
     });
 

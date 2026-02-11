@@ -12,6 +12,7 @@ const embeddingService = require('./embeddingService');
 const imageEmbeddingProvider = require('./imageEmbeddingProvider');
 const { createLogger } = require('../utils/logger');
 const ragLogger = require('../utils/ragLogger');
+const { expandRetrievalMetadata } = require('../utils/ragLoopHelpers');
 
 const logger = createLogger('RAGRetriever');
 
@@ -20,14 +21,66 @@ const logger = createLogger('RAGRetriever');
  * Performs semantic similarity search to find similar past classifications
  */
 class RAGRetriever {
+    buildRetrievalText(metadata, options = {}) {
+        const pass = options.pass || 'pass1';
+        const useExpandedQuery = options.useExpandedQuery === true || pass !== 'pass1';
+
+        if (!useExpandedQuery) {
+            return embeddingService.formatForEmbedding(metadata);
+        }
+
+        const expandedMetadata = expandRetrievalMetadata(metadata, {
+            pass,
+            identifierCaps: options.identifierCaps,
+            aliasEnabled: options.aliasEnabled,
+            aliasMaxTerms: options.aliasMaxTerms,
+            minTokenLength: options.aliasMinTokenLength
+        });
+
+        const baseText = embeddingService.formatForEmbedding(expandedMetadata);
+        const overrides = expandedMetadata.rag_query_overrides || {};
+        const extraTerms = [];
+
+        if (Array.isArray(overrides.alias_terms) && overrides.alias_terms.length > 0) {
+            extraTerms.push(`Aliases: ${overrides.alias_terms.join(', ')}`);
+        }
+
+        const evidence = overrides.evidence_tokens || {};
+        if (Array.isArray(evidence.keywords) && evidence.keywords.length > 0) {
+            extraTerms.push(`Evidence Keywords: ${evidence.keywords.join(', ')}`);
+        }
+        if (Array.isArray(evidence.genres) && evidence.genres.length > 0) {
+            extraTerms.push(`Evidence Genres: ${evidence.genres.join(', ')}`);
+        }
+        if (Array.isArray(evidence.studios) && evidence.studios.length > 0) {
+            extraTerms.push(`Evidence Studios: ${evidence.studios.join(', ')}`);
+        }
+        if (Array.isArray(evidence.cast) && evidence.cast.length > 0) {
+            extraTerms.push(`Evidence Cast: ${evidence.cast.join(', ')}`);
+        }
+        if (evidence.collection) {
+            extraTerms.push(`Evidence Collection: ${evidence.collection}`);
+        }
+
+        if (extraTerms.length === 0) {
+            return baseText;
+        }
+
+        return `${baseText} | ${extraTerms.join(' | ')}`;
+    }
+
     /**
      * Search for similar classifications using vector similarity
      * @param {object} metadata - Metadata of item to search for
      * @param {number} limit - Max results to return
      * @returns {Promise<Array>} Similar classifications with scores
      */
-    async semanticSearch(metadata, limit = 5) {
+    async semanticSearch(metadata, limit = 5, options = {}) {
         try {
+            const pass = options.pass || 'pass1';
+            const applyThreshold = options.applyThreshold !== false;
+            const expansionOptions = options.expansionOptions || {};
+
             // Check if RAG is enabled
             const enabled = await embeddingRouter.isEnabled();
             if (!enabled) {
@@ -76,11 +129,20 @@ class RAGRetriever {
                 title: metadata.title, 
                 threshold,
                 limit,
-                embeddingCount
+                embeddingCount,
+                pass,
+                applyThreshold
             });
 
             // Generate embedding for query
-            const text = embeddingService.formatForEmbedding(metadata);
+            const text = this.buildRetrievalText(metadata, {
+                pass,
+                useExpandedQuery: options.useExpandedQuery === true || pass !== 'pass1',
+                identifierCaps: expansionOptions.identifierCaps,
+                aliasEnabled: expansionOptions.aliasEnabled,
+                aliasMaxTerms: expansionOptions.aliasMaxTerms,
+                aliasMinTokenLength: expansionOptions.aliasMinTokenLength
+            });
             const queryResult = await embeddingRouter.embed(text);
 
             // Convert to pgvector format
@@ -164,8 +226,10 @@ class RAGRetriever {
             // Filter by threshold and format results
             const normalizedTextWeight = Math.round(textWeight * 100) / 100;
             const normalizedImageWeight = Math.round(imageWeight * 100) / 100;
-            const matches = result.rows
-                .filter(row => row.combined_similarity >= threshold)
+            const rows = applyThreshold
+                ? result.rows.filter(row => row.combined_similarity >= threshold)
+                : result.rows;
+            const matches = rows
                 .map(row => ({
                     classificationId: row.classification_id,
                     title: row.title,
@@ -184,7 +248,7 @@ class RAGRetriever {
                     date: row.created_at
                 }));
 
-            if (matches.length === 0 && result.rows.length > 0) {
+            if (applyThreshold && matches.length === 0 && result.rows.length > 0) {
                 logger.info('RAG results below threshold', { 
                     title: metadata.title,
                     topSimilarity: result.rows[0]?.combined_similarity || 0,
@@ -198,7 +262,9 @@ class RAGRetriever {
                 title: metadata.title,
                 matches: matches.length,
                 topSimilarity: matches[0]?.similarity || 0,
-                threshold
+                threshold,
+                pass,
+                applyThreshold
             });
 
             return matches;
@@ -208,8 +274,26 @@ class RAGRetriever {
                 title: metadata.title,
                 error: error.message 
             });
+            if (options.throwOnError === true) {
+                throw error;
+            }
             return [];
         }
+    }
+
+    /**
+     * Return top-K semantic candidates without similarity-threshold filtering.
+     * Used for deterministic conflict/weakness diagnostics.
+     * @param {object} metadata - Metadata of item to search for
+     * @param {number} candidateLimit - Max candidates to return
+     * @param {object} options - Optional retrieval controls
+     * @returns {Promise<Array>} Unfiltered semantic candidates
+     */
+    async semanticSearchCandidates(metadata, candidateLimit = 25, options = {}) {
+        return this.semanticSearch(metadata, candidateLimit, {
+            ...options,
+            applyThreshold: false
+        });
     }
 
     /**
@@ -370,7 +454,7 @@ class RAGRetriever {
      * @param {number} limit - Max results
      * @returns {Promise<Array>} Combined search results
      */
-    async hybridSearch(metadata, limit = 5) {
+    async hybridSearch(metadata, limit = 5, options = {}) {
         const startTime = Date.now();
         
         try {
@@ -380,7 +464,7 @@ class RAGRetriever {
             const rrfK = config?.rag_rrf_k || 60;
 
             // Get semantic matches
-            const semanticMatches = await this.semanticSearch(metadata, limit);
+            const semanticMatches = await this.semanticSearch(metadata, limit, options);
 
             // Get full-text matches
             const textMatches = await this.fullTextSearch(metadata, limit);
@@ -415,6 +499,9 @@ class RAGRetriever {
             const duration = Date.now() - startTime;
             await ragLogger.logError(error, 'hybrid_search', { duration_ms: duration });
             logger.error('Hybrid search failed', { error: error.message });
+            if (options.throwOnError === true) {
+                throw error;
+            }
             return [];
         }
     }

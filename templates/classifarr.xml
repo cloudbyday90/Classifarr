@@ -9,12 +9,9 @@
   </Branch>
   <Network>bridge</Network>
   <Privileged>false</Privileged>
-  <Shell>sh</Shell>
   <WebUI>http://[IP]:[PORT:21324]</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/unraid/classifarr.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/logo/icon.png</Icon>
-  <ExtraParams>--restart unless-stopped</ExtraParams>
-  <PostArgs></PostArgs>
   <DonateText>Support the development of Classifarr</DonateText>
   <DonateLink>https://github.com/sponsors/cloudbyday90</DonateLink>
   <Requires>Requires TMDB API key (free). Optionally requires Ollama for AI classification.</Requires>
@@ -55,49 +52,7 @@
   <Changes>https://github.com/cloudbyday90/Classifarr/releases</Changes>
   <Beta>false</Beta>
   <Date>2025-12-20</Date>
-  
-  <Networking>
-    <Mode>bridge</Mode>
-    <Publish>
-      <Port>
-        <HostPort>21324</HostPort>
-        <ContainerPort>21324</ContainerPort>
-        <Protocol>tcp</Protocol>
-      </Port>
-    </Publish>
-  </Networking>
-  
-  <Data>
-    <Volume>
-      <HostDir>/mnt/user/appdata/classifarr</HostDir>
-      <ContainerDir>/app/data</ContainerDir>
-      <Mode>rw</Mode>
-    </Volume>
-  </Data>
-  
-  <Environment>
-    <Variable>
-      <Name>PUID</Name>
-      <Value>99</Value>
-    </Variable>
-    <Variable>
-      <Name>PGID</Name>
-      <Value>100</Value>
-    </Variable>
-    <Variable>
-      <Name>UMASK</Name>
-      <Value>022</Value>
-    </Variable>
-    <Variable>
-      <Name>NODE_ENV</Name>
-      <Value>production</Value>
-    </Variable>
-    <Variable>
-      <Name>TZ</Name>
-      <Value>America/New_York</Value>
-    </Variable>
-  </Environment>
-  
+
   <!-- User-configurable settings -->
   <Config Name="Web UI Port" Target="21324" Default="21324" Mode="tcp" Description="Web interface and API port. Access the UI at http://[IP]:[PORT]" Type="Port" Display="always" Required="true"/>
   <Config Name="App Data" Target="/app/data" Default="/mnt/user/appdata/classifarr" Mode="rw" Description="Application data directory. Contains PostgreSQL database, configuration, and logs. DO NOT share with other containers." Type="Path" Display="always" Required="true"/>

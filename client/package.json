@@ -1,6 +1,6 @@
 {
   "name": "classifarr-client",
-  "version": "0.41.2d-alpha",
+  "version": "0.41.3-alpha",
   "engines": {
     "node": ">=24.11.0",
     "npm": ">=10.0.0"

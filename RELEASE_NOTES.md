@@ -1,8 +1,38 @@
 ﻿﻿# Classifarr Release Notes
 
-## [Unreleased]
+## [v0.41.3-alpha] - 2026-02-11
 
-_(No unreleased changes - ready for next version)_
+**Title: Smarter Low-Confidence Classification (Immediate Apply)**
+
+> [!IMPORTANT]
+> This release activates the enhanced low-confidence flow automatically. No observation window is required, and `apply` is the default mode after upgrade.
+
+### What This Release Changes
+- Low-confidence items now run a bounded second pass that extracts targeted identifiers (keywords/genres/studios/cast) and re-runs the Policy Engine once.
+- The second pass only adopts results when measurable improvement gates are met; otherwise baseline behavior is preserved (fail-open).
+- `rag_retrieval_loop_enabled=true`, `policy_recheck_below_prompt_threshold_enabled=true`, and `rag_loop_rollout_mode=apply` are now defaulted and backfilled by migration.
+
+### Automatic Safety and Rollback
+- Added automatic `apply -> shadow` fallback controls based on live apply-mode health thresholds (sample floor, consecutive breaches, cooldown).
+- Added optional auto-recover controls to re-attempt `shadow -> apply` on a newer app version.
+- Added stage-level resilience breakers for optional second-pass stages (`tmdb_enrichment`, `rag_pass2`, `ai_rerun`) so timeouts/busy/offline states skip the stage instead of failing classification.
+
+### Visibility and Diagnostics
+- Expanded `error_log` observability (`classification_id`, `error_stage`, `reason_code`, `correlation_id`, `sql_state`) with query indexes for diagnostics.
+- Added richer RAG loop trace/query support for rollout analysis (`mode`, outcome indexes, fallback incident payload exposure).
+- Added release-scoped post-upgrade cleanup task `clear_logs_0413` so upgraded `v0.41.3-alpha` instances start with a clean warnings/errors baseline.
+
+### UI/UX Improvements
+- Added `rag_loop_auto_fallback_enabled` and `rag_loop_auto_recover_enabled` controls in Classification settings.
+- Added preset adoption context in policy selection cards (`Used in X policies`).
+
+### Reliability Fixes Included
+- Invalid JSON payloads now return a clean 400 response without noisy error IDs.
+- OMDb circuit-breaker throttle events are now log-throttled/downgraded to reduce warning spam when HALF_OPEN is saturated.
+
+### Testing Coverage Added
+- Integration coverage for apply/shadow parity, automatic fallback, and auto-recover behavior.
+- Unit coverage for RAG loop config normalization, helper gating, metrics collector, resilience manager, and enhanced logging paths.
 
 ---
 

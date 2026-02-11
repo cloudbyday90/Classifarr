@@ -29,6 +29,30 @@ const { createLogger } = require('../utils/logger');
 const router = express.Router();
 const logger = createLogger('classification');
 
+function safeParseJsonObject(value, fallback = {}) {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  if (typeof value === 'object') {
+    return value;
+  }
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && typeof parsed === 'object' ? parsed : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
 /**
  * @swagger
  * /api/classification/classify:
@@ -520,9 +544,7 @@ router.post('/pending/:id/resolve', async (req, res) => {
 
         if (classResult.rows.length > 0) {
           const row = classResult.rows[0];
-          const parsedMeta = typeof row.metadata === 'string' 
-            ? JSON.parse(row.metadata || '{}') 
-            : row.metadata;
+          const parsedMeta = safeParseJsonObject(row.metadata, {});
 
           // Route if library has *arr type; routing service will resolve mapping details
           if (row.arr_type) {

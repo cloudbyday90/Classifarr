@@ -13,7 +13,6 @@ import { mount, flushPromises } from '@vue/test-utils'
 import Confidence from '@/views/settings/Confidence.vue'
 import api from '@/api'
 
-// Mock the API
 vi.mock('@/api', () => ({
   default: {
     get: vi.fn(),
@@ -22,7 +21,6 @@ vi.mock('@/api', () => ({
   }
 }))
 
-// Mock the toast store
 vi.mock('@/stores/toast', () => ({
   useToast: () => ({
     success: vi.fn(),
@@ -32,148 +30,126 @@ vi.mock('@/stores/toast', () => ({
   })
 }))
 
-describe('Confidence Settings - Discord Display Options', () => {
+const baseConfidenceSettings = {
+  policy_auto_classify_threshold: { value: '85', default: '85' },
+  policy_prompt_threshold: { value: '60', default: '60' },
+  discord_include_signal_breakdown: { value: 'true', default: 'true' },
+  discord_show_similar_items: { value: 'true', default: 'true' },
+  learning_genre_threshold: { value: '3', default: '3' },
+  learning_keyword_threshold: { value: '5', default: '5' },
+  learning_studio_threshold: { value: '2', default: '2' },
+  learning_min_confidence_rate: { value: '75', default: '75' },
+  learning_conflict_strategy: { value: 'escalate', default: 'escalate' },
+  learning_auto_resolve_threshold: { value: '7', default: '7' },
+  learning_max_per_user_day: { value: '50', default: '50' },
+  learning_max_per_library_hour: { value: '20', default: '20' }
+}
+
+function mockGetRoutes({
+  confidence = baseConfidenceSettings,
+  ai = {
+    rag_loop_auto_fallback_enabled: true,
+    rag_loop_auto_recover_enabled: false
+  },
+  incident = { incident: null, fallback_state: null, checked_at: null },
+  history = []
+} = {}) {
+  api.get.mockImplementation((url) => {
+    if (url === '/api/settings/confidence') {
+      return Promise.resolve({ data: confidence })
+    }
+    if (url === '/api/settings/ai') {
+      return Promise.resolve({ data: ai })
+    }
+    if (url === '/api/rag/loop/latest-fallback-incident') {
+      return Promise.resolve({ data: incident })
+    }
+    if (url === '/api/settings/confidence/history') {
+      return Promise.resolve({ data: history })
+    }
+    return Promise.resolve({ data: [] })
+  })
+}
+
+describe('Confidence Settings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should load Discord display options from API', async () => {
-    const mockSettings = {
-      policy_auto_classify_threshold: { value: '85', default: '85' },
-      policy_prompt_threshold: { value: '60', default: '60' },
-      discord_include_signal_breakdown: { value: 'true', default: 'true' },
-      discord_show_similar_items: { value: 'false', default: 'true' }
-    }
-
-    api.get.mockResolvedValueOnce({ data: mockSettings })
-    api.get.mockResolvedValueOnce({ data: [] }) // audit history
+  it('loads discord and rag-loop safety settings from APIs', async () => {
+    mockGetRoutes({
+      ai: {
+        rag_loop_auto_fallback_enabled: false,
+        rag_loop_auto_recover_enabled: true
+      },
+      confidence: {
+        ...baseConfidenceSettings,
+        discord_show_similar_items: { value: 'false', default: 'true' }
+      }
+    })
 
     const wrapper = mount(Confidence)
-
-    // Wait for component to load
     await flushPromises()
 
-    // Verify API was called
     expect(api.get).toHaveBeenCalledWith('/api/settings/confidence')
+    expect(api.get).toHaveBeenCalledWith('/api/settings/ai')
+    expect(api.get).toHaveBeenCalledWith('/api/rag/loop/latest-fallback-incident')
 
-    // Verify Discord settings were loaded
     expect(wrapper.vm.discordSettings.includeSignalBreakdown).toBe(true)
     expect(wrapper.vm.discordSettings.showSimilarItems).toBe(false)
+    expect(wrapper.vm.ragLoopSettings.autoFallbackEnabled).toBe(false)
+    expect(wrapper.vm.ragLoopSettings.autoRecoverEnabled).toBe(true)
   })
 
-  it('should include Discord display options in save payload', async () => {
-    const mockSettings = {
-      policy_auto_classify_threshold: { value: '85', default: '85' },
-      policy_prompt_threshold: { value: '60', default: '60' },
-      discord_include_signal_breakdown: { value: 'true', default: 'true' },
-      discord_show_similar_items: { value: 'true', default: 'true' },
-      learning_genre_threshold: { value: '3', default: '3' },
-      learning_keyword_threshold: { value: '5', default: '5' },
-      learning_studio_threshold: { value: '2', default: '2' },
-      learning_min_confidence_rate: { value: '75', default: '75' },
-      learning_conflict_strategy: { value: 'escalate', default: 'escalate' },
-      learning_auto_resolve_threshold: { value: '7', default: '7' },
-      learning_max_per_user_day: { value: '50', default: '50' },
-      learning_max_per_library_hour: { value: '20', default: '20' }
-    }
-
-    api.get.mockResolvedValueOnce({ data: mockSettings })
-    api.get.mockResolvedValueOnce({ data: [] })
-    api.put.mockResolvedValueOnce({ data: { success: true } })
-    api.get.mockResolvedValueOnce({ data: [] }) // audit history reload
+  it('saves confidence payload and rag-loop safety toggles', async () => {
+    mockGetRoutes()
+    api.put.mockResolvedValue({ data: { success: true } })
 
     const wrapper = mount(Confidence)
-
-    // Wait for component to load
     await flushPromises()
 
-    // Update Discord settings
     wrapper.vm.discordSettings.includeSignalBreakdown = false
     wrapper.vm.discordSettings.showSimilarItems = false
+    wrapper.vm.ragLoopSettings.autoFallbackEnabled = false
+    wrapper.vm.ragLoopSettings.autoRecoverEnabled = true
 
-    // Save settings
     await wrapper.vm.saveAllSettings()
     await flushPromises()
 
-    // Verify the API was called with Discord settings
-    expect(api.put).toHaveBeenCalledWith('/api/settings/confidence', 
+    expect(api.put).toHaveBeenCalledWith(
+      '/api/settings/confidence',
       expect.objectContaining({
         discord_include_signal_breakdown: false,
         discord_show_similar_items: false
       })
     )
+    expect(api.put).toHaveBeenCalledWith('/api/settings/ai', {
+      rag_loop_auto_fallback_enabled: false,
+      rag_loop_auto_recover_enabled: true
+    })
   })
 
-  it('should render Discord display option checkboxes', async () => {
-    const mockSettings = {
-      policy_auto_classify_threshold: { value: '85', default: '85' },
-      policy_prompt_threshold: { value: '60', default: '60' },
-      discord_include_signal_breakdown: { value: 'true', default: 'true' },
-      discord_show_similar_items: { value: 'true', default: 'true' },
-      learning_genre_threshold: { value: '3', default: '3' },
-      learning_keyword_threshold: { value: '5', default: '5' },
-      learning_studio_threshold: { value: '2', default: '2' },
-      learning_min_confidence_rate: { value: '75', default: '75' },
-      learning_conflict_strategy: { value: 'escalate', default: 'escalate' },
-      learning_auto_resolve_threshold: { value: '7', default: '7' },
-      learning_max_per_user_day: { value: '50', default: '50' },
-      learning_max_per_library_hour: { value: '20', default: '20' }
-    }
-
-    api.get.mockResolvedValueOnce({ data: mockSettings })
-    api.get.mockResolvedValueOnce({ data: [] })
+  it('renders fallback incident panel when incident exists', async () => {
+    mockGetRoutes({
+      incident: {
+        incident: {
+          incident_id: 'incident-123',
+          triggered_at: '2026-02-11T10:00:00.000Z',
+          from_mode: 'apply',
+          to_mode: 'shadow'
+        },
+        fallback_state: {
+          auto_fallback_enabled: true
+        },
+        checked_at: '2026-02-11T10:01:00.000Z'
+      }
+    })
 
     const wrapper = mount(Confidence)
-
-    // Wait for component to load
     await flushPromises()
 
-    // Verify checkboxes are rendered
-    const checkboxes = wrapper.findAll('input[type="checkbox"]')
-    expect(checkboxes.length).toBeGreaterThanOrEqual(2)
-
-    // Verify the text content includes Discord options
-    const text = wrapper.text()
-    expect(text).toContain('signal breakdown')
-    expect(text).toContain('similar items')
-  })
-
-  it('should persist Discord options across page reloads', async () => {
-    // First load - default values
-    const mockSettingsInitial = {
-      policy_auto_classify_threshold: { value: '85', default: '85' },
-      policy_prompt_threshold: { value: '60', default: '60' },
-      discord_include_signal_breakdown: { value: 'true', default: 'true' },
-      discord_show_similar_items: { value: 'true', default: 'true' }
-    }
-
-    api.get.mockResolvedValueOnce({ data: mockSettingsInitial })
-    api.get.mockResolvedValueOnce({ data: [] })
-
-    const wrapper1 = mount(Confidence)
-    await flushPromises()
-
-    expect(wrapper1.vm.discordSettings.includeSignalBreakdown).toBe(true)
-    expect(wrapper1.vm.discordSettings.showSimilarItems).toBe(true)
-
-    vi.clearAllMocks()
-
-    // Second load - after user changed settings
-    const mockSettingsUpdated = {
-      policy_auto_classify_threshold: { value: '85', default: '85' },
-      policy_prompt_threshold: { value: '60', default: '60' },
-      discord_include_signal_breakdown: { value: 'false', default: 'true' },
-      discord_show_similar_items: { value: 'false', default: 'true' }
-    }
-
-    api.get.mockResolvedValueOnce({ data: mockSettingsUpdated })
-    api.get.mockResolvedValueOnce({ data: [] })
-
-    const wrapper2 = mount(Confidence)
-    await flushPromises()
-
-    // Verify settings persisted
-    expect(wrapper2.vm.discordSettings.includeSignalBreakdown).toBe(false)
-    expect(wrapper2.vm.discordSettings.showSimilarItems).toBe(false)
+    expect(wrapper.text()).toContain('Automatic fallback detected')
+    expect(wrapper.text()).toContain('incident-123')
+    expect(wrapper.text()).toContain('Copy Report')
   })
 })

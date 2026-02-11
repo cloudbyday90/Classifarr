@@ -32,6 +32,10 @@ jest.mock('../services/tavily', () => ({
     searchAnimeInfo: jest.fn()
 }), { virtual: true });
 
+jest.mock('../services/enrichmentRetryService', () => ({
+    queueForRetry: jest.fn().mockResolvedValue()
+}), { virtual: true });
+
 jest.mock('../utils/rateLimiter', () => ({
     rateLimiters: {
         omdb: { execute: jest.fn(fn => fn()) },
@@ -133,6 +137,60 @@ describe('QueueService', () => {
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE media_server_items/),
                 expect.any(Array)
+            );
+        });
+
+        it('should suppress warn spam for OMDb HALF_OPEN throttling and use Tavily fallback', async () => {
+            const task = {
+                id: 3,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify({
+                    title: 'The Office (AU)',
+                    year: 2023,
+                    itemId: 77,
+                    source_library_id: 1,
+                    source_library_name: 'TV Shows'
+                })
+            };
+
+            const omdbService = require('../services/omdb');
+            const enrichmentRetryService = require('../services/enrichmentRetryService');
+
+            const breakerError = new Error('OMDb circuit breaker is HALF_OPEN and maximum concurrent attempts have been reached');
+            breakerError.code = 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED';
+            omdbService.getByTitle.mockRejectedValueOnce(breakerError);
+
+            db.query.mockImplementation((query) => {
+                if (query.includes('SELECT * FROM omdb_config')) {
+                    return Promise.resolve({ rows: [{ api_key: 'test_key', is_active: true }] });
+                }
+                if (query.includes('SELECT * FROM tavily_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('UPDATE media_server_items')) {
+                    return Promise.resolve({ rows: [], rowCount: 1 });
+                }
+                return Promise.resolve({ rows: [], rowCount: 0 });
+            });
+
+            await queueService.processTask(task);
+
+            expect(enrichmentRetryService.queueForRetry).toHaveBeenCalledWith(
+                77,
+                'tavily',
+                expect.stringContaining('CIRCUIT_BREAKER_HALF_OPEN_THROTTLED'),
+                6
+            );
+            expect(queueService.logger.warn).not.toHaveBeenCalledWith(
+                'OMDb enrichment failed',
+                expect.anything()
+            );
+            expect(queueService.logger.debug).toHaveBeenCalledWith(
+                'OMDb circuit breaker HALF_OPEN throttled request; using Tavily fallback',
+                expect.objectContaining({
+                    title: 'The Office (AU)',
+                    code: 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED'
+                })
             );
         });
     });

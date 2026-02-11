@@ -33,14 +33,16 @@
  * 
  * REQUIREMENTS:
  *   - PostgreSQL database must be running
- *   - pg_dump must be available in PATH
- *   - DB_NAME environment variable (defaults to 'classifarr_db')
+ *   - Host pg_dump in PATH OR a running `classifarr` Docker Compose service
+ *   - Optional DB env vars: DB_NAME/DB_HOST/DB_PORT/DB_USER/DB_PASSWORD
+ *     (fallbacks to POSTGRES_* vars, then runtime-safe defaults)
  * 
  * OUTPUT:
  *   database/schema/current.sql (commit this to git)
  * 
  * TROUBLESHOOTING:
  *   - "pg_dump: error: connection failed": Check database is running
+ *   - "Host pg_dump not found": script will retry with `docker compose exec classifarr pg_dump`
  *   - "permission denied": Ensure database user has schema read access
  *   - "database does not exist": Set DB_NAME environment variable
  */
@@ -49,7 +51,11 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const DB_NAME = process.env.DB_NAME || 'classifarr_db';
+const DB_NAME = process.env.DB_NAME || process.env.POSTGRES_DB || 'classifarr';
+const DB_HOST = process.env.DB_HOST || process.env.POSTGRES_HOST || 'localhost';
+const DB_PORT = process.env.DB_PORT || process.env.POSTGRES_PORT || '5432';
+const DB_USER = process.env.DB_USER || process.env.POSTGRES_USER || 'classifarr';
+const DB_PASSWORD = process.env.DB_PASSWORD || process.env.POSTGRES_PASSWORD || 'classifarr_secret';
 const OUTPUT_PATH = path.join(__dirname, '../database/schema/current.sql');
 
 // Validate DB_NAME to prevent shell injection
@@ -59,13 +65,80 @@ if (!DB_NAME_PATTERN.test(DB_NAME)) {
   process.exit(1);
 }
 
+function buildPgDumpArgs({ host, port, user, dbName }) {
+  return [
+    '--schema-only',
+    '--exclude-table=schema_migrations',
+    '--no-owner',
+    '--no-privileges',
+    '--host',
+    String(host),
+    '--port',
+    String(port),
+    '--username',
+    String(user),
+    '--dbname',
+    String(dbName)
+  ];
+}
+
+function runHostPgDump() {
+  return execFileSync('pg_dump', buildPgDumpArgs({
+    host: DB_HOST,
+    port: DB_PORT,
+    user: DB_USER,
+    dbName: DB_NAME
+  }), {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PGPASSWORD: DB_PASSWORD
+    }
+  });
+}
+
+function runDockerPgDumpFallback() {
+  return execFileSync('docker', [
+    'compose',
+    'exec',
+    '-T',
+    'classifarr',
+    'env',
+    `PGPASSWORD=${DB_PASSWORD}`,
+    'pg_dump',
+    ...buildPgDumpArgs({
+      host: 'localhost',
+      port: '5432',
+      user: DB_USER,
+      dbName: DB_NAME
+    })
+  ], {
+    encoding: 'utf8'
+  });
+}
+
 console.log('📦 Dumping current database schema...');
 
 try {
-  // Dump schema-only (no data) using execFileSync for security
-  const schema = execFileSync('pg_dump', ['--schema-only', DB_NAME], {
-    encoding: 'utf8'
-  });
+  // Dump schema-only (no data) using execFileSync for security.
+  // Fallback to containerized pg_dump when host binary is not installed.
+  let schemaRaw;
+  try {
+    schemaRaw = runHostPgDump();
+  } catch (error) {
+    const missingHostBinary = error?.code === 'ENOENT' || String(error?.message || '').includes('ENOENT');
+    if (!missingHostBinary) {
+      throw error;
+    }
+    console.log('ℹ️ Host pg_dump not found; retrying via docker compose exec classifarr...');
+    schemaRaw = runDockerPgDumpFallback();
+  }
+  // pg_dump from newer PostgreSQL versions can emit psql-only meta commands
+  // (for example \restrict / \unrestrict) that are invalid through node-postgres.
+  const schema = schemaRaw
+    .split('\n')
+    .filter(line => !line.trim().startsWith('\\'))
+    .join('\n');
   
   // Get latest migration version
   const migrationsDir = path.join(__dirname, '../database/migrations');
@@ -91,7 +164,8 @@ try {
 ${schema}
 
 -- Mark all migrations as applied (prevents re-running)
-INSERT INTO schema_migrations (filename, applied_at)
+SELECT pg_catalog.set_config('search_path', 'public', false);
+INSERT INTO public.schema_migrations (filename, applied_at)
 SELECT 
   filename,
   NOW()

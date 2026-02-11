@@ -7,13 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- None yet.
+
 ### Changed
 
-- (Empty - ready for next release)
+- None yet.
 
 ### Fixed
 
-- (Empty - ready for next release)
+- None yet.
+
+---
+
+## [v0.41.3-alpha] - 2026-02-11
+
+### Added
+- RAG low-confidence second-pass framework (Issue #275) with targeted policy re-check path and bounded rerun controls.
+- New RAG loop configuration manifests/validation and tests:
+  - `server/src/utils/ragLoopConfig.js`
+  - `server/src/utils/ragLoopHelpers.js`
+  - `server/src/services/ragLoopMetricsCollector.js`
+  - `server/src/services/ragLoopResilienceManager.js`
+- New schema migrations for Issue 275:
+  - `database/migrations/20260211_090000_add_rag_loop_core_config.sql`
+  - `database/migrations/20260211_090100_add_rag_loop_governance_config.sql`
+  - `database/migrations/20260211_090200_add_rag_loop_error_observability.sql`
+  - `database/migrations/20260211_090300_add_rag_loop_trace_query_indexes.sql`
+  - `database/migrations/20260211_090400_enable_rag_loop_apply_defaults.sql`
+  - `database/migrations/20260211_090500_add_rag_loop_auto_fallback_config.sql`
+- Automatic rollout fallback controls (`apply -> shadow`) with incident payload state persisted on `ai_provider_config`.
+- Optional version-aware auto-recover controls (`shadow -> apply`) for post-fix retry behavior.
+- Preset usage-count labels in policy/preset selection surfaces (`Used in X policies`).
+- New post-upgrade release task target:
+  - `server/src/services/postUpgradeService.js` now includes `clear_logs_0413` for `0.41.3`.
+
+### Changed
+- RAG loop defaults now activate immediate apply mode for this release:
+  - `rag_retrieval_loop_enabled=true`
+  - `policy_recheck_below_prompt_threshold_enabled=true`
+  - `rag_loop_rollout_mode='apply'`
+- Classification pipeline now records and evaluates apply-mode health metrics to drive automatic fallback decisions.
+- RAG API/settings responses now expose fallback state and incident metadata for diagnostics.
+- Integration test runtime hardened for long-running scenarios (`300000ms` timeout in integration config/setup).
+
+### Fixed
+- JSON body parse failures now return a clean 400 (`Invalid JSON payload`) without unnecessary error-report noise.
+- OMDb HALF_OPEN throttle/circuit-block events no longer generate warning spam; logging is throttled/downgraded for expected blocked states.
+- Queue warning behavior for OMDb circuit-blocked enrichment failures now avoids repetitive high-noise warnings while keeping actionable diagnostics.
 
 ---
 

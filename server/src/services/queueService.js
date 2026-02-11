@@ -48,6 +48,7 @@ const defaultOmdbService = require('./omdb');
 const POLL_INTERVAL_MS = 1000;  // Check queue every 1 second when idle
 const MAX_CONCURRENT = 5;       // Process up to 5 tasks concurrently
 const RETRY_DELAYS = [30, 60, 120, 300, 600]; // Seconds: 30s, 1m, 2m, 5m, 10m
+const OMDB_CIRCUIT_WARN_THROTTLE_MS = 60000;
 
 class QueueService {
     /**
@@ -78,6 +79,7 @@ class QueueService {
         this.processing = 0;
         this.aiAvailable = true;
         this.omdbLimitHit = false; // Track if OMDb limit hit to prevent log spam
+        this.lastOmdbCircuitWarnAt = 0;
     }
 
     /**
@@ -511,6 +513,10 @@ class QueueService {
                                 }
                             }
                         } catch (omdbError) {
+                            const isCircuitBlocked = omdbError.code === 'CIRCUIT_BREAKER_OPEN' ||
+                                omdbError.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED' ||
+                                omdbError.code === 'CIRCUIT_BREAKER_REJECTED';
+
                             if (omdbError.name === 'OMDbLimitReachedError' ||
                                 (omdbError.message && omdbError.message.includes('Limit Reached'))) {
 
@@ -529,6 +535,44 @@ class QueueService {
                                             'tavily',
                                             'OMDb limit reached',
                                             3 // Higher priority since it's a quota issue
+                                        );
+                                    } catch (retryErr) {
+                                        this.logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                    }
+                                }
+                            } else if (isCircuitBlocked) {
+                                const isHalfOpenThrottled = omdbError.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED';
+                                if (isHalfOpenThrottled) {
+                                    // Expected backpressure while HALF_OPEN recovery probes are in-flight.
+                                    this.logger.debug('OMDb circuit breaker HALF_OPEN throttled request; using Tavily fallback', {
+                                        title: enrichPayload.title,
+                                        code: omdbError.code
+                                    });
+                                } else {
+                                    const now = Date.now();
+                                    if ((now - this.lastOmdbCircuitWarnAt) >= OMDB_CIRCUIT_WARN_THROTTLE_MS) {
+                                        this.lastOmdbCircuitWarnAt = now;
+                                        this.logger.warn('OMDb circuit breaker blocking enrichment; using Tavily fallback', {
+                                            title: enrichPayload.title,
+                                            code: omdbError.code,
+                                            nextAttempt: omdbError.nextAttempt ? new Date(omdbError.nextAttempt).toISOString() : null
+                                        });
+                                    } else {
+                                        this.logger.debug('OMDb circuit breaker block warning suppressed', {
+                                            title: enrichPayload.title,
+                                            code: omdbError.code
+                                        });
+                                    }
+                                }
+
+                                if (enrichPayload.itemId) {
+                                    try {
+                                        const enrichmentRetryService = require('./enrichmentRetryService');
+                                        await enrichmentRetryService.queueForRetry(
+                                            enrichPayload.itemId,
+                                            'tavily',
+                                            `OMDb circuit breaker: ${omdbError.code}`,
+                                            6
                                         );
                                     } catch (retryErr) {
                                         this.logger.debug('Failed to queue for retry', { error: retryErr.message });
@@ -1646,6 +1690,7 @@ class QueueService {
 
             // 14. Clear in-memory caches
             this.omdbLimitHit = false; // Reset OMDb limit flag for fresh start
+            this.lastOmdbCircuitWarnAt = 0;
 
             this.syncStatus.updateProgress(75, 'Restarting worker...');
 

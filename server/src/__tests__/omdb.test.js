@@ -14,12 +14,19 @@ jest.mock('../config/database', () => ({
     query: jest.fn()
 }));
 
+const mockLogger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn()
+};
+
 jest.mock('../utils/logger', () => ({
     createLogger: jest.fn(() => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
+        info: mockLogger.info,
+        warn: mockLogger.warn,
+        error: mockLogger.error,
+        debug: mockLogger.debug
     }))
 }));
 
@@ -50,6 +57,10 @@ describe('OMDbService', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
         jest.clearAllMocks();
+        mockLogger.info.mockClear();
+        mockLogger.warn.mockClear();
+        mockLogger.error.mockClear();
+        mockLogger.debug.mockClear();
     });
 
     describe('Cloudflare Error Handling', () => {
@@ -180,6 +191,29 @@ describe('OMDbService', () => {
             ).rejects.toBeDefined();
 
             expect(mockAxios.get).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('Circuit Breaker Logging', () => {
+        it('should not emit warn from OMDbService for HALF_OPEN throttling', async () => {
+            const breakerError = new Error('OMDb circuit breaker is HALF_OPEN and maximum concurrent attempts have been reached');
+            breakerError.code = 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED';
+            breakerError.nextAttempt = null;
+
+            mockCircuitBreaker.execute.mockRejectedValueOnce(breakerError);
+
+            await expect(
+                omdbService.getByTitle('The Office (AU)', 2023, 'series')
+            ).rejects.toThrow('HALF_OPEN');
+
+            expect(mockLogger.warn).not.toHaveBeenCalled();
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'OMDb circuit breaker blocked request',
+                expect.objectContaining({
+                    title: 'The Office (AU)',
+                    code: 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED'
+                })
+            );
         });
     });
 });

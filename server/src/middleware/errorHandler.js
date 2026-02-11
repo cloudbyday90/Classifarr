@@ -20,18 +20,52 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('ErrorHandler');
 
+function getStatusCode(err) {
+  return err.statusCode || err.status || 500;
+}
+
+function isMalformedJsonError(err, statusCode) {
+  if (!err) return false;
+  if (err.type === 'entity.parse.failed') return true;
+
+  return (
+    err instanceof SyntaxError &&
+    statusCode === 400 &&
+    typeof err.body === 'string'
+  );
+}
+
 /**
  * Global error handler middleware for Express
  * Catches all unhandled errors and persists them with full context
  */
 async function errorHandler(err, req, res, next) {
-  // Log error with full context
-  const errorId = await logger.error(
+  const statusCode = getStatusCode(err);
+  const malformedJson = isMalformedJsonError(err, statusCode);
+
+  if (malformedJson) {
+    logger.info('Rejected malformed JSON payload', {
+      name: err.name,
+      statusCode,
+      method: req.method,
+      path: req.path,
+      contentType: req.get('content-type'),
+      parseError: err.message
+    });
+
+    return res.status(400).json({
+      error: 'Bad Request',
+      message: 'Invalid JSON payload. Ensure the request body is valid JSON.'
+    });
+  }
+
+  const logFn = statusCode >= 500 ? logger.error.bind(logger) : logger.warn.bind(logger);
+  const errorId = await logFn(
     err.message || 'Internal Server Error',
     {
       name: err.name,
       code: err.code,
-      statusCode: err.statusCode || 500
+      statusCode
     },
     {
       req,
@@ -39,13 +73,10 @@ async function errorHandler(err, req, res, next) {
     }
   );
 
-  // Send response with error UUID for bug reporting
-  const statusCode = err.statusCode || 500;
-  
-  res.status(statusCode).json({
+  return res.status(statusCode).json({
     error: statusCode === 500 ? 'Internal Server Error' : err.message,
     message: err.message,
-    errorId: errorId || undefined,
+    ...(statusCode >= 500 && errorId ? { errorId } : {}),
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 }

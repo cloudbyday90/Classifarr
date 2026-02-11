@@ -12,6 +12,35 @@ const CircuitBreaker = require('../services/circuitBreaker');
 const { createLogger } = require('./logger');
 
 const logger = createLogger('OMDbCircuitBreaker');
+const BLOCK_WARN_THROTTLE_MS = 60000;
+const blockedWarnState = new Map();
+
+function shouldEmitBlockedWarn(code) {
+    const now = Date.now();
+    const current = blockedWarnState.get(code) || { lastWarnAt: 0, suppressed: 0 };
+    const elapsed = now - current.lastWarnAt;
+
+    if (elapsed >= BLOCK_WARN_THROTTLE_MS) {
+        blockedWarnState.set(code, {
+            lastWarnAt: now,
+            suppressed: 0
+        });
+        return {
+            emit: true,
+            suppressed: current.suppressed
+        };
+    }
+
+    blockedWarnState.set(code, {
+        lastWarnAt: current.lastWarnAt,
+        suppressed: current.suppressed + 1
+    });
+
+    return {
+        emit: false,
+        suppressed: current.suppressed + 1
+    };
+}
 
 /**
  * Circuit breaker for OMDb API
@@ -74,7 +103,25 @@ async function execute(fn) {
             error.nextAttempt = null;
         }
 
-        logger.warn('OMDb circuit breaker blocked request', logMeta);
+        if (error.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED') {
+            // HALF_OPEN throttling is expected backpressure while recovery probes are in-flight.
+            // Keep this out of WARN/DB logs to avoid noisy incident spam.
+            logger.debug('OMDb circuit breaker HALF_OPEN throttled request', logMeta);
+        } else {
+            const decision = shouldEmitBlockedWarn(error.code);
+            if (decision.emit) {
+                logger.warn('OMDb circuit breaker blocked request', {
+                    ...logMeta,
+                    ...(decision.suppressed > 0 ? { suppressedSinceLastWarn: decision.suppressed } : {})
+                });
+            } else {
+                logger.debug('OMDb circuit breaker blocked request (warn suppressed)', {
+                    ...logMeta,
+                    suppressedSinceLastWarn: decision.suppressed
+                });
+            }
+        }
+
         throw error;
     }
 

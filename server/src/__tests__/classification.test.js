@@ -24,6 +24,8 @@ const policyEngine = require('../services/policyEngine');
 const confidenceCalculator = require('../services/confidenceCalculator');
 const contentTypeAnalyzer = require('../services/contentTypeAnalyzer');
 const policyQuestionBuilder = require('../services/policyQuestionBuilder');
+const ragRetriever = require('../services/ragRetriever');
+const ragLoopResilienceManager = require('../services/ragLoopResilienceManager');
 
 // Mock dependencies
 jest.mock('../services/classificationPhaseService');
@@ -717,5 +719,533 @@ describe('Classification Details Storage', () => {
       rag: 0.15,
       history: 0.10
     });
+  });
+});
+
+describe('Issue 275 rag loop orchestration', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    ragLoopResilienceManager.reset();
+    ragRetriever.semanticSearchCandidates.mockResolvedValue([
+      { libraryId: 1, libraryName: 'Movies', similarity: 0.61 },
+      { libraryId: 2, libraryName: 'Family', similarity: 0.60 }
+    ]);
+    ragRetriever.hybridSearch.mockResolvedValue([
+      { libraryId: 2, libraryName: 'Family', similarity: 0.74 },
+      { libraryId: 2, libraryName: 'Family', similarity: 0.71 }
+    ]);
+    ragRetriever.getSuggestedLibrary.mockReturnValue({
+      libraryId: 2,
+      libraryName: 'Family',
+      voteCount: 2,
+      avgSimilarity: 0.73
+    });
+  });
+
+  const buildRagConfig = (rolloutMode) => ({
+    rag_retrieval_loop_enabled: true,
+    rag_loop_rollout_mode: rolloutMode,
+    rag_loop_trace_enabled: true,
+    rag_loop_trace_max_events: 20,
+    rag_loop_trace_max_bytes: 16384,
+    rag_loop_conflict_detection_enabled: true,
+    rag_conflict_top_n: 5,
+    rag_loop_candidate_limit: 25,
+    rag_retry_strategy: 'hybrid',
+    policy_recheck_below_prompt_threshold_enabled: true,
+    policy_recheck_identifier_caps: {
+      keywords: 8,
+      genres: 5,
+      studios: 3,
+      cast: 3
+    },
+    policy_recheck_min_similarity_delta: 0.08,
+    policy_recheck_min_margin_delta: 10,
+    policy_recheck_min_confidence_gain: 5,
+    policy_recheck_max_ai_calls_per_item: 2,
+    policy_recheck_metadata_enrichment_enabled: false,
+    policy_recheck_metadata_timeout_ms: 2000,
+    rag_loop_resilience_enabled: true,
+    rag_loop_resilience_window_ms: 60000,
+    rag_loop_resilience_min_samples: 3,
+    rag_loop_resilience_timeout_streak_threshold: 2,
+    rag_loop_resilience_timeout_rate_threshold: 0.5,
+    rag_loop_resilience_error_rate_threshold: 0.5,
+    rag_loop_cooldown_tmdb_ms: 60000,
+    rag_loop_cooldown_rag_ms: 60000,
+    rag_loop_cooldown_ai_ms: 60000,
+    rag_loop_half_open_probe_count: 2,
+    rag_loop_global_bypass_multi_open_enabled: true,
+    rag_loop_global_bypass_ms: 60000
+  });
+
+  test('shadow mode remains non-invasive while attaching trace', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('shadow'));
+
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 74,
+      library: {
+        library_id: 2,
+        library_name: 'Family',
+        policy_id: 99,
+        policy_name: 'Family Policy'
+      },
+      ranked: [
+        {
+          library_id: 2,
+          library_name: 'Family',
+          score: 74,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }
+      ]
+    });
+
+    const baselineResult = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 58,
+      method: 'ai_analysis',
+      needs_clarification: false
+    };
+    const policyResult = {
+      action: 'prompt_select',
+      confidence: 54,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 54,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    };
+    const libraries = [
+      { id: 1, name: 'Movies' },
+      { id: 2, name: 'Family' }
+    ];
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries,
+      baselineResult,
+      policyResult,
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(result.library.id).toBe(1);
+    expect(result.confidence).toBe(58);
+    expect(result.ragLoopTrace).toBeDefined();
+    expect(result.ragLoopTrace.mode).toBe('shadow');
+  });
+
+  test('apply mode can adopt policy recheck result when comparator gates pass', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 74,
+      library: {
+        library_id: 2,
+        library_name: 'Family',
+        policy_id: 99,
+        policy_name: 'Family Policy'
+      },
+      ranked: [
+        {
+          library_id: 2,
+          library_name: 'Family',
+          score: 74,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }
+      ]
+    });
+
+    const baselineResult = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 58,
+      method: 'ai_analysis',
+      needs_clarification: false
+    };
+    const policyResult = {
+      action: 'prompt_select',
+      confidence: 54,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 54,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    };
+    const libraries = [
+      { id: 1, name: 'Movies' },
+      { id: 2, name: 'Family' }
+    ];
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries,
+      baselineResult,
+      policyResult,
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(result.library.id).toBe(2);
+    expect(result.method).toBe('policy_recheck');
+    expect(result.ragLoopTrace).toBeDefined();
+    expect(result.ragLoopTrace.mode).toBe('apply');
+  });
+
+  test('policy-first trigger fails open with deterministic guard reason when tmdb mapping is missing', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+
+    const baselineResult = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 58,
+      method: 'ai_analysis',
+      needs_clarification: false
+    };
+    const policyResult = {
+      action: 'prompt_select',
+      confidence: 54,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 54,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    };
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult,
+      policyResult,
+      signalContext: { confidence: 58 },
+      ragContext: null
+    });
+
+    expect(result.library.id).toBe(1);
+    expect(result.confidence).toBe(58);
+    expect(policyEngine.evaluateItem).not.toHaveBeenCalled();
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'gate' &&
+      event.reason_code === 'missing_tmdb_id' &&
+      event.fallback_action === 'policy_recheck_skipped'
+    )).toBe(true);
+  });
+
+  test('retries retryable sqlstate conflicts during policy recheck and records deterministic reason', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+
+    const retryableConflict = new Error('serialization failure');
+    retryableConflict.code = '40001';
+    policyEngine.evaluateItem
+      .mockRejectedValueOnce(retryableConflict)
+      .mockResolvedValueOnce({
+        action: 'prompt_confirm',
+        confidence: 74,
+        library: {
+          library_id: 2,
+          library_name: 'Family',
+          policy_id: 99,
+          policy_name: 'Family Policy'
+        },
+        ranked: [
+          {
+            library_id: 2,
+            library_name: 'Family',
+            score: 74,
+            prompt_threshold: 60,
+            auto_classify_threshold: 85
+          }
+        ]
+      });
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(policyEngine.evaluateItem).toHaveBeenCalledTimes(2);
+    expect(result.library.id).toBe(2);
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'policy_recheck' &&
+      event.outcome === 'retry' &&
+      event.reason_code === 'db_retryable_conflict' &&
+      event.sql_state === '40001'
+    )).toBe(true);
+  });
+
+  test('scoped rag_pass2 breaker skip is fail-open and traceable', async () => {
+    const config = buildRagConfig('shadow');
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+
+    const timeoutError = new Error('timeout');
+    timeoutError.code = 'ETIMEDOUT';
+    ragLoopResilienceManager.recordFailure('rag_pass2', timeoutError, config);
+    ragLoopResilienceManager.recordFailure('rag_pass2', timeoutError, config);
+    ragLoopResilienceManager.recordFailure('rag_pass2', timeoutError, config);
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 55,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: null,
+      signalContext: { confidence: 55 },
+      ragContext: null
+    });
+
+    expect(result.library.id).toBe(1);
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'retrieval_pass2' &&
+      event.outcome === 'skipped' &&
+      event.reason_code === 'rag_pass2_cooldown' &&
+      event.fallback_action === 'pass2_skipped'
+    )).toBe(true);
+  });
+
+  test('enforces per-item ai call budget and skips ai rerun when exhausted', async () => {
+    const config = {
+      ...buildRagConfig('apply'),
+      policy_recheck_max_ai_calls_per_item: 1
+    };
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+    const aiClassifySpy = jest.spyOn(classificationService, 'aiClassify');
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 456,
+        media_type: 'movie',
+        title: 'Low Confidence Example',
+        genres: ['Drama'],
+        keywords: ['mystery']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: null,
+      signalContext: { confidence: 58 },
+      ragContext: null
+    });
+
+    expect(aiClassifySpy).not.toHaveBeenCalled();
+    expect(result.library.id).toBe(1);
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'ai_rerun' &&
+      event.outcome === 'skipped' &&
+      event.reason_code === 'ai_budget_exhausted'
+    )).toBe(true);
+  });
+
+  test('treats schema mismatch during policy recheck as fail-open and traceable', async () => {
+    const config = {
+      ...buildRagConfig('apply'),
+      policy_recheck_max_ai_calls_per_item: 1
+    };
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+
+    const schemaError = new Error('relation missing');
+    schemaError.code = '42P01';
+    policyEngine.evaluateItem.mockRejectedValueOnce(schemaError);
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Schema Mismatch Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(result.library.id).toBe(1);
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'policy_recheck' &&
+      event.outcome === 'error' &&
+      event.reason_code === 'db_schema_mismatch' &&
+      event.sql_state === '42P01'
+    )).toBe(true);
+  });
+});
+
+describe('AI availability fallback handling', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    ragLoopResilienceManager.reset();
+
+    tmdbService.getMovieDetails.mockResolvedValue({ title: 'Test Movie', genres: [] });
+    tmdbService.getCertification.mockResolvedValue('PG');
+    contentTypeAnalyzer.analyze.mockResolvedValue({ analyzed: false });
+    policyQuestionBuilder.build.mockResolvedValue(null);
+
+    db.query.mockImplementation((text) => {
+      const query = typeof text === 'string' ? text : '';
+      if (query.includes('FROM libraries')) {
+        return { rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] };
+      }
+      if (query.includes('FROM ai_provider_config WHERE id = 1')) {
+        return { rows: [{ rag_retrieval_loop_enabled: true, rag_loop_rollout_mode: 'apply' }] };
+      }
+      if (query.includes('INSERT INTO classification_history') || query.includes('INSERT INTO logs') || query.includes('INSERT INTO error_logs')) {
+        return { rows: [{ id: 12345, error_id: 67890 }] };
+      }
+      return { rows: [] };
+    });
+  });
+
+  test('queues retry when AI is busy/unavailable even if confidence is high', async () => {
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 82,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 82,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    });
+
+    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+      new Error('[ProviderLock] Timeout waiting for lock (requestor: classification)')
+    );
+
+    const result = await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 }
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.method).toBe('queued_for_retry');
+    expect(result.reason).toContain('queued for retry');
+  });
+
+  test('keeps non-transient AI failures on signal-calculation fallback path', async () => {
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 82,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 82,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    });
+
+    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+      new Error('response_parse_failure')
+    );
+
+    const result = await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 }
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.method).toBe('signal_calculation');
   });
 });
