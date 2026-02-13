@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11.11.0",
-    "eslint": "9.39.2",
+    "eslint": "10.0.0",
     "jest": "^30.2.0",
     "nodemon": "^3.0.2",
     "pg-mem": "^3.0.11",
