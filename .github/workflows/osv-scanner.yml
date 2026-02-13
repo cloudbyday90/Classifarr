@@ -18,7 +18,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: OSV scan (no SARIF upload for Dependabot)
-        uses: google/osv-scanner-action/osv-scanner-action@v2.3.2
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.3
         with:
           scan-args: |-
             --recursive
