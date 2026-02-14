@@ -571,6 +571,32 @@ export default {
     return apiClient.get('/requests/recent', { params: { limit } })
   },
 
+  // In-app Notifications
+  getNotifications(params = {}) {
+    return apiClient.get('/notifications', { params })
+  },
+  getActiveNotifications() {
+    return apiClient.get('/notifications/active')
+  },
+  getUnreadNotificationCount() {
+    return apiClient.get('/notifications/unread-count')
+  },
+  markNotificationRead(id) {
+    return apiClient.post(`/notifications/${id}/read`)
+  },
+  markNotificationUnread(id) {
+    return apiClient.post(`/notifications/${id}/unread`)
+  },
+  markAllNotificationsRead() {
+    return apiClient.post('/notifications/mark-all-read')
+  },
+  dismissNotification(id) {
+    return apiClient.post(`/notifications/${id}/dismiss`)
+  },
+  clearReadNotifications() {
+    return apiClient.post('/notifications/clear-read')
+  },
+
   // System
   getSystemHealth() {
     return apiClient.get('/system/health')
@@ -645,6 +671,9 @@ export default {
   retryQueueTask(taskId) {
     return apiClient.post(`/queue/task/${taskId}/retry`)
   },
+  dismissQueueTask(taskId) {
+    return apiClient.post(`/queue/task/${taskId}/dismiss`)
+  },
   cancelQueueTask(taskId) {
     return apiClient.post(`/queue/task/${taskId}/cancel`)
   },
@@ -673,6 +702,12 @@ export default {
   },
   getLiveFeed(limit = 50) {
     return apiClient.get(`/classification/live-feed?limit=${limit}`)
+  },
+  getPendingClassifications() {
+    return apiClient.get('/classification/pending')
+  },
+  resolvePendingClassification(classificationId, payload) {
+    return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
   },
   getPendingTasks(limit = 5) {
     return apiClient.get(`/queue/pending?limit=${limit}`)

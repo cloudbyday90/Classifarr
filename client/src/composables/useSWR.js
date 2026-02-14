@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, unref } from "vue";
 import { useOnline } from "@vueuse/core";
 
 const STORAGE_PREFIX = "classifarr:v1:swr:";
@@ -228,6 +228,36 @@ export function useSWR(cacheKey, fetcher, options = {}) {
 
   // === Lifecycle ===
   let pollIntervalId = null;
+  let stopPollIntervalWatch = null;
+
+  function resolvePollInterval() {
+    let value = pollInterval;
+    if (typeof value === "function") {
+      value = value();
+    } else {
+      value = unref(value);
+    }
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+  }
+
+  function stopPolling() {
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId);
+      pollIntervalId = null;
+    }
+  }
+
+  function startPolling() {
+    stopPolling();
+    const intervalMs = resolvePollInterval();
+    if (!intervalMs) return;
+    pollIntervalId = setInterval(() => {
+      if (!pollOnlyWhenVisible || document.visibilityState === "visible") {
+        refresh();
+      }
+    }, intervalMs);
+  }
 
   onMounted(() => {
     // Step 1: Hydrate from cache immediately
@@ -244,21 +274,20 @@ export function useSWR(cacheKey, fetcher, options = {}) {
     // Step 3: Set up cross-tab sync
     window.addEventListener("storage", handleStorageChange);
 
-    // Step 4: Set up polling if configured
-    if (pollInterval) {
-      pollIntervalId = setInterval(() => {
-        if (!pollOnlyWhenVisible || document.visibilityState === "visible") {
-          refresh();
-        }
-      }, pollInterval);
-    }
+    // Step 4: Set up polling (supports static or dynamic interval)
+    startPolling();
+    stopPollIntervalWatch = watch(
+      () => resolvePollInterval(),
+      () => startPolling(),
+    );
   });
 
   onUnmounted(() => {
     window.removeEventListener("storage", handleStorageChange);
-    if (pollIntervalId) {
-      clearInterval(pollIntervalId);
-      pollIntervalId = null;
+    stopPolling();
+    if (typeof stopPollIntervalWatch === "function") {
+      stopPollIntervalWatch();
+      stopPollIntervalWatch = null;
     }
   });
 

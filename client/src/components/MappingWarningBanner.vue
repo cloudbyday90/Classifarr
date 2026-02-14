@@ -44,9 +44,9 @@ const hasWarning = ref(false)
 
 onMounted(async () => {
   try {
-    const response = await api.get('/notifications/active')
+    const response = await api.getActiveNotifications()
     const mappingWarning = response.data.find(
-      n => n.type === 'warning' && n.title?.toLowerCase().includes('mapping')
+      n => n.severity === 'warning' && n.title?.toLowerCase().includes('mapping')
     )
     if (mappingWarning) {
       notification.value = mappingWarning
@@ -66,7 +66,7 @@ const goToSonarr = () => router.push('/settings?tab=sonarr')
 const dismiss = async () => {
   try {
     if (notification.value?.id) {
-      await api.post(`/notifications/${notification.value.id}/dismiss`)
+      await api.dismissNotification(notification.value.id)
     }
     hasWarning.value = false
   } catch (error) {

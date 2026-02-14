@@ -86,20 +86,17 @@ class EnrichmentRetryService {
      * @param {string} enrichmentType - Type to process ('tavily', 'omdb', etc.)
      */
     async processRetryQueue(limit = 50, enrichmentType = 'tavily') {
-        // Check if Tavily is configured
-        const tavilyConfig = await db.query(
-            `SELECT api_key, is_active FROM tavily_config WHERE is_active = true LIMIT 1`
-        );
+        if (enrichmentType === 'tavily') {
+            const tavilyConfig = await db.query(
+                `SELECT api_key, is_active FROM tavily_config WHERE is_active = true LIMIT 1`
+            );
 
-        if (tavilyConfig.rows.length === 0) {
-            logger.warn('Tavily not configured or inactive, skipping retry processing');
-            return { processed: 0, success: 0, failed: 0, skipped: true, reason: 'Tavily not configured' };
+            if (tavilyConfig.rows.length === 0) {
+                logger.warn('Tavily not configured or inactive, skipping retry processing');
+                return { processed: 0, success: 0, failed: 0, skipped: true, reason: 'Tavily not configured' };
+            }
         }
 
-        const config = tavilyConfig.rows[0];
-
-        // Note: Budget tracking not currently implemented
-        // Process up to limit items
         const processLimit = limit;
 
         // Get pending items
@@ -134,14 +131,27 @@ class EnrichmentRetryService {
 
         for (const item of pendingResult.rows) {
             try {
-                // Mark as processing
                 await db.query(
                     `UPDATE enrichment_retry_queue SET status = 'processing', last_attempt_at = NOW() WHERE id = $1`,
                     [item.queue_id]
                 );
 
-                // Try Tavily enrichment (pass API key from config)
-                const result = await this.enrichWithTavily(item, config.api_key);
+                let result;
+                if (enrichmentType === 'omdb') {
+                    result = await this.enrichWithOmdb(item);
+                } else {
+                    const tavilyConfig = await db.query(
+                        `SELECT api_key FROM tavily_config WHERE is_active = true LIMIT 1`
+                    );
+                    if (tavilyConfig.rows.length === 0) {
+                        await db.query(
+                            `UPDATE enrichment_retry_queue SET status = 'pending', error_message = 'Tavily not configured' WHERE id = $1`,
+                            [item.queue_id]
+                        );
+                        continue;
+                    }
+                    result = await this.enrichWithTavily(item, tavilyConfig.rows[0].api_key);
+                }
 
                 if (result.success) {
                     // Update queue status
@@ -196,7 +206,6 @@ class EnrichmentRetryService {
      */
     async enrichWithTavily(item, apiKey) {
         try {
-            // Search for IMDb data using Tavily
             const searchQuery = item.imdb_id
                 ? `IMDb ${item.imdb_id}`
                 : `${item.title} ${item.year || ''} IMDb rating`;
@@ -207,17 +216,14 @@ class EnrichmentRetryService {
                 maxResults: 3
             });
 
-            // Tavily returns { results: [...], answer: ... } - extract results array
             const results = searchResult?.results || [];
             if (!results || results.length === 0) {
                 return { success: false, error: 'No results found' };
             }
 
-            // Extract IMDb data from search results
             const imdbData = this.extractImdbData(results, item.title);
 
             if (imdbData) {
-                // Update media_server_items metadata with Tavily results
                 await db.query(`
           UPDATE media_server_items 
           SET metadata = jsonb_set(
@@ -228,14 +234,51 @@ class EnrichmentRetryService {
           WHERE id = $1
         `, [item.media_item_id, JSON.stringify(imdbData)]);
 
-                // Successfully enriched with Tavily data
-
                 return { success: true, data: imdbData };
             }
 
             return { success: false, error: 'Could not extract IMDb data' };
         } catch (error) {
             logger.error('Tavily enrichment failed', { error: error.message, item: item.title });
+            return { success: false, error: error.message };
+        }
+    }
+
+    async enrichWithOmdb(item) {
+        try {
+            const omdbService = require('./omdb');
+
+            let omdbResult = null;
+            if (item.imdb_id) {
+                omdbResult = await omdbService.getById(item.imdb_id);
+            }
+            if (!omdbResult && item.title) {
+                omdbResult = await omdbService.getByTitle(item.title, item.year, item.media_type);
+            }
+
+            if (omdbResult) {
+                const omdbData = {
+                    data: omdbResult,
+                    fetched_at: new Date().toISOString()
+                };
+
+                await db.query(`
+                    UPDATE media_server_items 
+                    SET metadata = jsonb_set(
+                        COALESCE(metadata, '{}'::jsonb),
+                        '{omdb}',
+                        $2::jsonb
+                    )
+                    WHERE id = $1
+                `, [item.media_item_id, JSON.stringify(omdbData)]);
+
+                logger.info('OMDb enrichment successful', { title: item.title, mediaItemId: item.media_item_id });
+                return { success: true, data: omdbResult };
+            }
+
+            return { success: false, error: 'OMDb not found' };
+        } catch (error) {
+            logger.error('OMDb enrichment failed', { error: error.message, item: item.title });
             return { success: false, error: error.message };
         }
     }

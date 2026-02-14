@@ -18,7 +18,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { defineComponent, nextTick } from 'vue'
+import { defineComponent, nextTick, ref } from 'vue'
 import { useSWR } from '../../composables/useSWR'
 import {
   setupLocalStorageMock,
@@ -653,6 +653,71 @@ describe('useSWR composable', () => {
 
       // Should not have polled after unmount
       expect(fetcher).toHaveBeenCalledTimes(1)
+    })
+
+    it('supports dynamic poll intervals via reactive resolver', async () => {
+      const activeMode = ref(true)
+      const fetcher = vi.fn()
+        .mockResolvedValueOnce({ count: 1 })
+        .mockResolvedValueOnce({ count: 2 })
+        .mockResolvedValueOnce({ count: 3 })
+
+      const TestComponent = defineComponent({
+        setup() {
+          const swr = useSWR('test:dynamic-poll', fetcher, {
+            pollInterval: () => (activeMode.value ? 1000 : 10000)
+          })
+          return { ...swr }
+        },
+        template: '<div />'
+      })
+
+      mount(TestComponent)
+      await flushPromises()
+      expect(fetcher).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(1000)
+      await flushPromises()
+      expect(fetcher).toHaveBeenCalledTimes(2)
+
+      activeMode.value = false
+      await nextTick()
+
+      await vi.advanceTimersByTimeAsync(2000)
+      await flushPromises()
+      expect(fetcher).toHaveBeenCalledTimes(2)
+
+      await vi.advanceTimersByTimeAsync(8000)
+      await flushPromises()
+      expect(fetcher).toHaveBeenCalledTimes(3)
+    })
+
+    it('pauses polling while document is hidden when pollOnlyWhenVisible is enabled', async () => {
+      const visibilitySpy = vi.spyOn(document, 'visibilityState', 'get')
+      const fetcher = vi.fn()
+        .mockResolvedValueOnce({ count: 1 })
+        .mockResolvedValueOnce({ count: 2 })
+
+      const TestComponent = createTestComponent('test:hidden-tab', fetcher, {
+        pollInterval: 5000,
+        pollOnlyWhenVisible: true
+      })
+
+      visibilitySpy.mockReturnValue('hidden')
+      mount(TestComponent)
+      await flushPromises()
+      expect(fetcher).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(5000)
+      await flushPromises()
+      expect(fetcher).toHaveBeenCalledTimes(1)
+
+      visibilitySpy.mockReturnValue('visible')
+      await vi.advanceTimersByTimeAsync(5000)
+      await flushPromises()
+      expect(fetcher).toHaveBeenCalledTimes(2)
+
+      visibilitySpy.mockRestore()
     })
   })
 

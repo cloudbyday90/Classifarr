@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -18,6 +18,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - None yet.
+
+---
+
+## [v0.42.0-alpha] - 2026-02-14
+
+### Added
+- **Command Center** - Unified action-first operational surface replacing fragmented Dashboard/Activity/Queue workflows:
+  - Split-layout design with Processing (left) + Needs Attention (right) primary panels
+  - Visual phase stepper showing 8-step classification progress inline
+  - Collapsible secondary sections: Errors, Enrichment, Recently Completed, Quick Add, Libraries, Today's Summary
+  - Mobile-responsive layout with bottom sheet for Processing details
+  - Deep-link anchors for all sections (`#processing`, `#needs-attention`, `#errors`, etc.)
+- **Global Notification System** - Complete in-app notification infrastructure:
+  - Bell icon in header with unread badge count
+  - Notification panel with unread/read grouping and row actions
+  - Full `/notifications` view with filters and pagination
+  - Open-target routing to Command Center sections from notifications
+  - Read/unread state persistence across sessions
+- **Legacy Route Compatibility** - Graceful redirect behavior for existing bookmarks:
+  - `/dashboard` → Command Center with guidance notice
+  - `/activity` → Command Center `#processing` with guidance notice
+  - `/queue` → Command Center `#processing` with guidance notice
+  - Dismissible legacy route notices explaining the transition
+- **Adaptive SWR Data Layer** - Smart refresh cadence for live operational data:
+  - Active workload: faster polling during classification
+  - Idle state: slower polling to reduce unnecessary requests
+  - Hidden tab: pauses aggressive refresh when browser tab is hidden
+  - Freshness indicator with "Live" / "Updating" status
+
+### Changed
+- **Navigation Architecture** - Command Center is now the default landing page:
+  - `/` route loads Command Center directly
+  - Activity and Queue removed from primary sidebar navigation
+  - Migration page removed from primary navigation
+  - Smart Rule Builder v2 deprecated from active user journeys
+- **Status Bar Design** - Non-sticky status bar scrolls with page content:
+  - Shows AI/Worker health indicators
+  - Queue pending count and action items count
+  - Live/Updating status with timestamp
+- **Section Collapsibility** - Secondary sections default to sensible expansion states:
+  - Errors and Enrichment expanded by default (action-needed)
+  - Libraries expanded by default (context)
+  - Quick Add and Today collapsed by default (on-demand)
+
+### Deprecated
+- `/activity` page - functionality moved to Command Center Processing module
+- `/queue` page - functionality moved to Command Center Processing/Errors modules
+- `/dashboard` page - replaced by Command Center
+- Smart Rule Builder v2 entry points - removed from primary navigation
+
+### Fixed
+- Module headers changed from UPPERCASE to Title Case for improved readability
+- Section anchor IDs properly resolve for deep-linking from notifications
+- Test suite updated to match new split-layout design and collapsible sections
 
 ---
 

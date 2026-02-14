@@ -13,12 +13,12 @@
       <div v-if="selectedItems.length > 0" class="flex items-center gap-3">
         <span class="text-sm text-gray-400">{{ selectedItems.length }} selected</span>
         <Button 
-          @click="handleBatchReclassifyClick" 
+          @click="handleReclassifyClick" 
           variant="warning"
           :disabled="!canReclassify"
           :title="!canReclassify ? lockdownTooltip : undefined"
         >
-          <span v-if="!canReclassify">🔒 </span>🔄 Batch Reclassify
+          <span v-if="!canReclassify">🔒 </span>🔄 {{ reclassifyActionLabel }}
         </Button>
         <Button @click="clearSelection" variant="secondary" size="sm">
           Clear
@@ -27,6 +27,71 @@
     </div>
 
     <Card>
+      <div class="mb-4 grid grid-cols-1 gap-3 border-b border-gray-800 pb-4 md:grid-cols-6">
+        <input
+          v-model="filters.search"
+          type="text"
+          placeholder="Search title..."
+          class="md:col-span-2 rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white"
+          @keyup.enter="applyFilters"
+        />
+
+        <select v-model="filters.media_type" class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white">
+          <option value="">All types</option>
+          <option value="movie">Movie</option>
+          <option value="tv">TV</option>
+        </select>
+
+        <select v-model="filters.library_id" class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white">
+          <option value="">All libraries</option>
+          <option v-for="library in libraries" :key="`filter-library-${library.id}`" :value="String(library.id)">
+            {{ library.name }}
+          </option>
+        </select>
+
+        <select v-model="filters.method" class="rounded-lg border border-gray-700 bg-background px-3 py-2 text-sm text-white">
+          <option value="">All methods</option>
+          <option v-for="methodOption in methodOptions" :key="`filter-method-${methodOption.value}`" :value="methodOption.value">
+            {{ methodOption.label }}
+          </option>
+        </select>
+
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
+            @click="toggleAdvancedFilters"
+          >
+            {{ showAdvancedFilters ? 'Hide Dates' : 'Dates' }}
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-blue-700/40 bg-blue-900/20 px-3 py-2 text-sm text-blue-200 hover:bg-blue-900/30"
+            @click="applyFilters"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
+            @click="resetFilters"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <div v-if="showAdvancedFilters" class="mb-4 flex flex-wrap items-center gap-3 border-b border-gray-800 pb-4">
+        <label class="text-sm text-gray-400">
+          From
+          <input v-model="filters.date_from" type="date" class="ml-2 rounded border border-gray-700 bg-background px-2 py-1 text-white" />
+        </label>
+        <label class="text-sm text-gray-400">
+          To
+          <input v-model="filters.date_to" type="date" class="ml-2 rounded border border-gray-700 bg-background px-2 py-1 text-white" />
+        </label>
+      </div>
+
       <div v-if="loading" class="text-center py-12 text-gray-400">
         Loading history...
       </div>
@@ -381,13 +446,40 @@ const correcting = ref(false)
 const correctedLibraryId = ref('')
 const submitting = ref(false)
 const showLibraryProfile = ref(false)
+const showAdvancedFilters = ref(false)
+
+const filters = ref({
+  search: '',
+  media_type: '',
+  library_id: '',
+  method: '',
+  date_from: '',
+  date_to: '',
+})
 
 // Batch selection state
 const selectedItems = ref([])
 const showBatchModal = ref(false)
+const methodOptions = [
+  { value: 'policy_engine', label: 'Policy Engine' },
+  { value: 'policy_auto', label: 'Policy Auto' },
+  { value: 'policy_prompt', label: 'Policy Prompt' },
+  { value: 'source_library', label: 'Source Library' },
+  { value: 'manual_classification', label: 'Manual Classification' },
+  { value: 'manual_correction', label: 'Manual Correction' },
+  { value: 'learned_pattern', label: 'Learned Pattern' },
+  { value: 'exact_match', label: 'Exact Match' },
+  { value: 'ai_analysis', label: 'AI Analysis' },
+  { value: 'ai_fallback', label: 'AI Fallback' },
+  { value: 'ai_verified', label: 'AI Verified' },
+]
 
 const isAllSelected = computed(() => {
   return history.value.length > 0 && selectedItems.value.length === history.value.length
+})
+
+const reclassifyActionLabel = computed(() => {
+  return selectedItems.value.length > 1 ? 'Batch Reclassify' : 'Reclassify'
 })
 
 const isSelected = (id) => {
@@ -415,7 +507,7 @@ const clearSelection = () => {
   selectedItems.value = []
 }
 
-const handleBatchReclassifyClick = () => {
+const handleReclassifyClick = () => {
   // Check if AI provider is available
   if (!canReclassify.value) {
     showLockdownNotification(firstUnavailableService.value)
@@ -428,6 +520,37 @@ const handleBatchReclassifyClick = () => {
 const onBatchComplete = () => {
   clearSelection()
   loadPage(pagination.value?.page || 1)
+}
+
+const toggleAdvancedFilters = () => {
+  showAdvancedFilters.value = !showAdvancedFilters.value
+}
+
+const buildHistoryFilters = () => {
+  const params = {}
+  if (filters.value.search?.trim()) params.search = filters.value.search.trim()
+  if (filters.value.media_type) params.media_type = filters.value.media_type
+  if (filters.value.library_id) params.library_id = filters.value.library_id
+  if (filters.value.method) params.method = filters.value.method
+  if (filters.value.date_from) params.date_from = filters.value.date_from
+  if (filters.value.date_to) params.date_to = filters.value.date_to
+  return params
+}
+
+const applyFilters = async () => {
+  await loadPage(1)
+}
+
+const resetFilters = async () => {
+  filters.value = {
+    search: '',
+    media_type: '',
+    library_id: '',
+    method: '',
+    date_from: '',
+    date_to: '',
+  }
+  await loadPage(1)
 }
 
 const parsedMetadata = computed(() => {
@@ -540,9 +663,16 @@ const loadPage = async (page) => {
   loading.value = true
   try {
     await librariesStore.fetchLibraries()
-    const response = await api.getHistory({ page, limit: 50 })
+    const response = await api.getHistory({
+      page,
+      limit: 50,
+      ...buildHistoryFilters(),
+    })
     history.value = response.data.data
     pagination.value = response.data.pagination
+    selectedItems.value = selectedItems.value.filter(selected =>
+      history.value.some(item => item.id === selected.id)
+    )
   } catch (error) {
     console.error('Failed to load history:', error)
   } finally {

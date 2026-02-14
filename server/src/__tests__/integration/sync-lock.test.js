@@ -224,6 +224,43 @@ describe('Sync Lock Integration Tests', () => {
     });
   });
 
+  describe('POST /api/queue task action routes', () => {
+    it('should dismiss a failed task via /task/:id/dismiss', async () => {
+      jest.spyOn(queueService, 'dismissFailedTask').mockResolvedValue(true);
+
+      const response = await request(app)
+        .post('/api/queue/task/55/dismiss')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(queueService.dismissFailedTask).toHaveBeenCalledWith(55);
+    });
+
+    it('should retry all failed tasks via /retry-all-failed', async () => {
+      jest.spyOn(queueService, 'retryAllFailedTasks').mockResolvedValue(3);
+
+      const response = await request(app)
+        .post('/api/queue/retry-all-failed')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.count).toBe(3);
+      expect(queueService.retryAllFailedTasks).toHaveBeenCalledTimes(1);
+    });
+
+    it('should clear all failed tasks via /clear-failed', async () => {
+      jest.spyOn(queueService, 'clearFailedTasks').mockResolvedValue(2);
+
+      const response = await request(app)
+        .post('/api/queue/clear-failed')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.count).toBe(2);
+      expect(queueService.clearFailedTasks).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('Sync lock behavior', () => {
     it('should prevent concurrent library syncs', () => {
       // First sync starts

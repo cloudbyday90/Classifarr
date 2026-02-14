@@ -22,12 +22,11 @@ import MappingWarningBanner from '../components/MappingWarningBanner.vue'
 import api from '../api'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
-// Mock the API
 vi.mock('../api', () => ({
   default: {
-    get: vi.fn(),
-    post: vi.fn()
-  }
+    getActiveNotifications: vi.fn(),
+    dismissNotification: vi.fn(),
+  },
 }))
 
 describe('MappingWarningBanner.vue', () => {
@@ -39,35 +38,35 @@ describe('MappingWarningBanner.vue', () => {
       history: createMemoryHistory(),
       routes: [
         { path: '/', component: { template: '<div>Home</div>' } },
-        { path: '/settings', component: { template: '<div>Settings</div>' } }
-      ]
+        { path: '/settings', component: { template: '<div>Settings</div>' } },
+      ],
     })
   })
 
-  it('renders when hasWarning is true', async () => {
-    const mockNotification = {
-      id: 1,
-      type: 'warning',
-      title: 'Library Mapping Warning',
-      message: 'Some mappings could not be restored'
-    }
-
-    api.get.mockResolvedValueOnce({
-      data: [mockNotification]
-    })
-
-    const wrapper = mount(MappingWarningBanner, {
+  function mountBanner() {
+    return mount(MappingWarningBanner, {
       global: {
         plugins: [router],
         stubs: {
           Button: {
             template: '<button @click="$emit(\'click\')"><slot /></button>',
-            props: ['size', 'variant']
-          }
-        }
-      }
+            props: ['size', 'variant'],
+          },
+        },
+      },
     })
+  }
 
+  const mappingWarning = {
+    id: 1,
+    severity: 'warning',
+    title: 'Library Mapping Warning',
+    message: 'Some mappings could not be restored',
+  }
+
+  it('renders when hasWarning is true', async () => {
+    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    const wrapper = mountBanner()
     await flushPromises()
 
     expect(wrapper.find('.bg-warning\\/10').exists()).toBe(true)
@@ -76,149 +75,59 @@ describe('MappingWarningBanner.vue', () => {
   })
 
   it('does not render when hasWarning is false', async () => {
-    api.get.mockResolvedValueOnce({
-      data: []
-    })
-
-    const wrapper = mount(MappingWarningBanner, {
-      global: {
-        plugins: [router],
-        stubs: {
-          Button: true
-        }
-      }
-    })
-
+    api.getActiveNotifications.mockResolvedValueOnce({ data: [] })
+    const wrapper = mountBanner()
     await flushPromises()
 
     expect(wrapper.find('.bg-warning\\/10').exists()).toBe(false)
   })
 
   it('fetches notifications on mount', async () => {
-    api.get.mockResolvedValueOnce({
-      data: []
-    })
-
-    mount(MappingWarningBanner, {
-      global: {
-        plugins: [router],
-        stubs: {
-          Button: true
-        }
-      }
-    })
-
+    api.getActiveNotifications.mockResolvedValueOnce({ data: [] })
+    mountBanner()
     await flushPromises()
-
-    expect(api.get).toHaveBeenCalledWith('/notifications/active')
+    expect(api.getActiveNotifications).toHaveBeenCalled()
   })
 
   it('handles 404 errors silently', async () => {
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    
-    api.get.mockRejectedValueOnce({
-      response: { status: 404 }
-    })
-
-    const wrapper = mount(MappingWarningBanner, {
-      global: {
-        plugins: [router],
-        stubs: {
-          Button: true
-        }
-      }
-    })
-
+    api.getActiveNotifications.mockRejectedValueOnce({ response: { status: 404 } })
+    const wrapper = mountBanner()
     await flushPromises()
 
     expect(consoleWarn).not.toHaveBeenCalled()
     expect(wrapper.find('.bg-warning\\/10').exists()).toBe(false)
-    
     consoleWarn.mockRestore()
   })
 
   it('logs non-404 errors', async () => {
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    
-    api.get.mockRejectedValueOnce({
-      response: { status: 500 }
-    })
-
-    mount(MappingWarningBanner, {
-      global: {
-        plugins: [router],
-        stubs: {
-          Button: true
-        }
-      }
-    })
-
+    api.getActiveNotifications.mockRejectedValueOnce({ response: { status: 500 } })
+    mountBanner()
     await flushPromises()
-
     expect(consoleWarn).toHaveBeenCalled()
-    
     consoleWarn.mockRestore()
   })
 
   it('dismisses notification successfully', async () => {
-    const mockNotification = {
-      id: 1,
-      type: 'warning',
-      title: 'Library Mapping Warning',
-      message: 'Some mappings could not be restored'
-    }
-
-    api.get.mockResolvedValueOnce({
-      data: [mockNotification]
-    })
-    api.post.mockResolvedValueOnce({})
-
-    const wrapper = mount(MappingWarningBanner, {
-      global: {
-        plugins: [router],
-        stubs: {
-          Button: {
-            template: '<button @click="$emit(\'click\')"><slot /></button>'
-          }
-        }
-      }
-    })
-
+    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    api.dismissNotification.mockResolvedValueOnce({})
+    const wrapper = mountBanner()
     await flushPromises()
 
-    const dismissButton = wrapper.findAll('button').find(b => b.text().includes('Dismiss'))
+    const dismissButton = wrapper.findAll('button').find((b) => b.text().includes('Dismiss'))
     await dismissButton.trigger('click')
 
-    expect(api.post).toHaveBeenCalledWith('/notifications/1/dismiss')
+    expect(api.dismissNotification).toHaveBeenCalledWith(1)
     expect(wrapper.find('.bg-warning\\/10').exists()).toBe(false)
   })
 
   it('navigates to Radarr settings', async () => {
-    const mockNotification = {
-      id: 1,
-      type: 'warning',
-      title: 'Library Mapping Warning',
-      message: 'Some mappings could not be restored'
-    }
-
-    api.get.mockResolvedValueOnce({
-      data: [mockNotification]
-    })
-
-    const wrapper = mount(MappingWarningBanner, {
-      global: {
-        plugins: [router],
-        stubs: {
-          Button: {
-            template: '<button @click="$emit(\'click\')"><slot /></button>'
-          }
-        }
-      }
-    })
-
+    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    const wrapper = mountBanner()
     await flushPromises()
 
-    const radarrButton = wrapper.findAll('button').find(b => b.text().includes('Configure Radarr'))
+    const radarrButton = wrapper.findAll('button').find((b) => b.text().includes('Configure Radarr'))
     await radarrButton.trigger('click')
     await flushPromises()
     await router.isReady()
@@ -228,31 +137,11 @@ describe('MappingWarningBanner.vue', () => {
   })
 
   it('navigates to Sonarr settings', async () => {
-    const mockNotification = {
-      id: 1,
-      type: 'warning',
-      title: 'Library Mapping Warning',
-      message: 'Some mappings could not be restored'
-    }
-
-    api.get.mockResolvedValueOnce({
-      data: [mockNotification]
-    })
-
-    const wrapper = mount(MappingWarningBanner, {
-      global: {
-        plugins: [router],
-        stubs: {
-          Button: {
-            template: '<button @click="$emit(\'click\')"><slot /></button>'
-          }
-        }
-      }
-    })
-
+    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    const wrapper = mountBanner()
     await flushPromises()
 
-    const sonarrButton = wrapper.findAll('button').find(b => b.text().includes('Configure Sonarr'))
+    const sonarrButton = wrapper.findAll('button').find((b) => b.text().includes('Configure Sonarr'))
     await sonarrButton.trigger('click')
     await flushPromises()
     await router.isReady()
@@ -262,39 +151,17 @@ describe('MappingWarningBanner.vue', () => {
   })
 
   it('hides banner locally even if dismiss API fails', async () => {
-    const mockNotification = {
-      id: 1,
-      type: 'warning',
-      title: 'Library Mapping Warning',
-      message: 'Some mappings could not be restored'
-    }
-
-    api.get.mockResolvedValueOnce({
-      data: [mockNotification]
-    })
-    api.post.mockRejectedValueOnce(new Error('Network error'))
-
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-    const wrapper = mount(MappingWarningBanner, {
-      global: {
-        plugins: [router],
-        stubs: {
-          Button: {
-            template: '<button @click="$emit(\'click\')"><slot /></button>'
-          }
-        }
-      }
-    })
-
+    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    api.dismissNotification.mockRejectedValueOnce(new Error('Network error'))
+    const wrapper = mountBanner()
     await flushPromises()
 
-    const dismissButton = wrapper.findAll('button').find(b => b.text().includes('Dismiss'))
+    const dismissButton = wrapper.findAll('button').find((b) => b.text().includes('Dismiss'))
     await dismissButton.trigger('click')
 
     expect(consoleError).toHaveBeenCalled()
     expect(wrapper.find('.bg-warning\\/10').exists()).toBe(false)
-    
     consoleError.mockRestore()
   })
 })

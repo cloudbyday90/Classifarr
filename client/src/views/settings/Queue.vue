@@ -28,8 +28,8 @@
             <span class="text-red-400">{{ stats.failed }}</span> failed
           </div>
         </div>
-        <router-link to="/queue" class="text-blue-400 hover:text-blue-300 text-sm">
-          View Queue →
+        <router-link :to="{ path: '/', hash: '#processing' }" class="text-blue-400 hover:text-blue-300 text-sm">
+          Open Command Center →
         </router-link>
       </div>
     </div>
@@ -99,10 +99,10 @@
           </select>
         </div>
 
-        <!-- Activity Refresh Interval -->
+        <!-- Legacy Compatibility Refresh Interval -->
         <div>
-          <label class="block font-medium mb-1">Activity Page Refresh Interval</label>
-          <p class="text-sm text-gray-400 mb-2">How often the Activity page polls for updates (reduces log noise)</p>
+          <label class="block font-medium mb-1">Legacy Activity Poll Interval</label>
+          <p class="text-sm text-gray-400 mb-2">Compatibility setting for the legacy Activity route during migration window.</p>
           <select
             v-model="settings.activityRefreshInterval"
             class="bg-gray-700 border border-gray-600 rounded-sm px-3 py-2 w-40"

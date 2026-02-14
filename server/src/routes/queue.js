@@ -239,6 +239,29 @@ router.post('/task/:id/retry', requireReadWrite, async (req, res) => {
 
 /**
  * @swagger
+ * /api/queue/task/{id}/dismiss:
+ *   post:
+ *     summary: Dismiss a failed task
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ */
+router.post('/task/:id/dismiss', requireReadWrite, async (req, res) => {
+    try {
+        const taskId = parseInt(req.params.id);
+        const success = await queueService.dismissFailedTask(taskId);
+        res.json({ success });
+    } catch (error) {
+        logger.error('Failed to dismiss task', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
  * /api/queue/task/{id}/cancel:
  *   post:
  *     summary: Cancel a pending task

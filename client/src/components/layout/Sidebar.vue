@@ -7,8 +7,6 @@
 -->
 
 <template>
-  <!-- Desktop: Always visible sidebar -->
-  <!-- Mobile: Slide-in overlay when isOpen is true -->
   <aside
     :class="[
       'fixed md:static inset-y-0 left-0 w-72 md:w-64 bg-sidebar border-r border-gray-800 flex flex-col transform transition-transform duration-300 ease-in-out z-50',
@@ -41,78 +39,16 @@
     </div>
 
     <nav class="flex-1 px-2 overflow-y-auto">
-      <!-- Dashboard Section -->
-      <div class="mb-2">
+      <div v-for="section in navigationSections" :key="section.label" class="mb-2">
+        <div class="section-header">{{ section.label }}</div>
         <router-link
-          to="/"
-          class="nav-item group relative flex items-center px-4 py-3 mb-1 transition-colors"
-          :class="isActive('/') ? 'active' : ''"
-        >
-          <div class="active-indicator" v-if="isActive('/')"></div>
-          <HomeIcon class="w-5 h-5 mr-3" />
-          <span>Dashboard</span>
-        </router-link>
-      </div>
-
-      <!-- Media Section -->
-      <div class="mb-2">
-        <div class="section-header">Media</div>
-        <router-link
-          v-for="item in mediaMenuItems"
+          v-for="item in section.items"
           :key="item.path"
           :to="item.path"
           class="nav-item group relative flex items-center px-4 py-2.5 mb-0.5 transition-colors"
-          :class="isActive(item.path) ? 'active' : ''"
+          :class="isActive(item.path, item.aliases) ? 'active' : ''"
         >
-          <div class="active-indicator" v-if="isActive(item.path)"></div>
-          <component :is="item.icon" class="w-5 h-5 mr-3" />
-          <span>{{ item.label }}</span>
-        </router-link>
-      </div>
-
-      <!-- Classification Section -->
-      <div class="mb-2">
-        <div class="section-header">Classification</div>
-        <router-link
-          v-for="item in classificationMenuItems"
-          :key="item.path"
-          :to="item.path"
-          class="nav-item group relative flex items-center px-4 py-2.5 mb-0.5 transition-colors"
-          :class="isActive(item.path) ? 'active' : ''"
-        >
-          <div class="active-indicator" v-if="isActive(item.path)"></div>
-          <component :is="item.icon" class="w-5 h-5 mr-3" />
-          <span>{{ item.label }}</span>
-        </router-link>
-      </div>
-
-      <!-- Analytics Section -->
-      <div class="mb-2">
-        <div class="section-header">Analytics</div>
-        <router-link
-          v-for="item in analyticsMenuItems"
-          :key="item.path"
-          :to="item.path"
-          class="nav-item group relative flex items-center px-4 py-2.5 mb-0.5 transition-colors"
-          :class="isActive(item.path) ? 'active' : ''"
-        >
-          <div class="active-indicator" v-if="isActive(item.path)"></div>
-          <component :is="item.icon" class="w-5 h-5 mr-3" />
-          <span>{{ item.label }}</span>
-        </router-link>
-      </div>
-
-      <!-- Admin Section -->
-      <div class="mb-2">
-        <div class="section-header">Admin</div>
-        <router-link
-          v-for="item in adminMenuItems"
-          :key="item.path"
-          :to="item.path"
-          class="nav-item group relative flex items-center px-4 py-2.5 mb-0.5 transition-colors"
-          :class="isActive(item.path) ? 'active' : ''"
-        >
-          <div class="active-indicator" v-if="isActive(item.path)"></div>
+          <div class="active-indicator" v-if="isActive(item.path, item.aliases)"></div>
           <component :is="item.icon" class="w-5 h-5 mr-3" />
           <span>{{ item.label }}</span>
         </router-link>
@@ -132,7 +68,7 @@
     </div>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.41.3-alpha</div>
+      <div>v0.42.0-alpha</div>
     </div>
   </aside>
 </template>
@@ -142,21 +78,16 @@ import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { useOnline } from "@vueuse/core";
 import {
-  HomeIcon,
+  Squares2X2Icon,
   FolderIcon,
-  ClockIcon,
   DocumentTextIcon,
   CogIcon,
   ServerIcon,
-  PlusCircleIcon,
   ChartBarIcon,
-  QueueListIcon,
-  PuzzlePieceIcon,
   XMarkIcon,
   LightBulbIcon,
   PresentationChartLineIcon,
   DocumentDuplicateIcon,
-  ArrowPathIcon,
   SwatchIcon,
 } from "@heroicons/vue/24/outline";
 
@@ -173,23 +104,19 @@ const route = useRoute();
 const online = useOnline();
 const isOffline = computed(() => !online.value);
 
-// Media section
-const mediaMenuItems = [
+const coreMenuItems = [
+  { path: "/", aliases: ["/dashboard"], label: "Command Center", icon: Squares2X2Icon },
   { path: "/libraries", label: "Libraries", icon: FolderIcon },
-  { path: "/request", label: "Request", icon: PlusCircleIcon },
-  { path: "/activity", label: "Activity", icon: ClockIcon },
+  { path: "/history", label: "History", icon: DocumentTextIcon },
 ];
 
-// Classification section
 const classificationMenuItems = [
   { path: "/policies", label: "Policies", icon: DocumentDuplicateIcon },
   { path: "/presets", label: "Presets", icon: SwatchIcon },
   { path: "/tuning-suggestions", label: "Tuning", icon: LightBulbIcon },
 ];
 
-// Analytics section
-const analyticsMenuItems = [
-  { path: "/history", label: "History", icon: DocumentTextIcon },
+const insightsMenuItems = [
   { path: "/statistics", label: "Statistics", icon: ChartBarIcon },
   {
     path: "/policy-stats",
@@ -198,17 +125,26 @@ const analyticsMenuItems = [
   },
 ];
 
-// Admin section
 const adminMenuItems = [
-  { path: "/migration", label: "Migration", icon: ArrowPathIcon },
-  { path: "/queue", label: "Queue", icon: QueueListIcon },
   { path: "/settings", label: "Settings", icon: CogIcon },
   { path: "/system", label: "System", icon: ServerIcon },
 ];
 
-const isActive = (path) => {
+const navigationSections = computed(() => {
+  return [
+    { label: "Core", items: coreMenuItems },
+    { label: "Classification", items: classificationMenuItems },
+    { label: "Insights", items: insightsMenuItems },
+    { label: "Admin", items: adminMenuItems },
+  ];
+});
+
+const isActive = (path, aliases = []) => {
   if (path === "/") {
-    return route.path === "/";
+    return route.path === "/" || aliases.includes(route.path);
+  }
+  if (aliases.includes(route.path)) {
+    return true;
   }
   return route.path.startsWith(path);
 };

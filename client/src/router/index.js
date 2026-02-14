@@ -43,17 +43,33 @@ const router = createRouter({
       children: [
         {
           path: '',
+          name: 'CommandCenter',
+          meta: { routeMode: 'primary' },
+          component: () => import('@/views/CommandCenter.vue'),
+        },
+        // Legacy compatibility route during Command Center migration.
+        {
+          path: '/dashboard',
           name: 'Dashboard',
-          component: () => import('@/views/Dashboard.vue'),
+          meta: { routeMode: 'compatibility-only', legacy: true },
+          redirect: (to) => ({
+            path: '/',
+            query: {
+              ...to.query,
+              legacyRoute: 'dashboard',
+            },
+          }),
         },
         {
           path: '/libraries',
           name: 'Libraries',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/Libraries.vue'),
         },
         {
           path: '/libraries/:id',
           name: 'LibraryDetail',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/LibraryDetail.vue'),
         },
         // REMOVED v0.38.0 - Rule Builder deprecated, using Policy Engine instead
@@ -61,64 +77,102 @@ const router = createRouter({
         {
           path: '/activity',
           name: 'Activity',
-          component: () => import('@/views/Activity.vue'),
+          meta: { routeMode: 'compatibility-only', legacy: true },
+          redirect: (to) => ({
+            path: '/',
+            hash: '#processing',
+            query: {
+              ...to.query,
+              legacyRoute: 'activity',
+            },
+          }),
         },
         {
           path: '/history',
           name: 'History',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/History.vue'),
+        },
+        {
+          path: '/notifications',
+          name: 'Notifications',
+          meta: { routeMode: 'primary' },
+          component: () => import('@/views/Notifications.vue'),
         },
         {
           path: '/request',
           name: 'ManualRequest',
+          meta: { routeMode: 'compatibility-only' },
           component: () => import('@/views/ManualRequest.vue'),
         },
         {
           path: '/statistics',
           name: 'Statistics',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/Statistics.vue'),
         },
         {
           path: '/settings',
           name: 'Settings',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/Settings.vue'),
         },
         {
           path: '/system',
           name: 'System',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/System.vue'),
         },
         {
           path: '/queue',
           name: 'Queue',
-          component: () => import('@/views/Queue.vue'),
+          meta: { routeMode: 'compatibility-only', legacy: true },
+          redirect: (to) => ({
+            path: '/',
+            hash: '#processing',
+            query: {
+              ...to.query,
+              legacyRoute: 'queue',
+            },
+          }),
         },
         // REMOVED v0.38.0 - Patterns replaced by Library Profiles
         // Route removed: /patterns
         {
           path: '/policies',
           name: 'Policies',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/PolicyList.vue'),
         },
         {
           path: '/presets',
           name: 'Presets',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/PresetsManager.vue'),
         },
         {
           path: '/tuning-suggestions',
           name: 'TuningSuggestions',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/TuningSuggestionsDashboard.vue'),
         },
         {
           path: '/policy-stats',
           name: 'PolicyStats',
+          meta: { routeMode: 'primary' },
           component: () => import('@/views/PolicyStatsDashboard.vue'),
         },
         {
           path: '/migration',
           name: 'Migration',
-          component: () => import('@/views/MigrationDashboard.vue'),
+          meta: { routeMode: 'deprecated-compatibility', legacy: true },
+          redirect: (to) => ({
+            path: '/',
+            query: {
+              ...to.query,
+              legacyRoute: 'migration',
+            },
+          }),
         },
       ],
     },

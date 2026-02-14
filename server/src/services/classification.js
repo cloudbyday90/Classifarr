@@ -81,6 +81,35 @@ try {
   APP_VERSION = 'unknown';
 }
 
+async function createAwaitingDecisionNotification(classificationId, title, reason, mediaType) {
+  try {
+    await db.query(
+      `INSERT INTO app_notifications (type, title, message, data, created_at)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [
+        'warning',
+        `${title} needs attention`,
+        reason || 'Manual review required',
+        JSON.stringify({
+          notificationType: 'awaiting_decision',
+          classificationId,
+          mediaType,
+          targetPath: '/',
+          targetAnchor: 'needs-attention',
+          dismissible: false
+        })
+      ]
+    );
+    logger.debug('Created awaiting_decision notification', { classificationId, title });
+  } catch (error) {
+    logger.error('Failed to create awaiting_decision notification', {
+      classificationId,
+      title,
+      error: error.message
+    });
+  }
+}
+
 // Constants
 // Retry delay between failed classification attempts when AI is unavailable.
 // Set to 5 minutes as a conservative backoff to avoid hammering external providers
@@ -2729,6 +2758,16 @@ Think step by step, then respond with ONLY one of the formats above.`;
       });
     }
 
+    // Create in-app notification for items awaiting decision
+    if (status === 'awaiting_decision') {
+      await createAwaitingDecisionNotification(
+        classificationId,
+        enrichedMetadata.title,
+        pendingReason || result.reason,
+        enrichedMetadata.media_type
+      );
+    }
+
     // Log content analysis if available
     if (enrichedMetadata.contentAnalysis && enrichedMetadata.contentAnalysis.bestMatch) {
       await contentTypeAnalyzer.analyze(enrichedMetadata, classificationId);
@@ -3291,6 +3330,14 @@ Think step by step, then respond with ONLY one of the formats above.`;
             error: notificationError.message,
           });
         }
+
+        // Create in-app notification for manual review
+        await createAwaitingDecisionNotification(
+          classificationId,
+          classification.title,
+          `AI unavailable after ${classification.retry_count} retries - manual review needed`,
+          classification.media_type
+        );
 
         return;
       }

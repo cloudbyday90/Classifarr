@@ -49,6 +49,7 @@ const migrationRouter = require('./migration');
 const ratingNormalizationRouter = require('./ratingNormalization');
 const syncRouter = require('./sync');
 const apiKeysRouter = require('./apiKeys');
+const notificationsRouter = require('./notifications');
 
 const router = express.Router();
 
@@ -85,6 +86,7 @@ router.use('/migration', migrationRouter);
 router.use('/rating-normalization', ratingNormalizationRouter);
 router.use('/sync', syncRouter);
 router.use('/keys', apiKeysRouter); // API key management
+router.use('/notifications', notificationsRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
@@ -109,6 +111,7 @@ router.get('/', (req, res) => {
       presets: '/api/presets',
       suggestions: '/api/suggestions',
       migration: '/api/migration',
+      notifications: '/api/notifications',
       docs: '/api/docs',
     },
   });

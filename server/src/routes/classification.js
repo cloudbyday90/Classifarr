@@ -92,8 +92,21 @@ router.post('/classify', async (req, res) => {
  */
 router.get('/history', async (req, res) => {
   try {
-    const { page = 1, limit = 50, media_type, library_id, method, excludeMethod } = req.query;
-    const offset = (page - 1) * limit;
+    const {
+      page = 1,
+      limit = 50,
+      media_type,
+      library_id,
+      method,
+      excludeMethod,
+      search,
+      date_from,
+      date_to,
+    } = req.query;
+
+    const normalizedPage = Math.max(parseInt(page, 10) || 1, 1);
+    const normalizedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const offset = (normalizedPage - 1) * normalizedLimit;
 
     let whereConditions = [];
     let params = [];
@@ -124,6 +137,24 @@ router.get('/history', async (req, res) => {
       paramIndex++;
     }
 
+    if (search && typeof search === 'string' && search.trim().length > 0) {
+      whereConditions.push(`ch.title ILIKE $${paramIndex}`);
+      params.push(`%${search.trim()}%`);
+      paramIndex++;
+    }
+
+    if (date_from) {
+      whereConditions.push(`ch.created_at >= $${paramIndex}`);
+      params.push(date_from);
+      paramIndex++;
+    }
+
+    if (date_to) {
+      whereConditions.push(`ch.created_at < ($${paramIndex}::date + INTERVAL '1 day')`);
+      params.push(date_to);
+      paramIndex++;
+    }
+
     const whereClause = whereConditions.length > 0
       ? 'WHERE ' + whereConditions.join(' AND ')
       : '';
@@ -140,7 +171,7 @@ router.get('/history', async (req, res) => {
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
-    params.push(limit, offset);
+    params.push(normalizedLimit, offset);
     const result = await db.query(query, params);
 
     // Get total count
@@ -154,10 +185,10 @@ router.get('/history', async (req, res) => {
     res.json({
       data: result.rows,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: normalizedPage,
+        limit: normalizedLimit,
         total: parseInt(countResult.rows[0].total),
-        totalPages: Math.ceil(countResult.rows[0].total / limit),
+        totalPages: Math.ceil(countResult.rows[0].total / normalizedLimit),
       },
     });
   } catch (error) {

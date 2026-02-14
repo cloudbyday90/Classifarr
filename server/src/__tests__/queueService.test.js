@@ -140,7 +140,7 @@ describe('QueueService', () => {
             );
         });
 
-        it('should suppress warn spam for OMDb HALF_OPEN throttling and use Tavily fallback', async () => {
+        it('should suppress warn spam for OMDb HALF_OPEN throttling and queue for OMDb retry', async () => {
             const task = {
                 id: 3,
                 task_type: 'metadata_enrichment',
@@ -177,7 +177,7 @@ describe('QueueService', () => {
 
             expect(enrichmentRetryService.queueForRetry).toHaveBeenCalledWith(
                 77,
-                'tavily',
+                'omdb',
                 expect.stringContaining('CIRCUIT_BREAKER_HALF_OPEN_THROTTLED'),
                 6
             );
@@ -186,7 +186,7 @@ describe('QueueService', () => {
                 expect.anything()
             );
             expect(queueService.logger.debug).toHaveBeenCalledWith(
-                'OMDb circuit breaker HALF_OPEN throttled request; using Tavily fallback',
+                'OMDb circuit breaker HALF_OPEN throttled request; queuing for OMDb retry',
                 expect.objectContaining({
                     title: 'The Office (AU)',
                     code: 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED'
@@ -340,6 +340,63 @@ describe('QueueService', () => {
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE task_queue.*SET status = 'cancelled'/s),
                 expect.arrayContaining([123])
+            );
+        });
+    });
+
+    describe('dismissFailedTask', () => {
+        it('should delete a failed task and return true when row is removed', async () => {
+            db.query.mockResolvedValue({ rowCount: 1 });
+
+            const result = await queueService.dismissFailedTask(456);
+
+            expect(result).toBe(true);
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringMatching(/DELETE FROM task_queue[\s\S]*status = 'failed'/),
+                expect.arrayContaining([456])
+            );
+        });
+
+        it('should return false when no failed task row was removed', async () => {
+            db.query.mockResolvedValue({ rowCount: 0 });
+
+            const result = await queueService.dismissFailedTask(999);
+
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('bulk queue actions', () => {
+        it('should clear failed tasks and return affected count', async () => {
+            db.query.mockResolvedValue({ rowCount: 3 });
+
+            const count = await queueService.clearFailedTasks();
+
+            expect(count).toBe(3);
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringMatching(/DELETE FROM task_queue WHERE status = 'failed'/)
+            );
+        });
+
+        it('should retry all failed tasks and return affected count', async () => {
+            db.query.mockResolvedValue({ rowCount: 4 });
+
+            const count = await queueService.retryAllFailedTasks();
+
+            expect(count).toBe(4);
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringMatching(/UPDATE task_queue[\s\S]*WHERE status = 'failed'/)
+            );
+        });
+
+        it('should cancel all pending tasks and return affected count', async () => {
+            db.query.mockResolvedValue({ rowCount: 7 });
+
+            const count = await queueService.cancelAllPendingTasks();
+
+            expect(count).toBe(7);
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringMatching(/UPDATE task_queue[\s\S]*WHERE status = 'pending'/)
             );
         });
     });

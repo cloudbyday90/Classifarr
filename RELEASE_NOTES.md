@@ -1,4 +1,81 @@
-﻿﻿# Classifarr Release Notes
+# Classifarr Release Notes
+
+## [v0.42.0-alpha] - 2026-02-14
+
+**Title: Command Center - One Surface for Everything**
+
+> [!IMPORTANT]
+> This release introduces the new Command Center as the default operational surface. Previous Dashboard, Activity, and Queue pages redirect automatically with guidance notices.
+
+### 🎉 What You'll Notice
+- **One page, all actions** - No more bouncing between Dashboard, Activity, and Queue
+- **Live processing view** - Visual stepper shows exactly where each classification is in the 8-step pipeline
+- **Inline decisions** - Resolve policy questions with Confirm/Change/Yes/No without leaving the page
+- **Smart notifications** - Bell icon shows unread count, full panel for history, deep-links to relevant sections
+
+### 📊 Quick Visual
+```
+┌─────────────────────────────────────────────────────────┐
+│  COMMAND CENTER                        Live  2:14 PM    │
+│  AI Online  │  Worker Active  │  2 Queue  │  0 Action   │
+├─────────────────────┬───────────────────────────────────┤
+│  PROCESSING         │  NEEDS ATTENTION                  │
+│  ──────────────     │  ─────────────────                │
+│  Inception (2010)   │  ┌─────────────────────────────┐  │
+│  67% ████░░░░       │  │ The Matrix (1999)           │  │
+│  ▶ AI Analysis      │  │ 78% confidence              │  │
+│  ✓ ✓ ✓ ○ ○ ○ ○ ○    │  │ [Confirm] [Change]          │  │
+│                     │  └─────────────────────────────┘  │
+│  Up Next (3)        │                                   │
+├─────────────────────┴───────────────────────────────────┤
+│  Errors −  Enrichment (89%) −  Recently Completed       │
+│  Quick Add +  Libraries −  Today's Summary +            │
+└─────────────────────────────────────────────────────────┘
+```
+
+### ✨ Highlights
+
+**Command Center**
+- Split-layout with Processing + Needs Attention always visible
+- Visual phase stepper: Queued → Metadata → Policy → RAG → Signal → AI → Decision → Notification
+- Collapsible secondary sections expand when you need them
+- Mobile bottom sheet for Processing details on small screens
+
+**Notifications**
+- Bell icon in header with live unread count
+- Panel groups unread first, then read items
+- Mark All Read in one click
+- Open-target routing lands on exact Command Center section
+
+**Smart Data Layer**
+- Adaptive polling: fast when active, slow when idle
+- Tab visibility awareness: pauses when hidden
+- Freshness indicator shows Live/Updating status
+- No page refresh needed after actions
+
+### 🔄 Transition Notes
+
+**Legacy Routes Redirect Automatically:**
+- `/dashboard` → Command Center
+- `/activity` → Command Center `#processing`
+- `/queue` → Command Center `#processing`
+
+A dismissible notice explains the change on first visit.
+
+**Navigation Changes:**
+- Activity and Queue removed from sidebar (functionality is in Command Center)
+- Migration page removed from primary navigation
+- History remains available for audits and reclassification
+
+### 👥 Who This Helps
+- **Daily operators:** Resolve everything on one page without context switching
+- **Mobile users:** Touch-friendly layout with bottom sheet for details
+- **Admins:** Global notifications surface issues before they become problems
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full implementation notes, test scope, and migration-level details.
+
+---
 
 ## [v0.41.3-alpha] - 2026-02-11
 

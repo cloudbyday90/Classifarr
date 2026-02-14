@@ -543,8 +543,7 @@ class QueueService {
                             } else if (isCircuitBlocked) {
                                 const isHalfOpenThrottled = omdbError.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED';
                                 if (isHalfOpenThrottled) {
-                                    // Expected backpressure while HALF_OPEN recovery probes are in-flight.
-                                    this.logger.debug('OMDb circuit breaker HALF_OPEN throttled request; using Tavily fallback', {
+                                    this.logger.debug('OMDb circuit breaker HALF_OPEN throttled request; queuing for OMDb retry', {
                                         title: enrichPayload.title,
                                         code: omdbError.code
                                     });
@@ -552,7 +551,7 @@ class QueueService {
                                     const now = Date.now();
                                     if ((now - this.lastOmdbCircuitWarnAt) >= OMDB_CIRCUIT_WARN_THROTTLE_MS) {
                                         this.lastOmdbCircuitWarnAt = now;
-                                        this.logger.warn('OMDb circuit breaker blocking enrichment; using Tavily fallback', {
+                                        this.logger.warn('OMDb circuit breaker blocking enrichment; queuing for OMDb retry', {
                                             title: enrichPayload.title,
                                             code: omdbError.code,
                                             nextAttempt: omdbError.nextAttempt ? new Date(omdbError.nextAttempt).toISOString() : null
@@ -570,7 +569,7 @@ class QueueService {
                                         const enrichmentRetryService = require('./enrichmentRetryService');
                                         await enrichmentRetryService.queueForRetry(
                                             enrichPayload.itemId,
-                                            'tavily',
+                                            'omdb',
                                             `OMDb circuit breaker: ${omdbError.code}`,
                                             6
                                         );
@@ -579,14 +578,13 @@ class QueueService {
                                     }
                                 }
                             } else {
-                                this.logger.warn('OMDb enrichment failed', { error: omdbError.message });
-                                // Queue for Tavily fallback on other errors
+                                this.logger.warn('OMDb enrichment failed; queuing for OMDb retry', { error: omdbError.message });
                                 if (enrichPayload.itemId) {
                                     try {
                                         const enrichmentRetryService = require('./enrichmentRetryService');
                                         await enrichmentRetryService.queueForRetry(
                                             enrichPayload.itemId,
-                                            'tavily',
+                                            'omdb',
                                             `OMDb error: ${omdbError.message?.substring(0, 100)}`,
                                             7
                                         );
@@ -1121,6 +1119,25 @@ class QueueService {
             return true;
         } catch (error) {
             this.logger.error('Failed to retry task', { error: error.message, taskId });
+            return false;
+        }
+    }
+
+    /**
+     * Dismiss a failed task
+     */
+    async dismissFailedTask(taskId) {
+        try {
+            const result = await this.db.query(
+                `DELETE FROM task_queue
+         WHERE id = $1 AND status = 'failed'
+         RETURNING id`,
+                [taskId]
+            );
+            this.logger.info('Failed task dismissed', { taskId, dismissed: result.rowCount > 0 });
+            return result.rowCount > 0;
+        } catch (error) {
+            this.logger.error('Failed to dismiss task', { error: error.message, taskId });
             return false;
         }
     }

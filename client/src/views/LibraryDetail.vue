@@ -229,18 +229,26 @@
       <!-- Library Profile Section -->
       <LibraryProfile :library-id="library.id" />
 
-      <Card title="Classification Rules (Deprecated)">
+      <Card title="Policy Guidance">
         <div class="space-y-6">
           <div class="flex justify-between items-start">
             <div>
-              <h4 class="font-medium mb-1">Smart Rules</h4>
+              <h4 class="font-medium mb-1">Policy Engine</h4>
               <p class="text-sm text-gray-400">
-                Managed via Policy Engine
+                Manage active behavior through Policies, Presets, and Tuning.
               </p>
             </div>
-            <!-- <Button @click="$router.push(`/rule-builder/${library.id}`)">
-              🧠 Smart Rule Builder
-            </Button> -->
+            <div class="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" @click="$router.push('/policies')">
+                Policies
+              </Button>
+              <Button size="sm" variant="secondary" @click="$router.push('/presets')">
+                Presets
+              </Button>
+              <Button size="sm" variant="secondary" @click="$router.push('/tuning-suggestions')">
+                Tuning
+              </Button>
+            </div>
           </div>
 
           <!-- AI Suggestions Panel -->
@@ -296,7 +304,7 @@
             </table>
           </div>
           <div v-else class="text-center py-8 text-gray-500 border-2 border-dashed border-gray-700 rounded-lg">
-            No rules configured yet. Click "🧠 Smart Rule Builder" to create AI-powered classification rules.
+            No rule suggestions yet. Use Policies, Presets, and Tuning to shape routing behavior.
           </div>
         </div>
       </Card>

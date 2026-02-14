@@ -44,8 +44,18 @@ router.use(authenticateTokenOrApiKey);
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT l.*, ms.name as media_server_name, ms.type as media_server_type
+      SELECT
+        l.*,
+        COALESCE(msi.item_count, 0)::int AS item_count,
+        l.item_count::int AS stored_item_count,
+        ms.name as media_server_name,
+        ms.type as media_server_type
       FROM libraries l
+      LEFT JOIN (
+        SELECT library_id, COUNT(*)::int AS item_count
+        FROM media_server_items
+        GROUP BY library_id
+      ) msi ON msi.library_id = l.id
       LEFT JOIN media_server ms ON l.media_server_id = ms.id
       ORDER BY l.priority DESC, l.name ASC
     `);
