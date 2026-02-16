@@ -81,6 +81,73 @@ describe('OMDb Circuit Breaker', () => {
             expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
         });
 
+        it('should trip on ENOTFOUND (DNS failure)', () => {
+            const error = new Error('getaddrinfo ENOTFOUND www.omdbapi.com');
+            error.code = 'ENOTFOUND';
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on EAI_AGAIN (DNS temporary failure)', () => {
+            const error = new Error('getaddrinfo EAI_AGAIN');
+            error.code = 'EAI_AGAIN';
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on ECONNRESET', () => {
+            const error = new Error('Connection reset');
+            error.code = 'ECONNRESET';
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on HTTP 502 Bad Gateway', () => {
+            const error = new Error('Bad Gateway');
+            error.response = { status: 502 };
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on HTTP 503 Service Unavailable', () => {
+            const error = new Error('Service Unavailable');
+            error.response = { status: 503 };
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on HTTP 504 Gateway Timeout', () => {
+            const error = new Error('Gateway Timeout');
+            error.response = { status: 504 };
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on Cloudflare 520 error', () => {
+            const error = new Error('Unknown Error');
+            error.code = 'ERR_BAD_RESPONSE';
+            error.response = { status: 520 };
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on Cloudflare 521 error', () => {
+            const error = new Error('Web Server Is Down');
+            error.response = { status: 521 };
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on Cloudflare 522 error', () => {
+            const error = new Error('Connection Timed Out');
+            error.response = { status: 522 };
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on Cloudflare 523 error', () => {
+            const error = new Error('Origin Is Unreachable');
+            error.response = { status: 523 };
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
+        it('should trip on Cloudflare 524 error', () => {
+            const error = new Error('A Timeout Occurred');
+            error.response = { status: 524 };
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(true);
+        });
+
         it('should not trip on 401 errors', () => {
             const error = new Error('Unauthorized');
             error.code = 'ERR_BAD_REQUEST';
@@ -90,6 +157,18 @@ describe('OMDb Circuit Breaker', () => {
         it('should not trip on 404 errors', () => {
             const error = new Error('Not found');
             error.code = 'ERR_BAD_RESPONSE';
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(false);
+        });
+
+        it('should not trip on 429 rate limit errors', () => {
+            const error = new Error('Too Many Requests');
+            error.response = { status: 429 };
+            expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(false);
+        });
+
+        it('should not trip on 500 internal server error', () => {
+            const error = new Error('Internal Server Error');
+            error.response = { status: 500 };
             expect(omdbCircuitBreaker.shouldTripBreaker(error)).toBe(false);
         });
     });
