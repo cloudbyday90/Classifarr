@@ -21,6 +21,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.1-alpha] - 2026-02-16
+
+### Changed
+- **Circuit Breaker Expansion** - OMDb circuit breaker now trips on additional error conditions:
+  - DNS resolution failures (`ENOTFOUND`, `EAI_AGAIN`)
+  - Connection resets (`ECONNRESET`)
+  - Cloudflare/server errors (HTTP 502, 503, 504, 520, 521, 522, 523, 524)
+  - Previous coverage was limited to `ECONNABORTED`, `ETIMEDOUT`, `ECONNREFUSED`
+
+### Fixed
+- **Clipboard Fallback** - Webhook URL and secret key copy buttons now fall back to `document.execCommand('copy')` when `navigator.clipboard` is unavailable (non-HTTPS contexts)
+- **Null Safety** - `formatSettingKey()` in Confidence.vue now handles undefined/null keys gracefully
+
+---
+
 ## [v0.42.0-alpha] - 2026-02-14
 
 ### Added

@@ -684,9 +684,24 @@ const generateKey = async () => {
 
 const copyUrl = async () => {
   try {
-    await navigator.clipboard.writeText(webhookUrl.value)
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(webhookUrl.value)
+      toast.success('Webhook URL copied to clipboard')
+      return
+    }
+
+    const textArea = document.createElement('textarea')
+    textArea.value = webhookUrl.value
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-9999px'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
     toast.success('Webhook URL copied to clipboard')
   } catch (error) {
+    console.error('Failed to copy URL:', error)
     toast.error('Failed to copy URL')
   }
 }
@@ -697,9 +712,24 @@ const copySecretKey = async () => {
     return
   }
   try {
-    await navigator.clipboard.writeText(config.value.secret_key)
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(config.value.secret_key)
+      toast.success('Secret key copied to clipboard')
+      return
+    }
+
+    const textArea = document.createElement('textarea')
+    textArea.value = config.value.secret_key
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-9999px'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
     toast.success('Secret key copied to clipboard')
   } catch (error) {
+    console.error('Failed to copy secret key:', error)
     toast.error('Failed to copy secret key')
   }
 }

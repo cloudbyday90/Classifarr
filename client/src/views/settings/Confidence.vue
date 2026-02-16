@@ -694,6 +694,7 @@ async function resetToDefaults() {
 }
 
 function formatSettingKey(key) {
+  if (!key) return 'Unknown'
   return key
     .replace(/_/g, ' ')
     .replace(/\b\w/g, l => l.toUpperCase())

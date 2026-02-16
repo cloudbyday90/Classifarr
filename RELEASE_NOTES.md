@@ -1,5 +1,46 @@
 # Classifarr Release Notes
 
+## [v0.42.1-alpha] - 2026-02-16
+
+**Title: Stronger Protection When External Services Falter**
+
+### 🎉 What You'll Notice
+- **Fewer cascading errors** when OMDb has issues - the system now recognizes and protects against more failure types
+- **Copy buttons work everywhere** - Webhook URL and secret key copy reliably, even in non-HTTPS environments
+- **Cleaner logs** - fewer confusing error messages during temporary outages
+
+### 📊 Quick Visual
+```text
+Circuit Breaker Protection Coverage
+Before this release:
+  Network errors    [██████░░░░] 60%
+  Server errors     [░░░░░░░░░░] 0%
+
+After this release:
+  Network errors    [██████████] 100%
+  Server errors     [██████████] 100%
+```
+
+### ✨ Highlights
+- **Expanded circuit breaker coverage** - now trips on DNS failures (ENOTFOUND), connection resets, and Cloudflare errors (520-524, 502-504)
+- **Improved clipboard compatibility** - fallback method ensures copy works in all browser contexts
+- **Null safety fix** - settings page no longer errors on empty values
+
+### 🔧 Reliability Improvements
+- Circuit breaker now detects and protects against 8 additional error conditions
+- When OMDb infrastructure has issues, the system gracefully falls back instead of flooding logs
+- Per-request retries still happen, but the circuit opens faster to prevent waste
+
+### 👥 Who This Helps
+- **Self-hosters:** System stays stable even when external APIs have transient issues
+- **Operators:** Cleaner logs and fewer alert storms during outages
+- **All users:** Copy buttons in settings work reliably
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.0-alpha] - 2026-02-14
 
 **Title: Command Center - One Surface for Everything**

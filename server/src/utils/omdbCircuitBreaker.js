@@ -58,13 +58,23 @@ const omdbCircuitBreaker = new CircuitBreaker({
 
 /**
  * Check if an error should trip the circuit breaker
- * Only network errors should trip the breaker
+ * Network errors and server-side HTTP errors (5xx, especially Cloudflare) should trip the breaker
  * @param {Error} error - The error to check
  * @returns {boolean} True if error should trip the breaker
  */
 function shouldTripBreaker(error) {
-    const networkErrorCodes = ['ECONNABORTED', 'ETIMEDOUT', 'ECONNREFUSED'];
-    return networkErrorCodes.includes(error.code);
+    const networkErrorCodes = ['ECONNABORTED', 'ETIMEDOUT', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET'];
+    if (networkErrorCodes.includes(error.code)) {
+        return true;
+    }
+
+    const status = error.response?.status;
+    if (status) {
+        const serverErrorStatuses = [502, 503, 504, 520, 521, 522, 523, 524];
+        return serverErrorStatuses.includes(status);
+    }
+
+    return false;
 }
 
 /**
