@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- None yet.
+
+### Changed
+
+- None yet.
+
+### Fixed
+
+- None yet.
+
+---
+
+## [v0.42.1b-alpha] - 2026-02-17
+
+### Added
+
 - **Test Coverage** - New test suites for high-risk services:
   - `enrichmentRetryService.test.js` (28 tests) - covers OMDb/Tavily enrichment retry logic
   - `aiRouter.test.js` (23 tests) - covers AI provider routing and budget fallback
@@ -19,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `plex.test.js` (18 tests) - covers Plex media server integration
   - `jellyfin.test.js` (17 tests) - covers Jellyfin media server integration
   - `emby.test.js` (17 tests) - covers Emby media server integration
+- **.gitattributes** - Expanded to enforce LF line endings for all text files
 
 ### Changed
 

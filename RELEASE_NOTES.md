@@ -1,5 +1,49 @@
 # Classifarr Release Notes
 
+## [v0.42.1b-alpha] - 2026-02-17
+
+**Title: Bug Fix and Massive Test Coverage Expansion**
+
+### 🎉 What You'll Notice
+- **Enrichment works again** - Fixed a typo that was breaking OMDb enrichment for new media
+- **Cleaner UI** - Removed non-functional hamburger menu on desktop
+- **More reliable releases** - 202 new tests ensure future changes don't break things
+
+### 📊 Quick Visual
+```text
+Test Coverage Expansion
+Before:                        After:
+┌────────────────────┐        ┌────────────────────────────┐
+│ enrichmentRetry    │        │ enrichmentRetry ████████ 28│
+│ aiRouter          0│   →    │ aiRouter      ████████ 23│
+│ mediaSync         0│        │ mediaSync     ████████ 22│
+│ *arr services     0│        │ radarr        ████████ 27│
+│ media servers     0│        │ sonarr        ████████ 27│
+│ web services      0│        │ tavily        ████████ 25│
+└────────────────────┘        │ plex/jellyfin/emby ████ 52│
+                              └────────────────────────────┘
+                              Total: 202 new tests
+```
+
+### ✨ Highlights
+- **Bug fix** - Corrected `getById` to `getByIMDBId` in enrichment service
+- **9 new test suites** covering the most critical services
+- **Better line endings** - `.gitattributes` now enforces LF across all text files
+
+### 🔧 Reliability Improvements
+- Tests would have caught the `getById` typo before production
+- All core services now have test coverage (AI routing, sync, *arr integration)
+- Future regressions will be caught by CI
+
+### 👥 Who This Helps
+- **All users:** Enrichment now works for new media items
+- **Developers:** 202 tests provide safety net for future changes
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.1a-alpha] - 2026-02-17
 
 **Title: Smarter Queue Handling When AI is Offline**
