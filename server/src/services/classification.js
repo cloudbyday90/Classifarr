@@ -731,7 +731,8 @@ class ClassificationService {
     });
 
     try {
-      return await Promise.race([promise, timeoutPromise]);
+      const result = await Promise.race([promise, timeoutPromise]);
+      return result;
     } finally {
       if (timeoutHandle) {
         clearTimeout(timeoutHandle);
@@ -1305,13 +1306,15 @@ class ClassificationService {
     const pass2Conflict = config.rag_loop_conflict_detection_enabled
       ? detectRagConflict(pass2Candidates, config)
       : { isConflict: false, reason: 'conflict_detection_disabled' };
+    
+    // Defensive check added
     const pass2Diagnostics = summarizePassDiagnostics(
-      pass2Matches.length > 0 ? pass2Matches : pass2Candidates.slice(0, topN),
+      pass2Matches && pass2Matches.length > 0 ? pass2Matches : pass2Candidates.slice(0, topN),
       pass2Conflict,
       topN
     );
 
-    const pass2RagContext = pass2Matches.length > 0
+    const pass2RagContext = pass2Matches && pass2Matches.length > 0
       ? {
         similarItems: pass2Matches.slice(0, 3),
         suggestion: ragRetriever.getSuggestedLibrary(pass2Matches)
