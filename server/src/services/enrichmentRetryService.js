@@ -250,7 +250,7 @@ class EnrichmentRetryService {
 
             let omdbResult = null;
             if (item.imdb_id) {
-                omdbResult = await omdbService.getById(item.imdb_id);
+                omdbResult = await omdbService.getByIMDBId(item.imdb_id);
             }
             if (!omdbResult && item.title) {
                 omdbResult = await omdbService.getByTitle(item.title, item.year, item.media_type);
