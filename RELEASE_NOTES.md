@@ -1,5 +1,43 @@
 # Classifarr Release Notes
 
+## [v0.42.1d-alpha] - 2026-02-17
+
+**Title: Enrichment Retry Respects Daily Limits**
+
+### 🎉 What You'll Notice
+- **OMDb only** - Auto-retry now only processes OMDb items (Tavily uses monthly credits, no auto-retry)
+- **Respects your daily limit** - Pauses retry when OMDb daily limit reached until next day reset
+- **Quota-aware batching** - Won't exceed your remaining daily API calls
+
+### 📊 Quick Visual
+```text
+Before:                              After:
+┌─────────────────────────┐          ┌─────────────────────────┐
+│ Retries OMDb AND Tavily │          │ Retries OMDb only       │
+│ Ignores daily limits    │    →     │ Checks daily limit      │
+│ May exceed quota        │          │ Pauses when limit hit   │
+└─────────────────────────┘          └─────────────────────────┘
+```
+
+### ✨ Highlights
+- **Daily limit check** - Checks remaining quota before processing
+- **Smart batching** - Only processes up to remaining quota
+- **Tavily skipped** - Tavily has monthly credits, should not be auto-retried
+
+### 🔧 Reliability Improvements
+- 11 new tests for quota checking and retry scheduling
+- Prevents wasted API calls when quota exhausted
+
+### 👥 Who This Helps
+- **Premium OMDb users:** Higher limits are respected automatically
+- **Free tier users:** Won't waste precious daily calls on retries
+- **Everyone:** Tavily monthly credits preserved for manual use
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.1c-alpha] - 2026-02-17
 
 **Title: Smart On-Demand Enrichment Retry**
