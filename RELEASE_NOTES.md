@@ -1,5 +1,54 @@
 # Classifarr Release Notes
 
+## [v0.42.3b-alpha] - 2026-02-17
+
+**Title: Policy Recheck Method Constraint Fix**
+
+### 🎉 What You'll Notice
+
+- **Policy recheck classifications complete successfully** — no more constraint violation errors for `policy_recheck` method
+- **Better test coverage** — automated tests now catch missing constraint methods before deployment
+
+### 📊 Quick Visual
+
+```text
+Issue Flow:
+┌─────────────────────────────────────────────────────────┐
+│ v0.42.3a added 3 methods, missed policy_recheck        │
+│ v0.42.3b adds policy_recheck + regression tests        │
+└─────────────────────────────────────────────────────────┘
+
+Regression Protection:
+┌─────────────────────────────────────────────────────────┐
+│ Code scans all method: values in services/              │
+│     ↓                                                   │
+│ Compares against VALID_METHODS list                     │
+│     ↓                                                   │
+│ Integration test validates DB constraint matches        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### ✨ Highlights
+
+- **Database Constraint Update** — Added missing `policy_recheck` method to the `classification_history_method_check` constraint
+
+### 🔧 Reliability Improvements
+
+- New migration `20260217_233000_add_policy_recheck_method.sql`
+- New unit test `classification-methods-constraint.test.js` — scans service code for `method:` values and validates against allowed list
+- New integration test `integration/classification-methods-constraint.test.js` — validates DB constraint matches code and can insert with each method
+
+### 👥 Who This Helps
+
+- **All users:** Classifications using policy recheck flow no longer fail with database errors
+- **Developers:** Future constraint violations are caught by automated tests
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.3a-alpha] - 2026-02-17
 
 **Title: Classification Method Constraint Fix**

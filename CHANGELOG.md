@@ -21,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.3b-alpha] - 2026-02-17
+
+### Added
+
+- **Constraint Validation Tests** (`server/src/__tests__/classification-methods-constraint.test.js`) — Unit test that scans all service code for `method:` values and validates against allowed list
+- **Integration Constraint Tests** (`server/src/__tests__/integration/classification-methods-constraint.test.js`) — Validates DB constraint matches code and can insert with each method
+
+### Fixed
+
+- **Policy Recheck Method Constraint** — Added missing `policy_recheck` method to `classification_history_method_check` constraint
+- New migration `20260217_233000_add_policy_recheck_method.sql`
+
+---
+
 ## [v0.42.3a-alpha] - 2026-02-17
 
 ### Fixed
