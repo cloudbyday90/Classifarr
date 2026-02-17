@@ -21,6 +21,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.1d-alpha] - 2026-02-17
+
+### Added
+
+- `hasRemainingQuota()` method in OMDbService to check daily limit without incrementing
+- 11 new tests for quota checking and retry scheduling logic
+
+### Changed
+
+- **Enrichment retry** - Now ONLY retries OMDb (not Tavily). Tavily has monthly credits and should not be auto-retried.
+- **Enrichment retry** - Respects OMDb daily limit. Pauses retry when limit reached until next day reset.
+- **Enrichment retry** - Limits batch size to remaining quota (won't exceed daily limit)
+
+---
+
 ## [v0.42.1c-alpha] - 2026-02-17
 
 ### Added

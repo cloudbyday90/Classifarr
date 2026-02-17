@@ -17,7 +17,8 @@ jest.mock('../services/tavily', () => mockTavilyService);
 
 const mockOmdbService = {
     getByIMDBId: jest.fn(),
-    getByTitle: jest.fn()
+    getByTitle: jest.fn(),
+    hasRemainingQuota: jest.fn()
 };
 jest.mock('../services/omdb', () => mockOmdbService);
 
@@ -40,6 +41,7 @@ describe('EnrichmentRetryService', () => {
         mockTavilyService.search.mockReset();
         mockOmdbService.getByIMDBId.mockReset();
         mockOmdbService.getByTitle.mockReset();
+        mockOmdbService.hasRemainingQuota.mockReset();
         mockLogger.info.mockClear();
         mockLogger.warn.mockClear();
         mockLogger.error.mockClear();
@@ -192,17 +194,40 @@ describe('EnrichmentRetryService', () => {
             );
         });
 
+        it('should skip if OMDb daily limit reached', async () => {
+            mockOmdbService.hasRemainingQuota = jest.fn().mockResolvedValue({
+                available: false,
+                used: 1000,
+                limit: 1000
+            });
+
+            await service.triggerProcessing();
+
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Enrichment retry queue: OMDb daily limit reached, pausing until next day',
+                expect.objectContaining({ used: 1000, limit: 1000 })
+            );
+        });
+
         it('should skip if no pending items', async () => {
+            mockOmdbService.hasRemainingQuota = jest.fn().mockResolvedValue({
+                available: true,
+                used: 50,
+                limit: 1000
+            });
             mockDb.query.mockResolvedValue({ rows: [] });
             
             await service.triggerProcessing();
             
             expect(mockLogger.debug).toHaveBeenCalledWith(
-                'Enrichment retry queue: No pending items'
+                'Enrichment retry queue: No pending OMDb items'
             );
         });
 
-        it('should process OMDb items when pending', async () => {
+        it('should process OMDb items when pending and quota available', async () => {
+            mockOmdbService.hasRemainingQuota = jest.fn()
+                .mockResolvedValueOnce({ available: true, used: 50, limit: 1000 })
+                .mockResolvedValueOnce({ available: true, used: 55, limit: 1000 });
             mockDb.query
                 .mockResolvedValueOnce({
                     rows: [
@@ -218,7 +243,49 @@ describe('EnrichmentRetryService', () => {
             await service.triggerProcessing();
 
             expect(mockLogger.info).toHaveBeenCalledWith(
-                'Enrichment retry queue: Processing 5 OMDb, 0 Tavily items'
+                'Enrichment retry queue: Processing 5 OMDb items (5 pending, 950 quota remaining)'
+            );
+        });
+
+        it('should NOT process Tavily items (monthly credits)', async () => {
+            mockOmdbService.hasRemainingQuota = jest.fn().mockResolvedValue({
+                available: true,
+                used: 50,
+                limit: 1000
+            });
+            mockDb.query.mockResolvedValueOnce({
+                rows: [
+                    { enrichment_type: 'tavily', status: 'pending', count: '10' }
+                ]
+            });
+
+            await service.triggerProcessing();
+
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'Enrichment retry queue: No pending OMDb items'
+            );
+            expect(mockOmdbService.getByIMDBId).not.toHaveBeenCalled();
+        });
+
+        it('should limit processing to remaining quota', async () => {
+            mockOmdbService.hasRemainingQuota = jest.fn()
+                .mockResolvedValueOnce({ available: true, used: 995, limit: 1000 })
+                .mockResolvedValueOnce({ available: true, used: 998, limit: 1000 });
+            mockDb.query
+                .mockResolvedValueOnce({
+                    rows: [
+                        { enrichment_type: 'omdb', status: 'pending', count: '50' }
+                    ]
+                })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] });
+
+            mockOmdbService.getByIMDBId.mockResolvedValue({ Title: 'Test' });
+
+            await service.triggerProcessing();
+
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Enrichment retry queue: Processing 5 OMDb items (50 pending, 5 quota remaining)'
             );
         });
     });

@@ -328,4 +328,98 @@ describe('OMDbService', () => {
             );
         });
     });
+
+    describe('hasRemainingQuota', () => {
+        it('should return available when under limit', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 50,
+                    daily_limit: 1000
+                }]
+            });
+
+            const result = await omdbService.hasRemainingQuota();
+
+            expect(result.available).toBe(true);
+            expect(result.used).toBe(50);
+            expect(result.limit).toBe(1000);
+        });
+
+        it('should return unavailable when at limit', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 1000,
+                    daily_limit: 1000
+                }]
+            });
+
+            const result = await omdbService.hasRemainingQuota();
+
+            expect(result.available).toBe(false);
+            expect(result.used).toBe(1000);
+            expect(result.limit).toBe(1000);
+        });
+
+        it('should return unavailable when over limit', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 1005,
+                    daily_limit: 1000
+                }]
+            });
+
+            const result = await omdbService.hasRemainingQuota();
+
+            expect(result.available).toBe(false);
+            expect(result.used).toBe(1005);
+        });
+
+        it('should reset counter if new day', async () => {
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: yesterday,
+                    requests_today: 1000,
+                    daily_limit: 1000
+                }]
+            });
+
+            const result = await omdbService.hasRemainingQuota();
+
+            expect(result.available).toBe(true);
+            expect(result.used).toBe(0);
+        });
+
+        it('should return unavailable if no API key configured', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+
+            const result = await omdbService.hasRemainingQuota();
+
+            expect(result.available).toBe(false);
+            expect(result.reason).toBe('OMDb API key not configured');
+        });
+
+        it('should return unavailable on database error', async () => {
+            db.query.mockRejectedValue(new Error('Database error'));
+
+            const result = await omdbService.hasRemainingQuota();
+
+            expect(result.available).toBe(false);
+            expect(result.reason).toBe('Database error');
+        });
+    });
 });

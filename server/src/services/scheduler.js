@@ -61,7 +61,8 @@ class SchedulerService {
         // Also run initial retry queue check after startup (1 min delay)
         setTimeout(() => this.processRetryQueue(), 60000);
 
-        // Process enrichment retry queue every 6 hours as safety net (also triggered on-demand when items are queued)
+        // Process enrichment retry queue every 6 hours as safety net for OMDb (also triggered on-demand when items are queued)
+        // Note: Tavily is NOT auto-retried - it has monthly credits and waits for next month reset
         this.schedule('enrichment-retry-queue', '0 */6 * * *', () => this.processEnrichmentRetryQueue());
 
         // Daily rating normalization check at 3 AM

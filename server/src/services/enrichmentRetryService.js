@@ -82,6 +82,7 @@ class EnrichmentRetryService {
 
     /**
      * Trigger processing (called by scheduler or on-demand)
+     * Only processes OMDb - Tavily is NOT auto-retried (has monthly credits)
      */
     async triggerProcessing() {
         if (this.processingInProgress) {
@@ -91,41 +92,43 @@ class EnrichmentRetryService {
 
         this.processingInProgress = true;
         try {
-            const stats = await this.getStats();
-            const pendingOmdb = stats.omdb?.pending || 0;
-            const pendingTavily = stats.tavily?.pending || 0;
+            const omdbService = require('./omdb');
+            const quota = await omdbService.hasRemainingQuota();
 
-            if (pendingOmdb === 0 && pendingTavily === 0) {
-                logger.debug('Enrichment retry queue: No pending items');
+            if (!quota.available) {
+                logger.info('Enrichment retry queue: OMDb daily limit reached, pausing until next day', {
+                    used: quota.used,
+                    limit: quota.limit,
+                    reason: quota.reason
+                });
                 return;
             }
 
-            logger.info(`Enrichment retry queue: Processing ${pendingOmdb} OMDb, ${pendingTavily} Tavily items`);
+            const stats = await this.getStats();
+            const pendingOmdb = stats.omdb?.pending || 0;
 
-            if (pendingOmdb > 0) {
-                const omdbResult = await this.processRetryQueue(50, 'omdb');
-                logger.info('Enrichment retry queue: OMDb processed', {
-                    processed: omdbResult.processed,
-                    success: omdbResult.success,
-                    failed: omdbResult.failed
-                });
+            if (pendingOmdb === 0) {
+                logger.debug('Enrichment retry queue: No pending OMDb items');
+                return;
             }
 
-            if (pendingTavily > 0) {
-                const tavilyResult = await this.processRetryQueue(50, 'tavily');
-                logger.info('Enrichment retry queue: Tavily processed', {
-                    processed: tavilyResult.processed,
-                    success: tavilyResult.success,
-                    failed: tavilyResult.failed
-                });
-            }
+            const remainingQuota = quota.limit - quota.used;
+            const toProcess = Math.min(pendingOmdb, remainingQuota);
+
+            logger.info(`Enrichment retry queue: Processing ${toProcess} OMDb items (${pendingOmdb} pending, ${remainingQuota} quota remaining)`);
+
+            const omdbResult = await this.processRetryQueue(toProcess, 'omdb');
+            logger.info('Enrichment retry queue: OMDb processed', {
+                processed: omdbResult.processed,
+                success: omdbResult.success,
+                failed: omdbResult.failed
+            });
 
             const newStats = await this.getStats();
             const remainingOmdb = newStats.omdb?.pending || 0;
-            const remainingTavily = newStats.tavily?.pending || 0;
 
-            if (remainingOmdb > 0 || remainingTavily > 0) {
-                logger.info(`Enrichment retry queue: ${remainingOmdb + remainingTavily} items remaining, will retry in 10 minutes`);
+            if (remainingOmdb > 0) {
+                logger.info(`Enrichment retry queue: ${remainingOmdb} OMDb items remaining, will retry in 6 hours or when quota resets`);
             }
         } catch (error) {
             logger.error('Error processing enrichment retry queue', {

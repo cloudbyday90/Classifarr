@@ -48,6 +48,38 @@ class OMDbService {
     }
 
     /**
+     * Check if OMDb has remaining daily quota (without incrementing)
+     * @returns {Promise<{available: boolean, used: number, limit: number}>}
+     */
+    async hasRemainingQuota() {
+        try {
+            const result = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
+            const config = result.rows[0];
+
+            if (!config || !config.api_key) {
+                return { available: false, used: 0, limit: 0, reason: 'OMDb API key not configured' };
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            const lastReset = config.last_reset_date ? new Date(config.last_reset_date).toISOString().split('T')[0] : null;
+
+            let requestsToday = config.requests_today || 0;
+
+            // Reset if new day
+            if (lastReset !== today) {
+                requestsToday = 0;
+            }
+
+            const limit = config.daily_limit || 1000;
+            const available = requestsToday < limit;
+
+            return { available, used: requestsToday, limit };
+        } catch (error) {
+            return { available: false, used: 0, limit: 0, reason: error.message };
+        }
+    }
+
+    /**
      * Check daily usage and increment if within limit
      * @returns {Promise<string>} API Key
      * @throws {OMDbLimitReachedError} If limit reached
