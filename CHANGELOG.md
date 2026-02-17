@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Smart Enrichment Retry** - OMDb/Tavily enrichment retry now triggers on-demand when items are queued, plus runs every 10 minutes as a safety net. No more manual "Retry OMDb" clicks needed.
+- None yet.
 
 ### Changed
 
@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - None yet.
+
+---
+
+## [v0.42.1c-alpha] - 2026-02-17
+
+### Added
+
+- **Smart Enrichment Retry** - OMDb/Tavily enrichment retry now triggers on-demand when items are queued (5 second debounce). No more manual "Retry OMDb" clicks needed.
+- 7 new tests for scheduling logic (`scheduleProcessing`, `triggerProcessing`, `cancelScheduledProcessing`)
+
+### Changed
+
+- **Enrichment retry cron** - Reduced from every 10 minutes to every 6 hours (on-demand trigger handles immediate needs, cron is safety net only)
 
 ---
 

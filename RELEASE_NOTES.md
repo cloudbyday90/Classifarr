@@ -1,5 +1,42 @@
 # Classifarr Release Notes
 
+## [v0.42.1c-alpha] - 2026-02-17
+
+**Title: Smart On-Demand Enrichment Retry**
+
+### 🎉 What You'll Notice
+- **No more manual "Retry OMDb"** - Enrichment retries now trigger automatically when items are queued
+- **Efficient scheduling** - Only runs when there's work to do, not on a fixed timer
+- **CPU-friendly** - Safety net cron reduced to every 6 hours (on-demand handles immediate needs)
+
+### 📊 Quick Visual
+```text
+Before:                              After:
+┌─────────────────────────┐          ┌─────────────────────────┐
+│ Cron every 10 min       │          │ On-demand (5s delay)    │
+│ Runs even if 0 pending  │    →     │ Only runs when needed   │
+│ Wastes CPU cycles       │          │ 6hr cron as backup      │
+└─────────────────────────┘          └─────────────────────────┘
+```
+
+### ✨ Highlights
+- **Smart scheduling** - Triggers 5 seconds after items are queued, skips if nothing pending
+- **Debounced triggers** - Won't spam multiple times if many items queued at once
+- **7 new tests** for scheduling logic
+
+### 🔧 Reliability Improvements
+- Enrichment queue processes automatically without manual intervention
+- Concurrent processing protection prevents duplicate work
+
+### 👥 Who This Helps
+- **All users:** Enrichment happens automatically, no need to click retry
+- **Self-hosters:** Less CPU usage when queue is empty
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.1b-alpha] - 2026-02-17
 
 **Title: Bug Fix and Massive Test Coverage Expansion**
