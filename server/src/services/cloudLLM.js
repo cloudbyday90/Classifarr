@@ -526,7 +526,7 @@ class CloudLLMService {
      * @param {string} model - Embedding model (default: text-embedding-3-small)
      * @returns {Promise<{embedding: number[], dims: number, cost: number}>}
      */
-    async embed(text, config, model = 'text-embedding-3-small') {
+    async embed(text, config, model = 'text-embedding-3-small', signal = null) {
         const endpoint = this.getEndpoint(config);
 
         try {
@@ -544,20 +544,17 @@ class CloudLLMService {
                 },
                 {
                     headers: this.getHeaders(config),
-                    timeout: 60000
+                    timeout: 60000,
+                    signal: signal
                 }
             );
 
             const embedding = response.data.data?.[0]?.embedding;
             const usage = response.data.usage || {};
 
-            // Calculate cost (embedding models are cheaper)
-            // text-embedding-3-small: $0.02/1M tokens
-            // text-embedding-3-large: $0.13/1M tokens
             const costPerMillion = model.includes('large') ? 0.13 : 0.02;
             const cost = (usage.total_tokens || 0) / 1000000 * costPerMillion;
 
-            // Log embedding cost separately
             await this.logEmbeddingCost(config.primary_provider, model, usage.total_tokens || 0, cost);
 
             logger.info('Embedding generated', {
@@ -574,6 +571,9 @@ class CloudLLMService {
                 tokens: usage.total_tokens || 0
             };
         } catch (error) {
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+                throw error;
+            }
             logger.error('Embedding request failed', {
                 provider: config.primary_provider,
                 error: error.response?.data?.error?.message || error.message
@@ -589,7 +589,7 @@ class CloudLLMService {
      * @param {string} model - Embedding model (default: text-embedding-005)
      * @returns {Promise<{embedding: number[], dims: number, cost: number}>}
      */
-    async embedGemini(text, config, model = 'text-embedding-005') {
+    async embedGemini(text, config, model = 'text-embedding-005', signal = null) {
         try {
             logger.debug('Gemini embedding request', {
                 model: model,
@@ -603,15 +603,13 @@ class CloudLLMService {
                         parts: [{ text: text }]
                     }
                 },
-                { timeout: 60000 }
+                { timeout: 60000, signal: signal }
             );
 
             const embedding = response.data.embedding?.values;
 
-            // Gemini embedding cost: ~$0.025/1M characters
             const cost = (text.length / 1000000) * 0.025;
 
-            // Log embedding cost
             await this.logEmbeddingCost('gemini', model, text.length, cost);
 
             logger.info('Gemini embedding generated', {
@@ -627,6 +625,9 @@ class CloudLLMService {
                 tokens: text.length
             };
         } catch (error) {
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+                throw error;
+            }
             logger.error('Gemini embedding request failed', {
                 error: error.response?.data?.error?.message || error.message
             });

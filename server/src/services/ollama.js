@@ -19,6 +19,7 @@
 const axios = require('axios');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { OperationController } = require('../utils/operationController');
 
 const logger = createLogger('OllamaService');
 
@@ -255,7 +256,7 @@ class OllamaService {
    * @param {string} keepAlive - Duration to keep model loaded (default: '5m')
    * @returns {Promise<{embedding: number[], dims: number}>} Embedding vector and dimensions
    */
-  async embed(text, model = 'nomic-embed-text-v2-moe', keepAlive = '5m') {
+  async embed(text, model = 'nomic-embed-text-v2-moe', keepAlive = '5m', signal = null) {
     try {
       const config = await this.getConfig();
 
@@ -265,34 +266,32 @@ class OllamaService {
 
       if (!modelExists) {
         console.log(`[Ollama] Embedding model ${model} not found, attempting to pull...`);
-        await this.pullModel(model);
+        await this.pullModel(model, signal);
       }
 
       const response = await axios.post(`${config.baseUrl}/api/embed`, {
         model,
         input: text,
-        keep_alive: keepAlive, // Keep model loaded for batch efficiency
+        keep_alive: keepAlive,
       }, {
-        timeout: 300000, // 5 minute timeout for embeddings (allows for model pulling)
+        timeout: 300000,
+        signal: signal
       });
 
-      // New /api/embed endpoint returns embeddings array (for batch support)
       const embedding = response.data.embeddings?.[0] || response.data.embedding;
       return {
         embedding: embedding,
         dims: embedding.length
       };
     } catch (error) {
+      if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+        throw error;
+      }
       throw new Error(`Failed to generate embedding: ${error.message}`);
     }
   }
 
-  /**
-   * Pull a model from Ollama library
-   * @param {string} model - Model name to pull
-   * @returns {Promise<boolean>} True if successful
-   */
-  async pullModel(model) {
+  async pullModel(model, signal = null) {
     try {
       const config = await this.getConfig();
       console.log(`[Ollama] Pulling model: ${model}`);
@@ -301,12 +300,16 @@ class OllamaService {
         name: model,
         stream: false,
       }, {
-        timeout: 300000, // 5 minute timeout for model pull
+        timeout: 300000,
+        signal: signal
       });
 
       console.log(`[Ollama] Model ${model} pulled successfully`);
       return true;
     } catch (error) {
+      if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+        throw error;
+      }
       console.error(`[Ollama] Failed to pull model ${model}: ${error.message}`);
       throw new Error(`Failed to pull model ${model}: ${error.message}`);
     }
@@ -320,51 +323,31 @@ class OllamaService {
    * @param {function} onProgress - Callback for progress updates (tokenCount, isComplete)
    * @returns {Promise<string>} - Complete response text
    */
-  async generateWithProgress(prompt, model = 'qwen3:14b', temperature = 0.30, onProgress = null) {
+  async generateWithProgress(prompt, model = 'qwen3:14b', temperature = 0.30, onProgress = null, externalController = null) {
     const config = await this.getConfig();
-    const INITIAL_TIMEOUT_MS = 120000;   // 2 minutes for first chunk (model loading)
-    const HEARTBEAT_TIMEOUT_MS = 60000;  // 60 seconds for subsequent chunks
-    const HARD_TIMEOUT_MS = 300000;      // 5 minute absolute timeout
+    
+    if (externalController) {
+      return this._streamGenerate(config, prompt, model, temperature, onProgress, externalController);
+    }
+    
+    const controller = new OperationController({ 
+      mode: 'streaming',
+      initialTimeout: 120000,
+      heartbeatTimeout: 60000,
+      hardTimeout: 300000
+    });
+    
+    return controller.runStreaming(
+      (signal, ctrl) => this._streamGenerate(config, prompt, model, temperature, onProgress, ctrl),
+      'ollama_generate'
+    );
+  }
 
+  async _streamGenerate(config, prompt, model, temperature, onProgress, controller) {
     return new Promise((resolve, reject) => {
       let fullResponse = '';
       let tokenCount = 0;
-      let lastChunkTime = Date.now();
-      let firstChunkReceived = false;
-      let resolved = false; // Prevent double resolution
-
-      const controller = new AbortController();
-
-      // Hard absolute timeout
-      const hardTimeout = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          controller.abort();
-          reject(new Error('Generation timeout - no response after 5 minutes'));
-        }
-      }, HARD_TIMEOUT_MS);
-
-      // Heartbeat watchdog - check every 10 seconds for inactivity
-      const heartbeatCheck = setInterval(() => {
-        const timeSinceLastChunk = Date.now() - lastChunkTime;
-        // Use longer timeout for first chunk (model loading), shorter for subsequent
-        const currentTimeout = firstChunkReceived ? HEARTBEAT_TIMEOUT_MS : INITIAL_TIMEOUT_MS;
-
-        if (timeSinceLastChunk > currentTimeout && !resolved) {
-          resolved = true;
-          clearTimeout(hardTimeout);
-          clearInterval(heartbeatCheck);
-          controller.abort();
-          if (fullResponse) {
-            // We have partial data, consider it a success
-            if (onProgress) onProgress(tokenCount, true);
-            resolve(fullResponse);
-          } else {
-            const waitedSeconds = Math.round(timeSinceLastChunk / 1000);
-            reject(new Error(`Generation stalled - no data received for ${waitedSeconds} seconds`));
-          }
-        }
-      }, 10000);
+      let resolved = false;
 
       axios.post(`${config.baseUrl}/api/generate`, {
         model,
@@ -376,8 +359,8 @@ class OllamaService {
         signal: controller.signal,
       }).then(response => {
         response.data.on('data', (chunk) => {
-          lastChunkTime = Date.now(); // Reset heartbeat timer
-          firstChunkReceived = true;  // Model is responding, use shorter timeout now
+          controller.recordActivity();
+          
           try {
             const lines = chunk.toString().split('\n').filter(line => line.trim());
             for (const line of lines) {
@@ -385,14 +368,13 @@ class OllamaService {
               if (json.response) {
                 fullResponse += json.response;
                 tokenCount++;
+                controller.recordActivity(fullResponse);
                 if (onProgress) {
                   onProgress(tokenCount, false);
                 }
               }
               if (json.done && !resolved) {
                 resolved = true;
-                clearTimeout(hardTimeout);
-                clearInterval(heartbeatCheck);
                 if (onProgress) {
                   onProgress(tokenCount, true);
                 }
@@ -407,19 +389,14 @@ class OllamaService {
         response.data.on('error', (err) => {
           if (!resolved) {
             resolved = true;
-            clearTimeout(hardTimeout);
-            clearInterval(heartbeatCheck);
             reject(new Error(`Stream error: ${err.message}`));
           }
         });
 
         response.data.on('end', () => {
-          clearTimeout(hardTimeout);
-          clearInterval(heartbeatCheck);
           if (!resolved) {
             resolved = true;
             if (fullResponse) {
-              // Stream ended with data but no 'done' signal - treat as success
               if (onProgress) onProgress(tokenCount, true);
               resolve(fullResponse);
             } else {
@@ -430,10 +407,12 @@ class OllamaService {
       }).catch(err => {
         if (!resolved) {
           resolved = true;
-          clearTimeout(hardTimeout);
-          clearInterval(heartbeatCheck);
-          if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
-            reject(new Error('Generation aborted due to timeout'));
+          if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.code === 'ABORT_ERR') {
+            if (controller.partialResult) {
+              resolve(controller.partialResult);
+            } else {
+              reject(new Error('Generation aborted'));
+            }
           } else {
             reject(new Error(`Failed to generate: ${err.message}`));
           }

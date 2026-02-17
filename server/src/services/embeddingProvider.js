@@ -329,7 +329,9 @@ class EmbeddingProvider {
      * @param {string} text - Text to embed
      * @returns {Promise<{embedding: number[], dims: number, provider: string, model: string, cost: number}>}
      */
-    async getEmbedding(text) {
+    async getEmbedding(text, options = {}) {
+        const signal = options.signal || null;
+        
         if (!text || text.trim().length === 0) {
             throw new Error('Cannot embed empty text');
         }
@@ -409,7 +411,8 @@ class EmbeddingProvider {
                         null,  // Don't pass host - use ollamaService
                         null,  // Don't pass port - use ollamaService
                         config.embedding_model || 'nomic-embed-text-v2-moe',
-                        config
+                        config,
+                        signal
                     );
                     break;
 
@@ -426,7 +429,8 @@ class EmbeddingProvider {
                         config.embedding_ollama_host,
                         config.embedding_ollama_port,
                         config.embedding_ollama_model || 'nomic-embed-text-v2-moe',
-                        config
+                        config,
+                        signal
                     );
                     break;
 
@@ -434,7 +438,7 @@ class EmbeddingProvider {
                     // Use cloud provider
                     // Validation happens in getCloudEmbedding
                     checkPreemptionAndYield();
-                    result = await this.getCloudEmbedding(text, config);
+                    result = await this.getCloudEmbedding(text, config, signal);
                     break;
 
                 default:
@@ -461,6 +465,11 @@ class EmbeddingProvider {
             return result;
 
         } catch (error) {
+            // Re-throw abort errors immediately without recording as failures
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
+                throw error;
+            }
+            
             // Record failure metrics
             const latency = Date.now() - startTime;
             this.metrics.totalRequests++;
@@ -496,19 +505,11 @@ class EmbeddingProvider {
         }
     }
 
-    /**
-     * Generate embedding using Ollama
-     * @param {string} text - Text to embed
-     * @param {string} host - Ollama host
-     * @param {number} port - Ollama port
-     * @param {string} model - Embedding model
-     * @param {Object} config - Configuration object
-     */
-    async getOllamaEmbedding(text, host, port, model, config) {
+    async getOllamaEmbedding(text, host, port, model, config, signal = null) {
         // If using classification Ollama (same mode), use existing service
         if (!host || !port) {
             // Use 15m keep_alive for batch efficiency during backfill operations
-            const result = await ollamaService.embed(text, model, '15m');
+            const result = await ollamaService.embed(text, model, '15m', signal);
             return {
                 embedding: result.embedding,
                 dims: result.dims,
@@ -534,7 +535,7 @@ class EmbeddingProvider {
                     model: model,
                     input: text
                 },
-                { timeout }
+                { timeout, signal }
             );
 
             // New /api/embed endpoint returns embeddings array (for batch support)
@@ -568,16 +569,14 @@ class EmbeddingProvider {
                 cost: 0
             };
         } catch (error) {
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
+                throw error;
+            }
             throw new Error(`Failed to generate Ollama embedding: ${error.message}`);
         }
     }
 
-    /**
-     * Generate embedding using cloud provider
-     * @param {string} text - Text to embed
-     * @param {object} config - Configuration object
-     */
-    async getCloudEmbedding(text, config) {
+    async getCloudEmbedding(text, config, signal = null) {
         const provider = config.embedding_cloud_provider;
         const apiKey = config.embedding_cloud_api_key;
         const model = config.embedding_cloud_model || PROVIDER_DEFAULTS[provider]?.default;
@@ -592,15 +591,15 @@ class EmbeddingProvider {
 
         switch (provider) {
             case 'openai':
-                return await this.getOpenAIEmbedding(text, apiKey, model, config);
+                return await this.getOpenAIEmbedding(text, apiKey, model, config, signal);
             case 'gemini':
-                return await this.getGeminiEmbedding(text, apiKey, model, config);
+                return await this.getGeminiEmbedding(text, apiKey, model, config, signal);
             case 'voyage':
-                return await this.getVoyageEmbedding(text, apiKey, model, config);
+                return await this.getVoyageEmbedding(text, apiKey, model, config, signal);
             case 'openrouter':
-                return await this.getOpenRouterEmbedding(text, apiKey, model, config);
+                return await this.getOpenRouterEmbedding(text, apiKey, model, config, signal);
             case 'cohere':
-                return await this.getCohereEmbedding(text, apiKey, model, config);
+                return await this.getCohereEmbedding(text, apiKey, model, config, signal);
             default:
                 throw new ConfigurationError(`Unknown cloud provider: ${provider}`);
         }
@@ -609,7 +608,7 @@ class EmbeddingProvider {
     /**
      * OpenAI embeddings
      */
-    async getOpenAIEmbedding(text, apiKey, model = 'text-embedding-3-small', config = {}) {
+    async getOpenAIEmbedding(text, apiKey, model = 'text-embedding-3-small', config = {}, signal = null) {
         const timeout = this.getAdaptiveTimeout(config);
         const maxRetries = config.max_retries || 3;
         const baseDelay = config.retry_delay || 1000;
@@ -628,7 +627,8 @@ class EmbeddingProvider {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    timeout
+                    timeout,
+                    signal
                 }
             );
 
@@ -667,6 +667,9 @@ class EmbeddingProvider {
         try {
             return await embeddingWithRetry();
         } catch (error) {
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
+                throw error;
+            }
             throw new Error(`OpenAI embedding failed: ${error.response?.data?.error?.message || error.message}`);
         }
     }
@@ -674,7 +677,7 @@ class EmbeddingProvider {
     /**
      * Google Gemini embeddings
      */
-    async getGeminiEmbedding(text, apiKey, model = 'text-embedding-004', config = {}) {
+    async getGeminiEmbedding(text, apiKey, model = 'text-embedding-004', config = {}, signal = null) {
         const timeout = this.getAdaptiveTimeout(config);
         const maxRetries = config.max_retries || 3;
         const baseDelay = config.retry_delay || 1000;
@@ -691,7 +694,8 @@ class EmbeddingProvider {
                 },
                 {
                     headers: { 'Content-Type': 'application/json' },
-                    timeout
+                    timeout,
+                    signal
                 }
             );
 
@@ -729,6 +733,9 @@ class EmbeddingProvider {
         try {
             return await embeddingWithRetry();
         } catch (error) {
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
+                throw error;
+            }
             throw new Error(`Gemini embedding failed: ${error.response?.data?.error?.message || error.message}`);
         }
     }
@@ -736,7 +743,7 @@ class EmbeddingProvider {
     /**
      * Voyage AI embeddings
      */
-    async getVoyageEmbedding(text, apiKey, model = 'voyage-2', config = {}) {
+    async getVoyageEmbedding(text, apiKey, model = 'voyage-2', config = {}, signal = null) {
         const timeout = this.getAdaptiveTimeout(config);
         const maxRetries = config.max_retries || 3;
         const baseDelay = config.retry_delay || 1000;
@@ -755,7 +762,8 @@ class EmbeddingProvider {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    timeout
+                    timeout,
+                    signal
                 }
             );
 
@@ -794,6 +802,9 @@ class EmbeddingProvider {
         try {
             return await embeddingWithRetry();
         } catch (error) {
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
+                throw error;
+            }
             throw new Error(`Voyage embedding failed: ${error.response?.data?.error?.message || error.message}`);
         }
     }
@@ -801,7 +812,7 @@ class EmbeddingProvider {
     /**
      * OpenRouter embeddings
      */
-    async getOpenRouterEmbedding(text, apiKey, model = 'openai/text-embedding-3-small', config = {}) {
+    async getOpenRouterEmbedding(text, apiKey, model = 'openai/text-embedding-3-small', config = {}, signal = null) {
         const timeout = this.getAdaptiveTimeout(config);
         const maxRetries = config.max_retries || 3;
         const baseDelay = config.retry_delay || 1000;
@@ -820,7 +831,8 @@ class EmbeddingProvider {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    timeout
+                    timeout,
+                    signal
                 }
             );
 
@@ -859,6 +871,9 @@ class EmbeddingProvider {
         try {
             return await embeddingWithRetry();
         } catch (error) {
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
+                throw error;
+            }
             throw new Error(`OpenRouter embedding failed: ${error.response?.data?.error?.message || error.message}`);
         }
     }
@@ -866,7 +881,7 @@ class EmbeddingProvider {
     /**
      * Cohere embeddings
      */
-    async getCohereEmbedding(text, apiKey, model = 'embed-english-v3.0', config = {}) {
+    async getCohereEmbedding(text, apiKey, model = 'embed-english-v3.0', config = {}, signal = null) {
         const timeout = this.getAdaptiveTimeout(config);
         const maxRetries = config.max_retries || 3;
         const baseDelay = config.retry_delay || 1000;
@@ -886,7 +901,8 @@ class EmbeddingProvider {
                         'Authorization': `Bearer ${apiKey}`,
                         'Content-Type': 'application/json'
                     },
-                    timeout
+                    timeout,
+                    signal
                 }
             );
 
@@ -925,6 +941,9 @@ class EmbeddingProvider {
         try {
             return await embeddingWithRetry();
         } catch (error) {
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
+                throw error;
+            }
             throw new Error(`Cohere embedding failed: ${error.response?.data?.message || error.message}`);
         }
     }

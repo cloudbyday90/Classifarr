@@ -1,5 +1,51 @@
 # Classifarr Release Notes
 
+## [v0.42.3-alpha] - 2026-02-17
+
+**Title: Smarter Timeouts & Proper Cancellation**
+
+### 🎉 What You'll Notice
+
+- **Classifications don't hang** — long-running AI/embedding operations can now be properly cancelled
+- **Cleaner error handling** — timeouts no longer pollute failure metrics
+- **Better resource cleanup** — cancelled requests free up connections immediately
+
+### 📊 Quick Visual
+
+```text
+Before:                               After:
+┌──────────────────────────┐          ┌──────────────────────────┐
+│ Timeout = ignore result  │          │ Timeout = abort request  │
+│ Connection stays open    │    →     │ Connection closes fast   │
+│ Counts as "failed"       │          │ Not counted as failure   │
+└──────────────────────────┘          └──────────────────────────┘
+```
+
+### ✨ Highlights
+
+- **Unified AbortController Strategy** — All embedding providers (OpenAI, Gemini, Voyage, Cohere, OpenRouter, Ollama) now support proper request cancellation
+- **OperationController Utility** — New centralized timeout/abort handling with both simple and streaming modes
+- **Signal Propagation** — Cancellation signals flow through the entire chain: classification → RAG retrieval → embedding router → provider
+
+### 🔧 Reliability Improvements
+
+- 29 new tests for `OperationController` covering timeout, abort, stall detection, and streaming scenarios
+- 4 new tests for `ragRetriever` AbortSignal support
+- Updated cloud embedding methods to re-throw `AbortError` immediately (no failure recording)
+- Full test suite: 79 server suites (1277 tests) + 33 client suites (339 tests) all passing
+
+### 👥 Who This Helps
+
+- **All users:** Classifications are more responsive and don't hang on slow connections
+- **Self-hosters:** Better resource management when AI/embedding services are slow
+- **Operators:** Timeouts no longer artificially inflate failure metrics
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.2-alpha] - 2026-02-17
 
 **Title: Smarter Scoring & More Reliable Second Pass**

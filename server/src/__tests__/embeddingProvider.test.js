@@ -100,7 +100,7 @@ describe('EmbeddingProvider', () => {
 
             const result = await embeddingProvider.getEmbedding('test text');
 
-            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'nomic-embed-text-v2-moe', '15m');
+            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'nomic-embed-text-v2-moe', '15m', null);
             expect(result).toEqual({
                 embedding: [0.1, 0.2, 0.3],
                 dims: 3,
@@ -135,7 +135,7 @@ describe('EmbeddingProvider', () => {
                     model: 'mxbai-embed-large',
                     input: 'test text'
                 },
-                { timeout: 120000 }
+                { timeout: 120000, signal: null }
             );
             expect(result.provider).toBe('ollama');
             expect(result.dims).toBe(3);

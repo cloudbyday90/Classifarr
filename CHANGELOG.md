@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -18,6 +18,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - None yet.
+
+---
+
+## [v0.42.3-alpha] - 2026-02-17
+
+### Added
+
+- **OperationController Utility** (`server/src/utils/operationController.js`) — Unified timeout and cancellation handling with two modes:
+  - `simple` mode: Basic timeout with abort support
+  - `streaming` mode: Heartbeat-based stall detection with partial result recovery
+- **OperationController Tests** (`server/src/__tests__/operationController.test.js`) — 29 tests covering constructor, simple/streaming modes, abort, reset, and factory
+- **AbortSignal Tests for RAG** (`server/src/__tests__/ragRetriever.test.js`) — 4 new tests for AbortSignal support in semanticSearch, hybridSearch, and fullTextSearch
+
+### Changed
+
+- **Cloud Embedding Providers** (`server/src/services/embeddingProvider.js`) — All cloud embedding methods now accept optional `signal` parameter:
+  - `getOpenAIEmbedding()`, `getGeminiEmbedding()`, `getVoyageEmbedding()`, `getOpenRouterEmbedding()`, `getCohereEmbedding()`
+  - Methods pass `signal` to axios for proper HTTP cancellation
+  - Methods re-throw `AbortError` immediately without recording as failures
+- **RAG Retriever** (`server/src/services/ragRetriever.js`) — `semanticSearch()` now passes `signal` to `embeddingRouter.embed()`
+- **Classification Service** (`server/src/services/classification.js`) — Enhanced `withTimeout()` method:
+  - Supports function-based operations with actual abort capability (uses `OperationController`)
+  - Maintains backward compatibility with promise-based pattern
+  - Updated RAG calls (`semanticSearchCandidates`, `semanticSearch`, `hybridSearch`) to use abortable function pattern
+- **Embedding Router** (`server/src/services/embeddingRouter.js`) — Fixed orphaned duplicate code block causing syntax errors
+
+### Fixed
+
+- **Test Assertions** — Updated `embeddingProvider.test.js` and `embeddingRouter.test.js` to expect new `signal` parameter in mock calls
 
 ---
 

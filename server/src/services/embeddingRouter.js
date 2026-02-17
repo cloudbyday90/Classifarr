@@ -192,7 +192,9 @@ class EmbeddingRouter {
      * @param {string} text - Text to embed
      * @returns {Promise<{embedding: number[], dims: number, provider: string, model: string, cost: number}>}
      */
-    async embed(text) {
+    async embed(text, options = {}) {
+        const signal = options.signal || null;
+        
         if (!text || text.trim().length === 0) {
             throw new Error('Cannot embed empty text');
         }
@@ -205,7 +207,7 @@ class EmbeddingRouter {
         // Check circuit breaker
         if (this.isCircuitOpen()) {
             logger.warn('Circuit breaker open, using fallback');
-            return await this.embedWithOllama(text);
+            return await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
         }
 
         const config = await this.getConfig();
@@ -216,13 +218,17 @@ class EmbeddingRouter {
         if (mode !== 'same') {
             // Use new embeddingProvider service for separate_ollama and cloud modes
             try {
-                const result = await embeddingProvider.getEmbedding(text);
+                const result = await embeddingProvider.getEmbedding(text, { signal });
 
                 // Success - reset circuit breaker
                 this.resetCircuit();
 
                 return result;
             } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw error;
+                }
+                
                 this.recordFailure();
 
                 logger.warn('Embedding provider failed, trying fallback', {
@@ -233,7 +239,7 @@ class EmbeddingRouter {
                 // Try Ollama fallback if enabled
                 if (config?.ollama_fallback_enabled) {
                     try {
-                        const fallbackResult = await this.embedWithOllama(text);
+                        const fallbackResult = await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
                         return {
                             ...fallbackResult,
                             provider: 'ollama',
@@ -241,6 +247,9 @@ class EmbeddingRouter {
                             fallback: true
                         };
                     } catch (fallbackError) {
+                        if (fallbackError.name === 'AbortError') {
+                            throw fallbackError;
+                        }
                         logger.error('Fallback embedding also failed', { error: fallbackError.message });
                     }
                 }
@@ -257,46 +266,46 @@ class EmbeddingRouter {
 
             switch (provider) {
                 case 'ollama':
-                    result = await this.embedWithOllama(text, model);
+                    result = await this.embedWithOllama(text, model, '5m', signal);
                     break;
 
                 case 'gemini':
-                    result = await this.embedWithGemini(text, model, providerConfig);
+                    result = await this.embedWithGemini(text, model, providerConfig, signal);
                     break;
 
                 case 'openai':
                 case 'openrouter':
                 case 'litellm':
                 case 'custom':
-                    result = await this.embedWithCloud(text, model, providerConfig);
+                    result = await this.embedWithCloud(text, model, providerConfig, signal);
                     break;
 
                 default:
-                    // Default to Ollama for local embedding
-                    result = await this.embedWithOllama(text, DEFAULT_MODELS.ollama);
+                    logger.warn(`Unknown embedding provider: ${provider}, falling back to Ollama`);
+                    result = await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
             }
 
             // Success - reset circuit breaker
             this.resetCircuit();
 
-            return {
-                ...result,
-                provider: result.provider || provider || 'ollama',
-                model: result.model || model
-            };
+            return result;
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                throw error;
+            }
+            
             this.recordFailure();
 
-            logger.warn('Primary embedding failed, trying fallback', {
+            logger.warn('Embedding failed, trying fallback', {
                 provider,
                 error: error.message
             });
 
             // Try Ollama fallback if enabled
-            if (providerConfig?.ollama_fallback_enabled && provider !== 'ollama') {
+            if (config?.ollama_fallback_enabled) {
                 try {
-                    const fallbackResult = await this.embedWithOllama(text);
+                    const fallbackResult = await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
                     return {
                         ...fallbackResult,
                         provider: 'ollama',
@@ -304,6 +313,9 @@ class EmbeddingRouter {
                         fallback: true
                     };
                 } catch (fallbackError) {
+                    if (fallbackError.name === 'AbortError') {
+                        throw fallbackError;
+                    }
                     logger.error('Fallback embedding also failed', { error: fallbackError.message });
                 }
             }
@@ -312,25 +324,20 @@ class EmbeddingRouter {
         }
     }
 
-    /**
-     * Embed using Ollama
-     */
-    async embedWithOllama(text, model = DEFAULT_MODELS.ollama) {
-        const result = await ollamaService.embed(text, model);
+
+    async embedWithOllama(text, model = DEFAULT_MODELS.ollama, keepAlive = '5m', signal = null) {
+        const result = await ollamaService.embed(text, model, keepAlive, signal);
         return {
             embedding: result.embedding,
             dims: result.dims,
             provider: 'ollama',
             model: model,
-            cost: 0 // Local is free
+            cost: 0
         };
     }
 
-    /**
-     * Embed using cloud provider (OpenAI, OpenRouter, LiteLLM)
-     */
-    async embedWithCloud(text, model, config) {
-        const result = await cloudLLMService.embed(text, config, model);
+    async embedWithCloud(text, model, config, signal = null) {
+        const result = await cloudLLMService.embed(text, config, model, signal);
         return {
             embedding: result.embedding,
             dims: result.dims,
@@ -338,11 +345,8 @@ class EmbeddingRouter {
         };
     }
 
-    /**
-     * Embed using Gemini
-     */
-    async embedWithGemini(text, model, config) {
-        const result = await cloudLLMService.embedGemini(text, config, model);
+    async embedWithGemini(text, model, config, signal = null) {
+        const result = await cloudLLMService.embedGemini(text, config, model, signal);
         return {
             embedding: result.embedding,
             dims: result.dims,

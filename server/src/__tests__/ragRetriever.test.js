@@ -381,4 +381,74 @@ describe('RAGRetriever', () => {
             expect(results[0]).toHaveProperty('rrfScore');
         });
     });
+
+    describe('AbortSignal support', () => {
+        beforeEach(() => {
+            jest.restoreAllMocks();
+            jest.clearAllMocks();
+            db.query.mockResolvedValue({ rows: [] });
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingService.formatForEmbedding.mockReturnValue('query');
+            embeddingService.resolvePosterUrl.mockReturnValue(null);
+            imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'disabled' });
+            imageEmbeddingProvider.isConfigured.mockReturnValue(false);
+            imageEmbeddingProvider.embedImageFromUrl.mockResolvedValue(null);
+        });
+
+        it('should throw AbortError when signal is already aborted', async () => {
+            const controller = new AbortController();
+            controller.abort();
+
+            await expect(
+                ragRetriever.semanticSearch({ title: 'Test' }, 5, { signal: controller.signal })
+            ).rejects.toThrow('aborted');
+        });
+
+        it('should throw AbortError from hybridSearch when signal aborted', async () => {
+            const controller = new AbortController();
+            controller.abort();
+
+            await expect(
+                ragRetriever.hybridSearch({ title: 'Test' }, 5, { signal: controller.signal })
+            ).rejects.toThrow('aborted');
+        });
+
+        it('should throw AbortError from fullTextSearch when signal aborted', async () => {
+            const controller = new AbortController();
+            controller.abort();
+
+            await expect(
+                ragRetriever.fullTextSearch({ title: 'Test', library_name: 'Movies' }, 5, { signal: controller.signal })
+            ).rejects.toThrow('aborted');
+        });
+
+        it('should propagate AbortError through hybridSearch', async () => {
+            const controller = new AbortController();
+            
+            embeddingRouter.getConfig.mockImplementation(async () => {
+                controller.abort();
+                return { rag_fusion_method: 'rrf' };
+            });
+
+            jest.spyOn(ragRetriever, 'semanticSearch').mockImplementation(async (metadata, limit, options) => {
+                if (options.signal?.aborted) {
+                    const err = new Error('semantic search aborted');
+                    err.name = 'AbortError';
+                    throw err;
+                }
+                return [];
+            });
+
+            await expect(
+                ragRetriever.hybridSearch({ title: 'Test' }, 5, { signal: controller.signal })
+            ).rejects.toThrow('aborted');
+        });
+    });
 });

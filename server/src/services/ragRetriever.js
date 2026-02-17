@@ -16,6 +16,15 @@ const { expandRetrievalMetadata } = require('../utils/ragLoopHelpers');
 
 const logger = createLogger('RAGRetriever');
 
+function checkAbort(signal, operation = 'operation') {
+    if (signal?.aborted) {
+        const error = new Error(`${operation} aborted`);
+        error.name = 'AbortError';
+        error.code = 'ABORT_ERR';
+        throw error;
+    }
+}
+
 /**
  * RAG Retriever Service
  * Performs semantic similarity search to find similar past classifications
@@ -76,7 +85,11 @@ class RAGRetriever {
      * @returns {Promise<Array>} Similar classifications with scores
      */
     async semanticSearch(metadata, limit = 5, options = {}) {
+        const signal = options.signal || null;
+        
         try {
+            checkAbort(signal, 'semantic search');
+            
             const pass = options.pass || 'pass1';
             const applyThreshold = options.applyThreshold !== false;
             const expansionOptions = options.expansionOptions || {};
@@ -87,6 +100,8 @@ class RAGRetriever {
                 logger.info('RAG search skipped - RAG is disabled', { title: metadata.title });
                 return [];
             }
+            
+            checkAbort(signal, 'semantic search');
 
             // Get config and embedding count once for efficiency
             const config = await embeddingRouter.getConfig();
@@ -124,6 +139,8 @@ class RAGRetriever {
                 });
                 return [];
             }
+            
+            checkAbort(signal, 'semantic search');
 
             logger.info('RAG search initiated', { 
                 title: metadata.title, 
@@ -143,7 +160,9 @@ class RAGRetriever {
                 aliasMaxTerms: expansionOptions.aliasMaxTerms,
                 aliasMinTokenLength: expansionOptions.aliasMinTokenLength
             });
-            const queryResult = await embeddingRouter.embed(text);
+            const queryResult = await embeddingRouter.embed(text, { signal });
+            
+            checkAbort(signal, 'semantic search');
 
             // Convert to pgvector format
             const vectorString = `[${queryResult.embedding.join(',')}]`;
@@ -161,6 +180,8 @@ class RAGRetriever {
                     logger.debug('Image embedding skipped', { error: imageError.message });
                 }
             }
+            
+            checkAbort(signal, 'semantic search');
 
             // Two-phase retrieval:
             // 1) Pull top-K by text similarity
@@ -270,6 +291,9 @@ class RAGRetriever {
             return matches;
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                throw error;
+            }
             logger.error('Semantic search failed', { 
                 title: metadata.title,
                 error: error.message 
@@ -456,8 +480,11 @@ class RAGRetriever {
      */
     async hybridSearch(metadata, limit = 5, options = {}) {
         const startTime = Date.now();
+        const signal = options.signal || null;
         
         try {
+            checkAbort(signal, 'hybrid search');
+            
             // Get config for fusion method
             const config = await embeddingRouter.getConfig();
             const fusionMethod = config?.rag_fusion_method || 'rrf';
@@ -467,7 +494,7 @@ class RAGRetriever {
             const semanticMatches = await this.semanticSearch(metadata, limit, options);
 
             // Get full-text matches
-            const textMatches = await this.fullTextSearch(metadata, limit);
+            const textMatches = await this.fullTextSearch(metadata, limit, options);
 
             let results;
             if (fusionMethod === 'rrf') {
@@ -496,6 +523,9 @@ class RAGRetriever {
             return results;
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                throw error;
+            }
             const duration = Date.now() - startTime;
             await ragLogger.logError(error, 'hybrid_search', { duration_ms: duration });
             logger.error('Hybrid search failed', { error: error.message });
@@ -506,17 +536,20 @@ class RAGRetriever {
         }
     }
 
-    /**
-     * Full-text search on classification history
-     */
-    async fullTextSearch(metadata, limit = 5) {
+    async fullTextSearch(metadata, limit = 5, options = {}) {
+        const signal = options.signal || null;
+        
         try {
+            checkAbort(signal, 'full-text search');
+            
             const searchTerms = [
                 metadata.title,
                 metadata.library_name
             ].filter(Boolean).join(' ');
 
             if (!searchTerms) return [];
+            
+            checkAbort(signal, 'full-text search');
 
             const result = await db.query(`
                 SELECT 
@@ -543,6 +576,9 @@ class RAGRetriever {
             }));
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                throw error;
+            }
             logger.debug('Full-text search failed', { error: error.message });
             return [];
         }

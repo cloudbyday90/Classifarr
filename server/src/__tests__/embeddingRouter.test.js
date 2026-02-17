@@ -80,7 +80,7 @@ describe('EmbeddingRouter', () => {
 
             const result = await embeddingRouter.embed('test text');
 
-            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'test-model');
+            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'test-model', '5m', null);
             expect(result.embedding).toEqual([0.1, 0.2, 0.3]);
         });
 
@@ -99,7 +99,7 @@ describe('EmbeddingRouter', () => {
             const result = await embeddingRouter.embed('cloud text');
 
             // Expect correct params extraction
-            expect(cloudLLMService.embed).toHaveBeenCalledWith('cloud text', mockConfig.config, 'gpt-embed');
+            expect(cloudLLMService.embed).toHaveBeenCalledWith('cloud text', mockConfig.config, 'gpt-embed', null);
             expect(result.embedding).toEqual([0.9, 0.8]);
         });
 

@@ -48,6 +48,7 @@ const { mapSecondPassError } = require('../utils/ragErrorHandler');
 const ragLoopMetricsCollector = require('./ragLoopMetricsCollector');
 const ragLoopResilienceManager = require('./ragLoopResilienceManager');
 const { validateAndNormalizeRagLoopConfig } = require('../utils/ragLoopConfig');
+const OperationController = require('../utils/operationController');
 const {
   RAG_LOOP_FALLBACK_ACTIONS,
   RAG_LOOP_REASON_CODES,
@@ -720,9 +721,29 @@ class ClassificationService {
     return Math.max(RAG_LOOP_MIN_TIMEOUT_MS, Math.min(RAG_LOOP_MAX_TIMEOUT_MS, computed));
   }
 
-  async withTimeout(promise, timeoutMs, timeoutMessage = 'operation_timeout') {
+  async withTimeout(operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') {
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-      return promise;
+      if (typeof operationOrPromise === 'function') {
+        return operationOrPromise(null);
+      }
+      return operationOrPromise;
+    }
+
+    if (typeof operationOrPromise === 'function') {
+      const controller = new OperationController({ timeout: timeoutMs, mode: 'simple' });
+      try {
+        return await controller.run(async (ctx) => {
+          return await operationOrPromise(ctx.signal);
+        });
+      } catch (error) {
+        if (error.name === 'AbortError' || error.code === 'ABORT_ERR' || error.code === 'ERR_CANCELED') {
+          const timeoutError = new Error(timeoutMessage);
+          timeoutError.name = 'TimeoutError';
+          timeoutError.originalError = error;
+          throw timeoutError;
+        }
+        throw error;
+      }
     }
 
     let timeoutHandle = null;
@@ -731,7 +752,7 @@ class ClassificationService {
     });
 
     try {
-      const result = await Promise.race([promise, timeoutPromise]);
+      const result = await Promise.race([operationOrPromise, timeoutPromise]);
       return result;
     } finally {
       if (timeoutHandle) {
@@ -954,16 +975,23 @@ class ClassificationService {
       reasonCode,
       fallbackAction = null,
       recoverable = true,
-      sqlState = null
+      sqlState = null,
+      error = null
     }) => {
+      const errorDetails = error ? {
+        error_message: error.message || String(error),
+        error_name: error.name || 'Error',
+        error_stack: error.stack || null
+      } : {};
       events.push({
         stage,
         outcome,
-        reason: reason || reasonCode || null,
+        reason: reason || reasonCode || (error ? error.message : null) || null,
         reason_code: reasonCode || null,
         fallback_action: fallbackAction,
         recoverable,
-        sql_state: sqlState
+        sql_state: sqlState,
+        ...errorDetails
       });
     };
     const classifyStageError = (stage, error, fallbackReasonCode) => {
@@ -1097,9 +1125,10 @@ class ClassificationService {
     }
 
     const pass1Candidates = await this.withTimeout(
-      ragRetriever.semanticSearchCandidates(metadata, candidateLimit, {
+      (signal) => ragRetriever.semanticSearchCandidates(metadata, candidateLimit, {
         pass: 'pass1',
-        throwOnError: true
+        throwOnError: true,
+        signal
       }),
       Math.max(1, remainingBudget()),
       'rag_pass1_candidate_timeout'
@@ -1225,24 +1254,26 @@ class ClassificationService {
           const limit = Math.max(topN, 5);
           if (strategySelection.strategy === 'semantic') {
             pass2Matches = await this.withTimeout(
-              ragRetriever.semanticSearch(expandedMetadata, limit, {
+              (signal) => ragRetriever.semanticSearch(expandedMetadata, limit, {
                 pass: 'pass2',
                 applyThreshold: false,
                 useExpandedQuery: true,
                 throwOnError: true,
-                expansionOptions
+                expansionOptions,
+                signal
               }),
               Math.max(1, remainingBudget()),
               'rag_pass2_semantic_timeout'
             );
           } else {
             pass2Matches = await this.withTimeout(
-              ragRetriever.hybridSearch(expandedMetadata, limit, {
+              (signal) => ragRetriever.hybridSearch(expandedMetadata, limit, {
                 pass: 'pass2',
                 applyThreshold: false,
                 useExpandedQuery: true,
                 throwOnError: true,
-                expansionOptions
+                expansionOptions,
+                signal
               }),
               Math.max(1, remainingBudget()),
               'rag_pass2_hybrid_timeout'
@@ -1333,13 +1364,13 @@ class ClassificationService {
 
     if (trigger.trigger === 'policy_prompt_select' && remainingBudget() > 0) {
       const evidence = extractVerifiableEvidence(expandedMetadata, config.policy_recheck_identifier_caps);
-      if (evidence.totalTokens > 0 || pass2Matches.length > 0) {
+      if (evidence.totalTokens > 0 || (pass2Matches && pass2Matches.length > 0)) {
         try {
           policyAfter = await this.withRetryableDbConflict(
             async () => this.withTimeout(
               policyEngine.evaluateItem(expandedMetadata, {
                 ragCache: {
-                  matches: pass2Matches.slice(0, 5),
+                  matches: pass2Matches ? pass2Matches.slice(0, 5) : [],
                   timestamp: Date.now()
                 }
               }),
@@ -1413,7 +1444,7 @@ class ClassificationService {
       }
     }
 
-    if (!pass2Candidate && remainingBudget() > 0) {
+    if (!pass2Candidate) {
       const resilienceGate = ragLoopResilienceManager.canRun('ai_rerun', config);
       if (!resilienceGate.allowed) {
         addEvent({
@@ -1462,15 +1493,16 @@ class ClassificationService {
               ragLoopResilienceManager.recordFailure('ai_rerun', error, config);
             }
             const stageError = classifyStageError('ai_rerun', error, 'ai_rerun_failed');
+            const errorMessage = error.message || error.name || String(error) || 'unknown_error';
             addEvent({
               stage: 'ai_rerun',
               outcome: isTransientAiAvailability ? 'skipped' : 'error',
-              reason: error.message, // Explicitly log the error message
+              reason: errorMessage,
               reasonCode: isTransientAiAvailability ? 'ai_temporarily_unavailable' : (error.code || stageError.reasonCode),
               fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED,
               recoverable: stageError.recoverable,
               sqlState: stageError.sqlState,
-              error: error // Include full error object for stack trace extraction
+              error
             });
           }
         } else {
@@ -1495,7 +1527,7 @@ class ClassificationService {
 
     // Fix 4: Build a candidate from pass2 RAG data when neither policy recheck
     // nor AI rerun produced one, but pass2 retrieval found better matches
-    if (!pass2Candidate && pass2Matches.length > 0 && pass2RagContext?.suggestion) {
+    if (!pass2Candidate && pass2Matches && pass2Matches.length > 0 && pass2RagContext?.suggestion) {
       const ragSuggestion = pass2RagContext.suggestion;
       const ragLibrary = libraries.find(l =>
         l.name === ragSuggestion || l.id === ragSuggestion
