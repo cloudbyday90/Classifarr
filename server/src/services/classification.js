@@ -1466,11 +1466,12 @@ class ClassificationService {
             addEvent({
               stage: 'ai_rerun',
               outcome: isTransientAiAvailability ? 'skipped' : 'error',
-              reason: error.message,
-              reasonCode: isTransientAiAvailability ? 'ai_temporarily_unavailable' : stageError.reasonCode,
+              reason: error.message, // Explicitly log the error message
+              reasonCode: isTransientAiAvailability ? 'ai_temporarily_unavailable' : (error.code || stageError.reasonCode),
               fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED,
               recoverable: stageError.recoverable,
-              sqlState: stageError.sqlState
+              sqlState: stageError.sqlState,
+              error: error // Include full error object for stack trace extraction
             });
           }
         } else {
