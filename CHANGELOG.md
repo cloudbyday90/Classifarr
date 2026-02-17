@@ -21,6 +21,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.1a-alpha] - 2026-02-17
+
+### Added
+- **"Waiting for AI" UI State** - Command Center Processing section now displays clear message when tasks are queued but AI provider is offline, with quick link to AI settings
+- **OMDb Integration Tests** - New comprehensive test suite with 16 integration tests using 10 real media examples (mix of TV/movies)
+- **Database Migration** - Added `routed` status to `classification_history_status_check` constraint for items successfully sent to *arr after manual resolution
+
+### Changed
+- **OMDb Rate Limiting** - Minimum 1-second delay between all OMDb API requests to prevent Cloudflare 520 errors
+- **OMDb Cloudflare Retry Delays** - Increased from 1-2 seconds to 3-6 seconds for Cloudflare 5xx errors (520, 521, 522, 523, 524)
+- **OMDb Test Coverage** - Added rate limiter tests, 522 Cloudflare error tests, and circuit breaker state isolation
+
+### Fixed
+- **Classification Routing** - `classification_history` constraint violation when status was set to "routed" after successful *arr routing
+
+---
+
 ## [v0.42.1-alpha] - 2026-02-16
 
 ### Changed

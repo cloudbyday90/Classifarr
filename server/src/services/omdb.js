@@ -16,6 +16,20 @@ const { calculateBackoff } = require('../utils/retryUtils');
 
 const logger = createLogger('OMDbService');
 
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL_MS = 1000;
+
+async function enforceRateLimit() {
+    const now = Date.now();
+    const elapsed = now - lastRequestTime;
+    if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+        const waitTime = MIN_REQUEST_INTERVAL_MS - elapsed;
+        logger.debug('OMDb rate limit: waiting before request', { waitMs: waitTime });
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    lastRequestTime = Date.now();
+}
+
 class OMDbLimitReachedError extends Error {
     constructor(message) {
         super(message);
@@ -214,6 +228,8 @@ class OMDbService {
 
                     logger.debug('OMDb lookup by title', { title, year, type, attempt: attempt + 1 });
 
+                    await enforceRateLimit();
+
                     const response = await axios.get(this.baseUrl, {
                         params,
                         timeout: 15000, // 15 second timeout
@@ -255,21 +271,21 @@ class OMDbService {
 
                 // Retry on transient network errors or Cloudflare errors
                 if ((isTransientNetworkError || isCloudflareError) && attempt < maxRetries - 1) {
-                    const delay = calculateBackoff(attempt, {
-                        baseDelay: 1000,
-                        multiplier: 2,
-                        maxDelay: 10000
-                    });
-                    
+                    const isCloudflare = isCloudflareError;
+                    const delay = isCloudflare
+                        ? calculateBackoff(attempt, { baseDelay: 3000, multiplier: 2, maxDelay: 15000 })
+                        : calculateBackoff(attempt, { baseDelay: 1000, multiplier: 2, maxDelay: 10000 });
+
                     logger.warn('OMDb API transient error, retrying', {
                         title,
                         attempt: attempt + 1,
                         status,
                         code: error.code,
                         message: error.message,
-                        delayMs: delay
+                        delayMs: delay,
+                        isCloudflare
                     }, { error });
-                    
+
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
                 }
@@ -323,6 +339,8 @@ class OMDbService {
                 return await circuitBreaker.execute(async () => {
                     logger.debug('OMDb lookup by IMDB ID', { imdbId, attempt: attempt + 1 });
 
+                    await enforceRateLimit();
+
                     const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
                     configId = id;
 
@@ -370,11 +388,10 @@ class OMDbService {
 
                 // Retry once on transient network errors or Cloudflare errors
                 if ((isTransientNetworkError || isCloudflareError) && attempt < maxRetries - 1) {
-                    const delay = calculateBackoff(attempt, {
-                        baseDelay: 1000,
-                        multiplier: 2,
-                        maxDelay: 10000
-                    });
+                    const isCloudflare = isCloudflareError;
+                    const delay = isCloudflare
+                        ? calculateBackoff(attempt, { baseDelay: 3000, multiplier: 2, maxDelay: 15000 })
+                        : calculateBackoff(attempt, { baseDelay: 1000, multiplier: 2, maxDelay: 10000 });
 
                     logger.warn('OMDb API transient error (IMDB ID), retrying', {
                         imdbId,
@@ -382,7 +399,8 @@ class OMDbService {
                         status,
                         code: error.code,
                         message: error.message,
-                        delayMs: delay
+                        delayMs: delay,
+                        isCloudflare
                     }, { error });
 
                     await new Promise(resolve => setTimeout(resolve, delay));
@@ -432,6 +450,8 @@ class OMDbService {
     async search(query, type, apiKey) {
         let configId = null;
         try {
+            await enforceRateLimit();
+
             const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
             configId = id;
 
@@ -519,6 +539,10 @@ class OMDbService {
             awards: omdbData.awards,
             type: omdbData.type
         };
+    }
+
+    _resetRateLimiter() {
+        lastRequestTime = 0;
     }
 }
 

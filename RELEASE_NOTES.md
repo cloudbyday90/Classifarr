@@ -1,5 +1,45 @@
 # Classifarr Release Notes
 
+## [v0.42.1a-alpha] - 2026-02-17
+
+**Title: Smarter Queue Handling When AI is Offline**
+
+### 🎉 What You'll Notice
+- **Clear feedback when waiting** - Processing section now tells you when tasks are queued but AI is unavailable
+- **Faster OMDb recovery** - Cloudflare errors trigger longer delays, preventing repeated failures
+- **New database migration** - Classification status "routed" now supported for items sent to *arr after manual resolution
+
+### 📊 Quick Visual
+```text
+Before:                    After:
+┌─────────────────┐        ┌─────────────────────────┐
+│ No active       │        │ ⚠️ Waiting for AI        │
+│ processing      │   →    │ 3 tasks queued but AI   │
+│                 │        │ provider is offline     │
+└─────────────────┘        │ [Check AI Settings]     │
+                           └─────────────────────────┘
+```
+
+### ✨ Highlights
+- **"Waiting for AI" state** - When AI is offline and tasks are pending, the Processing section shows why processing is paused with a quick link to AI settings
+- **OMDb rate limiting** - 1-second minimum delay between requests prevents Cloudflare 520 errors
+- **Extended Cloudflare retries** - 3-6 second delays for 5xx Cloudflare errors instead of 1-2 seconds
+
+### 🔧 Reliability Improvements
+- 51 OMDb tests covering circuit breaker lifecycle, rate limiting, and Cloudflare error handling
+- 10 real media examples (mix of TV/movies) used in integration tests
+- Classification history now supports "routed" status for items successfully sent to *arr after resolution
+
+### 👥 Who This Helps
+- **Self-hosters with Ollama:** Clear indication when Ollama is offline and tasks are waiting
+- **All users:** Fewer OMDb failures due to smarter rate limiting and retry delays
+- **Operators:** More test coverage for OMDb reliability
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.1-alpha] - 2026-02-16
 
 **Title: Stronger Protection When External Services Falter**

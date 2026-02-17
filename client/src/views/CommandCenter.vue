@@ -143,13 +143,27 @@
               </div>
 
               <div v-else class="processing-idle">
-                <div class="idle-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                <div v-if="!aiOnline && queuePendingCount > 0" class="idle-waiting-ai">
+                  <div class="idle-icon idle-icon-warning">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                  </div>
+                  <p class="idle-title">Waiting for AI</p>
+                  <p class="idle-subtitle">{{ queuePendingCount }} task{{ queuePendingCount === 1 ? '' : 's' }} queued but AI provider is offline</p>
+                  <Button variant="ghost" size="sm" @click="router.push({ path: '/settings', query: { tab: 'ai' } })">
+                    Check AI Settings
+                  </Button>
                 </div>
-                <p class="idle-title">No active processing</p>
-                <p class="idle-subtitle">Library: {{ formatNumber(gapProcessedCount) }} / {{ formatNumber(gapTotalCount) }} ({{ gapPercentComplete }}%)</p>
+                <div v-else>
+                  <div class="idle-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p class="idle-title">No active processing</p>
+                  <p class="idle-subtitle">Library: {{ formatNumber(gapProcessedCount) }} / {{ formatNumber(gapTotalCount) }} ({{ gapPercentComplete }}%)</p>
+                </div>
               </div>
 
               <div v-if="upNextTasks.length" class="up-next">
@@ -1666,6 +1680,10 @@ onBeforeUnmount(() => {
   color: #22c55e;
 }
 
+.idle-icon-warning {
+  color: #f59e0b;
+}
+
 .idle-title {
   font-size: 1rem;
   font-weight: 600;
@@ -1676,6 +1694,13 @@ onBeforeUnmount(() => {
 .idle-subtitle {
   font-size: 0.875rem;
   color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+.idle-waiting-ai {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .up-next {

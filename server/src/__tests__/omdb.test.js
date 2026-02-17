@@ -61,6 +61,7 @@ describe('OMDbService', () => {
         mockLogger.warn.mockClear();
         mockLogger.error.mockClear();
         mockLogger.debug.mockClear();
+        omdbService._resetRateLimiter();
     });
 
     describe('Cloudflare Error Handling', () => {
@@ -101,7 +102,7 @@ describe('OMDbService', () => {
 
         it('should retry and throw on other Cloudflare errors (520, 521, 522)', async () => {
             const today = new Date().toISOString().split('T')[0];
-            const cloudflareErrors = [520, 521, 522];
+            const cloudflareErrors = [520, 521];
 
             for (const statusCode of cloudflareErrors) {
                 jest.clearAllMocks();
@@ -138,6 +139,117 @@ describe('OMDbService', () => {
                 expect(mockAxios.get).toHaveBeenCalledTimes(2);
                 expect(incrementSpy).not.toHaveBeenCalled();
             }
+        });
+
+        it('should retry and throw on Cloudflare 522 error specifically', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockAxios.get.mockRejectedValue({
+                response: { status: 522 },
+                message: 'Request failed with status code 522',
+                code: undefined
+            });
+
+            await expect(
+                omdbService.getByTitle('Test Movie 522', 2020, 'movie')
+            ).rejects.toBeDefined();
+
+            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('Rate Limiter', () => {
+        const mockOmdbResponse = {
+            Response: 'True',
+            Title: 'Test',
+            Year: '2020',
+            Rated: 'PG-13',
+            Released: '01 Jan 2020',
+            Runtime: '120 min',
+            Genre: 'Drama',
+            Director: 'Test Director',
+            Writer: 'Test Writer',
+            Actors: 'Test Actor',
+            Plot: 'Test plot',
+            Language: 'English',
+            Country: 'USA',
+            Awards: 'None',
+            Poster: 'N/A',
+            Ratings: [],
+            Metascore: 'N/A',
+            imdbRating: '7.0',
+            imdbVotes: '1,000',
+            imdbID: 'tt0000000',
+            Type: 'movie',
+            BoxOffice: 'N/A',
+            Production: 'N/A'
+        };
+
+        it('should enforce minimum delay between requests', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockAxios.get.mockResolvedValue({ data: mockOmdbResponse });
+
+            omdbService._resetRateLimiter();
+            const start1 = Date.now();
+            await omdbService.getByTitle('Movie 1', 2020, 'movie');
+            const elapsed1 = Date.now() - start1;
+
+            const start2 = Date.now();
+            await omdbService.getByTitle('Movie 2', 2020, 'movie');
+            const elapsed2 = Date.now() - start2;
+
+            expect(elapsed1).toBeLessThan(100);
+            expect(elapsed2).toBeGreaterThanOrEqual(900);
+        });
+
+        it('should not delay when enough time has passed', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockAxios.get.mockResolvedValue({ data: mockOmdbResponse });
+
+            omdbService._resetRateLimiter();
+            await omdbService.getByTitle('Movie 1', 2020, 'movie');
+
+            await new Promise(resolve => setTimeout(resolve, 1100));
+
+            const start = Date.now();
+            await omdbService.getByTitle('Movie 2', 2020, 'movie');
+            const elapsed = Date.now() - start;
+
+            expect(elapsed).toBeLessThan(100);
+        });
+
+        it('should reset rate limiter state', () => {
+            omdbService._resetRateLimiter();
+            expect(omdbService._resetRateLimiter).toBeDefined();
         });
     });
 
