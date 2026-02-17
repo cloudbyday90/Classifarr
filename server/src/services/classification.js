@@ -1433,14 +1433,10 @@ class ClassificationService {
         if (aiRerunGate.eligible) {
           try {
             aiCallsUsed += 1;
-            const aiRerunMatch = await this.withTimeout(
-              this.aiClassify(expandedMetadata, libraries, signalContext, {
-                mode: 'classify',
-                ragContext: pass2RagContext
-              }),
-              Math.max(20000, remainingBudget()), // Give AI at least 20s regardless of loop budget
-              'ai_rerun_timeout'
-            );
+            const aiRerunMatch = await this.aiClassify(expandedMetadata, libraries, signalContext, {
+              mode: 'classify',
+              ragContext: pass2RagContext
+            });
             pass2Candidate = this.buildAiRerunCandidate({
               baselineResult,
               aiRerunMatch,
