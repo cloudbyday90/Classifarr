@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- None yet.
+- **Header** - Hamburger menu icon now hidden on desktop (sidebar is always visible, button was non-functional)
 
 ### Fixed
 

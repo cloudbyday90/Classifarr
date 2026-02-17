@@ -12,7 +12,7 @@
       <div class="flex items-center gap-2 min-w-0">
         <button
           @click="$emit('toggleSidebar')"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-300 hover:bg-background-light hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-300 hover:bg-background-light hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
           aria-label="Toggle navigation menu"
         >
           <Bars3Icon class="h-5 w-5" />
