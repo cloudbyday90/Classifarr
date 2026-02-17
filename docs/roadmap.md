@@ -140,6 +140,14 @@ Status labels:
   - Effort: Medium (queue refactor)
   - Impact: Medium (reliability)
 
+### Maintenance & Technical Debt
+
+- **Resolve Suppressed Vulnerabilities**
+  - **Issue**: `ajv` vulnerability (GHSA-2g4f-4pwh-qvx6) in `server/` is suppressed because `eslint` requires the older version.
+  - **Goal**: Upgrade `eslint` and `ajv` once a compatible release chain exists.
+  - **Effort**: Low (dependency updates)
+  - **Impact**: High (security compliance)
+
 ### Search & Filtering
 
 - **Advanced Search and Filtering**

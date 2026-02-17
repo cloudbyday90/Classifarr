@@ -1,0 +1,4 @@
+
+[[IgnoredVulns]]
+id = "GHSA-2g4f-4pwh-qvx6"
+reason = "Dev dependency (eslint) requires vulnerable ajv version. Upgrade breaks linting. No patch available upstream yet."
