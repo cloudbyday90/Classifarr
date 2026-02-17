@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `enrichmentRetryService.test.js` (28 tests) - covers OMDb/Tavily enrichment retry logic
   - `aiRouter.test.js` (23 tests) - covers AI provider routing and budget fallback
   - `mediaSync.test.js` (22 tests) - covers library sync with Plex/Jellyfin/Emby
+  - `radarr.test.js` (27 tests) - covers Radarr API integration
+  - `sonarr.test.js` (27 tests) - covers Sonarr API integration
+  - `tavily.test.js` (25 tests) - covers web enrichment API
+  - `plex.test.js` (18 tests) - covers Plex media server integration
+  - `jellyfin.test.js` (17 tests) - covers Jellyfin media server integration
+  - `emby.test.js` (17 tests) - covers Emby media server integration
 
 ### Changed
 
