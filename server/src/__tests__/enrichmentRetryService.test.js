@@ -47,6 +47,11 @@ describe('EnrichmentRetryService', () => {
 
         jest.resetModules();
         service = require('../services/enrichmentRetryService');
+        service.cancelScheduledProcessing();
+    });
+
+    afterEach(() => {
+        service.cancelScheduledProcessing();
     });
 
     describe('queueForRetry', () => {
@@ -125,6 +130,96 @@ describe('EnrichmentRetryService', () => {
             const stats = await service.getStats();
 
             expect(stats.total.pending).toBe(5);
+        });
+    });
+
+    describe('scheduleProcessing', () => {
+        it('should schedule processing when called', () => {
+            jest.useFakeTimers();
+            
+            service.scheduleProcessing();
+            
+            expect(service.processingScheduled).toBe(true);
+            
+            jest.advanceTimersByTime(5000);
+            
+            expect(service.processingScheduled).toBe(false);
+            
+            jest.useRealTimers();
+        });
+
+        it('should not schedule if already scheduled', () => {
+            service.processingScheduled = true;
+            
+            service.scheduleProcessing();
+            
+            expect(service.scheduledTimeout).toBeNull();
+        });
+
+        it('should not schedule if processing in progress', () => {
+            service.processingInProgress = true;
+            
+            service.scheduleProcessing();
+            
+            expect(service.scheduledTimeout).toBeNull();
+        });
+    });
+
+    describe('cancelScheduledProcessing', () => {
+        it('should cancel scheduled timeout', () => {
+            jest.useFakeTimers();
+            
+            service.scheduleProcessing();
+            expect(service.scheduledTimeout).not.toBeNull();
+            
+            service.cancelScheduledProcessing();
+            
+            expect(service.scheduledTimeout).toBeNull();
+            expect(service.processingScheduled).toBe(false);
+            
+            jest.useRealTimers();
+        });
+    });
+
+    describe('triggerProcessing', () => {
+        it('should skip if already processing', async () => {
+            service.processingInProgress = true;
+            
+            await service.triggerProcessing();
+            
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'Enrichment processing already in progress, skipping'
+            );
+        });
+
+        it('should skip if no pending items', async () => {
+            mockDb.query.mockResolvedValue({ rows: [] });
+            
+            await service.triggerProcessing();
+            
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'Enrichment retry queue: No pending items'
+            );
+        });
+
+        it('should process OMDb items when pending', async () => {
+            mockDb.query
+                .mockResolvedValueOnce({
+                    rows: [
+                        { enrichment_type: 'omdb', status: 'pending', count: '5' }
+                    ]
+                })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] });
+
+            mockOmdbService.getByIMDBId.mockResolvedValue({ Title: 'Test' });
+
+            await service.triggerProcessing();
+
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Enrichment retry queue: Processing 5 OMDb, 0 Tavily items'
+            );
         });
     });
 

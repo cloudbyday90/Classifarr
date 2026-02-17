@@ -61,11 +61,8 @@ class SchedulerService {
         // Also run initial retry queue check after startup (1 min delay)
         setTimeout(() => this.processRetryQueue(), 60000);
 
-        // Process enrichment retry queue every 10 minutes for OMDb/Tavily retries
+        // Process enrichment retry queue every 10 minutes (also triggered on-demand when items are queued)
         this.schedule('enrichment-retry-queue', '*/10 * * * *', () => this.processEnrichmentRetryQueue());
-
-        // Also run initial enrichment retry check after startup (2 min delay)
-        setTimeout(() => this.processEnrichmentRetryQueue(), 120000);
 
         // Daily rating normalization check at 3 AM
         this.schedule('rating-normalization-check', '0 3 * * *', () => this.runRatingNormalizationCheck());
@@ -414,42 +411,15 @@ class SchedulerService {
 
     /**
      * Process enrichment retry queue for OMDb/Tavily enrichment failures
-     * Runs every 10 minutes to retry pending enrichment tasks
+     * Runs every 10 minutes as a safety net, but also triggered on-demand
+     * when items are queued (see enrichmentRetryService.scheduleProcessing)
      */
     async processEnrichmentRetryQueue() {
         try {
             const enrichmentRetryService = require('./enrichmentRetryService');
-
-            const stats = await enrichmentRetryService.getStats();
-            const pendingOmdb = stats.omdb?.pending || 0;
-            const pendingTavily = stats.tavily?.pending || 0;
-
-            if (pendingOmdb === 0 && pendingTavily === 0) {
-                logger.debug('Enrichment retry queue: No pending items');
-                return;
-            }
-
-            logger.info(`Enrichment retry queue: Processing ${pendingOmdb} OMDb, ${pendingTavily} Tavily items`);
-
-            if (pendingOmdb > 0) {
-                const omdbResult = await enrichmentRetryService.processRetryQueue(50, 'omdb');
-                logger.info('Enrichment retry queue: OMDb processed', {
-                    processed: omdbResult.processed,
-                    success: omdbResult.success,
-                    failed: omdbResult.failed
-                });
-            }
-
-            if (pendingTavily > 0) {
-                const tavilyResult = await enrichmentRetryService.processRetryQueue(50, 'tavily');
-                logger.info('Enrichment retry queue: Tavily processed', {
-                    processed: tavilyResult.processed,
-                    success: tavilyResult.success,
-                    failed: tavilyResult.failed
-                });
-            }
+            await enrichmentRetryService.triggerProcessing();
         } catch (error) {
-            logger.error('Error processing enrichment retry queue', {
+            logger.error('Error in enrichment retry queue processing', {
                 error: error.message,
                 stack: error.stack,
             });

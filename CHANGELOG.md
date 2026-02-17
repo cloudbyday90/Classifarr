@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Automatic Enrichment Retry** - OMDb/Tavily enrichment retry queue now runs automatically every 10 minutes (no more manual "Retry OMDb" clicks)
+- **Smart Enrichment Retry** - OMDb/Tavily enrichment retry now triggers on-demand when items are queued, plus runs every 10 minutes as a safety net. No more manual "Retry OMDb" clicks needed.
 
 ### Changed
 

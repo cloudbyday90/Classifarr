@@ -12,6 +12,12 @@ const { createLogger } = require('../utils/logger');
 const logger = createLogger('EnrichmentRetryService');
 
 class EnrichmentRetryService {
+    constructor() {
+        this.processingScheduled = false;
+        this.processingInProgress = false;
+        this.scheduledTimeout = null;
+    }
+
     /**
      * Queue an item for enrichment retry
      * @param {number} mediaItemId - The media_server_items.id
@@ -35,13 +41,99 @@ class EnrichmentRetryService {
       `, [mediaItemId, enrichmentType, reason, priority]);
 
             logger.debug('Queued item for enrichment retry', { mediaItemId, enrichmentType, reason });
+
+            this.scheduleProcessing();
         } catch (error) {
-            // Handle race condition: Item deleted while queueing
-            if (error.code === '23503') { // foreign_key_violation
+            if (error.code === '23503') {
                 logger.warn('Skipping retry queue for deleted item', { mediaItemId });
                 return;
             }
             logger.error('Failed to queue item for retry', { error: error.message, mediaItemId });
+        }
+    }
+
+    /**
+     * Schedule processing if not already scheduled
+     * Debounced to avoid scheduling multiple times
+     */
+    scheduleProcessing() {
+        if (this.processingScheduled || this.processingInProgress) {
+            return;
+        }
+
+        this.processingScheduled = true;
+        this.scheduledTimeout = setTimeout(() => {
+            this.processingScheduled = false;
+            this.scheduledTimeout = null;
+            this.triggerProcessing();
+        }, 5000);
+    }
+
+    /**
+     * Cancel any scheduled processing (for cleanup)
+     */
+    cancelScheduledProcessing() {
+        if (this.scheduledTimeout) {
+            clearTimeout(this.scheduledTimeout);
+            this.scheduledTimeout = null;
+            this.processingScheduled = false;
+        }
+    }
+
+    /**
+     * Trigger processing (called by scheduler or on-demand)
+     */
+    async triggerProcessing() {
+        if (this.processingInProgress) {
+            logger.debug('Enrichment processing already in progress, skipping');
+            return;
+        }
+
+        this.processingInProgress = true;
+        try {
+            const stats = await this.getStats();
+            const pendingOmdb = stats.omdb?.pending || 0;
+            const pendingTavily = stats.tavily?.pending || 0;
+
+            if (pendingOmdb === 0 && pendingTavily === 0) {
+                logger.debug('Enrichment retry queue: No pending items');
+                return;
+            }
+
+            logger.info(`Enrichment retry queue: Processing ${pendingOmdb} OMDb, ${pendingTavily} Tavily items`);
+
+            if (pendingOmdb > 0) {
+                const omdbResult = await this.processRetryQueue(50, 'omdb');
+                logger.info('Enrichment retry queue: OMDb processed', {
+                    processed: omdbResult.processed,
+                    success: omdbResult.success,
+                    failed: omdbResult.failed
+                });
+            }
+
+            if (pendingTavily > 0) {
+                const tavilyResult = await this.processRetryQueue(50, 'tavily');
+                logger.info('Enrichment retry queue: Tavily processed', {
+                    processed: tavilyResult.processed,
+                    success: tavilyResult.success,
+                    failed: tavilyResult.failed
+                });
+            }
+
+            const newStats = await this.getStats();
+            const remainingOmdb = newStats.omdb?.pending || 0;
+            const remainingTavily = newStats.tavily?.pending || 0;
+
+            if (remainingOmdb > 0 || remainingTavily > 0) {
+                logger.info(`Enrichment retry queue: ${remainingOmdb + remainingTavily} items remaining, will retry in 10 minutes`);
+            }
+        } catch (error) {
+            logger.error('Error processing enrichment retry queue', {
+                error: error.message,
+                stack: error.stack
+            });
+        } finally {
+            this.processingInProgress = false;
         }
     }
 
