@@ -1,5 +1,44 @@
 # Classifarr Release Notes
 
+## [v0.42.3a-alpha] - 2026-02-17
+
+**Title: Classification Method Constraint Fix**
+
+### 🎉 What You'll Notice
+
+- **Classifications complete successfully** — no more constraint violation errors for certain classification methods
+- **RAG-improved results work** — methods like `rag_improved`, `policy_engine`, and `authoritative_source_library` are now valid
+
+### 📊 Quick Visual
+
+```text
+Before:                          After:
+┌────────────────────────┐       ┌────────────────────────┐
+│ "rag_improved"         │       │ "rag_improved"         │
+│ → DB constraint error  │  →    │ → Saved successfully   │
+│ Classification fails   │       │ Classification works   │
+└────────────────────────┘       └────────────────────────┘
+```
+
+### ✨ Highlights
+
+- **Database Constraint Update** — Added 3 missing classification methods to the `classification_history_method_check` constraint
+
+### 🔧 Reliability Improvements
+
+- New migration `20260217_224200_add_missing_classification_methods.sql` adds `rag_improved`, `authoritative_source_library`, and `policy_engine` methods
+- Updated schema `current.sql` to reflect new constraint
+
+### 👥 Who This Helps
+
+- **All users:** Classifications using policy engine or RAG improvements no longer fail with database errors
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.3-alpha] - 2026-02-17
 
 **Title: Smarter Timeouts & Proper Cancellation**

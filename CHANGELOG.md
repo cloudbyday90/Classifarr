@@ -21,6 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.3a-alpha] - 2026-02-17
+
+### Fixed
+
+- **Classification Method Constraint** — Added missing methods (`rag_improved`, `authoritative_source_library`, `policy_engine`) to `classification_history_method_check` constraint that were causing database insert failures
+- New migration `20260217_224200_add_missing_classification_methods.sql`
+- Updated `database/schema/current.sql` to include new methods
+
+---
+
 ## [v0.42.3-alpha] - 2026-02-17
 
 ### Added
