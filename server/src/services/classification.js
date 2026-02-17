@@ -1438,7 +1438,7 @@ class ClassificationService {
                 mode: 'classify',
                 ragContext: pass2RagContext
               }),
-              Math.max(3000, remainingBudget()),
+              Math.max(20000, remainingBudget()), // Give AI at least 20s regardless of loop budget
               'ai_rerun_timeout'
             );
             pass2Candidate = this.buildAiRerunCandidate({
