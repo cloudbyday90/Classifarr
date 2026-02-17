@@ -627,7 +627,13 @@ function evaluatePolicyRecheckGate({
         marginDelta >= minMarginDelta ||
         confidenceGain >= minConfidenceGain;
 
-    const shouldAdopt = actionUpgraded && measurableImprovement;
+    // Allow adoption when action upgraded with any improvement,
+    // OR when there's significant improvement even without action upgrade
+    // (e.g., doubled confidence gain, or both similarity AND margin thresholds met)
+    const significantImprovement =
+        confidenceGain >= (minConfidenceGain * 2) ||
+        (similarityDelta >= minSimilarityDelta && marginDelta >= minMarginDelta);
+    const shouldAdopt = (actionUpgraded && measurableImprovement) || significantImprovement;
 
     return {
         shouldAdopt,
@@ -674,9 +680,11 @@ function comparePassResults({
     const minSimilarityDelta = clamp(toNumber(config.policy_recheck_min_similarity_delta, 0.08), 0, 1);
     const minMarginDelta = clamp(toNumber(config.policy_recheck_min_margin_delta, 10), 0, 100);
 
+    // OR-based gate: any single meaningful improvement is enough to adopt
     const improvementGate =
-        confidenceGain >= minConfidenceGain &&
-        (similarityDelta >= minSimilarityDelta || marginDelta >= minMarginDelta);
+        confidenceGain >= minConfidenceGain ||
+        similarityDelta >= minSimilarityDelta ||
+        marginDelta >= minMarginDelta;
 
     return {
         adopt: improvementGate,

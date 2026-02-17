@@ -380,15 +380,20 @@ class PolicyEngine {
                 (policy.trust_history ? weights.history : 0);
             const finalScore = totalWeight > 0 ? (weightedScore / totalWeight) : 0;
 
+            // Signal agreement bonus: boost score when multiple independent signals agree
+            const agreement = this.calculateAgreementMultiplier(scores, policy);
+            const boostedScore = Math.min(finalScore * agreement.multiplier, FORMULA_CONFIDENCE_CAP);
+
             return {
                 policy_id: policy.id,
                 policy_name: policy.name,
                 library_id: policy.library_id,
                 library_name: policy.library_name,
-                score: Math.round(finalScore * 100) / 100,
+                score: Math.round(boostedScore * 100) / 100,
                 scores,
                 weights,
                 breakdown,
+                agreement,
                 auto_classify_threshold: policy.auto_classify_threshold,
                 prompt_threshold: policy.prompt_threshold
             };
@@ -409,6 +414,30 @@ class PolicyEngine {
                 breakdown: []
             };
         }
+    }
+
+    /**
+     * Calculate consensus multiplier based on how many enabled signals agree
+     * When multiple independent signals all produce a positive score for a library,
+     * that cross-signal agreement is a strong confidence indicator.
+     * @param {object} scores - Individual signal scores { preset, profile, pattern, rag, history }
+     * @param {object} policy - Policy configuration (to check which signals are enabled)
+     * @returns {object} { multiplier, contributing } - multiplier to apply and count of contributing signals
+     */
+    calculateAgreementMultiplier(scores, policy) {
+        // Count signals that are both enabled AND scored > 0
+        let contributing = 0;
+        if ((policy.presets && policy.presets.length > 0) && scores.preset > 0) contributing++;
+        if (scores.profile > 0) contributing++; // Profile is always enabled
+        if (policy.trust_patterns && scores.pattern > 0) contributing++;
+        if (policy.trust_rag && scores.rag > 0) contributing++;
+        if (policy.trust_history && scores.history > 0) contributing++;
+
+        // Graduated multiplier: more agreement → higher boost
+        const AGREEMENT_MULTIPLIERS = [1.0, 1.0, 1.05, 1.12, 1.20, 1.30];
+        const multiplier = AGREEMENT_MULTIPLIERS[Math.min(contributing, AGREEMENT_MULTIPLIERS.length - 1)];
+
+        return { multiplier, contributing };
     }
 
     /**

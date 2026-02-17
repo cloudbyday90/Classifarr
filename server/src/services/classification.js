@@ -117,7 +117,7 @@ async function createAwaitingDecisionNotification(classificationId, title, reaso
 // Configurable via this constant - adjust based on your provider rate limits and needs.
 const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 const RAG_LOOP_MIN_TIMEOUT_MS = 1000;
-const RAG_LOOP_MAX_TIMEOUT_MS = 10000;
+const RAG_LOOP_MAX_TIMEOUT_MS = 15000;
 
 class ClassificationService {
   async classify(overseerrPayload) {
@@ -716,7 +716,7 @@ class ClassificationService {
 
   resolveRagLoopTimeout(config = {}) {
     const metadataTimeout = Number(config.policy_recheck_metadata_timeout_ms);
-    const computed = Number.isFinite(metadataTimeout) ? metadataTimeout + 3000 : 5000;
+    const computed = Number.isFinite(metadataTimeout) ? metadataTimeout + 8000 : 10000;
     return Math.max(RAG_LOOP_MIN_TIMEOUT_MS, Math.min(RAG_LOOP_MAX_TIMEOUT_MS, computed));
   }
 
@@ -1438,7 +1438,7 @@ class ClassificationService {
                 mode: 'classify',
                 ragContext: pass2RagContext
               }),
-              Math.max(1, remainingBudget()),
+              Math.max(3000, remainingBudget()),
               'ai_rerun_timeout'
             );
             pass2Candidate = this.buildAiRerunCandidate({
@@ -1491,6 +1491,36 @@ class ClassificationService {
         reasonCode: 'policy_candidate_selected',
         fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED
       });
+    }
+
+    // Fix 4: Build a candidate from pass2 RAG data when neither policy recheck
+    // nor AI rerun produced one, but pass2 retrieval found better matches
+    if (!pass2Candidate && pass2Matches.length > 0 && pass2RagContext?.suggestion) {
+      const ragSuggestion = pass2RagContext.suggestion;
+      const ragLibrary = libraries.find(l =>
+        l.name === ragSuggestion || l.id === ragSuggestion
+      );
+      if (ragLibrary) {
+        const ragConfidence = Math.max(
+          Number(baselineResult?.confidence || 0),
+          Math.min(75, Number(pass2Diagnostics.topSimilarity || 0) * 100)
+        );
+        pass2Candidate = {
+          ...baselineResult,
+          library: ragLibrary,
+          confidence: ragConfidence,
+          method: 'rag_improved',
+          reason: 'Pass2 RAG retrieval found stronger matches',
+          ragContext: pass2RagContext,
+          policyResult: policyAfter || policyResult
+        };
+        addEvent({
+          stage: 'rag_candidate',
+          outcome: 'applied',
+          reason: 'rag_candidate_built',
+          reasonCode: 'rag_candidate_built'
+        });
+      }
     }
 
     const comparison = comparePassResults({

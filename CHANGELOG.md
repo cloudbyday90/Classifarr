@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -18,6 +18,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - None yet.
+
+---
+
+## [v0.42.2-alpha] - 2026-02-17
+
+### Added
+
+- **Signal Agreement Scoring** — `PolicyEngine.calculateAgreementMultiplier()` applies a graduated consensus multiplier (1.05–1.30×) when 2-5 enabled signals contribute a positive score. Result includes `agreement.multiplier` and `agreement.contributing` in evaluation metadata.
+- **Agreement multiplier unit tests** — `agreementMultiplier.test.js` with 7 tests covering all multiplier tiers (0-5 signals), enabled-only counting, and the 95 cap.
+- **Relaxed gate unit tests** — 2 new tests in `ragLoopHelpers.test.js` for significant improvement without action upgrade and OR-based adoption.
+
+### Changed
+
+- **Policy recheck gate** (`ragLoopHelpers.js`) — relaxed to allow adoption when confidence gain is ≥2× the minimum threshold, even without an action upgrade (previously required action upgrade).
+- **Compare pass results** (`ragLoopHelpers.js`) — adoption gate changed from AND to OR logic: confidence improvement, similarity delta, or margin delta alone can now trigger adoption.
+- **RAG loop timeouts** (`classification.js`) — increased max loop timeout from 5s to 15s (default 10s), with a minimum 3s budget reserved for AI reruns.
+- **Candidate building** (`classification.js`) — when policy/AI don't produce a pass2 candidate, candidates are now built from pass2 RAG matches.
+- **Policy question filtering** (`policyQuestionBuilder.js`) — low-score candidates (below a configurable threshold) are filtered from policy questions.
+- **Roadmap** (`docs/roadmap.md`) — moved "Second Pass reliability fixes" and "Signal Agreement Scoring" to Recently Completed.
 
 ---
 
@@ -78,23 +97,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.42.1a-alpha] - 2026-02-17
 
 ### Added
+
 - **"Waiting for AI" UI State** - Command Center Processing section now displays clear message when tasks are queued but AI provider is offline, with quick link to AI settings
 - **OMDb Integration Tests** - New comprehensive test suite with 16 integration tests using 10 real media examples (mix of TV/movies)
-- **Database Migration** - Added `routed` status to `classification_history_status_check` constraint for items successfully sent to *arr after manual resolution
+- **Database Migration** - Added `routed` status to `classification_history_status_check` constraint for items successfully sent to \*arr after manual resolution
 
 ### Changed
+
 - **OMDb Rate Limiting** - Minimum 1-second delay between all OMDb API requests to prevent Cloudflare 520 errors
 - **OMDb Cloudflare Retry Delays** - Increased from 1-2 seconds to 3-6 seconds for Cloudflare 5xx errors (520, 521, 522, 523, 524)
 - **OMDb Test Coverage** - Added rate limiter tests, 522 Cloudflare error tests, and circuit breaker state isolation
 
 ### Fixed
-- **Classification Routing** - `classification_history` constraint violation when status was set to "routed" after successful *arr routing
+
+- **Classification Routing** - `classification_history` constraint violation when status was set to "routed" after successful \*arr routing
 
 ---
 
 ## [v0.42.1-alpha] - 2026-02-16
 
 ### Changed
+
 - **Circuit Breaker Expansion** - OMDb circuit breaker now trips on additional error conditions:
   - DNS resolution failures (`ENOTFOUND`, `EAI_AGAIN`)
   - Connection resets (`ECONNRESET`)
@@ -102,6 +125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Previous coverage was limited to `ECONNABORTED`, `ETIMEDOUT`, `ECONNREFUSED`
 
 ### Fixed
+
 - **Clipboard Fallback** - Webhook URL and secret key copy buttons now fall back to `document.execCommand('copy')` when `navigator.clipboard` is unavailable (non-HTTPS contexts)
 - **Null Safety** - `formatSettingKey()` in Confidence.vue now handles undefined/null keys gracefully
 
@@ -110,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.42.0-alpha] - 2026-02-14
 
 ### Added
+
 - **Command Center** - Unified action-first operational surface replacing fragmented Dashboard/Activity/Queue workflows:
   - Split-layout design with Processing (left) + Needs Attention (right) primary panels
   - Visual phase stepper showing 8-step classification progress inline
@@ -134,6 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Freshness indicator with "Live" / "Updating" status
 
 ### Changed
+
 - **Navigation Architecture** - Command Center is now the default landing page:
   - `/` route loads Command Center directly
   - Activity and Queue removed from primary sidebar navigation
@@ -149,12 +175,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Quick Add and Today collapsed by default (on-demand)
 
 ### Deprecated
+
 - `/activity` page - functionality moved to Command Center Processing module
 - `/queue` page - functionality moved to Command Center Processing/Errors modules
 - `/dashboard` page - replaced by Command Center
 - Smart Rule Builder v2 entry points - removed from primary navigation
 
 ### Fixed
+
 - Module headers changed from UPPERCASE to Title Case for improved readability
 - Section anchor IDs properly resolve for deep-linking from notifications
 - Test suite updated to match new split-layout design and collapsible sections
@@ -164,6 +192,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.41.3-alpha] - 2026-02-11
 
 ### Added
+
 - RAG low-confidence second-pass framework (Issue #275) with targeted policy re-check path and bounded rerun controls.
 - New RAG loop configuration manifests/validation and tests:
   - `server/src/utils/ragLoopConfig.js`
@@ -184,6 +213,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `server/src/services/postUpgradeService.js` now includes `clear_logs_0413` for `0.41.3`.
 
 ### Changed
+
 - RAG loop defaults now activate immediate apply mode for this release:
   - `rag_retrieval_loop_enabled=true`
   - `policy_recheck_below_prompt_threshold_enabled=true`
@@ -193,6 +223,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integration test runtime hardened for long-running scenarios (`300000ms` timeout in integration config/setup).
 
 ### Fixed
+
 - JSON body parse failures now return a clean 400 (`Invalid JSON payload`) without unnecessary error-report noise.
 - OMDb HALF_OPEN throttle/circuit-block events no longer generate warning spam; logging is throttled/downgraded for expected blocked states.
 - Queue warning behavior for OMDb circuit-blocked enrichment failures now avoids repetitive high-noise warnings while keeping actionable diagnostics.
@@ -202,10 +233,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.41.2d-alpha] - 2026-02-07
 
 ### Changed
+
 - DB: schema snapshot loader strips UTF-8 BOM and ensures `schema_migrations` exists during fresh installs.
 - UI: RAG Settings status bar uses the correct API routes for status/backfill/heartbeat.
 
 ### Fixed
+
 - Fresh installs: schema snapshot no longer fails on startup due to BOM/missing `schema_migrations` and will fall back to migrations when needed.
 - Setup: `/login` now redirects to `/setup-account` when no users exist yet (avoids a fresh-install dead-end).
 - UI: RAG Settings status bar icon labels no longer render as garbled characters.
@@ -215,11 +248,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.41.2c-alpha] - 2026-02-06
 
 ### Changed
+
 - UI: preserve active RAG Settings tab on refresh (via `?tab=`).
 - UI: rename "Policy Engine - Classification Thresholds" to "Classification Thresholds".
 - Repo: ignore `.tmp/` intermediate artifacts.
 
 ### Fixed
+
 - RAG Settings: refreshing no longer resets the view back to Overview.
 
 ---
@@ -227,15 +262,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.41.2b-alpha] - 2026-02-06
 
 ### Added
+
 - CI/CD: workflow dispatch mode to run Docker cleanup without running the full pipeline.
 - Tests: regression coverage for policy-based auto-routing thresholds.
 
 ### Changed
+
 - Discord: confidence tier selection now prefers per-policy thresholds when available.
 - Classification: auto-routing now respects the PolicyEngine auto-classify threshold (not a hardcoded 90%).
 - CI/CD: Docker Hub tag cleanup now paginates and fails fast on HTTP errors.
 
 ### Fixed
+
 - Docker cleanup: keep `latest` plus the newest 5 tags (by `last_updated`) on Docker Hub.
 
 ---
@@ -243,6 +281,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.41.2a-alpha] - 2026-02-06
 
 ### Changed
+
 - CI/CD: improved Dependabot OSV scan behavior; Docker images publish on release tags only.
 - UI: refinements to RAG status strip presentation.
 - Dependencies:
@@ -251,6 +290,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `pg-mem` -> `3.0.11` (server dev)
 
 ### Fixed
+
 - OMDb: retry transient socket/network errors.
 - Circuit breaker logging: preserve failure stack traces.
 - DB schema alignment: add missing `learning_patterns.media_type` to prevent runtime errors.
@@ -260,6 +300,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.41.2-alpha] - 2026-02-06
 
 ### Added
+
 - **Multimodal RAG (Image Embeddings)** (Issue #289, Closes #289)
   - Image embedding configuration fields and migrations (size, rate limits, cache)
   - Image embedding provider service for cloud/local providers
@@ -277,6 +318,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Database schema snapshot `database/schema/current.sql`
 
 ### Changed
+
 - **Image Embedding Modes**
   - Default image embedding mode is now `disabled`
   - Removed “same host as text embeddings” option
@@ -290,6 +332,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Removed redundant XML sections (`Networking`, `Data`, `Environment`, `Shell`, empty `PostArgs`) for cleaner templates
 
 ### Fixed
+
 - **Test Noise**
   - Reduced console error noise in client tests (service status error handling)
 - **Copyright Tooling**
@@ -302,6 +345,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v0.41.1-alpha] - 2026-02-02
 
 ### Added
+
 - **OMDb Circuit Breaker** (PR #293)
   - Implemented 3-state circuit breaker (CLOSED, OPEN, HALF_OPEN) for OMDb service
   - Added automatic recovery after 30-second cool-off period
@@ -319,6 +363,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Client: `npm run test:unit` now correctly targets `src/__tests__` instead of non-existent subfolder
 
 ### Changed
+
 - **Dependency Updates** (Fixes #294 - Comprehensive Dependency Audit and Update)
   - Standardized axios version across all workspaces (root, server, client) to `^1.13.4`
   - Updated server dependencies to latest compatible versions:
@@ -334,6 +379,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - vue-router: `^4.2.5` â†’ `^4.6.4` (latest 4.x)
 
 ### Fixed
+
 - **Cloudflare Error Handling** (PR #252)
   - Extended retry logic to cover all primary Cloudflare error codes (520, 521, 522, 523)
   - Added comprehensive test coverage for error scenarios
@@ -343,6 +389,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dependency Hygiene** (PR #297)
   - Updated 12+ packages including `axios`, `express`, `pg`, `discord.js`
   - Resolved 4 moderate security vulnerabilities via overrides (undici, glob)
+
 ## [0.41.0-alpha] - 2026-02-01
 
 ### Added

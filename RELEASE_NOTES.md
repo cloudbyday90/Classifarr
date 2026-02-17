@@ -1,15 +1,61 @@
 # Classifarr Release Notes
 
+## [v0.42.2-alpha] - 2026-02-17
+
+**Title: Smarter Scoring & More Reliable Second Pass**
+
+### 🎉 What You'll Notice
+
+- **Higher confidence on clear items** — when multiple signals agree, the score now reflects that consensus
+- **Second pass actually improves results** — relaxed gates and extended timeouts let the rerun do its job
+- **Fewer unnecessary prompts** — low-quality candidates are filtered from policy questions
+
+### 📊 Quick Visual
+
+```text
+Before:                               After:
+┌──────────────────────────┐          ┌──────────────────────────┐
+│ 4/5 signals agree → 32%  │          │ 4/5 signals agree → 38%  │
+│ Second pass times out    │    →     │ 20% boost from agreement │
+│ Weak candidates shown    │          │ Only strong candidates    │
+└──────────────────────────┘          └──────────────────────────┘
+```
+
+### ✨ Highlights
+
+- **Signal Agreement Scoring** — new consensus multiplier boosts confidence 5-30% when 2-5 signals agree on the same library
+- **Second Pass Fixes** — extended timeouts (up to 15s), relaxed policy recheck gate, OR-based adoption, and RAG-sourced candidate building
+- **Policy Question Filtering** — low-score candidates no longer clutter manual resolution prompts
+
+### 🔧 Reliability Improvements
+
+- 9 new unit tests for agreement multiplier and relaxed gate paths
+- Full test suite: 77 server suites (1239 tests) + 33 client suites (199 tests) all passing
+
+### 👥 Who This Helps
+
+- **All users:** Clearer items resolve faster with higher confidence
+- **Self-hosters:** Second pass improvements reduce unnecessary manual interventions
+- **Operators:** Better scoring transparency with agreement metadata in evaluation results
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.1d-alpha] - 2026-02-17
 
 **Title: Enrichment Retry Respects Daily Limits**
 
 ### 🎉 What You'll Notice
+
 - **OMDb only** - Auto-retry now only processes OMDb items (Tavily uses monthly credits, no auto-retry)
 - **Respects your daily limit** - Pauses retry when OMDb daily limit reached until next day reset
 - **Quota-aware batching** - Won't exceed your remaining daily API calls
 
 ### 📊 Quick Visual
+
 ```text
 Before:                              After:
 ┌─────────────────────────┐          ┌─────────────────────────┐
@@ -20,20 +66,24 @@ Before:                              After:
 ```
 
 ### ✨ Highlights
+
 - **Daily limit check** - Checks remaining quota before processing
 - **Smart batching** - Only processes up to remaining quota
 - **Tavily skipped** - Tavily has monthly credits, should not be auto-retried
 
 ### 🔧 Reliability Improvements
+
 - 11 new tests for quota checking and retry scheduling
 - Prevents wasted API calls when quota exhausted
 
 ### 👥 Who This Helps
+
 - **Premium OMDb users:** Higher limits are respected automatically
 - **Free tier users:** Won't waste precious daily calls on retries
 - **Everyone:** Tavily monthly credits preserved for manual use
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` for full technical details.
 
 ---
@@ -43,11 +93,13 @@ See `CHANGELOG.md` for full technical details.
 **Title: Smart On-Demand Enrichment Retry**
 
 ### 🎉 What You'll Notice
+
 - **No more manual "Retry OMDb"** - Enrichment retries now trigger automatically when items are queued
 - **Efficient scheduling** - Only runs when there's work to do, not on a fixed timer
 - **CPU-friendly** - Safety net cron reduced to every 6 hours (on-demand handles immediate needs)
 
 ### 📊 Quick Visual
+
 ```text
 Before:                              After:
 ┌─────────────────────────┐          ┌─────────────────────────┐
@@ -58,19 +110,23 @@ Before:                              After:
 ```
 
 ### ✨ Highlights
+
 - **Smart scheduling** - Triggers 5 seconds after items are queued, skips if nothing pending
 - **Debounced triggers** - Won't spam multiple times if many items queued at once
 - **7 new tests** for scheduling logic
 
 ### 🔧 Reliability Improvements
+
 - Enrichment queue processes automatically without manual intervention
 - Concurrent processing protection prevents duplicate work
 
 ### 👥 Who This Helps
+
 - **All users:** Enrichment happens automatically, no need to click retry
 - **Self-hosters:** Less CPU usage when queue is empty
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` for full technical details.
 
 ---
@@ -80,11 +136,13 @@ See `CHANGELOG.md` for full technical details.
 **Title: Bug Fix and Massive Test Coverage Expansion**
 
 ### 🎉 What You'll Notice
+
 - **Enrichment works again** - Fixed a typo that was breaking OMDb enrichment for new media
 - **Cleaner UI** - Removed non-functional hamburger menu on desktop
 - **More reliable releases** - 202 new tests ensure future changes don't break things
 
 ### 📊 Quick Visual
+
 ```text
 Test Coverage Expansion
 Before:                        After:
@@ -101,20 +159,24 @@ Before:                        After:
 ```
 
 ### ✨ Highlights
+
 - **Bug fix** - Corrected `getById` to `getByIMDBId` in enrichment service
 - **9 new test suites** covering the most critical services
 - **Better line endings** - `.gitattributes` now enforces LF across all text files
 
 ### 🔧 Reliability Improvements
+
 - Tests would have caught the `getById` typo before production
-- All core services now have test coverage (AI routing, sync, *arr integration)
+- All core services now have test coverage (AI routing, sync, \*arr integration)
 - Future regressions will be caught by CI
 
 ### 👥 Who This Helps
+
 - **All users:** Enrichment now works for new media items
 - **Developers:** 202 tests provide safety net for future changes
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` for full technical details.
 
 ---
@@ -124,11 +186,13 @@ See `CHANGELOG.md` for full technical details.
 **Title: Smarter Queue Handling When AI is Offline**
 
 ### 🎉 What You'll Notice
+
 - **Clear feedback when waiting** - Processing section now tells you when tasks are queued but AI is unavailable
 - **Faster OMDb recovery** - Cloudflare errors trigger longer delays, preventing repeated failures
-- **New database migration** - Classification status "routed" now supported for items sent to *arr after manual resolution
+- **New database migration** - Classification status "routed" now supported for items sent to \*arr after manual resolution
 
 ### 📊 Quick Visual
+
 ```text
 Before:                    After:
 ┌─────────────────┐        ┌─────────────────────────┐
@@ -140,21 +204,25 @@ Before:                    After:
 ```
 
 ### ✨ Highlights
+
 - **"Waiting for AI" state** - When AI is offline and tasks are pending, the Processing section shows why processing is paused with a quick link to AI settings
 - **OMDb rate limiting** - 1-second minimum delay between requests prevents Cloudflare 520 errors
 - **Extended Cloudflare retries** - 3-6 second delays for 5xx Cloudflare errors instead of 1-2 seconds
 
 ### 🔧 Reliability Improvements
+
 - 51 OMDb tests covering circuit breaker lifecycle, rate limiting, and Cloudflare error handling
 - 10 real media examples (mix of TV/movies) used in integration tests
-- Classification history now supports "routed" status for items successfully sent to *arr after resolution
+- Classification history now supports "routed" status for items successfully sent to \*arr after resolution
 
 ### 👥 Who This Helps
+
 - **Self-hosters with Ollama:** Clear indication when Ollama is offline and tasks are waiting
 - **All users:** Fewer OMDb failures due to smarter rate limiting and retry delays
 - **Operators:** More test coverage for OMDb reliability
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` for full technical details.
 
 ---
@@ -164,11 +232,13 @@ See `CHANGELOG.md` for full technical details.
 **Title: Stronger Protection When External Services Falter**
 
 ### 🎉 What You'll Notice
+
 - **Fewer cascading errors** when OMDb has issues - the system now recognizes and protects against more failure types
 - **Copy buttons work everywhere** - Webhook URL and secret key copy reliably, even in non-HTTPS environments
 - **Cleaner logs** - fewer confusing error messages during temporary outages
 
 ### 📊 Quick Visual
+
 ```text
 Circuit Breaker Protection Coverage
 Before this release:
@@ -181,21 +251,25 @@ After this release:
 ```
 
 ### ✨ Highlights
+
 - **Expanded circuit breaker coverage** - now trips on DNS failures (ENOTFOUND), connection resets, and Cloudflare errors (520-524, 502-504)
 - **Improved clipboard compatibility** - fallback method ensures copy works in all browser contexts
 - **Null safety fix** - settings page no longer errors on empty values
 
 ### 🔧 Reliability Improvements
+
 - Circuit breaker now detects and protects against 8 additional error conditions
 - When OMDb infrastructure has issues, the system gracefully falls back instead of flooding logs
 - Per-request retries still happen, but the circuit opens faster to prevent waste
 
 ### 👥 Who This Helps
+
 - **Self-hosters:** System stays stable even when external APIs have transient issues
 - **Operators:** Cleaner logs and fewer alert storms during outages
 - **All users:** Copy buttons in settings work reliably
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` for full technical details.
 
 ---
@@ -208,12 +282,14 @@ See `CHANGELOG.md` for full technical details.
 > This release introduces the new Command Center as the default operational surface. Previous Dashboard, Activity, and Queue pages redirect automatically with guidance notices.
 
 ### 🎉 What You'll Notice
+
 - **One page, all actions** - No more bouncing between Dashboard, Activity, and Queue
 - **Live processing view** - Visual stepper shows exactly where each classification is in the 8-step pipeline
 - **Inline decisions** - Resolve policy questions with Confirm/Change/Yes/No without leaving the page
 - **Smart notifications** - Bell icon shows unread count, full panel for history, deep-links to relevant sections
 
 ### 📊 Quick Visual
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  COMMAND CENTER                        Live  2:14 PM    │
@@ -236,18 +312,21 @@ See `CHANGELOG.md` for full technical details.
 ### ✨ Highlights
 
 **Command Center**
+
 - Split-layout with Processing + Needs Attention always visible
 - Visual phase stepper: Queued → Metadata → Policy → RAG → Signal → AI → Decision → Notification
 - Collapsible secondary sections expand when you need them
 - Mobile bottom sheet for Processing details on small screens
 
 **Notifications**
+
 - Bell icon in header with live unread count
 - Panel groups unread first, then read items
 - Mark All Read in one click
 - Open-target routing lands on exact Command Center section
 
 **Smart Data Layer**
+
 - Adaptive polling: fast when active, slow when idle
 - Tab visibility awareness: pauses when hidden
 - Freshness indicator shows Live/Updating status
@@ -256,6 +335,7 @@ See `CHANGELOG.md` for full technical details.
 ### 🔄 Transition Notes
 
 **Legacy Routes Redirect Automatically:**
+
 - `/dashboard` → Command Center
 - `/activity` → Command Center `#processing`
 - `/queue` → Command Center `#processing`
@@ -263,16 +343,19 @@ See `CHANGELOG.md` for full technical details.
 A dismissible notice explains the change on first visit.
 
 **Navigation Changes:**
+
 - Activity and Queue removed from sidebar (functionality is in Command Center)
 - Migration page removed from primary navigation
 - History remains available for audits and reclassification
 
 ### 👥 Who This Helps
+
 - **Daily operators:** Resolve everything on one page without context switching
 - **Mobile users:** Touch-friendly layout with bottom sheet for details
 - **Admins:** Global notifications surface issues before they become problems
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` for full implementation notes, test scope, and migration-level details.
 
 ---
@@ -285,11 +368,13 @@ See `CHANGELOG.md` for full implementation notes, test scope, and migration-leve
 > This upgrade is active by default after update. No observation window is required.
 
 ### 🎉 What You’ll Notice
+
 - More low-confidence items can now resolve automatically with a smarter second check.
 - Better safety: if quality trends regress, Classifarr can automatically switch to a safer diagnostic mode.
 - Cleaner operations: less noisy warnings and clearer request error responses.
 
 ### 📊 Quick Visual
+
 ```text
 Classification flow
 Pass 1 🧠  →  Targeted Pass 2 🔎  →  Apply only if better ✅
@@ -300,20 +385,24 @@ apply 🟢  ──(sustained regression detected)──▶  shadow 🛡️
 ```
 
 ### ✨ Highlights
+
 - Immediate-apply low-confidence enhancement is now on by default.
 - New automatic fallback + optional auto-re-enable controls are available in settings.
 - Policy preset picker now shows usage context (`Used in X policies`) to make selection easier.
 
 ### 🔧 Reliability Improvements
+
 - Invalid JSON requests now return a cleaner, user-friendly 400 response.
 - OMDb HALF_OPEN throttle warnings are reduced to prevent log spam.
 - Added release-scoped log reset for cleaner post-upgrade baseline visibility.
 
 ### 👥 Who This Helps
+
 - **General users:** fewer manual interventions on tricky/ambiguous items.
 - **Operators/admins:** safer rollout behavior, clearer fallback diagnostics, and less noisy logs.
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` for full implementation notes, test scope, and migration-level details.
 
 ---
@@ -326,11 +415,13 @@ See `CHANGELOG.md` for full implementation notes, test scope, and migration-leve
 > If `v0.41.2c-alpha` failed during first-time setup, start fresh on `v0.41.2d-alpha` using a clean data folder/volume.
 
 ### ✅ What This Solves
+
 - Fresh installs are now more reliable during database initialization.
 - First-login setup flow is fixed (`/login` now correctly routes new installs).
 - RAG status display is now consistent and readable.
 
 ### 📈 Quick Snapshot
+
 ```text
 Fresh install reliability   ██████████
 Setup flow clarity          █████████░
@@ -338,6 +429,7 @@ RAG status clarity          █████████░
 ```
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` (`v0.41.2d-alpha`) for exact fixes and implementation notes.
 
 ---
@@ -347,11 +439,13 @@ See `CHANGELOG.md` (`v0.41.2d-alpha`) for exact fixes and implementation notes.
 **Title: RAG Settings UX Polish**
 
 ### 🎨 What Improved
+
 - RAG Settings now keeps your current tab on refresh.
 - Confidence settings naming is clearer and easier to understand.
 - Project housekeeping improved (`.tmp/` intermediate files ignored).
 
 ### 📈 Quick Snapshot
+
 ```text
 Settings usability          ████████░░
 Navigation consistency      █████████░
@@ -359,6 +453,7 @@ Repo cleanliness            ████████░░
 ```
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` (`v0.41.2c-alpha`) for exact route/UI updates.
 
 ---
@@ -368,17 +463,20 @@ See `CHANGELOG.md` (`v0.41.2c-alpha`) for exact route/UI updates.
 **Title: Smarter Threshold Alignment**
 
 ### 🎯 What You’ll Notice
+
 - Discord verification prompts better match your configured policy thresholds.
 - Auto-routing now respects policy configuration instead of fixed confidence assumptions.
 - CI cleanup behavior is more reliable and easier to run manually when needed.
 
 ### 📊 Quick Visual
+
 ```text
 Before: fixed threshold assumptions ⚠️
 After : policy-driven routing rules ✅
 ```
 
 ### 📈 Quick Snapshot
+
 ```text
 Routing consistency         █████████░
 Discord prompt quality      ████████░░
@@ -386,6 +484,7 @@ CI cleanup reliability      ████████░░
 ```
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` (`v0.41.2b-alpha`) for threshold and CI behavior specifics.
 
 ---
@@ -398,12 +497,14 @@ See `CHANGELOG.md` (`v0.41.2b-alpha`) for threshold and CI behavior specifics.
 > If you depend on remote poster URLs for external image embedding services, review companion service allowlist settings.
 
 ### 🛠️ What Improved
+
 - Better resilience for temporary OMDb/network instability.
 - Cleaner and clearer RAG status diagnostics.
 - CI workflow hardening for more predictable release behavior.
 - Important schema/logging fixes to reduce hidden operational issues.
 
 ### 📈 Quick Snapshot
+
 ```text
 Service resilience          ████████░░
 Diagnostics clarity         ████████░░
@@ -411,6 +512,7 @@ CI stability                ████████░░
 ```
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` (`v0.41.2a-alpha`) for dependency and fix details.
 
 ---
@@ -422,16 +524,19 @@ See `CHANGELOG.md` (`v0.41.2a-alpha`) for dependency and fix details.
 This release introduced image-aware retrieval for harder classification cases and made configuration safer by default.
 
 ### 🖼️ Big Upgrade
+
 - Classifarr can combine **text + image context** during retrieval.
 - This improves matching quality for ambiguous titles with similar names.
 - Image embedding mode defaults to disabled, so users stay in control of compute/cost.
 
 ### 🧭 Platform Improvements
+
 - Cleaner image embedding settings flow (simpler setup path).
 - Stronger migration governance with timestamp checks and schema snapshot discipline.
 - Better release hygiene and template cleanup.
 
 ### 📊 Quick Visual
+
 ```text
 Retrieval context
 Before: text only  📄
@@ -442,6 +547,7 @@ Image mode default: OFF ✅
 ```
 
 ### 📈 Quick Snapshot
+
 ```text
 Retrieval quality potential  █████████░
 Config safety by default     ██████████
@@ -449,6 +555,7 @@ Migration governance         ████████░░
 ```
 
 ### 📚 Want Technical Details?
+
 See `CHANGELOG.md` (`v0.41.2-alpha`) for full schema, API, and testing detail.
 
 ---

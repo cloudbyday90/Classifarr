@@ -3,6 +3,7 @@
 This document outlines planned features and improvements, organized by engineering complexity.
 
 Status labels:
+
 - `Active` = in normal roadmap consideration
 - `Deferred (v1.1+)` = intentionally deferred follow-up scope after current V1 stabilization
 
@@ -11,16 +12,21 @@ Status labels:
 ## Recently Completed
 
 ### System Health & Monitoring
+
 - ✅ System Health Dashboard with trend tracking (#184)
 - ✅ Service lockdown system (#206)
 - ✅ Sync error hygiene with 404 handling (#226)
 
 ### Automation & Learning
+
 - ✅ Discord verification learning (#240)
 - ✅ Unified confidence settings page (#241)
 - ✅ Low-confidence AI loop immediate-apply rollout with automatic safety fallback, incident diagnostics, and optional version-aware auto-recover (#275)
+- ✅ Second Pass reliability fixes — relaxed policy recheck gate, OR-based adoption, extended timeouts, RAG candidate building, low-score candidate filtering
+- ✅ Signal agreement scoring — consensus multiplier boosts confidence when multiple signals agree on a library
 
 ### User Experience
+
 - ✅ Classification signal breakdown (#185)
 - ✅ Dashboard accessibility (WCAG 2.1 AA) (#204)
 - ✅ User profile settings (#187)
@@ -28,31 +34,35 @@ Status labels:
 - ✅ Preset usage count display in preset picker (#241 follow-up)
 
 ### Documentation & Quality
+
 - ✅ Comprehensive API documentation (#188)
 - ✅ Testing coverage enforcement (80% lines, 75% functions) (#227)
 - ✅ Copyright compliance automation (#198)
 
 ### System Retirement
+
 - ✅ Event detection system removed (Epic #168)
   - Database schema cleanup (#228)
   - Backend code removal (#229)
   - Frontend UI removal (#225)
 
 ### Issue 275 Snapshot (Shipped vs Deferred)
-| Scope | Status | Notes |
-|---|---|---|
-| Immediate-apply low-confidence flow | ✅ Shipped | `apply` is active default behavior |
-| Automatic safety fallback (`apply` -> `shadow`) | ✅ Shipped | Enabled by default with sustained-breach guards |
-| Fallback incident diagnostics/report payload | ✅ Shipped | Copyable incident details for issue reporting |
-| Version-aware auto-recover toggle | ✅ Shipped | Optional, off by default, one attempt per version bump |
-| Per-policy RAG loop overrides | `Deferred (v1.1+)` | Follow-up tuning scope |
-| Advanced diagnostics dashboards | `Deferred (v1.1+)` | Follow-up observability depth |
+
+| Scope                                           | Status             | Notes                                                  |
+| ----------------------------------------------- | ------------------ | ------------------------------------------------------ |
+| Immediate-apply low-confidence flow             | ✅ Shipped         | `apply` is active default behavior                     |
+| Automatic safety fallback (`apply` -> `shadow`) | ✅ Shipped         | Enabled by default with sustained-breach guards        |
+| Fallback incident diagnostics/report payload    | ✅ Shipped         | Copyable incident details for issue reporting          |
+| Version-aware auto-recover toggle               | ✅ Shipped         | Optional, off by default, one attempt per version bump |
+| Per-policy RAG loop overrides                   | `Deferred (v1.1+)` | Follow-up tuning scope                                 |
+| Advanced diagnostics dashboards                 | `Deferred (v1.1+)` | Follow-up observability depth                          |
 
 ---
 
 ## Low Complexity, High Impact
 
 ### User Experience Improvements
+
 - **Policy Name/Description Editing** (#241 follow-up)
   - Issue: Users can't edit policy names/descriptions after auto-generation
   - Solution: Add inline editing or "Edit Name" button
@@ -66,6 +76,7 @@ Status labels:
   - Impact: Medium (cleaner UI)
 
 ### Customization
+
 - **Dark/Light Theme Toggle**
   - Add user-selectable themes
   - Effort: Low-Medium (CSS + state management)
@@ -76,7 +87,16 @@ Status labels:
   - Effort: Medium (drag-drop + localStorage)
   - Impact: Medium (personalization)
 
+### Classification Quality
+
+- ~~**Policy Question Reasoning** (Second Pass)~~
+  - Completed: Low-score candidates now filtered from policy questions
+
+- ~~**Signal Agreement Scoring** (Second Pass)~~
+  - Completed: Agreement multiplier applied in `policyEngine.evaluatePolicy` — 2-5 agreeing signals boost score by 5-30%
+
 ### Data Management
+
 - **Export/Import Policy Configurations**
   - Share policies between instances
   - Effort: Low (JSON export/import)
@@ -87,6 +107,7 @@ Status labels:
 ## Medium Complexity, Important
 
 ### Advanced Policy Analytics
+
 - **Heatmap of Confidence Over Time**
   - Visualize classification confidence trends
   - Effort: Medium (charting library + data aggregation)
@@ -103,6 +124,7 @@ Status labels:
   - Impact: High (reduces risk of bad changes)
 
 ### Performance Optimizations
+
 - **Batch Classification API**
   - Classify multiple items in one request
   - Effort: Medium (API changes + queue handling)
@@ -119,12 +141,40 @@ Status labels:
   - Impact: Medium (reliability)
 
 ### Search & Filtering
+
 - **Advanced Search and Filtering**
   - Search history by title, genre, confidence, date
   - Effort: Medium (UI + query optimization)
   - Impact: High (usability)
 
+### Second Pass / Classification Intelligence
+
+- **Feedback Loop from Manual Resolutions** (Second Pass)
+  - Issue: User decisions on `prompt_select` are lost — the system never learns from corrections
+  - Solution: Index user-resolved classifications back into the RAG database as high-confidence embeddings; weight user-validated matches higher in future retrievals
+  - Effort: Medium (RAG index update on resolution + retrieval weight adjustment)
+  - Impact: Very High (system gets smarter with every user interaction; same bad suggestions stop recurring)
+
+- **Conflict-Aware Pass2 Retrieval** (Second Pass)
+  - Issue: Pass2 does the same search as pass1 but with enriched metadata — finds more but not better
+  - Solution: When pass1 identifies conflicting candidates (e.g., Movies vs TV Shows), pass2 specifically queries for items in each conflicting library to find precedent
+  - Effort: Medium (query diversification + conflict-specific RAG queries)
+  - Impact: High (makes pass2 retrieval fundamentally different from pass1)
+
+- **Graduated Confidence Blending** (Second Pass)
+  - Issue: Pass2 is binary adopt/reject — either the full result is used or nothing
+  - Solution: Blend pass1 and pass2 signals into a weighted confidence score; pass2 can boost confidence without changing the library suggestion
+  - Effort: Medium (confidence fusion logic + trace updates)
+  - Impact: Medium-High (reduces unnecessary `prompt_select` by raising confidence above threshold)
+
+- **Historical Bias Correction** (Second Pass)
+  - Issue: Policy doesn't account for user's actual library distribution (e.g., 100 items in Movies vs 2 in Christmas and Hallmark)
+  - Solution: Use library distribution as a Bayesian prior — uncertain items are statistically weighted toward more populated libraries
+  - Effort: Medium (distribution query + prior weighting in policy scoring)
+  - Impact: Medium (reduces obvious mismatches where a library is rarely used)
+
 ### Deferred (v1.1+) - Issue 275 Follow-Up
+
 - **Per-Policy RAG Loop Overrides** (`Deferred (v1.1+)`)
   - Scope: limited override keys for second-pass behavior (`enable`, `strategy`, `timeout`) with safe precedence
   - Effort: Medium (settings contract + resolver + UI wiring)
@@ -140,15 +190,18 @@ Status labels:
 ## High Complexity or Research
 
 ### RAG Similarity Visualization
+
 **Status:** Design phase (open questions remain)
 **Issue:** #185 (related)
 **Scope:**
+
 - Display AI similarity matches in classification details
 - Show top 5-10 similar titles with percentages
 - Visual progress bars, library attribution
 - Consensus indicator (e.g., "✅ All top matches → Sci-Fi Movies")
 
 **Open Design Questions:**
+
 1. Consensus display for mixed results (count-based vs weighted)
 2. Data storage approach (metadata JSONB vs new column)
 3. Progress bar color coding (single color, gradient, or library color)
@@ -157,6 +210,7 @@ Status labels:
 6. Hover metadata (full title, plot excerpt, genre overlap, signal matches)
 
 **Implementation Tasks:**
+
 - [ ] Backend: Store RAG matches in classification metadata
 - [ ] Backend: API endpoint to retrieve RAG matches
 - [ ] Frontend: Create \`RagMatchesPanel.vue\` component
@@ -170,6 +224,7 @@ Status labels:
 **Impact:** High (transparency, trust in AI recommendations)
 
 ### Deferred (v1.1+) - Issue 275 Follow-Up
+
 - **Advanced Diagnostics Dashboards** (`Deferred (v1.1+)`)
   - Scope: breaker timeline, strategy distribution, promotion trends, trace reason-code filtering
   - Effort: High
@@ -185,7 +240,22 @@ Status labels:
   - Effort: High
   - Impact: Medium (operational clarity + query performance)
 
+### Second Pass / Classification Intelligence
+
+- **Async Second Pass** (Second Pass)
+  - Issue: Second pass is constrained by inline request timeout; AI rerun gets starved
+  - Solution: Classify immediately with first-pass confidence; queue async second pass for uncertain items; auto-reclassify or notify user when confidence improves
+  - Effort: High (background job queue + notification system + state management)
+  - Impact: Very High (removes timeout pressure entirely; AI rerun gets unlimited time)
+
+- **Franchise / Series Detection** (Second Pass)
+  - Issue: Sequels, spinoffs, and reboots are classified independently even when the original is already in the database
+  - Solution: Detect franchise relationships via TMDB collections/series data; inherit classification from existing franchise members with high confidence
+  - Effort: High (TMDB collection API + franchise graph + inheritance logic)
+  - Impact: High (eliminates misclassification for related media)
+
 ### Machine Learning Improvements
+
 - **User Feedback Loop**
   - "Was this classification correct?" prompts
   - Effort: High (requires model retraining pipeline)
@@ -202,6 +272,7 @@ Status labels:
   - Impact: High (accuracy improvement)
 
 ### Integration Enhancements
+
 - **Support for Additional Media Servers**
   - Kodi, enhanced Emby support
   - Effort: High (new integrations)
@@ -218,6 +289,7 @@ Status labels:
   - Impact: Medium (data enrichment)
 
 ### Multi-Tenancy
+
 - **Multiple User Accounts with Permissions**
   - Role-based access control
   - Effort: Very High (auth system overhaul)
@@ -242,6 +314,7 @@ Have ideas for features or improvements? Please open an issue on GitHub or join 
 ---
 
 **Roadmap Notes:**
+
 - Items move between complexity tiers as design solidifies
 - Open issues are linked where available
 - Deferred `v1.1+` items are intentionally parked until V1 stabilization gates are satisfied

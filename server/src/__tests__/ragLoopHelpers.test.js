@@ -166,6 +166,67 @@ describe('ragLoopHelpers', () => {
             expect(compare.adopt).toBe(true);
             expect(compare.reason).toBe('policy_gate');
         });
+
+        test('adopts on significant improvement without action upgrade', () => {
+            const pass1Diagnostics = summarizePassDiagnostics([
+                { libraryId: 1, similarity: 0.50 }
+            ]);
+            const pass2Diagnostics = summarizePassDiagnostics([
+                { libraryId: 1, similarity: 0.68 }
+            ]);
+
+            const gate = evaluatePolicyRecheckGate({
+                policyBefore: { action: 'prompt_select', confidence: 40 },
+                policyAfter: { action: 'prompt_select', confidence: 55 },
+                pass1Diagnostics,
+                pass2Diagnostics,
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5
+                }
+            });
+
+            // No action upgrade (both prompt_select), but confidence gain is 15 >= 2x minConfidenceGain (10)
+            expect(gate.shouldAdopt).toBe(true);
+        });
+
+        test('comparePassResults adopts via confidence alone (OR-based)', () => {
+            const pass1Diagnostics = summarizePassDiagnostics([
+                { libraryId: 1, similarity: 0.60 }
+            ]);
+            const pass2Diagnostics = summarizePassDiagnostics([
+                { libraryId: 1, similarity: 0.61 }
+            ]);
+
+            const gate = evaluatePolicyRecheckGate({
+                policyBefore: { action: 'prompt_select', confidence: 50 },
+                policyAfter: { action: 'prompt_confirm', confidence: 62 },
+                pass1Diagnostics,
+                pass2Diagnostics,
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5
+                }
+            });
+
+            const compare = comparePassResults({
+                baselineResult: { confidence: 50 },
+                pass2Result: { confidence: 62 },
+                policyGate: gate,
+                pass1Diagnostics,
+                pass2Diagnostics,
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5
+                }
+            });
+
+            // Confidence improved (+12), similarity did NOT meet delta — OR gate should still adopt
+            expect(compare.adopt).toBe(true);
+        });
     });
 
     describe('applyOrShadowDecision', () => {

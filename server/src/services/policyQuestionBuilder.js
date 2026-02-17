@@ -95,7 +95,13 @@ class PolicyQuestionBuilder {
     const ranked = Array.isArray(policyResult?.ranked) ? [...policyResult.ranked] : [];
     ranked.sort((a, b) => (b.score || 0) - (a.score || 0));
 
-    ranked.forEach(entry => {
+    // Filter out candidates with very low scores relative to the top candidate
+    // to avoid showing irrelevant options (e.g., "Christmas and Hallmark" for a courtroom drama)
+    const topScore = ranked[0]?.score || 0;
+    const minRelativeScore = topScore * 0.25;
+    const relevantRanked = topScore > 0 ? ranked.filter(r => (r.score || 0) >= minRelativeScore) : ranked;
+
+    relevantRanked.forEach(entry => {
       const library = libraries.find(lib => lib.id === entry.library_id);
       if (!library) return;
       candidates.push({
