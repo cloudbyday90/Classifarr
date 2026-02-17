@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- None yet.
+- **Test Coverage** - New test suites for high-risk services:
+  - `enrichmentRetryService.test.js` (28 tests) - covers OMDb/Tavily enrichment retry logic
+  - `aiRouter.test.js` (23 tests) - covers AI provider routing and budget fallback
+  - `mediaSync.test.js` (22 tests) - covers library sync with Plex/Jellyfin/Emby
 
 ### Changed
 
