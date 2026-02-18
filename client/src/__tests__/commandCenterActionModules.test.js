@@ -260,4 +260,48 @@ describe('CommandCenter action modules', () => {
     expect(text).toContain('Classification Task')
     expect(text).not.toContain('Metadata Only Task')
   })
+
+  it('shows routing reason when policy resolution succeeds but routing is skipped', async () => {
+    apiMock.resolvePendingClassification.mockResolvedValueOnce({
+      data: { routed: false, routingReason: 'missing_tvdb_id' },
+    })
+
+    const wrapper = await mountCommandCenter()
+    const yesButton = wrapper.findAll('button').find((node) => node.text() === 'Yes')
+
+    expect(yesButton).toBeTruthy()
+    await yesButton.trigger('click')
+    await flushPromises()
+
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Resolved "Motorvalley" but routing did not complete (missing_tvdb_id).')
+  })
+
+  it('shows routing error when manual change resolves but routing fails', async () => {
+    apiMock.resolvePendingClassification.mockResolvedValueOnce({
+      data: { routed: false, routingError: 'Sonarr API connection failed' },
+    })
+
+    const wrapper = await mountCommandCenter()
+    const changeButton = wrapper.findAll('button').find((node) => node.text() === 'Change')
+
+    expect(changeButton).toBeTruthy()
+    await changeButton.trigger('click')
+    await flushPromises()
+
+    const select = wrapper.find('.change-select')
+    expect(select.exists()).toBe(true)
+    await select.setValue('10')
+
+    const resolveButton = wrapper.findAll('button').find((node) => node.text() === 'Resolve')
+    expect(resolveButton).toBeTruthy()
+    await resolveButton.trigger('click')
+    await flushPromises()
+
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(201, expect.objectContaining({
+      library_id: 10,
+      selected_option: 'Manual selection',
+    }))
+    expect(wrapper.text()).toContain('Resolved "Motorvalley" but routing did not complete (Sonarr API connection failed).')
+  })
 })
