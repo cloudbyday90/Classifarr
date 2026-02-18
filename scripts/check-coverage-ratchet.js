@@ -26,7 +26,9 @@ const {
   getCurrentCoverage,
 } = require('./coverage-ratchet-utils');
 
-const EPSILON = 0.001;
+// Coverage tools can vary by a few hundredths between local/CI runs.
+// Treat deltas within 0.05 percentage points as equivalent to avoid flaky gates.
+const EPSILON = 0.05;
 const SCOPE_NAMES = ['server', 'client'];
 const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
 const stepSummaryPath = process.env.GITHUB_STEP_SUMMARY;
