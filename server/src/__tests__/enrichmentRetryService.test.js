@@ -64,7 +64,7 @@ describe('EnrichmentRetryService', () => {
 
             expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('INSERT INTO enrichment_retry_queue'),
-                [123, 'tavily', 'OMDb not found', 5]
+                [123, 'tavily', 'OMDb not found', 5, 'tavily_monthly_quota_deferred']
             );
         });
 
@@ -320,6 +320,7 @@ describe('EnrichmentRetryService', () => {
             mockDb.query
                 .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [{ api_key: 'test-key', is_active: true }] })
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [] });
 
             const result = await service.processRetryQueue(50, 'tavily');
@@ -349,6 +350,7 @@ describe('EnrichmentRetryService', () => {
             mockDb.query
                 .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [{ api_key: 'test-key', is_active: true }] })
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [mockItem] })
                 .mockResolvedValueOnce({ rowCount: 1 })
                 .mockResolvedValueOnce({ rows: [{ api_key: 'test-key' }] })
@@ -366,6 +368,43 @@ describe('EnrichmentRetryService', () => {
             expect(result.processed).toBe(1);
             expect(result.success).toBe(1);
             expect(result.failed).toBe(0);
+        });
+
+        it('should defer Tavily item when monthly quota is exhausted (432)', async () => {
+            const mockItem = {
+                queue_id: 11,
+                media_item_id: 211,
+                attempts: 1,
+                max_attempts: 3,
+                title: 'Deferred Movie',
+                year: 2021,
+                imdb_id: 'tt0111111',
+                media_type: 'movie'
+            };
+
+            const quotaError = new Error('Tavily search failed: Request failed with status code 432');
+            quotaError.status = 432;
+
+            mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rows: [{ api_key: 'test-key', is_active: true }] })
+                .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rows: [mockItem] })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rows: [{ api_key: 'test-key' }] })
+                .mockResolvedValueOnce({ rowCount: 1 });
+
+            mockTavilyService.search.mockRejectedValue(quotaError);
+
+            const result = await service.processRetryQueue(50, 'tavily');
+
+            expect(result.processed).toBe(1);
+            expect(result.success).toBe(0);
+            expect(result.failed).toBe(0);
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining("SET status = 'skipped'"),
+                [11, 'tavily_monthly_quota_deferred', 'Tavily monthly quota reached; deferred until next month reset']
+            );
         });
 
         it('should process OMDb items with getByIMDBId when imdb_id exists', async () => {
@@ -712,6 +751,23 @@ describe('EnrichmentRetryService', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toBe('Could not extract IMDb data');
+        });
+
+        it('should defer until monthly reset on Tavily 432 quota errors', async () => {
+            const item = {
+                media_item_id: 104,
+                title: 'Quota Limited Item',
+                year: 2025
+            };
+            const quotaError = new Error('Tavily search failed: Request failed with status code 432');
+            quotaError.status = 432;
+            mockTavilyService.search.mockRejectedValue(quotaError);
+
+            const result = await service.enrichWithTavily(item, 'test-api-key');
+
+            expect(result.success).toBe(false);
+            expect(result.deferUntilMonthlyReset).toBe(true);
+            expect(result.error).toContain('status code 432');
         });
     });
 

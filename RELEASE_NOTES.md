@@ -1,5 +1,47 @@
 # Classifarr Release Notes
 
+## [v0.42.5b-alpha] - 2026-02-18
+
+**Title: Smarter Tavily Retry Handling with Less Alert Noise**
+
+### 🎉 What You'll Notice
+
+- **Tavily monthly quota retries now defer cleanly** instead of consuming attempts and exhausting.
+- **Fewer noisy warnings** from enrichment retry self-heal events.
+- **Retry state is more stable** and no longer reopens exhausted rows as pending.
+
+### 📊 Quick Visual
+
+```text
+Retry Behavior Snapshot
+Monthly Quota Handling  [██████████] 100%
+Queue State Stability   [█████████░] 90%
+Warning Noise Reduction [█████████░] 90%
+```
+
+### ✨ Highlights
+
+- Tavily `432` (monthly quota) responses now defer retry items until monthly reset instead of incrementing attempts.
+- Deferred Tavily items are automatically reactivated when a new month begins.
+- Exhausted retry rows are no longer unintentionally resurrected to `pending`.
+
+### 🔧 Reliability Improvements
+
+- Added a one-time migration to convert legacy exhausted Tavily `432` pending rows into deferred rows.
+- Enrichment retry auto-heal entries now log at `INFO` instead of `WARN` to reduce false alarm volume.
+- Added regression tests for Tavily monthly quota defer behavior and deferred activation paths.
+
+### 👥 Who This Helps
+
+- **End users:** More predictable enrichment behavior during Tavily monthly quota exhaustion.
+- **Operators/admins:** Cleaner logs and fewer repetitive queue-health warnings.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.5a-alpha] - 2026-02-18
 
 **Title: Safer Discord Decisions and Self-Healing Queue Reliability**

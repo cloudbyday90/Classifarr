@@ -80,7 +80,7 @@ See `CHANGELOG.md` for full technical details.
 Do not copy changelog sections verbatim into release notes.
 Keep technical details (migrations, internals, test matrices) in `CHANGELOG.md`.
 
-## 4. Run Pre-Commit Checks
+## 4. Run Pre-Commit Checks (Local + Ratchet Gate)
 
 Before committing, run these checks to ensure CI will pass:
 
@@ -91,8 +91,14 @@ npm --prefix server test
 # Run client tests
 npm --prefix client test
 
+# Enforce coverage ratchet before release
+npm run coverage:ratchet:check
+
 # Check copyright headers
 npm run check-copyright
+
+# Optional but recommended: run full CI script locally
+npm run test:ci
 ```
 
 If copyright check fails, fix headers:
@@ -101,6 +107,17 @@ npm run update-copyright
 ```
 
 Then manually add headers to any files the auto-updater missed.
+
+If coverage ratchet fails:
+```bash
+# Preferred: add/adjust tests until ratchet passes
+npm run coverage:ratchet:check
+
+# Only when reduction is intentional and approved:
+npm run coverage:ratchet:update
+git add coverage-baseline.json
+git commit -m "chore(ci): update coverage ratchet baseline for intentional change"
+```
 
 ## 5. Commit Changes
 
@@ -133,7 +150,32 @@ git tag -a vX.X.X-alpha -m "vX.X.X-alpha: Title - ADDITIONAL NOTES"
 git push origin main --tags
 ```
 
-## 8. Create GitHub Release
+## 8. Verify GitHub Actions Pass Before Release
+
+Do not create a GitHub release until the pushed commit and tag workflow are green.
+
+```bash
+# After push, inspect recent CI/CD runs
+gh run list --workflow "CI/CD Pipeline" --limit 10
+
+# Watch the specific run for your tag and fail fast if it fails
+gh run watch <run-id> --exit-status
+```
+
+If a tag run fails:
+```bash
+# 1) Fix code on main and push
+# 2) Delete broken release/tag
+gh release delete vX.X.X-alpha --yes
+git tag -d vX.X.X-alpha
+git push origin :refs/tags/vX.X.X-alpha
+
+# 3) Recreate tag from the fixed commit and push
+git tag -a vX.X.X-alpha -m "vX.X.X-alpha: re-release after CI fix"
+git push origin vX.X.X-alpha
+```
+
+## 9. Create GitHub Release
 
 Create an actual release on GitHub (tags alone don't appear as releases).
 
@@ -157,17 +199,18 @@ gh release create vX.X.X-alpha --title "vX.X.X-alpha: Title" --notes-file RELEAS
 
 > **Important:** Do NOT check "pre-release" for alpha versions - the `-alpha` suffix is sufficient. Pre-release prevents "Latest" badge.
 
-## 9. Rebuild Docker (if local testing)
+## 10. Rebuild Docker (if local testing)
 
 ```bash
 docker compose down; docker compose up -d --build
 ```
 
-## 10. Verify
+## 11. Verify
 
 1. Check GitHub releases page shows new release as "Latest"
 2. Verify version shows correctly in UI (bottom-left sidebar)
 3. Test any breaking changes documented
+4. Confirm latest `CI/CD Pipeline` and `OSV Dependency Scan` runs for the tag are `success`
 
 ---
 
@@ -190,3 +233,5 @@ Minimum files to modify for ANY release:
 - **Separation of concerns**: `RELEASE_NOTES.md` = public highlights, `CHANGELOG.md` = technical detail
 - **Title guidance**: release-note titles should be benefit-focused (avoid issue-centric titles like `Issue #275`)
 - **Pre-commit checks are mandatory** - always run tests and copyright check before committing a release
+- **Coverage ratchet is a hard gate** - do not tag/release while `npm run coverage:ratchet:check` is failing
+- **Release is blocked on green CI for the tag** - never publish release notes before tag workflow success

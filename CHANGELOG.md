@@ -21,6 +21,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.5b-alpha] - 2026-02-18
+
+### Added
+
+- **Tavily monthly deferral recovery**
+  - Added deferred-state reactivation logic so Tavily retries skipped for monthly quota can automatically return to pending when a new month starts.
+- **Migration for legacy Tavily exhausted rows**
+  - Added `database/migrations/20260218_223500_defer_tavily_exhausted_retries.sql` to preserve exhausted Tavily `432` retries as deferred instead of dead pending.
+
+### Changed
+
+- **Enrichment retry queue upsert behavior**
+  - `queueForRetry` now preserves terminal states (`completed`, exhausted `failed`, deferred `skipped`) and avoids reopening exhausted rows as `pending`.
+- **Retry telemetry severity**
+  - Auto-heal exhausted-pending events now log as `INFO` instead of `WARN` to reduce alert fatigue.
+
+### Fixed
+
+- **Tavily monthly quota retries consuming attempts** - Tavily `432` responses now defer rows until monthly reset instead of incrementing attempts to exhaustion.
+- **Repeated “Auto-healed exhausted pending enrichment retries” warning bursts** - queue state churn reduced by stabilizing retry state transitions and preserving deferred/exhausted states.
+
+---
+
 ## [v0.42.5a-alpha] - 2026-02-18
 
 ### Added

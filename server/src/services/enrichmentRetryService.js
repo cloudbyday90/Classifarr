@@ -10,6 +10,8 @@ const tavilyService = require('./tavily');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('EnrichmentRetryService');
+const TAVILY_MONTHLY_DEFERRED_REASON = 'tavily_monthly_quota_deferred';
+const TAVILY_MONTHLY_DEFERRED_MESSAGE = 'Tavily monthly quota reached; deferred until next month reset';
 
 class EnrichmentRetryService {
     constructor() {
@@ -34,11 +36,20 @@ class EnrichmentRetryService {
         ON CONFLICT (media_item_id, enrichment_type) DO UPDATE SET
           status = CASE 
             WHEN enrichment_retry_queue.status = 'completed' THEN 'completed'
+            WHEN enrichment_retry_queue.status = 'failed' AND enrichment_retry_queue.attempts >= enrichment_retry_queue.max_attempts THEN 'failed'
+            WHEN enrichment_retry_queue.status = 'skipped' THEN 'skipped'
             ELSE 'pending'
           END,
-          reason = EXCLUDED.reason,
-          priority = LEAST(enrichment_retry_queue.priority, EXCLUDED.priority)
-      `, [mediaItemId, enrichmentType, reason, priority]);
+          reason = CASE
+            WHEN enrichment_retry_queue.status = 'skipped' AND enrichment_retry_queue.reason = $5 THEN enrichment_retry_queue.reason
+            ELSE EXCLUDED.reason
+          END,
+          priority = LEAST(enrichment_retry_queue.priority, EXCLUDED.priority),
+          completed_at = CASE
+            WHEN enrichment_retry_queue.status IN ('completed', 'failed', 'skipped') THEN enrichment_retry_queue.completed_at
+            ELSE NULL
+          END
+      `, [mediaItemId, enrichmentType, reason, priority, TAVILY_MONTHLY_DEFERRED_REASON]);
 
             logger.debug('Queued item for enrichment retry', { mediaItemId, enrichmentType, reason });
 
@@ -161,9 +172,35 @@ class EnrichmentRetryService {
     `, params);
 
         if (result.rowCount > 0) {
-            logger.warn('Auto-healed exhausted pending enrichment retries', {
+            logger.info('Auto-healed exhausted pending enrichment retries', {
                 enrichmentType: hasTypeFilter ? enrichmentType : 'all',
                 updated: result.rowCount
+            });
+        }
+
+        return result.rowCount || 0;
+    }
+
+    /**
+     * Reactivate Tavily retries that were deferred due to monthly quota exhaustion.
+     * These become runnable again once a new calendar month starts.
+     * @returns {number} number of rows reactivated
+     */
+    async reactivateDeferredTavilyRetries() {
+        const result = await db.query(`
+      UPDATE enrichment_retry_queue
+      SET status = 'pending',
+          completed_at = NULL,
+          error_message = NULL
+      WHERE enrichment_type = 'tavily'
+        AND status = 'skipped'
+        AND reason = $1
+        AND date_trunc('month', COALESCE(last_attempt_at, created_at)) < date_trunc('month', NOW())
+    `, [TAVILY_MONTHLY_DEFERRED_REASON]);
+
+        if (result.rowCount > 0) {
+            logger.info('Reactivated Tavily retries after monthly quota reset', {
+                reactivated: result.rowCount
             });
         }
 
@@ -224,6 +261,9 @@ class EnrichmentRetryService {
                 logger.warn('Tavily not configured or inactive, skipping retry processing');
                 return { processed: 0, success: 0, failed: 0, autoFailed, skipped: true, reason: 'Tavily not configured' };
             }
+
+            // Monthly quota deferrals become eligible again at the first run in a new month.
+            await this.reactivateDeferredTavilyRetries();
         }
 
         const processLimit = limit;
@@ -297,6 +337,20 @@ class EnrichmentRetryService {
 
                     success++;
                     logger.info('Tavily enrichment successful', { title: item.title, mediaItemId: item.media_item_id });
+                } else if (result.deferUntilMonthlyReset) {
+                    await db.query(
+                        `UPDATE enrichment_retry_queue
+             SET status = 'skipped',
+                 reason = $2,
+                 completed_at = NOW(),
+                 error_message = $3
+             WHERE id = $1`,
+                        [item.queue_id, TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE]
+                    );
+                    logger.info('Deferred Tavily retry item until monthly quota reset', {
+                        queueId: item.queue_id,
+                        title: item.title
+                    });
                 } else {
                     // Increment attempts
                     await db.query(
@@ -371,8 +425,19 @@ class EnrichmentRetryService {
 
             return { success: false, error: 'Could not extract IMDb data' };
         } catch (error) {
-            const isQuotaError = error.status === 429 || error.status === 432;
-            if (isQuotaError) {
+            if (error.status === 432) {
+                logger.info('Tavily monthly quota reached during enrichment retry; deferring item', {
+                    status: error.status,
+                    item: item.title
+                });
+                return {
+                    success: false,
+                    error: error.message,
+                    deferUntilMonthlyReset: true
+                };
+            }
+
+            if (error.status === 429) {
                 logger.warn('Tavily quota/rate-limit reached during enrichment retry', { status: error.status, item: item.title });
             } else {
                 logger.error('Tavily enrichment failed', { error: error.message, item: item.title });
