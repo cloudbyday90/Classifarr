@@ -124,7 +124,7 @@ describe('Classification Routes - Pending Resolution', () => {
         });
 
       // Mock routeToArr
-      classificationService.routeToArr.mockResolvedValue(undefined);
+      classificationService.routeToArr.mockResolvedValue({ routed: true, reason: 'routed', error: null });
 
       const response = await request(app)
         .post('/api/classification/pending/1/resolve')
@@ -185,7 +185,7 @@ describe('Classification Routes - Pending Resolution', () => {
           rows: []
         });
 
-      classificationService.routeToArr.mockResolvedValue(undefined);
+      classificationService.routeToArr.mockResolvedValue({ routed: true, reason: 'routed', error: null });
 
       const response = await request(app)
         .post('/api/classification/pending/2/resolve')
@@ -257,7 +257,7 @@ describe('Classification Routes - Pending Resolution', () => {
         })
         .mockResolvedValueOnce({ rows: [] });
 
-      classificationService.routeToArr.mockResolvedValue(undefined);
+      classificationService.routeToArr.mockResolvedValue({ routed: true, reason: 'routed', error: null });
 
       const response = await request(app)
         .post('/api/classification/pending/6/resolve')
@@ -309,6 +309,47 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(response.body.routingError).toBe('Radarr API connection failed');
     });
 
+    test('should return routing reason when routing is skipped without exception', async () => {
+      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+        success: true,
+        classificationId: 44,
+        libraryId: 40,
+        libraryName: 'TV Shows',
+        shouldRoute: true,
+      });
+
+      db.query.mockResolvedValueOnce({
+          rows: [{
+            id: 44,
+            library_id: 40,
+            metadata: JSON.stringify({ tmdb_id: 22222, title: 'Test Show' }),
+            arr_type: 'sonarr',
+            arr_id: 2,
+            radarr_settings: null,
+            sonarr_settings: { quality_profile_id: 4, root_folder_path: '/tv' },
+            library_name: 'TV Shows'
+          }]
+      });
+
+      classificationService.routeToArr.mockResolvedValue({
+        routed: false,
+        reason: 'missing_tvdb_id',
+        error: null
+      });
+
+      const response = await request(app)
+        .post('/api/classification/pending/44/resolve')
+        .send({
+          library_id: 40,
+          selected_option: 'TV Shows'
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.routed).toBe(false);
+      expect(response.body.routingError).toBe(null);
+      expect(response.body.routingReason).toBe('missing_tvdb_id');
+    });
+
     test('should handle metadata as object (JSONB)', async () => {
       clarificationService.resolvePolicyQuestion.mockResolvedValue({
         success: true,
@@ -335,7 +376,7 @@ describe('Classification Routes - Pending Resolution', () => {
           rows: []
         });
 
-      classificationService.routeToArr.mockResolvedValue(undefined);
+      classificationService.routeToArr.mockResolvedValue({ routed: true, reason: 'routed', error: null });
 
       const response = await request(app)
         .post('/api/classification/pending/5/resolve')

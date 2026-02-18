@@ -215,7 +215,9 @@ describe('EnrichmentRetryService', () => {
                 used: 50,
                 limit: 1000
             });
-            mockDb.query.mockResolvedValue({ rows: [] });
+            mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rows: [] });
             
             await service.triggerProcessing();
             
@@ -229,11 +231,13 @@ describe('EnrichmentRetryService', () => {
                 .mockResolvedValueOnce({ available: true, used: 50, limit: 1000 })
                 .mockResolvedValueOnce({ available: true, used: 55, limit: 1000 });
             mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({
                     rows: [
                         { enrichment_type: 'omdb', status: 'pending', count: '5' }
                     ]
                 })
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [] })
                 .mockResolvedValueOnce({ rows: [] })
                 .mockResolvedValueOnce({ rows: [] });
@@ -254,6 +258,8 @@ describe('EnrichmentRetryService', () => {
                 limit: 1000
             });
             mockDb.query.mockResolvedValueOnce({
+                rowCount: 0
+            }).mockResolvedValueOnce({
                 rows: [
                     { enrichment_type: 'tavily', status: 'pending', count: '10' }
                 ]
@@ -272,11 +278,13 @@ describe('EnrichmentRetryService', () => {
                 .mockResolvedValueOnce({ available: true, used: 995, limit: 1000 })
                 .mockResolvedValueOnce({ available: true, used: 998, limit: 1000 });
             mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({
                     rows: [
                         { enrichment_type: 'omdb', status: 'pending', count: '50' }
                     ]
                 })
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [] })
                 .mockResolvedValueOnce({ rows: [] });
 
@@ -292,7 +300,9 @@ describe('EnrichmentRetryService', () => {
 
     describe('processRetryQueue', () => {
         it('should skip processing if Tavily is not configured', async () => {
-            mockDb.query.mockResolvedValue({ rows: [] });
+            mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rows: [] });
 
             const result = await service.processRetryQueue(50, 'tavily');
 
@@ -300,6 +310,7 @@ describe('EnrichmentRetryService', () => {
                 processed: 0,
                 success: 0,
                 failed: 0,
+                autoFailed: 0,
                 skipped: true,
                 reason: 'Tavily not configured'
             });
@@ -307,6 +318,7 @@ describe('EnrichmentRetryService', () => {
 
         it('should return early if no pending items', async () => {
             mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [{ api_key: 'test-key', is_active: true }] })
                 .mockResolvedValueOnce({ rows: [] });
 
@@ -316,6 +328,7 @@ describe('EnrichmentRetryService', () => {
                 processed: 0,
                 success: 0,
                 failed: 0,
+                autoFailed: 0,
                 skipped: false
             });
         });
@@ -334,6 +347,7 @@ describe('EnrichmentRetryService', () => {
             };
 
             mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [{ api_key: 'test-key', is_active: true }] })
                 .mockResolvedValueOnce({ rows: [mockItem] })
                 .mockResolvedValueOnce({ rowCount: 1 })
@@ -368,6 +382,7 @@ describe('EnrichmentRetryService', () => {
             };
 
             mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [mockItem] })
                 .mockResolvedValueOnce({ rowCount: 1 })
                 .mockResolvedValueOnce({ rowCount: 1 });
@@ -399,6 +414,7 @@ describe('EnrichmentRetryService', () => {
             };
 
             mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [mockItem] })
                 .mockResolvedValueOnce({ rowCount: 1 })
                 .mockResolvedValueOnce({ rowCount: 1 });
@@ -431,6 +447,7 @@ describe('EnrichmentRetryService', () => {
             };
 
             mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [mockItem] })
                 .mockResolvedValueOnce({ rowCount: 1 })
                 .mockResolvedValueOnce({ rowCount: 1 });
@@ -462,6 +479,7 @@ describe('EnrichmentRetryService', () => {
             };
 
             mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
                 .mockResolvedValueOnce({ rows: [mockItem] })
                 .mockResolvedValueOnce({ rowCount: 1 });
 
@@ -470,6 +488,59 @@ describe('EnrichmentRetryService', () => {
             const result = await service.processRetryQueue(50, 'omdb');
 
             expect(result.failed).toBe(1);
+        });
+
+        it('should auto-fail exhausted pending retries before selecting work', async () => {
+            mockDb.query
+                .mockResolvedValueOnce({ rowCount: 3 })
+                .mockResolvedValueOnce({ rows: [] });
+
+            const result = await service.processRetryQueue(50, 'omdb');
+
+            expect(result).toEqual({
+                processed: 0,
+                success: 0,
+                failed: 0,
+                autoFailed: 3,
+                skipped: false
+            });
+            expect(mockDb.query).toHaveBeenNthCalledWith(
+                1,
+                expect.stringContaining('attempts >= max_attempts'),
+                ['omdb']
+            );
+        });
+
+        it('should move item to failed in catch path when attempts are exhausted', async () => {
+            const mockItem = {
+                queue_id: 55,
+                media_item_id: 155,
+                attempts: 2,
+                max_attempts: 3,
+                title: 'Catch Path Item',
+                year: 2024,
+                imdb_id: 'tt1234555',
+                media_type: 'tv'
+            };
+
+            const enrichSpy = jest.spyOn(service, 'enrichWithOmdb').mockRejectedValue(new Error('boom'));
+
+            mockDb.query
+                .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rows: [mockItem] })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rowCount: 1 });
+
+            const result = await service.processRetryQueue(50, 'omdb');
+
+            expect(result.failed).toBe(1);
+            expect(mockDb.query).toHaveBeenNthCalledWith(
+                4,
+                expect.stringContaining("CASE WHEN attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END"),
+                [55, 'boom']
+            );
+
+            enrichSpy.mockRestore();
         });
     });
 

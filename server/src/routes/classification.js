@@ -561,6 +561,7 @@ router.post('/pending/:id/resolve', async (req, res) => {
     // Route to Radarr/Sonarr if resolution indicates we should
     let wasRouted = false;
     let routeError = null;
+    let routingReason = null;
     
     if (result.shouldRoute && result.libraryId) {
       try {
@@ -579,7 +580,7 @@ router.post('/pending/:id/resolve', async (req, res) => {
 
           // Route if library has *arr type; routing service will resolve mapping details
           if (row.arr_type) {
-            await classificationService.routeToArr(parsedMeta, {
+            const routeResult = await classificationService.routeToArr(parsedMeta, {
               id: row.library_id,
               arr_type: row.arr_type,
               arr_id: row.arr_id,
@@ -590,18 +591,29 @@ router.post('/pending/:id/resolve', async (req, res) => {
               name: row.library_name
             });
 
-            // Update status to 'routed'
-            await db.query(
-              'UPDATE classification_history SET status = $1 WHERE id = $2',
-              ['routed', classificationId]
-            );
+            routingReason = routeResult?.reason || null;
+            if (routeResult?.routed === true) {
+              // Update status to 'routed'
+              await db.query(
+                'UPDATE classification_history SET status = $1 WHERE id = $2',
+                ['routed', classificationId]
+              );
 
-            wasRouted = true;
-            logger.info('Routed after resolution', {
-              classificationId,
-              title: parsedMeta.title,
-              library: row.library_name
-            });
+              wasRouted = true;
+              logger.info('Routed after resolution', {
+                classificationId,
+                title: parsedMeta.title,
+                library: row.library_name
+              });
+            } else {
+              routeError = routeResult?.error ? new Error(routeResult.error) : null;
+              logger.warn('Routing skipped after resolution', {
+                classificationId,
+                title: parsedMeta.title,
+                library: row.library_name,
+                reason: routingReason || 'unknown'
+              });
+            }
           }
         } else {
           logger.warn('No classification/library record found for routing after resolution', {
@@ -622,7 +634,8 @@ router.post('/pending/:id/resolve', async (req, res) => {
     res.json({
       ...result,
       routed: wasRouted,
-      routingError: routeError?.message || null
+      routingError: routeError?.message || null,
+      routingReason
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

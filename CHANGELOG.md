@@ -21,6 +21,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.5a-alpha] - 2026-02-18
+
+### Added
+
+- **Routing outcome diagnostics**
+  - `classificationService.routeToArr` now returns a structured result (`attempted`, `routed`, `reason`, `error`, `arrType`) instead of failing silently.
+  - Classification pending-resolution API now returns `routingReason` alongside `routed`/`routingError`.
+- **Retry queue self-heal path**
+  - Added automatic cleanup for exhausted enrichment retries (`status='pending' AND attempts >= max_attempts`) to prevent dead pending rows.
+
+### Changed
+
+- **Discord correction flow**
+  - `processCorrection` now marks clarification as resolved, writes `clarification_response`, and attempts post-correction routing.
+  - Discord correction/clarification messages now include explicit routing outcome text and follow-up details when routing is skipped or fails.
+- **Command Center queue consistency**
+  - “Up Next” list/count now consistently use pending classification tasks only.
+
+### Fixed
+
+- **Silent Sonarr/Radarr non-routing after Discord correction** - corrected items no longer stop at `status='corrected'` with unresolved clarification while appearing completed to the user.
+- **Dead enrichment retry queue pending rows** - exhausted retries are now promoted to `failed` and no longer remain indefinitely pending.
+- **False-positive routed state transitions** - pending resolution now updates `classification_history.status='routed'` only when route execution actually succeeds.
+
+---
+
 ## [v0.42.5-alpha] - 2026-02-18
 
 ### Added

@@ -1,5 +1,47 @@
 # Classifarr Release Notes
 
+## [v0.42.5a-alpha] - 2026-02-18
+
+**Title: Safer Discord Decisions and Self-Healing Queue Reliability**
+
+### 🎉 What You'll Notice
+
+- **Retry queues no longer silently stall** on exhausted pending enrichment rows
+- **Discord correction actions now attempt routing**, instead of only saving a library correction
+- **Clearer routing feedback** when Sonarr/Radarr routing is skipped or fails
+
+### 📊 Quick Visual
+
+```text
+Reliability Snapshot
+Retry Queue Healing   [██████████] 100%
+Routing Visibility    [█████████░] 90%
+Queue UI Consistency  [█████████░] 90%
+```
+
+### ✨ Highlights
+
+- Dead enrichment retries are now auto-healed from `pending` to `failed` when max attempts are exhausted.
+- Routing now returns explicit outcomes (`routed`, `reason`, `error`) so skipped adds are visible.
+- Discord correction flow now resolves clarification state and performs routing on correction.
+
+### 🔧 Reliability Improvements
+
+- Command Center “Up Next” count and rows now use the same classification-only source.
+- Pending classification resolution now only marks `routed` when route execution actually succeeds.
+- Added regression tests for retry auto-heal, route outcome propagation, and Command Center queue display consistency.
+
+### 👥 Who This Helps
+
+- **End users:** Fewer confusing “it looked done but never arrived in Sonarr/Radarr” outcomes.
+- **Operators/admins:** Faster diagnosis with explicit routing reason codes and non-silent queue behavior.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.5-alpha] - 2026-02-18
 
 **Title: Stronger AI Resilience and Clearer Operations**

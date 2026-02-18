@@ -3303,6 +3303,14 @@ Think step by step, then respond with ONLY one of the formats above.`;
   }
 
   async routeToArr(metadata, library) {
+    const routingResult = {
+      attempted: false,
+      routed: false,
+      arrType: null,
+      reason: null,
+      error: null
+    };
+
     try {
       const resolvedLibrary = await this.resolveRoutingConfig(library);
 
@@ -3311,8 +3319,11 @@ Think step by step, then respond with ONLY one of the formats above.`;
           title: metadata.title,
           libraryId: library?.id || library?.library_id || null
         });
-        return;
+        routingResult.reason = 'no_mapping';
+        return routingResult;
       }
+
+      routingResult.arrType = resolvedLibrary.arr_type;
 
       if (!resolvedLibrary.arr_id) {
         logger.warn('Missing *arr config ID; routing skipped', {
@@ -3320,8 +3331,11 @@ Think step by step, then respond with ONLY one of the formats above.`;
           libraryId: resolvedLibrary.id || resolvedLibrary.library_id || null,
           arr_type: resolvedLibrary.arr_type
         });
-        return;
+        routingResult.reason = 'missing_arr_id';
+        return routingResult;
       }
+
+      routingResult.attempted = true;
 
       if (resolvedLibrary.arr_type === 'radarr') {
         const radarrConfig = await db.query(
@@ -3329,224 +3343,256 @@ Think step by step, then respond with ONLY one of the formats above.`;
           [resolvedLibrary.arr_id]
         );
 
-        if (radarrConfig.rows.length > 0) {
-          const config = radarrConfig.rows[0];
-          const baseUrl = config.url || radarrService.buildUrl(config);
-
-          // Use JSONB settings with fallback to legacy fields
-          const rawSettings = this.normalizeSettings(resolvedLibrary.radarr_settings);
-          const settings = Object.keys(rawSettings).length > 0
-            ? rawSettings
-            : {
-              root_folder_path: resolvedLibrary.root_folder,
-              quality_profile_id: resolvedLibrary.quality_profile_id,
-              monitor: true,
-              search_on_add: true
-            };
-
-          if (!settings.root_folder_path) {
-            settings.root_folder_path = await this.resolveDefaultRootFolder('radarr', baseUrl, config.api_key);
-          }
-          settings.quality_profile_id = this.normalizeQualityProfileId(settings.quality_profile_id);
-          if (!settings.quality_profile_id) {
-            settings.quality_profile_id = this.normalizeQualityProfileId(config.quality_profile_id);
-          }
-          if (!settings.quality_profile_id) {
-            settings.quality_profile_id = await this.resolveDefaultQualityProfile('radarr', baseUrl, config.api_key);
-          }
-
-          if (!settings.root_folder_path || !settings.quality_profile_id) {
-            logger.warn('Missing Radarr routing settings; skipping route', {
-              title: metadata.title,
-              root_folder_path: settings.root_folder_path || null,
-              quality_profile_id: settings.quality_profile_id || null
-            });
-            return;
-          }
-
-          const movieData = {
+        if (radarrConfig.rows.length === 0) {
+          logger.warn('Radarr config missing or inactive; routing skipped', {
             title: metadata.title,
-            tmdbId: metadata.tmdb_id,
-            year: parseInt(metadata.year),
-            qualityProfileId: settings.quality_profile_id,
-            rootFolderPath: settings.root_folder_path,
-            monitored: settings.monitor !== false,
-            minimumAvailability: settings.minimum_availability || 'released',
-            tags: settings.tags || [],
-            addOptions: {
-              searchForMovie: settings.search_on_add !== false,
-            },
+            arr_id: resolvedLibrary.arr_id
+          });
+          routingResult.reason = 'config_missing_or_inactive';
+          return routingResult;
+        }
+
+        const config = radarrConfig.rows[0];
+        const baseUrl = config.url || radarrService.buildUrl(config);
+
+        // Use JSONB settings with fallback to legacy fields
+        const rawSettings = this.normalizeSettings(resolvedLibrary.radarr_settings);
+        const settings = Object.keys(rawSettings).length > 0
+          ? rawSettings
+          : {
+            root_folder_path: resolvedLibrary.root_folder,
+            quality_profile_id: resolvedLibrary.quality_profile_id,
+            monitor: true,
+            search_on_add: true
           };
 
-          await radarrService.addMovie(baseUrl, config.api_key, movieData);
-          logger.info(`Added movie to Radarr: ${metadata.title}`);
+        if (!settings.root_folder_path) {
+          settings.root_folder_path = await this.resolveDefaultRootFolder('radarr', baseUrl, config.api_key);
         }
+        settings.quality_profile_id = this.normalizeQualityProfileId(settings.quality_profile_id);
+        if (!settings.quality_profile_id) {
+          settings.quality_profile_id = this.normalizeQualityProfileId(config.quality_profile_id);
+        }
+        if (!settings.quality_profile_id) {
+          settings.quality_profile_id = await this.resolveDefaultQualityProfile('radarr', baseUrl, config.api_key);
+        }
+
+        if (!settings.root_folder_path || !settings.quality_profile_id) {
+          logger.warn('Missing Radarr routing settings; skipping route', {
+            title: metadata.title,
+            root_folder_path: settings.root_folder_path || null,
+            quality_profile_id: settings.quality_profile_id || null
+          });
+          routingResult.reason = 'missing_required_settings';
+          return routingResult;
+        }
+
+        const movieData = {
+          title: metadata.title,
+          tmdbId: metadata.tmdb_id,
+          year: parseInt(metadata.year),
+          qualityProfileId: settings.quality_profile_id,
+          rootFolderPath: settings.root_folder_path,
+          monitored: settings.monitor !== false,
+          minimumAvailability: settings.minimum_availability || 'released',
+          tags: settings.tags || [],
+          addOptions: {
+            searchForMovie: settings.search_on_add !== false,
+          },
+        };
+
+        await radarrService.addMovie(baseUrl, config.api_key, movieData);
+        logger.info(`Added movie to Radarr: ${metadata.title}`);
+        routingResult.routed = true;
+        routingResult.reason = 'routed';
+        return routingResult;
       } else if (resolvedLibrary.arr_type === 'sonarr') {
         const sonarrConfig = await db.query(
           'SELECT * FROM sonarr_config WHERE id = $1 AND is_active = true',
           [resolvedLibrary.arr_id]
         );
 
-        if (sonarrConfig.rows.length > 0) {
-          const config = sonarrConfig.rows[0];
-          const baseUrl = config.url || sonarrService.buildUrl(config);
+        if (sonarrConfig.rows.length === 0) {
+          logger.warn('Sonarr config missing or inactive; routing skipped', {
+            title: metadata.title,
+            arr_id: resolvedLibrary.arr_id
+          });
+          routingResult.reason = 'config_missing_or_inactive';
+          return routingResult;
+        }
 
-          // Use JSONB settings with fallback to legacy fields
-          const rawSettings = this.normalizeSettings(resolvedLibrary.sonarr_settings);
-          const settings = Object.keys(rawSettings).length > 0
-            ? rawSettings
-            : {
-              root_folder_path: resolvedLibrary.root_folder,
-              quality_profile_id: resolvedLibrary.quality_profile_id,
-              series_type: 'standard',
-              season_monitoring: 'all',
-              monitor_new_items: 'all',
-              season_folder: true,
-              search_on_add: true
-            };
+        const config = sonarrConfig.rows[0];
+        const baseUrl = config.url || sonarrService.buildUrl(config);
 
-          if (!settings.root_folder_path) {
-            settings.root_folder_path = await this.resolveDefaultRootFolder('sonarr', baseUrl, config.api_key);
-          }
-          settings.quality_profile_id = this.normalizeQualityProfileId(settings.quality_profile_id);
-          if (!settings.quality_profile_id) {
-            settings.quality_profile_id = this.normalizeQualityProfileId(config.quality_profile_id);
-          }
-          if (!settings.quality_profile_id) {
-            settings.quality_profile_id = await this.resolveDefaultQualityProfile('sonarr', baseUrl, config.api_key);
-          }
-
-          if (!settings.root_folder_path || !settings.quality_profile_id) {
-            logger.warn('Missing Sonarr routing settings; skipping route', {
-              title: metadata.title,
-              root_folder_path: settings.root_folder_path || null,
-              quality_profile_id: settings.quality_profile_id || null
-            });
-            return;
-          }
-
-          let tvdbId = metadata.tvdb_id;
-          if (!tvdbId && metadata.tmdb_id) {
-            const externalIds = await tmdbService.getExternalIds(metadata.tmdb_id, 'tv');
-            tvdbId = externalIds?.tvdb_id || externalIds?.tvdbId || null;
-          }
-
-          if (!tvdbId) {
-            logger.warn('Missing TVDB ID; skipping Sonarr routing', {
-              title: metadata.title,
-              tmdbId: metadata.tmdb_id
-            });
-            return;
-          }
-
-          const lookupResults = await sonarrService.searchSeries(baseUrl, config.api_key, tvdbId);
-          const lookupSeries = lookupResults.find(s => s.tvdbId === parseInt(tvdbId, 10)) || lookupResults[0];
-          if (!lookupSeries) {
-            logger.warn('Sonarr lookup returned no series', {
-              title: metadata.title,
-              tvdbId
-            });
-            return;
-          }
-          if (!lookupSeries.title || !lookupSeries.title.toString().trim()) {
-            logger.warn('Sonarr lookup missing English title; skipping add', {
-              title: metadata.title,
-              tvdbId
-            });
-            return;
-          }
-
-          const normalizeMonitor = (value) => {
-            if (!value) return 'all';
-            const key = value.toString();
-            const map = {
-              all_seasons: 'all',
-              all: 'all',
-              future: 'future',
-              missing: 'missing',
-              existing: 'existing',
-              recent: 'recent',
-              pilot: 'pilot',
-              first: 'firstSeason',
-              firstSeason: 'firstSeason',
-              lastSeason: 'latestSeason',
-              latest: 'latestSeason',
-              latestSeason: 'latestSeason',
-              none: 'none'
-            };
-            return map[key] || key;
+        // Use JSONB settings with fallback to legacy fields
+        const rawSettings = this.normalizeSettings(resolvedLibrary.sonarr_settings);
+        const settings = Object.keys(rawSettings).length > 0
+          ? rawSettings
+          : {
+            root_folder_path: resolvedLibrary.root_folder,
+            quality_profile_id: resolvedLibrary.quality_profile_id,
+            series_type: 'standard',
+            season_monitoring: 'all',
+            monitor_new_items: 'all',
+            season_folder: true,
+            search_on_add: true
           };
 
-          const requestedSeasons = Array.isArray(metadata.requested_seasons)
-            ? metadata.requested_seasons
-                .map(season => (typeof season === 'string' ? parseInt(season, 10) : season))
-                .filter(season => Number.isInteger(season))
-            : [];
-          const requestedSeasonSet = new Set(requestedSeasons);
-          const includeSpecials = metadata.include_specials === true;
-          const monitorValue = normalizeMonitor(settings.season_monitoring);
+        if (!settings.root_folder_path) {
+          settings.root_folder_path = await this.resolveDefaultRootFolder('sonarr', baseUrl, config.api_key);
+        }
+        settings.quality_profile_id = this.normalizeQualityProfileId(settings.quality_profile_id);
+        if (!settings.quality_profile_id) {
+          settings.quality_profile_id = this.normalizeQualityProfileId(config.quality_profile_id);
+        }
+        if (!settings.quality_profile_id) {
+          settings.quality_profile_id = await this.resolveDefaultQualityProfile('sonarr', baseUrl, config.api_key);
+        }
 
-          const seriesData = {
-            ...lookupSeries,
-            qualityProfileId: settings.quality_profile_id,
-            rootFolderPath: settings.root_folder_path,
-            monitored: settings.monitor !== false,
-            seriesType: settings.series_type || lookupSeries.seriesType || 'standard',
-            seasonFolder: settings.season_folder !== false,
-            tags: settings.tags || lookupSeries.tags || [],
-            addOptions: {
-              searchForMissingEpisodes: settings.search_on_add !== false,
-              monitor: monitorValue || 'all',
-            },
+        if (!settings.root_folder_path || !settings.quality_profile_id) {
+          logger.warn('Missing Sonarr routing settings; skipping route', {
+            title: metadata.title,
+            root_folder_path: settings.root_folder_path || null,
+            quality_profile_id: settings.quality_profile_id || null
+          });
+          routingResult.reason = 'missing_required_settings';
+          return routingResult;
+        }
+
+        let tvdbId = metadata.tvdb_id;
+        if (!tvdbId && metadata.tmdb_id) {
+          const externalIds = await tmdbService.getExternalIds(metadata.tmdb_id, 'tv');
+          tvdbId = externalIds?.tvdb_id || externalIds?.tvdbId || null;
+        }
+
+        if (!tvdbId) {
+          logger.warn('Missing TVDB ID; skipping Sonarr routing', {
+            title: metadata.title,
+            tmdbId: metadata.tmdb_id
+          });
+          routingResult.reason = 'missing_tvdb_id';
+          return routingResult;
+        }
+
+        const lookupResults = await sonarrService.searchSeries(baseUrl, config.api_key, tvdbId);
+        const lookupSeries = lookupResults.find(s => s.tvdbId === parseInt(tvdbId, 10)) || lookupResults[0];
+        if (!lookupSeries) {
+          logger.warn('Sonarr lookup returned no series', {
+            title: metadata.title,
+            tvdbId
+          });
+          routingResult.reason = 'lookup_no_series';
+          return routingResult;
+        }
+        if (!lookupSeries.title || !lookupSeries.title.toString().trim()) {
+          logger.warn('Sonarr lookup missing English title; skipping add', {
+            title: metadata.title,
+            tvdbId
+          });
+          routingResult.reason = 'lookup_missing_title';
+          return routingResult;
+        }
+
+        const normalizeMonitor = (value) => {
+          if (!value) return 'all';
+          const key = value.toString();
+          const map = {
+            all_seasons: 'all',
+            all: 'all',
+            future: 'future',
+            missing: 'missing',
+            existing: 'existing',
+            recent: 'recent',
+            pilot: 'pilot',
+            first: 'firstSeason',
+            firstSeason: 'firstSeason',
+            lastSeason: 'latestSeason',
+            latest: 'latestSeason',
+            latestSeason: 'latestSeason',
+            none: 'none'
           };
+          return map[key] || key;
+        };
 
-          if (requestedSeasonSet.size > 0 && !includeSpecials) {
-            requestedSeasonSet.delete(0);
-          }
+        const requestedSeasons = Array.isArray(metadata.requested_seasons)
+          ? metadata.requested_seasons
+              .map(season => (typeof season === 'string' ? parseInt(season, 10) : season))
+              .filter(season => Number.isInteger(season))
+          : [];
+        const requestedSeasonSet = new Set(requestedSeasons);
+        const includeSpecials = metadata.include_specials === true;
+        const monitorValue = normalizeMonitor(settings.season_monitoring);
 
-          if (Array.isArray(seriesData.seasons) && requestedSeasonSet.size > 0) {
-            seriesData.seasons = seriesData.seasons.map(season => {
-              const seasonNumber = season?.seasonNumber ?? season?.season_number ?? season?.season ?? season?.number;
-              const normalizedNumber = typeof seasonNumber === 'string' ? parseInt(seasonNumber, 10) : seasonNumber;
-              let monitored = season?.monitored;
+        const seriesData = {
+          ...lookupSeries,
+          qualityProfileId: settings.quality_profile_id,
+          rootFolderPath: settings.root_folder_path,
+          monitored: settings.monitor !== false,
+          seriesType: settings.series_type || lookupSeries.seriesType || 'standard',
+          seasonFolder: settings.season_folder !== false,
+          tags: settings.tags || lookupSeries.tags || [],
+          addOptions: {
+            searchForMissingEpisodes: settings.search_on_add !== false,
+            monitor: monitorValue || 'all',
+          },
+        };
 
-              if (Number.isInteger(normalizedNumber)) {
-                monitored = requestedSeasonSet.has(normalizedNumber);
-              }
+        if (requestedSeasonSet.size > 0 && !includeSpecials) {
+          requestedSeasonSet.delete(0);
+        }
 
-              return {
-                ...season,
-                monitored
-              };
-            });
-          }
+        if (Array.isArray(seriesData.seasons) && requestedSeasonSet.size > 0) {
+          seriesData.seasons = seriesData.seasons.map(season => {
+            const seasonNumber = season?.seasonNumber ?? season?.season_number ?? season?.season ?? season?.number;
+            const normalizedNumber = typeof seasonNumber === 'string' ? parseInt(seasonNumber, 10) : seasonNumber;
+            let monitored = season?.monitored;
 
-          delete seriesData.id;
+            if (Number.isInteger(normalizedNumber)) {
+              monitored = requestedSeasonSet.has(normalizedNumber);
+            }
 
-          try {
-            await sonarrService.addSeries(baseUrl, config.api_key, seriesData);
-            logger.info(`Added series to Sonarr: ${metadata.title}`);
-          } catch (sonarrError) {
-            logger.error('Failed to add series to Sonarr', {
-              title: metadata.title,
-              tvdbId,
-              error: sonarrError.message,
-              payload: {
-                qualityProfileId: seriesData.qualityProfileId,
-                rootFolderPath: seriesData.rootFolderPath,
-                monitored: seriesData.monitored,
-                seriesType: seriesData.seriesType,
-                seasonFolder: seriesData.seasonFolder,
-                addOptions: seriesData.addOptions
-              }
-            });
-            throw sonarrError;
-          }
+            return {
+              ...season,
+              monitored
+            };
+          });
+        }
+
+        delete seriesData.id;
+
+        try {
+          await sonarrService.addSeries(baseUrl, config.api_key, seriesData);
+          logger.info(`Added series to Sonarr: ${metadata.title}`);
+          routingResult.routed = true;
+          routingResult.reason = 'routed';
+          return routingResult;
+        } catch (sonarrError) {
+          logger.error('Failed to add series to Sonarr', {
+            title: metadata.title,
+            tvdbId,
+            error: sonarrError.message,
+            payload: {
+              qualityProfileId: seriesData.qualityProfileId,
+              rootFolderPath: seriesData.rootFolderPath,
+              monitored: seriesData.monitored,
+              seriesType: seriesData.seriesType,
+              seasonFolder: seriesData.seasonFolder,
+              addOptions: seriesData.addOptions
+            }
+          });
+          routingResult.reason = 'arr_add_failed';
+          routingResult.error = sonarrError.message;
+          return routingResult;
         }
       }
+
+      routingResult.reason = 'unsupported_arr_type';
+      return routingResult;
     } catch (error) {
       logger.error('Failed to route to arr', { error: error.message });
-      // Don't throw - classification was successful even if routing failed
+      routingResult.error = error.message;
+      routingResult.reason = routingResult.reason || 'unexpected_error';
+      return routingResult;
     }
   }
 

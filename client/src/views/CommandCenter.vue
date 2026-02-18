@@ -177,9 +177,9 @@
 
               <div v-if="upNextTasks.length" class="up-next">
                 <div class="up-next-header">
-                  <span class="up-next-title">Up Next ({{ queuePendingCount }})</span>
+                  <span class="up-next-title">Up Next ({{ upNextCount }})</span>
                   <Button
-                    v-if="queuePendingCount > 0"
+                    v-if="upNextCount > 0"
                     variant="ghost"
                     size="sm"
                     :disabled="isActionBusy('cancel-all')"
@@ -711,8 +711,11 @@ const processingDetailTask = computed(() => {
   return activeProcessingTasks.value.find(task => task.taskId === expandedProcessingTaskId.value) || primaryActiveTask.value
 })
 const showProcessingBottomSheet = computed(() => Boolean(isMobileViewport.value && processingDetailTask.value))
-const pendingQueueTasks = computed(() => (Array.isArray(pendingTasksData.value) ? pendingTasksData.value : []).filter(task => task.status === 'pending'))
+const pendingQueueTasks = computed(() => (
+  Array.isArray(pendingTasksData.value) ? pendingTasksData.value : []
+).filter(task => task.status === 'pending' && task.task_type === 'classification'))
 const upNextTasks = computed(() => pendingQueueTasks.value.slice(0, 3))
+const upNextCount = computed(() => pendingQueueTasks.value.length)
 const failedQueueTasks = computed(() => Array.isArray(failedTasksData.value) ? failedTasksData.value : [])
 const needsAttentionItems = computed(() => Array.isArray(pendingClassificationData.value?.items) ? pendingClassificationData.value.items : [])
 const ollamaStatus = computed(() => ollamaStatusData.value || { isActive: false })
@@ -1057,7 +1060,12 @@ async function resolveWithOption(item, option, selectedOptionLabel = null) {
     return
   }
   await runActionWithBusy(`resolve-${item.id}`, async () => {
-    await api.resolvePendingClassification(item.id, { library_id: libraryId, selected_option: selectedOptionLabel || option?.label || option?.value || 'Confirm', resolved_by: 'admin', generate_rule: true })
+    const response = await api.resolvePendingClassification(item.id, { library_id: libraryId, selected_option: selectedOptionLabel || option?.label || option?.value || 'Confirm', resolved_by: 'admin', generate_rule: true })
+    const routingError = response?.data?.routingError
+    const routingReason = response?.data?.routingReason
+    if (response?.data?.routed === false && (routingError || routingReason)) {
+      actionError.value = `Resolved "${item.title}" but routing did not complete (${routingReason || routingError}).`
+    }
     changeMode.value = { ...changeMode.value, [item.id]: false }
   })
 }
@@ -1066,7 +1074,12 @@ async function resolveManualChange(item) {
   const libraryId = Number(manualLibraryByItemId.value[item.id] || 0)
   if (!libraryId) return
   await runActionWithBusy(`resolve-${item.id}`, async () => {
-    await api.resolvePendingClassification(item.id, { library_id: libraryId, selected_option: 'Manual selection', resolved_by: 'admin', generate_rule: true })
+    const response = await api.resolvePendingClassification(item.id, { library_id: libraryId, selected_option: 'Manual selection', resolved_by: 'admin', generate_rule: true })
+    const routingError = response?.data?.routingError
+    const routingReason = response?.data?.routingReason
+    if (response?.data?.routed === false && (routingError || routingReason)) {
+      actionError.value = `Resolved "${item.title}" but routing did not complete (${routingReason || routingError}).`
+    }
     changeMode.value = { ...changeMode.value, [item.id]: false }
   })
 }

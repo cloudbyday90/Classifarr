@@ -230,4 +230,34 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('Signal Combination')
     expect(wrapper.text()).toContain('skipped')
   })
+
+  it('shows Up Next count from classification pending tasks only', async () => {
+    apiMock.getLiveStats.mockResolvedValueOnce({
+      data: {
+        ...createLiveStats(),
+        queue: { pending: 0, processing: 0, completed: 12, failed: 0 },
+      },
+    })
+    apiMock.getQueuePending.mockResolvedValueOnce([
+      {
+        id: 401,
+        task_type: 'metadata_enrichment',
+        status: 'pending',
+        payload: { title: 'Metadata Only Task' },
+      },
+      {
+        id: 402,
+        task_type: 'classification',
+        status: 'pending',
+        payload: { title: 'Classification Task', media: { media_type: 'movie' } },
+      },
+    ])
+
+    const wrapper = await mountCommandCenter()
+    const text = wrapper.text()
+
+    expect(text).toContain('Up Next (1)')
+    expect(text).toContain('Classification Task')
+    expect(text).not.toContain('Metadata Only Task')
+  })
 })

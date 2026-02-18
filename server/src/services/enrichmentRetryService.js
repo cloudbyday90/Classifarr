@@ -141,9 +141,41 @@ class EnrichmentRetryService {
     }
 
     /**
+     * Mark exhausted pending retries as failed so they don't remain stuck forever.
+     * @param {string|null} enrichmentType - Optional enrichment type scope
+     * @returns {number} number of rows updated
+     */
+    async failExhaustedPendingRetries(enrichmentType = null) {
+        const hasTypeFilter = typeof enrichmentType === 'string' && enrichmentType.trim().length > 0;
+        const params = hasTypeFilter ? [enrichmentType] : [];
+        const typeClause = hasTypeFilter ? 'AND enrichment_type = $1' : '';
+
+        const result = await db.query(`
+      UPDATE enrichment_retry_queue
+      SET status = 'failed',
+          completed_at = NOW(),
+          error_message = COALESCE(error_message, 'Max attempts reached while pending')
+      WHERE status = 'pending'
+        AND attempts >= max_attempts
+        ${typeClause}
+    `, params);
+
+        if (result.rowCount > 0) {
+            logger.warn('Auto-healed exhausted pending enrichment retries', {
+                enrichmentType: hasTypeFilter ? enrichmentType : 'all',
+                updated: result.rowCount
+            });
+        }
+
+        return result.rowCount || 0;
+    }
+
+    /**
      * Get retry queue statistics
      */
     async getStats() {
+        await this.failExhaustedPendingRetries();
+
         const result = await db.query(`
       SELECT 
         enrichment_type,
@@ -181,6 +213,8 @@ class EnrichmentRetryService {
      * @param {string} enrichmentType - Type to process ('tavily', 'omdb', etc.)
      */
     async processRetryQueue(limit = 50, enrichmentType = 'tavily') {
+        const autoFailed = await this.failExhaustedPendingRetries(enrichmentType);
+
         if (enrichmentType === 'tavily') {
             const tavilyConfig = await db.query(
                 `SELECT api_key, is_active FROM tavily_config WHERE is_active = true LIMIT 1`
@@ -188,7 +222,7 @@ class EnrichmentRetryService {
 
             if (tavilyConfig.rows.length === 0) {
                 logger.warn('Tavily not configured or inactive, skipping retry processing');
-                return { processed: 0, success: 0, failed: 0, skipped: true, reason: 'Tavily not configured' };
+                return { processed: 0, success: 0, failed: 0, autoFailed, skipped: true, reason: 'Tavily not configured' };
             }
         }
 
@@ -217,7 +251,7 @@ class EnrichmentRetryService {
 
         if (pendingResult.rows.length === 0) {
             logger.info('No pending items in retry queue', { enrichmentType });
-            return { processed: 0, success: 0, failed: 0, skipped: false };
+            return { processed: 0, success: 0, failed: 0, autoFailed, skipped: false };
         }
 
         let processed = 0;
@@ -281,7 +315,10 @@ class EnrichmentRetryService {
                 logger.error('Error processing retry queue item', { error: error.message, item });
                 await db.query(
                     `UPDATE enrichment_retry_queue 
-           SET status = 'pending', attempts = attempts + 1, error_message = $2 
+           SET status = CASE WHEN attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END,
+               attempts = attempts + 1,
+               completed_at = CASE WHEN attempts + 1 >= max_attempts THEN NOW() ELSE completed_at END,
+               error_message = $2 
            WHERE id = $1`,
                     [item.queue_id, error.message]
                 );
@@ -290,8 +327,8 @@ class EnrichmentRetryService {
             }
         }
 
-        logger.info('Retry queue processing complete', { processed, success, failed, enrichmentType });
-        return { processed, success, failed, skipped: false };
+        logger.info('Retry queue processing complete', { processed, success, failed, autoFailed, enrichmentType });
+        return { processed, success, failed, autoFailed, skipped: false };
     }
 
     /**
