@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-02-11T19:33:59.851Z
--- Latest Migration: 20260211_090400_enable_rag_loop_apply_defaults.sql
+-- Generated: 2026-02-18T14:02:10.121Z
+-- Latest Migration: 20260218_082300_add_ai_rerun_method.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -225,10 +225,29 @@ CREATE TABLE public.ai_provider_config (
     rag_loop_half_open_probe_count integer DEFAULT 2,
     rag_loop_global_bypass_multi_open_enabled boolean DEFAULT true,
     rag_loop_global_bypass_ms integer DEFAULT 600000,
+    rag_loop_auto_fallback_enabled boolean DEFAULT true,
+    rag_loop_auto_fallback_min_apply_samples integer DEFAULT 25,
+    rag_loop_auto_fallback_consecutive_breaches integer DEFAULT 3,
+    rag_loop_auto_fallback_cooldown_ms integer DEFAULT 900000,
+    rag_loop_auto_recover_enabled boolean DEFAULT false,
+    rag_loop_auto_fallback_breach_count integer DEFAULT 0,
+    rag_loop_auto_fallback_last_breach_at timestamp without time zone,
+    rag_loop_auto_fallback_last_triggered_at timestamp without time zone,
+    rag_loop_auto_fallback_cooldown_until timestamp without time zone,
+    rag_loop_auto_fallback_last_incident_id character varying(80),
+    rag_loop_auto_fallback_last_incident_payload jsonb,
+    rag_loop_auto_fallback_last_version character varying(64),
+    rag_loop_auto_recover_last_attempt_version character varying(64),
+    rag_loop_auto_recover_last_attempt_at timestamp without time zone,
     CONSTRAINT ai_cfg_alias_max_terms_chk CHECK (((rag_alias_max_terms >= 1) AND (rag_alias_max_terms <= 20))),
     CONSTRAINT ai_cfg_alias_min_token_len_chk CHECK (((rag_alias_min_token_length >= 1) AND (rag_alias_min_token_length <= 10))),
     CONSTRAINT ai_cfg_alias_source_policy_chk CHECK (((rag_alias_source_policy)::text = 'authoritative_only'::text)),
     CONSTRAINT ai_cfg_alias_weight_chk CHECK (((rag_alias_weight >= 0.00) AND (rag_alias_weight <= 1.00))),
+    CONSTRAINT ai_cfg_auto_fallback_breach_count_chk CHECK (((rag_loop_auto_fallback_breach_count >= 0) AND (rag_loop_auto_fallback_breach_count <= 1000000))),
+    CONSTRAINT ai_cfg_auto_fallback_consecutive_breaches_chk CHECK (((rag_loop_auto_fallback_consecutive_breaches >= 1) AND (rag_loop_auto_fallback_consecutive_breaches <= 100))),
+    CONSTRAINT ai_cfg_auto_fallback_cooldown_ms_chk CHECK (((rag_loop_auto_fallback_cooldown_ms >= 0) AND (rag_loop_auto_fallback_cooldown_ms <= 86400000))),
+    CONSTRAINT ai_cfg_auto_fallback_incident_payload_type_chk CHECK (((rag_loop_auto_fallback_last_incident_payload IS NULL) OR (jsonb_typeof(rag_loop_auto_fallback_last_incident_payload) = 'object'::text))),
+    CONSTRAINT ai_cfg_auto_fallback_min_apply_samples_chk CHECK (((rag_loop_auto_fallback_min_apply_samples >= 1) AND (rag_loop_auto_fallback_min_apply_samples <= 1000000))),
     CONSTRAINT ai_cfg_cooldown_ai_chk CHECK (((rag_loop_cooldown_ai_ms >= 0) AND (rag_loop_cooldown_ai_ms <= 86400000))),
     CONSTRAINT ai_cfg_cooldown_rag_chk CHECK (((rag_loop_cooldown_rag_ms >= 0) AND (rag_loop_cooldown_rag_ms <= 86400000))),
     CONSTRAINT ai_cfg_cooldown_tmdb_chk CHECK (((rag_loop_cooldown_tmdb_ms >= 0) AND (rag_loop_cooldown_tmdb_ms <= 86400000))),
@@ -334,14 +353,14 @@ COMMENT ON COLUMN public.ai_provider_config.formula_history_weight IS 'Formula w
 -- Name: COLUMN ai_provider_config.rag_retrieval_loop_enabled; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.ai_provider_config.rag_retrieval_loop_enabled IS 'Enable bounded second-pass retrieval loop.';
+COMMENT ON COLUMN public.ai_provider_config.rag_retrieval_loop_enabled IS 'Enable bounded second-pass retrieval loop (default enabled).';
 
 
 --
 -- Name: COLUMN ai_provider_config.rag_loop_rollout_mode; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.ai_provider_config.rag_loop_rollout_mode IS 'Second-pass rollout mode: shadow or apply.';
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_rollout_mode IS 'Second-pass rollout mode: shadow or apply (default apply).';
 
 
 --
@@ -453,7 +472,7 @@ COMMENT ON COLUMN public.ai_provider_config.rag_conflict_min_avg_similarity IS '
 -- Name: COLUMN ai_provider_config.policy_recheck_below_prompt_threshold_enabled; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.ai_provider_config.policy_recheck_below_prompt_threshold_enabled IS 'Enable targeted policy re-check for prompt_select outcomes.';
+COMMENT ON COLUMN public.ai_provider_config.policy_recheck_below_prompt_threshold_enabled IS 'Enable targeted policy re-check for prompt_select outcomes (default enabled).';
 
 
 --
@@ -727,6 +746,104 @@ COMMENT ON COLUMN public.ai_provider_config.rag_loop_global_bypass_multi_open_en
 --
 
 COMMENT ON COLUMN public.ai_provider_config.rag_loop_global_bypass_ms IS 'Duration of global bypass when multi-breaker protection is activated.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_enabled; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_enabled IS 'Enable automatic rollout fallback from apply to shadow on sustained regressions.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_min_apply_samples; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_min_apply_samples IS 'Minimum apply-mode samples required before fallback gates are evaluated.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_consecutive_breaches; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_consecutive_breaches IS 'Consecutive breach windows required before triggering automatic fallback.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_cooldown_ms; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_cooldown_ms IS 'Cooldown duration after fallback to prevent mode-flapping.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_recover_enabled; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_recover_enabled IS 'Enable version-aware automatic re-enable of apply mode after fallback.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_breach_count; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_breach_count IS 'Current consecutive fallback breach counter.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_last_breach_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_last_breach_at IS 'Timestamp of the most recent observed fallback breach.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_last_triggered_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_last_triggered_at IS 'Timestamp of the last automatic fallback transition.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_cooldown_until; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_cooldown_until IS 'Timestamp until which fallback evaluation remains in cooldown.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_last_incident_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_last_incident_id IS 'Latest automatic fallback incident identifier.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_last_incident_payload; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_last_incident_payload IS 'Latest sanitized automatic fallback incident payload.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_fallback_last_version; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_fallback_last_version IS 'Application version that triggered the latest fallback.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_recover_last_attempt_version; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_recover_last_attempt_version IS 'Most recent app version used for auto-recover attempt.';
+
+
+--
+-- Name: COLUMN ai_provider_config.rag_loop_auto_recover_last_attempt_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_recover_last_attempt_at IS 'Timestamp of most recent auto-recover attempt.';
 
 
 --
@@ -1355,6 +1472,7 @@ ALTER SEQUENCE public.classification_corrections_id_seq OWNED BY public.classifi
 CREATE TABLE public.classification_embeddings (
     id integer NOT NULL,
     classification_id integer NOT NULL,
+    embedding public.vector NOT NULL,
     embedding_dims integer NOT NULL,
     provider character varying(50) NOT NULL,
     model character varying(100) NOT NULL,
@@ -1367,9 +1485,15 @@ CREATE TABLE public.classification_embeddings (
     image_model character varying(100),
     image_embedding_hash character varying(64),
     image_embedding_size integer,
-    image_embedding_source_url text,
-    embedding public.vector(1024)
+    image_embedding_source_url text
 );
+
+
+--
+-- Name: COLUMN classification_embeddings.embedding; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.classification_embeddings.embedding IS 'Vector embedding (dimensions match configured model: nomic-embed-text=768, mxbai-embed-large=1024, text-embedding-3-small=1536, etc.)';
 
 
 --
@@ -1424,8 +1548,8 @@ CREATE TABLE public.classification_history (
     retry_count integer DEFAULT 0,
     max_retries integer DEFAULT 3,
     CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[]))),
-    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY ((ARRAY['existing_media'::character varying, 'manual_correction'::character varying, 'manual_classification'::character varying, 'exact_match'::character varying, 'learned_pattern'::character varying, 'source_library'::character varying, 'policy_auto'::character varying, 'policy_prompt'::character varying, 'policy_recheck'::character varying, 'ai_verified'::character varying, 'ai_analysis'::character varying, 'signal_calculation'::character varying, 'fallback'::character varying, 'queued_for_retry'::character varying, 'custom_rule'::character varying, 'rule_match'::character varying, 'ai_fallback'::character varying, 'holiday_detection'::character varying, 'library_rule'::character varying, 'rag_improved'::character varying, 'authoritative_source_library'::character varying, 'policy_engine'::character varying])::text[]))),
-    CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY ((ARRAY['completed'::character varying, 'failed'::character varying, 'corrected'::character varying, 'awaiting_decision'::character varying, 'pending'::character varying, 'pending_retry'::character varying, 'verified'::character varying, 'reclassified'::character varying])::text[])))
+    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY ((ARRAY['existing_media'::character varying, 'manual_correction'::character varying, 'manual_classification'::character varying, 'exact_match'::character varying, 'learned_pattern'::character varying, 'source_library'::character varying, 'policy_auto'::character varying, 'policy_prompt'::character varying, 'policy_recheck'::character varying, 'ai_verified'::character varying, 'ai_analysis'::character varying, 'ai_rerun'::character varying, 'signal_calculation'::character varying, 'fallback'::character varying, 'queued_for_retry'::character varying, 'custom_rule'::character varying, 'rule_match'::character varying, 'ai_fallback'::character varying, 'holiday_detection'::character varying, 'library_rule'::character varying, 'rag_improved'::character varying, 'authoritative_source_library'::character varying, 'policy_engine'::character varying])::text[]))),
+    CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY ((ARRAY['completed'::character varying, 'failed'::character varying, 'corrected'::character varying, 'awaiting_decision'::character varying, 'pending'::character varying, 'pending_retry'::character varying, 'verified'::character varying, 'reclassified'::character varying, 'routed'::character varying])::text[])))
 );
 
 
@@ -2228,17 +2352,17 @@ ALTER SEQUENCE public.learning_conflicts_id_seq OWNED BY public.learning_conflic
 CREATE TABLE public.learning_patterns (
     id integer NOT NULL,
     tmdb_id integer,
-    media_type character varying(20) DEFAULT 'unknown'::character varying NOT NULL,
     library_id integer,
     pattern_type character varying(50),
     pattern_data jsonb,
     confidence numeric(5,2),
     usage_count integer DEFAULT 0,
     success_rate numeric(5,2) DEFAULT 100.00,
-    metadata jsonb,
-    created_by character varying(100),
     created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now()
+    updated_at timestamp without time zone DEFAULT now(),
+    media_type character varying(20) DEFAULT 'unknown'::character varying NOT NULL,
+    metadata jsonb,
+    created_by character varying(100)
 );
 
 
@@ -5117,14 +5241,6 @@ ALTER TABLE ONLY public.learning_patterns
 
 
 --
--- Name: learning_patterns learning_patterns_tmdb_id_media_type_pattern_type_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.learning_patterns
-    ADD CONSTRAINT learning_patterns_tmdb_id_media_type_pattern_type_key UNIQUE (tmdb_id, media_type, pattern_type);
-
-
---
 -- Name: learning_patterns learning_patterns_tmdb_media_type_pattern_type_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5153,7 +5269,7 @@ ALTER TABLE ONLY public.libraries
 --
 
 ALTER TABLE ONLY public.libraries
-    ADD CONSTRAINT libraries_name_media_type_unique UNIQUE (name, media_type);
+    ADD CONSTRAINT libraries_name_media_type_unique UNIQUE (media_server_id, name, media_type);
 
 
 --
@@ -5258,14 +5374,6 @@ ALTER TABLE ONLY public.library_profiles
 
 ALTER TABLE ONLY public.library_rules
     ADD CONSTRAINT library_rules_pkey PRIMARY KEY (id);
-
-
---
--- Name: library_rules library_rules_unique_rule; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.library_rules
-    ADD CONSTRAINT library_rules_unique_rule UNIQUE (library_id, rule_type, operator, value);
 
 
 --
@@ -6001,6 +6109,13 @@ CREATE INDEX idx_embedding_retry_pending ON public.embedding_retry_queue USING b
 
 
 --
+-- Name: idx_embeddings_hnsw; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_embeddings_hnsw ON public.classification_embeddings USING hnsw (embedding public.vector_cosine_ops) WITH (m='16', ef_construction='64');
+
+
+--
 -- Name: idx_embeddings_image_hash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6239,13 +6354,6 @@ CREATE INDEX idx_library_custom_rules_library ON public.library_custom_rules USI
 
 
 --
--- Name: idx_library_custom_rules_library_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_custom_rules_library_id ON public.library_custom_rules USING btree (library_id);
-
-
---
 -- Name: idx_library_labels_library; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6285,13 +6393,6 @@ CREATE INDEX idx_library_policies_source ON public.library_policies USING gin (s
 --
 
 CREATE INDEX idx_library_profiles_library ON public.library_profiles USING btree (library_id);
-
-
---
--- Name: idx_library_rules_exception; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_library_rules_exception ON public.library_rules USING btree (is_exception);
 
 
 --
@@ -6761,13 +6862,6 @@ CREATE INDEX idx_webhook_log_type ON public.webhook_log USING btree (webhook_typ
 --
 
 CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON public.classification_history FOR EACH ROW EXECUTE FUNCTION public.update_classification_search_text();
-
-
---
--- Name: library_rules_v2 trigger_library_rules_v2_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trigger_library_rules_v2_updated_at BEFORE UPDATE ON public.library_rules_v2 FOR EACH ROW EXECUTE FUNCTION public.update_library_rules_v2_updated_at();
 
 
 --
@@ -7427,6 +7521,12 @@ FROM unnest(ARRAY[
     '20260211_090100_add_rag_loop_governance_config.sql',
     '20260211_090200_add_rag_loop_error_observability.sql',
     '20260211_090300_add_rag_loop_trace_query_indexes.sql',
-    '20260211_090400_enable_rag_loop_apply_defaults.sql'
+    '20260211_090400_enable_rag_loop_apply_defaults.sql',
+    '20260211_090500_add_rag_loop_auto_fallback_config.sql',
+    '20260217_083749_add_routed_status.sql',
+    '20260217_192610_fix_classification_method_constraint.sql',
+    '20260217_224200_add_missing_classification_methods.sql',
+    '20260217_233000_add_policy_recheck_method.sql',
+    '20260218_082300_add_ai_rerun_method.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

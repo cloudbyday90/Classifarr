@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- None yet.
+- Updated database schema snapshot (`database/schema/current.sql`) to include all migrations through v0.42.4-alpha.
 
 ### Fixed
 
