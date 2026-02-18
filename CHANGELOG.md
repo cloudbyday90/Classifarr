@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.3c-alpha] - 2026-02-17
+
+### Fixed
+
+- **Schema File Sync** — Added missing `policy_recheck` method to `database/schema/current.sql` constraint definition (was added in migration but missed in schema file)
+- New migration `20260217_192610_fix_classification_method_constraint.sql` consolidates all 22 classification methods
+
+---
+
 ## [v0.42.3b-alpha] - 2026-02-17
 
 ### Added

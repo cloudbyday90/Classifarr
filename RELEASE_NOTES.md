@@ -1,5 +1,46 @@
 # Classifarr Release Notes
 
+## [v0.42.3c-alpha] - 2026-02-17
+
+**Title: Schema Sync Fix for Method Constraint**
+
+### 🎉 What You'll Notice
+
+- **No more constraint violations** — the `policy_recheck` method is now properly included in the schema reference file
+- **Migrations work correctly** — fresh database installations will have the complete constraint
+
+### 📊 Quick Visual
+
+```text
+Issue Timeline:
+┌─────────────────────────────────────────────────────────┐
+│ v0.42.3b: Migration added policy_recheck                │
+│           BUT current.sql schema file was missed        │
+│ v0.42.3c: Schema file now includes policy_recheck       │
+└─────────────────────────────────────────────────────────┘
+```
+
+### ✨ Highlights
+
+- **Schema File Update** — Added `policy_recheck` to `database/schema/current.sql` constraint definition
+- **New Consolidated Migration** — `20260217_192610_fix_classification_method_constraint.sql` ensures all 22 methods are included
+
+### 🔧 Reliability Improvements
+
+- Schema reference file now matches migration files
+- All 22 classification methods are documented in one place
+
+### 👥 Who This Helps
+
+- **All users:** Fresh installations get correct constraints from the start
+- **Developers:** Schema file is now the single source of truth for constraint methods
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.3b-alpha] - 2026-02-17
 
 **Title: Policy Recheck Method Constraint Fix**
