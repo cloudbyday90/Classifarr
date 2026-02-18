@@ -13,11 +13,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated database schema snapshot (`database/schema/current.sql`) to include all migrations through v0.42.4-alpha.
+- None yet.
 
 ### Fixed
 
 - None yet.
+
+---
+
+## [v0.42.5-alpha] - 2026-02-18
+
+### Added
+
+- **Coverage ratchet tooling and CI enforcement**
+  - Added `scripts/check-coverage-ratchet.js`, `scripts/update-coverage-baseline.js`, and `scripts/coverage-ratchet-utils.js`
+  - Added baseline file `docs/testing/coverage-baseline.json`
+  - Wired ratchet validation into root CI/test scripts and GitHub workflow
+  - Updated `docs/testing/coverage.md` with ratchet usage and guardrails
+- **Database migration for missing vector index**
+  - Added `database/migrations/20260218_150000_backfill_missing_rag_text_hnsw_index.sql`
+  - Idempotently backfills `idx_embeddings_hnsw` when `pgvector` and `hnsw` are available
+- **Expanded route coverage suites**
+  - Added high-yield route coverage tests for policies, stats, queue, and libraries
+
+### Changed
+
+- **AI parse resilience**
+  - `AIResponseParser` now returns structured `parse_failure_reason`
+  - Verify-mode parsing now only accepts verify-safe formats (no CONFIDENT fallback)
+  - Classification flow now performs an optional AI response repair attempt before final fallback
+  - Parse diagnostics (`contract_version`, attempts, repair status, failure reason) are persisted with classification metadata
+- **RAG loop reliability**
+  - Added retry-aware handling for pass1 candidate and pass2 retrieval stages with bounded retries and backoff
+  - Expanded reason-code taxonomy for timeout, provider, DB, embedding, and abort scenarios
+  - Improved stage-event persistence alignment with `rag_metrics` emission
+- **Phase tracking and UI consistency**
+  - Classification phase transitions now support explicit skipped phases
+  - Command Center stepper now renders skipped state for `signal_combine` (desktop + mobile)
+- **Logs observability UX**
+  - Log stats endpoint now returns total logs and multi-level trend counters (ERROR/WARN/INFO/DEBUG)
+  - Logs UI now supports Info-level filtering and uses reset-on-filter-change pagination
+  - Log level badges now render with level-specific styles beyond just error/warning
+- **Logging internals**
+  - `logger.error`/`logger.warn` now support `skipDbPersist` to prevent duplicate database writes in RAG logging paths
+
+### Fixed
+
+- **Signal Combination visibility** - workflows that intentionally skip `signal_combine` now show a clear skipped state instead of appearing as missing.
+- **Malformed AI response handling** - malformed responses now have deterministic fallback metadata and optional one-pass repair before final manual review fallback.
+- **Log totals mismatch in Settings** - log dashboard totals now reflect full log volume, not only error-level slices.
 
 ---
 

@@ -331,21 +331,24 @@ router.get('/export', async (req, res, next) => {
  */
 router.get('/stats', async (req, res, next) => {
   try {
-    // Total errors and warnings
+    // Totals by severity and resolution
     const totalsResult = await db.query(
       `SELECT 
+        COUNT(*) as total_logs,
         COUNT(*) FILTER (WHERE level = 'ERROR') as total_errors,
         COUNT(*) FILTER (WHERE level = 'WARN') as total_warnings,
+        COUNT(*) FILTER (WHERE level = 'INFO') as total_info,
+        COUNT(*) FILTER (WHERE level = 'DEBUG') as total_debug,
         COUNT(*) FILTER (WHERE resolved = true) as total_resolved,
+        COUNT(*) FILTER (WHERE resolved = false) as unresolved_logs,
         COUNT(*) FILTER (WHERE resolved = false AND level = 'ERROR') as unresolved_errors
        FROM error_log`
     );
 
-    // Errors by module
+    // Most active modules
     const moduleResult = await db.query(
       `SELECT module, COUNT(*) as count
        FROM error_log
-       WHERE level = 'ERROR'
        GROUP BY module
        ORDER BY count DESC
        LIMIT 10`
@@ -354,8 +357,11 @@ router.get('/stats', async (req, res, next) => {
     // Recent 24h trend
     const last24hResult = await db.query(
       `SELECT 
+        COUNT(*) as logs_24h,
         COUNT(*) FILTER (WHERE level = 'ERROR') as errors_24h,
-        COUNT(*) FILTER (WHERE level = 'WARN') as warnings_24h
+        COUNT(*) FILTER (WHERE level = 'WARN') as warnings_24h,
+        COUNT(*) FILTER (WHERE level = 'INFO') as info_24h,
+        COUNT(*) FILTER (WHERE level = 'DEBUG') as debug_24h
        FROM error_log
        WHERE created_at >= NOW() - INTERVAL '24 hours'`
     );
@@ -363,8 +369,11 @@ router.get('/stats', async (req, res, next) => {
     // Recent 7d trend
     const last7dResult = await db.query(
       `SELECT 
+        COUNT(*) as logs_7d,
         COUNT(*) FILTER (WHERE level = 'ERROR') as errors_7d,
-        COUNT(*) FILTER (WHERE level = 'WARN') as warnings_7d
+        COUNT(*) FILTER (WHERE level = 'WARN') as warnings_7d,
+        COUNT(*) FILTER (WHERE level = 'INFO') as info_7d,
+        COUNT(*) FILTER (WHERE level = 'DEBUG') as debug_7d
        FROM error_log
        WHERE created_at >= NOW() - INTERVAL '7 days'`
     );

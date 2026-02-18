@@ -1,0 +1,15 @@
+{
+  "updated_at": "2026-02-18T17:54:42.625Z",
+  "server": {
+    "statements": 41.77,
+    "branches": 72.11,
+    "functions": 60.54,
+    "lines": 41.77
+  },
+  "client": {
+    "statements": 55.44,
+    "branches": 47.67,
+    "functions": 38.17,
+    "lines": 57.17
+  }
+}

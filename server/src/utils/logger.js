@@ -374,6 +374,10 @@ class Logger {
       fileLogger.writeMainLog(formattedMsg);
       fileLogger.writeErrorLog(formattedMsg);
 
+      if (options?.skipDbPersist === true) {
+        return null;
+      }
+
       // Async DB persistence - fire and forget, never throws
       try {
         const errorId = await this.persistToDb('ERROR', message, data, options);
@@ -393,6 +397,10 @@ class Logger {
       console.warn(formattedMsg);
       fileLogger.writeMainLog(formattedMsg);
       fileLogger.writeErrorLog(formattedMsg);
+
+      if (options?.skipDbPersist === true) {
+        return null;
+      }
 
       // Async DB persistence - fire and forget, never throws
       try {

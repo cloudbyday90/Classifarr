@@ -119,6 +119,7 @@ async function createAwaitingDecisionNotification(classificationId, title, reaso
 const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 const RAG_LOOP_MIN_TIMEOUT_MS = 1000;
 const RAG_LOOP_MAX_TIMEOUT_MS = 15000;
+const AI_PARSE_CONTRACT_VERSION = 'phase1_v1';
 
 class ClassificationService {
   async classify(overseerrPayload) {
@@ -810,7 +811,17 @@ class ClassificationService {
     const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
     const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
 
-    if (['ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EHOSTUNREACH', 'ENOTFOUND'].includes(code)) {
+    if ([
+      'ECONNREFUSED',
+      'ETIMEDOUT',
+      'ECONNRESET',
+      'EHOSTUNREACH',
+      'ENOTFOUND',
+      'ABORT_ERR',
+      'ERR_CANCELED',
+      'ESTALL',
+      'EINCOMPLETE'
+    ].includes(code)) {
       return true;
     }
 
@@ -826,10 +837,109 @@ class ClassificationService {
       'is currently loading',
       'try again',
       'model is busy',
-      'ollama'
+      'ollama',
+      'timed out',
+      'stalled',
+      'aborted',
+      'incomplete stream'
     ];
 
     return patterns.some(pattern => message.includes(pattern));
+  }
+
+  normalizeAiResponseLine(value) {
+    if (!value || typeof value !== 'string') {
+      return '';
+    }
+
+    const lines = value
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    return lines[0] || value.trim();
+  }
+
+  buildAiRepairPrompt({ response, libraries, signalContext, mode }) {
+    const allowedFormats = mode === 'verify'
+      ? [
+          'CONFIRM|<library_number>|<brief_verification_reason>',
+          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<option1>|<option2>|<option3_optional>'
+        ]
+      : [
+          'CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>',
+          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<option1>|<option2>|<option3_optional>'
+        ];
+
+    const librariesList = libraries
+      .map((lib, index) => `${index + 1}. ${lib.name} (${lib.media_type || 'unknown'})`)
+      .join('\n');
+
+    const verifyContext = mode === 'verify' && signalContext
+      ? `Pre-calculated confidence: ${signalContext.confidence}%\nSuggested library: ${signalContext.suggestedLibrary?.name || 'unknown'}`
+      : '';
+
+    return `You are an output normalizer for a media classification assistant.
+Rewrite the RAW RESPONSE into EXACTLY one valid line using ONLY one allowed format below.
+Do not add markdown, explanations, or extra lines.
+
+Allowed formats:
+${allowedFormats.join('\n')}
+
+${verifyContext}
+Available libraries:
+${librariesList}
+
+RAW RESPONSE:
+${response}
+`;
+  }
+
+  async attemptAiResponseRepair({
+    response,
+    libraries,
+    signalContext,
+    mode,
+    model,
+    temperature
+  }) {
+    const repairPrompt = this.buildAiRepairPrompt({
+      response,
+      libraries,
+      signalContext,
+      mode
+    });
+
+    const repairTemperature = Number.isFinite(Number(temperature))
+      ? Math.min(0.2, Math.max(0, Number(temperature)))
+      : 0.1;
+
+    const repaired = await ollamaService.generate(
+      repairPrompt,
+      model || 'llama3.2',
+      repairTemperature
+    );
+
+    return this.normalizeAiResponseLine(repaired);
+  }
+
+  buildParseDiagnostics({
+    mode,
+    attemptCount,
+    failureReason = null,
+    repaired = false,
+    repairAttempted = false,
+    repairSucceeded = false
+  }) {
+    return {
+      contract_version: AI_PARSE_CONTRACT_VERSION,
+      mode,
+      attempt_count: attemptCount,
+      failure_reason: failureReason,
+      repaired,
+      repair_attempted: repairAttempted,
+      repair_succeeded: repairSucceeded
+    };
   }
 
   buildPendingRetryResult({
@@ -1008,6 +1118,20 @@ class ClassificationService {
         recoverable: mapped.recoverable
       };
     };
+    const canRetryRetrievalStage = ({
+      stageError,
+      attempt,
+      maxAttempts
+    }) => {
+      if (!stageError || stageError.recoverable === false) {
+        return false;
+      }
+      if (attempt >= maxAttempts) {
+        return false;
+      }
+      return remainingBudget() > 0;
+    };
+    const retrievalRetryBaseDelayMs = Math.max(10, Number(config.rag_loop_retry_backoff_ms || 75));
     const withRagLoopLogContext = (finalResult, strategy = null) => ({
       ...finalResult,
       ragLoopLogContext: {
@@ -1124,27 +1248,49 @@ class ClassificationService {
       return withRagLoopLogContext(decision.finalResult);
     }
 
-    const pass1Candidates = await this.withTimeout(
-      (signal) => ragRetriever.semanticSearchCandidates(metadata, candidateLimit, {
-        pass: 'pass1',
-        throwOnError: true,
-        signal
-      }),
-      Math.max(1, remainingBudget()),
-      'rag_pass1_candidate_timeout'
-    ).catch((error) => {
-      hadError = true;
-      const stageError = classifyStageError('gate', error, 'rag_pass1_candidate_failed');
-      addEvent({
-        stage: 'gate',
-        outcome: 'error',
-        reason: error.message,
-        reasonCode: stageError.reasonCode,
-        recoverable: stageError.recoverable,
-        sqlState: stageError.sqlState
-      });
-      return [];
-    });
+    let pass1Candidates = [];
+    const pass1MaxAttempts = Math.max(1, Number(config.rag_loop_pass1_max_attempts || 2));
+    for (let attempt = 1; attempt <= pass1MaxAttempts; attempt += 1) {
+      try {
+        pass1Candidates = await this.withTimeout(
+          (signal) => ragRetriever.semanticSearchCandidates(metadata, candidateLimit, {
+            pass: 'pass1',
+            throwOnError: true,
+            signal
+          }),
+          Math.max(1, remainingBudget()),
+          'rag_pass1_candidate_timeout'
+        );
+        break;
+      } catch (error) {
+        const stageError = classifyStageError('gate', error, 'rag_pass1_candidate_failed');
+        if (canRetryRetrievalStage({ stageError, attempt, maxAttempts: pass1MaxAttempts })) {
+          addEvent({
+            stage: 'gate',
+            outcome: 'retry',
+            reason: `retry_${attempt}_of_${pass1MaxAttempts}`,
+            reasonCode: stageError.reasonCode,
+            recoverable: stageError.recoverable,
+            sqlState: stageError.sqlState
+          });
+          const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
+          await this.sleep(Math.min(delayMs, remainingBudget()));
+          continue;
+        }
+
+        hadError = true;
+        addEvent({
+          stage: 'gate',
+          outcome: 'error',
+          reason: error.message,
+          reasonCode: stageError.reasonCode,
+          recoverable: stageError.recoverable,
+          sqlState: stageError.sqlState
+        });
+        pass1Candidates = [];
+        break;
+      }
+    }
 
     const pass1Conflict = config.rag_loop_conflict_detection_enabled
       ? detectRagConflict(pass1Candidates, config)
@@ -1250,35 +1396,67 @@ class ClassificationService {
         });
       } else {
         pass2Enabled = true;
-        try {
-          const limit = Math.max(topN, 5);
-          if (strategySelection.strategy === 'semantic') {
-            pass2Matches = await this.withTimeout(
-              (signal) => ragRetriever.semanticSearch(expandedMetadata, limit, {
-                pass: 'pass2',
-                applyThreshold: false,
-                useExpandedQuery: true,
-                throwOnError: true,
-                expansionOptions,
-                signal
-              }),
-              Math.max(1, remainingBudget()),
-              'rag_pass2_semantic_timeout'
-            );
-          } else {
-            pass2Matches = await this.withTimeout(
-              (signal) => ragRetriever.hybridSearch(expandedMetadata, limit, {
-                pass: 'pass2',
-                applyThreshold: false,
-                useExpandedQuery: true,
-                throwOnError: true,
-                expansionOptions,
-                signal
-              }),
-              Math.max(1, remainingBudget()),
-              'rag_pass2_hybrid_timeout'
-            );
+        const pass2MaxAttempts = Math.max(1, Number(config.rag_loop_pass2_max_attempts || 2));
+        let pass2FinalError = null;
+        let pass2FinalStageError = null;
+        const limit = Math.max(topN, 5);
+        for (let attempt = 1; attempt <= pass2MaxAttempts; attempt += 1) {
+          try {
+            if (strategySelection.strategy === 'semantic') {
+              pass2Matches = await this.withTimeout(
+                (signal) => ragRetriever.semanticSearch(expandedMetadata, limit, {
+                  pass: 'pass2',
+                  applyThreshold: false,
+                  useExpandedQuery: true,
+                  throwOnError: true,
+                  expansionOptions,
+                  signal
+                }),
+                Math.max(1, remainingBudget()),
+                'rag_pass2_semantic_timeout'
+              );
+            } else {
+              pass2Matches = await this.withTimeout(
+                (signal) => ragRetriever.hybridSearch(expandedMetadata, limit, {
+                  pass: 'pass2',
+                  applyThreshold: false,
+                  useExpandedQuery: true,
+                  throwOnError: true,
+                  expansionOptions,
+                  signal
+                }),
+                Math.max(1, remainingBudget()),
+                'rag_pass2_hybrid_timeout'
+              );
+            }
+            pass2FinalError = null;
+            pass2FinalStageError = null;
+            break;
+          } catch (error) {
+            const stageError = classifyStageError('retrieval_pass2', error, 'rag_pass2_failed');
+            pass2FinalError = error;
+            pass2FinalStageError = stageError;
+
+            if (canRetryRetrievalStage({ stageError, attempt, maxAttempts: pass2MaxAttempts })) {
+              addEvent({
+                stage: 'retrieval_pass2',
+                outcome: 'retry',
+                reason: `retry_${attempt}_of_${pass2MaxAttempts}`,
+                reasonCode: stageError.reasonCode,
+                recoverable: stageError.recoverable,
+                sqlState: stageError.sqlState
+              });
+              const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
+              await this.sleep(Math.min(delayMs, remainingBudget()));
+              continue;
+            }
+
+            pass2Matches = [];
+            break;
           }
+        }
+
+        if (!pass2FinalError) {
           ragLoopResilienceManager.recordSuccess('rag_pass2', config);
           addEvent({
             stage: 'retrieval_pass2',
@@ -1286,14 +1464,14 @@ class ClassificationService {
             reason: strategySelection.strategy,
             reasonCode: strategySelection.strategy
           });
-        } catch (error) {
+        } else {
           hadError = true;
-          ragLoopResilienceManager.recordFailure('rag_pass2', error, config);
-          const stageError = classifyStageError('retrieval_pass2', error, 'rag_pass2_failed');
+          ragLoopResilienceManager.recordFailure('rag_pass2', pass2FinalError, config);
+          const stageError = pass2FinalStageError || classifyStageError('retrieval_pass2', pass2FinalError, 'rag_pass2_failed');
           addEvent({
             stage: 'retrieval_pass2',
             outcome: 'error',
-            reason: error.message,
+            reason: pass2FinalError.message,
             reasonCode: stageError.reasonCode,
             fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED,
             recoverable: stageError.recoverable,
@@ -1312,28 +1490,69 @@ class ClassificationService {
       });
     }
 
-    const pass2Candidates = (pass2Enabled && remainingBudget() > 0)
-      ? await ragRetriever.semanticSearchCandidates(expandedMetadata, candidateLimit, {
-        pass: 'pass2',
-        useExpandedQuery: true,
-        throwOnError: true,
-        expansionOptions
-      }).catch((error) => {
+    let pass2Candidates = [];
+    if (pass2Enabled && remainingBudget() > 0) {
+      const pass2CandidateMaxAttempts = Math.max(1, Number(config.rag_loop_pass2_candidate_max_attempts || 2));
+      let pass2CandidateError = null;
+      let pass2CandidateStageError = null;
+
+      for (let attempt = 1; attempt <= pass2CandidateMaxAttempts; attempt += 1) {
+        try {
+          pass2Candidates = await this.withTimeout(
+            (signal) => ragRetriever.semanticSearchCandidates(expandedMetadata, candidateLimit, {
+              pass: 'pass2',
+              useExpandedQuery: true,
+              throwOnError: true,
+              expansionOptions,
+              signal
+            }),
+            Math.max(1, remainingBudget()),
+            'rag_pass2_candidate_timeout'
+          );
+          pass2CandidateError = null;
+          pass2CandidateStageError = null;
+          break;
+        } catch (error) {
+          const stageError = classifyStageError('retrieval_pass2', error, 'rag_pass2_failed');
+          pass2CandidateError = error;
+          pass2CandidateStageError = stageError;
+          if (canRetryRetrievalStage({
+            stageError,
+            attempt,
+            maxAttempts: pass2CandidateMaxAttempts
+          })) {
+            addEvent({
+              stage: 'retrieval_pass2',
+              outcome: 'retry',
+              reason: `retry_${attempt}_of_${pass2CandidateMaxAttempts}`,
+              reasonCode: stageError.reasonCode,
+              recoverable: stageError.recoverable,
+              sqlState: stageError.sqlState
+            });
+            const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
+            await this.sleep(Math.min(delayMs, remainingBudget()));
+            continue;
+          }
+          pass2Candidates = [];
+          break;
+        }
+      }
+
+      if (pass2CandidateError) {
         hadError = true;
-        ragLoopResilienceManager.recordFailure('rag_pass2', error, config);
-        const stageError = classifyStageError('retrieval_pass2', error, 'rag_pass2_candidates_failed');
+        ragLoopResilienceManager.recordFailure('rag_pass2', pass2CandidateError, config);
+        const stageError = pass2CandidateStageError || classifyStageError('retrieval_pass2', pass2CandidateError, 'rag_pass2_failed');
         addEvent({
           stage: 'retrieval_pass2',
           outcome: 'error',
-          reason: error.message,
+          reason: pass2CandidateError.message,
           reasonCode: stageError.reasonCode,
           fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED,
           recoverable: stageError.recoverable,
           sqlState: stageError.sqlState
         });
-        return [];
-      })
-      : [];
+      }
+    }
     const pass2Conflict = config.rag_loop_conflict_detection_enabled
       ? detectRagConflict(pass2Candidates, config)
       : { isConflict: false, reason: 'conflict_detection_disabled' };
@@ -2058,7 +2277,14 @@ class ClassificationService {
       }
 
       if (taskId && !metadata.source_library_id) {
-        await classificationPhaseService.updatePhase(taskId, 'ai_analysis');
+        await classificationPhaseService.updatePhase(taskId, 'ai_analysis', {
+          skippedPhases: ['signal_combine'],
+          skippedPhaseMetadata: {
+            signal_combine: {
+              reason: 'policy_signal_path'
+            }
+          }
+        });
       }
 
       try {
@@ -2642,16 +2868,20 @@ CRITICAL - DO NOT HALLUCINATE CONFLICTS:
 - Only mention libraries that have ACTUAL signal support (genres, keywords, patterns matching that library)
 - Certification (G, PG, TV-PG, R, TV-MA, etc.) is a CONTENT RATING for age-appropriateness, NOT a library indicator - do not use it to suggest which library content belongs to
 - DO NOT suggest "Family" library for R-rated Horror/Thriller content with no family-related signals
-- If signals clearly point to one library with no real conflict, use CONFIRM format, not CLARIFY
+- If signals clearly point to one library with no real conflict, use ${mode === 'verify' ? 'CONFIRM' : 'CONFIDENT'} format, not CLARIFY
+- In ${mode === 'verify' ? 'verify' : 'classify'} mode, NEVER use ${mode === 'verify' ? 'CONFIDENT' : 'CONFIRM'} format
 - Only use CLARIFY when there are genuinely conflicting signals pointing to different libraries
 
 Think step by step, then respond with ONLY one of the formats above.`;
 
-    // Get Ollama config from ai_provider_config
-    const configResult = await db.query('SELECT ollama_model, temperature FROM ai_provider_config WHERE id = 1');
-    const config = configResult.rows[0]
-      ? { model: configResult.rows[0].ollama_model || 'llama3.2', temperature: configResult.rows[0].temperature || 0.30 }
+    // Get AI config from ai_provider_config
+    const configResult = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
+    const providerRow = configResult.rows[0] || null;
+    const config = providerRow
+      ? { model: providerRow.ollama_model || 'llama3.2', temperature: providerRow.temperature || 0.30 }
       : { model: 'llama3.2', temperature: 0.30 };
+    const aiResponseRepairEnabled = providerRow?.ai_response_repair_enabled !== false;
+    const disallowPartialStreamResponse = providerRow?.classification_disallow_partial_stream_response !== false;
 
     // Acquire lock with high priority (classification always wins)
     await providerLock.acquireLock('classification', 'high');
@@ -2692,6 +2922,12 @@ Think step by step, then respond with ONLY one of the formats above.`;
               });
               lastLogTime = now;
             }
+          },
+          null,
+          {
+            allowPartialOnAbort: !disallowPartialStreamResponse,
+            allowPartialOnStall: !disallowPartialStreamResponse,
+            requireDoneSignal: disallowPartialStreamResponse
           }
         );
       } finally {
@@ -2714,7 +2950,82 @@ Think step by step, then respond with ONLY one of the formats above.`;
       metadata: metadata
     };
 
-    return aiResponseParser.parse(response, parseContext, { mode });
+    const suppressParseWarnings = aiResponseRepairEnabled;
+    const firstParseResult = aiResponseParser.parse(response, parseContext, {
+      mode,
+      logInvalid: !suppressParseWarnings,
+      logMalformed: !suppressParseWarnings
+    });
+
+    if (firstParseResult.format !== 'fallback') {
+      firstParseResult.parse_diagnostics = this.buildParseDiagnostics({
+        mode,
+        attemptCount: 1
+      });
+      return firstParseResult;
+    }
+
+    const firstFailureReason = firstParseResult.parse_failure_reason || 'no_format_matched';
+    let finalParseResult = firstParseResult;
+
+    if (aiResponseRepairEnabled) {
+      try {
+        const repairedResponse = await this.attemptAiResponseRepair({
+          response,
+          libraries,
+          signalContext,
+          mode,
+          model: config.model,
+          temperature: config.temperature
+        });
+
+        if (repairedResponse) {
+          const repairedParse = aiResponseParser.parse(repairedResponse, parseContext, {
+            mode,
+            logInvalid: false,
+            logMalformed: false
+          });
+
+          if (repairedParse.format !== 'fallback') {
+            repairedParse.parse_diagnostics = this.buildParseDiagnostics({
+              mode,
+              attemptCount: 2,
+              failureReason: firstFailureReason,
+              repaired: true,
+              repairAttempted: true,
+              repairSucceeded: true
+            });
+            return repairedParse;
+          }
+
+          finalParseResult = repairedParse;
+        }
+      } catch (repairError) {
+        logger.warn('AI response repair attempt failed', {
+          title: metadata?.title,
+          mode,
+          error: repairError.message
+        });
+      }
+    }
+
+    finalParseResult.parse_diagnostics = this.buildParseDiagnostics({
+      mode,
+      attemptCount: aiResponseRepairEnabled ? 2 : 1,
+      failureReason: finalParseResult.parse_failure_reason || firstFailureReason,
+      repaired: false,
+      repairAttempted: aiResponseRepairEnabled,
+      repairSucceeded: false
+    });
+
+    logger.warn('AI response malformed after parse/repair attempts', {
+      title: metadata?.title,
+      mode,
+      parseFailureReason: finalParseResult.parse_diagnostics.failure_reason,
+      response: String(response || '').substring(0, 200)
+    });
+
+    return finalParseResult;
   }
 
   async logClassification(metadata, result, startTime = null) {
@@ -2763,6 +3074,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
       weights: result.policyResult?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
       rag_details: ragDetails,
       rag_loop_trace: result.ragLoopTrace || null,
+      parse_diagnostics: result.parse_diagnostics || null,
       processing_time_ms: startTime ? Date.now() - startTime : null
     };
 
@@ -2892,6 +3204,24 @@ Think step by step, then respond with ONLY one of the formats above.`;
       const strategy = logContext?.strategy || result?.ragLoopTrace?.strategy || null;
       const trigger = logContext?.trigger || result?.ragLoopTrace?.trigger || null;
       const correlationId = logContext?.correlationId || null;
+      const resolveStageMetricSpec = ({ stage, outcome, reasonCode }) => {
+        const normalizedOutcome = typeof outcome === 'string' ? outcome.trim().toLowerCase() : '';
+        if (stage === 'retrieval_pass2') {
+          return {
+            operation: 'second_pass_retrieval_pass2',
+            success: normalizedOutcome === 'applied'
+          };
+        }
+
+        if (stage === 'gate' && typeof reasonCode === 'string' && reasonCode.startsWith('rag_pass1_candidate_')) {
+          return {
+            operation: 'second_pass_gate_pass1',
+            success: normalizedOutcome === 'applied'
+          };
+        }
+
+        return null;
+      };
 
       for (const rawEvent of events) {
         if (!rawEvent || typeof rawEvent !== 'object') {
@@ -2908,17 +3238,20 @@ Think step by step, then respond with ONLY one of the formats above.`;
           fallbackReasonCode: rawEvent.reason || null,
           error: { code: rawEvent.sql_state || rawEvent.sqlState || null }
         });
-
-        await ragLogger.logStageEvent({
+        const resolvedReasonCode = rawEvent.reason_code || rawEvent.reason || mappedError.reasonCode;
+        const resolvedSqlState = rawEvent.sql_state || rawEvent.sqlState || mappedError.sqlState || null;
+        const resolvedOutcome = rawEvent.outcome || null;
+        const resolvedRecoverable = rawEvent.recoverable === false ? false : mappedError.recoverable;
+        const logResult = await ragLogger.logStageEvent({
           classification_id: classificationId,
           tmdb_id: metadata.tmdb_id || null,
           media_type: metadata.media_type || null,
           stage,
-          outcome: rawEvent.outcome || null,
-          reason_code: rawEvent.reason_code || rawEvent.reason || mappedError.reasonCode,
+          outcome: resolvedOutcome,
+          reason_code: resolvedReasonCode,
           fallback_action: rawEvent.fallback_action || rawEvent.fallbackAction || null,
-          recoverable: rawEvent.recoverable === false ? false : mappedError.recoverable,
-          sql_state: rawEvent.sql_state || rawEvent.sqlState || mappedError.sqlState || null,
+          recoverable: resolvedRecoverable,
+          sql_state: resolvedSqlState,
           correlation_id: correlationId,
           rollout_mode: rolloutMode,
           strategy,
@@ -2930,6 +3263,36 @@ Think step by step, then respond with ONLY one of the formats above.`;
             source_stage: sourceStage
           }
         });
+
+        // Keep rag_metrics aligned with persisted stage events by emitting
+        // retrieval-stage metrics only when the canonical stage event write occurred.
+        if (logResult?.logged) {
+          const metricSpec = resolveStageMetricSpec({
+            stage,
+            outcome: resolvedOutcome,
+            reasonCode: resolvedReasonCode
+          });
+          if (metricSpec) {
+            const durationMs = Number.isFinite(Number(rawEvent.duration_ms || rawEvent.durationMs))
+              ? Number(rawEvent.duration_ms || rawEvent.durationMs)
+              : 0;
+            await ragLogger.logOperation(metricSpec.operation, durationMs, metricSpec.success, {
+              itemsProcessed: 1,
+              metadata: {
+                stage,
+                outcome: resolvedOutcome,
+                reason_code: resolvedReasonCode,
+                recoverable: resolvedRecoverable,
+                sql_state: resolvedSqlState,
+                correlation_id: correlationId,
+                classification_id: classificationId,
+                rollout_mode: rolloutMode,
+                strategy,
+                trigger
+              }
+            });
+          }
+        }
       }
     } catch (error) {
       logger.warn('Failed to persist rag loop stage logs', {

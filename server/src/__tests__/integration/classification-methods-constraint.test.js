@@ -41,12 +41,6 @@ describe('Classification Methods Database Constraint', () => {
     db = require('../../config/database');
   });
 
-  afterAll(async () => {
-    if (db && db.pool) {
-      await db.pool.end();
-    }
-  });
-
   test('VALID_METHODS list matches database constraint', async () => {
     const result = await db.query(`
       SELECT pg_get_constraintdef(oid) as constraint_def

@@ -26,6 +26,9 @@ const contentTypeAnalyzer = require('../services/contentTypeAnalyzer');
 const policyQuestionBuilder = require('../services/policyQuestionBuilder');
 const ragRetriever = require('../services/ragRetriever');
 const ragLoopResilienceManager = require('../services/ragLoopResilienceManager');
+const ollamaService = require('../services/ollama');
+const providerLock = require('../services/providerLock');
+const ragLogger = require('../utils/ragLogger');
 
 // Mock dependencies
 jest.mock('../services/classificationPhaseService');
@@ -531,6 +534,13 @@ describe('PolicyEngine -> AI flow', () => {
       expect.any(Object),
       expect.objectContaining({ mode: 'classify' })
     );
+    expect(classificationPhaseService.updatePhase).toHaveBeenCalledWith(
+      'task-456',
+      'ai_analysis',
+      expect.objectContaining({
+        skippedPhases: ['signal_combine']
+      })
+    );
   });
 });
 
@@ -740,6 +750,10 @@ describe('Issue 275 rag loop orchestration', () => {
       voteCount: 2,
       avgSimilarity: 0.73
     });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   const buildRagConfig = (rolloutMode) => ({
@@ -963,6 +977,186 @@ describe('Issue 275 rag loop orchestration', () => {
     )).toBe(true);
   });
 
+  test('retries pass1 candidate retrieval on transient timeout and records specific retry reason', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+      ...buildRagConfig('apply'),
+      rag_loop_retry_backoff_ms: 1
+    });
+
+    let pass1Attempts = 0;
+    jest.spyOn(classificationService, 'withTimeout').mockImplementation(async (operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') => {
+      if (timeoutMessage === 'rag_pass1_candidate_timeout') {
+        pass1Attempts += 1;
+        if (pass1Attempts === 1) {
+          const timeoutError = new Error('rag_pass1_candidate_timeout');
+          timeoutError.name = 'TimeoutError';
+          throw timeoutError;
+        }
+        return [
+          { libraryId: 1, libraryName: 'Movies', similarity: 0.64 },
+          { libraryId: 2, libraryName: 'Family', similarity: 0.63 }
+        ];
+      }
+
+      if (
+        timeoutMessage === 'rag_pass2_hybrid_timeout' ||
+        timeoutMessage === 'rag_pass2_semantic_timeout' ||
+        timeoutMessage === 'rag_pass2_candidate_timeout'
+      ) {
+        return [];
+      }
+
+      if (timeoutMessage === 'policy_recheck_timeout') {
+        return {
+          action: 'prompt_select',
+          confidence: 54,
+          ranked: [{
+            library_id: 1,
+            library_name: 'Movies',
+            score: 54,
+            prompt_threshold: 60,
+            auto_classify_threshold: 85
+          }]
+        };
+      }
+
+      if (typeof operationOrPromise === 'function') {
+        return operationOrPromise(null);
+      }
+      return operationOrPromise;
+    });
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: null
+    });
+
+    expect(pass1Attempts).toBe(2);
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'gate' &&
+      event.outcome === 'retry' &&
+      event.reason_code === 'rag_pass1_candidate_timeout'
+    )).toBe(true);
+  });
+
+  test('retries pass2 retrieval and reports specific provider failure reason when retries are exhausted', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+      ...buildRagConfig('apply'),
+      rag_loop_retry_backoff_ms: 1
+    });
+
+    let pass2Attempts = 0;
+    jest.spyOn(classificationService, 'withTimeout').mockImplementation(async (operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') => {
+      if (timeoutMessage === 'rag_pass1_candidate_timeout') {
+        return [
+          { libraryId: 1, libraryName: 'Movies', similarity: 0.64 },
+          { libraryId: 2, libraryName: 'Family', similarity: 0.63 }
+        ];
+      }
+
+      if (timeoutMessage === 'rag_pass2_hybrid_timeout') {
+        pass2Attempts += 1;
+        throw new Error('Ollama provider unavailable');
+      }
+
+      if (timeoutMessage === 'rag_pass2_candidate_timeout') {
+        return [];
+      }
+
+      if (timeoutMessage === 'policy_recheck_timeout') {
+        return {
+          action: 'prompt_select',
+          confidence: 54,
+          ranked: [{
+            library_id: 1,
+            library_name: 'Movies',
+            score: 54,
+            prompt_threshold: 60,
+            auto_classify_threshold: 85
+          }]
+        };
+      }
+
+      if (typeof operationOrPromise === 'function') {
+        return operationOrPromise(null);
+      }
+      return operationOrPromise;
+    });
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: null
+    });
+
+    expect(pass2Attempts).toBe(2);
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'retrieval_pass2' &&
+      event.outcome === 'retry' &&
+      event.reason_code === 'rag_pass2_provider_failed'
+    )).toBe(true);
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'retrieval_pass2' &&
+      event.outcome === 'error' &&
+      event.reason_code === 'rag_pass2_provider_failed'
+    )).toBe(true);
+  });
+
   test('retries retryable sqlstate conflicts during policy recheck and records deterministic reason', async () => {
     jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
 
@@ -1171,6 +1365,109 @@ describe('Issue 275 rag loop orchestration', () => {
       event.sql_state === '42P01'
     )).toBe(true);
   });
+
+  test('writes rag_metrics parity events for persisted pass1 and pass2 stage errors', async () => {
+    const stageSpy = jest.spyOn(ragLogger, 'logStageEvent')
+      .mockResolvedValue({ logged: true, deduped: false });
+    const operationSpy = jest.spyOn(ragLogger, 'logOperation')
+      .mockResolvedValue(undefined);
+
+    await classificationService.persistRagLoopStageEvents({
+      classificationId: 6606,
+      metadata: {
+        tmdb_id: 1327819,
+        media_type: 'movie',
+        title: 'Hoppers'
+      },
+      result: {
+        ragLoopLogContext: {
+          correlationId: 'corr-phase3',
+          mode: 'apply',
+          strategy: 'hybrid',
+          trigger: 'policy_prompt_select',
+          events: [
+            {
+              stage: 'gate',
+              outcome: 'error',
+              reason_code: 'rag_pass1_candidate_timeout',
+              recoverable: true
+            },
+            {
+              stage: 'retrieval_pass2',
+              outcome: 'error',
+              reason_code: 'rag_pass2_provider_failed',
+              recoverable: true
+            }
+          ]
+        }
+      }
+    });
+
+    expect(stageSpy).toHaveBeenCalledTimes(2);
+    expect(operationSpy).toHaveBeenCalledTimes(2);
+    expect(operationSpy).toHaveBeenNthCalledWith(
+      1,
+      'second_pass_gate_pass1',
+      0,
+      false,
+      expect.objectContaining({
+        itemsProcessed: 1,
+        metadata: expect.objectContaining({
+          stage: 'gate',
+          reason_code: 'rag_pass1_candidate_timeout',
+          classification_id: 6606
+        })
+      })
+    );
+    expect(operationSpy).toHaveBeenNthCalledWith(
+      2,
+      'second_pass_retrieval_pass2',
+      0,
+      false,
+      expect.objectContaining({
+        itemsProcessed: 1,
+        metadata: expect.objectContaining({
+          stage: 'retrieval_pass2',
+          reason_code: 'rag_pass2_provider_failed',
+          classification_id: 6606
+        })
+      })
+    );
+  });
+
+  test('does not write rag_metrics parity rows when stage event write was deduped', async () => {
+    jest.spyOn(ragLogger, 'logStageEvent')
+      .mockResolvedValue({ logged: false, deduped: true });
+    const operationSpy = jest.spyOn(ragLogger, 'logOperation')
+      .mockResolvedValue(undefined);
+
+    await classificationService.persistRagLoopStageEvents({
+      classificationId: 42,
+      metadata: {
+        tmdb_id: 100,
+        media_type: 'movie',
+        title: 'Example'
+      },
+      result: {
+        ragLoopLogContext: {
+          correlationId: 'corr-deduped',
+          mode: 'apply',
+          strategy: 'hybrid',
+          trigger: 'policy_prompt_select',
+          events: [
+            {
+              stage: 'retrieval_pass2',
+              outcome: 'error',
+              reason_code: 'rag_pass2_timeout',
+              recoverable: true
+            }
+          ]
+        }
+      }
+    });
+
+    expect(operationSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe('AI availability fallback handling', () => {
@@ -1196,6 +1493,10 @@ describe('AI availability fallback handling', () => {
       }
       return { rows: [] };
     });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('queues retry when AI is busy/unavailable even if confidence is high', async () => {
@@ -1247,5 +1548,121 @@ describe('AI availability fallback handling', () => {
 
     expect(result.success).toBe(true);
     expect(result.method).toBe('signal_calculation');
+  });
+});
+
+describe('Phase 1 AI contract and stream guard', () => {
+  const libraries = [
+    { id: 1, name: 'Movies', media_type: 'movie' },
+    { id: 2, name: 'Family', media_type: 'movie' }
+  ];
+  const metadata = {
+    title: 'Hoppers',
+    tmdb_id: 1327819,
+    media_type: 'movie',
+    genres: ['Animation', 'Family']
+  };
+  const signalContext = {
+    confidence: 84,
+    suggestedLibrary: libraries[0],
+    breakdown: []
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    providerLock.config = { heartbeatInterval: 10 };
+    jest.spyOn(providerLock, 'acquireLock').mockResolvedValue(true);
+    jest.spyOn(providerLock, 'releaseLock').mockReturnValue(true);
+    jest.spyOn(providerLock, 'heartbeat').mockResolvedValue(true);
+
+    jest.spyOn(ollamaService, 'setGenerationStatus').mockImplementation(() => {});
+    jest.spyOn(ollamaService, 'updateTokenCount').mockImplementation(() => {});
+
+    db.query.mockImplementation((text) => {
+      const query = typeof text === 'string' ? text : '';
+      if (query.includes('FROM tavily_config')) {
+        return { rows: [] };
+      }
+      if (query.includes('FROM ai_provider_config WHERE id = 1')) {
+        return {
+          rows: [{
+            ollama_model: 'gemma3:12b',
+            temperature: 0.3,
+            ai_response_repair_enabled: true,
+            classification_disallow_partial_stream_response: true
+          }]
+        };
+      }
+      return { rows: [] };
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('repairs incident-style malformed prose into valid classify contract response', async () => {
+    const malformed = 'The media item is an animated family comedy with science fiction elements. The profile shows a strong presence of Animation and Family genres. The RAG data suggests similar movies have been classified';
+    jest.spyOn(ollamaService, 'generateWithProgress').mockResolvedValue(malformed);
+    jest.spyOn(ollamaService, 'generate').mockResolvedValue(
+      'CONFIDENT|2|85|Animated family comedy profile aligns with Family library.'
+    );
+
+    const result = await classificationService.aiClassify(metadata, libraries, signalContext, {
+      mode: 'classify'
+    });
+
+    expect(result.format).toBe('confident');
+    expect(result.library).toEqual(libraries[1]);
+    expect(result.parse_diagnostics).toEqual(expect.objectContaining({
+      contract_version: 'phase1_v1',
+      mode: 'classify',
+      attempt_count: 2,
+      repaired: true,
+      repair_attempted: true,
+      repair_succeeded: true
+    }));
+
+    expect(ollamaService.generate).toHaveBeenCalledTimes(1);
+  });
+
+  test('enforces completion-only stream parse options in classify mode', async () => {
+    jest.spyOn(ollamaService, 'generateWithProgress').mockResolvedValue(
+      'CONFIDENT|1|81|Signals align with Movies library.'
+    );
+    jest.spyOn(ollamaService, 'generate').mockResolvedValue('');
+
+    await classificationService.aiClassify(metadata, libraries, signalContext, {
+      mode: 'classify'
+    });
+
+    const promptArg = ollamaService.generateWithProgress.mock.calls[0][0];
+    expect(promptArg).toContain('NEVER use CONFIRM format');
+    expect(promptArg).toContain('use CONFIDENT format, not CLARIFY');
+
+    expect(ollamaService.generateWithProgress).toHaveBeenCalledWith(
+      expect.any(String),
+      'gemma3:12b',
+      0.3,
+      expect.any(Function),
+      null,
+      expect.objectContaining({
+        allowPartialOnAbort: false,
+        allowPartialOnStall: false,
+        requireDoneSignal: true
+      })
+    );
+  });
+
+  test('treats stream timeout/abort errors as transient availability failures', () => {
+    const timeoutError = new Error('ollama_generate stalled with partial response blocked');
+    timeoutError.code = 'ESTALL';
+
+    const abortedError = new Error('Generation aborted');
+    abortedError.code = 'ABORT_ERR';
+
+    expect(classificationService.isAiTransientAvailabilityError(timeoutError)).toBe(true);
+    expect(classificationService.isAiTransientAvailabilityError(abortedError)).toBe(true);
   });
 });

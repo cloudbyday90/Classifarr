@@ -12,13 +12,15 @@ jest.mock('../config/database', () => ({
     query: jest.fn()
 }));
 
+const mockModuleLogger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn()
+};
+
 jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
+    createLogger: () => mockModuleLogger
 }));
 
 const db = require('../config/database');
@@ -123,5 +125,20 @@ describe('ragLogger', () => {
         expect(db.query).toHaveBeenCalledTimes(2);
         expect(db.query.mock.calls[1][0]).toContain('(level, module, message, stack_trace, metadata, rag_operation, rag_context, duration_ms, recoverable)');
     });
-});
 
+    test('uses skipDbPersist option on mirror warn/error logger lines', async () => {
+        await ragLogger.logStageEvent({
+            stage: 'retrieval_pass2',
+            outcome: 'error',
+            reason_code: 'rag_pass2_failed',
+            fallback_action: 'pass2_skipped',
+            recoverable: true
+        });
+
+        expect(mockModuleLogger.warn).toHaveBeenCalledWith(
+            expect.stringContaining('Second-pass stage retrieval_pass2 error'),
+            expect.any(Object),
+            { skipDbPersist: true }
+        );
+    });
+});

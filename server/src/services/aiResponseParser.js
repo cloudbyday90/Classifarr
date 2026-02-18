@@ -62,15 +62,21 @@ class AIResponseParser {
     parse(response, context, options = {}) {
         const { libraries, metadata } = context;
         const mode = options.mode || (context.signalContext ? 'verify' : 'classify');
+        const logInvalid = options.logInvalid !== false;
+        const logMalformed = options.logMalformed !== false;
 
         if (!response || typeof response !== 'string') {
-            logger.warn('Invalid AI response', { response: String(response).substring(0, 100) });
-            return this.createFallbackResult(libraries, metadata);
+            if (logInvalid) {
+                logger.warn('Invalid AI response', { response: String(response).substring(0, 100) });
+            }
+            return this.createFallbackResult(libraries, metadata, {
+                parseFailureReason: 'invalid_response'
+            });
         }
 
         // Try each format parser in priority order
         const formatOrder = mode === 'verify'
-            ? ['confirm', 'clarify', 'confident']
+            ? ['confirm', 'clarify']
             : ['confident', 'clarify'];
         
         for (const formatName of formatOrder) {
@@ -89,10 +95,14 @@ class AIResponseParser {
         }
 
         // No format matched - return fallback
-        logger.warn('AI response malformed, no format matched', { 
-            response: response.substring(0, 200) 
+        if (logMalformed) {
+            logger.warn('AI response malformed, no format matched', { 
+                response: response.substring(0, 200) 
+            });
+        }
+        return this.createFallbackResult(libraries, metadata, {
+            parseFailureReason: 'no_format_matched'
         });
-        return this.createFallbackResult(libraries, metadata);
     }
 
     /**
@@ -295,13 +305,15 @@ class AIResponseParser {
      * @param {object} metadata - Media metadata
      * @returns {object} Fallback clarification result
      */
-    createFallbackResult(libraries, metadata) {
+    createFallbackResult(libraries, metadata, options = {}) {
+        const parseFailureReason = options.parseFailureReason || 'unknown_parse_failure';
         const defaultLibrary = this.getDefaultLibrary(libraries, metadata?.media_type);
 
         return {
             library: defaultLibrary,
             confidence: 50,
             reason: 'AI could not determine classification - manual review needed',
+            parse_failure_reason: parseFailureReason,
             needs_clarification: true,
             clarification: {
                 problem_summary: 'Unable to auto-classify',

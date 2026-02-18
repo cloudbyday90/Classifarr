@@ -41,14 +41,17 @@ cd server && npm run test:coverage:integration
 
 ## Coverage Thresholds
 
-**Current Baselines (v0.41.0-alpha):**
+**Server Jest thresholds (enforced in `server/jest.config.js`):**
 
-| Metric | Server | Client | Target |
-|--------|--------|--------|--------|
-| Lines | 80% | 75% | 80% |
-| Functions | 75% | 70% | 75% |
-| Branches | 70% | 65% | 70% |
-| Statements | 80% | 75% | 80% |
+| Metric | Threshold |
+|--------|-----------|
+| Lines | 40% |
+| Functions | 58% |
+| Branches | 70% |
+| Statements | 40% |
+
+These values are intentionally aligned to current reality so CI remains stable.
+Coverage improvement is enforced by the ratchet described below.
 
 ## CI Integration
 
@@ -62,6 +65,11 @@ Tests run automatically on:
 npm run test:ci
 ```
 
+This now runs:
+1. `npm run test:ci:server`
+2. `npm run test:ci:client`
+3. `npm run coverage:ratchet:check` (fails only on regression)
+
 **Test Guardrails:**
 ```bash
 node scripts/check-test-console-spies.js
@@ -71,6 +79,26 @@ node scripts/check-test-console-spies.js
 - HTML: `server/coverage/index.html`
 - LCOV: `server/coverage/lcov.info`
 - JSON Summary: `server/coverage/coverage-summary.json`
+
+## Coverage Ratchet (No Regression Guard)
+
+Baseline file:
+- `docs/testing/coverage-baseline.json`
+
+Commands:
+```bash
+# Verify coverage has not regressed vs baseline
+npm run coverage:ratchet:check
+
+# Intentionally refresh baseline after approved coverage changes
+npm run coverage:ratchet:update
+```
+
+If `coverage:ratchet:check` fails and the drop is expected, run
+`npm run coverage:ratchet:update` and commit the updated baseline.
+
+In GitHub Actions, the ratchet emits `::error` annotations and writes a
+markdown summary table to the workflow step summary.
 
 ## Viewing Coverage Locally
 

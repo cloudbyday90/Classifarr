@@ -18,6 +18,7 @@
 
 module.exports = {
     testEnvironment: 'node',
+    coverageProvider: 'v8',
     testMatch: ['**/__tests__/integration/**/*.test.js'],
     setupFilesAfterEnv: ['./src/__tests__/integration/setup.js'],
     verbose: true,

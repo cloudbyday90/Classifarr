@@ -201,4 +201,33 @@ describe('CommandCenter action modules', () => {
     expect(text).toContain('Decision')
     expect(text).toContain('Notification')
   })
+
+  it('renders skipped signal combine state when backend marks it skipped', async () => {
+    apiMock.getClassificationProgress.mockResolvedValueOnce({
+      data: [{
+        taskId: 12,
+        title: 'Policy Prompt Item',
+        currentPhase: 'decision',
+        phaseIndex: 7,
+        totalPhases: 8,
+        progress: 88,
+        phaseDuration: 210,
+        phases: [
+          { name: 'queued', label: 'Queued', status: 'complete', duration_ms: 12 },
+          { name: 'metadata_fetch', label: 'Metadata Fetch', status: 'complete', duration_ms: 80 },
+          { name: 'policy_eval', label: 'Policy Evaluation', status: 'complete', duration_ms: 140 },
+          { name: 'rag_analysis', label: 'RAG Analysis', status: 'complete', duration_ms: 95 },
+          { name: 'signal_combine', label: 'Signal Combination', status: 'skipped' },
+          { name: 'ai_analysis', label: 'AI Analysis', status: 'complete', duration_ms: 340 },
+          { name: 'decision', label: 'Decision', status: 'in_progress' },
+        ],
+      }],
+    })
+
+    const wrapper = await mountCommandCenter()
+
+    expect(wrapper.find('.stepper-skipped').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Signal Combination')
+    expect(wrapper.text()).toContain('skipped')
+  })
 })

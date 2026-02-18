@@ -82,6 +82,39 @@ describe('classificationPhaseService', () => {
 
             expect(result).toBeNull();
         });
+
+        it('should persist skipped phases when transition metadata includes skippedPhases', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    current_phase: 'rag_analysis',
+                    phase_started_at: new Date().toISOString(),
+                    phase_history: [],
+                    payload: JSON.stringify({ title: 'Skipped Phase Test' })
+                }]
+            });
+            db.query.mockResolvedValueOnce({ rows: [] });
+
+            const result = await classificationPhaseService.updatePhase(1, 'ai_analysis', {
+                skippedPhases: ['signal_combine'],
+                skippedPhaseMetadata: {
+                    signal_combine: { reason: 'policy_signal_path' }
+                }
+            });
+
+            const skippedEntry = result.history.find(entry => entry.phase === 'signal_combine');
+
+            expect(result).toMatchObject({
+                taskId: 1,
+                phase: 'ai_analysis',
+                phaseIndex: 6
+            });
+            expect(skippedEntry).toMatchObject({
+                phase: 'signal_combine',
+                status: 'skipped',
+                duration_ms: 0,
+                metadata: { reason: 'policy_signal_path' }
+            });
+        });
     });
 
     describe('getProgress', () => {
@@ -249,6 +282,26 @@ describe('classificationPhaseService', () => {
             expect(phases[5].status).toBe('pending'); // ai_analysis
             expect(phases[6].status).toBe('pending'); // decision
             expect(phases[7].status).toBe('pending'); // notification
+        });
+
+        it('should preserve skipped phase state from history', () => {
+            const mockTask = {
+                current_phase: 'decision',
+                phase_started_at: new Date().toISOString(),
+                phase_history: [
+                    { phase: 'queued', completed_at: new Date().toISOString() },
+                    { phase: 'metadata_fetch', completed_at: new Date().toISOString() },
+                    { phase: 'policy_eval', completed_at: new Date().toISOString() },
+                    { phase: 'rag_analysis', completed_at: new Date().toISOString() },
+                    { phase: 'signal_combine', status: 'skipped', completed_at: new Date().toISOString() },
+                    { phase: 'ai_analysis', completed_at: new Date().toISOString() }
+                ]
+            };
+
+            const phases = classificationPhaseService.buildPhaseList(mockTask);
+
+            expect(phases[4].status).toBe('skipped'); // signal_combine
+            expect(phases[6].status).toBe('in_progress'); // decision
         });
     });
 

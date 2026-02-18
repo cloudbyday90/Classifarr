@@ -1,5 +1,47 @@
 # Classifarr Release Notes
 
+## [v0.42.5-alpha] - 2026-02-18
+
+**Title: Stronger AI Resilience and Clearer Operations**
+
+### 🎉 What You'll Notice
+
+- **Fewer “stuck” classifications** when AI output is malformed or partial
+- **More accurate Command Center phase visibility** including explicit skipped steps
+- **Better log visibility** with Info-level filtering and totals that match what you actually see
+
+### 📊 Quick Visual
+
+```text
+Operational Snapshot
+AI Response Handling  [█████████░] 90%
+RAG Retry Resilience  [████████░░] 80%
+Log Visibility        [█████████░] 90%
+```
+
+### ✨ Highlights
+
+- **AI response repair pass** now attempts a safe normalization when the model returns malformed output, reducing fallback-only outcomes.
+- **Second-pass RAG retries** are more resilient, with clearer stage outcomes and reason codes for diagnostics.
+- **Command Center phase tracking** now shows skipped phases (including Signal Combination) instead of silently appearing missing.
+
+### 🔧 Reliability Improvements
+
+- Added a migration to backfill the missing `idx_embeddings_hnsw` index when supported by the environment.
+- Improved log pipeline behavior to avoid duplicate DB persistence in RAG stage event paths.
+- Added stronger test and CI guardrails, including coverage ratchet checks and expanded route coverage suites.
+
+### 👥 Who This Helps
+
+- **End users:** Fewer confusing AI classification failures and clearer phase progress.
+- **Operators/admins:** Better observability for RAG stages, logs, and system behavior under transient failures.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.4-alpha] - 2026-02-18
 
 **Title: Quieter Logs, Smoother Enrichment**

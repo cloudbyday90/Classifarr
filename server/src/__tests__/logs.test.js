@@ -146,6 +146,14 @@ describe('Logger', () => {
         expect(callArgs[1]).toHaveLength(7); // level, module, message, stack_trace, request_context, system_context, metadata
       });
     });
+
+    test('should skip database persistence when skipDbPersist is true', async () => {
+      await withConsoleSpy('error', { suppress: true }, async () => {
+        const result = await logger.error('No DB write error', { code: 500 }, { skipDbPersist: true });
+        expect(result).toBeNull();
+        expect(db.query).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('warn logging', () => {
@@ -160,6 +168,14 @@ describe('Logger', () => {
 
         expect(db.query).toHaveBeenCalled();
         expect(result).toBe(errorId);
+      });
+    });
+
+    test('should skip database persistence when skipDbPersist is true', async () => {
+      await withConsoleSpy('warn', { suppress: true }, async () => {
+        const result = await logger.warn('No DB write warning', { code: 400 }, { skipDbPersist: true });
+        expect(result).toBeNull();
+        expect(db.query).not.toHaveBeenCalled();
       });
     });
   });

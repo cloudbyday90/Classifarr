@@ -329,9 +329,9 @@ class RAGLogger {
                 correlationId: payload.correlationId
             };
             if (payload.level === 'ERROR') {
-                logger.error(payload.message, line);
+                logger.error(payload.message, line, { skipDbPersist: true });
             } else if (payload.level === 'WARN') {
-                logger.warn(payload.message, line);
+                logger.warn(payload.message, line, { skipDbPersist: true });
             } else {
                 logger.info(payload.message, line);
             }

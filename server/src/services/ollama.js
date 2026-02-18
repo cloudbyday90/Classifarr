@@ -323,31 +323,45 @@ class OllamaService {
    * @param {function} onProgress - Callback for progress updates (tokenCount, isComplete)
    * @returns {Promise<string>} - Complete response text
    */
-  async generateWithProgress(prompt, model = 'qwen3:14b', temperature = 0.30, onProgress = null, externalController = null) {
+  async generateWithProgress(
+    prompt,
+    model = 'qwen3:14b',
+    temperature = 0.30,
+    onProgress = null,
+    externalController = null,
+    options = {}
+  ) {
     const config = await this.getConfig();
+    const generateOptions = {
+      allowPartialOnStall: options.allowPartialOnStall !== false,
+      allowPartialOnAbort: options.allowPartialOnAbort !== false,
+      requireDoneSignal: options.requireDoneSignal === true
+    };
     
     if (externalController) {
-      return this._streamGenerate(config, prompt, model, temperature, onProgress, externalController);
+      return this._streamGenerate(config, prompt, model, temperature, onProgress, externalController, generateOptions);
     }
     
     const controller = new OperationController({ 
       mode: 'streaming',
       initialTimeout: 120000,
       heartbeatTimeout: 60000,
-      hardTimeout: 300000
+      hardTimeout: 300000,
+      allowPartialOnStall: generateOptions.allowPartialOnStall
     });
     
     return controller.runStreaming(
-      (signal, ctrl) => this._streamGenerate(config, prompt, model, temperature, onProgress, ctrl),
+      (signal, ctrl) => this._streamGenerate(config, prompt, model, temperature, onProgress, ctrl, generateOptions),
       'ollama_generate'
     );
   }
 
-  async _streamGenerate(config, prompt, model, temperature, onProgress, controller) {
+  async _streamGenerate(config, prompt, model, temperature, onProgress, controller, options = {}) {
     return new Promise((resolve, reject) => {
       let fullResponse = '';
       let tokenCount = 0;
       let resolved = false;
+      let sawDoneSignal = false;
 
       axios.post(`${config.baseUrl}/api/generate`, {
         model,
@@ -374,6 +388,7 @@ class OllamaService {
                 }
               }
               if (json.done && !resolved) {
+                sawDoneSignal = true;
                 resolved = true;
                 if (onProgress) {
                   onProgress(tokenCount, true);
@@ -396,9 +411,15 @@ class OllamaService {
         response.data.on('end', () => {
           if (!resolved) {
             resolved = true;
-            if (fullResponse) {
+            if (fullResponse && (!options.requireDoneSignal || sawDoneSignal)) {
               if (onProgress) onProgress(tokenCount, true);
               resolve(fullResponse);
+            } else if (fullResponse && options.requireDoneSignal && !sawDoneSignal) {
+              const incompleteError = new Error('Generation ended before completion signal');
+              incompleteError.name = 'IncompleteStreamError';
+              incompleteError.code = 'EINCOMPLETE';
+              incompleteError.partialResponse = fullResponse;
+              reject(incompleteError);
             } else {
               reject(new Error('Empty response from model'));
             }
@@ -408,10 +429,20 @@ class OllamaService {
         if (!resolved) {
           resolved = true;
           if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.code === 'ABORT_ERR') {
-            if (controller.partialResult) {
+            if (controller.partialResult && options.allowPartialOnAbort) {
               resolve(controller.partialResult);
             } else {
-              reject(new Error('Generation aborted'));
+              const abortError = new Error(
+                controller.partialResult
+                  ? 'Generation aborted with partial response blocked'
+                  : 'Generation aborted'
+              );
+              abortError.name = 'AbortError';
+              abortError.code = 'ABORT_ERR';
+              if (controller.partialResult) {
+                abortError.partialResponse = controller.partialResult;
+              }
+              reject(abortError);
             }
           } else {
             reject(new Error(`Failed to generate: ${err.message}`));

@@ -78,12 +78,15 @@ jobs:
       - name: Run server tests
         run: |
           cd server
-          npm test
+          npm run test:ci
 
       - name: Run client tests
         run: |
           cd client
-          npm test
+          npm run test:ci
+
+      - name: Coverage ratchet check
+        run: npm run coverage:ratchet:check
 
       - name: Build client
         run: |

@@ -16,20 +16,20 @@
     <!-- Statistics Dashboard -->
     <div v-if="stats" class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-        <div class="text-gray-400 text-sm">Total Errors</div>
-        <div class="text-2xl font-bold text-red-400">{{ stats.totals.total_errors }}</div>
+        <div class="text-gray-400 text-sm">Total Logs</div>
+        <div class="text-2xl font-bold text-red-400">{{ stats.totals.total_logs ?? stats.totals.total_errors }}</div>
       </div>
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <div class="text-gray-400 text-sm">Unresolved</div>
-        <div class="text-2xl font-bold text-orange-400">{{ stats.totals.unresolved_errors }}</div>
+        <div class="text-2xl font-bold text-orange-400">{{ stats.totals.unresolved_logs ?? stats.totals.unresolved_errors }}</div>
       </div>
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <div class="text-gray-400 text-sm">Last 24h</div>
-        <div class="text-2xl font-bold text-yellow-400">{{ stats.trends.last24h.errors_24h }}</div>
+        <div class="text-2xl font-bold text-yellow-400">{{ stats.trends.last24h.logs_24h ?? stats.trends.last24h.errors_24h }}</div>
       </div>
       <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
         <div class="text-gray-400 text-sm">Last 7d</div>
-        <div class="text-2xl font-bold text-blue-400">{{ stats.trends.last7d.errors_7d }}</div>
+        <div class="text-2xl font-bold text-blue-400">{{ stats.trends.last7d.logs_7d ?? stats.trends.last7d.errors_7d }}</div>
       </div>
     </div>
 
@@ -38,12 +38,13 @@
       <div class="flex-1 min-w-[200px]">
         <select
           v-model="filters.level"
-          @change="loadLogs"
+          @change="resetAndLoadLogs"
           class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
         >
           <option value="">All Levels</option>
           <option value="ERROR">Error</option>
           <option value="WARN">Warning</option>
+          <option value="INFO">Info</option>
         </select>
       </div>
       <div class="flex-1 min-w-[200px]">
@@ -57,7 +58,7 @@
       <div class="flex-1 min-w-[200px]">
         <select
           v-model="filters.resolved"
-          @change="loadLogs"
+          @change="resetAndLoadLogs"
           class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
         >
           <option value="">All Status</option>
@@ -115,7 +116,7 @@
               <span
                 :class="[
                   'px-2 py-1 rounded-sm text-xs font-medium',
-                  log.level === 'ERROR' ? 'bg-red-900/30 text-red-400' : 'bg-yellow-900/30 text-yellow-400'
+                  getLevelClass(log.level)
                 ]"
               >
                 {{ log.level }}
@@ -207,7 +208,7 @@
                   <span
                     :class="[
                       'px-2 py-1 rounded-sm text-xs',
-                      selectedLog.level === 'ERROR' ? 'bg-red-900/30 text-red-400' : 'bg-yellow-900/30 text-yellow-400'
+                      getLevelClass(selectedLog.level)
                     ]"
                   >
                     {{ selectedLog.level }}
@@ -357,6 +358,11 @@ function debouncedLoadLogs() {
   }, 500)
 }
 
+function resetAndLoadLogs() {
+  pagination.value.page = 1
+  loadLogs()
+}
+
 function changePage(page) {
   pagination.value.page = page
   loadLogs()
@@ -504,5 +510,12 @@ async function cleanupLogs() {
 function formatDate(dateString) {
   const date = new Date(dateString)
   return date.toLocaleString()
+}
+
+function getLevelClass(level) {
+  if (level === 'ERROR') return 'bg-red-900/30 text-red-400'
+  if (level === 'WARN') return 'bg-yellow-900/30 text-yellow-400'
+  if (level === 'INFO') return 'bg-blue-900/30 text-blue-400'
+  return 'bg-gray-700 text-gray-300'
 }
 </script>

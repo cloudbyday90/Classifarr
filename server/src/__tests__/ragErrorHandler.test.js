@@ -73,5 +73,78 @@ describe('ragErrorHandler', () => {
             RAG_ERROR_TYPES.SECOND_PASS_RETRIEVAL_PASS2
         );
     });
-});
 
+    test('maps pass1 candidate timeout to a specific retrieval reason code', () => {
+        const error = new Error('rag_pass1_candidate_timeout');
+        error.name = 'TimeoutError';
+
+        const mapped = mapSecondPassError({
+            stage: 'gate',
+            fallbackReasonCode: 'rag_pass1_candidate_failed',
+            error
+        });
+
+        expect(mapped.reasonCode).toBe(RAG_SECOND_PASS_REASON_CODES.RAG_PASS1_CANDIDATE_TIMEOUT);
+        expect(mapped.recoverable).toBe(true);
+    });
+
+    test('maps pass2 retrieval provider errors to specific reason code', () => {
+        const error = new Error('Ollama provider unavailable');
+
+        const mapped = mapSecondPassError({
+            stage: 'retrieval_pass2',
+            fallbackReasonCode: 'rag_pass2_failed',
+            error
+        });
+
+        expect(mapped.reasonCode).toBe(RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_PROVIDER_FAILED);
+        expect(mapped.recoverable).toBe(true);
+    });
+
+    test('maps pass2 retrieval db errors to specific reason code', () => {
+        const error = new Error('database query failed');
+        error.code = '57014';
+
+        const mapped = mapSecondPassError({
+            stage: 'retrieval_pass2',
+            fallbackReasonCode: 'rag_pass2_failed',
+            error
+        });
+
+        expect(mapped.reasonCode).toBe(RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_DB_FAILED);
+        expect(mapped.recoverable).toBe(true);
+        expect(mapped.sqlState).toBe('57014');
+    });
+
+    test('maps pass2 retrieval embedding and abort errors to specific reason codes', () => {
+        const embedError = new Error('embedding generation failed');
+        const embedMapped = mapSecondPassError({
+            stage: 'retrieval_pass2',
+            fallbackReasonCode: 'rag_pass2_failed',
+            error: embedError
+        });
+
+        const abortError = new Error('request aborted');
+        abortError.name = 'AbortError';
+        const abortMapped = mapSecondPassError({
+            stage: 'retrieval_pass2',
+            fallbackReasonCode: 'rag_pass2_failed',
+            error: abortError
+        });
+
+        expect(embedMapped.reasonCode).toBe(RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_EMBED_FAILED);
+        expect(abortMapped.reasonCode).toBe(RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_ABORTED);
+    });
+
+    test('preserves explicit reason code instead of overriding with generic mapped fallback', () => {
+        const error = new Error('any error');
+        const mapped = mapSecondPassError({
+            stage: 'retrieval_pass2',
+            reasonCode: 'rag_pass2_provider_failed',
+            fallbackReasonCode: 'rag_pass2_failed',
+            error
+        });
+
+        expect(mapped.reasonCode).toBe('rag_pass2_provider_failed');
+    });
+});

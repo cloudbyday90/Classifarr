@@ -47,6 +47,7 @@ class OperationController {
         this.initialTimeout = options.initialTimeout || DEFAULT_INITIAL_TIMEOUT_MS;
         this.heartbeatTimeout = options.heartbeatTimeout || DEFAULT_HEARTBEAT_TIMEOUT_MS;
         this.hardTimeout = options.hardTimeout || DEFAULT_HARD_TIMEOUT_MS;
+        this.allowPartialOnStall = options.allowPartialOnStall !== false;
         
         this.status = OperationController.Status.IDLE;
         this.lastActivity = Date.now();
@@ -247,7 +248,7 @@ class OperationController {
             if (timeSinceLastActivity > currentTimeout) {
                 const waitedSeconds = Math.round(timeSinceLastActivity / 1000);
                 
-                if (this.partialResult !== null) {
+                if (this.partialResult !== null && this.allowPartialOnStall) {
                     this.status = OperationController.Status.COMPLETED;
                     this._cleanup();
                     
@@ -264,10 +265,15 @@ class OperationController {
                     this.status = OperationController.Status.TIMEOUT;
                     
                     const error = new Error(
-                        `${this._operationName} stalled - no activity for ${waitedSeconds} seconds`
+                        this.partialResult !== null && !this.allowPartialOnStall
+                            ? `${this._operationName} stalled with partial response blocked after ${waitedSeconds} seconds`
+                            : `${this._operationName} stalled - no activity for ${waitedSeconds} seconds`
                     );
                     error.name = 'TimeoutError';
                     error.code = 'ESTALL';
+                    if (this.partialResult !== null) {
+                        error.hasPartialResult = true;
+                    }
                     
                     this.abortController.abort(error.message);
                     this._cleanup();

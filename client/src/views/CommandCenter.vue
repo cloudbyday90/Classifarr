@@ -111,7 +111,8 @@
                     :class="{
                       'stepper-complete': row.status === 'complete',
                       'stepper-active': row.status === 'in_progress',
-                      'stepper-pending': row.status === 'pending'
+                      'stepper-pending': row.status === 'pending',
+                      'stepper-skipped': row.status === 'skipped'
                     }"
                   >
                     <div class="stepper-marker">
@@ -119,9 +120,17 @@
                         <path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/>
                       </svg>
                       <span v-else-if="row.status === 'in_progress'" class="stepper-pulse"></span>
+                      <span v-else-if="row.status === 'skipped'" class="stepper-skip-marker">-</span>
                       <span v-else class="stepper-circle"></span>
                     </div>
-                    <div v-if="index < phaseRows(primaryActiveTask).length - 1" class="stepper-connector" :class="{ 'stepper-connector-active': row.status === 'complete' }"></div>
+                    <div
+                      v-if="index < phaseRows(primaryActiveTask).length - 1"
+                      class="stepper-connector"
+                      :class="{
+                        'stepper-connector-active': row.status === 'complete',
+                        'stepper-connector-skipped': row.status === 'skipped'
+                      }"
+                    ></div>
                     <div class="stepper-content">
                       <span class="stepper-label">{{ row.label }}</span>
                       <span v-if="row.timing" class="stepper-timing">{{ row.timing }}</span>
@@ -963,11 +972,28 @@ function phaseRows(task) {
       }
     }
 
+    const marker = status === 'complete'
+      ? '✓'
+      : status === 'in_progress'
+        ? '●'
+        : status === 'skipped'
+          ? '-'
+          : '○'
+
+    const timing = status === 'in_progress'
+      ? 'running...'
+      : (status === 'complete' && Number.isFinite(Number(source.duration_ms))
+        ? formatDurationMs(source.duration_ms)
+        : (status === 'skipped' ? 'skipped' : ''))
+
     return {
       name: phaseName,
       label: source.label || phaseLabel(phaseName),
       status,
-      timing: status === 'in_progress' ? 'running...' : (status === 'complete' && Number.isFinite(Number(source.duration_ms)) ? formatDurationMs(source.duration_ms) : ''),
+      timing,
+      marker,
+      statusClass: `mobile-stepper-${status}`,
+      textClass: `mobile-stepper-label-${status}`,
     }
   })
 }
@@ -1564,6 +1590,11 @@ onBeforeUnmount(() => {
   background: #374151;
 }
 
+.stepper-skipped .stepper-marker {
+  background: #78350f;
+  color: #fcd34d;
+}
+
 .stepper-icon {
   width: 14px;
   height: 14px;
@@ -1589,6 +1620,12 @@ onBeforeUnmount(() => {
   background: #6b7280;
 }
 
+.stepper-skip-marker {
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .stepper-connector {
   position: absolute;
   left: 24px;
@@ -1600,6 +1637,10 @@ onBeforeUnmount(() => {
 
 .stepper-connector-active {
   background: #22c55e;
+}
+
+.stepper-connector-skipped {
+  background: #92400e;
 }
 
 .stepper-content {
@@ -1636,6 +1677,10 @@ onBeforeUnmount(() => {
 
 .stepper-active .stepper-label {
   color: #60a5fa;
+}
+
+.stepper-skipped .stepper-label {
+  color: #fbbf24;
 }
 
 .stepper-timing {
@@ -1991,8 +2036,40 @@ onBeforeUnmount(() => {
   font-size: 0.75rem;
 }
 
+.mobile-stepper-complete {
+  color: #22c55e;
+}
+
+.mobile-stepper-in_progress {
+  color: #60a5fa;
+}
+
+.mobile-stepper-pending {
+  color: #6b7280;
+}
+
+.mobile-stepper-skipped {
+  color: #f59e0b;
+}
+
 .mobile-stepper-label {
   font-size: 0.8125rem;
+}
+
+.mobile-stepper-label-complete {
+  color: #9ca3af;
+}
+
+.mobile-stepper-label-in_progress {
+  color: #60a5fa;
+}
+
+.mobile-stepper-label-pending {
+  color: #6b7280;
+}
+
+.mobile-stepper-label-skipped {
+  color: #fbbf24;
 }
 
 .mobile-stepper-timing {

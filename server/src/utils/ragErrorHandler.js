@@ -48,8 +48,19 @@ const RAG_SECOND_PASS_REASON_CODES = Object.freeze({
     DB_SCHEMA_MISMATCH: 'db_schema_mismatch',
     DB_UNKNOWN_FAILURE: 'db_unknown_failure',
     GATE_NOT_MET: 'gate_not_met',
+    RAG_PASS1_CANDIDATE_FAILED: 'rag_pass1_candidate_failed',
+    RAG_PASS1_CANDIDATE_TIMEOUT: 'rag_pass1_candidate_timeout',
+    RAG_PASS1_CANDIDATE_PROVIDER_FAILED: 'rag_pass1_candidate_provider_failed',
+    RAG_PASS1_CANDIDATE_DB_FAILED: 'rag_pass1_candidate_db_failed',
+    RAG_PASS1_CANDIDATE_EMBED_FAILED: 'rag_pass1_candidate_embed_failed',
+    RAG_PASS1_CANDIDATE_ABORTED: 'rag_pass1_candidate_aborted',
     METADATA_ENRICHMENT_FAILED: 'metadata_enrichment_failed',
     RAG_PASS2_FAILED: 'rag_pass2_failed',
+    RAG_PASS2_TIMEOUT: 'rag_pass2_timeout',
+    RAG_PASS2_PROVIDER_FAILED: 'rag_pass2_provider_failed',
+    RAG_PASS2_DB_FAILED: 'rag_pass2_db_failed',
+    RAG_PASS2_EMBED_FAILED: 'rag_pass2_embed_failed',
+    RAG_PASS2_ABORTED: 'rag_pass2_aborted',
     POLICY_RECHECK_FAILED: 'policy_recheck_failed',
     AI_RERUN_FAILED: 'ai_rerun_failed',
     TRACE_BUILD_FAILED: 'trace_build_failed',
@@ -142,6 +153,149 @@ function mapSqlStateReason(sqlState) {
     };
 }
 
+const TIMEOUT_ERROR_CODES = new Set(['ETIMEDOUT', 'ECONNABORTED', 'ERR_TIMEOUT']);
+const ABORT_ERROR_CODES = new Set(['ABORT_ERR', 'ERR_CANCELED']);
+const PROVIDER_HINTS = ['provider', 'ollama', 'openai', 'gemini', 'anthropic'];
+const EMBEDDING_HINTS = ['embedding', 'vector', 'embed'];
+const DATABASE_HINTS = ['database', 'postgres', 'sql', 'query failed'];
+
+function getNormalizedErrorCode(error) {
+    if (typeof error?.code !== 'string') {
+        return '';
+    }
+    return error.code.trim().toUpperCase();
+}
+
+function getNormalizedMessage(error) {
+    if (typeof error?.message !== 'string') {
+        return '';
+    }
+    return error.message.trim().toLowerCase();
+}
+
+function isTimeoutLikeError(error) {
+    const code = getNormalizedErrorCode(error);
+    const name = typeof error?.name === 'string' ? error.name.trim() : '';
+    const message = getNormalizedMessage(error);
+
+    return (
+        name === 'TimeoutError' ||
+        TIMEOUT_ERROR_CODES.has(code) ||
+        message.includes('timeout') ||
+        message.includes('timed out')
+    );
+}
+
+function isAbortLikeError(error) {
+    const code = getNormalizedErrorCode(error);
+    const name = typeof error?.name === 'string' ? error.name.trim() : '';
+    const message = getNormalizedMessage(error);
+
+    return (
+        name === 'AbortError' ||
+        ABORT_ERROR_CODES.has(code) ||
+        message.includes('aborted') ||
+        message.includes('cancelled') ||
+        message.includes('canceled')
+    );
+}
+
+function includesAny(message, values) {
+    return values.some((value) => message.includes(value));
+}
+
+function isProviderLikeError(error) {
+    const message = getNormalizedMessage(error);
+    if (!message) {
+        return false;
+    }
+    return includesAny(message, PROVIDER_HINTS);
+}
+
+function isEmbeddingLikeError(error) {
+    const message = getNormalizedMessage(error);
+    if (!message) {
+        return false;
+    }
+    if (includesAny(message, EMBEDDING_HINTS)) {
+        return true;
+    }
+    return categorizeError(error) === RAG_ERROR_TYPES.EMBEDDING_GENERATION;
+}
+
+function isDatabaseLikeError(error, sqlState = null) {
+    if (sqlState) {
+        return true;
+    }
+
+    const message = getNormalizedMessage(error);
+    if (!message) {
+        return false;
+    }
+    if (includesAny(message, DATABASE_HINTS)) {
+        return true;
+    }
+    return categorizeError(error) === RAG_ERROR_TYPES.DATABASE_ERROR;
+}
+
+function hasPass1ReasonContext(reasonCode = null, fallbackReasonCode = null) {
+    const reason = normalizeReasonCode(reasonCode);
+    const fallback = normalizeReasonCode(fallbackReasonCode);
+    return (
+        reason?.startsWith('rag_pass1_candidate_') ||
+        fallback?.startsWith('rag_pass1_candidate_')
+    );
+}
+
+function hasPass2ReasonContext(reasonCode = null, fallbackReasonCode = null) {
+    const reason = normalizeReasonCode(reasonCode);
+    const fallback = normalizeReasonCode(fallbackReasonCode);
+    return (
+        reason?.startsWith('rag_pass2_') ||
+        fallback?.startsWith('rag_pass2_')
+    );
+}
+
+function mapRetrievalReasonCode({
+    pass,
+    error,
+    sqlState = null
+} = {}) {
+    if (pass !== 'pass1' && pass !== 'pass2') {
+        return null;
+    }
+
+    if (isTimeoutLikeError(error)) {
+        return pass === 'pass1'
+            ? RAG_SECOND_PASS_REASON_CODES.RAG_PASS1_CANDIDATE_TIMEOUT
+            : RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_TIMEOUT;
+    }
+    if (isAbortLikeError(error)) {
+        return pass === 'pass1'
+            ? RAG_SECOND_PASS_REASON_CODES.RAG_PASS1_CANDIDATE_ABORTED
+            : RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_ABORTED;
+    }
+    if (isDatabaseLikeError(error, sqlState)) {
+        return pass === 'pass1'
+            ? RAG_SECOND_PASS_REASON_CODES.RAG_PASS1_CANDIDATE_DB_FAILED
+            : RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_DB_FAILED;
+    }
+    if (isEmbeddingLikeError(error)) {
+        return pass === 'pass1'
+            ? RAG_SECOND_PASS_REASON_CODES.RAG_PASS1_CANDIDATE_EMBED_FAILED
+            : RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_EMBED_FAILED;
+    }
+    if (isProviderLikeError(error)) {
+        return pass === 'pass1'
+            ? RAG_SECOND_PASS_REASON_CODES.RAG_PASS1_CANDIDATE_PROVIDER_FAILED
+            : RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_PROVIDER_FAILED;
+    }
+
+    return pass === 'pass1'
+        ? RAG_SECOND_PASS_REASON_CODES.RAG_PASS1_CANDIDATE_FAILED
+        : RAG_SECOND_PASS_REASON_CODES.RAG_PASS2_FAILED;
+}
+
 function mapSecondPassError({
     stage = null,
     reasonCode = null,
@@ -158,9 +312,18 @@ function mapSecondPassError({
         ? SECOND_PASS_STAGE_DEFAULT_REASON[normalizedStage]
         : RAG_SECOND_PASS_REASON_CODES.UNKNOWN_STAGE_FAILURE;
 
+    const pass1Context = normalizedStage === RAG_SECOND_PASS_STAGES.GATE &&
+        hasPass1ReasonContext(normalizedReason, normalizedFallbackReason);
+    const pass2Context = normalizedStage === RAG_SECOND_PASS_STAGES.RETRIEVAL_PASS2 &&
+        hasPass2ReasonContext(normalizedReason, normalizedFallbackReason);
+    const retrievalReasonCode = pass1Context
+        ? mapRetrievalReasonCode({ pass: 'pass1', error, sqlState })
+        : (pass2Context ? mapRetrievalReasonCode({ pass: 'pass2', error, sqlState }) : null);
+
     const mappedReasonCode =
-        sqlStateReason.reasonCode ||
         normalizedReason ||
+        retrievalReasonCode ||
+        sqlStateReason.reasonCode ||
         normalizedFallbackReason ||
         defaultReason;
 

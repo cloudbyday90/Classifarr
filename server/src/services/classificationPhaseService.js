@@ -88,6 +88,13 @@ class ClassificationPhaseService {
                 }
             }
 
+            const skippedPhases = this.resolveSkippedPhases({
+                currentPhase: currentTask.current_phase,
+                targetPhase: phase,
+                requested: metadata.skippedPhases,
+                history
+            });
+
             // Complete previous phase if exists
             if (currentTask.current_phase && currentTask.phase_started_at) {
                 const prevDuration = Date.now() - new Date(currentTask.phase_started_at).getTime();
@@ -97,6 +104,18 @@ class ClassificationPhaseService {
                     completed_at: now,
                     duration_ms: prevDuration,
                     metadata: metadata.prevPhaseMetadata || {}
+                });
+            }
+
+            // Persist explicit skipped phases between current and target phases
+            for (const skippedPhase of skippedPhases) {
+                history.push({
+                    phase: skippedPhase,
+                    status: 'skipped',
+                    started_at: now,
+                    completed_at: now,
+                    duration_ms: 0,
+                    metadata: metadata.skippedPhaseMetadata?.[skippedPhase] || metadata.skipMetadata || {}
                 });
             }
 
@@ -335,10 +354,11 @@ class ClassificationPhaseService {
             const historyEntry = history.find(h => h.phase === phase);
 
             if (historyEntry) {
+                const status = historyEntry.status === 'skipped' ? 'skipped' : 'complete';
                 return {
                     name: phase,
-                    status: 'complete',
                     ...historyEntry,
+                    status,
                     ...PHASE_METADATA[phase]
                 };
             } else if (index === currentPhaseIndex) {
@@ -356,6 +376,41 @@ class ClassificationPhaseService {
                 };
             }
         });
+    }
+
+    /**
+     * Resolve skipped phases for a transition while preserving phase order.
+     * @param {Object} input
+     * @returns {Array<string>} Ordered valid skipped phases
+     */
+    resolveSkippedPhases(input = {}) {
+        const requested = Array.isArray(input.requested) ? input.requested : [];
+        if (requested.length === 0) {
+            return [];
+        }
+
+        const history = Array.isArray(input.history) ? input.history : [];
+        const currentPhase = input.currentPhase || null;
+        const targetPhase = input.targetPhase || null;
+        const currentPhaseIndex = PHASES.indexOf(currentPhase);
+        const targetPhaseIndex = PHASES.indexOf(targetPhase);
+        const historicalPhases = new Set(history.map((entry) => entry.phase));
+        const boundedForwardTransition = currentPhaseIndex >= 0
+            && targetPhaseIndex >= 0
+            && targetPhaseIndex > currentPhaseIndex;
+
+        return [...new Set(requested)]
+            .filter((phase) => this.isValidPhase(phase))
+            .filter((phase) => phase !== currentPhase && phase !== targetPhase)
+            .filter((phase) => !historicalPhases.has(phase))
+            .filter((phase) => {
+                if (!boundedForwardTransition) {
+                    return true;
+                }
+                const phaseIndex = PHASES.indexOf(phase);
+                return phaseIndex > currentPhaseIndex && phaseIndex < targetPhaseIndex;
+            })
+            .sort((a, b) => PHASES.indexOf(a) - PHASES.indexOf(b));
     }
 
     /**

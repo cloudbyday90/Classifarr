@@ -289,6 +289,20 @@ describe('AIResponseParser', () => {
             expect(result.library).toEqual(mockLibraries[1]);
         });
 
+        it('should reject CONFIDENT format in verify mode', () => {
+            const response = 'CONFIDENT|1|85|Should not be accepted in verify mode';
+            const context = {
+                libraries: mockLibraries,
+                signalContext: mockSignalContext,
+                metadata: mockMetadata
+            };
+
+            const result = aiResponseParser.parse(response, context, { mode: 'verify' });
+
+            expect(result.format).toBe('fallback');
+            expect(result.parse_failure_reason).toBe('no_format_matched');
+        });
+
         it('should fall back to CLARIFY when others are not present', () => {
             const response = 'CLARIFY|Problem|Why|Question|Opt1|Opt2';
             const context = {
@@ -312,6 +326,7 @@ describe('AIResponseParser', () => {
             const result = aiResponseParser.parse(response, context);
 
             expect(result.format).toBe('fallback');
+            expect(result.parse_failure_reason).toBe('no_format_matched');
             expect(result.needs_clarification).toBe(true);
             expect(result.confidence).toBe(50);
             expect(result.clarification.problem_summary).toBe('Unable to auto-classify');
@@ -325,6 +340,7 @@ describe('AIResponseParser', () => {
             });
 
             expect(result.format).toBe('fallback');
+            expect(result.parse_failure_reason).toBe('invalid_response');
             expect(result.needs_clarification).toBe(true);
             expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Invalid AI response'), expect.any(Object));
         });
@@ -336,8 +352,27 @@ describe('AIResponseParser', () => {
             });
 
             expect(result.format).toBe('fallback');
+            expect(result.parse_failure_reason).toBe('invalid_response');
             expect(result.needs_clarification).toBe(true);
             expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Invalid AI response'), expect.any(Object));
+        });
+
+        it('should support suppressing malformed logs via options', () => {
+            const response = 'This is not a valid format';
+            const context = {
+                libraries: mockLibraries,
+                metadata: mockMetadata
+            };
+
+            const result = aiResponseParser.parse(response, context, {
+                mode: 'classify',
+                logMalformed: false,
+                logInvalid: false
+            });
+
+            expect(result.format).toBe('fallback');
+            expect(result.parse_failure_reason).toBe('no_format_matched');
+            expect(mockLogger.warn).not.toHaveBeenCalled();
         });
     });
 

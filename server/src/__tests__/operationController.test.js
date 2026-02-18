@@ -50,7 +50,8 @@ describe('OperationController', () => {
                 timeout: 5000,
                 initialTimeout: 60000,
                 heartbeatTimeout: 30000,
-                hardTimeout: 120000
+                hardTimeout: 120000,
+                allowPartialOnStall: false
             });
             
             expect(controller.mode).toBe('streaming');
@@ -58,6 +59,7 @@ describe('OperationController', () => {
             expect(controller.initialTimeout).toBe(60000);
             expect(controller.heartbeatTimeout).toBe(30000);
             expect(controller.hardTimeout).toBe(120000);
+            expect(controller.allowPartialOnStall).toBe(false);
         });
 
         test('provides access to AbortSignal', () => {
@@ -270,6 +272,31 @@ describe('OperationController', () => {
             
             expect(result).toBe('partial data here');
             expect(controller.status).toBe(OperationController.Status.COMPLETED);
+        });
+
+        test('rejects on stall when partial results are disallowed', async () => {
+            const controller = new OperationController({
+                mode: 'streaming',
+                heartbeatTimeout: 50,
+                hardTimeout: 5000,
+                allowPartialOnStall: false
+            });
+
+            let caughtError = null;
+            controller.runStreaming(async (signal, ctrl) => {
+                ctrl.recordActivity('partial data here');
+                await new Promise(resolve => setTimeout(resolve, 10000));
+            }, 'stall-with-partial-blocked').catch(err => {
+                caughtError = err;
+            });
+
+            await jest.runAllTimersAsync();
+
+            expect(caughtError).not.toBeNull();
+            expect(caughtError.code).toBe('ESTALL');
+            expect(caughtError.message).toContain('partial response blocked');
+            expect(caughtError.hasPartialResult).toBe(true);
+            expect(controller.status).toBe(OperationController.Status.TIMEOUT);
         });
 
         test('uses initial timeout before first activity', async () => {
