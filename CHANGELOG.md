@@ -21,6 +21,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.5c-alpha] - 2026-02-18
+
+### Added
+
+- **Migration to restore Tavily quota failures to deferred pending**
+  - Added `database/migrations/20260218_231500_restore_tavily_quota_rows_to_pending.sql` to move legacy Tavily quota-related `failed/skipped/exhausted pending` rows back to a deferred pending state.
+- **Second-pass no-op suppression coverage**
+  - Added `ragLogger` unit coverage for non-actionable stage-event suppression behavior.
+
+### Changed
+
+- **Enrichment retry pipeline separation**
+  - `EnrichmentRetryService.triggerProcessing()` now evaluates OMDb and Tavily independently so OMDb quota pause no longer blocks Tavily retry processing.
+- **Tavily monthly deferral lifecycle**
+  - Quota-limited Tavily rows are normalized to `status='pending'`, `reason='tavily_monthly_quota_deferred'`, and `attempts=0`.
+  - Deferred rows are excluded from execution during the same month and become runnable after month rollover.
+- **Queue upsert behavior for deferred rows**
+  - `queueForRetry` now reopens deferred Tavily rows as pending and resets attempts when the deferred reason is present.
+- **RAG stage-event logging policy**
+  - Suppressed persistence of non-actionable second-pass “no-op” outcomes/reasons (for example: `policy_not_upgraded`, `no_material_improvement`, `auto_default`, `rag_pass1_candidate_failed`, `rag_pass2_failed`) to reduce log noise.
+
+### Fixed
+
+- **Tavily retries blocked by OMDb quota path** - Tavily processing now continues even when OMDb daily quota is unavailable.
+- **Deferred Tavily rows ending in terminal states** - legacy and active quota-related rows are normalized back into deferred pending state.
+- **Second-pass informational log flood** - no-op second-pass events no longer pollute persisted error log views.
+
+---
+
 ## [v0.42.5b-alpha] - 2026-02-18
 
 ### Added

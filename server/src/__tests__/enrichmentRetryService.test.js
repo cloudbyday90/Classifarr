@@ -38,6 +38,7 @@ describe('EnrichmentRetryService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockDb.query.mockReset();
+        mockDb.query.mockResolvedValue({ rowCount: 0, rows: [] });
         mockTavilyService.search.mockReset();
         mockOmdbService.getByIMDBId.mockReset();
         mockOmdbService.getByTitle.mockReset();
@@ -200,6 +201,8 @@ describe('EnrichmentRetryService', () => {
                 used: 1000,
                 limit: 1000
             });
+            const getStatsSpy = jest.spyOn(service, 'getStats')
+                .mockResolvedValueOnce({ omdb: { pending: 10 }, tavily: { pending: 0 } });
 
             await service.triggerProcessing();
 
@@ -207,6 +210,29 @@ describe('EnrichmentRetryService', () => {
                 'Enrichment retry queue: OMDb daily limit reached, pausing until next day',
                 expect.objectContaining({ used: 1000, limit: 1000 })
             );
+            getStatsSpy.mockRestore();
+        });
+
+        it('should still process Tavily when OMDb quota is unavailable', async () => {
+            mockOmdbService.hasRemainingQuota = jest.fn().mockResolvedValue({
+                available: false,
+                used: 1000,
+                limit: 1000
+            });
+            const getStatsSpy = jest.spyOn(service, 'getStats')
+                .mockResolvedValueOnce({ omdb: { pending: 4 }, tavily: { pending: 12 } });
+            const processSpy = jest.spyOn(service, 'processRetryQueue')
+                .mockResolvedValue({ processed: 12, success: 8, failed: 4 });
+
+            await service.triggerProcessing();
+
+            expect(processSpy).toHaveBeenCalledWith(50, 'tavily');
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Enrichment retry queue: Processing up to 50 Tavily items (12 pending)'
+            );
+
+            processSpy.mockRestore();
+            getStatsSpy.mockRestore();
         });
 
         it('should skip if no pending items', async () => {
@@ -228,27 +254,22 @@ describe('EnrichmentRetryService', () => {
 
         it('should process OMDb items when pending and quota available', async () => {
             mockOmdbService.hasRemainingQuota = jest.fn()
-                .mockResolvedValueOnce({ available: true, used: 50, limit: 1000 })
-                .mockResolvedValueOnce({ available: true, used: 55, limit: 1000 });
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({
-                    rows: [
-                        { enrichment_type: 'omdb', status: 'pending', count: '5' }
-                    ]
-                })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rows: [] });
-
-            mockOmdbService.getByIMDBId.mockResolvedValue({ Title: 'Test' });
+                .mockResolvedValue({ available: true, used: 50, limit: 1000 });
+            const getStatsSpy = jest.spyOn(service, 'getStats')
+                .mockResolvedValueOnce({ omdb: { pending: 5 } })
+                .mockResolvedValueOnce({ omdb: { pending: 0 } });
+            const processSpy = jest.spyOn(service, 'processRetryQueue')
+                .mockResolvedValue({ processed: 5, success: 5, failed: 0 });
 
             await service.triggerProcessing();
 
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Enrichment retry queue: Processing 5 OMDb items (5 pending, 950 quota remaining)'
             );
+            expect(processSpy).toHaveBeenCalledWith(5, 'omdb');
+
+            processSpy.mockRestore();
+            getStatsSpy.mockRestore();
         });
 
         it('should NOT process Tavily items (monthly credits)', async () => {
@@ -274,35 +295,62 @@ describe('EnrichmentRetryService', () => {
         });
 
         it('should limit processing to remaining quota', async () => {
-            mockOmdbService.hasRemainingQuota = jest.fn()
-                .mockResolvedValueOnce({ available: true, used: 995, limit: 1000 })
-                .mockResolvedValueOnce({ available: true, used: 998, limit: 1000 });
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({
-                    rows: [
-                        { enrichment_type: 'omdb', status: 'pending', count: '50' }
-                    ]
-                })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rows: [] });
-
-            mockOmdbService.getByIMDBId.mockResolvedValue({ Title: 'Test' });
+            mockOmdbService.hasRemainingQuota = jest.fn().mockResolvedValue({ available: true, used: 995, limit: 1000 });
+            const getStatsSpy = jest.spyOn(service, 'getStats')
+                .mockResolvedValueOnce({ omdb: { pending: 50 } })
+                .mockResolvedValueOnce({ omdb: { pending: 45 } });
+            const processSpy = jest.spyOn(service, 'processRetryQueue')
+                .mockResolvedValue({ processed: 5, success: 5, failed: 0 });
 
             await service.triggerProcessing();
 
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Enrichment retry queue: Processing 5 OMDb items (50 pending, 5 quota remaining)'
             );
+            expect(processSpy).toHaveBeenCalledWith(5, 'omdb');
+
+            processSpy.mockRestore();
+            getStatsSpy.mockRestore();
         });
     });
 
     describe('processRetryQueue', () => {
+        const configureRetryDbMock = ({
+            pendingRows = [],
+            tavilyConfigured = true,
+            autoFailed = 0
+        } = {}) => {
+            mockDb.query.mockImplementation(async (sql) => {
+                const text = String(sql);
+
+                if (text.includes('attempts >= max_attempts')) {
+                    return { rowCount: autoFailed, rows: [] };
+                }
+
+                if (text.includes('SELECT api_key, is_active FROM tavily_config')) {
+                    return tavilyConfigured
+                        ? { rows: [{ api_key: 'test-key', is_active: true }] }
+                        : { rows: [] };
+                }
+
+                if (text.includes('SELECT api_key FROM tavily_config WHERE is_active = true LIMIT 1')) {
+                    return { rows: [{ api_key: 'test-key' }] };
+                }
+
+                if (text.includes('FROM enrichment_retry_queue erq')) {
+                    return { rows: pendingRows };
+                }
+
+                if (text.includes('SELECT') && text.includes('FROM enrichment_retry_queue')) {
+                    return { rows: [] };
+                }
+
+                return { rowCount: 1, rows: [] };
+            });
+        };
+
         it('should skip processing if Tavily is not configured', async () => {
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [] });
+            configureRetryDbMock({ tavilyConfigured: false });
 
             const result = await service.processRetryQueue(50, 'tavily');
 
@@ -317,11 +365,7 @@ describe('EnrichmentRetryService', () => {
         });
 
         it('should return early if no pending items', async () => {
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [{ api_key: 'test-key', is_active: true }] })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [] });
+            configureRetryDbMock({ tavilyConfigured: true, pendingRows: [] });
 
             const result = await service.processRetryQueue(50, 'tavily');
 
@@ -347,14 +391,7 @@ describe('EnrichmentRetryService', () => {
                 media_type: 'movie'
             };
 
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [{ api_key: 'test-key', is_active: true }] })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [mockItem] })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rows: [{ api_key: 'test-key' }] })
-                .mockResolvedValueOnce({ rowCount: 1 });
+            configureRetryDbMock({ tavilyConfigured: true, pendingRows: [mockItem] });
 
             mockTavilyService.search.mockResolvedValue({
                 results: [{
@@ -385,14 +422,7 @@ describe('EnrichmentRetryService', () => {
             const quotaError = new Error('Tavily search failed: Request failed with status code 432');
             quotaError.status = 432;
 
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [{ api_key: 'test-key', is_active: true }] })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [mockItem] })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rows: [{ api_key: 'test-key' }] })
-                .mockResolvedValueOnce({ rowCount: 1 });
+            configureRetryDbMock({ tavilyConfigured: true, pendingRows: [mockItem] });
 
             mockTavilyService.search.mockRejectedValue(quotaError);
 
@@ -402,7 +432,7 @@ describe('EnrichmentRetryService', () => {
             expect(result.success).toBe(0);
             expect(result.failed).toBe(0);
             expect(mockDb.query).toHaveBeenCalledWith(
-                expect.stringContaining("SET status = 'skipped'"),
+                expect.stringContaining("SET status = 'pending'"),
                 [11, 'tavily_monthly_quota_deferred', 'Tavily monthly quota reached; deferred until next month reset']
             );
         });
@@ -420,11 +450,7 @@ describe('EnrichmentRetryService', () => {
                 media_type: 'movie'
             };
 
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [mockItem] })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 1 });
+            configureRetryDbMock({ pendingRows: [mockItem] });
 
             mockOmdbService.getByIMDBId.mockResolvedValue({
                 Title: 'Test Movie 2',
@@ -452,11 +478,7 @@ describe('EnrichmentRetryService', () => {
                 media_type: 'movie'
             };
 
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [mockItem] })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 1 });
+            configureRetryDbMock({ pendingRows: [mockItem] });
 
             mockOmdbService.getByIMDBId.mockResolvedValue(null);
             mockOmdbService.getByTitle.mockResolvedValue({
@@ -485,11 +507,7 @@ describe('EnrichmentRetryService', () => {
                 media_type: 'movie'
             };
 
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [mockItem] })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 1 });
+            configureRetryDbMock({ pendingRows: [mockItem] });
 
             mockOmdbService.getByTitle.mockResolvedValue({
                 Title: 'Test Movie 4',
@@ -517,10 +535,7 @@ describe('EnrichmentRetryService', () => {
                 media_type: 'movie'
             };
 
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [mockItem] })
-                .mockResolvedValueOnce({ rowCount: 1 });
+            configureRetryDbMock({ pendingRows: [mockItem] });
 
             mockOmdbService.getByIMDBId.mockRejectedValue(new Error('OMDb API error'));
 
@@ -530,9 +545,7 @@ describe('EnrichmentRetryService', () => {
         });
 
         it('should auto-fail exhausted pending retries before selecting work', async () => {
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 3 })
-                .mockResolvedValueOnce({ rows: [] });
+            configureRetryDbMock({ pendingRows: [], autoFailed: 3 });
 
             const result = await service.processRetryQueue(50, 'omdb');
 
@@ -543,10 +556,9 @@ describe('EnrichmentRetryService', () => {
                 autoFailed: 3,
                 skipped: false
             });
-            expect(mockDb.query).toHaveBeenNthCalledWith(
-                1,
+            expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('attempts >= max_attempts'),
-                ['omdb']
+                ['tavily_monthly_quota_deferred', 'omdb']
             );
         });
 
@@ -564,17 +576,12 @@ describe('EnrichmentRetryService', () => {
 
             const enrichSpy = jest.spyOn(service, 'enrichWithOmdb').mockRejectedValue(new Error('boom'));
 
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rows: [mockItem] })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 1 });
+            configureRetryDbMock({ pendingRows: [mockItem] });
 
             const result = await service.processRetryQueue(50, 'omdb');
 
             expect(result.failed).toBe(1);
-            expect(mockDb.query).toHaveBeenNthCalledWith(
-                4,
+            expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining("CASE WHEN attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END"),
                 [55, 'boom']
             );

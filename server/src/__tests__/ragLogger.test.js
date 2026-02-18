@@ -141,4 +141,16 @@ describe('ragLogger', () => {
             { skipDbPersist: true }
         );
     });
+
+    test('suppresses non-actionable second-pass no-op events', async () => {
+        const result = await ragLogger.logStageEvent({
+            stage: 'policy_recheck',
+            outcome: 'evaluated',
+            reason_code: 'policy_not_upgraded',
+            recoverable: true
+        });
+
+        expect(result).toEqual({ logged: false, deduped: false, suppressed: true });
+        expect(db.query).not.toHaveBeenCalled();
+    });
 });

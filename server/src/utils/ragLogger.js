@@ -42,6 +42,24 @@ const SECOND_PASS_SKIP_BY_DESIGN_REASONS = new Set([
     'manual_confirmation_required',
     'machine_only_blocked'
 ]);
+const SECOND_PASS_NOOP_SUPPRESS_REASONS = new Set([
+    'policy_prompt_select',
+    'auto_default',
+    'low_signal',
+    'metadata_complete',
+    'policy_not_upgraded',
+    'no_material_improvement',
+    'material_improvement_not_met',
+    'rag_pass1_candidate_failed',
+    'rag_pass2_failed'
+]);
+const SECOND_PASS_NOOP_SUPPRESS_OUTCOMES = new Set([
+    'run',
+    'strategy_selected',
+    'skipped',
+    'evaluated',
+    'retry'
+]);
 
 /**
  * RAG Logger Utility
@@ -169,6 +187,25 @@ class RAGLogger {
         }
 
         return 'INFO';
+    }
+
+    shouldSuppressStageEvent(payload = {}) {
+        const outcome = typeof payload?.metadata?.outcome === 'string'
+            ? payload.metadata.outcome.trim().toLowerCase()
+            : '';
+        const reasonCode = normalizeReasonCode(
+            payload?.reasonCode || payload?.metadata?.reason_code
+        );
+
+        if (payload.level === 'ERROR' || payload.recoverable === false) {
+            return false;
+        }
+
+        if (!SECOND_PASS_NOOP_SUPPRESS_REASONS.has(reasonCode)) {
+            return false;
+        }
+
+        return SECOND_PASS_NOOP_SUPPRESS_OUTCOMES.has(outcome);
     }
 
     buildStageLogContract(event = {}) {
@@ -305,6 +342,15 @@ class RAGLogger {
     async logStageEvent(event = {}) {
         try {
             const payload = this.buildStageLogContract(event);
+            if (this.shouldSuppressStageEvent(payload)) {
+                logger.debug('Suppressed non-actionable second-pass stage event', {
+                    stage: payload.errorStage,
+                    outcome: payload.metadata?.outcome || null,
+                    reasonCode: payload.reasonCode,
+                    classificationId: payload.classificationId
+                });
+                return { logged: false, deduped: false, suppressed: true };
+            }
             const fingerprint = payload.metadata?.dedupe_fingerprint || this.buildFingerprint({
                 module: payload.module,
                 stage: payload.errorStage,

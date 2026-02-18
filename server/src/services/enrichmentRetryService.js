@@ -36,15 +36,21 @@ class EnrichmentRetryService {
         ON CONFLICT (media_item_id, enrichment_type) DO UPDATE SET
           status = CASE 
             WHEN enrichment_retry_queue.status = 'completed' THEN 'completed'
+            WHEN enrichment_retry_queue.status = 'failed' AND enrichment_retry_queue.reason = $5 THEN 'pending'
             WHEN enrichment_retry_queue.status = 'failed' AND enrichment_retry_queue.attempts >= enrichment_retry_queue.max_attempts THEN 'failed'
+            WHEN enrichment_retry_queue.status = 'skipped' AND enrichment_retry_queue.reason = $5 THEN 'pending'
             WHEN enrichment_retry_queue.status = 'skipped' THEN 'skipped'
             ELSE 'pending'
           END,
           reason = CASE
-            WHEN enrichment_retry_queue.status = 'skipped' AND enrichment_retry_queue.reason = $5 THEN enrichment_retry_queue.reason
+            WHEN enrichment_retry_queue.reason = $5 THEN enrichment_retry_queue.reason
             ELSE EXCLUDED.reason
           END,
           priority = LEAST(enrichment_retry_queue.priority, EXCLUDED.priority),
+          attempts = CASE
+            WHEN enrichment_retry_queue.reason = $5 THEN 0
+            ELSE enrichment_retry_queue.attempts
+          END,
           completed_at = CASE
             WHEN enrichment_retry_queue.status IN ('completed', 'failed', 'skipped') THEN enrichment_retry_queue.completed_at
             ELSE NULL
@@ -103,43 +109,52 @@ class EnrichmentRetryService {
 
         this.processingInProgress = true;
         try {
-            const omdbService = require('./omdb');
-            const quota = await omdbService.hasRemainingQuota();
+            const initialStats = await this.getStats();
+            const pendingOmdb = initialStats.omdb?.pending || 0;
+            const pendingTavily = initialStats.tavily?.pending || 0;
 
-            if (!quota.available) {
-                logger.info('Enrichment retry queue: OMDb daily limit reached, pausing until next day', {
-                    used: quota.used,
-                    limit: quota.limit,
-                    reason: quota.reason
-                });
-                return;
-            }
+            if (pendingOmdb > 0) {
+                const omdbService = require('./omdb');
+                const quota = await omdbService.hasRemainingQuota();
 
-            const stats = await this.getStats();
-            const pendingOmdb = stats.omdb?.pending || 0;
+                if (!quota.available) {
+                    logger.info('Enrichment retry queue: OMDb daily limit reached, pausing until next day', {
+                        used: quota.used,
+                        limit: quota.limit,
+                        reason: quota.reason
+                    });
+                } else {
+                    const remainingQuota = quota.limit - quota.used;
+                    const toProcess = Math.min(pendingOmdb, remainingQuota);
 
-            if (pendingOmdb === 0) {
+                    logger.info(`Enrichment retry queue: Processing ${toProcess} OMDb items (${pendingOmdb} pending, ${remainingQuota} quota remaining)`);
+
+                    const omdbResult = await this.processRetryQueue(toProcess, 'omdb');
+                    logger.info('Enrichment retry queue: OMDb processed', {
+                        processed: omdbResult.processed,
+                        success: omdbResult.success,
+                        failed: omdbResult.failed
+                    });
+
+                    const updatedStats = await this.getStats();
+                    const remainingOmdb = updatedStats.omdb?.pending || 0;
+                    if (remainingOmdb > 0) {
+                        logger.info(`Enrichment retry queue: ${remainingOmdb} OMDb items remaining, will retry in 6 hours or when quota resets`);
+                    }
+                }
+            } else {
                 logger.debug('Enrichment retry queue: No pending OMDb items');
-                return;
             }
 
-            const remainingQuota = quota.limit - quota.used;
-            const toProcess = Math.min(pendingOmdb, remainingQuota);
-
-            logger.info(`Enrichment retry queue: Processing ${toProcess} OMDb items (${pendingOmdb} pending, ${remainingQuota} quota remaining)`);
-
-            const omdbResult = await this.processRetryQueue(toProcess, 'omdb');
-            logger.info('Enrichment retry queue: OMDb processed', {
-                processed: omdbResult.processed,
-                success: omdbResult.success,
-                failed: omdbResult.failed
-            });
-
-            const newStats = await this.getStats();
-            const remainingOmdb = newStats.omdb?.pending || 0;
-
-            if (remainingOmdb > 0) {
-                logger.info(`Enrichment retry queue: ${remainingOmdb} OMDb items remaining, will retry in 6 hours or when quota resets`);
+            if (pendingTavily > 0) {
+                const tavilyBatchLimit = 50;
+                logger.info(`Enrichment retry queue: Processing up to ${tavilyBatchLimit} Tavily items (${pendingTavily} pending)`);
+                const tavilyResult = await this.processRetryQueue(tavilyBatchLimit, 'tavily');
+                logger.info('Enrichment retry queue: Tavily processed', {
+                    processed: tavilyResult.processed,
+                    success: tavilyResult.success,
+                    failed: tavilyResult.failed
+                });
             }
         } catch (error) {
             logger.error('Error processing enrichment retry queue', {
@@ -158,8 +173,11 @@ class EnrichmentRetryService {
      */
     async failExhaustedPendingRetries(enrichmentType = null) {
         const hasTypeFilter = typeof enrichmentType === 'string' && enrichmentType.trim().length > 0;
-        const params = hasTypeFilter ? [enrichmentType] : [];
-        const typeClause = hasTypeFilter ? 'AND enrichment_type = $1' : '';
+        const params = [TAVILY_MONTHLY_DEFERRED_REASON];
+        const typeClause = hasTypeFilter ? 'AND enrichment_type = $2' : '';
+        if (hasTypeFilter) {
+            params.push(enrichmentType);
+        }
 
         const result = await db.query(`
       UPDATE enrichment_retry_queue
@@ -168,6 +186,7 @@ class EnrichmentRetryService {
           error_message = COALESCE(error_message, 'Max attempts reached while pending')
       WHERE status = 'pending'
         AND attempts >= max_attempts
+        AND NOT (enrichment_type = 'tavily' AND reason = $1)
         ${typeClause}
     `, params);
 
@@ -182,25 +201,38 @@ class EnrichmentRetryService {
     }
 
     /**
-     * Reactivate Tavily retries that were deferred due to monthly quota exhaustion.
-     * These become runnable again once a new calendar month starts.
-     * @returns {number} number of rows reactivated
+     * Convert legacy Tavily monthly-quota rows into pending deferred rows so
+     * they are never terminally failed before quota reset.
+     * @returns {number} number of rows normalized
      */
-    async reactivateDeferredTavilyRetries() {
+    async normalizeTavilyMonthlyDeferredRows() {
         const result = await db.query(`
       UPDATE enrichment_retry_queue
       SET status = 'pending',
+          reason = $1,
+          attempts = 0,
           completed_at = NULL,
-          error_message = NULL
+          error_message = $2
       WHERE enrichment_type = 'tavily'
-        AND status = 'skipped'
-        AND reason = $1
-        AND date_trunc('month', COALESCE(last_attempt_at, created_at)) < date_trunc('month', NOW())
-    `, [TAVILY_MONTHLY_DEFERRED_REASON]);
+        AND (
+          (status IN ('failed', 'skipped') AND (
+            reason = $1
+            OR error_message ILIKE '%status code 432%'
+            OR error_message ILIKE '%monthly quota%'
+            OR error_message ILIKE '%quota reached%'
+          ))
+          OR (status = 'pending' AND attempts >= max_attempts AND (
+            reason = $1
+            OR error_message ILIKE '%status code 432%'
+            OR error_message ILIKE '%monthly quota%'
+            OR error_message ILIKE '%quota reached%'
+          ))
+        )
+    `, [TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE]);
 
         if (result.rowCount > 0) {
-            logger.info('Reactivated Tavily retries after monthly quota reset', {
-                reactivated: result.rowCount
+            logger.info('Normalized Tavily monthly quota rows back to pending', {
+                normalized: result.rowCount
             });
         }
 
@@ -211,6 +243,7 @@ class EnrichmentRetryService {
      * Get retry queue statistics
      */
     async getStats() {
+        await this.normalizeTavilyMonthlyDeferredRows();
         await this.failExhaustedPendingRetries();
 
         const result = await db.query(`
@@ -250,6 +283,7 @@ class EnrichmentRetryService {
      * @param {string} enrichmentType - Type to process ('tavily', 'omdb', etc.)
      */
     async processRetryQueue(limit = 50, enrichmentType = 'tavily') {
+        await this.normalizeTavilyMonthlyDeferredRows();
         const autoFailed = await this.failExhaustedPendingRetries(enrichmentType);
 
         if (enrichmentType === 'tavily') {
@@ -262,8 +296,7 @@ class EnrichmentRetryService {
                 return { processed: 0, success: 0, failed: 0, autoFailed, skipped: true, reason: 'Tavily not configured' };
             }
 
-            // Monthly quota deferrals become eligible again at the first run in a new month.
-            await this.reactivateDeferredTavilyRetries();
+            await this.normalizeTavilyMonthlyDeferredRows();
         }
 
         const processLimit = limit;
@@ -285,9 +318,14 @@ class EnrichmentRetryService {
       WHERE erq.status = 'pending' 
         AND erq.enrichment_type = $1
         AND erq.attempts < erq.max_attempts
+        AND (
+          erq.enrichment_type <> 'tavily'
+          OR erq.reason IS DISTINCT FROM $3
+          OR date_trunc('month', COALESCE(erq.last_attempt_at, erq.created_at)) < date_trunc('month', NOW())
+        )
       ORDER BY erq.priority ASC, erq.created_at ASC
       LIMIT $2
-    `, [enrichmentType, processLimit]);
+    `, [enrichmentType, processLimit, TAVILY_MONTHLY_DEFERRED_REASON]);
 
         if (pendingResult.rows.length === 0) {
             logger.info('No pending items in retry queue', { enrichmentType });
@@ -340,18 +378,22 @@ class EnrichmentRetryService {
                 } else if (result.deferUntilMonthlyReset) {
                     await db.query(
                         `UPDATE enrichment_retry_queue
-             SET status = 'skipped',
+             SET status = 'pending',
                  reason = $2,
-                 completed_at = NOW(),
+                 attempts = 0,
+                 completed_at = NULL,
                  error_message = $3
              WHERE id = $1`,
                         [item.queue_id, TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE]
                     );
-                    logger.info('Deferred Tavily retry item until monthly quota reset', {
+                    logger.info('Deferred Tavily retry item in pending until monthly quota reset', {
                         queueId: item.queue_id,
                         title: item.title
                     });
                 } else {
+                    const nextAttempts = (item.attempts || 0) + 1;
+                    const exhausted = nextAttempts >= (item.max_attempts || 0);
+
                     // Increment attempts
                     await db.query(
                         `UPDATE enrichment_retry_queue 
@@ -361,6 +403,24 @@ class EnrichmentRetryService {
              WHERE id = $1`,
                         [item.queue_id, result.error || 'Unknown error']
                     );
+
+                    if (exhausted) {
+                        logger.error('Enrichment retry exhausted without required metadata', {
+                            queueId: item.queue_id,
+                            mediaItemId: item.media_item_id,
+                            enrichmentType,
+                            error: result.error || 'Unknown error'
+                        });
+                    } else {
+                        logger.warn('Enrichment retry failed; item remains pending', {
+                            queueId: item.queue_id,
+                            mediaItemId: item.media_item_id,
+                            enrichmentType,
+                            attempts: nextAttempts,
+                            maxAttempts: item.max_attempts,
+                            error: result.error || 'Unknown error'
+                        });
+                    }
                     failed++;
                 }
 

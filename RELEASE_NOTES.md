@@ -1,5 +1,47 @@
 # Classifarr Release Notes
 
+## [v0.42.5c-alpha] - 2026-02-18
+
+**Title: Smarter Tavily Retries and Cleaner Second-Pass Logs**
+
+### 🎉 What You'll Notice
+
+- **Tavily retries now run independently** even when OMDb is quota-limited.
+- **Monthly quota Tavily items stay safely pending** until the next quota reset.
+- **Second-pass “no action needed” events are quieter** and no longer clutter Error Logs.
+
+### 📊 Quick Visual
+
+```text
+Operational Snapshot
+Tavily Retry Continuity [██████████] 100%
+Deferred Queue Safety   [██████████] 100%
+Log Noise Reduction     [█████████░] 90%
+```
+
+### ✨ Highlights
+
+- The enrichment scheduler now keeps Tavily processing active even when OMDb is paused for daily quota.
+- Tavily monthly-quota rows are normalized into deferred pending state instead of ending as failed/skipped dead ends.
+- Non-actionable second-pass outcomes (like “no material improvement”) are suppressed from persisted Error Logs.
+
+### 🔧 Reliability Improvements
+
+- Added a migration to restore legacy Tavily quota-related rows back to pending deferred state.
+- Added explicit “retry exhausted” error logging when enrichment cannot be completed after allowed attempts.
+- Expanded regression tests for Tavily deferred behavior and second-pass log suppression.
+
+### 👥 Who This Helps
+
+- **End users:** Fewer confusing stalled retries and cleaner operational behavior around monthly quota resets.
+- **Operators/admins:** Less noise in logs and clearer signal when something actually needs intervention.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.5b-alpha] - 2026-02-18
 
 **Title: Smarter Tavily Retry Handling with Less Alert Noise**
