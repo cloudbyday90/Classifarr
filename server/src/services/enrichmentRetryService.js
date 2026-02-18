@@ -334,7 +334,12 @@ class EnrichmentRetryService {
 
             return { success: false, error: 'Could not extract IMDb data' };
         } catch (error) {
-            logger.error('Tavily enrichment failed', { error: error.message, item: item.title });
+            const isQuotaError = error.status === 429 || error.status === 432;
+            if (isQuotaError) {
+                logger.warn('Tavily quota/rate-limit reached during enrichment retry', { status: error.status, item: item.title });
+            } else {
+                logger.error('Tavily enrichment failed', { error: error.message, item: item.title });
+            }
             return { success: false, error: error.message };
         }
     }

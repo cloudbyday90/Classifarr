@@ -23,6 +23,7 @@ const VALID_METHODS = [
   'policy_recheck',
   'ai_verified',
   'ai_analysis',
+  'ai_rerun',
   'signal_calculation',
   'fallback',
   'queued_for_retry',

@@ -30,21 +30,6 @@ jest.mock('../utils/logger', () => ({
     }))
 }));
 
-// Mock circuit breaker
-const mockCircuitBreaker = {
-    execute: jest.fn(async (fn) => {
-        // Execute the function and let any errors propagate
-        return await fn();
-    }),
-    getStatus: jest.fn(() => ({
-        state: 'CLOSED',
-        failureCount: 0
-    })),
-    reset: jest.fn(),
-    shouldTripBreaker: jest.fn(() => true)
-};
-
-jest.mock('../utils/omdbCircuitBreaker', () => mockCircuitBreaker);
 
 jest.mock('../utils/retryUtils', () => ({
     calculateBackoff: jest.fn((attempt) => 1000 * Math.pow(2, attempt))
@@ -306,28 +291,6 @@ describe('OMDbService', () => {
         });
     });
 
-    describe('Circuit Breaker Logging', () => {
-        it('should not emit warn from OMDbService for HALF_OPEN throttling', async () => {
-            const breakerError = new Error('OMDb circuit breaker is HALF_OPEN and maximum concurrent attempts have been reached');
-            breakerError.code = 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED';
-            breakerError.nextAttempt = null;
-
-            mockCircuitBreaker.execute.mockRejectedValueOnce(breakerError);
-
-            await expect(
-                omdbService.getByTitle('The Office (AU)', 2023, 'series')
-            ).rejects.toThrow('HALF_OPEN');
-
-            expect(mockLogger.warn).not.toHaveBeenCalled();
-            expect(mockLogger.debug).toHaveBeenCalledWith(
-                'OMDb circuit breaker blocked request',
-                expect.objectContaining({
-                    title: 'The Office (AU)',
-                    code: 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED'
-                })
-            );
-        });
-    });
 
     describe('hasRemainingQuota', () => {
         it('should return available when under limit', async () => {

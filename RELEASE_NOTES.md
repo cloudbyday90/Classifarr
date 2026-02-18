@@ -1,5 +1,49 @@
 # Classifarr Release Notes
 
+## [v0.42.4-alpha] - 2026-02-18
+
+**Title: Quieter Logs, Smoother Enrichment**
+
+### 🎉 What You'll Notice
+
+- **OMDb enrichment is more reliable** — transient network hiccups no longer block all subsequent enrichment requests
+- **Cleaner logs** — no more "OMDb circuit breaker is OPEN" messages flooding your logs
+- **No more stale blocks** — enrichment resumes immediately after a network issue clears, without waiting for a 30-second cooldown
+
+### 📊 Quick Visual
+
+```text
+Before:                              After:
+┌─────────────────────────┐          ┌─────────────────────────┐
+│ 3 network errors        │          │ 3 network errors        │
+│ → Circuit OPEN          │    →     │ → Retry with backoff    │
+│ → All enrichment blocked│          │ → Resume immediately    │
+│ → 30s cooldown          │          │ → No cooldown needed    │
+└─────────────────────────┘          └─────────────────────────┘
+```
+
+### ✨ Highlights
+
+- **Circuit breaker removed** — the OMDb circuit breaker was too aggressive for an optional enrichment service, blocking valid requests after just 3 transient failures
+- **Existing protections are sufficient** — 15-second timeouts, 2 retries with exponential backoff, daily quota checks, and the enrichment retry queue handle failures gracefully without a circuit breaker
+
+### 🔧 Reliability Improvements
+
+- Enrichment no longer gets stuck in a blocked state after temporary network issues
+- The admin "Reset Circuit Breaker" button has been removed (no longer needed)
+- Health check no longer shows a `circuit_open` status for OMDb
+
+### 👥 Who This Helps
+
+- **All users:** OMDb metadata enrichment is more resilient to brief network interruptions
+- **Operators/admins:** Fewer false-alarm log entries and no more manual circuit breaker resets
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.3c-alpha] - 2026-02-17
 
 **Title: Schema Sync Fix for Method Constraint**

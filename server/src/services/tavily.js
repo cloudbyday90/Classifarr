@@ -149,7 +149,9 @@ class TavilyService {
       return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
-      throw new Error(`Tavily search failed: ${errorMessage}`);
+      const thrownError = new Error(`Tavily search failed: ${errorMessage}`);
+      thrownError.status = error.response?.status || null;
+      throw thrownError;
     }
   }
 

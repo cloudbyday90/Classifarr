@@ -2,7 +2,7 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * Integration tests for OMDb service with circuit breaker and rate limiting
+ * Integration tests for OMDb service with rate limiting
  */
 
 const mockAxios = {
@@ -93,12 +93,10 @@ function setupDbMock() {
 
 describe('OMDb Integration Tests', () => {
     let omdbService;
-    let circuitBreakerModule;
 
     beforeAll(() => {
         setupDbMock();
         omdbService = require('../services/omdb');
-        circuitBreakerModule = require('../utils/omdbCircuitBreaker');
     });
 
     beforeEach(() => {
@@ -111,11 +109,10 @@ describe('OMDb Integration Tests', () => {
 
         setupDbMock();
         omdbService._resetRateLimiter();
-        circuitBreakerModule.reset();
     });
 
     describe('Real Examples - Happy Path', () => {
-        it('should successfully fetch 5 examples and track state', async () => {
+        it('should successfully fetch 5 examples', async () => {
             for (let i = 0; i < 5; i++) {
                 mockAxios.get.mockResolvedValueOnce(makeOmdbResponse(REAL_EXAMPLES[i]));
             }
@@ -132,7 +129,6 @@ describe('OMDb Integration Tests', () => {
             expect(results[0].title).toBe('The Matrix');
             expect(results[2].title).toBe('Breaking Bad');
             expect(results[2].type).toBe('series');
-            expect(circuitBreakerModule.getStatus().state).toBe('CLOSED');
         }, 15000);
 
         it('should handle mixed TV and movie types correctly', async () => {
@@ -158,8 +154,8 @@ describe('OMDb Integration Tests', () => {
         }, 10000);
     });
 
-    describe('Circuit Breaker - State Transitions', () => {
-        it('should open circuit breaker after 3 consecutive Cloudflare 520 errors', async () => {
+    describe('Cloudflare Error Handling', () => {
+        it('should retry and throw on Cloudflare 520 errors', async () => {
             for (let i = 0; i < 10; i++) {
                 mockAxios.get.mockRejectedValueOnce({
                     response: { status: 520 },
@@ -168,174 +164,32 @@ describe('OMDb Integration Tests', () => {
                 });
             }
 
-            const initialStatus = circuitBreakerModule.getStatus();
-            expect(initialStatus.state).toBe('CLOSED');
-            expect(initialStatus.failureCount).toBe(0);
+            await expect(
+                omdbService.getByTitle('Test Movie', 2020, 'movie')
+            ).rejects.toBeDefined();
 
-            for (let i = 0; i < 3; i++) {
-                try {
-                    await omdbService.getByTitle(`Test Movie ${i}`, 2020, 'movie');
-                } catch (e) {
-                    // Expected - Cloudflare error
-                }
-            }
-
-            const statusAfterFailures = circuitBreakerModule.getStatus();
-            expect(statusAfterFailures.state).toBe('OPEN');
-            expect(statusAfterFailures.failureCount).toBeGreaterThanOrEqual(3);
+            // Should retry once before throwing
+            expect(mockAxios.get).toHaveBeenCalledTimes(2);
         }, 10000);
 
-        it('should reject requests when circuit is OPEN', async () => {
-            for (let i = 0; i < 10; i++) {
-                mockAxios.get.mockRejectedValueOnce({
-                    response: { status: 520 },
-                    message: 'Request failed with status code 520'
-                });
-            }
-
-            for (let i = 0; i < 3; i++) {
-                try {
-                    await omdbService.getByTitle(`Fail Movie ${i}`, 2020, 'movie');
-                } catch (e) {
-                    // Expected
-                }
-            }
-
-            expect(circuitBreakerModule.getStatus().state).toBe('OPEN');
-
-            mockAxios.get.mockResolvedValueOnce(makeOmdbResponse(REAL_EXAMPLES[0]));
+        it('should NOT throw on 401 errors (throws OMDbLimitReachedError)', async () => {
+            mockAxios.get.mockRejectedValueOnce({
+                response: { status: 401 },
+                message: 'Unauthorized'
+            });
 
             await expect(
-                omdbService.getByTitle('The Matrix', 1999, 'movie')
-            ).rejects.toThrow('circuit breaker is OPEN');
+                omdbService.getByTitle('Test 401', 2020, 'movie')
+            ).rejects.toThrow('Unauthorized');
         }, 10000);
 
-        it('should transition to HALF_OPEN after recovery timeout', async () => {
-            const CircuitBreaker = require('../services/circuitBreaker');
-            const testBreaker = new CircuitBreaker({
-                failureThreshold: 3,
-                recoveryTimeout: 100,
-                halfOpenMaxAttempts: 2
+        it('should return null on not-found responses', async () => {
+            mockAxios.get.mockResolvedValueOnce({
+                data: { Response: 'False', Error: 'Movie not found!' }
             });
 
-            for (let i = 0; i < 3; i++) {
-                testBreaker.recordFailure(new Error('Test failure'));
-            }
-
-            expect(testBreaker.getStatus().state).toBe('OPEN');
-
-            await new Promise(resolve => setTimeout(resolve, 150));
-
-            expect(testBreaker.isAllowed()).toBe(true);
-            expect(testBreaker.getStatus().state).toBe('HALF_OPEN');
-        });
-
-        it('should close circuit breaker after successful recovery', async () => {
-            const CircuitBreaker = require('../services/circuitBreaker');
-            const testBreaker = new CircuitBreaker({
-                failureThreshold: 3,
-                recoveryTimeout: 100,
-                halfOpenMaxAttempts: 2
-            });
-
-            for (let i = 0; i < 3; i++) {
-                testBreaker.recordFailure(new Error('Test failure'));
-            }
-
-            expect(testBreaker.getStatus().state).toBe('OPEN');
-
-            await new Promise(resolve => setTimeout(resolve, 150));
-
-            expect(testBreaker.isAllowed()).toBe(true);
-            expect(testBreaker.getStatus().state).toBe('HALF_OPEN');
-
-            testBreaker.recordSuccess();
-            testBreaker.recordSuccess();
-
-            expect(testBreaker.getStatus().state).toBe('CLOSED');
-            expect(testBreaker.getStatus().failureCount).toBe(0);
-        });
-
-        it('should reopen circuit if failure occurs during HALF_OPEN', async () => {
-            const CircuitBreaker = require('../services/circuitBreaker');
-            const testBreaker = new CircuitBreaker({
-                failureThreshold: 3,
-                recoveryTimeout: 100,
-                halfOpenMaxAttempts: 2
-            });
-
-            for (let i = 0; i < 3; i++) {
-                testBreaker.recordFailure(new Error('Test failure'));
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 150));
-            testBreaker.isAllowed();
-
-            expect(testBreaker.getStatus().state).toBe('HALF_OPEN');
-
-            testBreaker.recordFailure(new Error('Recovery failed'));
-
-            expect(testBreaker.getStatus().state).toBe('OPEN');
-        });
-    });
-
-    describe('Cloudflare Error Handling', () => {
-        it('should handle 520 error and trip circuit breaker', async () => {
-            for (let i = 0; i < 5; i++) {
-                mockAxios.get.mockRejectedValueOnce({
-                    response: { status: 520 },
-                    message: 'Request failed with status code 520'
-                });
-            }
-
-            for (let i = 0; i < 3; i++) {
-                try {
-                    await omdbService.getByTitle(`Test 520`, 2020, 'movie');
-                } catch (e) {
-                    // Expected
-                }
-            }
-
-            expect(circuitBreakerModule.getStatus().state).toBe('OPEN');
-            expect(circuitBreakerModule.getStatus().failureCount).toBeGreaterThanOrEqual(3);
-        }, 10000);
-
-        it('should NOT trip circuit breaker on 401 errors', async () => {
-            for (let i = 0; i < 5; i++) {
-                mockAxios.get.mockRejectedValueOnce({
-                    response: { status: 401 },
-                    message: 'Unauthorized'
-                });
-            }
-
-            for (let i = 0; i < 3; i++) {
-                try {
-                    await omdbService.getByTitle(`Test 401`, 2020, 'movie');
-                } catch (e) {
-                    // Expected - OMDbLimitReachedError
-                }
-            }
-
-            const status = circuitBreakerModule.getStatus();
-            expect(status.state).toBe('CLOSED');
-            expect(status.failureCount).toBe(0);
-        }, 10000);
-
-        it('should NOT trip circuit breaker on 404/Not Found responses', async () => {
-            for (let i = 0; i < 3; i++) {
-                mockAxios.get.mockResolvedValueOnce({
-                    data: { Response: 'False', Error: 'Movie not found!' }
-                });
-            }
-
-            for (let i = 0; i < 3; i++) {
-                const result = await omdbService.getByTitle('NonExistent Movie', 2020, 'movie');
-                expect(result).toBeNull();
-            }
-
-            const status = circuitBreakerModule.getStatus();
-            expect(status.state).toBe('CLOSED');
-            expect(status.failureCount).toBe(0);
+            const result = await omdbService.getByTitle('NonExistent Movie', 2020, 'movie');
+            expect(result).toBeNull();
         }, 10000);
     });
 
@@ -377,115 +231,5 @@ describe('OMDb Integration Tests', () => {
 
             expect(elapsed).toBeLessThan(500);
         }, 10000);
-    });
-
-    describe('Full Flow Integration', () => {
-        it('should handle successes, then failures trip breaker, then block requests', async () => {
-            for (let i = 0; i < 3; i++) {
-                mockAxios.get.mockResolvedValueOnce(makeOmdbResponse(REAL_EXAMPLES[i]));
-            }
-            for (let i = 0; i < 5; i++) {
-                mockAxios.get.mockRejectedValueOnce({
-                    response: { status: 520 },
-                    message: 'Request failed with status code 520'
-                });
-            }
-
-            for (let i = 0; i < 3; i++) {
-                const result = await omdbService.getByTitle(
-                    REAL_EXAMPLES[i].title,
-                    REAL_EXAMPLES[i].year,
-                    REAL_EXAMPLES[i].type
-                );
-                expect(result).not.toBeNull();
-            }
-
-            expect(circuitBreakerModule.getStatus().state).toBe('CLOSED');
-
-            for (let i = 0; i < 3; i++) {
-                try {
-                    await omdbService.getByTitle(`Failing Movie ${i}`, 2020, 'movie');
-                } catch (e) {
-                    // Expected
-                }
-            }
-
-            expect(circuitBreakerModule.getStatus().state).toBe('OPEN');
-
-            await expect(
-                omdbService.getByTitle('Blocked Movie', 2020, 'movie')
-            ).rejects.toThrow('circuit breaker is OPEN');
-        }, 15000);
-
-        it('should correctly track success/failure metrics', async () => {
-            mockAxios.get.mockResolvedValueOnce(makeOmdbResponse(REAL_EXAMPLES[0]));
-            mockAxios.get.mockRejectedValueOnce({
-                response: { status: 520 },
-                message: 'Request failed with status code 520'
-            });
-            mockAxios.get.mockResolvedValueOnce(makeOmdbResponse(REAL_EXAMPLES[1]));
-
-            await omdbService.getByTitle('The Matrix', 1999, 'movie');
-
-            try {
-                await omdbService.getByTitle('Failing Movie', 2020, 'movie');
-            } catch (e) {
-                // Expected
-            }
-
-            const status = circuitBreakerModule.getStatus();
-            expect(status.metrics.successfulRequests).toBeGreaterThanOrEqual(1);
-            expect(status.metrics.failedRequests).toBeGreaterThanOrEqual(1);
-        }, 10000);
-    });
-
-    describe('Circuit Breaker Recovery', () => {
-        it('should recover from OPEN to CLOSED after timeout and successful requests', async () => {
-            const CircuitBreaker = require('../services/circuitBreaker');
-            const testBreaker = new CircuitBreaker({
-                failureThreshold: 3,
-                recoveryTimeout: 200,
-                halfOpenMaxAttempts: 2
-            });
-
-            for (let i = 0; i < 3; i++) {
-                testBreaker.recordFailure(new Error('Test failure'));
-            }
-
-            expect(testBreaker.getStatus().state).toBe('OPEN');
-
-            await new Promise(resolve => setTimeout(resolve, 250));
-
-            expect(testBreaker.isAllowed()).toBe(true);
-            expect(testBreaker.getStatus().state).toBe('HALF_OPEN');
-
-            testBreaker.recordSuccess();
-            expect(testBreaker.getStatus().state).toBe('HALF_OPEN');
-
-            testBreaker.recordSuccess();
-            expect(testBreaker.getStatus().state).toBe('CLOSED');
-            expect(testBreaker.getStatus().failureCount).toBe(0);
-        });
-
-        it('should track state history through transitions', async () => {
-            const CircuitBreaker = require('../services/circuitBreaker');
-            const testBreaker = new CircuitBreaker({
-                failureThreshold: 2,
-                recoveryTimeout: 100,
-                halfOpenMaxAttempts: 1
-            });
-
-            const history = testBreaker.getStateHistory();
-            expect(history.length).toBe(1);
-            expect(history[0].state).toBe('CLOSED');
-
-            testBreaker.recordFailure(new Error('Failure 1'));
-            testBreaker.recordFailure(new Error('Failure 2'));
-
-            const openHistory = testBreaker.getStateHistory();
-            const openEntry = openHistory.find(h => h.to === 'OPEN');
-            expect(openEntry).toBeDefined();
-            expect(openEntry.reason).toContain('threshold');
-        });
     });
 });

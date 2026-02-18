@@ -11,7 +11,7 @@
 const axios = require('axios');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
-const circuitBreaker = require('../utils/omdbCircuitBreaker');
+
 const { calculateBackoff } = require('../utils/retryUtils');
 
 const logger = createLogger('OMDbService');
@@ -241,65 +241,49 @@ class OMDbService {
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
-                // Execute with circuit breaker protection
-                return await circuitBreaker.execute(async () => {
-                    // Enforce rate limit managed by DB
-                    const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
-                    configId = id;
+                // Enforce rate limit managed by DB
+                const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
+                configId = id;
 
-                    const params = {
-                        apikey: validApiKey,
-                        t: title,
-                        type: type === 'tv' ? 'series' : type,
-                        plot: 'short'
-                    };
+                const params = {
+                    apikey: validApiKey,
+                    t: title,
+                    type: type === 'tv' ? 'series' : type,
+                    plot: 'short'
+                };
 
-                    if (year) {
-                        params.y = year;
-                    }
-
-                    logger.debug('OMDb lookup by title', { title, year, type, attempt: attempt + 1 });
-
-                    await enforceRateLimit();
-
-                    const response = await axios.get(this.baseUrl, {
-                        params,
-                        timeout: 15000, // 15 second timeout
-                    });
-
-                    if (response.data.Response === 'True') {
-                        // Increment counter only on successful response
-                        await this.incrementUsageCounter(configId);
-                        return this.formatResponse(response.data);
-                    } else {
-                        logger.debug('OMDb not found', { title, error: response.data.Error });
-                        return null;
-                    }
-                });
-            } catch (error) {
-            const status = error.response?.status;
-            const msg = (error.message || '').toLowerCase();
-            const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
-            const isTransientNetworkError = isTimeout ||
-                error.code === 'ECONNRESET' ||
-                error.code === 'EAI_AGAIN' ||
-                error.code === 'ENOTFOUND' ||
-                error.code === 'ECONNREFUSED' ||
-                msg.includes('socket hang up');
-            const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
-            const isCircuitBlocked = error.code === 'CIRCUIT_BREAKER_OPEN' || 
-                                    error.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED' || 
-                                    error.code === 'CIRCUIT_BREAKER_REJECTED';
-
-                // Don't retry if circuit breaker is blocking - throw immediately to trigger fallback
-                if (isCircuitBlocked) {
-                    logger.debug('OMDb circuit breaker blocked request', {
-                        title,
-                        code: error.code,
-                        nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'N/A'
-                    });
-                    throw error;
+                if (year) {
+                    params.y = year;
                 }
+
+                logger.debug('OMDb lookup by title', { title, year, type, attempt: attempt + 1 });
+
+                await enforceRateLimit();
+
+                const response = await axios.get(this.baseUrl, {
+                    params,
+                    timeout: 15000, // 15 second timeout
+                });
+
+                if (response.data.Response === 'True') {
+                    // Increment counter only on successful response
+                    await this.incrementUsageCounter(configId);
+                    return this.formatResponse(response.data);
+                } else {
+                    logger.debug('OMDb not found', { title, error: response.data.Error });
+                    return null;
+                }
+            } catch (error) {
+                const status = error.response?.status;
+                const msg = (error.message || '').toLowerCase();
+                const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+                const isTransientNetworkError = isTimeout ||
+                    error.code === 'ECONNRESET' ||
+                    error.code === 'EAI_AGAIN' ||
+                    error.code === 'ENOTFOUND' ||
+                    error.code === 'ECONNREFUSED' ||
+                    msg.includes('socket hang up');
+                const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
 
                 // Retry on transient network errors or Cloudflare errors
                 if ((isTransientNetworkError || isCloudflareError) && attempt < maxRetries - 1) {
@@ -367,32 +351,29 @@ class OMDbService {
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
-                // Execute with circuit breaker protection
-                return await circuitBreaker.execute(async () => {
-                    logger.debug('OMDb lookup by IMDB ID', { imdbId, attempt: attempt + 1 });
+                logger.debug('OMDb lookup by IMDB ID', { imdbId, attempt: attempt + 1 });
 
-                    await enforceRateLimit();
+                await enforceRateLimit();
 
-                    const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
-                    configId = id;
+                const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
+                configId = id;
 
-                    const response = await axios.get(this.baseUrl, {
-                        params: {
-                            apikey: validApiKey,
-                            i: imdbId,
-                            plot: 'short'
-                        },
-                        timeout: 15000 // 15 second timeout
-                    });
-
-                    if (response.data.Response === 'True') {
-                        // Increment counter only on successful response
-                        await this.incrementUsageCounter(configId);
-                        return this.formatResponse(response.data);
-                    }
-
-                    return null;
+                const response = await axios.get(this.baseUrl, {
+                    params: {
+                        apikey: validApiKey,
+                        i: imdbId,
+                        plot: 'short'
+                    },
+                    timeout: 15000 // 15 second timeout
                 });
+
+                if (response.data.Response === 'True') {
+                    // Increment counter only on successful response
+                    await this.incrementUsageCounter(configId);
+                    return this.formatResponse(response.data);
+                }
+
+                return null;
             } catch (error) {
                 const status = error.response?.status;
                 const msg = (error.message || '').toLowerCase();
@@ -404,19 +385,6 @@ class OMDbService {
                     error.code === 'ECONNREFUSED' ||
                     msg.includes('socket hang up');
                 const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
-                const isCircuitBlocked = error.code === 'CIRCUIT_BREAKER_OPEN' ||
-                    error.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED' ||
-                    error.code === 'CIRCUIT_BREAKER_REJECTED';
-
-                // Don't retry if circuit breaker is blocking - throw immediately to trigger fallback
-                if (isCircuitBlocked) {
-                    logger.debug('OMDb circuit breaker blocked request (IMDB ID)', {
-                        imdbId,
-                        code: error.code,
-                        nextAttempt: error.nextAttempt ? new Date(error.nextAttempt).toISOString() : 'N/A'
-                    });
-                    throw error;
-                }
 
                 // Retry once on transient network errors or Cloudflare errors
                 if ((isTransientNetworkError || isCloudflareError) && attempt < maxRetries - 1) {

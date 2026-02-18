@@ -21,6 +21,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.4-alpha] - 2026-02-18
+
+### Removed
+
+- **OMDb Circuit Breaker** — Removed `omdbCircuitBreaker.js` utility and all associated logic. The circuit breaker was tripping too aggressively on transient network issues, blocking valid enrichment requests even when the OMDb API was functional. Existing protections (15s timeout, 2 retries with exponential backoff, daily quota check, enrichment retry queue) are sufficient for an optional enrichment service.
+  - Removed `circuitBreaker.execute()` wrappers from `omdb.js` `getByTitle` and `getByIMDBId` methods
+  - Removed `circuit_open` status and `circuitBreaker` field from `healthCheckService.js` `checkOMDb` response
+  - Removed `POST /api/settings/omdb/circuit-breaker/reset` admin endpoint from `settings.js`
+  - Removed dead `isCircuitOpen` check from `enrichmentRetryService.js`
+  - Deleted `omdbCircuitBreaker.test.js`; updated `omdb.test.js` and `omdb-integration.test.js` to remove circuit-breaker-specific assertions
+
+---
+
 ## [v0.42.3c-alpha] - 2026-02-17
 
 ### Fixed

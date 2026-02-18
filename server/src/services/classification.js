@@ -1687,7 +1687,13 @@ class ClassificationService {
         advisory: advisoryResults
       };
     } catch (error) {
-      logger.error('Tavily search failed', { error: error.message });
+      const status = error.status || null;
+      const isQuotaError = status === 429 || status === 432;
+      if (isQuotaError) {
+        logger.warn('Tavily quota/rate-limit reached, skipping web enrichment', { status, error: error.message });
+      } else {
+        logger.error('Tavily search failed', { error: error.message });
+      }
       return null;
     }
   }
