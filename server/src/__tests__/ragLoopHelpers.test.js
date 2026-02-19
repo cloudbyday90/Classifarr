@@ -48,6 +48,51 @@ describe('ragLoopHelpers', () => {
             expect(result.trigger).toBe('policy_prompt_select');
         });
 
+        test('skips policy prompt trigger when confidence is above auto threshold without risk signals', () => {
+            const result = shouldTriggerSecondPass({
+                config: {
+                    rag_retrieval_loop_enabled: true,
+                    policy_recheck_below_prompt_threshold_enabled: true,
+                    policy_recheck_skip_when_ai_confident_enabled: true
+                },
+                policyResult: {
+                    action: 'prompt_select',
+                    ranked: [
+                        { score: 75, auto_classify_threshold: 70, prompt_threshold: 60 }
+                    ]
+                },
+                aiResult: { confidence: 92, needs_clarification: false },
+                signalContext: { hasConflict: false }
+            });
+
+            expect(result.run).toBe(false);
+            expect(result.trigger).toBe('policy_prompt_select');
+            expect(result.reason).toBe('policy_prompt_risk_clear');
+        });
+
+        test('does not skip policy prompt trigger when prompt-risk signals are present', () => {
+            const result = shouldTriggerSecondPass({
+                config: {
+                    rag_retrieval_loop_enabled: true,
+                    policy_recheck_below_prompt_threshold_enabled: true,
+                    policy_recheck_skip_when_ai_confident_enabled: true
+                },
+                policyResult: {
+                    action: 'prompt_select',
+                    ranked: [
+                        { score: 75, auto_classify_threshold: 70, prompt_threshold: 60 },
+                        { score: 68, auto_classify_threshold: 70, prompt_threshold: 60 }
+                    ]
+                },
+                aiResult: { confidence: 92, needs_clarification: false },
+                signalContext: { hasConflict: true }
+            });
+
+            expect(result.run).toBe(true);
+            expect(result.trigger).toBe('policy_prompt_select');
+            expect(result.reason).toBe('policy_first');
+        });
+
         test('uses ai trigger only when policy context is unavailable', () => {
             const result = shouldTriggerSecondPass({
                 config: {

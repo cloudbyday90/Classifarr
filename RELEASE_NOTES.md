@@ -1,5 +1,47 @@
 # Classifarr Release Notes
 
+## [v0.42.5d-alpha] - 2026-02-19
+
+**Title: Smarter Second-Pass Decisions and Cleaner Tavily Recovery**
+
+### 🎉 What You'll Notice
+
+- **Fewer unnecessary second-pass retries** when AI confidence is already strong and low-risk.
+- **Cleaner retry behavior for Tavily** while monthly quota is exhausted.
+- **Better diagnostics for true second-pass failures** when they happen.
+
+### 📊 Quick Visual
+
+```text
+Reliability Snapshot
+Second-Pass Gating     [██████████] 100%
+Tavily Queue Stability [█████████░] 90%
+Failure Diagnostics    [█████████░] 90%
+```
+
+### ✨ Highlights
+
+- Added a confidence-aware gate so policy `prompt_select` can skip second pass when there are no prompt-risk signals.
+- Tavily retry rows now stay deferred/pending for monthly quota reset scenarios instead of drifting into noisy terminal states.
+- Second-pass failure mapping now preserves raw error context and refines generic reason codes for faster root-cause analysis.
+
+### 🔧 Reliability Improvements
+
+- Added a new config toggle for confidence-aware policy recheck skipping (default enabled).
+- Added migration support so existing installs safely receive the new config column.
+- Suppressed non-actionable second-pass no-op logging for the new skip-by-design path.
+
+### 👥 Who This Helps
+
+- **End users:** Less confusing noise when classification already has enough confidence.
+- **Operators/admins:** Clearer logs that emphasize real failures over expected no-op paths.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.5c-alpha] - 2026-02-18
 
 **Title: Smarter Tavily Retries and Cleaner Second-Pass Logs**

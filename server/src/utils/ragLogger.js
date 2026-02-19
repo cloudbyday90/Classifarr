@@ -24,6 +24,7 @@ const VALID_LEVELS = new Set(['INFO', 'WARN', 'ERROR']);
 const SECOND_PASS_SKIP_BY_DESIGN_REASONS = new Set([
     'feature_disabled',
     'gate_not_met',
+    'policy_prompt_risk_clear',
     'trigger_not_policy',
     'policy_context_missing',
     'missing_tmdb_id',
@@ -44,6 +45,7 @@ const SECOND_PASS_SKIP_BY_DESIGN_REASONS = new Set([
 ]);
 const SECOND_PASS_NOOP_SUPPRESS_REASONS = new Set([
     'policy_prompt_select',
+    'policy_prompt_risk_clear',
     'auto_default',
     'low_signal',
     'metadata_complete',
@@ -84,7 +86,7 @@ class RAGLogger {
         if (!raw) {
             return null;
         }
-        return /^[A-Z0-9]{1,10}$/.test(raw) ? raw : null;
+        return /^(?=.*[0-9])[A-Z0-9]{1,10}$/.test(raw) ? raw : null;
     }
 
     normalizeFallbackAction(value) {

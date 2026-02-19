@@ -21,6 +21,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.5d-alpha] - 2026-02-19
+
+### Added
+
+- **Confidence-aware second-pass config gate**
+  - Added `policy_recheck_skip_when_ai_confident_enabled` to RAG loop config manifest (default `true`).
+  - Added migration `database/migrations/20260219_010500_add_policy_recheck_skip_when_ai_confident.sql` to add/backfill the new column in `ai_provider_config`.
+- **Second-pass gate coverage**
+  - Added unit coverage for policy prompt-select skip behavior when AI confidence already exceeds auto threshold and no risk signals are present.
+  - Added classification orchestration coverage to assert pass2 retrieval is skipped and trace reason code is `policy_prompt_risk_clear`.
+
+### Changed
+
+- **Second-pass trigger policy (Issue 275 follow-up)**
+  - `shouldTriggerSecondPass()` now skips policy prompt-select second pass when:
+    - AI confidence is already at/above policy auto-classify threshold, and
+    - no prompt-risk signals exist (no clarification flag, no conflict signal, no narrow top-score gap).
+- **Stage event reason resolution**
+  - Classification gate skip events now emit explicit reason-code mapping for `policy_prompt_risk_clear` (instead of generic gate-not-met/context-missing fallback).
+- **RAG stage diagnostics**
+  - Stage-event persistence now carries raw error fields (`message/name/code/stack`) and preserves raw metadata fields for downstream analysis.
+  - Generic `rag_pass1_candidate_failed`/`rag_pass2_failed` can now be refined to specific mapped reason codes when raw error detail is available.
+- **Tavily enrichment logging semantics**
+  - Classification web enrichment now treats Tavily `432` as monthly deferral (`INFO`) and logs non-`432` failures as actionable errors.
+  - Enrichment retry service now consistently logs Tavily enrichment failures with status and error payload.
+- **SQLSTATE normalization hardening**
+  - SQLSTATE validators in RAG logger/error handler now require at least one digit, preventing non-SQL codes (for example `EPIPE`) from being treated as SQLSTATE.
+- **Second-pass no-op suppression**
+  - Added `policy_prompt_risk_clear` to skip-by-design/no-op suppression sets to reduce non-actionable Error Log noise.
+- **Release gate tooling**
+  - Copyright check/update scripts now ignore generated `coverage/` directories so release checks are stable after coverage runs.
+
+### Fixed
+
+- **Unnecessary pass2 retrieval attempts on already-high-confidence prompt-select results** - second pass is now skipped deterministically when risk is clear.
+- **Noisy logging for expected policy skip paths** - skip-by-design cases now remain quiet in persisted log views.
+- **Ambiguous pass2 error telemetry** - refined reason-code mapping now keeps raw error context while producing clearer failure reasons.
+- **Misclassification of non-SQL provider codes as SQLSTATE** - normalization now rejects non-digit alphanumeric codes.
+
+---
+
 ## [v0.42.5c-alpha] - 2026-02-18
 
 ### Added

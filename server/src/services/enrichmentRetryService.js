@@ -497,11 +497,11 @@ class EnrichmentRetryService {
                 };
             }
 
-            if (error.status === 429) {
-                logger.warn('Tavily quota/rate-limit reached during enrichment retry', { status: error.status, item: item.title });
-            } else {
-                logger.error('Tavily enrichment failed', { error: error.message, item: item.title });
-            }
+            logger.error('Tavily enrichment failed', {
+                status: error.status || null,
+                error: error.message,
+                item: item.title
+            });
             return { success: false, error: error.message };
         }
     }

@@ -1091,7 +1091,8 @@ ${response}
       const errorDetails = error ? {
         error_message: error.message || String(error),
         error_name: error.name || 'Error',
-        error_stack: error.stack || null
+        error_stack: error.stack || null,
+        error_code: error.code || null
       } : {};
       events.push({
         stage,
@@ -1144,13 +1145,16 @@ ${response}
     });
 
     if (!trigger.run) {
+      const noRunReasonCode = trigger.reason === 'feature_disabled'
+        ? RAG_LOOP_REASON_CODES.FEATURE_DISABLED
+        : (trigger.reason === RAG_LOOP_REASON_CODES.POLICY_PROMPT_RISK_CLEAR
+          ? RAG_LOOP_REASON_CODES.POLICY_PROMPT_RISK_CLEAR
+          : (policyContext.hasPolicyContext ? RAG_LOOP_REASON_CODES.GATE_NOT_MET : RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING));
       addEvent({
         stage: 'gate',
         outcome: 'skipped',
         reason: trigger.reason,
-        reasonCode: trigger.reason === 'feature_disabled'
-          ? RAG_LOOP_REASON_CODES.FEATURE_DISABLED
-          : (policyContext.hasPolicyContext ? RAG_LOOP_REASON_CODES.GATE_NOT_MET : RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING),
+        reasonCode: noRunReasonCode,
         fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.GATE_SKIPPED
       });
 
@@ -1285,7 +1289,8 @@ ${response}
           reason: error.message,
           reasonCode: stageError.reasonCode,
           recoverable: stageError.recoverable,
-          sqlState: stageError.sqlState
+          sqlState: stageError.sqlState,
+          error
         });
         pass1Candidates = [];
         break;
@@ -1363,7 +1368,8 @@ ${response}
             reasonCode: stageError.reasonCode,
             fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED,
             recoverable: stageError.recoverable,
-            sqlState: stageError.sqlState
+            sqlState: stageError.sqlState,
+            error
           });
         }
       }
@@ -1475,7 +1481,8 @@ ${response}
             reasonCode: stageError.reasonCode,
             fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED,
             recoverable: stageError.recoverable,
-            sqlState: stageError.sqlState
+            sqlState: stageError.sqlState,
+            error: pass2FinalError
           });
           pass2Matches = [];
         }
@@ -1549,7 +1556,8 @@ ${response}
           reasonCode: stageError.reasonCode,
           fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.PASS2_SKIPPED,
           recoverable: stageError.recoverable,
-          sqlState: stageError.sqlState
+          sqlState: stageError.sqlState,
+          error: pass2CandidateError
         });
       }
     }
@@ -1907,11 +1915,18 @@ ${response}
       };
     } catch (error) {
       const status = error.status || null;
-      const isQuotaError = status === 429 || status === 432;
-      if (isQuotaError) {
-        logger.warn('Tavily quota/rate-limit reached, skipping web enrichment', { status, error: error.message });
+      const isMonthlyResetDeferred = status === 432;
+      if (isMonthlyResetDeferred) {
+        logger.info('Tavily monthly quota reached; deferring web enrichment until reset', {
+          status,
+          error: error.message,
+          recoverable: true
+        });
       } else {
-        logger.error('Tavily search failed', { error: error.message });
+        logger.error('Tavily web enrichment failed', {
+          status,
+          error: error.message
+        });
       }
       return null;
     }
@@ -3232,13 +3247,43 @@ Think step by step, then respond with ONLY one of the formats above.`;
         const stage = (sourceStage === 'strategy' || sourceStage === 'retrieval_pass1')
           ? 'gate'
           : sourceStage;
+        const stageEventError = rawEvent.error_message
+          ? {
+            message: rawEvent.error_message,
+            name: rawEvent.error_name || 'Error',
+            code: rawEvent.error_code || rawEvent.sql_state || rawEvent.sqlState || null,
+            stack: rawEvent.error_stack || null
+          }
+          : ((rawEvent.sql_state || rawEvent.sqlState)
+            ? { code: rawEvent.sql_state || rawEvent.sqlState }
+            : null);
         const mappedError = mapSecondPassError({
           stage,
           reasonCode: rawEvent.reason_code || rawEvent.reason || null,
           fallbackReasonCode: rawEvent.reason || null,
-          error: { code: rawEvent.sql_state || rawEvent.sqlState || null }
+          error: stageEventError
         });
-        const resolvedReasonCode = rawEvent.reason_code || rawEvent.reason || mappedError.reasonCode;
+        let resolvedReasonCode = rawEvent.reason_code || rawEvent.reason || mappedError.reasonCode;
+        const normalizedResolvedReason = typeof resolvedReasonCode === 'string'
+          ? resolvedReasonCode.trim().toLowerCase()
+          : '';
+        if (
+          stageEventError &&
+          (normalizedResolvedReason === 'rag_pass1_candidate_failed' || normalizedResolvedReason === 'rag_pass2_failed')
+        ) {
+          const refinedMappedError = mapSecondPassError({
+            stage,
+            reasonCode: null,
+            fallbackReasonCode: normalizedResolvedReason,
+            error: stageEventError
+          });
+          if (
+            refinedMappedError?.reasonCode &&
+            refinedMappedError.reasonCode !== normalizedResolvedReason
+          ) {
+            resolvedReasonCode = refinedMappedError.reasonCode;
+          }
+        }
         const resolvedSqlState = rawEvent.sql_state || rawEvent.sqlState || mappedError.sqlState || null;
         const resolvedOutcome = rawEvent.outcome || null;
         const resolvedRecoverable = rawEvent.recoverable === false ? false : mappedError.recoverable;
@@ -3252,6 +3297,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
           fallback_action: rawEvent.fallback_action || rawEvent.fallbackAction || null,
           recoverable: resolvedRecoverable,
           sql_state: resolvedSqlState,
+          error: stageEventError,
           correlation_id: correlationId,
           rollout_mode: rolloutMode,
           strategy,
@@ -3260,7 +3306,12 @@ Think step by step, then respond with ONLY one of the formats above.`;
             tmdb_id: metadata.tmdb_id || null,
             media_type: metadata.media_type || null,
             title: metadata.title || null,
-            source_stage: sourceStage
+            source_stage: sourceStage,
+            raw_reason: rawEvent.reason || null,
+            raw_reason_code: rawEvent.reason_code || null,
+            raw_error_message: rawEvent.error_message || null,
+            raw_error_name: rawEvent.error_name || null,
+            raw_error_code: rawEvent.error_code || null
           }
         });
 

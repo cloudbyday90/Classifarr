@@ -977,6 +977,58 @@ describe('Issue 275 rag loop orchestration', () => {
     )).toBe(true);
   });
 
+  test('skips second pass when policy prompt risk is clear and confidence already exceeds auto threshold', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+      ...buildRagConfig('apply'),
+      policy_recheck_skip_when_ai_confident_enabled: true
+    });
+
+    const baselineResult = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 95,
+      method: 'ai_analysis',
+      needs_clarification: false
+    };
+    const policyResult = {
+      action: 'prompt_select',
+      confidence: 74,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 74,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    };
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 321,
+        media_type: 'movie',
+        title: 'High Confidence Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult,
+      policyResult,
+      signalContext: { confidence: 95, hasConflict: false },
+      ragContext: null
+    });
+
+    expect(ragRetriever.semanticSearchCandidates).not.toHaveBeenCalled();
+    expect(result.library.id).toBe(1);
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'gate' &&
+      event.outcome === 'skipped' &&
+      event.reason_code === 'policy_prompt_risk_clear' &&
+      event.fallback_action === 'gate_skipped'
+    )).toBe(true);
+  });
+
   test('retries pass1 candidate retrieval on transient timeout and records specific retry reason', async () => {
     jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
       ...buildRagConfig('apply'),
@@ -1467,6 +1519,71 @@ describe('Issue 275 rag loop orchestration', () => {
     });
 
     expect(operationSpy).not.toHaveBeenCalled();
+  });
+
+  test('refines generic pass2 reason codes and preserves raw stage error details', async () => {
+    const stageSpy = jest.spyOn(ragLogger, 'logStageEvent')
+      .mockResolvedValue({ logged: true, deduped: false });
+    const operationSpy = jest.spyOn(ragLogger, 'logOperation')
+      .mockResolvedValue(undefined);
+
+    await classificationService.persistRagLoopStageEvents({
+      classificationId: 99,
+      metadata: {
+        tmdb_id: 777,
+        media_type: 'movie',
+        title: 'Refine Example'
+      },
+      result: {
+        ragLoopLogContext: {
+          correlationId: 'corr-refine',
+          mode: 'apply',
+          strategy: 'hybrid',
+          trigger: 'policy_prompt_select',
+          events: [
+            {
+              stage: 'retrieval_pass2',
+              outcome: 'error',
+              reason_code: 'rag_pass2_failed',
+              reason: 'Failed to generate embedding: provider unavailable',
+              recoverable: true,
+              error_message: 'Failed to generate embedding: provider unavailable',
+              error_name: 'Error',
+              error_code: 'EPIPE'
+            }
+          ]
+        }
+      }
+    });
+
+    expect(stageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: 'retrieval_pass2',
+        reason_code: 'rag_pass2_embed_failed',
+        error: expect.objectContaining({
+          message: 'Failed to generate embedding: provider unavailable',
+          name: 'Error',
+          code: 'EPIPE'
+        }),
+        metadata: expect.objectContaining({
+          raw_reason: 'Failed to generate embedding: provider unavailable',
+          raw_reason_code: 'rag_pass2_failed',
+          raw_error_message: 'Failed to generate embedding: provider unavailable',
+          raw_error_name: 'Error',
+          raw_error_code: 'EPIPE'
+        })
+      })
+    );
+    expect(operationSpy).toHaveBeenCalledWith(
+      'second_pass_retrieval_pass2',
+      0,
+      false,
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          reason_code: 'rag_pass2_embed_failed'
+        })
+      })
+    );
   });
 });
 

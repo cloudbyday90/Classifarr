@@ -22,7 +22,7 @@ const FILE_PATTERNS = [
   'scripts/**/*.js'
 ];
 
-const IGNORE_PATTERNS = ['**/node_modules/**', '**/dist/**', '**/build/**'];
+const IGNORE_PATTERNS = ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**'];
 
 const PATTERNS = {
   js: /Copyright \(C\) (\d{4}|\d{4}-\d{4}) (cloudbyday90|Classifarr Contributors)/g,

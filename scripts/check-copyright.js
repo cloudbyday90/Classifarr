@@ -22,7 +22,7 @@ const FILE_PATTERNS = [
   'scripts/**/*.js'
 ];
 
-const IGNORE_PATTERNS = ['**/node_modules/**', '**/dist/**', '**/build/**'];
+const IGNORE_PATTERNS = ['**/node_modules/**', '**/dist/**', '**/build/**', '**/coverage/**'];
 
 function checkFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf8');

@@ -54,6 +54,7 @@ const RAG_LOOP_CONFIG_MANIFEST = Object.freeze({
     rag_conflict_max_similarity_margin_ratio: { type: 'number', default: 0.1, min: 0, max: 1 },
     rag_conflict_min_avg_similarity: { type: 'number', default: 0.55, min: 0, max: 1 },
     policy_recheck_below_prompt_threshold_enabled: { type: 'boolean', default: true },
+    policy_recheck_skip_when_ai_confident_enabled: { type: 'boolean', default: true },
     policy_recheck_max_attempts: { type: 'integer', default: 1, min: 0, max: 5 },
     policy_recheck_identifier_caps: { type: 'identifier_caps', default: DEFAULT_IDENTIFIER_CAPS },
     policy_recheck_min_similarity_delta: { type: 'number', default: 0.08, min: 0, max: 1 },

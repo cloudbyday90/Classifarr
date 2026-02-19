@@ -115,7 +115,7 @@ function normalizeSqlState(error) {
     if (!raw) {
         return null;
     }
-    return /^[A-Z0-9]{5}$/.test(raw) ? raw : null;
+    return /^(?=.*[0-9])[A-Z0-9]{5}$/.test(raw) ? raw : null;
 }
 
 function mapSqlStateReason(sqlState) {

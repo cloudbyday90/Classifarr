@@ -27,6 +27,7 @@ const HIGH_IMPACT_FIELDS = Object.freeze([
 const RAG_LOOP_REASON_CODES = Object.freeze({
     FEATURE_DISABLED: 'feature_disabled',
     GATE_NOT_MET: 'gate_not_met',
+    POLICY_PROMPT_RISK_CLEAR: 'policy_prompt_risk_clear',
     POLICY_CONTEXT_MISSING: 'policy_context_missing',
     MISSING_TMDB_ID: 'missing_tmdb_id',
     MISSING_MEDIA_TYPE: 'missing_media_type',
@@ -1021,6 +1022,36 @@ function shouldTriggerSecondPass({
     }
 
     if (policyResult?.action === 'prompt_select' && config.policy_recheck_below_prompt_threshold_enabled) {
+        const skipWhenAiConfident = config.policy_recheck_skip_when_ai_confident_enabled !== false;
+        const ranked = Array.isArray(policyResult?.ranked) ? policyResult.ranked : [];
+        const top = ranked[0] || null;
+        const second = ranked[1] || null;
+        const aiConfidence = toNumber(aiResult?.confidence, 0);
+        const autoThreshold = top ? toNumber(top.auto_classify_threshold, NaN) : NaN;
+        const hasConflictSignal = signalContext?.hasConflict === true;
+        const hasNarrowPolicyGap =
+            top && second &&
+            Number.isFinite(toNumber(top.score, NaN)) &&
+            Number.isFinite(toNumber(second.score, NaN)) &&
+            Math.abs(toNumber(top.score, 0) - toNumber(second.score, 0)) <= 10;
+        const hasPromptRiskSignal =
+            aiResult?.needs_clarification === true ||
+            hasConflictSignal ||
+            hasNarrowPolicyGap;
+
+        if (
+            skipWhenAiConfident &&
+            Number.isFinite(autoThreshold) &&
+            aiConfidence >= autoThreshold &&
+            !hasPromptRiskSignal
+        ) {
+            return {
+                run: false,
+                trigger: 'policy_prompt_select',
+                reason: RAG_LOOP_REASON_CODES.POLICY_PROMPT_RISK_CLEAR
+            };
+        }
+
         return {
             run: true,
             trigger: 'policy_prompt_select',
