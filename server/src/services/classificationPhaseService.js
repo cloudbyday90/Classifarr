@@ -133,14 +133,13 @@ class ClassificationPhaseService {
             logger.debug('Phase updated', { taskId, phase, phaseIndex });
 
             // Get title for WebSocket event
-            const payload = typeof currentTask.payload === 'string'
-                ? JSON.parse(currentTask.payload)
-                : currentTask.payload;
+            const payload = this.parsePayload(currentTask.payload);
+            const displayInfo = this.extractDisplayInfo(payload);
 
             // Emit WebSocket event for real-time updates
             this.emitProgressEvent(taskId, phase, phaseIndex, {
                 ...metadata,
-                title: payload?.title || 'Unknown',
+                title: displayInfo.title,
                 // Important: Pass filtering fields from payload to ensure emitProgressEvent can filter source_library
                 source_library_id: payload?.source_library_id,
                 method: payload?.method
@@ -169,13 +168,14 @@ class ClassificationPhaseService {
             if (result.rows.length === 0) return null;
 
             const task = result.rows[0];
-            const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
+            const payload = this.parsePayload(task.payload);
+            const displayInfo = this.extractDisplayInfo(payload);
 
             return {
                 taskId: task.id,
-                title: payload?.title || 'Unknown',
-                year: payload?.year,
-                mediaType: payload?.media_type,
+                title: displayInfo.title,
+                year: displayInfo.year,
+                mediaType: displayInfo.mediaType,
                 currentPhase: task.current_phase,
                 phaseIndex: task.phase_index || 0,
                 totalPhases: PHASES.length,
@@ -211,12 +211,13 @@ class ClassificationPhaseService {
             );
 
             return result.rows.map(task => {
-                const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
+                const payload = this.parsePayload(task.payload);
+                const displayInfo = this.extractDisplayInfo(payload);
                 return {
                     taskId: task.id,
-                    title: payload?.title || 'Unknown',
-                    year: payload?.year,
-                    mediaType: payload?.media_type,
+                    title: displayInfo.title,
+                    year: displayInfo.year,
+                    mediaType: displayInfo.mediaType,
                     currentPhase: task.current_phase,
                     phaseIndex: task.phase_index || 0,
                     totalPhases: PHASES.length,
@@ -411,6 +412,89 @@ class ClassificationPhaseService {
                 return phaseIndex > currentPhaseIndex && phaseIndex < targetPhaseIndex;
             })
             .sort((a, b) => PHASES.indexOf(a) - PHASES.indexOf(b));
+    }
+
+    /**
+     * Safely parse task payload JSON.
+     * @param {unknown} rawPayload
+     * @returns {Object}
+     */
+    parsePayload(rawPayload) {
+        if (!rawPayload) return {};
+        if (typeof rawPayload === 'object') return rawPayload;
+        if (typeof rawPayload !== 'string') return {};
+
+        try {
+            const parsed = JSON.parse(rawPayload);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch {
+            return {};
+        }
+    }
+
+    /**
+     * Extract display fields used by progress UI.
+     * @param {Object} payload
+     * @returns {{title: string, year: number|null, mediaType: string|null}}
+     */
+    extractDisplayInfo(payload = {}) {
+        const media = payload?.media && typeof payload.media === 'object' ? payload.media : {};
+        const metadata = payload?.metadata && typeof payload.metadata === 'object' ? payload.metadata : {};
+
+        return {
+            title: this.firstDisplayString([
+                payload?.title,
+                media?.title,
+                media?.name,
+                metadata?.title,
+                metadata?.name,
+                payload?.subject
+            ]) || 'Unknown',
+            year: this.firstDisplayNumber([
+                payload?.year,
+                media?.year,
+                metadata?.year
+            ]),
+            mediaType: this.firstDisplayString([
+                payload?.media_type,
+                media?.media_type,
+                metadata?.media_type
+            ])
+        };
+    }
+
+    /**
+     * Find first non-empty string suitable for display.
+     * @param {Array<unknown>} values
+     * @returns {string|null}
+     */
+    firstDisplayString(values = []) {
+        for (const value of values) {
+            if (typeof value !== 'string') continue;
+            const trimmed = value.trim();
+            if (!trimmed) continue;
+            if (trimmed.toLowerCase() === 'unknown') continue;
+            return trimmed;
+        }
+        return null;
+    }
+
+    /**
+     * Find first valid display number.
+     * @param {Array<unknown>} values
+     * @returns {number|null}
+     */
+    firstDisplayNumber(values = []) {
+        for (const value of values) {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                return value;
+            }
+            if (typeof value === 'string' && value.trim()) {
+                const parsed = Number(value);
+                if (Number.isFinite(parsed)) return parsed;
+            }
+        }
+        return null;
     }
 
     /**

@@ -173,4 +173,16 @@ describe('ragLogger', () => {
         expect(result).toEqual({ logged: false, deduped: false, suppressed: true });
         expect(db.query).not.toHaveBeenCalled();
     });
+
+    test('suppresses informational applied second-pass success events', async () => {
+        const result = await ragLogger.logStageEvent({
+            stage: 'retrieval_pass2',
+            outcome: 'applied',
+            reason_code: 'hybrid',
+            recoverable: true
+        });
+
+        expect(result).toEqual({ logged: false, deduped: false, suppressed: true });
+        expect(db.query).not.toHaveBeenCalled();
+    });
 });

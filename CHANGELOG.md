@@ -13,11 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- None yet.
+- **RAG stage-event noise reduction**
+  - Suppressed persistence of informational second-pass success events with `outcome='applied'` (for example, `retrieval_pass2 applied (hybrid)` and `ai_rerun applied (material_improvement)`) from `error_log`/bug-report surfaces.
 
 ### Fixed
 
-- None yet.
+- **Command Center processing title fallback**
+  - Active processing cards now resolve display title/year/media type from nested task payload fields (`media.*`, `metadata.*`, and `subject`) before falling back to `Unknown`.
 
 ---
 

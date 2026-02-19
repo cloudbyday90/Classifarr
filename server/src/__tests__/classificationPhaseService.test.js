@@ -115,6 +115,29 @@ describe('classificationPhaseService', () => {
                 metadata: { reason: 'policy_signal_path' }
             });
         });
+
+        it('should resolve display title from nested media payload when top-level title is missing', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    current_phase: 'queued',
+                    phase_started_at: new Date().toISOString(),
+                    phase_history: [],
+                    payload: JSON.stringify({
+                        media: { title: 'Nested Media Title', year: 2026, media_type: 'movie' }
+                    })
+                }]
+            });
+            db.query.mockResolvedValueOnce({ rows: [] });
+
+            await classificationPhaseService.updatePhase(1, 'metadata_fetch', {});
+
+            expect(classificationPhaseService.webSocketService.emitTaskProgress).toHaveBeenCalledWith(
+                1,
+                expect.objectContaining({
+                    title: 'Nested Media Title'
+                })
+            );
+        });
     });
 
     describe('getProgress', () => {
@@ -175,6 +198,33 @@ describe('classificationPhaseService', () => {
             const result = await classificationPhaseService.getActiveClassifications();
 
             expect(result).toEqual([]);
+        });
+
+        it('should resolve display title/year/mediaType from nested payload fields', async () => {
+            const mockTasks = [
+                {
+                    id: 42,
+                    payload: JSON.stringify({
+                        media: { title: 'From Media Payload', year: '2025', media_type: 'tv' }
+                    }),
+                    current_phase: 'ai_analysis',
+                    phase_index: 6,
+                    phase_started_at: new Date().toISOString(),
+                    phase_history: [],
+                    created_at: new Date()
+                }
+            ];
+            db.query.mockResolvedValueOnce({ rows: mockTasks });
+
+            const result = await classificationPhaseService.getActiveClassifications();
+
+            expect(result).toHaveLength(1);
+            expect(result[0]).toMatchObject({
+                taskId: 42,
+                title: 'From Media Payload',
+                year: 2025,
+                mediaType: 'tv'
+            });
         });
     });
 
