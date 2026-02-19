@@ -152,4 +152,48 @@ describe('Confidence Settings', () => {
     expect(wrapper.text()).toContain('incident-123')
     expect(wrapper.text()).toContain('Copy Report')
   })
+
+  it('renders normalized audit history with friendly values and disables non-revertable rows', async () => {
+    mockGetRoutes({
+      history: [
+        {
+          id: 101,
+          setting_key: 'policy_auto_classify_threshold',
+          old_value: '80',
+          new_value: '85',
+          changed_at: '2026-02-19T15:00:00.000Z',
+          changed_by_username: 'admin',
+          change_reason: 'Threshold tuning'
+        },
+        {
+          // camelCase/legacy shape with no numeric id -> should render but not revertable
+          settingKey: 'discord_include_signal_breakdown',
+          oldValue: 'false',
+          newValue: 'true',
+          changedAt: 'not-a-date',
+          changedByUsername: 'ops',
+          changeReason: 'Enable details for triage'
+        },
+        {
+          // should be filtered because it has no useful content
+          id: 303
+        }
+      ]
+    })
+
+    const wrapper = mount(Confidence)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Auto-Classify Threshold')
+    expect(wrapper.text()).toContain('Threshold tuning')
+    expect(wrapper.text()).toContain('Discord: Include Signal Breakdown')
+    expect(wrapper.text()).toContain('Enabled')
+    expect(wrapper.text()).toContain('Disabled')
+    expect(wrapper.text()).toContain('Unknown')
+
+    const revertButtons = wrapper.findAll('button').filter((b) => b.text().includes('Revert'))
+    expect(revertButtons.length).toBe(2)
+    expect(revertButtons[0].attributes('disabled')).toBeUndefined()
+    expect(revertButtons[1].attributes('disabled')).toBeDefined()
+  })
 })

@@ -21,6 +21,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.5e-alpha] - 2026-02-19
+
+### Added
+
+- **CARSA failure recovery coverage**
+  - Added queue-service regression coverage to verify the worker is restarted if `clearAndResync()` fails after worker shutdown.
+- **Confidence history rendering normalization**
+  - Added client-side normalization for confidence audit rows across mixed field shapes (snake_case/camelCase).
+
+### Changed
+
+- **CARSA dependency clear order**
+  - `clearAndResync()` now deletes `media_server_sync_status` rows before deleting `libraries` to honor non-cascading FK constraints.
+  - CARSA result payload/log now includes `syncStatusRowsCleared`.
+- **CARSA error-path behavior**
+  - If CARSA fails and the worker was previously active, queue worker restart is now requested automatically.
+- **Confidence settings history UX**
+  - History table now uses friendly setting labels, value formatting, and includes change-reason visibility.
+  - Revert action is now disabled for non-actionable/non-revertable rows.
+
+### Fixed
+
+- **Clear-and-resync FK failure** - resolved `libraries` delete failure caused by `media_server_sync_status_library_id_fkey`.
+- **Worker paused after CARSA failure** - queue processing no longer remains offline when clear-and-resync errors out.
+- **Confidence history “Unknown” noise** - history rows now render meaningful setting/value/date/user data.
+- **Header notifications dropdown layering**
+  - Fixed header notification/account dropdown positioning and stacking so panels render below the header (not underneath it) on Command Center and other pages.
+
+---
+
 ## [v0.42.5d-alpha] - 2026-02-19
 
 ### Added

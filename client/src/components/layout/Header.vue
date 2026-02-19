@@ -7,7 +7,7 @@
 -->
 
 <template>
-  <header class="bg-sidebar border-b border-gray-800 px-4 md:px-6 py-3">
+  <header class="relative z-30 bg-sidebar border-b border-gray-800 px-4 md:px-6 py-3">
     <div class="flex items-center justify-between gap-4">
       <div class="flex items-center gap-2 min-w-0">
         <button
@@ -41,7 +41,7 @@
 
           <div
             v-if="notificationsOpen"
-            class="absolute right-0 mt-2 w-[360px] max-w-[90vw] rounded-lg border border-gray-700 bg-gray-900 shadow-2xl"
+            class="absolute right-0 top-full z-[70] mt-2 w-[360px] max-w-[90vw] rounded-lg border border-gray-700 bg-gray-900 shadow-2xl"
           >
             <div class="flex items-center justify-between border-b border-gray-800 px-4 py-3">
               <h3 class="text-sm font-semibold text-gray-100">NOTIFICATIONS</h3>
@@ -164,7 +164,7 @@
 
           <div
             v-if="accountMenuOpen"
-            class="absolute right-0 mt-2 w-44 rounded-lg border border-gray-700 bg-gray-900 p-1 shadow-2xl"
+            class="absolute right-0 top-full z-[70] mt-2 w-44 rounded-lg border border-gray-700 bg-gray-900 p-1 shadow-2xl"
           >
             <button
               type="button"

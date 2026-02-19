@@ -430,6 +430,7 @@ describe('QueueService', () => {
             expect(db.query).toHaveBeenCalledWith('DELETE FROM library_custom_rules');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM library_pattern_suggestions');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM library_profiles');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM media_server_sync_status RETURNING id');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM media_server_collections RETURNING id');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM media_server_items RETURNING id');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM libraries RETURNING id');
@@ -441,6 +442,7 @@ describe('QueueService', () => {
             expect(result).toHaveProperty('patternsCleared');
             expect(result).toHaveProperty('correctionsCleared');
             expect(result).toHaveProperty('rulesCleared');
+            expect(result).toHaveProperty('syncStatusRowsCleared');
             expect(result).toHaveProperty('collectionsCleared');
             expect(result).toHaveProperty('itemsReset');
             expect(result).toHaveProperty('librariesCleared');
@@ -460,6 +462,8 @@ describe('QueueService', () => {
                     deletionOrder.push('classification_history');
                 } else if (query.includes('DELETE FROM library_profiles')) {
                     deletionOrder.push('library_profiles');
+                } else if (query.includes('DELETE FROM media_server_sync_status')) {
+                    deletionOrder.push('media_server_sync_status');
                 } else if (query.includes('DELETE FROM media_server_collections')) {
                     deletionOrder.push('media_server_collections');
                 } else if (query.includes('DELETE FROM media_server_items')) {
@@ -485,6 +489,7 @@ describe('QueueService', () => {
             // Verify child tables are deleted before libraries (parent)
             const librariesIndex = deletionOrder.indexOf('libraries');
             expect(deletionOrder.indexOf('library_profiles')).toBeLessThan(librariesIndex);
+            expect(deletionOrder.indexOf('media_server_sync_status')).toBeLessThan(librariesIndex);
             expect(deletionOrder.indexOf('media_server_collections')).toBeLessThan(librariesIndex);
             expect(deletionOrder.indexOf('media_server_items')).toBeLessThan(librariesIndex);
         });
@@ -545,6 +550,25 @@ describe('QueueService', () => {
             db.query.mockRejectedValue(new Error('Database error'));
 
             await expect(queueService.clearAndResync()).rejects.toThrow('Database error');
+        });
+
+        it('should restart worker when clearAndResync fails after stop', async () => {
+            // Simulate a previously running worker
+            queueService.running = true;
+
+            // Snapshot queries succeed, then first clear query fails
+            db.query
+                .mockResolvedValueOnce({ rows: [] }) // buildLibrarySnapshot: libraries
+                .mockResolvedValueOnce({ rows: [] }) // buildLibrarySnapshot: mappings
+                .mockRejectedValueOnce(new Error('Database error')); // DELETE task_queue...
+
+            const stopSpy = jest.spyOn(queueService, 'stopWorker');
+            const startSpy = jest.spyOn(queueService, 'startWorker').mockResolvedValue();
+
+            await expect(queueService.clearAndResync()).rejects.toThrow('Database error');
+
+            expect(stopSpy).toHaveBeenCalled();
+            expect(startSpy).toHaveBeenCalled();
         });
     });
 

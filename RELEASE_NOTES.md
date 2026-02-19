@@ -1,5 +1,49 @@
 # Classifarr Release Notes
 
+## [v0.42.5e-alpha] - 2026-02-19
+
+**Title: Safer Re-Sync Recovery and More Readable Settings History**
+
+### 🎉 What You'll Notice
+
+- **Clear & Re-sync is more resilient** and no longer gets blocked by sync-status references.
+- **Queue worker recovers automatically** if a clear/resync run fails mid-process.
+- **Confidence settings history is now readable**, with clearer labels, values, and change reasons.
+- **Header dropdown overlays are cleaner** and no longer render under the top bar.
+
+### 📊 Quick Visual
+
+```text
+Operational Snapshot
+Re-sync Reliability    [██████████] 100%
+Worker Recovery Safety [██████████] 100%
+Settings Clarity       [█████████░] 90%
+UI Layering Consistency[█████████░] 90%
+```
+
+### ✨ Highlights
+
+- The clear-and-resync flow now clears dependent sync-status rows before removing libraries, preventing FK-related failures.
+- If clear-and-resync encounters an error, the queue worker is automatically restarted when it was running before the operation.
+- Confidence configuration history now displays human-friendly setting names and better value formatting.
+
+### 🔧 Reliability Improvements
+
+- Added regression coverage for clear-and-resync worker restart behavior after failure.
+- Strengthened dependency-safe table clear order in queue reset logic.
+- Improved settings history rendering across mixed field shapes to reduce “Unknown” noise.
+
+### 👥 Who This Helps
+
+- **End users:** Fewer stalled operations and clearer settings change visibility.
+- **Operators/admins:** Faster diagnosis and safer recovery during maintenance actions.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.5d-alpha] - 2026-02-19
 
 **Title: Smarter Second-Pass Decisions and Cleaner Tavily Recovery**

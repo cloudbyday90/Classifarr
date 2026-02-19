@@ -1614,6 +1614,7 @@ class QueueService {
      * Clear all queue data and trigger fresh library sync
      */
     async clearAndResync() {
+        const wasRunning = this.running;
         try {
             // CARSA always runs - force stop any active sync
             if (this.syncStatus.isRunning) {
@@ -1636,7 +1637,6 @@ class QueueService {
             });
 
             // 2. Stop worker to prevent race conditions with active tasks
-            const wasRunning = this.running;
             if (wasRunning) {
                 this.stopWorker();
                 // Give it a moment to finish current iteration
@@ -1681,15 +1681,18 @@ class QueueService {
             // 10. Clear library_profiles (references libraries)
             await this.db.query('DELETE FROM library_profiles');
 
-            // 11. Clear media_server_collections (references libraries)
+            // 11. Clear media_server_sync_status (references libraries, non-cascading FK)
+            const syncStatusRowsResult = await this.db.query('DELETE FROM media_server_sync_status RETURNING id');
+
+            // 12. Clear media_server_collections (references libraries)
             const collectionsResult = await this.db.query('DELETE FROM media_server_collections RETURNING id');
 
-            // 12. Clear media_server_items (references libraries)
+            // 13. Clear media_server_items (references libraries)
             const itemsResult = await this.db.query('DELETE FROM media_server_items RETURNING id');
 
             this.syncStatus.updateProgress(70, 'Clearing media items...');
 
-            // 13. Clear libraries (parent table) - library_arr_mappings CASCADE deleted
+            // 14. Clear libraries (parent table) - library_arr_mappings CASCADE deleted
             // Note: Mappings will be recreated after re-sync using snapshot data
             const librariesResult = await this.db.query('DELETE FROM libraries RETURNING id');
 
@@ -1700,6 +1703,7 @@ class QueueService {
                 patterns: patternsResult.rowCount,
                 corrections: correctionsResult.rowCount,
                 rules: rulesV2Result.rowCount,
+                syncStatusRows: syncStatusRowsResult.rowCount,
                 collections: collectionsResult.rowCount,
                 items: itemsResult.rowCount,
                 libraries: librariesResult.rowCount
@@ -1787,6 +1791,7 @@ class QueueService {
                 patternsCleared: patternsResult.rowCount,
                 correctionsCleared: correctionsResult.rowCount,
                 rulesCleared: rulesV2Result.rowCount,
+                syncStatusRowsCleared: syncStatusRowsResult.rowCount,
                 collectionsCleared: collectionsResult.rowCount,
                 itemsReset: itemsResult.rowCount,
                 librariesCleared: librariesResult.rowCount
@@ -1797,6 +1802,17 @@ class QueueService {
         } catch (error) {
             this.logger.error('Failed to clear and resync', { error: error.message });
             this.syncStatus.stop();
+
+            // CARSA failure should not leave queue processing permanently paused.
+            if (wasRunning && !this.running) {
+                this.startWorker().catch((restartError) => {
+                    this.logger.error('Failed to restart worker after CARSA error', {
+                        error: restartError.message
+                    });
+                });
+                this.logger.warn('CARSA failed; worker restart requested');
+            }
+
             throw error;
         }
     }

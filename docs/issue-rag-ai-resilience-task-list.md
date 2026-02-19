@@ -18,6 +18,91 @@ Implementation source: `docs/implementation_plan_rag_ai_resilience_and_command_c
   - container: `classifarr_pgvector_snapshot_clean` (removed after snapshot creation)
   - data path: `.tmp/db-snapshot/pgdata-clean-20260218T170824Z`
 
+## Closeout Checklist (Post v0.42.5d-alpha)
+Use this as the single operator checklist to close the issue cleanly.
+
+Known evidence already captured:
+- Release shipped: `v0.42.5d-alpha` (tag + GitHub release published).
+- Tag pipeline health:
+  - `CI/CD Pipeline` run `22196227826`: `success`
+  - `OSV Dependency Scan` run `22196228001`: `success`
+- Runtime code/db verification in container:
+  - `policy_prompt_risk_clear` present in `/app/src/utils/ragLoopHelpers.js`
+  - `policy_recheck_skip_when_ai_confident_enabled` present in `/app/src/utils/ragLoopConfig.js`
+  - `ai_provider_config.id=1.policy_recheck_skip_when_ai_confident_enabled = true`
+- Retry queue stability snapshots captured after remediation:
+  - `pending_exhausted = 0`
+  - `warn_auto_heal_last_60m = 0`
+  - Tavily deferred queue state normalized to pending with monthly deferral reason (`tavily_monthly_quota_deferred`).
+
+### 1) Staging Validation Window
+- [ ] Run staging with rollout flags enabled for at least `200 classify runs` or `24 hours` (whichever is first):
+  - `ai_response_repair_enabled=true`
+  - `classification_disallow_partial_stream_response=true`
+  - `rag_pass1_retry_enabled=true`
+  - `rag_stage_single_write_enabled=true`
+  - `phase_skipped_status_enabled=true`
+- [ ] Record validation window:
+  - start: `________________`
+  - end: `________________`
+  - runs: `________________`
+
+### 2) Phase 1 Acceptance Evidence (Parser/Repair)
+- [ ] Capture before/after malformed parser warning rate (`>=50%` reduction target).
+- [ ] Capture repair-success rate when strict parse fails (`>=80%` target).
+- [ ] Confirm no verify-mode regressions during validation window.
+- [ ] Capture p95 classification decision latency before/after (Phase 1 rollback guard).
+
+Evidence log:
+- baseline malformed rate: `parser_malformed_24h=1` (captured 2026-02-18 snapshot)
+- post-fix malformed rate: `________________`
+- repair success rate: `________________`
+- verify regressions observed: `yes/no` (`________________`)
+- p95 decision latency delta: `________________`
+
+### 3) Phase 2 Acceptance Evidence (Retrieval Specificity/Stability)
+- [ ] Confirm reduction in generic:
+  - `rag_pass1_candidate_failed`
+  - `rag_pass2_failed`
+- [ ] Confirm specific reason codes are present in stage events for most failures.
+- [ ] Confirm retrieval stability under current library volume.
+- [ ] Capture index/query evidence (`idx_embeddings_hnsw` presence + representative EXPLAIN output where applicable).
+
+Evidence log:
+- generic pass1 count (baseline -> post): `baseline known from incident snapshot; post-fix capture pending`
+- generic pass2 count (baseline -> post): `baseline known from incident snapshot; post-fix capture pending`
+- specific reason-code sample rows: `pre-fix generic snapshots captured; post-fix production-window sample capture pending`
+- index/plan validation notes: `pgvector=0.8.0, embedding dims=1024 verified; additional EXPLAIN evidence capture pending`
+
+### 4) Phase 3 Acceptance Evidence (De-dupe + Metrics Parity)
+- [ ] Re-run duplicate-row query and confirm one canonical DB stage row per fingerprint/correlation (excluding intentional retries).
+- [ ] Confirm `RAGLogger` no longer creates duplicate warning rows for same stage event.
+- [ ] Re-run parity aggregate and confirm `error_log` vs `rag_metrics` alignment for same window.
+
+Evidence log:
+- duplicate query result summary: `pre-fix duplicate module rows observed (RAG + RAGLogger) for same incident correlation; post-fix re-run pending`
+- parity query result summary: `local/unit parity paths validated; staging parity aggregate capture pending`
+- mismatches requiring follow-up: `________________`
+
+### 5) Phase 4 Acceptance Evidence (Command Center Truthfulness)
+- [ ] Manual smoke verifies `signal_combine` shows `skipped` (not misleadingly `pending`) on policy-path tasks.
+- [ ] Manual smoke verifies stepper clearly distinguishes `pending` vs `skipped`.
+
+Evidence log:
+- smoke run timestamp: `________________`
+- classification/task ids sampled: `________________`
+- result summary: `________________`
+
+### 6) Docs + Task Closure
+- [ ] Update `docs/implementation_plan_rag_ai_resilience_and_command_center_consistency.md` with post-fix outcomes.
+- [ ] Update this task list with final metric values and mark applicable phase checkboxes complete.
+- [x] Confirm release notes/changelog already contain shipped behavior changes.
+- [ ] Mark `Definition of Done` items complete (except explicitly deferred backlog items).
+
+### 7) Administrative Cleanup (Retroactive)
+- [ ] Mark `Implementation Start Gate (DoR)` entries as `N/A (retroactive)` or `Completed retroactively`, with a one-line rationale.
+- [ ] Keep `Deferred (Post-Fix Backlog)` unchecked unless explicitly scheduled into a new issue.
+
 ## Incident Evidence Snapshot
 - Classification result:
   - `classification_history.id=6606`

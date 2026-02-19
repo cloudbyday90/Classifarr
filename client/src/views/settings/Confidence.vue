@@ -342,18 +342,20 @@
               <th class="pb-2 font-medium">New Value</th>
               <th class="pb-2 font-medium">Changed By</th>
               <th class="pb-2 font-medium">When</th>
+              <th class="pb-2 font-medium">Reason</th>
               <th class="pb-2 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="audit in auditHistory" :key="audit.id" class="border-b border-gray-800">
-              <td class="py-2">{{ formatSettingKey(audit.setting_key) }}</td>
-              <td class="py-2 text-gray-400">{{ audit.old_value }}</td>
-              <td class="py-2 text-blue-400">{{ audit.new_value }}</td>
-              <td class="py-2">{{ audit.changed_by_username || 'System' }}</td>
-              <td class="py-2 text-gray-400">{{ formatDate(audit.changed_at) }}</td>
+              <td class="py-2">{{ formatSettingKey(audit.settingKey) }}</td>
+              <td class="py-2 text-gray-400">{{ formatSettingValue(audit.oldValue) }}</td>
+              <td class="py-2 text-blue-400">{{ formatSettingValue(audit.newValue) }}</td>
+              <td class="py-2">{{ audit.changedBy || 'System' }}</td>
+              <td class="py-2 text-gray-400">{{ formatDate(audit.changedAt) }}</td>
+              <td class="py-2 text-gray-400">{{ audit.changeReason || 'Manual update' }}</td>
               <td class="py-2">
-                <Button @click="revertSetting(audit.id)" size="sm" variant="danger">
+                <Button @click="revertSetting(audit.id)" size="sm" variant="danger" :disabled="!audit.canRevert">
                   Revert
                 </Button>
               </td>
@@ -510,7 +512,11 @@ async function loadAuditHistory() {
     const response = await api.get('/api/settings/confidence/history', {
       params: { limit: 20 }
     })
-    auditHistory.value = response.data || []
+    const rows = Array.isArray(response.data) ? response.data : []
+    auditHistory.value = rows
+      .map(normalizeAuditRow)
+      // Hide rows that contain no actionable detail.
+      .filter(row => row.settingKey || row.oldValue !== null || row.newValue !== null)
   } catch (error) {
     console.error('Failed to load audit history:', error)
     // Not critical, just log
@@ -695,6 +701,25 @@ async function resetToDefaults() {
 
 function formatSettingKey(key) {
   if (!key) return 'Unknown'
+  const labels = {
+    policy_auto_classify_threshold: 'Auto-Classify Threshold',
+    policy_prompt_threshold: 'Policy Builder Threshold',
+    discord_include_signal_breakdown: 'Discord: Include Signal Breakdown',
+    discord_show_similar_items: 'Discord: Show Similar Items',
+    learning_genre_threshold: 'Learning: Genre Threshold',
+    learning_keyword_threshold: 'Learning: Keyword Threshold',
+    learning_studio_threshold: 'Learning: Studio Threshold',
+    learning_min_confidence_rate: 'Learning: Minimum Confidence Rate',
+    learning_conflict_strategy: 'Learning: Conflict Strategy',
+    learning_auto_resolve_threshold: 'Learning: Auto Resolve Threshold',
+    learning_max_per_user_day: 'Learning: Max Per User/Day',
+    learning_max_per_library_hour: 'Learning: Max Per Library/Hour',
+    rag_loop_auto_fallback_enabled: 'RAG: Auto Fallback Enabled',
+    rag_loop_auto_recover_enabled: 'RAG: Auto Recover Enabled'
+  }
+
+  if (labels[key]) return labels[key]
+
   return key
     .replace(/_/g, ' ')
     .replace(/\b\w/g, l => l.toUpperCase())
@@ -703,7 +728,45 @@ function formatSettingKey(key) {
 function formatDate(dateString) {
   if (!dateString) return 'Unknown'
   const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return 'Unknown'
   return date.toLocaleString()
+}
+
+function normalizeAuditRow(row = {}) {
+  const settingKey = row.setting_key ?? row.settingKey ?? row.key ?? null
+  const changedAt = row.changed_at ?? row.changedAt ?? row.created_at ?? row.createdAt ?? null
+  const changedBy = row.changed_by_username ?? row.changedByUsername ?? row.username ?? null
+  const oldValue = row.old_value ?? row.oldValue ?? null
+  const newValue = row.new_value ?? row.newValue ?? null
+  const changeReason = row.change_reason ?? row.changeReason ?? null
+  const id = row.id ?? row.audit_id ?? row.auditId ?? `${settingKey || 'unknown'}-${changedAt || Date.now()}`
+
+  return {
+    id,
+    settingKey,
+    oldValue,
+    newValue,
+    changedBy,
+    changedAt,
+    changeReason,
+    canRevert: Number.isInteger(Number(row.id ?? row.audit_id ?? row.auditId))
+  }
+}
+
+function formatSettingValue(value) {
+  if (value === null || value === undefined || value === '') return '-'
+  if (value === 'true') return 'Enabled'
+  if (value === 'false') return 'Disabled'
+
+  try {
+    if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+      return JSON.stringify(JSON.parse(value))
+    }
+  } catch {
+    // Keep original value when not valid JSON.
+  }
+
+  return String(value)
 }
 
 function validateThresholds() {
