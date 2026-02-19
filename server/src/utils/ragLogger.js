@@ -62,6 +62,10 @@ const SECOND_PASS_NOOP_SUPPRESS_OUTCOMES = new Set([
     'evaluated',
     'retry'
 ]);
+const SECOND_PASS_RECOVERABLE_SOFT_ERROR_REASONS = new Set([
+    'rag_pass1_candidate_failed',
+    'rag_pass2_failed'
+]);
 
 /**
  * RAG Logger Utility
@@ -176,6 +180,17 @@ class RAGLogger {
             return 'INFO';
         }
 
+        const isSoftRecoverableStageMiss = (
+            recoverable !== false &&
+            !hasError &&
+            (normalizedOutcome === 'error' || normalizedOutcome === 'retry') &&
+            SECOND_PASS_RECOVERABLE_SOFT_ERROR_REASONS.has(normalizedReason)
+        );
+
+        if (isSoftRecoverableStageMiss) {
+            return 'INFO';
+        }
+
         if (recoverable === false) {
             return 'ERROR';
         }
@@ -237,6 +252,25 @@ class RAGLogger {
         const message = typeof event.message === 'string' && event.message.trim()
             ? event.message.trim()
             : `Second-pass stage ${stage || 'unknown'} ${event.outcome || 'event'} (${reasonCode || 'unspecified'})`;
+        const eventMetadata = event.metadata && typeof event.metadata === 'object' ? event.metadata : {};
+        const rawErrorMessage = eventMetadata.raw_error_message
+            || event.raw_error_message
+            || event.error?.message
+            || null;
+        const rawErrorName = eventMetadata.raw_error_name
+            || event.raw_error_name
+            || event.error?.name
+            || null;
+        const rawErrorCode = eventMetadata.raw_error_code
+            || event.raw_error_code
+            || event.error?.code
+            || null;
+        const rawReason = eventMetadata.raw_reason
+            || event.raw_reason
+            || null;
+        const rawReasonCode = eventMetadata.raw_reason_code
+            || event.raw_reason_code
+            || null;
 
         return {
             level,
@@ -259,7 +293,12 @@ class RAGLogger {
                     reasonCode,
                     sqlState
                 }),
-                ...event.metadata
+                ...eventMetadata,
+                raw_reason: rawReason,
+                raw_reason_code: rawReasonCode,
+                raw_error_message: rawErrorMessage,
+                raw_error_name: rawErrorName,
+                raw_error_code: rawErrorCode
             },
             ragOperation: event.rag_operation || event.ragOperation || 'second_pass',
             ragContext: {

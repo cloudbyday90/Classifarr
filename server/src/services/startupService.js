@@ -19,6 +19,82 @@ const logger = createLogger('StartupService');
  * Handles migration detection and setup status checks on application startup
  */
 class StartupService {
+    describeRuntimeExport(value) {
+        if (value === null) return 'null';
+        if (value === undefined) return 'undefined';
+        if (Array.isArray(value)) return 'array';
+        return typeof value;
+    }
+
+    /**
+     * Validate critical runtime wiring before queue processing starts.
+     * This catches import/export drift (e.g. constructor vs object export)
+     * early and provides structured diagnostics.
+     * @returns {{ok: boolean, checked: number, issues: Array<object>}}
+     */
+    validateRuntimeWiring() {
+        const checks = [
+            {
+                module: '../utils/operationController',
+                expected: 'named export OperationController as a constructor function',
+                validate: (mod) => typeof mod?.OperationController === 'function',
+                actual: (mod) => this.describeRuntimeExport(mod?.OperationController)
+            },
+            {
+                module: './classification',
+                expected: 'classification service with withTimeout function',
+                validate: (svc) => typeof svc?.withTimeout === 'function',
+                actual: (svc) => this.describeRuntimeExport(svc?.withTimeout)
+            },
+            {
+                module: '../utils/ragLogger',
+                expected: 'rag logger singleton with logStageEvent function',
+                validate: (svc) => typeof svc?.logStageEvent === 'function',
+                actual: (svc) => this.describeRuntimeExport(svc?.logStageEvent)
+            }
+        ];
+
+        const issues = [];
+
+        for (const check of checks) {
+            try {
+                const loadedModule = require(check.module);
+                if (!check.validate(loadedModule)) {
+                    issues.push({
+                        module: check.module,
+                        expected: check.expected,
+                        actual: check.actual(loadedModule)
+                    });
+                }
+            } catch (error) {
+                issues.push({
+                    module: check.module,
+                    expected: check.expected,
+                    actual: `load_failed: ${error.message}`
+                });
+            }
+        }
+
+        if (issues.length > 0) {
+            logger.error('Runtime wiring validation failed', {
+                checked: checks.length,
+                issues
+            });
+            return {
+                ok: false,
+                checked: checks.length,
+                issues
+            };
+        }
+
+        logger.info('Runtime wiring validation passed', { checked: checks.length });
+        return {
+            ok: true,
+            checked: checks.length,
+            issues: []
+        };
+    }
+
     /**
      * Check if library mappings are configured
      * @returns {Object} Status of library mapping setup

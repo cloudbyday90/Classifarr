@@ -114,6 +114,19 @@ app.use(errorHandler);
 
 // Initialize Discord bot
 async function initializeServices() {
+  let runtimeWiringStatus = { ok: true, checked: 0, issues: [] };
+  try {
+    const startupService = require('./services/startupService');
+    runtimeWiringStatus = startupService.validateRuntimeWiring();
+  } catch (error) {
+    runtimeWiringStatus = {
+      ok: false,
+      checked: 0,
+      issues: [{ module: './services/startupService', expected: 'runtime wiring validation', actual: error.message }]
+    };
+    console.error('Runtime wiring validation bootstrap failed:', error.message);
+  }
+
   try {
     console.log('Initializing Discord bot...');
     await discordBot.initialize();
@@ -123,21 +136,25 @@ async function initializeServices() {
     console.warn('Continuing without Discord notifications...');
   }
 
-  // Start queue worker
-  try {
-    queueService.startWorker();
-    console.log('Queue worker started successfully');
-  } catch (error) {
-    console.warn('Queue worker start failed:', error.message);
-  }
+  if (!runtimeWiringStatus.ok) {
+    console.error('Runtime wiring validation failed; queue and scheduler startup skipped', runtimeWiringStatus);
+  } else {
+    // Start queue worker
+    try {
+      queueService.startWorker();
+      console.log('Queue worker started successfully');
+    } catch (error) {
+      console.warn('Queue worker start failed:', error.message);
+    }
 
-  // Start scheduler service
-  try {
-    const schedulerService = require('./services/scheduler');
-    schedulerService.init(); // It was called init() in the class, but index.js called start(). Checked scheduler.js, it has init().
-    console.log('Scheduler service started successfully');
-  } catch (error) {
-    console.warn('Scheduler service start failed:', error.message);
+    // Start scheduler service
+    try {
+      const schedulerService = require('./services/scheduler');
+      schedulerService.init(); // It was called init() in the class, but index.js called start(). Checked scheduler.js, it has init().
+      console.log('Scheduler service started successfully');
+    } catch (error) {
+      console.warn('Scheduler service start failed:', error.message);
+    }
   }
 
   // Initialize ProviderLock configuration (non-blocking defaults if unavailable)

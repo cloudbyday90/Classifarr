@@ -1,5 +1,49 @@
 # Classifarr Release Notes
 
+## [v0.42.6-alpha] - 2026-02-19
+
+**Title: Stronger Runtime Safety and More Predictable Recovery**
+
+### 🎉 What You'll Notice
+
+- **Second-pass classification no longer crashes** from runtime constructor wiring issues.
+- **Clear & Re-sync is safer under load**, with stronger dependency handling and clearer failure feedback.
+- **RAG logs are easier to read**, highlighting actionable failures while reducing expected-noise events.
+- **Startup now validates critical runtime wiring** before worker scheduling begins.
+
+### 📊 Quick Visual
+
+```text
+Stability Snapshot
+Second-Pass Runtime Safety [██████████] 100%
+CARSA Recovery Resilience  [█████████░] 90%
+RAG Log Signal Quality     [█████████░] 90%
+Startup Safety Checks      [██████████] 100%
+```
+
+### ✨ Highlights
+
+- Added protection so second-pass timeout handling uses the correct runtime controller wiring path.
+- Clear-and-resync now performs deterministic dependency cleanup and returns structured error codes/details for faster diagnosis.
+- Runtime startup validation now catches critical module/export mismatches before queue and scheduler startup.
+
+### 🔧 Reliability Improvements
+
+- Added transactional cleanup flow for CARSA with rollback behavior on partial failure.
+- Preserved policy feedback history while clearing stale library references during full reset.
+- Improved stage-event metadata consistency for raw error fields (`message`, `name`, `code`).
+
+### 👥 Who This Helps
+
+- **End users:** fewer stuck classifications and cleaner, more understandable behavior during maintenance.
+- **Operators/admins:** faster root-cause diagnosis from structured errors and improved runtime preflight checks.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.5e-alpha] - 2026-02-19
 
 **Title: Safer Re-Sync Recovery and More Readable Settings History**

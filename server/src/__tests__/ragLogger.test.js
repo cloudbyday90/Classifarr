@@ -93,8 +93,8 @@ describe('ragLogger', () => {
         const event = {
             stage: 'retrieval_pass2',
             outcome: 'error',
-            reason_code: 'rag_pass2_failed',
-            fallback_action: 'pass2_skipped',
+            reason_code: 'policy_recheck_failed',
+            fallback_action: 'policy_recheck_skipped',
             recoverable: true
         };
 
@@ -130,8 +130,8 @@ describe('ragLogger', () => {
         await ragLogger.logStageEvent({
             stage: 'retrieval_pass2',
             outcome: 'error',
-            reason_code: 'rag_pass2_failed',
-            fallback_action: 'pass2_skipped',
+            reason_code: 'policy_recheck_failed',
+            fallback_action: 'policy_recheck_skipped',
             recoverable: true
         });
 
@@ -140,6 +140,26 @@ describe('ragLogger', () => {
             expect.any(Object),
             { skipDbPersist: true }
         );
+    });
+
+    test('captures raw error metadata consistently from error object', async () => {
+        const error = new Error('provider timeout');
+        error.name = 'TimeoutError';
+        error.code = 'ETIMEDOUT';
+
+        await ragLogger.logStageEvent({
+            stage: 'retrieval_pass2',
+            outcome: 'error',
+            reason_code: 'rag_pass2_failed',
+            recoverable: true,
+            error
+        });
+
+        const params = db.query.mock.calls[0][1];
+        const metadata = JSON.parse(params[4]);
+        expect(metadata.raw_error_message).toBe('provider timeout');
+        expect(metadata.raw_error_name).toBe('TimeoutError');
+        expect(metadata.raw_error_code).toBe('ETIMEDOUT');
     });
 
     test('suppresses non-actionable second-pass no-op events', async () => {

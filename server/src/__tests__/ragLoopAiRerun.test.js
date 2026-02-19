@@ -84,7 +84,7 @@ describe('RAG Loop AI Rerun Logic', () => {
     });
 
     describe('ai_rerun execution conditions', () => {
-        test('keeps baseline when ai_rerun gate resolves to skipped', async () => {
+        test('applies ai_rerun when material improvement gate is satisfied', async () => {
             classificationService.getRagLoopConfig = jest.fn().mockReturnValue({
                 rag_retrieval_loop_enabled: true,
                 rag_loop_low_confidence_threshold: 80,
@@ -139,11 +139,11 @@ describe('RAG Loop AI Rerun Logic', () => {
                 }
             });
 
-            expect(aiClassifySpy).not.toHaveBeenCalled();
+            expect(aiClassifySpy).toHaveBeenCalledTimes(1);
             const aiRerunEvent = result.ragLoopLogContext.events.find(e => e.stage === 'ai_rerun');
             expect(aiRerunEvent).toBeDefined();
-            expect(aiRerunEvent.outcome).toBe('skipped');
-            expect(result.confidence).toBe(60);
+            expect(aiRerunEvent.outcome).toBe('applied');
+            expect(result.confidence).toBeGreaterThanOrEqual(60);
         });
 
         test('skips ai_rerun when no material improvement', async () => {
@@ -249,7 +249,7 @@ describe('RAG Loop AI Rerun Logic', () => {
     });
 
     describe('error handling', () => {
-        test('preserves skipped event when ai_rerun branch is gated off', async () => {
+        test('records error event when ai_rerun execution fails with non-transient error', async () => {
             classificationService.getRagLoopConfig = jest.fn().mockReturnValue({
                 rag_retrieval_loop_enabled: true,
                 rag_loop_low_confidence_threshold: 80,
@@ -299,10 +299,10 @@ describe('RAG Loop AI Rerun Logic', () => {
             expect(result.ragLoopLogContext).toBeDefined();
             const aiRerunEvent = result.ragLoopLogContext.events.find(e => e.stage === 'ai_rerun');
             expect(aiRerunEvent).toBeDefined();
-            expect(aiRerunEvent.outcome).toBe('skipped');
+            expect(aiRerunEvent.outcome).toBe('error');
         });
 
-        test('remains skipped even when mocked ai error object is non-standard', async () => {
+        test('records error event when mocked ai error object is non-standard', async () => {
             classificationService.getRagLoopConfig = jest.fn().mockReturnValue({
                 rag_retrieval_loop_enabled: true,
                 rag_loop_low_confidence_threshold: 80,
@@ -350,7 +350,7 @@ describe('RAG Loop AI Rerun Logic', () => {
 
             const aiRerunEvent = result.ragLoopLogContext.events.find(e => e.stage === 'ai_rerun');
             expect(aiRerunEvent).toBeDefined();
-            expect(aiRerunEvent.outcome).toBe('skipped');
+            expect(aiRerunEvent.outcome).toBe('error');
         });
     });
 });

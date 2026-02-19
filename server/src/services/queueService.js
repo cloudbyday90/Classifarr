@@ -1613,6 +1613,153 @@ class QueueService {
     /**
      * Clear all queue data and trigger fresh library sync
      */
+    async withOptionalTransaction(work, context = 'transaction') {
+        if (typeof this.db.connect !== 'function') {
+            return work(this.db);
+        }
+
+        const client = await this.db.connect();
+        try {
+            await client.query('BEGIN');
+            const result = await work(client);
+            await client.query('COMMIT');
+            return result;
+        } catch (error) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (rollbackError) {
+                this.logger.warn('Failed to rollback transaction', {
+                    context,
+                    error: rollbackError.message
+                });
+            }
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    isForeignKeyConstraintError(error) {
+        const code = typeof error?.code === 'string' ? error.code.trim() : '';
+        const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+        return code === '23503' || message.includes('violates foreign key constraint');
+    }
+
+    normalizeClearAndResyncError(error) {
+        if (error?.code === 'CARSA_DEPENDENCY_CONFLICT' || error?.code === 'CARSA_RESET_FAILED') {
+            return error;
+        }
+
+        if (this.isForeignKeyConstraintError(error)) {
+            const constraint = (error.message || '').match(/constraint "([^"]+)"/i)?.[1] || null;
+            const table = (error.message || '').match(/on table "([^"]+)"/i)?.[1] || null;
+            const dependencyError = new Error(
+                `CARSA blocked by dependent rows${table ? ` on ${table}` : ''}${constraint ? ` (${constraint})` : ''}`
+            );
+            dependencyError.code = 'CARSA_DEPENDENCY_CONFLICT';
+            dependencyError.details = {
+                table,
+                constraint,
+                originalError: error.message || null
+            };
+            return dependencyError;
+        }
+
+        const resetError = new Error(error?.message || 'Failed to clear and resync');
+        resetError.code = 'CARSA_RESET_FAILED';
+        resetError.details = {
+            originalError: error?.message || null
+        };
+        return resetError;
+    }
+
+    async performClearAndResyncCleanup() {
+        return this.withOptionalTransaction(async (dbClient) => {
+            // Prevent concurrent writes that can recreate FK dependencies mid-CARSA.
+            await dbClient.query('LOCK TABLE libraries, media_server_sync_status IN SHARE ROW EXCLUSIVE MODE');
+
+            this.syncStatus.updateProgress(20, 'Clearing task queue...');
+            const queueResult = await dbClient.query('DELETE FROM task_queue RETURNING id');
+
+            // Clear content_analysis_log first (references classification_history)
+            await dbClient.query('DELETE FROM content_analysis_log');
+
+            // Clear classification_embeddings BEFORE classification_history (FK dependency)
+            const embeddingsResult = await dbClient.query('DELETE FROM classification_embeddings RETURNING id');
+
+            this.syncStatus.updateProgress(30, 'Clearing embeddings...');
+
+            // Clear classification history
+            const historyResult = await dbClient.query('DELETE FROM classification_history RETURNING id');
+
+            this.syncStatus.updateProgress(40, 'Clearing classification history...');
+
+            // Clear learning patterns and corrections (full reset)
+            const patternsResult = await dbClient.query('DELETE FROM learning_patterns RETURNING id');
+            const correctionsResult = await dbClient.query('DELETE FROM classification_corrections RETURNING id');
+
+            this.syncStatus.updateProgress(50, 'Clearing learning data...');
+
+            // Clear ALL library classification rules
+            const rulesV2Result = await dbClient.query('DELETE FROM library_rules_v2 RETURNING id');
+            await dbClient.query('DELETE FROM library_custom_rules');
+
+            // Clear library pattern suggestions (Available Library Filters)
+            await dbClient.query('DELETE FROM library_pattern_suggestions');
+
+            this.syncStatus.updateProgress(60, 'Clearing library rules...');
+
+            // Clear library_profiles (references libraries)
+            await dbClient.query('DELETE FROM library_profiles');
+
+            // Preserve policy feedback rows while removing stale library references.
+            let feedbackLibraryRefsCleared = 0;
+            try {
+                const feedbackResult = await dbClient.query(`
+                    UPDATE policy_feedback_log
+                    SET selected_library_id = NULL
+                    WHERE selected_library_id IS NOT NULL
+                `);
+                feedbackLibraryRefsCleared = feedbackResult.rowCount || 0;
+            } catch (error) {
+                // Older installs may not yet have this table.
+                if (error.code !== '42P01') {
+                    throw error;
+                }
+                this.logger.debug('policy_feedback_log not present; skipping selected_library_id cleanup');
+            }
+
+            // Clear media_server_sync_status (references libraries, non-cascading FK)
+            const syncStatusRowsResult = await dbClient.query('DELETE FROM media_server_sync_status RETURNING id');
+
+            // Clear media_server_collections (references libraries)
+            const collectionsResult = await dbClient.query('DELETE FROM media_server_collections RETURNING id');
+
+            // Clear media_server_items (references libraries)
+            const itemsResult = await dbClient.query('DELETE FROM media_server_items RETURNING id');
+
+            this.syncStatus.updateProgress(70, 'Clearing media items...');
+
+            // Clear libraries (parent table) - library_arr_mappings CASCADE deleted
+            // Mappings are recreated after re-sync using snapshot data.
+            const librariesResult = await dbClient.query('DELETE FROM libraries RETURNING id');
+
+            return {
+                queueResult,
+                embeddingsResult,
+                historyResult,
+                patternsResult,
+                correctionsResult,
+                rulesV2Result,
+                syncStatusRowsResult,
+                collectionsResult,
+                itemsResult,
+                librariesResult,
+                feedbackLibraryRefsCleared
+            };
+        }, 'clear_and_resync');
+    }
+
     async clearAndResync() {
         const wasRunning = this.running;
         try {
@@ -1645,56 +1792,20 @@ class QueueService {
 
             this.syncStatus.updateProgress(10, 'Stopping worker...');
 
-            // 3. Clear task queue
-            const queueResult = await this.db.query('DELETE FROM task_queue RETURNING id');
-
-            this.syncStatus.updateProgress(20, 'Clearing task queue...');
-
-            // 4. Clear content_analysis_log first (references classification_history)
-            await this.db.query('DELETE FROM content_analysis_log');
-
-            // 5. Clear classification_embeddings BEFORE classification_history (FK dependency)
-            const embeddingsResult = await this.db.query('DELETE FROM classification_embeddings RETURNING id');
-
-            this.syncStatus.updateProgress(30, 'Clearing embeddings...');
-
-            // 6. Clear classification history
-            const historyResult = await this.db.query('DELETE FROM classification_history RETURNING id');
-
-            this.syncStatus.updateProgress(40, 'Clearing classification history...');
-
-            // 7. Clear learning patterns and corrections (full reset)
-            const patternsResult = await this.db.query('DELETE FROM learning_patterns RETURNING id');
-            const correctionsResult = await this.db.query('DELETE FROM classification_corrections RETURNING id');
-
-            this.syncStatus.updateProgress(50, 'Clearing learning data...');
-
-            // 8. Clear ALL library classification rules
-            const rulesV2Result = await this.db.query('DELETE FROM library_rules_v2 RETURNING id');
-            await this.db.query('DELETE FROM library_custom_rules');
-
-            // 9. Clear library pattern suggestions (Available Library Filters)
-            await this.db.query('DELETE FROM library_pattern_suggestions');
-
-            this.syncStatus.updateProgress(60, 'Clearing library rules...');
-
-            // 10. Clear library_profiles (references libraries)
-            await this.db.query('DELETE FROM library_profiles');
-
-            // 11. Clear media_server_sync_status (references libraries, non-cascading FK)
-            const syncStatusRowsResult = await this.db.query('DELETE FROM media_server_sync_status RETURNING id');
-
-            // 12. Clear media_server_collections (references libraries)
-            const collectionsResult = await this.db.query('DELETE FROM media_server_collections RETURNING id');
-
-            // 13. Clear media_server_items (references libraries)
-            const itemsResult = await this.db.query('DELETE FROM media_server_items RETURNING id');
-
-            this.syncStatus.updateProgress(70, 'Clearing media items...');
-
-            // 14. Clear libraries (parent table) - library_arr_mappings CASCADE deleted
-            // Note: Mappings will be recreated after re-sync using snapshot data
-            const librariesResult = await this.db.query('DELETE FROM libraries RETURNING id');
+            const cleanupResult = await this.performClearAndResyncCleanup();
+            const {
+                queueResult,
+                embeddingsResult,
+                historyResult,
+                patternsResult,
+                correctionsResult,
+                rulesV2Result,
+                syncStatusRowsResult,
+                collectionsResult,
+                itemsResult,
+                librariesResult,
+                feedbackLibraryRefsCleared
+            } = cleanupResult;
 
             this.logger.info('Cleared all synced data', {
                 queue: queueResult.rowCount,
@@ -1706,7 +1817,8 @@ class QueueService {
                 syncStatusRows: syncStatusRowsResult.rowCount,
                 collections: collectionsResult.rowCount,
                 items: itemsResult.rowCount,
-                libraries: librariesResult.rowCount
+                libraries: librariesResult.rowCount,
+                feedbackLibraryRefsCleared
             });
 
             // 14. Clear in-memory caches
@@ -1794,13 +1906,19 @@ class QueueService {
                 syncStatusRowsCleared: syncStatusRowsResult.rowCount,
                 collectionsCleared: collectionsResult.rowCount,
                 itemsReset: itemsResult.rowCount,
-                librariesCleared: librariesResult.rowCount
+                librariesCleared: librariesResult.rowCount,
+                feedbackLibraryRefsCleared
             };
 
             this.logger.info('Cleared queue and triggered resync', result);
             return result;
         } catch (error) {
-            this.logger.error('Failed to clear and resync', { error: error.message });
+            const normalizedError = this.normalizeClearAndResyncError(error);
+            this.logger.error('Failed to clear and resync', {
+                error: normalizedError.message,
+                code: normalizedError.code || null,
+                details: normalizedError.details || null
+            });
             this.syncStatus.stop();
 
             // CARSA failure should not leave queue processing permanently paused.
@@ -1813,7 +1931,7 @@ class QueueService {
                 this.logger.warn('CARSA failed; worker restart requested');
             }
 
-            throw error;
+            throw normalizedError;
         }
     }
     /**

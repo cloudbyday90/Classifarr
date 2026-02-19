@@ -48,7 +48,7 @@ const { mapSecondPassError } = require('../utils/ragErrorHandler');
 const ragLoopMetricsCollector = require('./ragLoopMetricsCollector');
 const ragLoopResilienceManager = require('./ragLoopResilienceManager');
 const { validateAndNormalizeRagLoopConfig } = require('../utils/ragLoopConfig');
-const OperationController = require('../utils/operationController');
+const { OperationController } = require('../utils/operationController');
 const {
   RAG_LOOP_FALLBACK_ACTIONS,
   RAG_LOOP_REASON_CODES,

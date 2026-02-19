@@ -21,6 +21,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.6-alpha] - 2026-02-19
+
+### Added
+
+- **Runtime wiring preflight validation**
+  - Added `startupService.validateRuntimeWiring()` to validate critical runtime contracts before queue/scheduler startup.
+  - Startup now checks constructor/export wiring for `OperationController`, `classification.withTimeout`, and `ragLogger.logStageEvent`.
+  - If validation fails, startup skips queue worker and scheduler initialization and emits structured diagnostics.
+
+### Changed
+
+- **CARSA reset hardening**
+  - Refactored `queueService.clearAndResync()` cleanup into a transactional path with rollback support when a pooled DB client is available.
+  - Added explicit table locking and deterministic FK-safe cleanup sequencing around `libraries` and `media_server_sync_status`.
+  - Added cleanup of `policy_feedback_log.selected_library_id` references during full reset (while preserving feedback rows).
+  - CARSA error path now normalizes into structured codes:
+    - `CARSA_DEPENDENCY_CONFLICT`
+    - `CARSA_RESET_FAILED`
+  - `/api/queue/clear-and-resync` now returns structured `code` and `details` payloads on failures.
+- **Second-pass stage logging policy**
+  - Recoverable `rag_pass1_candidate_failed` and `rag_pass2_failed` stage events now downgrade to `INFO` when no hard error object exists.
+  - Stage-event metadata now consistently carries `raw_error_message`, `raw_error_name`, `raw_error_code`, and raw reason fields.
+- **Import contract alignment**
+  - `classification.js` now uses named import `{ OperationController }` to match `operationController` module exports.
+
+### Fixed
+
+- **Second-pass constructor crash**
+  - Resolved `TypeError: OperationController is not a constructor` in RAG second-pass timeout orchestration paths.
+- **Clear-and-resync dependency failure diagnostics**
+  - Improved visibility and API-level context for FK-blocked CARSA runs instead of opaque generic errors.
+
+---
+
 ## [v0.42.5e-alpha] - 2026-02-19
 
 ### Added

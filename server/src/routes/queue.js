@@ -380,8 +380,16 @@ router.post('/clear-and-resync', requireReadWrite, async (req, res) => {
         logger.info('Cleared queue and triggered resync', result);
         res.json({ success: true, ...result });
     } catch (error) {
-        logger.error('Failed to clear and resync', { error: error.message });
-        res.status(500).json({ error: error.message });
+        logger.error('Failed to clear and resync', {
+            error: error.message,
+            code: error.code || null,
+            details: error.details || null
+        });
+        res.status(500).json({
+            error: error.message,
+            code: error.code || 'CARSA_RESET_FAILED',
+            details: error.details || null
+        });
     }
 });
 
