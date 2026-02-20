@@ -13,6 +13,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- None yet.
+
+### Fixed
+
+- None yet.
+
+---
+
+## [v0.42.7-alpha] - 2026-02-20
+
+### Added
+
+- **One-time post-upgrade log reset task**
+  - Added `clear_logs_0427` to post-upgrade tasks so upgraded instances run a one-time `error_log`/`app_log` clear for a fresh operational baseline.
+
+### Changed
+
 - **RAG stage-event noise reduction**
   - Suppressed persistence of informational second-pass success events with `outcome='applied'` (for example, `retrieval_pass2 applied (hybrid)` and `ai_rerun applied (material_improvement)`) from `error_log`/bug-report surfaces.
 
@@ -20,8 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Command Center processing title fallback**
   - Active processing cards now resolve display title/year/media type from nested task payload fields (`media.*`, `metadata.*`, and `subject`) before falling back to `Unknown`.
-
----
+- **OMDb retry exhaustion fallback semantics**
+  - Exhausted OMDb retry rows now hand off to Tavily fallback and are marked `skipped` instead of terminal `failed` when fallback is available.
+  - Expected OMDb no-data misses now log as informational handoffs instead of terminal operational errors.
 
 ## [v0.42.6-alpha] - 2026-02-19
 

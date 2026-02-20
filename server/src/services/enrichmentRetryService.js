@@ -12,6 +12,7 @@ const { createLogger } = require('../utils/logger');
 const logger = createLogger('EnrichmentRetryService');
 const TAVILY_MONTHLY_DEFERRED_REASON = 'tavily_monthly_quota_deferred';
 const TAVILY_MONTHLY_DEFERRED_MESSAGE = 'Tavily monthly quota reached; deferred until next month reset';
+const OMDB_FALLBACK_REASON = 'omdb_exhausted_fallback_to_tavily';
 
 class EnrichmentRetryService {
     constructor() {
@@ -393,6 +394,16 @@ class EnrichmentRetryService {
                 } else {
                     const nextAttempts = (item.attempts || 0) + 1;
                     const exhausted = nextAttempts >= (item.max_attempts || 0);
+                    const resultError = result.error || 'Unknown error';
+
+                    // OMDb exhaustion should hand off to Tavily instead of terminal erroring.
+                    if (enrichmentType === 'omdb' && exhausted) {
+                        const handledByFallback = await this.handleExhaustedOmdbFallback(item, resultError);
+                        if (handledByFallback) {
+                            processed++;
+                            continue;
+                        }
+                    }
 
                     // Increment attempts
                     await db.query(
@@ -401,7 +412,7 @@ class EnrichmentRetryService {
                  attempts = attempts + 1,
                  error_message = $2
              WHERE id = $1`,
-                        [item.queue_id, result.error || 'Unknown error']
+                        [item.queue_id, resultError]
                     );
 
                     if (exhausted) {
@@ -409,7 +420,7 @@ class EnrichmentRetryService {
                             queueId: item.queue_id,
                             mediaItemId: item.media_item_id,
                             enrichmentType,
-                            error: result.error || 'Unknown error'
+                            error: resultError
                         });
                     } else {
                         logger.warn('Enrichment retry failed; item remains pending', {
@@ -418,7 +429,7 @@ class EnrichmentRetryService {
                             enrichmentType,
                             attempts: nextAttempts,
                             maxAttempts: item.max_attempts,
-                            error: result.error || 'Unknown error'
+                            error: resultError
                         });
                     }
                     failed++;
@@ -443,6 +454,81 @@ class EnrichmentRetryService {
 
         logger.info('Retry queue processing complete', { processed, success, failed, autoFailed, enrichmentType });
         return { processed, success, failed, autoFailed, skipped: false };
+    }
+
+    /**
+     * Route exhausted OMDb retries into Tavily fallback and avoid terminal OMDb errors
+     * for expected metadata misses.
+     * @param {object} item
+     * @param {string} resultError
+     * @returns {Promise<boolean>}
+     */
+    async handleExhaustedOmdbFallback(item, resultError) {
+        const fallbackReason = this.buildOmdbFallbackReason(resultError);
+
+        await this.queueForRetry(item.media_item_id, 'tavily', fallbackReason, 5);
+
+        const fallbackRowResult = await db.query(
+            `SELECT id, status, reason
+             FROM enrichment_retry_queue
+             WHERE media_item_id = $1
+               AND enrichment_type = 'tavily'
+             LIMIT 1`,
+            [item.media_item_id]
+        );
+
+        if (fallbackRowResult.rows.length === 0) {
+            return false;
+        }
+
+        await db.query(
+            `UPDATE enrichment_retry_queue
+             SET status = 'skipped',
+                 attempts = GREATEST(attempts + 1, max_attempts),
+                 completed_at = NOW(),
+                 error_message = $2,
+                 reason = COALESCE(NULLIF(reason, ''), $3)
+             WHERE id = $1`,
+            [item.queue_id, resultError || 'OMDb not found', OMDB_FALLBACK_REASON]
+        );
+
+        const fallbackRow = fallbackRowResult.rows[0];
+        const logPayload = {
+            queueId: item.queue_id,
+            mediaItemId: item.media_item_id,
+            omdbError: resultError || 'OMDb not found',
+            tavilyQueueId: fallbackRow.id,
+            tavilyStatus: fallbackRow.status,
+            tavilyReason: fallbackRow.reason || null
+        };
+
+        if (this.isExpectedOmdbMiss(resultError)) {
+            logger.info('OMDb retry exhausted; item moved to Tavily fallback', logPayload);
+        } else {
+            logger.warn('OMDb retry exhausted after operational errors; item moved to Tavily fallback', logPayload);
+        }
+
+        return true;
+    }
+
+    buildOmdbFallbackReason(resultError) {
+        if (this.isExpectedOmdbMiss(resultError)) {
+            return 'OMDb not found';
+        }
+
+        if (!resultError) {
+            return 'OMDb retry exhausted';
+        }
+
+        return `OMDb retry exhausted: ${String(resultError).slice(0, 80)}`;
+    }
+
+    isExpectedOmdbMiss(errorMessage) {
+        const normalized = String(errorMessage || '').toLowerCase();
+        return normalized.includes('omdb not found') ||
+            normalized.includes('movie not found') ||
+            normalized.includes('series not found') ||
+            normalized.includes('error getting data');
     }
 
     /**

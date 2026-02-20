@@ -848,18 +848,21 @@ class DiscordBotService {
       fields.push({ name: "Reason", value: result.reason, inline: false });
     }
 
-    // Enhanced context: Add top 3 alternative libraries if available
-    if (result.libraries && result.libraries.length > 1) {
-      const topAlternatives = result.libraries.slice(1, 4)
-        .map(lib => `${lib.name} (${lib.score || lib.confidence || '?'}%)`)
-        .join(', ');
-      if (topAlternatives) {
-        fields.push({
-          name: "📊 Top Alternatives",
-          value: topAlternatives,
-          inline: false
-        });
-      }
+    // Enhanced context: Add top alternatives with scores when available.
+    const topAlternatives = this.getTopAlternatives(result, 3);
+    if (topAlternatives.length > 0) {
+      const alternativesText = topAlternatives
+        .map((entry) => {
+          const pct = this.formatDisplayPercent(entry.score);
+          return pct ? `${entry.name} (${pct})` : entry.name;
+        })
+        .join(", ");
+
+      fields.push({
+        name: "📊 Top Alternatives",
+        value: alternativesText,
+        inline: false
+      });
     }
 
     // Enhanced context: Add signal breakdown if available
@@ -1962,6 +1965,105 @@ class DiscordBotService {
     } catch (error) {
       return null;
     }
+  }
+
+  getTopAlternatives(result, limit = 3) {
+    const selectedLibraryId = this.toFiniteNumber(
+      result?.library_id ?? result?.library?.id
+    );
+    const selectedLibraryName =
+      typeof result?.library_name === "string" && result.library_name.trim()
+        ? result.library_name.trim().toLowerCase()
+        : null;
+
+    const preferredSources = [
+      result?.clarification?.meta?.candidates,
+      result?.policy_question?.meta?.candidates,
+      result?.policyResult?.ranked,
+      result?.signalContext?.ranked,
+      result?.libraries
+    ];
+
+    let source = [];
+    for (const candidateSource of preferredSources) {
+      if (Array.isArray(candidateSource) && candidateSource.length > 0) {
+        source = candidateSource;
+        break;
+      }
+    }
+
+    if (!Array.isArray(source) || source.length === 0) {
+      return [];
+    }
+
+    const normalized = source
+      .map((entry) => {
+        const id = this.toFiniteNumber(
+          entry?.library_id ??
+            entry?.id ??
+            entry?.library?.id
+        );
+        const nameRaw =
+          entry?.library_name ??
+          entry?.name ??
+          entry?.library?.name ??
+          null;
+        const name =
+          typeof nameRaw === "string" ? nameRaw.trim() : null;
+        const score = this.toFiniteNumber(entry?.score ?? entry?.confidence);
+        return { id, name, score };
+      })
+      .filter((entry) => entry.name);
+
+    const filtered = normalized.filter((entry) => {
+      if (
+        selectedLibraryId !== null &&
+        entry.id !== null &&
+        entry.id === selectedLibraryId
+      ) {
+        return false;
+      }
+      if (
+        selectedLibraryName &&
+        entry.name.toLowerCase() === selectedLibraryName
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    const deduped = [];
+    const seenKeys = new Set();
+    for (const entry of filtered) {
+      const key = entry.id !== null ? `id:${entry.id}` : `name:${entry.name.toLowerCase()}`;
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      deduped.push(entry);
+    }
+
+    deduped.sort((a, b) => {
+      const aScore = a.score ?? -1;
+      const bScore = b.score ?? -1;
+      return bScore - aScore;
+    });
+
+    return deduped.slice(0, Math.max(1, limit));
+  }
+
+  toFiniteNumber(value) {
+    if (value === null || value === undefined) return null;
+    const num = Number(value);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  formatDisplayPercent(value) {
+    const numeric = this.toFiniteNumber(value);
+    if (numeric === null) return null;
+    const rounded = Math.round(numeric * 100) / 100;
+    if (Number.isInteger(rounded)) {
+      return `${rounded}%`;
+    }
+    return `${rounded.toFixed(2).replace(/\.?0+$/, "")}%`;
   }
 }
 

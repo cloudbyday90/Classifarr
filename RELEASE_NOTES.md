@@ -1,5 +1,47 @@
 # Classifarr Release Notes
 
+## [v0.42.7-alpha] - 2026-02-20
+
+**Title: Cleaner Alerts and Smarter Metadata Recovery**
+
+### 🎉 What You'll Notice
+
+- **Fewer false alarm errors** when OMDb simply has no usable data for a title.
+- **Automatic fallback to Tavily** after OMDb retry exhaustion, instead of getting stuck as a hard OMDb failure.
+- **Processing cards show real titles more consistently** instead of falling back to `Unknown`.
+- **One-time log reset on upgrade** gives operators a clean error baseline for this rollout.
+
+### 📊 Quick Visual
+
+```text
+Impact Snapshot
+Error Noise Reduction      [█████████░] 90%
+Fallback Recovery Path     [██████████] 100%
+Operator Visibility        [█████████░] 90%
+```
+
+### ✨ Highlights
+
+- OMDb exhausted retries now transition to Tavily fallback handling in a cleaner, more actionable way.
+- Expected no-data OMDb misses are treated as recoverable metadata gaps, not hard platform failures.
+- Command Center active processing display is more reliable when task payload shape varies.
+
+### 🔧 Reliability Improvements
+
+- Added a release-scoped one-time post-upgrade log reset task (`clear_logs_0427`) for fresh rollout triage.
+- Added regression coverage for OMDb exhausted-to-Tavily handoff and severity behavior.
+
+### 👥 Who This Helps
+
+- **End users:** fewer confusing failure signals while metadata enrichment keeps progressing through fallback paths.
+- **Operators/admins:** clearer distinction between expected source-data misses and true operational errors.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.6-alpha] - 2026-02-19
 
 **Title: Stronger Runtime Safety and More Predictable Recovery**

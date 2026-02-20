@@ -318,7 +318,8 @@ describe('EnrichmentRetryService', () => {
         const configureRetryDbMock = ({
             pendingRows = [],
             tavilyConfigured = true,
-            autoFailed = 0
+            autoFailed = 0,
+            tavilyFallbackRow = null
         } = {}) => {
             mockDb.query.mockImplementation(async (sql) => {
                 const text = String(sql);
@@ -339,6 +340,11 @@ describe('EnrichmentRetryService', () => {
 
                 if (text.includes('FROM enrichment_retry_queue erq')) {
                     return { rows: pendingRows };
+                }
+
+                if (text.includes('FROM enrichment_retry_queue') &&
+                    text.includes("enrichment_type = 'tavily'")) {
+                    return { rows: tavilyFallbackRow ? [tavilyFallbackRow] : [] };
                 }
 
                 if (text.includes('SELECT') && text.includes('FROM enrichment_retry_queue')) {
@@ -542,6 +548,83 @@ describe('EnrichmentRetryService', () => {
             const result = await service.processRetryQueue(50, 'omdb');
 
             expect(result.failed).toBe(1);
+        });
+
+        it('should hand off exhausted OMDb not-found item to Tavily fallback and skip OMDb row', async () => {
+            const mockItem = {
+                queue_id: 71,
+                media_item_id: 171,
+                attempts: 2,
+                max_attempts: 3,
+                title: 'No OMDb Match',
+                year: 2024,
+                tmdb_id: 73111,
+                imdb_id: 'tt7311111',
+                media_type: 'movie'
+            };
+
+            configureRetryDbMock({
+                pendingRows: [mockItem],
+                tavilyFallbackRow: { id: 99, status: 'pending', reason: 'OMDb not found' }
+            });
+
+            mockOmdbService.getByIMDBId.mockResolvedValue(null);
+            mockOmdbService.getByTitle.mockResolvedValue(null);
+
+            const result = await service.processRetryQueue(50, 'omdb');
+
+            expect(result.processed).toBe(1);
+            expect(result.failed).toBe(0);
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining("SET status = 'skipped'"),
+                [71, 'OMDb not found', 'omdb_exhausted_fallback_to_tavily']
+            );
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'OMDb retry exhausted; item moved to Tavily fallback',
+                expect.objectContaining({
+                    queueId: 71,
+                    mediaItemId: 171,
+                    tavilyQueueId: 99
+                })
+            );
+            expect(mockLogger.error).not.toHaveBeenCalledWith(
+                'Enrichment retry exhausted without required metadata',
+                expect.any(Object)
+            );
+        });
+
+        it('should hand off exhausted OMDb operational errors to Tavily fallback with warning severity', async () => {
+            const mockItem = {
+                queue_id: 72,
+                media_item_id: 172,
+                attempts: 2,
+                max_attempts: 3,
+                title: 'OMDb Timeout Item',
+                year: 2024,
+                tmdb_id: 73112,
+                imdb_id: 'tt7311222',
+                media_type: 'movie'
+            };
+
+            configureRetryDbMock({
+                pendingRows: [mockItem],
+                tavilyFallbackRow: { id: 100, status: 'pending', reason: 'OMDb retry exhausted: timeout' }
+            });
+
+            mockOmdbService.getByIMDBId.mockRejectedValue(new Error('timeout of 15000ms exceeded'));
+
+            const result = await service.processRetryQueue(50, 'omdb');
+
+            expect(result.processed).toBe(1);
+            expect(result.failed).toBe(0);
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                'OMDb retry exhausted after operational errors; item moved to Tavily fallback',
+                expect.objectContaining({
+                    queueId: 72,
+                    mediaItemId: 172,
+                    tavilyQueueId: 100
+                })
+            );
         });
 
         it('should auto-fail exhausted pending retries before selecting work', async () => {
