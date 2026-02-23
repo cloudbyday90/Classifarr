@@ -21,6 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.8a-alpha] - 2026-02-23
+
+### Fixed
+
+- **Embedding model warm-up uses correct Ollama endpoint**
+  - Added `warmEmbeddingModel()` method that uses `/api/embed` instead of `/api/generate`.
+  - `warmAllModels()` now calls `warmEmbeddingModel()` for embedding models.
+  - `warmModel()` auto-falls back to `/api/embed` when model returns "does not support generate" error.
+  - Fixes 400 error when warming embedding models like `mxbai-embed-large`.
+
+---
+
 ## [v0.42.8-alpha] - 2026-02-23
 
 ### Fixed

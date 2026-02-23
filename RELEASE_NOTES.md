@@ -1,5 +1,44 @@
 # Classifarr Release Notes
 
+## [v0.42.8a-alpha] - 2026-02-23
+
+**Title: Fixed Embedding Model Warm-up Endpoint**
+
+### 🎉 What You'll Notice
+
+- The "Warm Models" button now correctly warms embedding models using the proper `/api/embed` endpoint.
+- Manually warming any model automatically detects if it's an embedding model and uses the correct Ollama API.
+
+### 📊 Quick Visual
+
+```text
+Model Warm-up Compatibility
+AI Models (generate)      [██████████] 100%
+Embedding Models (embed)  [██████████] 100%
+Auto-Detection            [██████████] 100%
+```
+
+### ✨ Highlights
+
+- Embedding models now use `/api/embed` instead of `/api/generate`.
+- Manual warm endpoint auto-detects model type and falls back appropriately.
+
+### 🔧 Reliability Improvements
+
+- `warmAllModels()` uses dedicated `warmEmbeddingModel()` for embedding models.
+- `warmModel()` automatically falls back to `/api/embed` when model doesn't support generate.
+
+### 👥 Who This Helps
+
+- **End users:** One-click warm-up now works for all model types.
+- **Operators/admins:** No more 400 errors when warming embedding models.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.8-alpha] - 2026-02-23
 
 **Title: Fixed AI Model Warm-up with Unified Settings**
