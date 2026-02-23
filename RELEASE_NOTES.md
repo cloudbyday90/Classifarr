@@ -1,5 +1,44 @@
 # Classifarr Release Notes
 
+## [v0.42.8-alpha] - 2026-02-23
+
+**Title: Fixed AI Model Warm-up with Unified Settings**
+
+### 🎉 What You'll Notice
+
+- The "Warm Models" button now correctly warms both your AI classification model and embedding model.
+- Works with both the legacy Ollama config and the unified AI provider settings.
+
+### 📊 Quick Visual
+
+```text
+Fix Coverage
+AI Model Resolution    [██████████] 100%
+Embedding Resolution   [██████████] 100%
+Config Compatibility   [██████████] 100%
+```
+
+### ✨ Highlights
+
+- Fixed `getConfig()` to return the model field from either config table.
+- Model warm-up now correctly reads from `ai_provider_config.ollama_model`.
+
+### 🔧 Reliability Improvements
+
+- AI classification model is no longer skipped during warm-all operation.
+- Consistent model resolution across all warm-up and preflight operations.
+
+### 👥 Who This Helps
+
+- **End users:** One-click warm-up now loads both models reliably.
+- **Operators/admins:** No more manual model pre-loading required.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.7e-alpha] - 2026-02-23
 
 **Title: Bug Fix for Model Warm-up and Improved Test Coverage**

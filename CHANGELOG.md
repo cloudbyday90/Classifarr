@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.8-alpha] - 2026-02-23
+
+### Fixed
+
+- **AI model field resolution in getConfig()**
+  - `getConfig()` now returns the `model` field from either `ollama_config.model` or `ai_provider_config.ollama_model`.
+  - Added `this.model` to constructor and `resetConfig()` for proper state management.
+  - Fixes `warmAllModels()` skipping AI classification model warm-up when using unified settings.
+
+---
+
 ## [v0.42.7e-alpha] - 2026-02-23
 
 ### Fixed
