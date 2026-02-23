@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- None yet.
+- **AI Library Mapping**
+  - Prioritized exact string matching for AI clarification options so "Movies" correctly maps to `Movies` instead of `Anime Movies` when libraries have overlapping substring names.
 
 ---
 
