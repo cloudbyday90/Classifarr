@@ -62,8 +62,9 @@ class OllamaService {
         const db = require('../config/database');
         let embeddingModel = null;
         try {
-          const embedResult = await db.query('SELECT embedding_ollama_model FROM ai_provider_config WHERE id = 1');
-          embeddingModel = embedResult.rows[0]?.embedding_ollama_model || null;
+          const embedResult = await db.query('SELECT embedding_model, embedding_ollama_model FROM ai_provider_config WHERE id = 1');
+          const row = embedResult.rows[0];
+          embeddingModel = row?.embedding_model || row?.embedding_ollama_model || null;
         } catch {}
 
         const result = await this.preflightConnection({
@@ -198,8 +199,9 @@ class OllamaService {
 
     const db = require('../config/database');
     try {
-      const embedResult = await db.query('SELECT embedding_ollama_model FROM ai_provider_config WHERE id = 1');
-      const embeddingModel = embedResult.rows[0]?.embedding_ollama_model;
+      const embedResult = await db.query('SELECT embedding_model, embedding_ollama_model, embedding_provider FROM ai_provider_config WHERE id = 1');
+      const row = embedResult.rows[0];
+      const embeddingModel = row?.embedding_model || row?.embedding_ollama_model || null;
       if (embeddingModel && embeddingModel !== config.model) {
         results.embedding = await this.warmModel(embeddingModel, keepAlive, config.host, config.port);
       }
