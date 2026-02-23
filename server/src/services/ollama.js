@@ -175,6 +175,9 @@ class OllamaService {
         message: `Model '${model}' loaded and will stay in memory for ${keepAlive}`
       };
     } catch (error) {
+      if (error.message && error.message.includes('does not support generate')) {
+        return this.warmEmbeddingModel(model, keepAlive, warmHost, warmPort);
+      }
       return {
         success: false,
         model,
