@@ -28,6 +28,7 @@ class OllamaService {
   constructor() {
     this.host = null;
     this.port = null;
+    this.model = null;
     this.baseUrl = null;
     this.detectedGateway = null;
 
@@ -213,6 +214,7 @@ class OllamaService {
   resetConfig() {
     this.host = null;
     this.port = null;
+    this.model = null;
     this.baseUrl = null;
     this.preflightCache.clear();
   }
@@ -277,29 +279,32 @@ class OllamaService {
     // Use cached config if available (performance optimization)
     // Cache is invalidated via resetConfig() when settings are updated
     if (this.baseUrl) {
-      return { host: this.host, port: this.port, baseUrl: this.baseUrl };
+      return { host: this.host, port: this.port, baseUrl: this.baseUrl, model: this.model };
     }
 
     // Try to load from ollama_config table first
-    const result = await db.query('SELECT id, host, port FROM ollama_config WHERE is_active = true LIMIT 1');
+    const result = await db.query('SELECT id, host, port, model FROM ollama_config WHERE is_active = true LIMIT 1');
     if (result.rows.length > 0) {
       this.host = result.rows[0].host;
       this.port = result.rows[0].port;
+      this.model = result.rows[0].model;
     } else {
       // Try ai_provider_config as fallback (unified settings)
-      const aiResult = await db.query('SELECT ollama_host, ollama_port FROM ai_provider_config WHERE id = 1');
+      const aiResult = await db.query('SELECT ollama_host, ollama_port, ollama_model FROM ai_provider_config WHERE id = 1');
       if (aiResult.rows.length > 0 && aiResult.rows[0].ollama_host) {
         this.host = aiResult.rows[0].ollama_host;
         this.port = aiResult.rows[0].ollama_port || 11434;
+        this.model = aiResult.rows[0].ollama_model;
       } else {
         // Fall back to environment variables or default
         this.host = process.env.OLLAMA_HOST || 'localhost';
         this.port = process.env.OLLAMA_PORT || 11434;
+        this.model = null;
       }
     }
 
     this.baseUrl = `http://${this.host}:${this.port}`;
-    return { host: this.host, port: this.port, baseUrl: this.baseUrl };
+    return { host: this.host, port: this.port, baseUrl: this.baseUrl, model: this.model };
   }
 
   async testConnection(host = null, port = null) {
