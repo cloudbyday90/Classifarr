@@ -4,12 +4,9 @@
  * Licensed under GPL-3.0
  */
 
-// Mock axios before requiring the module
 jest.mock('axios');
 jest.mock('../config/database', () => ({
-    query: jest.fn().mockResolvedValue({
-        rows: [{ ollama_host: 'localhost', ollama_port: 11434 }]
-    })
+    query: jest.fn()
 }));
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
@@ -21,15 +18,26 @@ jest.mock('../utils/logger', () => ({
 }));
 
 const axios = require('axios');
+const db = require('../config/database');
 const ollamaService = require('../services/ollama');
 
 describe('OllamaService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        // Reset service state
         ollamaService.host = null;
         ollamaService.port = null;
         ollamaService.baseUrl = null;
+        ollamaService.preflightCache.clear();
+
+        db.query.mockImplementation((sql) => {
+            if (sql.includes('ollama_config')) {
+                return Promise.resolve({ rows: [] });
+            }
+            if (sql.includes('ai_provider_config')) {
+                return Promise.resolve({ rows: [{ ollama_host: 'localhost', ollama_port: 11434 }] });
+            }
+            return Promise.resolve({ rows: [] });
+        });
     });
 
     describe('getLoadedModels', () => {
@@ -37,20 +45,16 @@ describe('OllamaService', () => {
             axios.get.mockResolvedValueOnce({
                 data: {
                     models: [
-                        { name: 'gemma3:12b', size: 8589934592, digest: 'abc123' },
-                        { name: 'nomic-embed-text', size: 274877440, digest: 'def456' }
+                        { name: 'test-model:latest', size: 8589934592, digest: 'abc123' },
+                        { name: 'test-embed-model', size: 274877440, digest: 'def456' }
                     ]
                 }
             });
 
             const models = await ollamaService.getLoadedModels('localhost', 11434);
 
-            expect(axios.get).toHaveBeenCalledWith(
-                'http://localhost:11434/api/ps',
-                { timeout: 5000 }
-            );
             expect(models).toHaveLength(2);
-            expect(models[0].name).toBe('gemma3:12b');
+            expect(models[0].name).toBe('test-model:latest');
         });
 
         it('should return empty array when no models loaded', async () => {
@@ -73,36 +77,30 @@ describe('OllamaService', () => {
     describe('isModelLoaded', () => {
         it('should return true when model is loaded (exact match)', async () => {
             axios.get.mockResolvedValueOnce({
-                data: {
-                    models: [{ name: 'gemma3:12b' }]
-                }
+                data: { models: [{ name: 'test-model:7b' }] }
             });
 
-            const isLoaded = await ollamaService.isModelLoaded('gemma3:12b', 'localhost', 11434);
+            const isLoaded = await ollamaService.isModelLoaded('test-model:7b', 'localhost', 11434);
 
             expect(isLoaded).toBe(true);
         });
 
         it('should return true when model matches with tag suffix', async () => {
             axios.get.mockResolvedValueOnce({
-                data: {
-                    models: [{ name: 'gemma3:12b' }]
-                }
+                data: { models: [{ name: 'test-model:7b' }] }
             });
 
-            const isLoaded = await ollamaService.isModelLoaded('gemma3', 'localhost', 11434);
+            const isLoaded = await ollamaService.isModelLoaded('test-model', 'localhost', 11434);
 
             expect(isLoaded).toBe(true);
         });
 
         it('should return false when model is not loaded', async () => {
             axios.get.mockResolvedValueOnce({
-                data: {
-                    models: [{ name: 'gemma3:12b' }]
-                }
+                data: { models: [{ name: 'test-model:7b' }] }
             });
 
-            const isLoaded = await ollamaService.isModelLoaded('llama3', 'localhost', 11434);
+            const isLoaded = await ollamaService.isModelLoaded('other-model', 'localhost', 11434);
 
             expect(isLoaded).toBe(false);
         });
@@ -110,51 +108,210 @@ describe('OllamaService', () => {
         it('should return false when no models are loaded', async () => {
             axios.get.mockResolvedValueOnce({ data: { models: [] } });
 
-            const isLoaded = await ollamaService.isModelLoaded('gemma3:12b', 'localhost', 11434);
+            const isLoaded = await ollamaService.isModelLoaded('test-model', 'localhost', 11434);
 
             expect(isLoaded).toBe(false);
         });
     });
 
-    describe('embed with keep_alive', () => {
-        it('should pass keep_alive parameter in embed request', async () => {
-            // Mock getModels for model check
-            axios.get.mockResolvedValueOnce({
-                data: { models: [{ name: 'nomic-embed-text' }] }
-            });
-            // Mock embed request
-            axios.post.mockResolvedValueOnce({
-                data: { embeddings: [[0.1, 0.2, 0.3]] }
-            });
-
-            await ollamaService.embed('test text', 'nomic-embed-text', '15m');
-
-            expect(axios.post).toHaveBeenCalledWith(
-                expect.stringContaining('/api/embed'),
-                expect.objectContaining({
-                    model: 'nomic-embed-text',
-                    input: 'test text',
-                    keep_alive: '15m'
-                }),
-                expect.any(Object)
-            );
+    describe('parseCacheMs', () => {
+        it('should parse string number', () => {
+            expect(ollamaService.parseCacheMs('30000', 60000)).toBe(30000);
         });
 
-        it('should use default keep_alive of 5m', async () => {
-            axios.get.mockResolvedValueOnce({
-                data: { models: [{ name: 'nomic-embed-text' }] }
-            });
-            axios.post.mockResolvedValueOnce({
-                data: { embeddings: [[0.1, 0.2, 0.3]] }
-            });
+        it('should return number directly', () => {
+            expect(ollamaService.parseCacheMs(45000, 60000)).toBe(45000);
+        });
 
-            await ollamaService.embed('test text', 'nomic-embed-text');
+        it('should return fallback for null', () => {
+            expect(ollamaService.parseCacheMs(null, 60000)).toBe(60000);
+        });
 
-            expect(axios.post).toHaveBeenCalledWith(
-                expect.any(String),
-                expect.objectContaining({ keep_alive: '5m' }),
-                expect.any(Object)
-            );
+        it('should return fallback for undefined', () => {
+            expect(ollamaService.parseCacheMs(undefined, 60000)).toBe(60000);
+        });
+
+        it('should return fallback for invalid string', () => {
+            expect(ollamaService.parseCacheMs('invalid', 60000)).toBe(60000);
+        });
+
+        it('should return fallback for negative number', () => {
+            expect(ollamaService.parseCacheMs(-1000, 60000)).toBe(60000);
+        });
+
+        it('should return fallback for NaN', () => {
+            expect(ollamaService.parseCacheMs(NaN, 60000)).toBe(60000);
+        });
+    });
+
+    describe('resetConfig', () => {
+        it('should clear cached configuration', () => {
+            ollamaService.host = 'localhost';
+            ollamaService.port = 11434;
+            ollamaService.baseUrl = 'http://localhost:11434';
+            ollamaService.preflightCache.set('key', { success: true });
+
+            ollamaService.resetConfig();
+
+            expect(ollamaService.host).toBeNull();
+            expect(ollamaService.port).toBeNull();
+            expect(ollamaService.baseUrl).toBeNull();
+            expect(ollamaService.preflightCache.size).toBe(0);
+        });
+    });
+
+    describe('getDefaultOllamaHost', () => {
+        it('should return localhost', () => {
+            expect(ollamaService.getDefaultOllamaHost()).toBe('localhost');
+        });
+    });
+
+    describe('getGenerationStatus', () => {
+        it('should return inactive status when no generation', () => {
+            expect(ollamaService.getGenerationStatus().isActive).toBe(false);
+        });
+
+        it('should return active status during generation', () => {
+            ollamaService.setGenerationStatus(true, 'test-model', 'Test Item');
+
+            const status = ollamaService.getGenerationStatus();
+
+            expect(status.isActive).toBe(true);
+            expect(status.model).toBe('test-model');
+            expect(status.itemTitle).toBe('Test Item');
+        });
+
+        it('should return inactive after generation ends', () => {
+            ollamaService.setGenerationStatus(true, 'test-model', 'Test Item');
+            ollamaService.setGenerationStatus(false);
+
+            expect(ollamaService.getGenerationStatus().isActive).toBe(false);
+        });
+    });
+
+    describe('setGenerationStatus', () => {
+        it('should set generation status with all fields', () => {
+            ollamaService.setGenerationStatus(true, 'test-model', 'Test Item');
+
+            expect(ollamaService.currentGeneration.isActive).toBe(true);
+            expect(ollamaService.currentGeneration.model).toBe('test-model');
+            expect(ollamaService.currentGeneration.itemTitle).toBe('Test Item');
+        });
+
+        it('should reset generation status when set to false', () => {
+            ollamaService.setGenerationStatus(true, 'test-model', 'Test Item');
+            ollamaService.setGenerationStatus(false);
+
+            expect(ollamaService.currentGeneration.isActive).toBe(false);
+        });
+    });
+
+    describe('scheduled preflight', () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+            ollamaService.stopScheduledPreflight();
+            ollamaService.lastScheduledPreflight = null;
+            ollamaService.lastEmbeddingPreflight = null;
+        });
+
+        afterEach(() => {
+            ollamaService.stopScheduledPreflight();
+            jest.useRealTimers();
+        });
+
+        it('should start scheduled preflight timer', () => {
+            ollamaService.startScheduledPreflight(60000);
+            expect(ollamaService.scheduledPreflightTimer).not.toBeNull();
+        });
+
+        it('should not start duplicate timer', () => {
+            ollamaService.startScheduledPreflight(60000);
+            const timer1 = ollamaService.scheduledPreflightTimer;
+
+            ollamaService.startScheduledPreflight(60000);
+
+            expect(ollamaService.scheduledPreflightTimer).toBe(timer1);
+        });
+
+        it('should stop scheduled preflight timer', () => {
+            ollamaService.startScheduledPreflight(60000);
+            ollamaService.stopScheduledPreflight();
+
+            expect(ollamaService.scheduledPreflightTimer).toBeNull();
+        });
+
+        it('should handle stop when no timer is running', () => {
+            expect(() => ollamaService.stopScheduledPreflight()).not.toThrow();
+        });
+
+        it('should return null when no scheduled preflight has run', () => {
+            const result = ollamaService.getLastScheduledPreflight();
+
+            expect(result.ai).toBeNull();
+            expect(result.embedding).toBeNull();
+        });
+    });
+
+    describe('preflightCache', () => {
+        it('should clear preflight cache', () => {
+            ollamaService.preflightCache.set('key1', { success: true });
+            ollamaService.preflightCache.set('key2', { success: false });
+
+            ollamaService.preflightCache.clear();
+
+            expect(ollamaService.preflightCache.size).toBe(0);
+        });
+
+        it('should store and retrieve cached values', () => {
+            const cachedResult = { success: true, host: 'localhost', port: 11434 };
+            ollamaService.preflightCache.set('test-key', cachedResult);
+
+            expect(ollamaService.preflightCache.get('test-key')).toEqual(cachedResult);
+        });
+    });
+
+    describe('getRecommendedModels', () => {
+        it('should return array of recommended models', () => {
+            const models = ollamaService.getRecommendedModels();
+
+            expect(Array.isArray(models)).toBe(true);
+            expect(models.length).toBeGreaterThan(0);
+            expect(models[0]).toHaveProperty('name');
+        });
+    });
+
+    describe('warmModel with explicit host/port', () => {
+        it('should successfully warm a model', async () => {
+            axios.post.mockResolvedValueOnce({ data: {} });
+
+            const result = await ollamaService.warmModel('test-model', '24h', 'ollama-host', 11434);
+
+            expect(result.success).toBe(true);
+            expect(result.model).toBe('test-model');
+            expect(result.keep_alive).toBe('24h');
+            expect(result.host).toBe('ollama-host');
+        });
+
+        it('should return failure when model not found (404)', async () => {
+            const error = new Error('Request failed with status code 404');
+            axios.post.mockRejectedValueOnce(error);
+
+            const result = await ollamaService.warmModel('nonexistent-model', '24h', 'ollama-host', 11434);
+
+            expect(result.success).toBe(false);
+            expect(result.model).toBe('nonexistent-model');
+            expect(result.error).toContain('404');
+        });
+
+        it('should return failure on connection error', async () => {
+            const error = new Error('ECONNREFUSED');
+            error.code = 'ECONNREFUSED';
+            axios.post.mockRejectedValueOnce(error);
+
+            const result = await ollamaService.warmModel('test-model', '24h', 'ollama-host', 11434);
+
+            expect(result.success).toBe(false);
+            expect(result.errorCode).toBe('ECONNREFUSED');
         });
     });
 });

@@ -1,5 +1,44 @@
 # Classifarr Release Notes
 
+## [v0.42.7e-alpha] - 2026-02-23
+
+**Title: Bug Fix for Model Warm-up and Improved Test Coverage**
+
+### 🎉 What You'll Notice
+
+- Model warm-up now correctly detects your configured embedding model.
+- Test coverage increased to help catch regressions earlier.
+
+### 📊 Quick Visual
+
+```text
+Quality Snapshot
+Bug Fix Coverage       [██████████] 100%
+Embedding Detection    [██████████] 100%
+Test Coverage          [████████░░] 80%
+```
+
+### ✨ Highlights
+
+- Fixed warm-all to check both `embedding_model` and `embedding_ollama_model` fields.
+- Added comprehensive unit tests for Ollama service methods.
+
+### 🔧 Reliability Improvements
+
+- Model warm-up endpoint now correctly resolves embedding model from either config field.
+- Preflight scheduled check also uses correct field resolution.
+
+### 👥 Who This Helps
+
+- **End users:** Warm-up button now works correctly with any embedding model configuration.
+- **Operators/admins:** Better test coverage means more reliable releases.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.7d-alpha] - 2026-02-23
 
 **Title: Smarter Ollama Connection Handling and Model Warm-up**

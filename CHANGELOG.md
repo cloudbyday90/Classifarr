@@ -21,6 +21,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.7e-alpha] - 2026-02-23
+
+### Fixed
+
+- **Embedding model field resolution in warm-up**
+  - `warmAllModels()` now checks both `embedding_model` and `embedding_ollama_model` fields.
+  - `startScheduledPreflight()` uses same resolution logic for consistency.
+  - Fixes issue where warm-all would fail when embedding model was configured in `embedding_model` field.
+
+### Changed
+
+- **Test coverage improvements**
+  - Added 23 new unit tests for OllamaService methods.
+  - Coverage baseline updated: server 47.50% → 48.28%, client 55.44% → 56.35%.
+
+---
+
 ## [v0.42.7d-alpha] - 2026-02-23
 
 ### Added
