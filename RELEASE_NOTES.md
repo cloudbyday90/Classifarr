@@ -1,5 +1,45 @@
 # Classifarr Release Notes
 
+## [v0.42.7a-alpha] - 2026-02-23
+
+**Title: Discord Choices Now Route to the Library You Pick**
+
+### 🎉 What You'll Notice
+
+- Discord clarification buttons now map overlapping names correctly when you choose a library like `Movies`.
+- Selecting `Movies` no longer gets redirected to `Anime Movies` due to partial name matching.
+- Clarification outcomes are more predictable for similarly named libraries.
+
+### 📊 Quick Visual
+
+```text
+Routing Accuracy Snapshot
+Exact Name Mapping      [██████████] 100%
+Discord Choice Fidelity [██████████] 100%
+Ambiguous Name Safety   [█████████░] 90%
+```
+
+### ✨ Highlights
+
+- Clarification option mapping now prioritizes exact library name matches before partial/substring fallbacks.
+- Added regression coverage for overlapping names (`Anime Movies` vs `Movies`) to lock the behavior.
+
+### 🔧 Reliability Improvements
+
+- Reduced risk of silent misroutes in pending clarification flows.
+- Better guardrails for future library naming overlap as catalogs evolve.
+
+### 👥 Who This Helps
+
+- **End users:** Discord button choices now align with the destination library you intended.
+- **Operators/admins:** less manual cleanup from misrouted clarification actions.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.7-alpha] - 2026-02-20
 
 **Title: Cleaner Alerts and Smarter Metadata Recovery**

@@ -17,8 +17,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- None yet.
+
+---
+
+## [v0.42.7a-alpha] - 2026-02-23
+
+### Added
+
+- **AI clarification mapping regression coverage**
+  - Added parser coverage to assert exact-match precedence for overlapping library names (for example, `Anime Movies` vs `Movies`).
+
+### Changed
+
+- None.
+
+### Fixed
+
 - **AI Library Mapping**
-  - Prioritized exact string matching for AI clarification options so "Movies" correctly maps to `Movies` instead of `Anime Movies` when libraries have overlapping substring names.
+  - Prioritized exact string matching for AI clarification options so `Movies` maps to `Movies` instead of `Anime Movies` when libraries have overlapping substring names.
 
 ---
 
