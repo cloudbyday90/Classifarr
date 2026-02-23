@@ -187,6 +187,55 @@ class OllamaService {
     }
   }
 
+  async warmEmbeddingModel(model, keepAlive = '24h', host = null, port = null) {
+    const config = await this.getConfig();
+    const warmHost = host || config.host;
+    const warmPort = port || config.port;
+    const warmUrl = `http://${warmHost}:${warmPort}`;
+
+    if (!warmHost) {
+      return {
+        success: false,
+        model,
+        error: 'Ollama host not configured',
+        message: 'Ollama host not configured'
+      };
+    }
+
+    const startedAt = Date.now();
+    try {
+      await axios.post(
+        `${warmUrl}/api/embed`,
+        {
+          model,
+          input: 'warmup',
+          keep_alive: keepAlive
+        },
+        { timeout: 60000 }
+      );
+
+      return {
+        success: true,
+        model,
+        host: warmHost,
+        port: warmPort,
+        latency_ms: Date.now() - startedAt,
+        keep_alive: keepAlive,
+        message: `Embedding model '${model}' loaded and will stay in memory for ${keepAlive}`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        model,
+        host: warmHost,
+        port: warmPort,
+        error: error.message,
+        errorCode: error.code || 'EWARM',
+        message: `Failed to warm embedding model '${model}': ${error.message}`
+      };
+    }
+  }
+
   async warmAllModels(keepAlive = '24h') {
     const config = await this.getConfig();
     const results = {
@@ -204,7 +253,7 @@ class OllamaService {
       const row = embedResult.rows[0];
       const embeddingModel = row?.embedding_model || row?.embedding_ollama_model || null;
       if (embeddingModel && embeddingModel !== config.model) {
-        results.embedding = await this.warmModel(embeddingModel, keepAlive, config.host, config.port);
+        results.embedding = await this.warmEmbeddingModel(embeddingModel, keepAlive, config.host, config.port);
       }
     } catch {}
 
