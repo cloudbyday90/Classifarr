@@ -1642,6 +1642,33 @@ describe('AI availability fallback handling', () => {
     expect(result.reason).toContain('queued for retry');
   });
 
+  test('uses specific queued retry reason when generation ends before completion signal', async () => {
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 82,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 82,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    });
+
+    const incompleteError = new Error('Generation ended before completion signal');
+    incompleteError.code = 'EINCOMPLETE';
+    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(incompleteError);
+
+    const result = await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 }
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.method).toBe('queued_for_retry');
+    expect(result.reason).toBe('AI stream ended before completion signal - queued for retry');
+    expect(result.retry_reason_code).toBe('ai_stream_incomplete');
+  });
+
   test('keeps non-transient AI failures on signal-calculation fallback path', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'prompt_confirm',
@@ -1772,6 +1799,23 @@ describe('Phase 1 AI contract and stream guard', () => {
     );
   });
 
+  test('retries once on transient stream interruption before parsing AI response', async () => {
+    const incompleteError = new Error('Generation ended before completion signal');
+    incompleteError.code = 'EINCOMPLETE';
+
+    jest.spyOn(ollamaService, 'generateWithProgress')
+      .mockRejectedValueOnce(incompleteError)
+      .mockResolvedValueOnce('CONFIDENT|1|81|Signals align with Movies library.');
+    jest.spyOn(ollamaService, 'generate').mockResolvedValue('');
+
+    const result = await classificationService.aiClassify(metadata, libraries, signalContext, {
+      mode: 'classify'
+    });
+
+    expect(result.format).toBe('confident');
+    expect(ollamaService.generateWithProgress).toHaveBeenCalledTimes(2);
+  });
+
   test('treats stream timeout/abort errors as transient availability failures', () => {
     const timeoutError = new Error('ollama_generate stalled with partial response blocked');
     timeoutError.code = 'ESTALL';
@@ -1779,7 +1823,32 @@ describe('Phase 1 AI contract and stream guard', () => {
     const abortedError = new Error('Generation aborted');
     abortedError.code = 'ABORT_ERR';
 
+    const incompleteDoneSignalError = new Error('Generation ended before completion signal');
+
+    const http500Error = new Error('Request failed with status code 500');
+    const http502Error = new Error('Request failed with status code 502');
+    const http503Error = new Error('Request failed with status code 503');
+    const http504Error = new Error('Request failed with status code 504');
+
     expect(classificationService.isAiTransientAvailabilityError(timeoutError)).toBe(true);
     expect(classificationService.isAiTransientAvailabilityError(abortedError)).toBe(true);
+    expect(classificationService.isAiTransientAvailabilityError(incompleteDoneSignalError)).toBe(true);
+    expect(classificationService.isAiTransientAvailabilityError(http500Error)).toBe(true);
+    expect(classificationService.isAiTransientAvailabilityError(http502Error)).toBe(true);
+    expect(classificationService.isAiTransientAvailabilityError(http503Error)).toBe(true);
+    expect(classificationService.isAiTransientAvailabilityError(http504Error)).toBe(true);
+  });
+
+  test('resolves specific retry reason for HTTP 500 errors', () => {
+    const http500Error = new Error('Failed to generate: Request failed with status code 500');
+    const http503Error = new Error('Request failed with status code 503');
+
+    const result500 = classificationService.resolveRetryReason(http500Error);
+    const result503 = classificationService.resolveRetryReason(http503Error);
+
+    expect(result500.code).toBe('ai_server_error');
+    expect(result500.reason).toContain('500');
+    expect(result503.code).toBe('ai_unavailable');
+    expect(result503.reason).toContain('503');
   });
 });

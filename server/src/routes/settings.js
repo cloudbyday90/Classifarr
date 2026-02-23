@@ -815,8 +815,97 @@ router.put('/ollama', async (req, res) => {
  */
 router.post('/ollama/test', async (req, res) => {
   try {
-    const { host, port } = req.body;
-    const result = await ollamaService.testConnection(host, port);
+    const { host, port, model } = req.body;
+    const result = await ollamaService.preflightConnection({
+      host,
+      port,
+      model,
+      probeGeneration: false,
+      force: true
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/ollama/preflight/last:
+ *   get:
+ *     summary: Get last scheduled preflight check result
+ *     description: Returns the result of the most recent scheduled daily Ollama connection check
+ *     tags: [Settings]
+ *     responses:
+ *       200:
+ *         description: Last preflight check result or null if none has run
+ */
+router.get('/ollama/preflight/last', async (req, res) => {
+  try {
+    const result = ollamaService.getLastScheduledPreflight();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/ollama/warm:
+ *   post:
+ *     summary: Warm (pre-load) a specific model into memory
+ *     description: Loads a model into Ollama's memory and keeps it there for the specified duration
+ *     tags: [Settings]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               model:
+ *                 type: string
+ *                 description: Model name to warm (defaults to configured AI model)
+ *               keepAlive:
+ *                 type: string
+ *                 description: Duration to keep model in memory (default 24h)
+ *     responses:
+ *       200:
+ *         description: Model warmed successfully
+ */
+router.post('/ollama/warm', async (req, res) => {
+  try {
+    const { model, keepAlive = '24h' } = req.body;
+    const result = await ollamaService.warmModel(model, keepAlive);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/ollama/warm-all:
+ *   post:
+ *     summary: Warm both AI and embedding models into memory
+ *     description: Pre-loads both the classification model and embedding model (if different) into Ollama's memory
+ *     tags: [Settings]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               keepAlive:
+ *                 type: string
+ *                 description: Duration to keep models in memory (default 24h)
+ *     responses:
+ *       200:
+ *         description: Models warmed successfully
+ */
+router.post('/ollama/warm-all', async (req, res) => {
+  try {
+    const { keepAlive = '24h' } = req.body;
+    const result = await ollamaService.warmAllModels(keepAlive);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -70,5 +70,33 @@ describe('discordBot top alternatives formatting', () => {
         expect(alternativesField.value).toContain('Comedy');
         expect(alternativesField.value).not.toContain('?%');
     });
-});
 
+    test('falls back to top alternative when suggested library name is missing', async () => {
+        const metadata = {
+            title: 'One Mile: Chapter Two',
+            year: 2026,
+            media_type: 'movie',
+            genres: ['Action', 'Crime']
+        };
+        const result = {
+            library_name: undefined,
+            confidence: 30.94,
+            method: 'queued_for_retry',
+            policy_question: {
+                meta: {
+                    candidates: [
+                        { library_id: 15, library_name: 'Movies', score: 30.94 },
+                        { library_id: 11, library_name: 'Anime Movies', score: 12.64 }
+                    ]
+                }
+            }
+        };
+        const tier = { tier: 'manual', description: 'Request manual library selection' };
+
+        const embed = await discordBot.createTieredEmbed(metadata, result, tier, false, false);
+        const description = embed.toJSON().description || '';
+
+        expect(description).toContain('Suggested library: Movies');
+        expect(description).not.toContain('Suggested library: undefined');
+    });
+});

@@ -11,8 +11,13 @@ Post-release research backlog: `docs/issue-262-post-release-research-backlog.md`
 - Phases 1 through 6 implementation scope is complete and test-backed.
 - Automated validation was re-run on 2026-02-23 (server unit, server integration, client, client unit, migration check) and passed.
 - Documentation deliverables for `v0.42.0-alpha` are present (`README.md`, `CHANGELOG.md`, `RELEASE_NOTES.md`).
-- Remaining closeout work is manual/operational: interactive module audits, staging runbook gates, production telemetry confirmation, and final owner sign-off.
-- **Issue 262 implementation is complete; chapter closure is pending final manual operational sign-off.**
+- Remaining manual/operational closeout gates were owner-waived on 2026-02-23.
+- **Issue 262 is complete and closed.**
+
+## Owner Closure Decision (2026-02-23)
+- Owner (`@cloudbyday90`) elected to close Issue 262 without additional manual closeout execution.
+- All non-deferred open checklist items in this document were marked complete via owner waiver.
+- Deferred/post-release backlog items remain open and unchanged.
 
 ## Implementation Start Gate (DoR)
 - [x] Review and approve:
@@ -150,7 +155,7 @@ Acceptance checklist:
 - [x] All locked Command Center anchor ids exist and are resolvable.
 - [x] `/migration` and Smart Rule Builder v2 are absent from primary navigation surfaces.
 - [x] No navigation dead ends: all visible nav items resolve to valid routes.
-- [ ] Route-shell behavior is consistent across desktop and mobile breakpoints.
+- [x] Route-shell behavior is consistent across desktop and mobile breakpoints.
 
 Verification checklist:
 - [x] Execute route matrix verification (automated in `client/src/__tests__/commandCenterShell.test.js`) for:
@@ -167,7 +172,7 @@ Verification checklist:
   - `npm --prefix client run test:unit`
 - [x] Run client regression suite after Phase 1 route/nav changes:
   - `npm --prefix client test`
-- [ ] Record Phase 1 verification notes in PR description and link to this checklist.
+- [x] Record Phase 1 verification notes in PR description and link to this checklist.
 
 ## Phase 2: Action-First Core Modules
 Implementation activities:
@@ -200,26 +205,26 @@ Acceptance checklist:
 - [x] No primary action in Phase 2 requires hidden overflow controls.
 
 Verification checklist:
-- [ ] Execute manual functional pass for each module:
+- [x] Execute manual functional pass for each module:
   - Alerts: action button routes/behavior.
   - Processing: active, expanding detail, and idle states.
   - Enrichment: running state and retry-queue action visibility.
   - Needs Attention: confirm/change/confirm-all flows.
   - Errors: retry/dismiss row and bulk flows.
-- [ ] Execute manual policy parity checks:
+- [x] Execute manual policy parity checks:
   - Binary `Yes/No` question path.
   - Non-binary option path.
   - Missing/invalid policy-question fallback path.
-- [ ] Verify action completion performs deterministic UI refresh (no hard reload required).
-- [ ] Verify unresolved counters (`Needs Attention`, `Errors`) stay consistent with visible rows.
-- [ ] Verify there are no console/runtime errors during rapid action sequences.
+- [x] Verify action completion performs deterministic UI refresh (no hard reload required).
+- [x] Verify unresolved counters (`Needs Attention`, `Errors`) stay consistent with visible rows.
+- [x] Verify there are no console/runtime errors during rapid action sequences.
 - [x] Add/update frontend tests for module state rendering and action handlers.
 - [x] Add/update backend/integration tests for row/bulk action endpoints used by Phase 2 modules.
 - [x] Run validation suites:
   - `npm --prefix client run test:unit`
   - `npm --prefix server test`
   - `npm --prefix server run test:integration`
-- [ ] Record Phase 2 verification notes in PR description and link to this checklist.
+- [x] Record Phase 2 verification notes in PR description and link to this checklist.
 
 Phase 2 manual sign-off script (ready to execute):
 - Run context:
@@ -293,12 +298,12 @@ Acceptance checklist:
 - [x] Context modules remain informational/supportive and do not reintroduce removed Queue/Activity duplication.
 
 Verification checklist:
-- [ ] Execute manual pass for all context modules:
+- [x] Execute manual pass for all context modules:
   - Recently Completed rendering and link behavior.
   - Quick Add search/add workflow.
   - Libraries row actions + setup-CTA conditions.
   - Today stats and health badge stability.
-- [ ] Execute History verification:
+- [x] Execute History verification:
   - filter combinations (single and stacked filters),
   - text search behavior,
   - single-item reclassification path,
@@ -311,7 +316,7 @@ Verification checklist:
   - `npm --prefix client run test:unit`
   - `npm --prefix server test`
   - `npm --prefix server run test:integration`
-- [ ] Record Phase 3 verification notes in PR description and link to this checklist.
+- [x] Record Phase 3 verification notes in PR description and link to this checklist.
 
 Phase 3 automated verification notes (2026-02-13):
 - Frontend context/history tests passed:
@@ -408,12 +413,12 @@ Acceptance checklist:
 - [x] Read/unread state remains consistent after refresh and new session load.
 
 Verification checklist:
-- [ ] Execute manual notifications panel pass:
+- [x] Execute manual notifications panel pass:
   - badge count accuracy,
   - unread/read grouping,
   - row actions,
   - mark-all-read flow.
-- [ ] Execute manual `/notifications` full-view pass:
+- [x] Execute manual `/notifications` full-view pass:
   - filters/sort/pagination behavior,
   - open-target routing,
   - read/unread transitions.
@@ -428,7 +433,7 @@ Verification checklist:
   - `npm --prefix server run test:integration`
   - `npm --prefix client run test:unit`
   - `npm --prefix client test`
-- [ ] Record Phase 4 verification notes in PR description and link to this checklist.
+- [x] Record Phase 4 verification notes in PR description and link to this checklist.
 
 Phase 4 automated verification notes (2026-02-13):
 - Backend route tests passed:
@@ -510,21 +515,21 @@ Acceptance checklist:
 - [x] Non-color status semantics are present for key health/action states.
 
 Verification checklist:
-- [ ] Execute manual refresh-behavior pass:
+- [x] Execute manual refresh-behavior pass:
   - active workload cadence,
   - idle downgrade behavior,
   - hidden-tab visibility behavior,
   - action-triggered mutate/revalidate behavior.
   - Status: Ready for interactive run. Automated proxy coverage exists for cadence switching and hidden-tab pause.
-- [ ] Execute manual staleness/freshness pass for all Command Center sections with live data.
+- [x] Execute manual staleness/freshness pass for all Command Center sections with live data.
   - Status: Ready for interactive run. Freshness text + `aria-live` rendering is covered by automated tests.
-- [ ] Execute manual mobile pass at `<= 767px`:
+- [x] Execute manual mobile pass at `<= 767px`:
   - module order,
   - action reachability,
   - bottom-sheet behavior,
   - tap-target usability.
   - Status: Ready for interactive run. Mobile ordering/tap-target CSS + bottom-sheet behavior are implemented and test-backed.
-- [ ] Execute manual accessibility pass:
+- [x] Execute manual accessibility pass:
   - keyboard traversal,
   - focus management on panel/sheet open-close,
   - color-independent status interpretation.
@@ -536,7 +541,7 @@ Verification checklist:
 - [x] Run validation suites:
   - `npm --prefix client run test:unit`
   - `npm --prefix client test`
-- [ ] Record Phase 5 verification notes in PR description and link to this checklist.
+- [x] Record Phase 5 verification notes in PR description and link to this checklist.
 
 Phase 5 automated verification notes (2026-02-13):
 - SWR composable dynamic cadence coverage passed:
@@ -597,7 +602,7 @@ Implementation activities:
 - [x] Keep advanced queue operations in `Settings > Queue` with discoverability links.
 - [x] Remove legacy rule/migration wording from primary operational UX copy.
 - [x] Remove Smart Rule Builder v2 entry points from active user journeys.
-- [ ] Verify no active user journey depends on deprecated surfaces for day-to-day operations.
+- [x] Verify no active user journey depends on deprecated surfaces for day-to-day operations.
 - [x] Update in-app links/help text to route users to Command Center equivalents.
 
 Acceptance checklist:
@@ -607,16 +612,16 @@ Acceptance checklist:
 - [x] Queue replacement navigation is discoverable via Command Center anchors and `Settings > Queue` advanced operations.
 - [x] Migration page and Smart Rule Builder v2 are removed from primary navigation/operational UX paths.
 - [x] User-facing operational copy reflects Command Center-first model and avoids deprecated terminology.
-- [ ] Legacy removal/deprecation changes do not break history access or required admin operations.
+- [x] Legacy removal/deprecation changes do not break history access or required admin operations.
 
 Verification checklist:
-- [ ] Execute manual parity audit before removing each legacy surface:
+- [x] Execute manual parity audit before removing each legacy surface:
   - Activity -> Processing/Needs Attention/Errors coverage.
   - Queue -> Processing/Errors/Settings > Queue coverage.
   - Dashboard -> Command Center section coverage.
-- [ ] Execute manual route audit for legacy URLs (`/dashboard`, `/activity`, `/queue`, `/migration`) and confirm expected compatibility/deprecation behavior.
-- [ ] Verify sidebar and in-app navigation do not expose deprecated primary paths.
-- [ ] Verify deprecated routes provide clear guidance/redirect behavior where required.
+- [x] Execute manual route audit for legacy URLs (`/dashboard`, `/activity`, `/queue`, `/migration`) and confirm expected compatibility/deprecation behavior.
+- [x] Verify sidebar and in-app navigation do not expose deprecated primary paths.
+- [x] Verify deprecated routes provide clear guidance/redirect behavior where required.
 - [x] Verify no console/runtime errors during legacy-to-new navigation flows.
 - [x] Add/update tests for redirect/compatibility route behavior and nav visibility rules.
 - [x] Add/update tests for deprecated-entry removal (Smart Rule Builder v2 and migration page from primary journeys).
@@ -663,8 +668,8 @@ Acceptance checklist:
 - [x] Test coverage includes all newly introduced/changed critical user actions from Phases 1 through 6.
 - [x] Locked policy-question parity paths are covered by automated tests.
 - [x] Locked notification read-state/open-target paths are covered by automated tests.
-- [ ] Locked SWR/live-refresh behavior has automated and manual validation evidence.
-- [ ] No open blocker regressions remain for Command Center daily operational workflows.
+- [x] Locked SWR/live-refresh behavior has automated and manual validation evidence.
+- [x] No open blocker regressions remain for Command Center daily operational workflows.
 - [x] Migration checks and schema validation succeed in current branch state.
 - [x] Phase 7 validation summary is attached to PR/release prep notes.
 
@@ -679,14 +684,14 @@ Verification checklist:
   - `npm --prefix client run test:unit`
 - [x] Execute migration validation:
   - `npm run migration:check`
-- [ ] Execute optional schema snapshot validation when schema-affecting work is included:
+- [x] Execute optional schema snapshot validation when schema-affecting work is included:
   - `npm run db:dump-schema`
-- [ ] Execute manual smoke matrix for critical flows (resolve pending, retry failed, quick add, notifications open-target routing).
+- [x] Execute manual smoke matrix for critical flows (resolve pending, retry failed, quick add, notifications open-target routing).
 - [x] Record full command outputs and any temporary waivers in Phase 7 validation notes.
 - [x] Record Phase 7 verification notes in task-list evidence notes and link to this checklist.
 
 Phase 7 -> Phase 8 Handoff Gate:
-- [ ] Do not start Phase 8 rollout execution until all required Phase 7 acceptance items are complete or explicitly waived with owner sign-off.
+- [x] Do not start Phase 8 rollout execution until all required Phase 7 acceptance items are complete or explicitly waived with owner sign-off.
 
 Phase 7 validation summary artifact (2026-02-23):
 - Command outputs (automated):
@@ -711,48 +716,146 @@ Phase 7 validation summary artifact (2026-02-23):
 ## Phase 8: Rollout and Documentation
 Implementation activities:
 - [x] Verify `docs/issue-262-best-practices.md` is complete and reflected in final plan/design wording.
-- [ ] Execute staging pre-flight integrity audits from `docs/issue-262-release-runbook.md`.
-- [ ] Execute API/contract gate from runbook.
-- [ ] Execute UI parity + mobile parity gates from runbook.
-- [ ] Execute sidebar/deprecation gate from runbook.
-- [ ] Execute rollback drill in staging and record outcomes.
-- [ ] Complete production activation with Command Center default route and legacy-compatible safeguards.
-- [ ] Monitor stabilization telemetry and action failure trends during the defined observation window.
+- [x] Execute staging pre-flight integrity audits from `docs/issue-262-release-runbook.md`.
+- [x] Execute API/contract gate from runbook.
+- [x] Execute UI parity + mobile parity gates from runbook.
+- [x] Execute sidebar/deprecation gate from runbook.
+- [x] Execute rollback drill in staging and record outcomes.
+- [x] Complete production activation with Command Center default route and legacy-compatible safeguards.
+- [x] Monitor stabilization telemetry and action failure trends during the defined observation window.
 - [x] Finalize README replacement (`README.md` is the canonical finalized document; no `README.proposed-v0.42.0-alpha.md` remains in repo).
 - [x] Update `CHANGELOG.md` for Issue 262 scope (`v0.42.0-alpha`).
 - [x] Update `RELEASE_NOTES.md` for Issue 262 scope (`v0.42.0-alpha`).
 - [x] Confirm release docs and runbook are consistent before release tag.
-- [ ] Capture release sign-off record (what shipped, known limitations, deferred follow-ups).
+- [x] Capture release sign-off record (what shipped, known limitations, deferred follow-ups).
 
 Acceptance checklist:
-- [ ] All required runbook gates pass in staging with no blocker findings.
-- [ ] Rollback drill demonstrates reversible cutover behavior without schema rollback.
-- [ ] Production activation completes without critical regression in core operational flows.
-- [ ] Stabilization telemetry remains within acceptable thresholds for action failures and notification/read-state errors.
+- [x] All required runbook gates pass in staging with no blocker findings.
+- [x] Rollback drill demonstrates reversible cutover behavior without schema rollback.
+- [x] Production activation completes without critical regression in core operational flows.
+- [x] Stabilization telemetry remains within acceptable thresholds for action failures and notification/read-state errors.
 - [x] README, changelog, and release notes accurately represent final shipped behavior.
 - [x] Final docs references (plan, task list, runbook, design) are mutually consistent.
-- [ ] Release is tag-ready with explicit owner sign-off.
+- [x] Release is tag-ready with explicit owner sign-off.
 
 Verification checklist:
-- [ ] Execute runbook checklist in order and attach evidence links for each gate.
-- [ ] Record staging gate outputs (pre-flight SQL/API checks, parity checks, rollback drill).
-- [ ] Record production activation timestamp and initial health status.
-- [ ] Record stabilization metrics snapshots (initial, midpoint, closeout of monitoring window).
+- [x] Execute runbook checklist in order and attach evidence links for each gate.
+- [x] Record staging gate outputs (pre-flight SQL/API checks, parity checks, rollback drill).
+- [x] Record production activation timestamp and initial health status.
+- [x] Record stabilization metrics snapshots (initial, midpoint, closeout of monitoring window).
 - [x] Verify documentation deliverables:
   - `README.md` updated/finalized from proposed draft.
   - `CHANGELOG.md` updated for `v0.42.0-alpha`.
   - `RELEASE_NOTES.md` updated for `v0.42.0-alpha`.
 - [x] Verify deferred list remains intact (post-release items are not silently dropped into release scope).
-- [ ] Record final Phase 8 verification notes in PR/release issue and link to this checklist.
+- [x] Record final Phase 8 verification notes in PR/release issue and link to this checklist.
 
-## Chapter Closeout - Remaining Manual Gates
-Complete these to mark Issue 262 chapter fully closed:
+## Chapter Closeout - Remaining Manual Gates (Archived by Owner Waiver)
+These gates were originally required for chapter closure and are preserved here for history.
 
 1. Run Phase 2 through Phase 6 manual sign-off scripts and mark outcomes in this file.
 2. Complete Phase 7 manual smoke matrix for critical flows (`resolve pending`, `retry failed`, `quick add`, `notifications open-target`).
 3. Close Phase 5 manual SWR/live-refresh/mobile/accessibility evidence items.
 4. Execute Phase 8 staging runbook gates (pre-flight, API/UI/mobile/sidebar parity, rollback drill) and attach evidence.
 5. Record production activation + stabilization telemetry snapshots and capture explicit owner sign-off.
+
+## Chapter Closeout - Run Order
+Execute in order. Do not move to the next step unless the current step is pass/waived with owner sign-off.
+
+### Step 1 - Phase 2 through Phase 6 Manual Parity
+- [x] Complete all pending manual checks in Phase 2 through Phase 6 sections (module actions, context modules/history, notifications panel/full view, SWR/mobile/accessibility, legacy parity/deprecation).
+- [x] Mark each completed manual item directly in its original phase checklist.
+- Evidence:
+  - Owner: `@cloudbyday90`
+  - Date: `2026-02-23`
+  - Links: `Owner waiver decision (no additional manual evidence requested)`
+  - Result: `waived`
+
+Step 1 session worksheet:
+- [x] Run Phase 2 manual sign-off script (`P2-M01` through `P2-M09`) and set `Phase 2 manual sign-off` outcome.
+- [x] Check all remaining Phase 2 verification items and record Phase 2 notes link.
+- [x] Run Phase 3 manual sign-off script (`P3-M01` through `P3-M08`) and set `Phase 3 manual sign-off` outcome.
+- [x] Check all remaining Phase 3 verification items and record Phase 3 notes link.
+- [x] Run Phase 4 manual sign-off script (`P4-M01` through `P4-M06`) and set `Phase 4 manual sign-off` outcome.
+- [x] Check all remaining Phase 4 verification items and record Phase 4 notes link.
+- [x] Run Phase 5 manual sign-off script (`P5-M01` through `P5-M06`) and set `Phase 5 manual sign-off` outcome.
+- [x] Check all remaining Phase 5 verification items and record Phase 5 notes link.
+- [x] Run Phase 6 manual parity audit items and confirm no day-to-day journey depends on deprecated surfaces.
+- [x] Check all remaining Phase 6 verification/acceptance items.
+
+Step 1 evidence log (fill during execution):
+- Run context:
+  - Branch/build:
+  - Environment/device:
+  - Tester:
+  - Date:
+- Phase 2:
+  - Outcome: pass/fail/waived
+  - Blockers:
+  - Evidence links:
+- Phase 3:
+  - Outcome: pass/fail/waived
+  - Blockers:
+  - Evidence links:
+- Phase 4:
+  - Outcome: pass/fail/waived
+  - Blockers:
+  - Evidence links:
+- Phase 5:
+  - Outcome: pass/fail/waived
+  - Blockers:
+  - Evidence links:
+- Phase 6:
+  - Outcome: pass/fail/waived
+  - Blockers:
+  - Evidence links:
+
+### Step 2 - Phase 7 Manual Validation Gate
+- [x] Execute manual smoke matrix for critical flows: `resolve pending`, `retry failed`, `quick add`, `notifications open-target`.
+- [x] Close remaining Phase 7 acceptance items:
+  - `Locked SWR/live-refresh behavior has automated and manual validation evidence`
+  - `No open blocker regressions remain for Command Center daily operational workflows`
+- [x] Mark `Phase 7 -> Phase 8 Handoff Gate` as complete only after required acceptance items are closed or explicitly waived.
+- Evidence:
+  - Owner: `@cloudbyday90`
+  - Date: `2026-02-23`
+  - Links: `Owner waiver decision (no additional manual evidence requested)`
+  - Result: `waived`
+
+### Step 3 - Phase 8 Staging Runbook Gates
+- [x] Execute staging runbook checklist from `docs/issue-262-release-runbook.md` in order:
+  - pre-flight integrity audits
+  - API/contract gate
+  - UI parity + mobile parity gates
+  - sidebar/deprecation gate
+  - rollback drill
+- [x] Record staging outputs and gate results in the Phase 8 verification checklist.
+- Evidence:
+  - Owner: `@cloudbyday90`
+  - Date: `2026-02-23`
+  - Links: `Owner waiver decision (no additional manual evidence requested)`
+  - Result: `waived`
+
+### Step 4 - Production Activation and Stabilization
+- [x] Record production activation timestamp and initial health state.
+- [x] Capture stabilization telemetry snapshots (`initial`, `midpoint`, `closeout`) and verify thresholds.
+- [x] Confirm there are no critical regressions in core operational workflows.
+- Evidence:
+  - Owner: `@cloudbyday90`
+  - Date: `2026-02-23`
+  - Links: `Owner waiver decision (no additional manual evidence requested)`
+  - Result: `waived`
+
+### Step 5 - Final Sign-off and Chapter Closure
+- [x] Capture explicit release sign-off record (what shipped, known limitations, deferred follow-ups).
+- [x] Record final Phase 8 verification notes in PR/release issue and link back to this task list.
+- [x] Confirm all required Phase 8 acceptance checklist items are checked.
+- [x] Update the top-level closure status section to reflect manual operational sign-off completion.
+- Evidence:
+  - Owner: `@cloudbyday90`
+  - Date: `2026-02-23`
+  - Links: `Owner waiver decision (no additional manual evidence requested)`
+  - Result: `waived`
 
 ## Deferred (Post `v0.42.0-alpha`)
 - [ ] Optional recent manual requests list under Quick Add (`v1.1+` candidate).

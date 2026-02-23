@@ -179,6 +179,15 @@ async function initializeServices() {
     console.warn('Health check heartbeat failed to start:', error.message);
   }
 
+  // Start Ollama scheduled preflight check (daily)
+  try {
+    const ollamaService = require('./services/ollama');
+    ollamaService.startScheduledPreflight(24 * 60 * 60 * 1000);
+    console.log('Ollama scheduled preflight check started (24 hour interval)');
+  } catch (error) {
+    console.warn('Ollama scheduled preflight check failed to start:', error.message);
+  }
+
   // Check and start embedding migration if needed
   try {
     const embeddingMigrationService = require('./services/embeddingMigrationService');

@@ -17,6 +17,7 @@
  */
 
 const axios = require('axios');
+const os = require('os');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const { OperationController } = require('../utils/operationController');
@@ -38,12 +39,180 @@ class OllamaService {
       startTime: null,
       itemTitle: null,
     };
+
+    this.preflightCache = new Map();
+
+    this.scheduledPreflightTimer = null;
+    this.lastScheduledPreflight = null;
+    this.lastEmbeddingPreflight = null;
+  }
+
+  startScheduledPreflight(intervalMs = 24 * 60 * 60 * 1000) {
+    if (this.scheduledPreflightTimer) {
+      return;
+    }
+
+    this.scheduledPreflightTimer = setInterval(async () => {
+      try {
+        const config = await this.getConfig();
+        if (!config.host) {
+          return;
+        }
+
+        const db = require('../config/database');
+        let embeddingModel = null;
+        try {
+          const embedResult = await db.query('SELECT embedding_ollama_model FROM ai_provider_config WHERE id = 1');
+          embeddingModel = embedResult.rows[0]?.embedding_ollama_model || null;
+        } catch {}
+
+        const result = await this.preflightConnection({
+          host: config.host,
+          port: config.port,
+          model: config.model,
+          probeGeneration: true,
+          force: true,
+          includeModels: true
+        });
+
+        this.lastScheduledPreflight = {
+          ...result,
+          checkedAt: new Date().toISOString()
+        };
+
+        if (result.success) {
+          logger.info('Scheduled Ollama preflight passed', {
+            host: result.host,
+            port: result.port,
+            model: config.model,
+            modelCount: result.models?.length || 0,
+            latencyMs: result.latency_ms
+          });
+
+          if (embeddingModel && embeddingModel !== config.model) {
+            const embedResult = await this.preflightConnection({
+              host: config.host,
+              port: config.port,
+              model: embeddingModel,
+              probeGeneration: false,
+              force: true,
+              includeModels: false
+            });
+            this.lastEmbeddingPreflight = {
+              ...embedResult,
+              checkedAt: new Date().toISOString()
+            };
+            logger.info('Scheduled Ollama embedding model preflight passed', {
+              model: embeddingModel,
+              available: embedResult.success
+            });
+          }
+        } else {
+          logger.warn('Scheduled Ollama preflight failed', {
+            host: result.host,
+            port: result.port,
+            model: config.model,
+            error: result.error,
+            errorCode: result.errorCode
+          });
+        }
+      } catch (error) {
+        logger.error('Scheduled Ollama preflight error', { error: error.message });
+      }
+    }, intervalMs);
+
+    logger.info('Scheduled Ollama preflight check started', {
+      intervalHours: intervalMs / (60 * 60 * 1000)
+    });
+  }
+
+  stopScheduledPreflight() {
+    if (this.scheduledPreflightTimer) {
+      clearInterval(this.scheduledPreflightTimer);
+      this.scheduledPreflightTimer = null;
+      logger.info('Scheduled Ollama preflight check stopped');
+    }
+  }
+
+  getLastScheduledPreflight() {
+    return {
+      ai: this.lastScheduledPreflight,
+      embedding: this.lastEmbeddingPreflight
+    };
+  }
+
+  async warmModel(model, keepAlive = '24h', host = null, port = null) {
+    const config = await this.getConfig();
+    const warmHost = host || config.host;
+    const warmPort = port || config.port;
+    const warmUrl = `http://${warmHost}:${warmPort}`;
+
+    if (!warmHost) {
+      throw new Error('Ollama host not configured');
+    }
+
+    const startedAt = Date.now();
+    try {
+      await axios.post(
+        `${warmUrl}/api/generate`,
+        {
+          model,
+          prompt: '',
+          keep_alive: keepAlive
+        },
+        { timeout: 60000 }
+      );
+
+      return {
+        success: true,
+        model,
+        host: warmHost,
+        port: warmPort,
+        latency_ms: Date.now() - startedAt,
+        keep_alive: keepAlive,
+        message: `Model '${model}' loaded and will stay in memory for ${keepAlive}`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        model,
+        host: warmHost,
+        port: warmPort,
+        error: error.message,
+        errorCode: error.code || 'EWARM',
+        message: `Failed to warm model '${model}': ${error.message}`
+      };
+    }
+  }
+
+  async warmAllModels(keepAlive = '24h') {
+    const config = await this.getConfig();
+    const results = {
+      ai: null,
+      embedding: null
+    };
+
+    if (config.model) {
+      results.ai = await this.warmModel(config.model, keepAlive, config.host, config.port);
+    }
+
+    const db = require('../config/database');
+    try {
+      const embedResult = await db.query('SELECT embedding_ollama_model FROM ai_provider_config WHERE id = 1');
+      const embeddingModel = embedResult.rows[0]?.embedding_ollama_model;
+      if (embeddingModel && embeddingModel !== config.model) {
+        results.embedding = await this.warmModel(embeddingModel, keepAlive, config.host, config.port);
+      }
+    } catch {}
+
+    return results;
   }
 
   resetConfig() {
     this.host = null;
     this.port = null;
     this.baseUrl = null;
+    this.preflightCache.clear();
   }
 
   /**
@@ -172,6 +341,198 @@ class OllamaService {
         errorCode: error.code
       };
     }
+  }
+
+  parseCacheMs(cacheMs, fallback = 60000) {
+    const parsed = Number.parseInt(String(cacheMs ?? ''), 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+  }
+
+  normalizeModelName(modelName) {
+    return typeof modelName === 'string' ? modelName.trim() : '';
+  }
+
+  findModelMatch(models, modelName) {
+    const normalizedModel = this.normalizeModelName(modelName).toLowerCase();
+    if (!normalizedModel || !Array.isArray(models)) {
+      return null;
+    }
+
+    return models.find((model) => {
+      const currentName = String(model?.name || '').toLowerCase();
+      if (!currentName) {
+        return false;
+      }
+      return (
+        currentName === normalizedModel ||
+        currentName.startsWith(`${normalizedModel}:`) ||
+        normalizedModel.startsWith(`${currentName}:`) ||
+        currentName.split(':')[0] === normalizedModel.split(':')[0]
+      );
+    }) || null;
+  }
+
+  buildPreflightCacheKey({ host, port, model, probeGeneration }) {
+    return `${host}:${port}:${this.normalizeModelName(model).toLowerCase()}:${probeGeneration ? 'probe' : 'noprobe'}`;
+  }
+
+  async probeGeneration(host, port, model) {
+    const testUrl = `http://${host}:${port}`;
+    const startedAt = Date.now();
+
+    await axios.post(
+      `${testUrl}/api/generate`,
+      {
+        model,
+        prompt: 'Reply with OK only.',
+        stream: false,
+        options: {
+          temperature: 0,
+          num_predict: 4,
+        },
+      },
+      {
+        timeout: 15000,
+      }
+    );
+
+    return {
+      ok: true,
+      latency_ms: Date.now() - startedAt,
+    };
+  }
+
+  async preflightConnection(options = {}) {
+    const {
+      host = null,
+      port = null,
+      model = null,
+      probeGeneration = false,
+      force = false,
+      includeModels = true,
+      cacheMs = process.env.OLLAMA_PREFLIGHT_CACHE_MS
+    } = options || {};
+
+    const config = await this.getConfig();
+    const testHost = host || config.host;
+    const testPort = Number(port || config.port || 11434);
+    const modelName = this.normalizeModelName(model);
+    const resolvedCacheMs = this.parseCacheMs(cacheMs, 60000);
+    const cacheKey = this.buildPreflightCacheKey({
+      host: testHost,
+      port: testPort,
+      model: modelName,
+      probeGeneration
+    });
+
+    if (!force && resolvedCacheMs > 0) {
+      const cached = this.preflightCache.get(cacheKey);
+      if (cached && (Date.now() - cached.checkedAt) < resolvedCacheMs) {
+        return {
+          ...cached.result,
+          cached: true
+        };
+      }
+    }
+
+    const startedAt = Date.now();
+    const connection = await this.testConnection(testHost, testPort);
+    const result = {
+      success: false,
+      host: testHost,
+      port: testPort,
+      model: modelName || null,
+      checked_at: new Date().toISOString(),
+      cached: false,
+      checks: {
+        connectivity: {
+          ok: !!connection.success,
+          error: connection.error || null,
+          errorCode: connection.errorCode || null
+        },
+        model_available: {
+          ok: modelName ? null : true,
+          value: modelName ? null : true
+        },
+        generation_probe: {
+          ok: probeGeneration ? null : false,
+          skipped: !probeGeneration
+        }
+      },
+      message: '',
+      error: null,
+      errorCode: null
+    };
+
+    if (!connection.success) {
+      result.error = connection.error || 'Connection failed';
+      result.errorCode = connection.errorCode || 'EOLLAMA_CONNECT';
+      result.message = result.error;
+      this.preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
+      return result;
+    }
+
+    const models = Array.isArray(connection.models) ? connection.models : [];
+    const modelMatch = modelName ? this.findModelMatch(models, modelName) : null;
+
+    if (modelName && !modelMatch) {
+      result.error = `Model '${modelName}' is not available on ${testHost}:${testPort}`;
+      result.errorCode = 'MODEL_NOT_FOUND';
+      result.message = result.error;
+      result.checks.model_available = {
+        ok: false,
+        value: false
+      };
+      if (includeModels) {
+        result.models = models;
+      }
+      this.preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
+      return result;
+    }
+
+    result.checks.model_available = {
+      ok: true,
+      value: true
+    };
+
+    if (probeGeneration && modelName) {
+      try {
+        const probe = await this.probeGeneration(testHost, testPort, modelName);
+        result.checks.generation_probe = {
+          ok: true,
+          skipped: false,
+          latency_ms: probe.latency_ms
+        };
+      } catch (error) {
+        result.error = `Connected, but generation probe failed: ${error.message}`;
+        result.errorCode = error.code || 'EGEN_PROBE';
+        result.message = result.error;
+        result.checks.generation_probe = {
+          ok: false,
+          skipped: false,
+          error: error.message,
+          errorCode: error.code || null
+        };
+        if (includeModels) {
+          result.models = models;
+        }
+        this.preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
+        return result;
+      }
+    }
+
+    result.success = true;
+    result.message = probeGeneration && modelName
+      ? `Connection successful - model '${modelName}' is ready`
+      : 'Connection successful';
+    result.latency_ms = Date.now() - startedAt;
+    result.model_available = modelName ? true : null;
+    if (includeModels) {
+      result.models = models;
+    }
+
+    this.preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
+    return result;
   }
 
   async getModels(host = null, port = null) {
@@ -357,6 +718,18 @@ class OllamaService {
   }
 
   async _streamGenerate(config, prompt, model, temperature, onProgress, controller, options = {}) {
+    const preflight = await this.preflightConnection({
+      host: config.host,
+      port: config.port,
+      model: model,
+      probeGeneration: false,
+      cacheMs: 60000
+    });
+
+    if (!preflight.success) {
+      throw new Error(preflight.error || 'Ollama connection failed');
+    }
+
     return new Promise((resolve, reject) => {
       let fullResponse = '';
       let tokenCount = 0;

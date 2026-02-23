@@ -1,5 +1,49 @@
 # Classifarr Release Notes
 
+## [v0.42.7d-alpha] - 2026-02-23
+
+**Title: Smarter Ollama Connection Handling and Model Warm-up**
+
+### 🎉 What You'll Notice
+
+- Classification requests fail faster when Ollama is unreachable, with automatic retry queuing.
+- New "Warm Models" option pre-loads your AI and embedding models into memory.
+- Daily health checks proactively verify Ollama connectivity and model availability.
+- HTTP 500 errors from Ollama are now treated as temporary issues, not permanent failures.
+
+### 📊 Quick Visual
+
+```text
+Ollama Resilience Snapshot
+Connection Preflight    [█████████░] 90%
+Auto-Retry on 5xx       [██████████] 100%
+Model Warm-up Control   [██████████] 100%
+Proactive Health Check  [█████████░] 90%
+```
+
+### ✨ Highlights
+
+- Added preflight connection checks before classification to catch Ollama issues early.
+- New API endpoints let you manually warm models and check connection status.
+- Scheduled daily preflight verifies both AI classification and embedding models.
+
+### 🔧 Reliability Improvements
+
+- HTTP 500/502/503/504 errors from Ollama now queue for retry instead of failing permanently.
+- Added specific retry reason codes for different failure types (timeout, server error, stream incomplete).
+- Preflight cache increased to 60 seconds to reduce redundant checks during rapid classification.
+
+### 👥 Who This Helps
+
+- **End users:** Classifications recover automatically from temporary Ollama hiccups.
+- **Operators/admins:** New warm-up controls prevent cold-start delays; health visibility into Ollama status.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.7c-alpha] - 2026-02-23
 
 **Title: Quieter Recovery During OMDb SSL Outages and Cleaner LAN Access**

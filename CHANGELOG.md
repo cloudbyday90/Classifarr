@@ -21,6 +21,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.7d-alpha] - 2026-02-23
+
+### Added
+
+- **Ollama preflight connection checks**
+  - `preflightConnection()` method validates connectivity and model availability before classification.
+  - Checks for model availability with flexible name matching (handles tag suffixes like `gemma3:12b:latest`).
+  - Optional generation probe to verify model can actually generate responses.
+  - Results cached for 60 seconds to avoid redundant checks.
+- **Scheduled daily Ollama health check**
+  - Runs every 24 hours to verify Ollama connectivity.
+  - Checks both AI classification model and embedding model (if different).
+  - Logs results for operational visibility.
+- **Model warm-up endpoints**
+  - `POST /api/settings/ollama/warm` - Load a specific model into memory with configurable keep_alive.
+  - `POST /api/settings/ollama/warm-all` - Load both AI and embedding models simultaneously.
+- **Preflight status endpoint**
+  - `GET /api/settings/ollama/preflight/last` - Returns last scheduled preflight results for both AI and embedding models.
+- **Specific retry reason codes for Ollama failures**
+  - `ai_stream_incomplete` - Generation ended without done signal.
+  - `ai_stream_stalled` - Stream stalled during generation.
+  - `ai_stream_aborted` - Generation aborted before completion.
+  - `ai_timeout` - Request timed out.
+  - `ai_server_error` - HTTP 500 from Ollama.
+  - `ai_gateway_error` - HTTP 502/504 from Ollama.
+  - `ai_unavailable` - HTTP 503 from Ollama.
+
+### Changed
+
+- **HTTP 5xx errors treated as transient**
+  - HTTP 500, 502, 503, 504 errors from Ollama now queue items for retry instead of failing permanently.
+  - Errors logged as warnings instead of errors when transient.
+- **Preflight cache TTL increased**
+  - Default cache duration increased from 15s to 60s to reduce redundant checks.
+- **Test connection endpoint enhanced**
+  - `/api/settings/ollama/test` now accepts optional `model` parameter to test specific model availability.
+- **Classification preflight integration**
+  - `_streamGenerate()` now runs preflight check before attempting generation for faster failure detection.
+
+### Fixed
+
+- **Discord embed library name fallback**
+  - Added `resolveSuggestedLibraryName()` to fall back to top alternative when `library_name` is undefined.
+  - Prevents "Suggested library: undefined" in Discord notifications.
+
+---
+
 ## [v0.42.7c-alpha] - 2026-02-23
 
 ### Added

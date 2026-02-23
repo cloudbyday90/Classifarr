@@ -799,6 +799,9 @@ class DiscordBotService {
       .setColor(colors[effectiveTier])
       .setTimestamp();
 
+    const topAlternatives = this.getTopAlternatives(result, 3);
+    const suggestedLibraryName = this.resolveSuggestedLibraryName(result, topAlternatives);
+
     // AI Clarification - special format with context
     if (hasClarification && result.clarification) {
       const clarification = result.clarification;
@@ -816,20 +819,20 @@ class DiscordBotService {
       );
     } else if (tier.tier === "auto" && requireAllConfirmations) {
       embed.setDescription(
-        `⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\n🔒 **Manual confirmation required** (setting enabled)\nPlease confirm or select another option.`,
+        `⚠️ **Suggested library: ${suggestedLibraryName}**\n${tier.description}\n\n🔒 **Manual confirmation required** (setting enabled)\nPlease confirm or select another option.`,
       );
       embed.setColor(colors.verify);
     } else if (tier.tier === "verify") {
       embed.setDescription(
-        `⚠️ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease confirm or select another option.`,
+        `⚠️ **Suggested library: ${suggestedLibraryName}**\n${tier.description}\n\nPlease confirm or select another option.`,
       );
     } else if (tier.tier === "clarify") {
       embed.setDescription(
-        `❓ **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease answer the questions below to improve accuracy.`,
+        `❓ **Suggested library: ${suggestedLibraryName}**\n${tier.description}\n\nPlease answer the questions below to improve accuracy.`,
       );
     } else {
       embed.setDescription(
-        `🛑 **Suggested library: ${result.library_name}**\n${tier.description}\n\nPlease answer the questions or select a library manually.`,
+        `🛑 **Suggested library: ${suggestedLibraryName}**\n${tier.description}\n\nPlease answer the questions or select a library manually.`,
       );
     }
 
@@ -849,7 +852,6 @@ class DiscordBotService {
     }
 
     // Enhanced context: Add top alternatives with scores when available.
-    const topAlternatives = this.getTopAlternatives(result, 3);
     if (topAlternatives.length > 0) {
       const alternativesText = topAlternatives
         .map((entry) => {
@@ -937,6 +939,26 @@ class DiscordBotService {
     }
 
     return embed;
+  }
+
+  resolveSuggestedLibraryName(result, topAlternatives = []) {
+    const candidates = [
+      result?.library_name,
+      result?.library?.name,
+      result?.suggested_library_name,
+      result?.signalContext?.suggestedLibrary?.name,
+      result?.policyResult?.library?.library_name,
+      result?.policyResult?.library?.name,
+      Array.isArray(topAlternatives) && topAlternatives.length > 0 ? topAlternatives[0]?.name : null
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    return 'Unknown';
   }
 
   async createTieredComponents(

@@ -333,6 +333,7 @@ class ClassificationService {
         confidence: result.confidence,
         method: result.method,
         reason: result.reason,
+        retry_reason_code: result.retry_reason_code || null,
         // Include bestMatch for queue service to use
         bestMatch: metadata.contentAnalysis?.bestMatch
       };
@@ -841,7 +842,12 @@ class ClassificationService {
       'timed out',
       'stalled',
       'aborted',
-      'incomplete stream'
+      'incomplete stream',
+      'generation ended before completion signal',
+      'status code 500',
+      'status code 502',
+      'status code 503',
+      'status code 504'
     ];
 
     return patterns.some(pattern => message.includes(pattern));
@@ -945,19 +951,81 @@ ${response}
   buildPendingRetryResult({
     confidence = 0,
     libraries = [],
-    signalContext = null
+    signalContext = null,
+    transientError = null
   }) {
+    const retryReason = this.resolveRetryReason(transientError);
     return {
       library: null,
       confidence: Number.isFinite(Number(confidence)) ? Number(confidence) : 0,
       method: 'queued_for_retry',
-      reason: 'AI temporarily unavailable or busy - queued for retry',
+      reason: retryReason.reason,
+      retry_reason_code: retryReason.code,
       retry_after: new Date(Date.now() + RETRY_DELAY_MS),
       retry_count: 0,
       max_retries: 3,
       libraries,
       signalContext,
       needs_retry: true
+    };
+  }
+
+  resolveRetryReason(error) {
+    const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+    const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
+
+    if (code === 'EINCOMPLETE' || message.includes('completion signal')) {
+      return {
+        code: 'ai_stream_incomplete',
+        reason: 'AI stream ended before completion signal - queued for retry'
+      };
+    }
+
+    if (code === 'ESTALL' || message.includes('stalled')) {
+      return {
+        code: 'ai_stream_stalled',
+        reason: 'AI stream stalled during generation - queued for retry'
+      };
+    }
+
+    if (code === 'ABORT_ERR' || code === 'ERR_CANCELED' || message.includes('aborted')) {
+      return {
+        code: 'ai_stream_aborted',
+        reason: 'AI generation aborted before completion - queued for retry'
+      };
+    }
+
+    if (code === 'ETIMEDOUT' || message.includes('timed out')) {
+      return {
+        code: 'ai_timeout',
+        reason: 'AI request timed out - queued for retry'
+      };
+    }
+
+    if (message.includes('status code 500')) {
+      return {
+        code: 'ai_server_error',
+        reason: 'AI service returned server error (500) - queued for retry'
+      };
+    }
+
+    if (message.includes('status code 502') || message.includes('status code 504')) {
+      return {
+        code: 'ai_gateway_error',
+        reason: 'AI service gateway error - queued for retry'
+      };
+    }
+
+    if (message.includes('status code 503')) {
+      return {
+        code: 'ai_unavailable',
+        reason: 'AI service temporarily unavailable (503) - queued for retry'
+      };
+    }
+
+    return {
+      code: 'ai_temporarily_unavailable',
+      reason: 'AI temporarily unavailable or busy - queued for retry'
     };
   }
 
@@ -2353,11 +2421,18 @@ ${response}
 
         return finalResult;
       } catch (error) {
-        logger.error('AI classification failed', { error: error.message });
-
         const fallbackConfidence = policySignalContext.confidence || 0;
         const suggestedLibrary = policySignalContext.suggestedLibrary;
         const isTransientAiAvailability = this.isAiTransientAvailabilityError(error);
+
+        if (isTransientAiAvailability) {
+          logger.warn('AI classification temporarily unavailable', {
+            error: error.message,
+            code: error.code
+          });
+        } else {
+          logger.error('AI classification failed', { error: error.message });
+        }
 
         if (isTransientAiAvailability || fallbackConfidence < 50) {
           logger.info('AI unavailable/busy - queuing for retry', {
@@ -2370,7 +2445,8 @@ ${response}
           return this.buildPendingRetryResult({
             confidence: fallbackConfidence,
             libraries: libraries,
-            signalContext: policySignalContext
+            signalContext: policySignalContext,
+            transientError: error
           });
         }
 
@@ -2521,8 +2597,16 @@ ${response}
 
       return finalResult;
     } catch (error) {
-      logger.error('AI classification failed', { error: error.message });
       const isTransientAiAvailability = this.isAiTransientAvailabilityError(error);
+
+      if (isTransientAiAvailability) {
+        logger.warn('AI classification temporarily unavailable', {
+          error: error.message,
+          code: error.code
+        });
+      } else {
+        logger.error('AI classification failed', { error: error.message });
+      }
 
       if (isTransientAiAvailability || confidenceResult.confidence < 50) {
         logger.info('AI unavailable/busy - queuing for retry', {
@@ -2535,7 +2619,8 @@ ${response}
         return this.buildPendingRetryResult({
           confidence: confidenceResult.confidence,
           libraries: libraries,
-          signalContext
+          signalContext,
+          transientError: error
         });
       }
 
@@ -2917,34 +3002,66 @@ Think step by step, then respond with ONLY one of the formats above.`;
       ollamaService.setGenerationStatus(true, config.model, itemTitle);
 
       try {
-        // Use streaming to monitor progress
-        let lastLogTime = Date.now();
-        response = await ollamaService.generateWithProgress(
-          prompt,
-          config.model,
-          parseFloat(config.temperature),
-          (tokenCount, isComplete) => {
-            // Update token count for UI
-            ollamaService.updateTokenCount(tokenCount);
+        const maxTransientStreamAttempts = 2;
+        let streamAttempt = 0;
+        let lastStreamError = null;
 
-            // Log progress every 2 seconds or on completion
-            const now = Date.now();
-            if (isComplete || now - lastLogTime > 2000) {
-              logger.debug('Ollama generation progress', {
-                tokens: tokenCount,
-                complete: isComplete,
-                model: config.model
-              });
-              lastLogTime = now;
+        while (streamAttempt < maxTransientStreamAttempts) {
+          streamAttempt += 1;
+          try {
+            // Use streaming to monitor progress
+            let lastLogTime = Date.now();
+            response = await ollamaService.generateWithProgress(
+              prompt,
+              config.model,
+              parseFloat(config.temperature),
+              (tokenCount, isComplete) => {
+                // Update token count for UI
+                ollamaService.updateTokenCount(tokenCount);
+
+                // Log progress every 2 seconds or on completion
+                const now = Date.now();
+                if (isComplete || now - lastLogTime > 2000) {
+                  logger.debug('Ollama generation progress', {
+                    tokens: tokenCount,
+                    complete: isComplete,
+                    model: config.model
+                  });
+                  lastLogTime = now;
+                }
+              },
+              null,
+              {
+                allowPartialOnAbort: !disallowPartialStreamResponse,
+                allowPartialOnStall: !disallowPartialStreamResponse,
+                requireDoneSignal: disallowPartialStreamResponse
+              }
+            );
+            lastStreamError = null;
+            break;
+          } catch (streamError) {
+            lastStreamError = streamError;
+            const isTransientStreamError = this.isAiTransientAvailabilityError(streamError);
+            if (!isTransientStreamError || streamAttempt >= maxTransientStreamAttempts) {
+              throw streamError;
             }
-          },
-          null,
-          {
-            allowPartialOnAbort: !disallowPartialStreamResponse,
-            allowPartialOnStall: !disallowPartialStreamResponse,
-            requireDoneSignal: disallowPartialStreamResponse
+
+            logger.warn('Transient AI stream failure - retrying classification generation', {
+              title: metadata?.title,
+              model: config.model,
+              attempt: streamAttempt,
+              maxAttempts: maxTransientStreamAttempts,
+              code: streamError.code,
+              error: streamError.message
+            });
+
+            await this.sleep(Math.min(1000, 500 * streamAttempt));
           }
-        );
+        }
+
+        if (!response && lastStreamError) {
+          throw lastStreamError;
+        }
       } finally {
         // Clear generation status (inner finally for UI cleanup)
         ollamaService.setGenerationStatus(false);
