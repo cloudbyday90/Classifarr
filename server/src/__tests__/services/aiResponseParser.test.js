@@ -388,6 +388,21 @@ describe('AIResponseParser', () => {
             expect(options[1].library_id).toBe(2);
         });
 
+        it('should prioritize exact match over partial match', () => {
+            const trickyLibraries = [
+                { id: 10, name: 'Anime Movies', media_type: 'movie' },
+                { id: 11, name: 'Movies', media_type: 'movie' },
+            ];
+
+            const options = aiResponseParser.mapOptionsToLibraries(
+                ['Movies'],
+                trickyLibraries
+            );
+
+            expect(options[0].library_id).toBe(11);
+            expect(options[0].library_name).toBe('Movies');
+        });
+
         it('should match partial library names', () => {
             const options = aiResponseParser.mapOptionsToLibraries(
                 ['Action', 'Drama'],

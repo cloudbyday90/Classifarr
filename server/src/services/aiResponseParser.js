@@ -284,11 +284,22 @@ class AIResponseParser {
      */
     mapOptionsToLibraries(optionTexts, libraries) {
         return optionTexts.map(opt => {
-            // Find library that matches this option text
-            const matchedLibrary = libraries.find(lib =>
-                opt.toLowerCase().includes(lib.name.toLowerCase()) ||
-                lib.name.toLowerCase().includes(opt.toLowerCase().replace(/\s*(library|content|media)\s*/gi, ''))
-            );
+            const optLower = opt.toLowerCase();
+            const optClean = optLower.replace(/\s*(library|content|media)\s*/gi, '').trim();
+
+            // First pass: try to find an exact match
+            let matchedLibrary = libraries.find(lib => {
+                const libLower = lib.name.toLowerCase();
+                return libLower === optLower || libLower === optClean;
+            });
+
+            // Second pass: fall back to contains/partial matching
+            if (!matchedLibrary) {
+                matchedLibrary = libraries.find(lib => {
+                    const libLower = lib.name.toLowerCase();
+                    return optLower.includes(libLower) || libLower.includes(optClean);
+                });
+            }
 
             return {
                 label: opt,
