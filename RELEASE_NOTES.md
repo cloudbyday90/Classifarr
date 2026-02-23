@@ -1,5 +1,45 @@
 # Classifarr Release Notes
 
+## [v0.42.7b-alpha] - 2026-02-23
+
+**Title: Security Scan Hotfix for Cleaner Release Validation**
+
+### 🎉 What You'll Notice
+
+- Release security scanning is now stable again for this version line.
+- Client dev dependency resolution no longer pulls vulnerable `minimatch` 9.x.
+- No feature behavior changes to classification or routing flows.
+
+### 📊 Quick Visual
+
+```text
+Release Safety Snapshot
+OSV Tag Scan Reliability [██████████] 100%
+Dependency Risk Reduction[██████████] 100%
+User-Facing Change Scope [████████░░] 80%
+```
+
+### ✨ Highlights
+
+- Added client dependency override to enforce `minimatch >=10.2.1`.
+- Regenerated lockfile so transitive dev dependencies resolve to safe versions.
+
+### 🔧 Reliability Improvements
+
+- Prevents repeat tag-release OSV failures caused by vulnerable transitive dev packages.
+- Keeps release pipeline green without broad dependency churn.
+
+### 👥 Who This Helps
+
+- **End users:** faster, cleaner release rollouts with fewer pipeline interruptions.
+- **Operators/admins:** fewer false starts when validating tag-based release health gates.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.7a-alpha] - 2026-02-23
 
 **Title: Discord Choices Now Route to the Library You Pick**

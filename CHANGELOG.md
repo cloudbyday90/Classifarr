@@ -21,6 +21,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.7b-alpha] - 2026-02-23
+
+### Added
+
+- **Client dependency security guardrail**
+  - Added a client-level dependency override to enforce `minimatch >=10.2.1` across transitive development dependencies.
+
+### Changed
+
+- **Client lockfile dependency resolution**
+  - Regenerated `client/package-lock.json` so `@vue/test-utils` transitive `minimatch` entries resolve to `10.2.2` instead of vulnerable `9.x`.
+
+### Fixed
+
+- **Tag release OSV dependency scan failure**
+  - Resolved `GHSA-3ppc-4f35-3m26` findings in client dev dependency chain that previously failed `OSV Dependency Scan` on `v0.42.7a-alpha`.
+
+---
+
 ## [v0.42.7a-alpha] - 2026-02-23
 
 ### Added
