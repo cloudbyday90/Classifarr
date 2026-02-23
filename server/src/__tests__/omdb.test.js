@@ -291,6 +291,60 @@ describe('OMDbService', () => {
         });
     });
 
+    describe('SSL certificate warning suppression', () => {
+        it('should log OMDb SSL warning once and suppress repeated warnings during throttle window', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            const certError = new Error('certificate has expired');
+            certError.code = 'CERT_HAS_EXPIRED';
+            mockAxios.get.mockRejectedValue(certError);
+
+            await expect(omdbService.getByTitle('Kill Bill', 2004, 'movie')).rejects.toBeDefined();
+            const secondError = await omdbService.getByTitle('The Matrix', 1999, 'movie').catch(error => error);
+
+            expect(secondError.isOmdbSslCertError).toBe(true);
+
+            const sslWarnCalls = mockLogger.warn.mock.calls.filter(([message]) => message === 'OMDb SSL certificate issue');
+            expect(sslWarnCalls).toHaveLength(1);
+
+            const suppressedDebugCalls = mockLogger.debug.mock.calls.filter(([message]) => message === 'OMDb SSL certificate warning suppressed');
+            expect(suppressedDebugCalls).toHaveLength(1);
+        });
+
+        it('should reset SSL warning suppression state with _resetRateLimiter', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            const certError = new Error('certificate has expired');
+            certError.code = 'CERT_HAS_EXPIRED';
+            mockAxios.get.mockRejectedValue(certError);
+
+            await expect(omdbService.getByTitle('Movie A', 2020, 'movie')).rejects.toBeDefined();
+            omdbService._resetRateLimiter();
+            await expect(omdbService.getByTitle('Movie B', 2021, 'movie')).rejects.toBeDefined();
+
+            const sslWarnCalls = mockLogger.warn.mock.calls.filter(([message]) => message === 'OMDb SSL certificate issue');
+            expect(sslWarnCalls).toHaveLength(2);
+        });
+    });
+
 
     describe('hasRemainingQuota', () => {
         it('should return available when under limit', async () => {

@@ -23,7 +23,8 @@ jest.mock('../utils/logger', () => ({
 
 // Mock dynamic requires
 jest.mock('../services/omdb', () => ({
-    getByTitle: jest.fn()
+    getByTitle: jest.fn(),
+    checkHealth: jest.fn()
 }), { virtual: true });
 
 jest.mock('../services/tavily', () => ({
@@ -60,6 +61,9 @@ describe('QueueService', () => {
         jest.clearAllMocks();
         queueService.processing = 0;
         queueService.running = false;
+        queueService.omdbLimitHit = false;
+        queueService.lastOmdbCircuitWarnAt = 0;
+        queueService.lastOmdbSslWarnAt = 0;
     });
 
     describe('enqueue', () => {
@@ -192,6 +196,120 @@ describe('QueueService', () => {
                     code: 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED'
                 })
             );
+        });
+
+        it('should throttle OMDb SSL warning spam and queue OMDb retry', async () => {
+            const task = {
+                id: 4,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify({
+                    title: 'Kill Bill the Whole Bloody Affair',
+                    year: 2006,
+                    itemId: 88,
+                    source_library_id: 1,
+                    source_library_name: 'Movies'
+                })
+            };
+
+            const omdbService = require('../services/omdb');
+            const enrichmentRetryService = require('../services/enrichmentRetryService');
+
+            const sslError = new Error('certificate has expired');
+            sslError.code = 'CERT_HAS_EXPIRED';
+            sslError.isOmdbSslCertError = true;
+            omdbService.getByTitle.mockRejectedValue(sslError);
+            omdbService.checkHealth.mockResolvedValue({
+                healthy: false,
+                ssl_error: true,
+                message: 'certificate has expired'
+            });
+
+            db.query.mockImplementation((query) => {
+                if (query.includes('SELECT * FROM omdb_config')) {
+                    return Promise.resolve({ rows: [{ api_key: 'test_key', is_active: true }] });
+                }
+                if (query.includes('SELECT * FROM tavily_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                return Promise.resolve({ rows: [], rowCount: 1 });
+            });
+
+            await queueService.processTask(task);
+            await queueService.processTask(task);
+
+            const sslWarnCalls = queueService.logger.warn.mock.calls.filter(
+                ([message]) => message === 'OMDb SSL certificate issue; queuing OMDb retry and pausing OMDb enrichment until recovery probe succeeds'
+            );
+            expect(sslWarnCalls).toHaveLength(1);
+
+            const suppressedCalls = queueService.logger.debug.mock.calls.filter(
+                ([message]) =>
+                    message === 'OMDb SSL certificate warning suppressed' ||
+                    message === 'OMDb SSL persistent warning suppressed'
+            );
+            expect(suppressedCalls).toHaveLength(1);
+
+            const omdbRetryCalls = enrichmentRetryService.queueForRetry.mock.calls.filter(
+                ([, enrichmentType, reason]) => enrichmentType === 'omdb' && reason === 'OMDb SSL certificate issue'
+            );
+            expect(omdbRetryCalls).toHaveLength(2);
+
+            const tavilyFallbackCalls = enrichmentRetryService.queueForRetry.mock.calls.filter(
+                ([, enrichmentType]) => enrichmentType === 'tavily'
+            );
+            expect(tavilyFallbackCalls).toHaveLength(0);
+            expect(omdbService.getByTitle).toHaveBeenCalledTimes(1);
+        });
+
+        it('should resume OMDb enrichment when SSL recovery probe reports healthy', async () => {
+            const task = {
+                id: 5,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify({
+                    title: 'Recovered Movie',
+                    year: 2025,
+                    itemId: 99,
+                    source_library_id: 1,
+                    source_library_name: 'Movies'
+                })
+            };
+
+            const omdbService = require('../services/omdb');
+            const enrichmentRetryService = require('../services/enrichmentRetryService');
+
+            queueService.omdbSslBlockedUntil = Date.now() + 60_000;
+            queueService.lastOmdbSslProbeAt = 0;
+
+            omdbService.checkHealth.mockResolvedValue({
+                healthy: true,
+                ssl_error: false,
+                message: 'OMDb API is healthy'
+            });
+            omdbService.getByTitle.mockResolvedValue({
+                rated: 'N/A',
+                genre: 'Action',
+                imdbRating: 7.5
+            });
+
+            db.query.mockImplementation((query) => {
+                if (query.includes('SELECT * FROM omdb_config')) {
+                    return Promise.resolve({ rows: [{ api_key: 'test_key', is_active: true }] });
+                }
+                if (query.includes('SELECT * FROM tavily_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                return Promise.resolve({ rows: [], rowCount: 1 });
+            });
+
+            await queueService.processTask(task);
+
+            expect(omdbService.checkHealth).toHaveBeenCalled();
+            expect(omdbService.getByTitle).toHaveBeenCalledTimes(1);
+
+            const omdbRetryCalls = enrichmentRetryService.queueForRetry.mock.calls.filter(
+                ([, enrichmentType, reason]) => enrichmentType === 'omdb' && reason === 'OMDb SSL certificate issue'
+            );
+            expect(omdbRetryCalls).toHaveLength(0);
         });
     });
 

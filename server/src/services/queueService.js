@@ -50,6 +50,15 @@ const MAX_CONCURRENT = 5;       // Process up to 5 tasks concurrently
 const RETRY_DELAYS = [30, 60, 120, 300, 600]; // Seconds: 30s, 1m, 2m, 5m, 10m
 const OMDB_CIRCUIT_WARN_THROTTLE_MS = 60000;
 
+function parseEnvMs(envValue, defaultValue) {
+    const parsed = Number.parseInt(envValue || '', 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+}
+
+const OMDB_SSL_WARN_THROTTLE_MS = parseEnvMs(process.env.OMDB_SSL_WARN_THROTTLE_MS, 15 * 60 * 1000);
+const OMDB_SSL_BLOCK_MS = parseEnvMs(process.env.OMDB_SSL_BLOCK_MS, 15 * 60 * 1000);
+const OMDB_SSL_RECOVERY_PROBE_MS = parseEnvMs(process.env.OMDB_SSL_RECOVERY_PROBE_MS, 60 * 1000);
+
 class QueueService {
     /**
      * Create a new QueueService instance
@@ -80,6 +89,54 @@ class QueueService {
         this.aiAvailable = true;
         this.omdbLimitHit = false; // Track if OMDb limit hit to prevent log spam
         this.lastOmdbCircuitWarnAt = 0;
+        this.lastOmdbSslWarnAt = 0;
+        this.omdbSslBlockedUntil = 0;
+        this.lastOmdbSslProbeAt = 0;
+    }
+
+    async isOmdbSslBlocked(omdbApiKey, title) {
+        const now = Date.now();
+
+        if (this.omdbSslBlockedUntil === 0 || now >= this.omdbSslBlockedUntil) {
+            return false;
+        }
+
+        if ((now - this.lastOmdbSslProbeAt) < OMDB_SSL_RECOVERY_PROBE_MS) {
+            return true;
+        }
+
+        this.lastOmdbSslProbeAt = now;
+
+        try {
+            const health = await this.omdbService.checkHealth(omdbApiKey);
+            if (health?.healthy) {
+                this.omdbSslBlockedUntil = 0;
+                this.lastOmdbSslWarnAt = 0;
+                this.logger.info('OMDb SSL recovery detected; resuming OMDb enrichment', { title });
+                return false;
+            }
+
+            if (health?.ssl_error) {
+                this.omdbSslBlockedUntil = now + OMDB_SSL_BLOCK_MS;
+                if ((now - this.lastOmdbSslWarnAt) >= OMDB_SSL_WARN_THROTTLE_MS) {
+                    this.lastOmdbSslWarnAt = now;
+                    this.logger.warn('OMDb SSL certificate issue persists; OMDb enrichment remains temporarily paused', {
+                        title,
+                        message: health.message
+                    });
+                } else {
+                    this.logger.debug('OMDb SSL persistent warning suppressed', { title });
+                }
+                return true;
+            }
+        } catch (healthError) {
+            this.logger.debug('OMDb SSL recovery probe failed', {
+                title,
+                error: healthError.message
+            });
+        }
+
+        return true;
     }
 
     /**
@@ -436,79 +493,96 @@ class QueueService {
 
                                 this.logger.info('OMDb lookup', { title: enrichPayload.title, type: mediaType });
 
-                                const omdbResult = await this.omdbService.getByTitle(
-                                    enrichPayload.title,
-                                    enrichPayload.year,
-                                    mediaType,
-                                    omdbApiKey
-                                );
-
-                                if (omdbResult) {
-                                    enrichmentData.omdb = {
-                                        fetched_at: new Date().toISOString(),
-                                        data: omdbResult
-                                    };
-
-                                    // Extract classification-relevant data for easier access
-                                    enrichmentData.content_analysis = {
-                                        ...enrichmentData.content_analysis,
-                                        omdb_rated: omdbResult.rated,
-                                        omdb_genre: omdbResult.genre,
-                                        omdb_imdb_rating: omdbResult.imdbRating,
-                                        is_animation: omdbResult.genre?.toLowerCase().includes('animation'),
-                                        is_documentary: omdbResult.genre?.toLowerCase().includes('documentary'),
-                                        is_family: omdbResult.genre?.toLowerCase().includes('family'),
-                                        is_kids: ['G', 'TV-G', 'TV-Y', 'TV-Y7'].includes(omdbResult.rated),
-                                        is_adult: ['R', 'NC-17', 'TV-MA'].includes(omdbResult.rated)
-                                    };
-
-                                    this.logger.info('OMDb enrichment successful', {
-                                        title: enrichPayload.title,
-                                        rated: omdbResult.rated,
-                                        genre: omdbResult.genre
-                                    });
-
-                                    // Normalize rating from OMDb if available
-                                    if (enrichPayload.itemId && omdbResult.rated && omdbResult.rated !== 'N/A') {
+                                const sslBlocked = await this.isOmdbSslBlocked(omdbApiKey, enrichPayload.title);
+                                if (sslBlocked) {
+                                    if (enrichPayload.itemId) {
                                         try {
-                                            const currentItem = await this.db.query(
-                                                `SELECT content_rating FROM media_server_items WHERE id = $1`,
-                                                [enrichPayload.itemId]
+                                            const enrichmentRetryService = require('./enrichmentRetryService');
+                                            await enrichmentRetryService.queueForRetry(
+                                                enrichPayload.itemId,
+                                                'omdb',
+                                                'OMDb SSL certificate issue',
+                                                6
                                             );
-
-                                            if (currentItem.rows.length > 0) {
-                                                const currentRating = currentItem.rows[0].content_rating;
-
-                                                await this.db.query(
-                                                    `UPDATE media_server_items
-                                                     SET original_rating = COALESCE(original_rating, $2), content_rating = $3
-                                                     WHERE id = $1`,
-                                                    [enrichPayload.itemId, currentRating, omdbResult.rated]
-                                                );
-
-                                                this.logger.info('Rating updated from OMDb', {
-                                                    itemId: enrichPayload.itemId,
-                                                    original: currentRating,
-                                                    omdb: omdbResult.rated
-                                                });
-                                            }
-                                        } catch (ratingError) {
-                                            this.logger.debug('Failed to update rating from OMDb', { error: ratingError.message });
+                                        } catch (retryErr) {
+                                            this.logger.debug('Failed to queue for retry', { error: retryErr.message });
                                         }
                                     }
-                                } else if (enrichPayload.itemId) {
-                                    // OMDb returned no result - queue for Tavily fallback
-                                    try {
-                                        const enrichmentRetryService = require('./enrichmentRetryService');
-                                        await enrichmentRetryService.queueForRetry(
-                                            enrichPayload.itemId,
-                                            'tavily',
-                                            'OMDb not found',
-                                            5
-                                        );
-                                        this.logger.debug('Queued item for Tavily fallback', { title: enrichPayload.title });
-                                    } catch (retryErr) {
-                                        this.logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                } else {
+                                    const omdbResult = await this.omdbService.getByTitle(
+                                        enrichPayload.title,
+                                        enrichPayload.year,
+                                        mediaType,
+                                        omdbApiKey
+                                    );
+
+                                    if (omdbResult) {
+                                        enrichmentData.omdb = {
+                                            fetched_at: new Date().toISOString(),
+                                            data: omdbResult
+                                        };
+
+                                        // Extract classification-relevant data for easier access
+                                        enrichmentData.content_analysis = {
+                                            ...enrichmentData.content_analysis,
+                                            omdb_rated: omdbResult.rated,
+                                            omdb_genre: omdbResult.genre,
+                                            omdb_imdb_rating: omdbResult.imdbRating,
+                                            is_animation: omdbResult.genre?.toLowerCase().includes('animation'),
+                                            is_documentary: omdbResult.genre?.toLowerCase().includes('documentary'),
+                                            is_family: omdbResult.genre?.toLowerCase().includes('family'),
+                                            is_kids: ['G', 'TV-G', 'TV-Y', 'TV-Y7'].includes(omdbResult.rated),
+                                            is_adult: ['R', 'NC-17', 'TV-MA'].includes(omdbResult.rated)
+                                        };
+
+                                        this.logger.info('OMDb enrichment successful', {
+                                            title: enrichPayload.title,
+                                            rated: omdbResult.rated,
+                                            genre: omdbResult.genre
+                                        });
+
+                                        // Normalize rating from OMDb if available
+                                        if (enrichPayload.itemId && omdbResult.rated && omdbResult.rated !== 'N/A') {
+                                            try {
+                                                const currentItem = await this.db.query(
+                                                    `SELECT content_rating FROM media_server_items WHERE id = $1`,
+                                                    [enrichPayload.itemId]
+                                                );
+
+                                                if (currentItem.rows.length > 0) {
+                                                    const currentRating = currentItem.rows[0].content_rating;
+
+                                                    await this.db.query(
+                                                        `UPDATE media_server_items
+                                                         SET original_rating = COALESCE(original_rating, $2), content_rating = $3
+                                                         WHERE id = $1`,
+                                                        [enrichPayload.itemId, currentRating, omdbResult.rated]
+                                                    );
+
+                                                    this.logger.info('Rating updated from OMDb', {
+                                                        itemId: enrichPayload.itemId,
+                                                        original: currentRating,
+                                                        omdb: omdbResult.rated
+                                                    });
+                                                }
+                                            } catch (ratingError) {
+                                                this.logger.debug('Failed to update rating from OMDb', { error: ratingError.message });
+                                            }
+                                        }
+                                    } else if (enrichPayload.itemId) {
+                                        // OMDb returned no result - queue for Tavily fallback
+                                        try {
+                                            const enrichmentRetryService = require('./enrichmentRetryService');
+                                            await enrichmentRetryService.queueForRetry(
+                                                enrichPayload.itemId,
+                                                'tavily',
+                                                'OMDb not found',
+                                                5
+                                            );
+                                            this.logger.debug('Queued item for Tavily fallback', { title: enrichPayload.title });
+                                        } catch (retryErr) {
+                                            this.logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                        }
                                     }
                                 }
                             }
@@ -516,6 +590,14 @@ class QueueService {
                             const isCircuitBlocked = omdbError.code === 'CIRCUIT_BREAKER_OPEN' ||
                                 omdbError.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED' ||
                                 omdbError.code === 'CIRCUIT_BREAKER_REJECTED';
+                            const omdbErrorMessage = (omdbError.message || '').toLowerCase();
+                            const isSslCertificateError = Boolean(
+                                omdbError.isOmdbSslCertError ||
+                                omdbError.code === 'CERT_HAS_EXPIRED' ||
+                                omdbError.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
+                                omdbError.code === 'CERT_NOT_YET_VALID' ||
+                                omdbErrorMessage.includes('certificate')
+                            );
 
                             if (omdbError.name === 'OMDbLimitReachedError' ||
                                 (omdbError.message && omdbError.message.includes('Limit Reached'))) {
@@ -535,6 +617,36 @@ class QueueService {
                                             'tavily',
                                             'OMDb limit reached',
                                             3 // Higher priority since it's a quota issue
+                                        );
+                                    } catch (retryErr) {
+                                        this.logger.debug('Failed to queue for retry', { error: retryErr.message });
+                                    }
+                                }
+                            } else if (isSslCertificateError) {
+                                const now = Date.now();
+                                this.omdbSslBlockedUntil = now + OMDB_SSL_BLOCK_MS;
+                                if ((now - this.lastOmdbSslWarnAt) >= OMDB_SSL_WARN_THROTTLE_MS) {
+                                    this.lastOmdbSslWarnAt = now;
+                                    this.logger.warn('OMDb SSL certificate issue; queuing OMDb retry and pausing OMDb enrichment until recovery probe succeeds', {
+                                        title: enrichPayload.title,
+                                        code: omdbError.code,
+                                        error: omdbError.message
+                                    });
+                                } else {
+                                    this.logger.debug('OMDb SSL certificate warning suppressed', {
+                                        title: enrichPayload.title,
+                                        code: omdbError.code
+                                    });
+                                }
+
+                                if (enrichPayload.itemId) {
+                                    try {
+                                        const enrichmentRetryService = require('./enrichmentRetryService');
+                                        await enrichmentRetryService.queueForRetry(
+                                            enrichPayload.itemId,
+                                            'omdb',
+                                            'OMDb SSL certificate issue',
+                                            6
                                         );
                                     } catch (retryErr) {
                                         this.logger.debug('Failed to queue for retry', { error: retryErr.message });
@@ -1824,6 +1936,9 @@ class QueueService {
             // 14. Clear in-memory caches
             this.omdbLimitHit = false; // Reset OMDb limit flag for fresh start
             this.lastOmdbCircuitWarnAt = 0;
+            this.lastOmdbSslWarnAt = 0;
+            this.omdbSslBlockedUntil = 0;
+            this.lastOmdbSslProbeAt = 0;
 
             this.syncStatus.updateProgress(75, 'Restarting worker...');
 

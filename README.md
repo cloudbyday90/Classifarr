@@ -181,6 +181,13 @@ API reference docs:
 - Temporary upstream errors can retry automatically.
 - Validate API keys and network connectivity.
 - Investigate repeated non-transient failures in logs.
+- Optional OMDb SSL tuning env vars: `OMDB_SSL_WARN_THROTTLE_MS`, `OMDB_SSL_BLOCK_MS`, `OMDB_SSL_RECOVERY_PROBE_MS`.
+
+### Browser COOP/OAC warnings on LAN HTTP
+
+- If you access Classifarr over plain HTTP on a private LAN IP (for example `http://192.168.x.x:21324`), browser console warnings about COOP/OAC can appear.
+- Optional env var: set `SECURITY_HEADERS_STRICT=false` to disable those headers for HTTP LAN usage.
+- Keep `SECURITY_HEADERS_STRICT=true` when running behind HTTPS (recommended default).
 
 ## Documentation
 

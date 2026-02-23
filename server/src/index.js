@@ -39,10 +39,13 @@ const avxGuard = require('./services/avxGuard');
 
 const app = express();
 const PORT = process.env.PORT || 21324;
+const SECURITY_HEADERS_STRICT = (process.env.SECURITY_HEADERS_STRICT || 'true').toLowerCase() !== 'false';
 
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false,
+  crossOriginOpenerPolicy: SECURITY_HEADERS_STRICT ? undefined : false,
+  originAgentCluster: SECURITY_HEADERS_STRICT,
 }));
 app.use(cors());
 app.use(morgan('combined'));

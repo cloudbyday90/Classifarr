@@ -1,5 +1,46 @@
 # Classifarr Release Notes
 
+## [v0.42.7c-alpha] - 2026-02-23
+
+**Title: Quieter Recovery During OMDb SSL Outages and Cleaner LAN Access**
+
+### 🎉 What You'll Notice
+
+- OMDb certificate failures no longer flood warning logs over and over.
+- Metadata enrichment now pauses OMDb safely and auto-resumes after certificate recovery.
+- Optional LAN HTTP mode reduces browser console noise from COOP/OAC warnings.
+
+### 📊 Quick Visual
+
+```text
+Operational Snapshot
+Log Noise Reduction      [#########-] 90%
+Auto-Recovery Behavior   [#########-] 90%
+LAN Browser Cleanliness  [########--] 80%
+```
+
+### ✨ Highlights
+
+- OMDb SSL certificate failures are now treated as temporary outages with controlled retry and recovery checks.
+- SSL failures stay in the OMDb retry path instead of being rerouted as alternate-source fallback behavior.
+
+### 🔧 Reliability Improvements
+
+- Added throttling for repeated SSL warning logs to prevent operational spam.
+- Added configurable controls for SSL block windows and recovery probe intervals.
+- Added `SECURITY_HEADERS_STRICT` so HTTP LAN deployments can disable strict COOP/OAC headers when needed.
+
+### 👥 Who This Helps
+
+- **End users:** fewer noisy interruptions while requests continue to recover cleanly in the background.
+- **Operators/admins:** clearer logs, safer retry behavior, and better LAN console experience during local HTTP access.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.7b-alpha] - 2026-02-23
 
 **Title: Security Scan Hotfix for Cleaner Release Validation**

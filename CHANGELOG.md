@@ -21,6 +21,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.42.7c-alpha] - 2026-02-23
+
+### Added
+
+- **OMDb SSL resilience configuration**
+  - Added optional environment controls for SSL outage handling windows:
+    - `OMDB_SSL_WARN_THROTTLE_MS`
+    - `OMDB_SSL_BLOCK_MS`
+    - `OMDB_SSL_RECOVERY_PROBE_MS`
+- **Security header compatibility toggle**
+  - Added `SECURITY_HEADERS_STRICT` runtime toggle for HTTP LAN deployments that need to suppress browser COOP/OAC warnings.
+
+### Changed
+
+- **OMDb SSL outage handling flow**
+  - Queue enrichment now temporarily pauses direct OMDb calls after certificate failures, performs periodic recovery probes, and automatically resumes when OMDb health is restored.
+  - SSL-related enrichment retries now stay on the OMDb retry lane (`enrichment_type='omdb'`) instead of falling through to Tavily fallback.
+- **HTTP header policy behavior**
+  - Helmet COOP/OAC behavior is now environment-driven:
+    - strict mode enabled by default (`SECURITY_HEADERS_STRICT=true`)
+    - COOP/OAC disabled only when explicitly set to `false`.
+
+### Fixed
+
+- **OMDb SSL warning log spam**
+  - Repeated certificate-failure warnings are now throttled in both OMDb and queue-service paths.
+- **Metadata routing fallback correctness during SSL outages**
+  - Prevented SSL certificate failures from triggering incorrect non-OMDb fallback semantics while upstream certificates are temporarily invalid.
+
+---
+
 ## [v0.42.7b-alpha] - 2026-02-23
 
 ### Added

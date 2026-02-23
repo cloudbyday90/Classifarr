@@ -18,6 +18,25 @@ const logger = createLogger('OMDbService');
 
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL_MS = 1000;
+const OMDB_SSL_WARN_THROTTLE_MS = parseInt(process.env.OMDB_SSL_WARN_THROTTLE_MS || '', 10) || (15 * 60 * 1000);
+
+function isCertificateError(error) {
+    if (!error) {
+        return false;
+    }
+
+    const message = (error.message || '').toLowerCase();
+    return error.code === 'CERT_HAS_EXPIRED' ||
+        error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
+        error.code === 'CERT_NOT_YET_VALID' ||
+        message.includes('certificate');
+}
+
+function getCertificateErrorSignature(error) {
+    const code = error?.code || 'NO_CODE';
+    const message = (error?.message || 'no_message').toLowerCase();
+    return `${code}:${message}`;
+}
 
 async function enforceRateLimit() {
     const now = Date.now();
@@ -45,6 +64,23 @@ class OMDbLimitReachedError extends Error {
 class OMDbService {
     constructor() {
         this.baseUrl = 'https://www.omdbapi.com';
+        this.lastSslWarnAt = 0;
+        this.lastSslWarnSignature = null;
+    }
+
+    shouldLogSslWarning(error) {
+        const now = Date.now();
+        const signature = getCertificateErrorSignature(error);
+        const isSameSignature = signature === this.lastSslWarnSignature;
+        const inThrottleWindow = (now - this.lastSslWarnAt) < OMDB_SSL_WARN_THROTTLE_MS;
+
+        if (isSameSignature && inThrottleWindow) {
+            return false;
+        }
+
+        this.lastSslWarnAt = now;
+        this.lastSslWarnSignature = signature;
+        return true;
     }
 
     /**
@@ -188,10 +224,7 @@ class OMDbService {
                 message: 'Unexpected API response format'
             };
         } catch (error) {
-            const isCertError = error.code === 'CERT_HAS_EXPIRED' ||
-                error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
-                error.code === 'CERT_NOT_YET_VALID' ||
-                (error.message && error.message.includes('certificate'));
+            const isCertError = isCertificateError(error);
 
             if (isCertError) {
                 return {
@@ -323,14 +356,20 @@ class OMDbService {
                 }
 
                 // Handle SSL/certificate errors gracefully
-                const isCertError = error.code === 'CERT_HAS_EXPIRED' ||
-                    error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
-                    error.message?.includes('certificate');
+                const isCertError = isCertificateError(error);
                 if (isCertError) {
-                    logger.warn('OMDb SSL certificate issue', {
-                        title,
-                        error: error.message
-                    }, { error });
+                    error.isOmdbSslCertError = true;
+                    if (this.shouldLogSslWarning(error)) {
+                        logger.warn('OMDb SSL certificate issue', {
+                            title,
+                            error: error.message
+                        }, { error });
+                    } else {
+                        logger.debug('OMDb SSL certificate warning suppressed', {
+                            title,
+                            code: error.code
+                        });
+                    }
                     throw error; // Throw to trigger fallback
                 }
 
@@ -424,14 +463,20 @@ class OMDbService {
                 }
 
                 // Handle SSL/certificate errors gracefully
-                const isCertError = error.code === 'CERT_HAS_EXPIRED' ||
-                    error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
-                    error.message?.includes('certificate');
+                const isCertError = isCertificateError(error);
                 if (isCertError) {
-                    logger.warn('OMDb SSL certificate issue (IMDB ID)', {
-                        imdbId,
-                        error: error.message
-                    }, { error });
+                    error.isOmdbSslCertError = true;
+                    if (this.shouldLogSslWarning(error)) {
+                        logger.warn('OMDb SSL certificate issue (IMDB ID)', {
+                            imdbId,
+                            error: error.message
+                        }, { error });
+                    } else {
+                        logger.debug('OMDb SSL certificate warning suppressed (IMDB ID)', {
+                            imdbId,
+                            code: error.code
+                        });
+                    }
                     throw error;
                 }
 
@@ -543,6 +588,8 @@ class OMDbService {
 
     _resetRateLimiter() {
         lastRequestTime = 0;
+        this.lastSslWarnAt = 0;
+        this.lastSslWarnSignature = null;
     }
 }
 
