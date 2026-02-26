@@ -234,17 +234,44 @@
                       <Button variant="success" size="sm" @click="resolveWithOption(item, binaryPolicyOptions(item).yes, 'Yes')">Yes</Button>
                       <Button variant="error" size="sm" @click="resolveWithOption(item, binaryPolicyOptions(item).no, 'No')">No</Button>
                       <Button variant="ghost" size="sm" @click="toggleChangeMode(item.id)">Change</Button>
+                      <Button
+                        variant="warning"
+                        size="sm"
+                        :disabled="isActionBusy(`retry-classification-${item.id}`)"
+                        :loading="isActionBusy(`retry-classification-${item.id}`)"
+                        @click="retryNeedsAttentionItem(item)"
+                      >
+                        Retry Classification
+                      </Button>
                     </div>
 
                     <div v-else class="question-actions">
                       <Button v-if="primaryPolicyOption(item)" variant="success" size="sm" @click="resolveWithOption(item, primaryPolicyOption(item), 'Confirm')">Confirm</Button>
                       <Button variant="ghost" size="sm" @click="toggleChangeMode(item.id)">Change</Button>
+                      <Button
+                        variant="warning"
+                        size="sm"
+                        :disabled="isActionBusy(`retry-classification-${item.id}`)"
+                        :loading="isActionBusy(`retry-classification-${item.id}`)"
+                        @click="retryNeedsAttentionItem(item)"
+                      >
+                        Retry Classification
+                      </Button>
                     </div>
                   </div>
 
                   <div v-else class="action-item-fallback">
                     <p class="fallback-message">Policy question data unavailable. Use Change to resolve manually.</p>
                     <Button variant="ghost" size="sm" @click="toggleChangeMode(item.id)">Change</Button>
+                    <Button
+                      variant="warning"
+                      size="sm"
+                      :disabled="isActionBusy(`retry-classification-${item.id}`)"
+                      :loading="isActionBusy(`retry-classification-${item.id}`)"
+                      @click="retryNeedsAttentionItem(item)"
+                    >
+                      Retry Classification
+                    </Button>
                   </div>
 
                   <div v-if="changeMode[item.id]" class="action-item-change">
@@ -279,6 +306,15 @@
                     @click="confirmAllNeedsAttention"
                   >
                     Confirm All
+                  </Button>
+                  <Button
+                    variant="warning"
+                    size="sm"
+                    :disabled="isActionBusy('retry-all-classifications')"
+                    :loading="isActionBusy('retry-all-classifications')"
+                    @click="retryAllNeedsAttention"
+                  >
+                    Retry Classification All
                   </Button>
                 </div>
               </div>
@@ -1090,6 +1126,41 @@ async function confirmAllNeedsAttention() {
       const option = primaryPolicyOption(item)
       if (!option?.library_id) continue
       await api.resolvePendingClassification(item.id, { library_id: Number(option.library_id), selected_option: option.label || option.value || 'Confirm', resolved_by: 'admin', generate_rule: true })
+    }
+  })
+}
+
+async function retryNeedsAttentionItem(item) {
+  await runActionWithBusy(`retry-classification-${item.id}`, async () => {
+    const response = await api.retryClassifications([item.id], { purgeLearning: true })
+    const result = Array.isArray(response?.data?.results) ? response.data.results[0] : null
+    if (!result || result.queued !== true) {
+      const reason = result?.reasonCode || result?.error || 'retry_not_queued'
+      throw new Error(`Retry not queued for "${item.title}" (${reason})`)
+    }
+  })
+}
+
+async function retryAllNeedsAttention() {
+  await runActionWithBusy('retry-all-classifications', async () => {
+    const ids = needsAttentionItems.value
+      .map(item => Number(item.id))
+      .filter(id => Number.isInteger(id) && id > 0)
+
+    if (!ids.length) return
+
+    const response = await api.retryClassifications(ids, { purgeLearning: true })
+    const data = response?.data || {}
+    const queued = Number(data.queued || 0)
+    const skipped = Number(data.skipped || 0)
+    const failed = Number(data.failed || 0)
+
+    if (queued === 0 && (skipped > 0 || failed > 0)) {
+      throw new Error(`Retry Classification All did not queue any items (skipped ${skipped}, failed ${failed})`)
+    }
+
+    if (skipped > 0 || failed > 0) {
+      actionError.value = `Retry Classification All queued ${queued}, skipped ${skipped}, failed ${failed}.`
     }
   })
 }

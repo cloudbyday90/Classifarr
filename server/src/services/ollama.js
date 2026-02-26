@@ -794,6 +794,57 @@ class OllamaService {
       let tokenCount = 0;
       let resolved = false;
       let sawDoneSignal = false;
+      let lineBuffer = '';
+
+      const processStreamBuffer = (chunkText = '', flush = false) => {
+        lineBuffer += chunkText;
+        const lines = lineBuffer.split('\n');
+
+        if (!flush) {
+          lineBuffer = lines.pop() || '';
+        } else {
+          lineBuffer = '';
+        }
+
+        for (const rawLine of lines) {
+          if (resolved) {
+            return;
+          }
+
+          const line = rawLine.trim();
+          if (!line) {
+            continue;
+          }
+
+          let json;
+          try {
+            json = JSON.parse(line);
+          } catch {
+            // Non-flush mode keeps partial JSON in the buffer, so parse errors here
+            // are malformed lines; ignore and continue processing the stream.
+            continue;
+          }
+
+          if (json.response) {
+            fullResponse += json.response;
+            tokenCount++;
+            controller.recordActivity(fullResponse);
+            if (onProgress) {
+              onProgress(tokenCount, false);
+            }
+          }
+
+          if (json.done && !resolved) {
+            sawDoneSignal = true;
+            resolved = true;
+            if (onProgress) {
+              onProgress(tokenCount, true);
+            }
+            resolve(fullResponse);
+            return;
+          }
+        }
+      };
 
       axios.post(`${config.baseUrl}/api/generate`, {
         model,
@@ -806,31 +857,8 @@ class OllamaService {
       }).then(response => {
         response.data.on('data', (chunk) => {
           controller.recordActivity();
-          
-          try {
-            const lines = chunk.toString().split('\n').filter(line => line.trim());
-            for (const line of lines) {
-              const json = JSON.parse(line);
-              if (json.response) {
-                fullResponse += json.response;
-                tokenCount++;
-                controller.recordActivity(fullResponse);
-                if (onProgress) {
-                  onProgress(tokenCount, false);
-                }
-              }
-              if (json.done && !resolved) {
-                sawDoneSignal = true;
-                resolved = true;
-                if (onProgress) {
-                  onProgress(tokenCount, true);
-                }
-                resolve(fullResponse);
-              }
-            }
-          } catch (e) {
-            // Ignore parse errors for partial chunks
-          }
+
+          processStreamBuffer(chunk.toString(), false);
         });
 
         response.data.on('error', (err) => {
@@ -841,6 +869,8 @@ class OllamaService {
         });
 
         response.data.on('end', () => {
+          processStreamBuffer('', true);
+
           if (!resolved) {
             resolved = true;
             if (fullResponse && (!options.requireDoneSignal || sawDoneSignal)) {

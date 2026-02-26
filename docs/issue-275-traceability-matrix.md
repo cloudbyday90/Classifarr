@@ -20,7 +20,7 @@ Purpose: provide strict traceability from `docs/issue-275-task-list.md` phases t
 - Coverage:
   - prerequisite/runtime validation
   - external dependency fail-open contracts
-  - rollout-gate telemetry readiness before implementation freeze
+  - rollout-gate Operational Visibility readiness before implementation freeze
 - Traceability Status: Complete
 
 ### Phase 1: Migrations and Schema Safety

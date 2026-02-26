@@ -254,7 +254,7 @@ Self-annealing policy:
 - For each observed failure class:
   1. Identify root cause with evidence.
   2. Implement narrow fix.
-  3. Re-test and verify telemetry.
+  3. Re-test and verify Operational Visibility.
   4. Update plan/task docs with learnings.
 
 Contract and schema discipline:
@@ -467,7 +467,7 @@ Rollback strategy:
 
 ## Risks and Mitigations
 - Risk: repair flow latency overhead.
-  - Mitigation: one-shot repair only; telemetry on added latency.
+  - Mitigation: one-shot repair only; Operational Visibility on added latency.
 - Risk: retries increase compute load.
   - Mitigation: bounded retries + backoff; monitor queue and retrieval latencies.
 - Risk: index migration incompatibility.

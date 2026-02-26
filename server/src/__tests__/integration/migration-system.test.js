@@ -235,6 +235,26 @@ describe('Migration System Tests', () => {
             // Should not throw an error when run multiple times
             await expect(db.query(migrationSQL)).resolves.not.toThrow();
         });
+
+        test('runtime security defaults seed should be compatible with legacy settings schema', async () => {
+            const migrationSQL = `
+                INSERT INTO settings (key, value)
+                VALUES
+                  ('force_secure_cookies', 'false'),
+                  ('csrf_protection', 'true'),
+                  ('cors_origin', '')
+                ON CONFLICT (key) DO NOTHING;
+            `;
+
+            const client = await db.pool.connect();
+            try {
+                await client.query('BEGIN');
+                await expect(client.query(migrationSQL)).resolves.not.toThrow();
+                await client.query('ROLLBACK');
+            } finally {
+                client.release();
+            }
+        });
     });
 
     describe('Migration Tracking', () => {

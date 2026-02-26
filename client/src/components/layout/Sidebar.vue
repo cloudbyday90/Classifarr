@@ -68,7 +68,7 @@
     </div>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.43.0b-alpha</div>
+      <div>v0.43.1-alpha</div>
     </div>
   </aside>
 </template>

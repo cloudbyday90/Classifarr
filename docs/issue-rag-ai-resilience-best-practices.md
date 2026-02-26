@@ -100,7 +100,7 @@ Use one section per finding.
 - Type: Official docs (OpenAI)
 - Date: Accessed 2026-02-18
 - Summary: Recommends random exponential backoff with jitter; retry storms can worsen limits; rate-limit headers provide reset/remaining signals.
-- Decision mapping: Phase 2 bounded retries and retry telemetry, Phase 5 rollout monitoring.
+- Decision mapping: Phase 2 bounded retries and retry Operational Visibility, Phase 5 rollout monitoring.
 - Adopted: Jittered exponential backoff with cap and retry budget accounting in reason codes.
 - Rejected alternative (if any): Fixed-delay retries without jitter or limit-header awareness.
 

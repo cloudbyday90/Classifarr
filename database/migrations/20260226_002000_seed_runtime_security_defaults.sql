@@ -9,9 +9,9 @@
 --   Ensure required runtime-security keys exist for upgraded installs
 --   without overriding admin-configured values.
 
-INSERT INTO settings (key, value, category, description, is_encrypted)
+INSERT INTO settings (key, value)
 VALUES
-  ('force_secure_cookies', 'false', 'security', 'Force secure cookies (HTTPS-only). Optional for local HTTP deployments.', false),
-  ('csrf_protection', 'true', 'security', 'Enable CSRF protection for cookie-authenticated write requests.', false),
-  ('cors_origin', '', 'security', 'Comma-separated CORS allowlist. Empty allows all origins.', false)
+  ('force_secure_cookies', 'false'),
+  ('csrf_protection', 'true'),
+  ('cors_origin', '')
 ON CONFLICT (key) DO NOTHING;

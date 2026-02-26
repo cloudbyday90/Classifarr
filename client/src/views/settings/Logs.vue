@@ -67,6 +67,17 @@
         </select>
       </div>
       <button
+        @click="toggleRetryAuditFilter"
+        :class="[
+          'px-4 py-2 rounded-lg transition-colors border',
+          filters.retryAudit
+            ? 'bg-indigo-600 hover:bg-indigo-700 border-indigo-500'
+            : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
+        ]"
+      >
+        Retry Audit Trail
+      </button>
+      <button
         @click="exportLogs"
         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
       >
@@ -105,6 +116,9 @@
             <th class="px-4 py-3 text-left text-sm font-medium">Level</th>
             <th class="px-4 py-3 text-left text-sm font-medium">Module</th>
             <th class="px-4 py-3 text-left text-sm font-medium">Message</th>
+            <th v-if="filters.retryAudit" class="px-4 py-3 text-left text-sm font-medium">Result</th>
+            <th v-if="filters.retryAudit" class="px-4 py-3 text-left text-sm font-medium">Reason</th>
+            <th v-if="filters.retryAudit" class="px-4 py-3 text-left text-sm font-medium">Correlation</th>
             <th class="px-4 py-3 text-left text-sm font-medium">Time</th>
             <th class="px-4 py-3 text-left text-sm font-medium">Status</th>
             <th class="px-4 py-3 text-left text-sm font-medium">Actions</th>
@@ -124,6 +138,11 @@
             </td>
             <td class="px-4 py-3 text-sm">{{ log.module }}</td>
             <td class="px-4 py-3 text-sm truncate max-w-xs">{{ log.message }}</td>
+            <td v-if="filters.retryAudit" class="px-4 py-3 text-sm">{{ log.result || '-' }}</td>
+            <td v-if="filters.retryAudit" class="px-4 py-3 text-sm">{{ log.reason_code || '-' }}</td>
+            <td v-if="filters.retryAudit" class="px-4 py-3 text-xs font-mono text-gray-300">
+              <span class="truncate inline-block max-w-[180px] align-bottom">{{ log.correlation_id || '-' }}</span>
+            </td>
             <td class="px-4 py-3 text-sm text-gray-400">{{ formatDate(log.created_at) }}</td>
             <td class="px-4 py-3">
               <span
@@ -294,7 +313,8 @@ const copySuccess = ref(false)
 const filters = ref({
   level: '',
   module: '',
-  resolved: ''
+  resolved: '',
+  retryAudit: false
 })
 
 const pagination = ref({
@@ -331,6 +351,7 @@ async function loadLogs() {
     if (filters.value.level) params.append('level', filters.value.level)
     if (filters.value.module) params.append('module', filters.value.module)
     if (filters.value.resolved) params.append('resolved', filters.value.resolved)
+    if (filters.value.retryAudit) params.append('audit', 'classification_retry')
     
     const response = await api.get(`/logs?${params}`)
     
@@ -355,6 +376,17 @@ function debouncedLoadLogs() {
 function resetAndLoadLogs() {
   pagination.value.page = 1
   loadLogs()
+}
+
+function toggleRetryAuditFilter() {
+  filters.value.retryAudit = !filters.value.retryAudit
+  if (filters.value.retryAudit && !filters.value.module) {
+    filters.value.module = 'ClassificationRetryService'
+  }
+  if (!filters.value.retryAudit && filters.value.module === 'ClassificationRetryService') {
+    filters.value.module = ''
+  }
+  resetAndLoadLogs()
 }
 
 function changePage(page) {
@@ -434,6 +466,7 @@ async function exportLogs() {
     
     if (filters.value.level) params.append('level', filters.value.level)
     if (filters.value.module) params.append('module', filters.value.module)
+    if (filters.value.retryAudit) params.append('audit', 'classification_retry')
     
     const response = await api.get(`/logs/export?${params}`)
     

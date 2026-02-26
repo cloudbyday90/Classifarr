@@ -31,10 +31,10 @@ Release runbook notes: `docs/issue-275-release-runbook.md`
   - AI provider availability handling is fail-open
   - embedding retrieval dependency handling is fail-open with cooldown-aware skips
   - metadata enrichment dependency handling is conditional and bounded
-- [x] Confirm rollout-readiness telemetry dependencies exist before implementation freeze:
+- [x] Confirm rollout-readiness Operational Visibility dependencies exist before implementation freeze:
   - correction delta, error-rate delta, and latency delta can be measured in active mode
   - `rag_loop_trace` payload is readable in history/audit paths
-- [x] Lock initial rollout defaults for direct activation (`apply` mode, telemetry checks, rollback trigger).
+- [x] Lock initial rollout defaults for direct activation (`apply` mode, Operational Visibility checks, rollback trigger).
 - [x] Lock automatic fallback defaults for V1 (min apply samples = 25, consecutive breaches = 3, cooldown = 15 minutes, error delta = 0.01, p95 latency delta = 250ms).
 - [x] Review `docs/issue-275-implementation-plan.md`
 - [x] Confirm rollout model (direct `apply` activation, `shadow` retained as rollback/diagnostic mode)
@@ -303,12 +303,12 @@ npm run migration:check
   - `rag_retrieval_loop_enabled=true`
   - `policy_recheck_below_prompt_threshold_enabled=true`
   - `rag_loop_rollout_mode=apply`
-- [x] Run apply telemetry validation gate (local query-path validation complete 2026-02-11):
+- [x] Run apply Operational Visibility validation gate (local query-path validation complete 2026-02-11):
   - trace payloads are present/queryable
   - stage outcomes + skip reasons are visible in logs/metrics
 - [x] Perform quality/stability review after activation (local baseline review complete 2026-02-11; metrics endpoint and fallback-state baseline captured).
 - [x] Perform rollback drill (`apply` -> `shadow`) and confirm rapid operational reversal without code/schema rollback (local drill complete 2026-02-11).
-- [x] Monitor normal production telemetry after activation and trigger rollback only if regressions exceed defined thresholds (ongoing post-release operational runbook responsibility; not a blocker for issue implementation closure).
+- [x] Monitor normal production Operational Visibility after activation and trigger rollback only if regressions exceed defined thresholds (ongoing post-release operational runbook responsibility; not a blocker for issue implementation closure).
 - [x] Validate automatic fallback in staging (local simulation complete via integration flow tests 2026-02-11):
   - simulate sustained regression conditions
   - confirm automatic `apply` -> `shadow` transition

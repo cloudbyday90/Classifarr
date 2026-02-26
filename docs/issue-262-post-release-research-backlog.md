@@ -70,7 +70,7 @@ Goal:
 Target questions:
 - What SLI/SLOs should be tracked (notification latency, action success/failure, freshness lag)?
 - What thresholds trigger operator alerts vs informational notifications?
-- What minimum telemetry fields are required for incident triage?
+- What minimum Operational Visibility fields are required for incident triage?
 
 Primary impact:
 - Runbook stabilization gates, `Today` health signals, error/notification diagnostics.

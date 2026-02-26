@@ -7,9 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.1-alpha] - 2026-02-26
+
+### Added
+
+- **Command Center Retry Classification Flow** - Added per-item `Retry Classification` and bulk `Retry Classification All` actions in Needs Attention to reset stale classification state and requeue items as fresh classification tasks.
+- **Retry Classification API** - Added `POST /api/classification/retry` with bounded batch validation, per-item results, and structured reason codes for queued/skipped/failed outcomes.
+- **Retry Follow-up Enrichment Queueing** - Added best-effort post-retry enqueue of `metadata_enrichment` tasks (lower priority) for linked media items to rebuild OMDb/Tavily context after reset.
+- **Retry Audit Trail Filtering in Logs** - Extended logs API/UI to support retry-audit filtering and surfaced retry result/reason/correlation fields for operator diagnostics.
+- **Retry Regression Test Coverage** - Added unit, route-auth/CSRF, and integration coverage for retry cleanup, dedupe, concurrency, queue ordering, and enrichment cleanup boundaries.
+- **Migration Regression Coverage** - Added integration test coverage to verify runtime-security seed SQL remains compatible with the legacy `settings` table schema.
+- **AI/Timeout Regression Coverage** - Added unit tests for:
+  - operation-name propagation in timeout wrapper
+  - timeout error normalization behavior
+  - chunk-split stream done-signal parsing
+  - narrative suggested-library parser recovery
+
 ### Changed
 
-- None.
+- **Retry Queue Semantics** - Retry duplicate handling now deterministically skips when matching pending/processing classification tasks already exist for the same identity key, preventing duplicate pending work.
+
+### Fixed
+
+- **Runtime Security Migration Schema Compatibility** - Updated `20260226_002000_seed_runtime_security_defaults.sql` to seed `settings` using only `key/value` columns so upgrades no longer fail on installs where `settings.category` does not exist.
+- **AI Stream Completion Parsing** - Fixed Ollama streaming parser to buffer chunk-split JSON lines so `done=true` completion signals are not dropped, preventing false `EINCOMPLETE` retries.
+- **RAG Timeout Attribution** - Fixed `withTimeout()` to pass stage-specific operation names into `OperationController` and normalize timeout errors consistently, eliminating ambiguous `operation: "unnamed"` timeout logs.
+- **Narrative AI Response Recovery** - Added safe parser recovery for narrative responses containing `suggested library is "..."`, converting them into structured clarification results instead of malformed fallback warnings.
 
 ## [v0.43.0b-alpha] - 2026-02-26
 

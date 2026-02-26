@@ -73,10 +73,48 @@ describe('logs routes', () => {
         expect(db.query.mock.calls[0][0]).toContain('sql_state = $');
         expect(db.query.mock.calls[0][0]).toContain('classification_id = $');
         expect(db.query.mock.calls[0][0]).toContain('correlation_id = $');
-        expect(db.query.mock.calls[1][0]).toContain('classification_id, error_stage, reason_code, correlation_id, sql_state');
+        expect(db.query.mock.calls[1][0]).toContain('classification_id');
+        expect(db.query.mock.calls[1][0]).toContain(`COALESCE(reason_code, metadata->>'reasonCode') AS reason_code`);
+        expect(db.query.mock.calls[1][0]).toContain(`COALESCE(correlation_id, metadata->>'correlationId') AS correlation_id`);
         expect(response.body.logs).toHaveLength(1);
         expect(response.body.logs[0].error_stage).toBe('policy_recheck');
         expect(response.body.logs[0].reason_code).toBe('db_retryable_conflict');
+    });
+
+    test('GET /api/logs supports retry audit filter in existing logs surface', async () => {
+        db.query
+            .mockResolvedValueOnce({ rows: [{ total: '1' }] })
+            .mockResolvedValueOnce({
+                rows: [{
+                    id: 9,
+                    error_id: 'err-9',
+                    level: 'INFO',
+                    module: 'ClassificationRetryService',
+                    message: 'Classification retry queued',
+                    resolved: false,
+                    created_at: new Date('2026-02-26T12:00:00.000Z'),
+                    classification_id: null,
+                    error_stage: null,
+                    reason_code: 'queued',
+                    correlation_id: 'corr-9',
+                    sql_state: null,
+                    rag_operation: null,
+                    recoverable: null,
+                    actor: 'admin',
+                    result: 'queued',
+                    route: '/api/classification/retry'
+                }]
+            });
+
+        const response = await request(app)
+            .get('/api/logs?audit=classification_retry')
+            .expect(200);
+
+        expect(db.query).toHaveBeenCalledTimes(2);
+        expect(db.query.mock.calls[0][0]).toContain('module = $');
+        expect(db.query.mock.calls[0][0]).toContain('message ILIKE $');
+        expect(response.body.logs).toHaveLength(1);
+        expect(response.body.logs[0].module).toBe('ClassificationRetryService');
     });
 
     test('GET /api/logs remains backward-compatible without expanded filters', async () => {
@@ -128,5 +166,19 @@ describe('logs routes', () => {
         expect(query).toContain('sql_state = $');
         expect(params).toContain('42P01');
     });
-});
 
+    test('GET /api/logs/export supports retry audit filter', async () => {
+        db.query.mockResolvedValue({ rows: [{ error_id: 'err-audit' }] });
+
+        await request(app)
+            .get('/api/logs/export?audit=classification_retry')
+            .expect(200);
+
+        expect(db.query).toHaveBeenCalledTimes(1);
+        const query = db.query.mock.calls[0][0];
+        const params = db.query.mock.calls[0][1];
+        expect(query).toContain('module = $');
+        expect(query).toContain('message ILIKE $');
+        expect(params).toContain('ClassificationRetryService');
+    });
+});

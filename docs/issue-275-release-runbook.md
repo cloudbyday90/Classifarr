@@ -16,10 +16,10 @@ Operational checklist to activate Issue 275 directly in `apply` mode.
 3. Run API/settings contract gate in staging.
 4. Initialize feature defaults for immediate activation (`apply`).
 5. Optionally accelerate coverage (embedding backfill + targeted reclassification).
-6. Validate apply telemetry and trace observability.
+6. Validate apply Operational Visibility and trace observability.
 7. Run rollback drill (`apply` -> `shadow`) in staging.
 8. Activate production in `apply`.
-9. Continue normal telemetry monitoring and rollback only if regression thresholds are exceeded.
+9. Continue normal Operational Visibility monitoring and rollback only if regression thresholds are exceeded.
 
 ## Pre-flight Integrity Audits
 Run these in staging before activation:
@@ -121,7 +121,7 @@ curl -X POST http://localhost:21324/api/rag/backfill/start \
   -d "{\"limit\":1000}"
 ```
 
-## Apply Telemetry Validation Gate
+## Apply Operational Visibility Validation Gate
 Confirm traces and stage outcomes are queryable:
 ```sql
 -- Recent Issue 275 traces
@@ -150,7 +150,7 @@ Validate operational reversal in staging:
 ## Production Activation and Stabilization
 After staging validation:
 1. activate production in `apply`.
-2. monitor normal production telemetry for error/latency/correction regressions.
+2. monitor normal production Operational Visibility for error/latency/correction regressions.
 3. if regressions exceed tolerance, immediately revert to `shadow`.
 
 ## Phase 4 Notes (Runtime Safety)

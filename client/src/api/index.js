@@ -758,6 +758,9 @@ export default {
   resolvePendingClassification(classificationId, payload) {
     return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
   },
+  retryClassifications(classificationIds, options = {}) {
+    return apiClient.post('/classification/retry', { classificationIds, options })
+  },
   getOllamaStatus() {
     return apiClient.get('/queue/ollama-status')
   },

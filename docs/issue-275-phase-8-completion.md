@@ -17,7 +17,7 @@ This document records Phase 8 progress for `docs/issue-275-task-list.md`:
   - ordered rollout sequence
   - activation checks and rollback drill steps
   - feature-gate initialization guidance
-  - telemetry validation SQL
+  - Operational Visibility validation SQL
   - V1.1 freeze rule after baseline stability check
 
 ### 2) Release communication artifacts
@@ -75,7 +75,7 @@ The following Phase 8 tasks require staging/production execution and were not ex
 - staging migration pre-check execution
 - staging then production migration application with schema parity checks
 - staging API/settings contract gate execution against deployed env
-- staging feature-gate initialization and apply telemetry validation
+- staging feature-gate initialization and apply Operational Visibility validation
 - rollback drill in deployed env and immediate apply activation validation
 - post-activation stabilization monitoring
 
@@ -119,7 +119,7 @@ Executed in strict Phase 8 order where runnable locally:
      - `policy_recheck_below_prompt_threshold_enabled=true`
      - `rag_loop_rollout_mode=apply`
 
-4. Apply telemetry gate + stability baseline
+4. Apply Operational Visibility gate + stability baseline
    - Query-path validation passed:
      - `GET /api/rag/loop/promotion-readiness` returned expected gate/metric structure
      - `GET /api/rag/loop/latest-fallback-incident` returned expected fallback-state structure

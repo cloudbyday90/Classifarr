@@ -94,6 +94,17 @@ class AIResponseParser {
             }
         }
 
+        // Heuristic salvage for narrative responses that still provide a suggested library.
+        // This keeps behavior safe by producing a clarification flow instead of auto-routing.
+        const narrativeResult = this.parseNarrativeSuggestion(response, context, mode);
+        if (narrativeResult) {
+            logger.info('Salvaged narrative AI response into structured clarification', {
+                title: metadata?.title,
+                library: narrativeResult.library?.name || null
+            });
+            return narrativeResult;
+        }
+
         // No format matched - return fallback
         if (logMalformed) {
             logger.warn('AI response malformed, no format matched', { 
@@ -308,6 +319,106 @@ class AIResponseParser {
                 library_name: matchedLibrary?.name || null,
             };
         });
+    }
+
+    parseNarrativeSuggestion(response, context, mode = 'classify') {
+        if (mode !== 'classify') {
+            return null;
+        }
+
+        const { libraries, signalContext, metadata } = context;
+        if (!Array.isArray(libraries) || libraries.length === 0) {
+            return null;
+        }
+
+        const suggestedName = this.extractSuggestedLibraryName(response);
+        if (!suggestedName) {
+            return null;
+        }
+
+        const matchedLibrary = this.findLibraryByName(suggestedName, libraries);
+        if (!matchedLibrary) {
+            return null;
+        }
+
+        const defaultConfidence = Number.isFinite(Number(signalContext?.confidence))
+            ? Number(signalContext.confidence)
+            : 55;
+        const confidence = Math.min(95, Math.max(50, defaultConfidence));
+        const title = metadata?.title || 'this item';
+
+        const options = libraries.slice(0, 4).map((lib) => ({
+            label: lib.name,
+            value: `library_${lib.id}`,
+            library_id: lib.id,
+            library_name: lib.name
+        }));
+
+        return {
+            library: matchedLibrary,
+            confidence,
+            reason: `Needs clarification: AI returned narrative output with suggested library "${matchedLibrary.name}"`,
+            needs_clarification: true,
+            clarification: {
+                problem_summary: 'AI response needs confirmation',
+                why_uncertain: 'AI returned narrative text instead of the required response contract format.',
+                question: `Should "${title}" go to "${matchedLibrary.name}"?`,
+                options
+            },
+            pending_reason: 'AI response needs confirmation',
+            policy_question: {
+                problem_summary: 'AI response needs confirmation',
+                why_uncertain: 'AI returned narrative text instead of the required response contract format.',
+                question: `Should "${title}" go to "${matchedLibrary.name}"?`,
+                options,
+                generated_at: new Date().toISOString(),
+                signal_breakdown: signalContext?.breakdown || [],
+                calculated_confidence: signalContext?.confidence || null
+            },
+            libraries,
+            format: 'narrative_clarify'
+        };
+    }
+
+    extractSuggestedLibraryName(response) {
+        if (!response || typeof response !== 'string') {
+            return null;
+        }
+
+        const patterns = [
+            /suggested\s+library\s+is\s+["']?([^"'.\n]+)["']?/i,
+            /suggested\s+library\s*:\s*["']?([^"'.\n]+)["']?/i
+        ];
+
+        for (const pattern of patterns) {
+            const match = response.match(pattern);
+            if (match && match[1]) {
+                return match[1].trim();
+            }
+        }
+
+        return null;
+    }
+
+    findLibraryByName(name, libraries) {
+        const target = String(name || '').trim().toLowerCase();
+        if (!target) {
+            return null;
+        }
+
+        // Exact match first
+        let match = libraries.find((lib) => String(lib?.name || '').trim().toLowerCase() === target);
+        if (match) {
+            return match;
+        }
+
+        // Then contains/partial
+        match = libraries.find((lib) => {
+            const libName = String(lib?.name || '').trim().toLowerCase();
+            return libName.includes(target) || target.includes(libName);
+        });
+
+        return match || null;
     }
 
     /**

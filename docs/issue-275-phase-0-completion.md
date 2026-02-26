@@ -7,7 +7,7 @@ This document closes Phase 0 in `docs/issue-275-task-list.md` by recording:
 - external best-practice research
 - latest-version checks for required runtime/DB/dependency components
 - local prerequisite verification
-- dependency-contract and telemetry-readiness confirmation
+- dependency-contract and Operational Visibility-readiness confirmation
 - locked rollout defaults for V1 execution
 
 ## 1) Best-Practice Research (External)
@@ -102,9 +102,9 @@ Conclusion:
 Conclusion:
 - The codebase already contains fail-open/retry/circuit primitives that Issue 275 can extend for second-pass stages.
 
-## 5) Rollout-Telemetry Readiness Dependencies
+## 5) Rollout-Operational Visibility Readiness Dependencies
 
-Validated dependencies for shadow telemetry and auditability:
+Validated dependencies for shadow Operational Visibility and auditability:
 - classification metadata container exists in schema:
   - `classification_history.metadata jsonb` in `database/schema/current.sql`
 - history endpoints already read/return metadata:

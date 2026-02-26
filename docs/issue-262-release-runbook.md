@@ -28,7 +28,7 @@ Operational checklist to activate Issue 262 (Command Center consolidation) with 
 6. Run sidebar/route deprecation gates (`Activity`, `Queue`, `Migration`, Smart Rule Builder v2 exposure).
 7. Run rollback drill in staging.
 8. Activate production with `command-center-default` and legacy-compatible guardrails.
-9. Monitor stabilization telemetry and complete legacy consolidation only after thresholds pass.
+9. Monitor stabilization Operational Visibility and complete legacy consolidation only after thresholds pass.
 
 ## Pre-flight Integrity Audits
 Run these in staging before activation:

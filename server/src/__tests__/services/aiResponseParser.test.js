@@ -374,6 +374,30 @@ describe('AIResponseParser', () => {
             expect(result.parse_failure_reason).toBe('no_format_matched');
             expect(mockLogger.warn).not.toHaveBeenCalled();
         });
+
+        it('should salvage narrative response with suggested library into clarification', () => {
+            const libraries = [
+                { id: 11, name: 'TV Shows', media_type: 'tv' },
+                { id: 12, name: 'Movies', media_type: 'movie' },
+            ];
+            const response = 'The item is a TV show. The confidence score is low, and the suggested library is "TV Shows".';
+            const context = {
+                libraries,
+                metadata: { title: 'DTF St. Louis', media_type: 'tv' },
+                signalContext: {
+                    confidence: 62,
+                    breakdown: [{ type: 'genre_match', score: 62, weight: 10 }]
+                }
+            };
+
+            const result = aiResponseParser.parse(response, context, { mode: 'classify' });
+
+            expect(result.format).toBe('narrative_clarify');
+            expect(result.needs_clarification).toBe(true);
+            expect(result.library).toEqual(libraries[0]);
+            expect(result.confidence).toBe(62);
+            expect(result.policy_question.question).toContain('TV Shows');
+        });
     });
 
     describe('mapOptionsToLibraries', () => {

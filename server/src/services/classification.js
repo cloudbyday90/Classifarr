@@ -736,11 +736,18 @@ class ClassificationService {
       try {
         return await controller.run(async (ctx) => {
           return await operationOrPromise(ctx.signal);
-        });
+        }, timeoutMessage);
       } catch (error) {
-        if (error.name === 'AbortError' || error.code === 'ABORT_ERR' || error.code === 'ERR_CANCELED') {
+        if (
+          error.name === 'AbortError' ||
+          error.code === 'ABORT_ERR' ||
+          error.code === 'ERR_CANCELED' ||
+          error.name === 'TimeoutError' ||
+          error.code === 'ETIMEDOUT'
+        ) {
           const timeoutError = new Error(timeoutMessage);
           timeoutError.name = 'TimeoutError';
+          timeoutError.code = error.code || 'ETIMEDOUT';
           timeoutError.originalError = error;
           throw timeoutError;
         }

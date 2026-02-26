@@ -29,6 +29,7 @@ const ragLoopResilienceManager = require('../services/ragLoopResilienceManager')
 const ollamaService = require('../services/ollama');
 const providerLock = require('../services/providerLock');
 const ragLogger = require('../utils/ragLogger');
+const { OperationController } = require('../utils/operationController');
 
 // Mock dependencies
 jest.mock('../services/classificationPhaseService');
@@ -55,6 +56,48 @@ jest.mock('../utils/logger', () => ({
 }));
 
 describe('ClassificationService', () => {
+  describe('withTimeout', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    test('passes timeout message as operation name to OperationController', async () => {
+      const runSpy = jest.spyOn(OperationController.prototype, 'run').mockResolvedValue('ok');
+      const operation = jest.fn().mockResolvedValue('ok');
+
+      const result = await classificationService.withTimeout(
+        operation,
+        10000,
+        'rag_pass2_semantic_timeout'
+      );
+
+      expect(result).toBe('ok');
+      expect(runSpy).toHaveBeenCalledWith(
+        expect.any(Function),
+        'rag_pass2_semantic_timeout'
+      );
+    });
+
+    test('normalizes OperationController timeout errors to requested timeout message', async () => {
+      const timeoutError = new Error('unnamed timed out after 10000ms');
+      timeoutError.name = 'TimeoutError';
+      timeoutError.code = 'ETIMEDOUT';
+      jest.spyOn(OperationController.prototype, 'run').mockRejectedValue(timeoutError);
+
+      await expect(
+        classificationService.withTimeout(
+          () => Promise.resolve('ok'),
+          10000,
+          'rag_pass2_semantic_timeout'
+        )
+      ).rejects.toMatchObject({
+        name: 'TimeoutError',
+        message: 'rag_pass2_semantic_timeout',
+        code: 'ETIMEDOUT'
+      });
+    });
+  });
+
   describe('evaluateCustomRule', () => {
     const metadata = {
       title: 'Die Hard',

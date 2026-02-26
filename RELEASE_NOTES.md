@@ -1,5 +1,47 @@
 # Classifarr Release Notes
 
+## [v0.43.1-alpha] - 2026-02-26
+
+**Title: Faster recovery for “Needs Attention” items with safer retry handling**
+
+### 🎉 What You'll Notice
+
+- You can now retry stuck or low-confidence items directly from Command Center without manual database cleanup.
+- Needs Attention now supports both single-item retry and one-click `Retry Classification All`.
+- Retry runs are safer and easier to trace, with better diagnostics in Logs.
+
+### 📊 Quick Visual
+
+```text
+Operations Snapshot
+Retry Control          [██████████] 100%
+Queue Safety           [█████████░] 90%
+Troubleshooting Clarity[█████████░] 90%
+```
+
+### ✨ Highlights
+
+- Added a full retry flow that clears stale classification/enrichment state and re-runs items as fresh classifications.
+- Added follow-up metadata enrichment queueing after retry for linked media items.
+- Added retry-focused log filtering so admins can quickly inspect retry outcomes and reason codes.
+
+### 🔧 Reliability Improvements
+
+- Fixed incomplete AI stream parsing edge cases that could trigger false transient retries.
+- Improved timeout attribution so operation timeout logs now identify the correct stage.
+- Improved AI-response parser recovery when models return narrative text instead of strict JSON.
+
+### 👥 Who This Helps
+
+- **End users:** Faster recovery from “Needs Attention” without waiting for manual intervention.
+- **Operators/admins:** Better control, safer queue behavior, and clearer retry diagnostics.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.43.0b-alpha] - 2026-02-26
 
 **Title: Local HTTP access is stable again after upgrades**

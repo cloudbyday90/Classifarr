@@ -8,6 +8,7 @@
 
 const request = require('supertest');
 const express = require('express');
+const cookieParser = require('cookie-parser');
 
 jest.mock('../config/database', () => ({
   query: jest.fn()
@@ -32,9 +33,11 @@ jest.mock('../services/auth', () => ({
 const db = require('../config/database');
 const authService = require('../services/auth');
 const apiRouter = require('../routes/api');
+const { ensureCsrfCookie, csrfProtection, CSRF_COOKIE_NAME } = require('../middleware/csrf');
 
 describe('Route Authentication', () => {
   let app;
+  let csrfApp;
   let adminToken;
   let userToken;
 
@@ -49,6 +52,13 @@ describe('Route Authentication', () => {
     app = express();
     app.use(express.json());
     app.use('/api', apiRouter);
+
+    csrfApp = express();
+    csrfApp.use(express.json());
+    csrfApp.use(cookieParser());
+    csrfApp.use(ensureCsrfCookie);
+    csrfApp.use('/api', csrfProtection);
+    csrfApp.use('/api', apiRouter);
     
     authService.verifyToken.mockImplementation(async (token) => {
       if (token === adminToken) {
@@ -65,6 +75,7 @@ describe('Route Authentication', () => {
     const adminRoutes = [
       { method: 'get', path: '/api/media-server' },
       { method: 'get', path: '/api/classification/history' },
+      { method: 'post', path: '/api/classification/retry' },
       { method: 'get', path: '/api/settings' },
       { method: 'get', path: '/api/reclassification' },
       { method: 'get', path: '/api/policies' },
@@ -152,6 +163,29 @@ describe('Route Authentication', () => {
         .set('Authorization', 'Bearer malformed');
       
       expect(res.status).toBe(403);
+    });
+  });
+
+  describe('CSRF protection on classification retry mutation', () => {
+    it('should return 403 when cookie-authenticated request is missing CSRF header', async () => {
+      const res = await request(csrfApp)
+        .post('/api/classification/retry')
+        .set('Cookie', [`access_token=${adminToken}`])
+        .send({ classificationIds: [123] });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toBe('CSRF validation failed');
+    });
+
+    it('should return 403 when CSRF header does not match cookie token', async () => {
+      const res = await request(csrfApp)
+        .post('/api/classification/retry')
+        .set('Cookie', [`access_token=${adminToken}`, `${CSRF_COOKIE_NAME}=csrf-cookie-token`])
+        .set('X-CSRF-Token', 'csrf-header-token-mismatch')
+        .send({ classificationIds: [123] });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toBe('CSRF validation failed');
     });
   });
 

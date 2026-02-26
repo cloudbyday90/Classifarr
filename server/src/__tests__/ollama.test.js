@@ -18,6 +18,7 @@ jest.mock('../utils/logger', () => ({
 }));
 
 const axios = require('axios');
+const { EventEmitter } = require('events');
 const db = require('../config/database');
 const ollamaService = require('../services/ollama');
 
@@ -312,6 +313,43 @@ describe('OllamaService', () => {
 
             expect(result.success).toBe(false);
             expect(result.errorCode).toBe('ECONNREFUSED');
+        });
+    });
+
+    describe('generateWithProgress stream chunk handling', () => {
+        it('should parse done signal when JSON line is split across chunks', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
+
+            axios.post.mockImplementationOnce(() => {
+                const stream = new EventEmitter();
+                setTimeout(() => {
+                    stream.emit('data', Buffer.from('{"response":"Hello"}\n{"do'));
+                    stream.emit('data', Buffer.from('ne":true}\n'));
+                    stream.emit('end');
+                }, 0);
+                return Promise.resolve({ data: stream });
+            });
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: null
+            };
+
+            const result = await ollamaService.generateWithProgress(
+                'test prompt',
+                'gemma3:12b',
+                0.3,
+                null,
+                controller,
+                {
+                    requireDoneSignal: true,
+                    allowPartialOnAbort: false,
+                    allowPartialOnStall: false
+                }
+            );
+
+            expect(result).toBe('Hello');
         });
     });
 });

@@ -772,13 +772,13 @@ Observed incident summary:
 |---|---|---|---|
 | Clarification text references non-existent library names | Classification uses active libraries, but AI clarification copy can still be free-form | User-facing question can imply invalid destinations (for example `Racing`) | Add library-name guardrail in clarification generation/formatting: only configured active libraries for matching media type may be referenced in questions/prompts |
 | Second-pass appears to run but outcome is unclear to operators | `rag_loop_trace` and `error_log` contain stage timeline and decision outcome | UI/ops flow does not clearly show `ran but not adopted` reason path | Add explicit second-pass outcome fields to operational surfaces (trigger, strategy, policy_recheck outcome, ai_rerun outcome, final decision outcome/comparator) |
-| AI rerun/parser failures degrade to baseline without clear remediation signal | `AIResponseParser` warns on malformed output; rerun can fail and skip candidate | No structured remediation path before final fallback | Add strict format-repair pass (single bounded retry) after malformed parse, with structured telemetry (`parse_failure_reason`, raw response length, termination reason) |
+| AI rerun/parser failures degrade to baseline without clear remediation signal | `AIResponseParser` warns on malformed output; rerun can fail and skip candidate | No structured remediation path before final fallback | Add strict format-repair pass (single bounded retry) after malformed parse, with structured Operational Visibility (`parse_failure_reason`, raw response length, termination reason) |
 | OMDb transient 52x visibility | OMDb transient retry exists | Repeated upstream instability may be under-observed | Add explicit metric/log rollups for OMDb 52x frequency and fallback activation rate to support tuning |
 
 ### Acceptance Criteria (One-Off)
 
 1. Clarification questions cannot name library targets outside configured active libraries for the media type.
-2. When second-pass runs but baseline is kept, operator-facing telemetry shows the exact rejection path (`policy_not_upgraded`, `ai_rerun_failed`, `missing_candidate`, or equivalent).
+2. When second-pass runs but baseline is kept, operator-facing Operational Visibility shows the exact rejection path (`policy_not_upgraded`, `ai_rerun_failed`, `missing_candidate`, or equivalent).
 3. Parser failure path emits structured diagnostics sufficient to distinguish truncation, schema mismatch, and model non-compliance.
 4. OMDb transient failure rates and fallback usage are visible in operational logs/metrics for troubleshooting.
 5. Command Center surfaces use these signals without adding duplicate workflows outside the locked section responsibilities.
@@ -956,7 +956,7 @@ Assumption for this section:
 | A2 | Define multi-active handling when concurrent workers > 1 (primary + additional active tasks) | Prevent loss of operator visibility when more than one item is processing | `#272 Processing Module` |
 | A3 | Define replacement for `Live Activity Stream` (compact feed in Command Center vs explicit route to History) | Preserve short-horizon operational trace previously visible in Activity | `#263 Page Consolidation`, `#268 Recently Completed Module` |
 | A4 | Preserve realtime filtering rules for active tasks (ignore ghost/invalid titles and `source_library` noise) | Prevent noisy/incorrect active-processing UI | `#272 Processing Module` |
-| A5 | Lock Processing detail parity for AI generation telemetry (`model`, `tokens`, `elapsed`) | Keep current troubleshooting context from Activity | `#272 Processing Module` |
+| A5 | Lock Processing detail parity for AI generation Operational Visibility (`model`, `tokens`, `elapsed`) | Keep current troubleshooting context from Activity | `#272 Processing Module` |
 | A6 | Decide staleness visibility contract (`Last updated` indicator and manual refresh semantics) | Operators need confidence about data freshness | Cross-module (SWR + module headers) |
 | A7 | Resolve `activityRefreshInterval` setting ownership (deprecate or repurpose for Command Center) | Avoid orphaned settings tied to removed page | `#263 Page Consolidation`, queue settings docs |
 | A8 | Decide where gap-analysis progress lives (Command Center module vs deferred elsewhere) | Avoid losing classification progress/remaining visibility currently shown in Activity | `#264 Today Module` |
@@ -976,7 +976,7 @@ Assumption for this section:
 - [x] A2 multi-active processing UX decision recorded.
 - [x] A3 live activity stream replacement decision recorded.
 - [x] A4 realtime filtering rule parity explicitly added to Processing acceptance criteria.
-- [x] A5 AI generation telemetry parity explicitly added to Processing acceptance criteria.
+- [x] A5 AI generation Operational Visibility parity explicitly added to Processing acceptance criteria.
 - [x] A6 staleness visibility contract explicitly added to module requirements.
 - [x] A7 refresh-interval setting deprecation/repurpose decision recorded.
 - [x] A8 gap-analysis placement decision recorded.
@@ -1218,7 +1218,7 @@ Route-visibility rules:
 - [ ] Define and implement `Confirm All` behavior (bulk endpoint or explicit client loop contract).
 - [ ] Keep locked empty-state copy: `No items awaiting decision ✓`.
 - [ ] (Q4) Preserve policy-option + manual fallback parity from Queue awaiting cards, including targeted recheck diagnostic context.
-- [ ] Add telemetry/check for missing policy payload on pending cards (`awaiting_decision` item with null/invalid `policy_question`) so UI falls back to `Change` flow and logs actionable diagnostics.
+- [ ] Add Operational Visibility/check for missing policy payload on pending cards (`awaiting_decision` item with null/invalid `policy_question`) so UI falls back to `Change` flow and logs actionable diagnostics.
 - Validation gate:
 - [ ] Single-item and bulk resolution paths complete with consistent counts/toasts.
 - [ ] (Q4) Decision cards retain sufficient diagnostic context for confident manual resolution.
@@ -1303,13 +1303,13 @@ Route-visibility rules:
 - [ ] Keep locked idle copy: `Idle — nothing processing` + `Library: x / y (z%)`.
 - [ ] (A2) Implement locked multi-active behavior (primary active card + additional active rows/cards with selectable detail expansion).
 - [ ] (A4) Preserve active-task filtering parity (ignore ghost/invalid titles and exclude `source_library` noise from active-processing presentation).
-- [ ] (A5) Preserve AI generation telemetry parity in Processing detail (`model`, `token count`, `elapsed`).
+- [ ] (A5) Preserve AI generation Operational Visibility parity in Processing detail (`model`, `token count`, `elapsed`).
 - [ ] (A6) Expose Processing staleness/freshness signal (`Last updated` and/or equivalent refresh indicator) aligned with SWR contract.
 - [ ] (Q1) Preserve pending-task metadata parity needed for per-item actions (`task_type`, attempts/max attempts, created timestamp).
 - [ ] (Q3) Preserve manual classify flow parity (bypass AI, media-type filtered libraries, route-on-classify behavior).
 - Validation gate:
 - [ ] Processing parity is accepted against existing Activity phased behavior before legacy removal.
-- [ ] (A2/A4/A5) Concurrent processing, filtering, and AI telemetry parity are validated against Activity-era behavior.
+- [ ] (A2/A4/A5) Concurrent processing, filtering, and AI Operational Visibility parity are validated against Activity-era behavior.
 - [ ] (Q1/Q3) Queue pending-row operational workflows are fully executable from Command Center Processing.
 - [ ] Detail panel/sheet opens and updates from phase 1 (`queued`) through phase 8 (`notification`) without delayed phase gating.
 

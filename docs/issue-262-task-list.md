@@ -722,7 +722,7 @@ Implementation activities:
 - [x] Execute sidebar/deprecation gate from runbook.
 - [x] Execute rollback drill in staging and record outcomes.
 - [x] Complete production activation with Command Center default route and legacy-compatible safeguards.
-- [x] Monitor stabilization telemetry and action failure trends during the defined observation window.
+- [x] Monitor stabilization Operational Visibility and action failure trends during the defined observation window.
 - [x] Finalize README replacement (`README.md` is the canonical finalized document; no `README.proposed-v0.42.0-alpha.md` remains in repo).
 - [x] Update `CHANGELOG.md` for Issue 262 scope (`v0.42.0-alpha`).
 - [x] Update `RELEASE_NOTES.md` for Issue 262 scope (`v0.42.0-alpha`).
@@ -733,7 +733,7 @@ Acceptance checklist:
 - [x] All required runbook gates pass in staging with no blocker findings.
 - [x] Rollback drill demonstrates reversible cutover behavior without schema rollback.
 - [x] Production activation completes without critical regression in core operational flows.
-- [x] Stabilization telemetry remains within acceptable thresholds for action failures and notification/read-state errors.
+- [x] Stabilization Operational Visibility remains within acceptable thresholds for action failures and notification/read-state errors.
 - [x] README, changelog, and release notes accurately represent final shipped behavior.
 - [x] Final docs references (plan, task list, runbook, design) are mutually consistent.
 - [x] Release is tag-ready with explicit owner sign-off.
@@ -757,7 +757,7 @@ These gates were originally required for chapter closure and are preserved here 
 2. Complete Phase 7 manual smoke matrix for critical flows (`resolve pending`, `retry failed`, `quick add`, `notifications open-target`).
 3. Close Phase 5 manual SWR/live-refresh/mobile/accessibility evidence items.
 4. Execute Phase 8 staging runbook gates (pre-flight, API/UI/mobile/sidebar parity, rollback drill) and attach evidence.
-5. Record production activation + stabilization telemetry snapshots and capture explicit owner sign-off.
+5. Record production activation + stabilization Operational Visibility snapshots and capture explicit owner sign-off.
 
 ## Chapter Closeout - Run Order
 Execute in order. Do not move to the next step unless the current step is pass/waived with owner sign-off.
@@ -838,7 +838,7 @@ Step 1 evidence log (fill during execution):
 
 ### Step 4 - Production Activation and Stabilization
 - [x] Record production activation timestamp and initial health state.
-- [x] Capture stabilization telemetry snapshots (`initial`, `midpoint`, `closeout`) and verify thresholds.
+- [x] Capture stabilization Operational Visibility snapshots (`initial`, `midpoint`, `closeout`) and verify thresholds.
 - [x] Confirm there are no critical regressions in core operational workflows.
 - Evidence:
   - Owner: `@cloudbyday90`

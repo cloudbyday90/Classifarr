@@ -26,6 +26,7 @@ const { apiMock } = vi.hoisted(() => ({
     post: vi.fn(),
     processRetryQueue: vi.fn(),
     resolvePendingClassification: vi.fn(),
+    retryClassifications: vi.fn(),
     retryQueueTask: vi.fn(),
     dismissQueueTask: vi.fn(),
     retryAllFailedTasks: vi.fn(),
@@ -129,6 +130,14 @@ describe('CommandCenter action modules', () => {
             ],
           },
         }],
+      },
+    })
+    apiMock.retryClassifications.mockResolvedValue({
+      data: {
+        queued: 1,
+        skipped: 0,
+        failed: 0,
+        results: [{ classificationId: 201, queued: true, taskId: 9011 }],
       },
     })
     apiMock.getOllamaStatus.mockResolvedValue({ data: { isActive: false } })
@@ -303,5 +312,67 @@ describe('CommandCenter action modules', () => {
       selected_option: 'Manual selection',
     }))
     expect(wrapper.text()).toContain('Resolved "Motorvalley" but routing did not complete (Sonarr API connection failed).')
+  })
+
+  it('retries a single needs-attention classification', async () => {
+    const wrapper = await mountCommandCenter()
+    const retryButton = wrapper.findAll('button').find((node) => node.text() === 'Retry Classification')
+
+    expect(retryButton).toBeTruthy()
+    await retryButton.trigger('click')
+    await flushPromises()
+
+    expect(apiMock.retryClassifications).toHaveBeenCalledWith([201], { purgeLearning: true })
+  })
+
+  it('retries all needs-attention classifications from footer action', async () => {
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 201,
+            title: 'Motorvalley',
+            year: 2026,
+            media_type: 'tv',
+            confidence: 22.72,
+            policy_question: {
+              question: 'Does this belong in TV Shows?',
+              options: [{ label: 'Yes', value: 'yes', library_id: 10 }],
+            },
+          },
+          {
+            id: 202,
+            title: 'The Burbs',
+            year: 1989,
+            media_type: 'movie',
+            confidence: 30,
+            policy_question: {
+              question: 'Movie or Family?',
+              options: [{ label: 'Movies', value: 'movies', library_id: 8 }],
+            },
+          },
+        ],
+      },
+    })
+    apiMock.retryClassifications.mockResolvedValueOnce({
+      data: {
+        queued: 2,
+        skipped: 0,
+        failed: 0,
+        results: [
+          { classificationId: 201, queued: true, taskId: 9012 },
+          { classificationId: 202, queued: true, taskId: 9013 },
+        ],
+      },
+    })
+
+    const wrapper = await mountCommandCenter()
+    const retryAllButton = wrapper.findAll('button').find((node) => node.text() === 'Retry Classification All')
+
+    expect(retryAllButton).toBeTruthy()
+    await retryAllButton.trigger('click')
+    await flushPromises()
+
+    expect(apiMock.retryClassifications).toHaveBeenCalledWith([201, 202], { purgeLearning: true })
   })
 })

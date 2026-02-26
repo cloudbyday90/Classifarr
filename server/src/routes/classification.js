@@ -19,12 +19,15 @@
 const express = require('express');
 const db = require('../config/database');
 const classificationService = require('../services/classification');
+const classificationRetryService = require('../services/classificationRetryService');
 const reclassificationService = require('../services/reclassificationService');
 const clarificationService = require('../services/clarificationService');
 const patternReinforcementService = require('../services/patternReinforcementService');
 const libraryProfileService = require('../services/libraryProfileService');
 const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector');
 const { createLogger } = require('../utils/logger');
+const { requireReadWrite } = require('../middleware/apiKeyAuth');
+const { randomUUID } = require('crypto');
 
 const router = express.Router();
 const logger = createLogger('classification');
@@ -638,6 +641,54 @@ router.post('/pending/:id/resolve', async (req, res) => {
       routingReason
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/retry:
+ *   post:
+ *     summary: Retry pending classifications with cleanup and re-queue
+ *     description: Resets stale classification state and queues a fresh classification task.
+ */
+router.post('/retry', requireReadWrite, async (req, res) => {
+  try {
+    const { classificationIds, options = {} } = req.body || {};
+
+    if (!Array.isArray(classificationIds)) {
+      return res.status(400).json({ error: 'classificationIds must be an array' });
+    }
+    if (classificationIds.length === 0) {
+      return res.status(400).json({ error: 'classificationIds must contain at least one id' });
+    }
+    if (classificationIds.length > 100) {
+      return res.status(400).json({ error: 'classificationIds exceeds maximum batch size (100)' });
+    }
+    if (!classificationIds.every((id) => Number.isInteger(Number(id)) && Number(id) > 0)) {
+      return res.status(400).json({ error: 'classificationIds must contain only positive integers' });
+    }
+
+    const actor = req.user?.username || req.user?.email || req.user?.id || 'admin';
+    const correlationId = randomUUID();
+    const purgeLearning = options?.purgeLearning !== false;
+
+    const result = await classificationRetryService.retryClassifications({
+      classificationIds,
+      actor,
+      purgeLearning,
+      correlationId
+    });
+
+    res.json({
+      success: result.failed === 0,
+      ...result
+    });
+  } catch (error) {
+    if (error?.code === 'VALIDATION_ERROR') {
+      return res.status(400).json({ error: error.message });
+    }
+    logger.error('Failed to retry classifications', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

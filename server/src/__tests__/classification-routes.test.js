@@ -59,11 +59,13 @@ jest.mock('../services/clarificationService');
 jest.mock('../services/reclassificationService');
 jest.mock('../services/patternReinforcementService');
 jest.mock('../services/libraryProfileService');
+jest.mock('../services/classificationRetryService');
 
 // 5. Import modules (Standard top-level import)
 const db = require('../config/database');
 const classificationService = require('../services/classification');
 const clarificationService = require('../services/clarificationService');
+const classificationRetryService = require('../services/classificationRetryService');
 const classificationRouter = require('../routes/classification');
 
 describe('Classification Routes - Pending Resolution', () => {
@@ -420,6 +422,117 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(response.status).toBe(200);
       expect(response.body.routed).toBe(false);
       expect(classificationService.routeToArr).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /retry', () => {
+    test('returns 400 when classificationIds is missing', async () => {
+      const response = await request(app)
+        .post('/api/classification/retry')
+        .send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('classificationIds must be an array');
+      expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 when classificationIds is empty', async () => {
+      const response = await request(app)
+        .post('/api/classification/retry')
+        .send({ classificationIds: [] });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('classificationIds must contain at least one id');
+      expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 when classificationIds includes invalid values', async () => {
+      const response = await request(app)
+        .post('/api/classification/retry')
+        .send({ classificationIds: [1, 'invalid'] });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('classificationIds must contain only positive integers');
+      expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
+    });
+
+    test('queues retries and returns summary payload', async () => {
+      classificationRetryService.retryClassifications.mockResolvedValueOnce({
+        correlationId: 'corr-id',
+        requested: 2,
+        queued: 2,
+        skipped: 0,
+        failed: 0,
+        results: [
+          { classificationId: 201, queued: true, reasonCode: 'queued', taskId: 9012 },
+          { classificationId: 202, queued: true, reasonCode: 'queued', taskId: 9013 }
+        ]
+      });
+
+      const response = await request(app)
+        .post('/api/classification/retry')
+        .send({
+          classificationIds: [201, 202],
+          options: { purgeLearning: true }
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        success: true,
+        requested: 2,
+        queued: 2,
+        skipped: 0,
+        failed: 0
+      });
+      expect(classificationRetryService.retryClassifications).toHaveBeenCalledWith(
+        expect.objectContaining({
+          classificationIds: [201, 202],
+          purgeLearning: true,
+          actor: 'admin'
+        })
+      );
+    });
+
+    test('blocks read-only API keys via requireReadWrite', async () => {
+      const appWithReadOnlyKey = express();
+      appWithReadOnlyKey.use(express.json());
+      appWithReadOnlyKey.use((req, _res, next) => {
+        req.apiKey = { permissions: 'read_only' };
+        next();
+      });
+      appWithReadOnlyKey.use('/api/classification', classificationRouter);
+
+      const response = await request(appWithReadOnlyKey)
+        .post('/api/classification/retry')
+        .send({ classificationIds: [201] });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toContain('requires read-write permissions');
+      expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
+    });
+
+    test('returns 400 for service validation failures', async () => {
+      const validationError = new Error('classificationIds exceeds maximum batch size (100)');
+      validationError.code = 'VALIDATION_ERROR';
+      classificationRetryService.retryClassifications.mockRejectedValueOnce(validationError);
+
+      const response = await request(app)
+        .post('/api/classification/retry')
+        .send({ classificationIds: [1] });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('classificationIds exceeds maximum batch size (100)');
+    });
+
+    test('returns 500 for unexpected errors', async () => {
+      classificationRetryService.retryClassifications.mockRejectedValueOnce(new Error('db offline'));
+
+      const response = await request(app)
+        .post('/api/classification/retry')
+        .send({ classificationIds: [201] });
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('db offline');
     });
   });
 });

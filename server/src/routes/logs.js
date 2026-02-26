@@ -24,6 +24,9 @@ const { createLogger } = require('../utils/logger');
 
 const router = express.Router();
 const logger = createLogger('LogsAPI');
+const RETRY_AUDIT_FILTER = 'classification_retry';
+const RETRY_AUDIT_MODULE = 'ClassificationRetryService';
+const RETRY_AUDIT_MESSAGE_PREFIX = 'Classification retry%';
 
 // Rate limiter for logs API - 100 requests per 15 minutes
 const logsLimiter = rateLimit({
@@ -126,6 +129,14 @@ router.get('/', async (req, res, next) => {
       queryParams.push(correlationId);
     }
 
+    const audit = String(req.query.audit || '').trim().toLowerCase();
+    if (audit === RETRY_AUDIT_FILTER) {
+      whereConditions.push(`module = $${paramCount++}`);
+      queryParams.push(RETRY_AUDIT_MODULE);
+      whereConditions.push(`message ILIKE $${paramCount++}`);
+      queryParams.push(RETRY_AUDIT_MESSAGE_PREFIX);
+    }
+
     const whereClause = whereConditions.length > 0
       ? 'WHERE ' + whereConditions.join(' AND ')
       : '';
@@ -139,7 +150,24 @@ router.get('/', async (req, res, next) => {
 
     // Get paginated results
     const logsResult = await db.query(
-      `SELECT id, error_id, level, module, message, resolved, created_at, classification_id, error_stage, reason_code, correlation_id, sql_state, rag_operation, recoverable
+      `SELECT
+         id,
+         error_id,
+         level,
+         module,
+         message,
+         resolved,
+         created_at,
+         classification_id,
+         error_stage,
+         COALESCE(reason_code, metadata->>'reasonCode') AS reason_code,
+         COALESCE(correlation_id, metadata->>'correlationId') AS correlation_id,
+         sql_state,
+         rag_operation,
+         recoverable,
+         metadata->>'actor' AS actor,
+         metadata->>'result' AS result,
+         metadata->>'route' AS route
        FROM error_log
        ${whereClause}
        ORDER BY created_at DESC
@@ -303,6 +331,14 @@ router.get('/export', async (req, res, next) => {
     if (correlationId) {
       whereConditions.push(`correlation_id = $${paramCount++}`);
       queryParams.push(correlationId);
+    }
+
+    const audit = String(req.query.audit || '').trim().toLowerCase();
+    if (audit === RETRY_AUDIT_FILTER) {
+      whereConditions.push(`module = $${paramCount++}`);
+      queryParams.push(RETRY_AUDIT_MODULE);
+      whereConditions.push(`message ILIKE $${paramCount++}`);
+      queryParams.push(RETRY_AUDIT_MESSAGE_PREFIX);
     }
 
     const whereClause = whereConditions.length > 0

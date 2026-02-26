@@ -326,5 +326,5 @@ Have ideas for features or improvements? Please open an issue on GitHub or join 
 - Items move between complexity tiers as design solidifies
 - Open issues are linked where available
 - Deferred `v1.1+` items are intentionally parked until V1 stabilization gates are satisfied
-- Issue 275 deferred items remain frozen while V1 apply-rollout telemetry is monitored for longer-term tuning
+- Issue 275 deferred items remain frozen while V1 apply-rollout Operational Visibility is monitored for longer-term tuning
 - Community feedback prioritizes future work

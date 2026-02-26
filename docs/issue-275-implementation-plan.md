@@ -124,7 +124,7 @@ Why this is best practice for this deployment profile:
 
 Activation checks (recommended):
 - Confirm trace and stage-level diagnostics are queryable.
-- Confirm no material increase in timeout/error rate or latency during normal operations telemetry.
+- Confirm no material increase in timeout/error rate or latency during normal operations Operational Visibility.
 - Keep rollback one switch away (`apply` -> `shadow`).
 
 ### Automatic Regression Fallback (Resolved)
@@ -1242,7 +1242,7 @@ Use this exact order for rollout readiness and direct activation decisioning.
     - Set `rag_loop_auto_fallback_enabled=true` (default-on safety switch).
     - Keep conservative defaults for budgets/timeouts/attempt limits.
     - Go/No-Go: stop if configuration does not persist or comparator gates are bypassed.
-5. Apply telemetry validation
+5. Apply Operational Visibility validation
    - Confirm `classification_details.rag_loop_trace` is being written.
    - Confirm `rag_metrics`/logging includes stage outcomes and skip reasons.
    - Confirm fallback incident API returns sanitized payload after simulated trigger.
@@ -1255,7 +1255,7 @@ Use this exact order for rollout readiness and direct activation decisioning.
    - Confirm no code rollback or schema rollback is required.
    - Go/No-Go: stop if rollback cannot be completed quickly and safely.
 8. Ongoing operations
-    - Keep normal telemetry monitoring active.
+    - Keep normal Operational Visibility monitoring active.
     - Keep automatic fallback enabled unless explicitly disabled for controlled testing.
     - Manage optional V1.1 scope via roadmap prioritization, not rollout gating.
     - Go/No-Go: defer further expansion if regressions are not yet resolved.
@@ -1504,8 +1504,8 @@ Load/perf sanity:
 2. Implement automatic fallback controller (`apply` -> `shadow`) behind `rag_loop_auto_fallback_enabled`, default ON.
 3. Implement fallback incident reporting surface (API + copyable UI payload).
 4. Add optional version-aware auto-recover toggle (`rag_loop_auto_recover_enabled`), default OFF.
-5. Activate in `apply` and validate telemetry/readiness in staging, then production.
-6. Monitor correction/error/latency regressions through normal operations telemetry.
+5. Activate in `apply` and validate Operational Visibility/readiness in staging, then production.
+6. Monitor correction/error/latency regressions through normal operations Operational Visibility.
 7. Keep rollback simple: sustained regressions auto-switch to `shadow`; manual override remains available (no code rollback required).
 8. Document mode semantics, activation checks, incident reporting flow, and fallback playbook in `docs/` (and optionally `README.md` if user-facing).
 
@@ -1533,7 +1533,7 @@ Load/perf sanity:
    - Mitigation: one attempt, strict 2s timeout, authoritative-only source, fail-open behavior.
 8. Incorrect second-pass behavior causing routing regressions:
    - Mitigation: immediate-apply with comparator gates + fail-open resilience + rapid rollback to `shadow`.
-9. Low traffic delaying confidence in quality telemetry:
+9. Low traffic delaying confidence in quality Operational Visibility:
    - Mitigation: use short post-activation monitoring plus targeted backfill/reclassification to increase signal.
 10. Configuration drift across policies causing inconsistent behavior:
    - Mitigation: global-first V1, selective override-only V1.1, and strict effective-config precedence with safety caps.
@@ -1571,7 +1571,7 @@ Load/perf sanity:
 12. Pass-2 retrieval method selection is deterministic: `auto` strategy chooses method from diagnostics with configurable overrides, and falls back safely to `hybrid` when uncertain.
 13. Metadata enrichment is deterministic and bounded: runs only behind completeness gates, uses authoritative source only, and enforces timeout/attempt caps.
 14. Shadow mode is fully non-invasive: second-pass diagnostics are recorded but baseline decision/routing behavior remains unchanged.
-15. Apply-mode activation is supported directly, with explicit telemetry validation and rapid rollback to `shadow` when regressions are detected.
+15. Apply-mode activation is supported directly, with explicit Operational Visibility validation and rapid rollback to `shadow` when regressions are detected.
 16. Control scope is deterministic: V1 uses global-only settings; V1.1 applies only allowed per-policy override keys with documented precedence and safety caps.
 17. Resilience behavior is deterministic and fail-open: cooldowns only disable optional second-pass stages, never baseline classification flow.
 18. Decision trace is persisted and auditable: every second-pass evaluation stores a versioned, redacted, bounded trace with deterministic reason codes.
