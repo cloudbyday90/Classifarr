@@ -19,29 +19,30 @@
 const crypto = require('crypto');
 const { constantTimeCompare } = require('../utils/encryption');
 const runtimeSettings = require('../config/runtimeSettings');
+const { resolveSecureCookieFlag } = require('../utils/cookieSecurity');
 
 const CSRF_COOKIE_NAME = 'classifarr_csrf_token';
 const CSRF_HEADER_NAME = 'x-csrf-token';
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-function getCsrfCookieOptions() {
+function getCsrfCookieOptions(req) {
   return {
     httpOnly: false,
-    secure: runtimeSettings.getValue('force_secure_cookies'),
+    secure: resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies')),
     sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/'
   };
 }
 
-function issueCsrfToken(res) {
+function issueCsrfToken(res, req = null) {
   const token = crypto.randomBytes(32).toString('base64url');
-  res.cookie(CSRF_COOKIE_NAME, token, getCsrfCookieOptions());
+  res.cookie(CSRF_COOKIE_NAME, token, getCsrfCookieOptions(req));
   return token;
 }
 
-function clearCsrfToken(res) {
-  res.clearCookie(CSRF_COOKIE_NAME, getCsrfCookieOptions());
+function clearCsrfToken(res, req = null) {
+  res.clearCookie(CSRF_COOKIE_NAME, getCsrfCookieOptions(req));
 }
 
 function ensureCsrfCookie(req, res, next) {
@@ -54,7 +55,7 @@ function ensureCsrfCookie(req, res, next) {
   const hasCsrfCookie = Boolean(req.cookies && req.cookies[CSRF_COOKIE_NAME]);
 
   if (hasAccessTokenCookie && !hasCsrfCookie) {
-    issueCsrfToken(res);
+    issueCsrfToken(res, req);
   }
 
   return next();

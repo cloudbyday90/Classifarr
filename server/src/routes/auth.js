@@ -24,6 +24,7 @@ const authService = require('../services/auth');
 const runtimeSettings = require('../config/runtimeSettings');
 const { authenticateToken } = require('../middleware/auth');
 const { issueCsrfToken, clearCsrfToken } = require('../middleware/csrf');
+const { resolveSecureCookieFlag } = require('../utils/cookieSecurity');
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -73,8 +74,9 @@ router.post('/login', loginLimiter, async (req, res) => {
       { ip: req.ip }
     );
 
-    res.cookie('access_token', accessToken, authService.getCookieOptions(runtimeSettings.getValue('force_secure_cookies')));
-    issueCsrfToken(res);
+    const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
+    res.cookie('access_token', accessToken, authService.getCookieOptions(secureCookies));
+    issueCsrfToken(res, req);
 
     await authService.auditLog(user.id, 'login_success', req.ip, req.get('User-Agent'));
 
@@ -129,8 +131,9 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
       { ip: req.ip }
     );
 
-    res.cookie('access_token', newAccessToken, authService.getCookieOptions(runtimeSettings.getValue('force_secure_cookies')));
-    issueCsrfToken(res);
+    const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
+    res.cookie('access_token', newAccessToken, authService.getCookieOptions(secureCookies));
+    issueCsrfToken(res, req);
 
     await authService.auditLog(user.id, 'token_refresh', req.ip, req.get('User-Agent'));
 
@@ -156,13 +159,14 @@ router.post('/logout', authenticateToken, authLimiter, async (req, res) => {
       await authService.revokeRefreshToken(refreshToken, req.ip);
     }
 
+    const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
     res.clearCookie('access_token', {
       httpOnly: true,
-      secure: runtimeSettings.getValue('force_secure_cookies'),
+      secure: secureCookies,
       sameSite: 'strict',
       path: '/'
     });
-    clearCsrfToken(res);
+    clearCsrfToken(res, req);
 
     await authService.auditLog(req.user.id, 'logout', req.ip, req.get('User-Agent'));
 
@@ -176,13 +180,14 @@ router.post('/logout-all', authenticateToken, authLimiter, async (req, res) => {
   try {
     const revokedCount = await authService.revokeAllUserTokens(req.user.id);
 
+    const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
     res.clearCookie('access_token', {
       httpOnly: true,
-      secure: runtimeSettings.getValue('force_secure_cookies'),
+      secure: secureCookies,
       sameSite: 'strict',
       path: '/'
     });
-    clearCsrfToken(res);
+    clearCsrfToken(res, req);
 
     await authService.auditLog(req.user.id, 'logout_all_devices', req.ip, req.get('User-Agent'), {
       tokensRevoked: revokedCount

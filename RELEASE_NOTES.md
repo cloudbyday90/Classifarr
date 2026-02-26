@@ -1,5 +1,45 @@
 # Classifarr Release Notes
 
+## [v0.43.0a-alpha] - 2026-02-26
+
+**Title: Easier local upgrades with safer cookie compatibility**
+
+### 🎉 What You'll Notice
+
+- Local HTTP deployments (including typical Unraid LAN setups) no longer get locked out when secure-cookie mode was previously enabled.
+- `FORCE_SECURE_COOKIES` remains available for HTTPS deployments, but is now safer for mixed upgrade scenarios.
+- Runtime security defaults are automatically seeded for upgraded installs.
+
+### 📊 Quick Visual
+
+```text
+Upgrade Safety Snapshot
+Local HTTP Access    [██████████] 100%
+HTTPS Enforcement    [██████████] 100%
+Manual Recovery Need [██░░░░░░░░] 20%
+```
+
+### ✨ Highlights
+
+- Added request-aware cookie handling that only enforces secure cookies when the request is HTTPS.
+- Added a migration to seed missing runtime security settings without overriding existing user values.
+
+### 🔧 Reliability Improvements
+
+- Prevents login/session lockouts on local HTTP when stale secure-cookie settings exist from previous versions.
+- Keeps CSRF behavior intact while aligning cookie security with the actual request protocol.
+
+### 👥 Who This Helps
+
+- **End users:** Upgrades are less likely to break access on local/LAN deployments.
+- **Operators/admins:** No emergency DB shell fixes required for common secure-cookie misconfiguration cases.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.43.0-alpha] - 2026-02-26
 
 **Title: Safer automation with clearer day-to-day control**

@@ -23,6 +23,7 @@ const db = require('../config/database');
 const authService = require('../services/auth');
 const runtimeSettings = require('../config/runtimeSettings');
 const { issueCsrfToken } = require('../middleware/csrf');
+const { resolveSecureCookieFlag } = require('../utils/cookieSecurity');
 
 const setupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -86,8 +87,9 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
       { ip: req.ip }
     );
 
-    res.cookie('access_token', accessToken, authService.getCookieOptions(runtimeSettings.getValue('force_secure_cookies')));
-    issueCsrfToken(res);
+    const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
+    res.cookie('access_token', accessToken, authService.getCookieOptions(secureCookies));
+    issueCsrfToken(res, req);
 
     res.json({
       success: true,

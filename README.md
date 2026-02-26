@@ -3,7 +3,7 @@
 Route every request to the right library with policy-driven decisions you can trust.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.43.0--alpha-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.43.0a--alpha-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 Classifarr is an AI- and RAG-powered media classification and routing service. It runs as the decision layer between request inputs (Overseerr/Jellyseerr webhooks, manual/API submissions, and media sync) and your automation stack, then uses metadata, policy rules, and AI/RAG signals to auto-route high-confidence matches to the correct Radarr/Sonarr destination while sending low-confidence cases to review.
@@ -100,7 +100,7 @@ Use this baseline compose:
 ```yaml
 services:
   classifarr:
-    image: ghcr.io/cloudbyday90/classifarr:v0.43.0-alpha
+    image: ghcr.io/cloudbyday90/classifarr:v0.43.0a-alpha
     container_name: classifarr
     user: "1000:1000"
     ports:
@@ -435,6 +435,7 @@ For local/LAN HTTP deployments:
 - Keep `CSRF_PROTECTION=true` (recommended; it works on local HTTP).
 - Keep `CORS_ORIGIN` empty unless you need a stricter browser allowlist.
 - Optional: set `SECURITY_HEADERS_STRICT=false` if browser isolation warnings on plain HTTP LAN IPs are disruptive.
+- `FORCE_SECURE_COOKIES` is optional. If enabled but requests arrive over HTTP, Classifarr falls back to non-secure cookies to avoid lockouts.
 
 For public or HTTPS deployments:
 

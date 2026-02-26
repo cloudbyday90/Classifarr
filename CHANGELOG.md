@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.0a-alpha] - 2026-02-26
+
+### Added
+
+- **Runtime Security Defaults Migration** - Added `20260226_002000_seed_runtime_security_defaults.sql` to seed missing `force_secure_cookies`, `csrf_protection`, and `cors_origin` settings for upgraded deployments without overriding existing values.
+
+### Fixed
+
+- **Local HTTP Cookie Lockout Guard** - Secure cookie handling now falls back safely on non-HTTPS requests even when `force_secure_cookies` is enabled, preventing login/session lockouts on local Unraid/LAN HTTP access.
+
 ## [v0.43.0-alpha] - 2026-02-26
 
 ### Added
