@@ -28,6 +28,14 @@ const RETRY_AUDIT_FILTER = 'classification_retry';
 const RETRY_AUDIT_MODULE = 'ClassificationRetryService';
 const RETRY_AUDIT_MESSAGE_PREFIX = 'Classification retry%';
 
+// Backward-compatible expressions for environments where observability columns
+// may not exist yet on error_log (for example, partial/failed historical upgrades).
+const REASON_CODE_EXPR = `COALESCE((to_jsonb(error_log)->>'reason_code'), metadata->>'reasonCode')`;
+const CORRELATION_ID_EXPR = `COALESCE((to_jsonb(error_log)->>'correlation_id'), metadata->>'correlationId')`;
+const ERROR_STAGE_EXPR = `COALESCE((to_jsonb(error_log)->>'error_stage'), metadata->>'errorStage')`;
+const SQL_STATE_EXPR = `COALESCE((to_jsonb(error_log)->>'sql_state'), metadata->>'sqlState')`;
+const CLASSIFICATION_ID_TEXT_EXPR = `COALESCE((to_jsonb(error_log)->>'classification_id'), metadata->>'classificationId')`;
+
 // Rate limiter for logs API - 100 requests per 15 minutes
 const logsLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -101,31 +109,32 @@ router.get('/', async (req, res, next) => {
 
     const stage = req.query.error_stage || req.query.stage;
     if (stage) {
-      whereConditions.push(`error_stage = $${paramCount++}`);
+      whereConditions.push(`${ERROR_STAGE_EXPR} = $${paramCount++}`);
       queryParams.push(stage);
     }
 
     const reasonCode = req.query.reason_code || req.query.reasonCode;
     if (reasonCode) {
-      whereConditions.push(`reason_code = $${paramCount++}`);
+      whereConditions.push(`${REASON_CODE_EXPR} = $${paramCount++}`);
       queryParams.push(reasonCode);
     }
 
     const sqlState = req.query.sql_state || req.query.sqlState;
     if (sqlState) {
-      whereConditions.push(`sql_state = $${paramCount++}`);
+      whereConditions.push(`UPPER(${SQL_STATE_EXPR}) = $${paramCount++}`);
       queryParams.push(sqlState.toUpperCase());
     }
 
     const classificationId = parseInt(req.query.classification_id || req.query.classificationId, 10);
     if (Number.isInteger(classificationId) && classificationId > 0) {
-      whereConditions.push(`classification_id = $${paramCount++}`);
+      whereConditions.push(`(${CLASSIFICATION_ID_TEXT_EXPR}) ~ '^[0-9]+$'`);
+      whereConditions.push(`(${CLASSIFICATION_ID_TEXT_EXPR})::int = $${paramCount++}`);
       queryParams.push(classificationId);
     }
 
     const correlationId = req.query.correlation_id || req.query.correlationId;
     if (correlationId) {
-      whereConditions.push(`correlation_id = $${paramCount++}`);
+      whereConditions.push(`${CORRELATION_ID_EXPR} = $${paramCount++}`);
       queryParams.push(correlationId);
     }
 
@@ -158,13 +167,20 @@ router.get('/', async (req, res, next) => {
          message,
          resolved,
          created_at,
-         classification_id,
-         error_stage,
-         COALESCE(reason_code, metadata->>'reasonCode') AS reason_code,
-         COALESCE(correlation_id, metadata->>'correlationId') AS correlation_id,
-         sql_state,
-         rag_operation,
-         recoverable,
+         CASE
+           WHEN (${CLASSIFICATION_ID_TEXT_EXPR}) ~ '^[0-9]+$' THEN (${CLASSIFICATION_ID_TEXT_EXPR})::int
+           ELSE NULL
+         END AS classification_id,
+         ${ERROR_STAGE_EXPR} AS error_stage,
+         ${REASON_CODE_EXPR} AS reason_code,
+         ${CORRELATION_ID_EXPR} AS correlation_id,
+         ${SQL_STATE_EXPR} AS sql_state,
+         (to_jsonb(error_log)->>'rag_operation') AS rag_operation,
+         CASE
+           WHEN LOWER(COALESCE((to_jsonb(error_log)->>'recoverable'), '')) IN ('true', 'false')
+             THEN ((to_jsonb(error_log)->>'recoverable'))::boolean
+           ELSE NULL
+         END AS recoverable,
          metadata->>'actor' AS actor,
          metadata->>'result' AS result,
          metadata->>'route' AS route
@@ -305,31 +321,32 @@ router.get('/export', async (req, res, next) => {
 
     const stage = req.query.error_stage || req.query.stage;
     if (stage) {
-      whereConditions.push(`error_stage = $${paramCount++}`);
+      whereConditions.push(`${ERROR_STAGE_EXPR} = $${paramCount++}`);
       queryParams.push(stage);
     }
 
     const reasonCode = req.query.reason_code || req.query.reasonCode;
     if (reasonCode) {
-      whereConditions.push(`reason_code = $${paramCount++}`);
+      whereConditions.push(`${REASON_CODE_EXPR} = $${paramCount++}`);
       queryParams.push(reasonCode);
     }
 
     const sqlState = req.query.sql_state || req.query.sqlState;
     if (sqlState) {
-      whereConditions.push(`sql_state = $${paramCount++}`);
+      whereConditions.push(`UPPER(${SQL_STATE_EXPR}) = $${paramCount++}`);
       queryParams.push(sqlState.toUpperCase());
     }
 
     const classificationId = parseInt(req.query.classification_id || req.query.classificationId, 10);
     if (Number.isInteger(classificationId) && classificationId > 0) {
-      whereConditions.push(`classification_id = $${paramCount++}`);
+      whereConditions.push(`(${CLASSIFICATION_ID_TEXT_EXPR}) ~ '^[0-9]+$'`);
+      whereConditions.push(`(${CLASSIFICATION_ID_TEXT_EXPR})::int = $${paramCount++}`);
       queryParams.push(classificationId);
     }
 
     const correlationId = req.query.correlation_id || req.query.correlationId;
     if (correlationId) {
-      whereConditions.push(`correlation_id = $${paramCount++}`);
+      whereConditions.push(`${CORRELATION_ID_EXPR} = $${paramCount++}`);
       queryParams.push(correlationId);
     }
 

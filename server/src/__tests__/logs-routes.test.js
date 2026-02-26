@@ -68,14 +68,14 @@ describe('logs routes', () => {
             .expect(200);
 
         expect(db.query).toHaveBeenCalledTimes(2);
-        expect(db.query.mock.calls[0][0]).toContain('error_stage = $');
-        expect(db.query.mock.calls[0][0]).toContain('reason_code = $');
-        expect(db.query.mock.calls[0][0]).toContain('sql_state = $');
-        expect(db.query.mock.calls[0][0]).toContain('classification_id = $');
-        expect(db.query.mock.calls[0][0]).toContain('correlation_id = $');
+        expect(db.query.mock.calls[0][0]).toContain(`to_jsonb(error_log)->>'error_stage'`);
+        expect(db.query.mock.calls[0][0]).toContain(`to_jsonb(error_log)->>'reason_code'`);
+        expect(db.query.mock.calls[0][0]).toContain(`to_jsonb(error_log)->>'sql_state'`);
+        expect(db.query.mock.calls[0][0]).toContain(`to_jsonb(error_log)->>'classification_id'`);
+        expect(db.query.mock.calls[0][0]).toContain(`to_jsonb(error_log)->>'correlation_id'`);
         expect(db.query.mock.calls[1][0]).toContain('classification_id');
-        expect(db.query.mock.calls[1][0]).toContain(`COALESCE(reason_code, metadata->>'reasonCode') AS reason_code`);
-        expect(db.query.mock.calls[1][0]).toContain(`COALESCE(correlation_id, metadata->>'correlationId') AS correlation_id`);
+        expect(db.query.mock.calls[1][0]).toContain(`COALESCE((to_jsonb(error_log)->>'reason_code'), metadata->>'reasonCode') AS reason_code`);
+        expect(db.query.mock.calls[1][0]).toContain(`COALESCE((to_jsonb(error_log)->>'correlation_id'), metadata->>'correlationId') AS correlation_id`);
         expect(response.body.logs).toHaveLength(1);
         expect(response.body.logs[0].error_stage).toBe('policy_recheck');
         expect(response.body.logs[0].reason_code).toBe('db_retryable_conflict');
@@ -160,10 +160,10 @@ describe('logs routes', () => {
         expect(db.query).toHaveBeenCalledTimes(1);
         const query = db.query.mock.calls[0][0];
         const params = db.query.mock.calls[0][1];
-        expect(query).toContain('error_stage = $');
-        expect(query).toContain('reason_code = $');
-        expect(query).toContain('classification_id = $');
-        expect(query).toContain('sql_state = $');
+        expect(query).toContain(`to_jsonb(error_log)->>'error_stage'`);
+        expect(query).toContain(`to_jsonb(error_log)->>'reason_code'`);
+        expect(query).toContain(`to_jsonb(error_log)->>'classification_id'`);
+        expect(query).toContain(`to_jsonb(error_log)->>'sql_state'`);
         expect(params).toContain('42P01');
     });
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.1a-alpha] - 2026-02-26
+
+### Fixed
+
+- **Logs API Schema Compatibility Hotfix** - Updated `/api/logs` and `/api/logs/export` filtering/selection to use backward-compatible field resolution via `to_jsonb(error_log)` + metadata fallbacks, preventing `500 Internal Server Error` on upgraded instances missing expanded `error_log` observability columns.
+
 ## [v0.43.1-alpha] - 2026-02-26
 
 ### Added

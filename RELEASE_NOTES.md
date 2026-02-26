@@ -1,5 +1,45 @@
 # Classifarr Release Notes
 
+## [v0.43.1a-alpha] - 2026-02-26
+
+**Title: Restored Error Logs loading on upgraded installs**
+
+### 🎉 What You'll Notice
+
+- The Error Logs page loads normally again instead of showing `Internal Server Error`.
+- Retry Audit Trail filtering works on both newer and older upgraded databases.
+- Exporting filtered logs from Settings works again in affected environments.
+
+### 📊 Quick Visual
+
+```text
+Hotfix Snapshot
+Logs Page Availability   [██████████] 100%
+Retry Audit Filtering    [██████████] 100%
+Upgrade Compatibility    [██████████] 100%
+```
+
+### ✨ Highlights
+
+- Fixed a release regression where log queries expected newer `error_log` columns not guaranteed on all upgrade paths.
+- Added backward-compatible query handling so logs features work even when those columns are absent.
+
+### 🔧 Reliability Improvements
+
+- Prevents log-page hard failures caused by schema drift between historical installs and current code.
+- Preserves retry-audit visibility without requiring manual SQL intervention.
+
+### 👥 Who This Helps
+
+- **End users:** Restores normal Settings → Error Logs behavior.
+- **Operators/admins:** No emergency database patching needed to view or export logs.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.43.1-alpha] - 2026-02-26
 
 **Title: Faster recovery for “Needs Attention” items with safer retry handling**
