@@ -27,6 +27,14 @@
         >
           {{ actionBusy ? 'Working...' : 'Clear Read' }}
         </button>
+        <button
+          type="button"
+          class="rounded-md border border-red-800/60 bg-red-900/20 px-3 py-2 text-xs text-red-200 hover:bg-red-900/30 disabled:opacity-60"
+          :disabled="!rows.length || actionBusy"
+          @click="clearAll"
+        >
+          {{ actionBusy ? 'Working...' : 'Clear All' }}
+        </button>
       </div>
     </div>
 
@@ -99,12 +107,11 @@
               {{ notification.isRead ? 'Mark Unread' : 'Mark Read' }}
             </button>
             <button
-              v-if="notification.dismissible"
               type="button"
-              class="text-xs text-gray-400 hover:text-gray-300"
-              @click="dismissNotification(notification)"
+              class="text-xs text-red-300 hover:text-red-200"
+              @click="deleteNotification(notification)"
             >
-              Dismiss
+              Delete
             </button>
           </div>
         </article>
@@ -244,9 +251,9 @@ async function toggleRead(notification) {
   });
 }
 
-async function dismissNotification(notification) {
+async function deleteNotification(notification) {
   await withAction(async () => {
-    await api.dismissNotification(notification.id);
+    await api.deleteNotification(notification.id);
   });
 }
 
@@ -259,6 +266,15 @@ async function markAllRead() {
 async function clearRead() {
   await withAction(async () => {
     await api.clearReadNotifications();
+  });
+}
+
+async function clearAll() {
+  const confirmed = window.confirm('Delete all notifications? This cannot be undone.');
+  if (!confirmed) return;
+
+  await withAction(async () => {
+    await api.clearAllNotifications();
   });
 }
 

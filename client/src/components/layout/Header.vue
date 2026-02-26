@@ -45,14 +45,24 @@
           >
             <div class="flex items-center justify-between border-b border-gray-800 px-4 py-3">
               <h3 class="text-sm font-semibold text-gray-100">NOTIFICATIONS</h3>
-              <button
-                type="button"
-                class="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-60"
-                :disabled="!unreadNotifications.length || notificationsActionBusy"
-                @click="markAllRead"
-              >
-                {{ notificationsActionBusy ? 'Working...' : 'Mark All Read' }}
-              </button>
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  class="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-60"
+                  :disabled="!unreadNotifications.length || notificationsActionBusy"
+                  @click="markAllRead"
+                >
+                  {{ notificationsActionBusy ? 'Working...' : 'Mark All Read' }}
+                </button>
+                <button
+                  type="button"
+                  class="text-xs text-red-300 hover:text-red-200 disabled:opacity-60"
+                  :disabled="!notifications.length || notificationsActionBusy"
+                  @click="clearAllNotifications"
+                >
+                  {{ notificationsActionBusy ? 'Working...' : 'Clear All' }}
+                </button>
+              </div>
             </div>
 
             <div class="max-h-[420px] overflow-y-auto px-2 py-2">
@@ -83,13 +93,8 @@
                       <button type="button" class="text-[11px] text-blue-400 hover:text-blue-300" @click.stop="toggleReadState(notification)">
                         {{ notification.isRead ? 'Mark Unread' : 'Mark Read' }}
                       </button>
-                      <button
-                        v-if="notification.dismissible"
-                        type="button"
-                        class="text-[11px] text-gray-400 hover:text-gray-300"
-                        @click.stop="dismissNotification(notification)"
-                      >
-                        Dismiss
+                      <button type="button" class="text-[11px] text-red-300 hover:text-red-200" @click.stop="deleteNotification(notification)">
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -122,13 +127,8 @@
                         <button type="button" class="text-[11px] text-blue-400 hover:text-blue-300" @click.stop="toggleReadState(notification)">
                           {{ notification.isRead ? 'Mark Unread' : 'Mark Read' }}
                         </button>
-                        <button
-                          v-if="notification.dismissible"
-                          type="button"
-                          class="text-[11px] text-gray-400 hover:text-gray-300"
-                          @click.stop="dismissNotification(notification)"
-                        >
-                          Dismiss
+                        <button type="button" class="text-[11px] text-red-300 hover:text-red-200" @click.stop="deleteNotification(notification)">
+                          Delete
                         </button>
                       </div>
                     </div>
@@ -358,10 +358,23 @@ async function toggleReadState(notification) {
   }
 }
 
-async function dismissNotification(notification) {
+async function deleteNotification(notification) {
   notificationsActionBusy.value = true;
   try {
-    await api.dismissNotification(notification.id);
+    await api.deleteNotification(notification.id);
+    await refreshNotificationsData();
+  } finally {
+    notificationsActionBusy.value = false;
+  }
+}
+
+async function clearAllNotifications() {
+  const confirmed = window.confirm('Delete all notifications? This cannot be undone.');
+  if (!confirmed) return;
+
+  notificationsActionBusy.value = true;
+  try {
+    await api.clearAllNotifications();
     await refreshNotificationsData();
   } finally {
     notificationsActionBusy.value = false;

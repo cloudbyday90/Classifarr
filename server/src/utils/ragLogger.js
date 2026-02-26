@@ -412,7 +412,10 @@ class RAGLogger {
                 return { logged: false, deduped: true };
             }
 
-            await this.insertErrorLog(payload);
+            const persistToDb = payload.level !== 'INFO';
+            if (persistToDb) {
+                await this.insertErrorLog(payload);
+            }
             const line = {
                 stage: payload.errorStage,
                 reasonCode: payload.reasonCode,

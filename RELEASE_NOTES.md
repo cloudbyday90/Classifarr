@@ -1,5 +1,49 @@
 # Classifarr Release Notes
 
+## [v0.43.1b-alpha] - 2026-02-26
+
+**Title: Cleaner notifications and quieter logs for daily operations**
+
+> [!IMPORTANT]
+> This release runs a one-time post-upgrade log cleanup for `v0.43.1b-alpha` (existing app/error logs are cleared once after upgrade).
+
+### 🎉 What You'll Notice
+
+- You can now fully delete notification items, including stale "needs attention" entries.
+- You can clear all notifications in one click from both the notifications page and header panel.
+- Non-error RAG second-pass stage signals no longer clutter the Error Logs page.
+
+### 📊 Quick Visual
+
+```text
+Operations Snapshot
+Notification Cleanup  [██████████] 100%
+Error Log Signal      [█████████░] 90%
+Admin Control         [██████████] 100%
+```
+
+### ✨ Highlights
+
+- Added per-notification delete and bulk `Clear All` notification actions.
+- Added backend routes for delete-by-id and clear-all notification operations.
+- Kept existing dismiss/read workflows intact for compatibility.
+
+### 🔧 Reliability Improvements
+
+- RAG informational stage events (like strategy-selected gate decisions) now stay console-visible without persisting as Error Log rows.
+- Added release-targeted post-upgrade task for `v0.43.1b-alpha` to clear historical log tables/files once.
+
+### 👥 Who This Helps
+
+- **End users:** Easier cleanup of old notification cards and stuck attention prompts.
+- **Operators/admins:** Cleaner Error Logs signal and fewer non-actionable entries during troubleshooting.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.43.1a-alpha] - 2026-02-26
 
 **Title: Restored Error Logs loading on upgraded installs**

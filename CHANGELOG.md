@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.1b-alpha] - 2026-02-26
+
+### Added
+
+- **Notifications Hard Delete Controls** - Added `POST /api/notifications/:id/delete` and `POST /api/notifications/clear-all` (read-write protected) to allow explicit deletion of individual or all in-app notifications.
+- **Notifications UI Delete/Clear Actions** - Added `Delete` per row and `Clear All` bulk actions in both Header notifications dropdown and `/notifications` page.
+- **Route and UI Regression Coverage** - Added/updated tests for new notifications delete/clear-all behaviors across server routes and client notification center interactions.
+
+### Changed
+
+- **RAG INFO Stage Persistence Behavior** - Updated RAG second-pass stage logging so INFO-level events are console/file visible but no longer persisted to `error_log`; WARN/ERROR persistence remains unchanged.
+- **Release-Targeted Log Cleanup Task** - Added one-time post-upgrade task `clear_logs_0431b` for `v0.43.1b-alpha`.
+
+### Fixed
+
+- **Error Logs Signal Noise** - Prevented non-actionable informational RAG stage rows (for example strategy-selection stage decisions) from appearing in Settings → Error Logs.
+- **Stale Notification Cleanup Gap** - Operators can now remove non-dismissible/stale notification rows directly without relying on dismiss-only constraints.
+
 ## [v0.43.1a-alpha] - 2026-02-26
 
 ### Fixed

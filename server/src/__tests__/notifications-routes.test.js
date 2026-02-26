@@ -134,6 +134,16 @@ describe('notifications routes', () => {
     expect(response.body).toEqual({ updated: 4 });
   });
 
+  test('POST /api/notifications/clear-all clears all rows', async () => {
+    db.query.mockResolvedValueOnce({ rowCount: 9 });
+
+    const response = await request(app)
+      .post('/api/notifications/clear-all')
+      .expect(200);
+
+    expect(response.body).toEqual({ cleared: 9 });
+  });
+
   test('POST /api/notifications/:id/read validates id', async () => {
     const response = await request(app)
       .post('/api/notifications/not-a-number/read')
@@ -201,6 +211,38 @@ describe('notifications routes', () => {
 
     expect(response.body).toEqual({ success: true, id: 101 });
     expect(db.query).toHaveBeenNthCalledWith(2, 'DELETE FROM app_notifications WHERE id = $1', [101]);
+  });
+
+  test('POST /api/notifications/:id/delete validates id', async () => {
+    const response = await request(app)
+      .post('/api/notifications/not-a-number/delete')
+      .expect(400);
+
+    expect(response.body.error).toBe('Invalid notification id');
+  });
+
+  test('POST /api/notifications/:id/delete returns 404 when row is missing', async () => {
+    db.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const response = await request(app)
+      .post('/api/notifications/999/delete')
+      .expect(404);
+
+    expect(response.body.error).toBe('Notification not found');
+  });
+
+  test('POST /api/notifications/:id/delete removes any row regardless of dismissible metadata', async () => {
+    db.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 777 }] });
+
+    const response = await request(app)
+      .post('/api/notifications/777/delete')
+      .expect(200);
+
+    expect(response.body).toEqual({ success: true, id: 777 });
+    expect(db.query).toHaveBeenCalledWith(
+      'DELETE FROM app_notifications WHERE id = $1 RETURNING id',
+      [777]
+    );
   });
 
   test('persists read-state across sequential API calls (session-to-session behavior)', async () => {

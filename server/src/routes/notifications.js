@@ -255,6 +255,18 @@ router.post('/clear-read', requireReadWrite, async (_req, res) => {
   }
 });
 
+router.post('/clear-all', requireReadWrite, async (_req, res) => {
+  try {
+    const result = await db.query(`
+      DELETE FROM app_notifications
+      RETURNING id
+    `);
+    res.json({ cleared: result.rowCount });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/:id/read', requireReadWrite, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -313,6 +325,20 @@ router.post('/:id/dismiss', requireReadWrite, async (req, res) => {
     }
 
     await db.query('DELETE FROM app_notifications WHERE id = $1', [id]);
+    res.json({ success: true, id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/:id/delete', requireReadWrite, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid notification id' });
+
+    const result = await db.query('DELETE FROM app_notifications WHERE id = $1 RETURNING id', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Notification not found' });
+
     res.json({ success: true, id });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -55,6 +55,13 @@ const POST_UPGRADE_TASKS = {
             action: 'clear_logs',
             description: 'Clear logs for fresh start in v0.42.7-alpha'
         }
+    ],
+    '0.43.1b': [
+        {
+            id: 'clear_logs_0431b',
+            action: 'clear_logs',
+            description: 'Clear logs for fresh start in v0.43.1b-alpha'
+        }
     ]
 };
 

@@ -19,7 +19,9 @@ const { apiMock } = vi.hoisted(() => ({
     markNotificationRead: vi.fn(),
     markNotificationUnread: vi.fn(),
     dismissNotification: vi.fn(),
+    deleteNotification: vi.fn(),
     clearReadNotifications: vi.fn(),
+    clearAllNotifications: vi.fn(),
   },
 }))
 
@@ -92,7 +94,9 @@ describe('Notifications center UI', () => {
     apiMock.markNotificationRead.mockResolvedValue({ data: { success: true } })
     apiMock.markNotificationUnread.mockResolvedValue({ data: { success: true } })
     apiMock.dismissNotification.mockResolvedValue({ data: { success: true } })
+    apiMock.deleteNotification.mockResolvedValue({ data: { success: true } })
     apiMock.clearReadNotifications.mockResolvedValue({ data: { cleared: 1 } })
+    apiMock.clearAllNotifications.mockResolvedValue({ data: { cleared: 2 } })
   })
 
   it('renders unread badge and notifications panel from live API data', async () => {
@@ -158,12 +162,37 @@ describe('Notifications center UI', () => {
     await flushPromises()
     expect(apiMock.clearReadNotifications).toHaveBeenCalledTimes(1)
 
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const clearAllButton = wrapper.findAll('button').find((node) => node.text() === 'Clear All')
+    expect(clearAllButton).toBeDefined()
+    await clearAllButton.trigger('click')
+    await flushPromises()
+    expect(apiMock.clearAllNotifications).toHaveBeenCalledTimes(1)
+    confirmSpy.mockRestore()
+
     const openButton = wrapper.findAll('button').find((node) => node.text() === 'Open')
     expect(openButton).toBeDefined()
     await openButton.trigger('click')
     await flushPromises()
     expect(apiMock.markNotificationRead).toHaveBeenCalled()
     expect(router.currentRoute.value.hash).toBe('#needs-attention')
+  })
+
+  it('supports deleting individual notifications from header dropdown', async () => {
+    const router = await createRouterForNotifications('/')
+    const wrapper = mount(Header, {
+      global: { plugins: [router] },
+    })
+
+    await flushPromises()
+    await wrapper.find('button[aria-label="Notifications"]').trigger('click')
+    await flushPromises()
+
+    const deleteButton = wrapper.findAll('button').find((node) => node.text() === 'Delete')
+    expect(deleteButton).toBeDefined()
+    await deleteButton.trigger('click')
+    await flushPromises()
+    expect(apiMock.deleteNotification).toHaveBeenCalledTimes(1)
   })
 
   it('applies filter changes when switching to unread view', async () => {

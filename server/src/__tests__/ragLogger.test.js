@@ -35,7 +35,7 @@ describe('ragLogger', () => {
         db.query.mockResolvedValue({ rows: [] });
     });
 
-    test('writes structured stage events with INFO level for skip-by-design', async () => {
+    test('keeps skip-by-design INFO stage events console-only', async () => {
         const result = await ragLogger.logStageEvent({
             classification_id: 123,
             tmdb_id: 456,
@@ -50,12 +50,15 @@ describe('ragLogger', () => {
         });
 
         expect(result).toEqual({ logged: true, deduped: false });
-        expect(db.query).toHaveBeenCalledTimes(1);
-        const params = db.query.mock.calls[0][1];
-        expect(params[0]).toBe('INFO');
-        expect(params[9]).toBe(123);
-        expect(params[10]).toBe('gate');
-        expect(params[11]).toBe('gate_not_met');
+        expect(db.query).not.toHaveBeenCalled();
+        expect(mockModuleLogger.info).toHaveBeenCalledWith(
+            expect.stringContaining('Second-pass stage gate skipped'),
+            expect.objectContaining({
+                stage: 'gate',
+                reasonCode: 'gate_not_met',
+                classificationId: 123
+            })
+        );
     });
 
     test('uses WARN level for recoverable degradation events', async () => {
@@ -184,5 +187,28 @@ describe('ragLogger', () => {
 
         expect(result).toEqual({ logged: false, deduped: false, suppressed: true });
         expect(db.query).not.toHaveBeenCalled();
+    });
+
+    test('keeps strategy_selected stage events out of error_log but visible in console logs', async () => {
+        const result = await ragLogger.logStageEvent({
+            classification_id: 321,
+            stage: 'gate',
+            outcome: 'strategy_selected',
+            reason_code: 'sparse_metadata',
+            trigger: 'policy_prompt_select',
+            strategy: 'hybrid',
+            recoverable: true
+        });
+
+        expect(result).toEqual({ logged: true, deduped: false });
+        expect(db.query).not.toHaveBeenCalled();
+        expect(mockModuleLogger.info).toHaveBeenCalledWith(
+            expect.stringContaining('Second-pass stage gate strategy_selected'),
+            expect.objectContaining({
+                stage: 'gate',
+                reasonCode: 'sparse_metadata',
+                classificationId: 321
+            })
+        );
     });
 });

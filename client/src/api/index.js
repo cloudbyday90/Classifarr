@@ -652,8 +652,14 @@ export default {
   dismissNotification(id) {
     return apiClient.post(`/notifications/${id}/dismiss`)
   },
+  deleteNotification(id) {
+    return apiClient.post(`/notifications/${id}/delete`)
+  },
   clearReadNotifications() {
     return apiClient.post('/notifications/clear-read')
+  },
+  clearAllNotifications() {
+    return apiClient.post('/notifications/clear-all')
   },
 
   getSystemHealth() {
