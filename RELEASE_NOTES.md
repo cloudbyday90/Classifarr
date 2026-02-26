@@ -1,5 +1,46 @@
 # Classifarr Release Notes
 
+## [v0.43.0b-alpha] - 2026-02-26
+
+**Title: Local HTTP access is stable again after upgrades**
+
+### 🎉 What You'll Notice
+
+- Classifarr loads normally over local `http://` again (including common Unraid LAN setups).
+- Browser asset requests are no longer auto-upgraded to `https://` unless you explicitly opt in.
+- Security-header behavior is now clearer for local HTTP vs public HTTPS deployments.
+
+### 📊 Quick Visual
+
+```text
+Access Reliability Snapshot
+Local HTTP Loading       [██████████] 100%
+HTTPS Opt-in Controls    [██████████] 100%
+Upgrade Friction         [██░░░░░░░░] 20%
+```
+
+### ✨ Highlights
+
+- Disabled CSP `upgrade-insecure-requests` by default to prevent forced HTTPS rewrites on local HTTP installs.
+- Disabled app-level HSTS by default for local compatibility.
+- Added `ENFORCE_HTTPS_HEADERS` so operators can opt in to strict HTTPS headers when running behind HTTPS.
+
+### 🔧 Reliability Improvements
+
+- Prevents blank-page failures caused by mixed HTTP access with forced HTTPS browser policy headers.
+- Keeps secure defaults available for HTTPS deployments through a single explicit toggle.
+
+### 👥 Who This Helps
+
+- **End users:** Local access keeps working after upgrades without emergency compose edits.
+- **Operators/admins:** HTTPS hardening remains available when intentionally enabled.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.43.0a-alpha] - 2026-02-26
 
 **Title: Easier local upgrades with safer cookie compatibility**

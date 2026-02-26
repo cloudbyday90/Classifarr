@@ -43,6 +43,7 @@ const runtimeSettings = require('./config/runtimeSettings');
 const app = express();
 const PORT = process.env.PORT || 21324;
 const SECURITY_HEADERS_STRICT = (process.env.SECURITY_HEADERS_STRICT || 'true').toLowerCase() !== 'false';
+const ENFORCE_HTTPS_HEADERS = (process.env.ENFORCE_HTTPS_HEADERS || 'false').toLowerCase() === 'true';
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -75,6 +76,8 @@ const cspDirectives = {
   baseUri: ["'self'"],
   formAction: ["'self'"],
   frameAncestors: ["'none'"],
+  // Disabled by default to avoid forcing HTTPS asset upgrades on local HTTP deployments.
+  upgradeInsecureRequests: ENFORCE_HTTPS_HEADERS ? [] : null,
 };
 
 if (process.env.NODE_ENV !== 'production') {
@@ -85,6 +88,8 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: cspDirectives,
   },
+  // Disabled by default for local HTTP compatibility (Unraid/LAN).
+  hsts: ENFORCE_HTTPS_HEADERS ? undefined : false,
   crossOriginOpenerPolicy: SECURITY_HEADERS_STRICT ? undefined : false,
   originAgentCluster: SECURITY_HEADERS_STRICT,
 }));

@@ -7,9 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- None.
+
+## [v0.43.0b-alpha] - 2026-02-26
+
 ### Fixed
 
 - **Gitleaks CI Config Parsing** - Corrected `.gitleaks.toml` allowlist schema so the `Gitleaks Secret Scan` workflow loads config successfully and no longer fails with `Allowlist.Regexes[0]` type errors.
+- **Local HTTP Asset Upgrade Loop** - Disabled CSP `upgrade-insecure-requests` and app-level HSTS by default to prevent browsers from rewriting local `http://` asset requests to `https://` and rendering a blank page.
+
+### Added
+
+- **Optional HTTPS Header Enforcement Flag** - Added `ENFORCE_HTTPS_HEADERS` (default `false`) for deployments that explicitly want app-level HSTS and CSP HTTPS-upgrade behavior.
 
 ## [v0.43.0a-alpha] - 2026-02-26
 

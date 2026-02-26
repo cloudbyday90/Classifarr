@@ -436,6 +436,7 @@ For local/LAN HTTP deployments:
 - Keep `CORS_ORIGIN` empty unless you need a stricter browser allowlist.
 - Optional: set `SECURITY_HEADERS_STRICT=false` if browser isolation warnings on plain HTTP LAN IPs are disruptive.
 - `FORCE_SECURE_COOKIES` is optional. If enabled but requests arrive over HTTP, Classifarr falls back to non-secure cookies to avoid lockouts.
+- Keep `ENFORCE_HTTPS_HEADERS=false` (default) so browser CSP does not auto-upgrade asset requests to HTTPS.
 
 For public or HTTPS deployments:
 
@@ -443,6 +444,7 @@ For public or HTTPS deployments:
 - Keep `CSRF_PROTECTION=true`.
 - Keep `SECURITY_HEADERS_STRICT=true`.
 - Set explicit `CORS_ORIGIN` allowlist values.
+- Optional: set `ENFORCE_HTTPS_HEADERS=true` if you want Classifarr itself to emit HSTS and CSP HTTPS-upgrade headers.
 
 ## Runtime Settings (Auto-generated)
 
