@@ -404,11 +404,12 @@ function openSettings() {
 async function signOut() {
   accountActionBusy.value = true;
   try {
-    await api.post('/auth/logout');
+    const refreshToken = sessionStorage.getItem('classifarr_refresh_token')
+    await api.post('/auth/logout', { refreshToken })
   } catch {
     // Proceed with local sign-out even if server-side audit/logout fails.
   } finally {
-    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('classifarr_refresh_token')
     accountActionBusy.value = false;
     closeAccountMenu();
     closeNotificationsPanel();

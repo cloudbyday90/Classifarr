@@ -21,19 +21,17 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const db = require('../config/database');
 const authService = require('../services/auth');
+const runtimeSettings = require('../config/runtimeSettings');
+const { issueCsrfToken } = require('../middleware/csrf');
 
-// Rate limiter for setup - 10 attempts per hour to prevent abuse
 const setupLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000,
   max: 10,
   message: { error: 'Too many setup attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-/**
- * Check if setup is required (no users exist)
- */
 router.get('/status', async (req, res) => {
   try {
     const result = await db.query('SELECT COUNT(*) FROM users');
@@ -43,17 +41,12 @@ router.get('/status', async (req, res) => {
       setupComplete: userCount > 0
     });
   } catch (error) {
-    // If table doesn't exist yet, setup is required
     res.json({ setupRequired: true, setupComplete: false });
   }
 });
 
-/**
- * Create initial admin account (only works if no users exist)
- */
 router.post('/create-admin', setupLimiter, async (req, res) => {
   try {
-    // Check if any users exist
     const countResult = await db.query('SELECT COUNT(*) FROM users');
     if (parseInt(countResult.rows[0].count) > 0) {
       return res.status(400).json({ error: 'Setup already completed. Users already exist.' });
@@ -61,7 +54,6 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
 
     const { username, password, confirmPassword } = req.body;
 
-    // Validation
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
@@ -70,13 +62,11 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Passwords do not match' });
     }
 
-    // Validate password strength
     const passwordValidation = authService.validatePasswordStrength(password);
     if (!passwordValidation.valid) {
       return res.status(400).json({ error: passwordValidation.message });
     }
 
-    // Create admin user (username can be an email if user chooses)
     const passwordHash = await authService.hashPassword(password);
     const result = await db.query(
       `INSERT INTO users (username, password_hash, role, is_active, must_change_password)
@@ -85,23 +75,29 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
       [username, passwordHash]
     );
 
-    // Log the setup completion
     await authService.auditLog(result.rows[0].id, 'setup_complete', req.ip, req.get('User-Agent'), {
       action: 'Initial admin account created'
     });
 
-    // Generate token for immediate login
-    const token = await authService.generateToken(result.rows[0]);
+    const accessToken = await authService.generateAccessToken(result.rows[0]);
+    const refreshToken = await authService.generateRefreshToken(
+      result.rows[0].id,
+      req.get('User-Agent'),
+      { ip: req.ip }
+    );
+
+    res.cookie('access_token', accessToken, authService.getCookieOptions(runtimeSettings.getValue('force_secure_cookies')));
+    issueCsrfToken(res);
 
     res.json({
       success: true,
       message: 'Admin account created successfully',
       user: result.rows[0],
-      token
+      refreshToken
     });
   } catch (error) {
     console.error('Setup error:', error);
-    if (error.code === '23505') { // Unique violation
+    if (error.code === '23505') {
       return res.status(400).json({ error: 'Username already exists' });
     }
     res.status(500).json({ error: 'Failed to create admin account' });

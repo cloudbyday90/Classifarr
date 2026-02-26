@@ -70,7 +70,7 @@
             </td>
             <td class="px-6 py-4">
               <span :class="permissionClass(key.permissions)" class="px-2 py-1 rounded-full text-xs font-medium">
-                {{ key.permissions === 'read_write' ? 'Read-Write' : 'Read-Only' }}
+                {{ permissionLabel(key.permissions) }}
               </span>
             </td>
             <td class="px-6 py-4 text-sm text-gray-400">
@@ -138,9 +138,10 @@
             >
               <option value="read_write">Read-Write (Full Access)</option>
               <option value="read_only">Read-Only (GET endpoints only)</option>
+              <option value="admin">Admin (Full Access + Admin Routes)</option>
             </select>
             <p class="text-xs text-gray-400 mt-1">
-              {{ newKey.permissions === 'read_only' ? 'Can only read data (GET requests)' : 'Can read and modify data (all requests)' }}
+              {{ permissionDescription(newKey.permissions) }}
             </p>
           </div>
 
@@ -395,9 +396,33 @@ const saveKeyName = async (key) => {
 }
 
 const permissionClass = (permission) => {
-  return permission === 'read_write'
-    ? 'bg-blue-900/30 text-blue-400'
-    : 'bg-purple-900/30 text-purple-400'
+  const classes = {
+    'read_write': 'bg-blue-900/30 text-blue-400',
+    'read_only': 'bg-purple-900/30 text-purple-400',
+    'webhook_only': 'bg-green-900/30 text-green-400',
+    'admin': 'bg-red-900/30 text-red-400'
+  }
+  return classes[permission] || 'bg-gray-900/30 text-gray-400'
+}
+
+const permissionLabel = (permission) => {
+  const labels = {
+    'read_write': 'Read-Write',
+    'read_only': 'Read-Only',
+    'webhook_only': 'Webhook Only',
+    'admin': 'Admin'
+  }
+  return labels[permission] || permission
+}
+
+const permissionDescription = (permission) => {
+  const descriptions = {
+    'read_write': 'Can read and modify data (all endpoints)',
+    'read_only': 'Can only read data (GET requests)',
+    'webhook_only': 'Can only access webhook endpoints (for Overseerr/Seer)',
+    'admin': 'Full access including admin-only endpoints'
+  }
+  return descriptions[permission] || ''
 }
 
 const formatDate = (dateString) => {

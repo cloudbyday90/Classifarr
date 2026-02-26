@@ -281,7 +281,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '../../api'
 
 const logs = ref([])
 const stats = ref(null)
@@ -311,10 +311,7 @@ onMounted(() => {
 
 async function loadStats() {
   try {
-    const token = localStorage.getItem('auth_token')
-    const response = await axios.get('/api/logs/stats', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const response = await api.get('/logs/stats')
     stats.value = response.data
   } catch (err) {
     console.error('Failed to load stats:', err)
@@ -326,7 +323,6 @@ async function loadLogs() {
   error.value = null
   
   try {
-    const token = localStorage.getItem('auth_token')
     const params = new URLSearchParams({
       page: pagination.value.page,
       limit: pagination.value.limit
@@ -336,9 +332,7 @@ async function loadLogs() {
     if (filters.value.module) params.append('module', filters.value.module)
     if (filters.value.resolved) params.append('resolved', filters.value.resolved)
     
-    const response = await axios.get(`/api/logs?${params}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const response = await api.get(`/logs?${params}`)
     
     logs.value = response.data.logs
     pagination.value = response.data.pagination
@@ -370,10 +364,7 @@ function changePage(page) {
 
 async function viewDetails(errorId) {
   try {
-    const token = localStorage.getItem('auth_token')
-    const response = await axios.get(`/api/logs/error/${errorId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const response = await api.get(`/logs/error/${errorId}`)
     selectedLog.value = response.data
     showModal.value = true
     copySuccess.value = false
@@ -390,10 +381,7 @@ function closeModal() {
 
 async function copyBugReport() {
   try {
-    const token = localStorage.getItem('auth_token')
-    const response = await axios.get(`/api/logs/error/${selectedLog.value.error_id}/report`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const response = await api.get(`/logs/error/${selectedLog.value.error_id}/report`)
     
     // Improved clipboard copy with fallback for insecure/non-https contexts
     const text = response.data.report
@@ -430,12 +418,7 @@ async function copyBugReport() {
 
 async function resolveError() {
   try {
-    const token = localStorage.getItem('auth_token')
-    await axios.post(
-      `/api/logs/error/${selectedLog.value.error_id}/resolve`,
-      {},
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
+    await api.post(`/logs/error/${selectedLog.value.error_id}/resolve`, {})
     
     closeModal()
     loadLogs()
@@ -447,15 +430,12 @@ async function resolveError() {
 
 async function exportLogs() {
   try {
-    const token = localStorage.getItem('auth_token')
     const params = new URLSearchParams()
     
     if (filters.value.level) params.append('level', filters.value.level)
     if (filters.value.module) params.append('module', filters.value.module)
     
-    const response = await axios.get(`/api/logs/export?${params}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const response = await api.get(`/logs/export?${params}`)
     
     const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
     const url = window.URL.createObjectURL(blob)
@@ -475,10 +455,7 @@ async function clearAllLogs() {
   }
   
   try {
-    const token = localStorage.getItem('auth_token')
-    const response = await axios.delete('/api/logs', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const response = await api.delete('/logs')
     
     alert(`Cleared all logs. Deleted ${response.data.deleted.errorLogs} error logs and ${response.data.deleted.appLogs} app logs.`)
     loadLogs()
@@ -494,10 +471,7 @@ async function cleanupLogs() {
   }
   
   try {
-    const token = localStorage.getItem('auth_token')
-    const response = await axios.post('/api/logs/cleanup', {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    const response = await api.post('/logs/cleanup', {})
     
     alert(`Cleanup completed. Deleted ${response.data.deleted.errorLogs} error logs and ${response.data.deleted.appLogs} app logs.`)
     loadLogs()

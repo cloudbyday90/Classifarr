@@ -1,0 +1,25 @@
+{
+  "globs": [
+    "*.md",
+    "docs/**/*.md",
+    "database/**/*.md",
+    "unraid/**/*.md",
+    "directives/**/*.md",
+    "execution/**/*.md"
+  ],
+  "ignores": [
+    "**/node_modules/**",
+    "data/**",
+    ".tmp/**",
+    ".agent/**",
+    "**/*_backup*.md",
+    "**/*backup*.md"
+  ],
+  "config": {
+    "default": false,
+    "MD012": {
+      "maximum": 1
+    },
+    "MD047": true
+  }
+}

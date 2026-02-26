@@ -54,7 +54,7 @@ describe('API Keys Integration Tests', () => {
         testUserId = userResult.rows[0].id;
 
         // Generate a test JWT token
-        testToken = await authService.generateToken({ 
+        testToken = await authService.generateAccessToken({ 
             id: testUserId, 
             username: 'testuser',
             role: 'admin'
@@ -106,6 +106,38 @@ describe('API Keys Integration Tests', () => {
             expect(response.body.permissions).toBe('read_only');
             testReadOnlyKeyId = response.body.id;
             testReadOnlyKey = response.body.key;
+        });
+
+        test('should create a new API key with webhook_only permissions', async () => {
+            const response = await request(app)
+                .post('/api/keys')
+                .set('Authorization', `Bearer ${testToken}`)
+                .send({
+                    name: 'Test Webhook-Only Key',
+                    permissions: 'webhook_only'
+                })
+                .expect(200);
+
+            expect(response.body.permissions).toBe('webhook_only');
+
+            // Clean up
+            await db.query('DELETE FROM api_keys WHERE id = $1', [response.body.id]);
+        });
+
+        test('should create a new API key with admin permissions', async () => {
+            const response = await request(app)
+                .post('/api/keys')
+                .set('Authorization', `Bearer ${testToken}`)
+                .send({
+                    name: 'Test Admin Key',
+                    permissions: 'admin'
+                })
+                .expect(200);
+
+            expect(response.body.permissions).toBe('admin');
+
+            // Clean up
+            await db.query('DELETE FROM api_keys WHERE id = $1', [response.body.id]);
         });
 
         test('should create API key with expiration date', async () => {

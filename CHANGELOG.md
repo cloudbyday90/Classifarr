@@ -7,17 +7,115 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.0-alpha] - 2026-02-26
+
 ### Added
 
-- None yet.
+- **Security Review Documentation** - Complete security audit with 31 findings documented in `docs/SECURITY_REVIEW.md`
+- **Route Authentication Audit** - Full route audit in `docs/security-fixes/ROUTE-auth-audit.md`
+- **Security Benchmarks Documentation** - CIS, OWASP, SANS, Node.js, NIST coverage in `docs/SECURITY_BENCHMARKS.md`
+- **CORS Configuration Documentation** - Added `CORS_ORIGIN` environment variable documentation to docker-compose.yml
+- **Refresh Token Rotation** - JWT refresh tokens with rotation on each use (7-day expiry)
+- **Content Security Policy** - CSP enabled with strict directives (defaultSrc self, frameAncestors none)
+- **Gitleaks Configuration** - Added `.gitleaks.toml` for secret scanning in CI/pre-commit
+- **AES-256-GCM Encryption Utility** - New `server/src/utils/encryption.js` for API key/secret encryption
+- **Database Migration: Refresh Tokens** - `20260224_140000_add_refresh_tokens.sql` - New `refresh_tokens` table
+- **Database Migration: API Key Audit** - `20260224_130000_add_api_key_audit.sql` - Local-only security audit log for API key usage (NO external telemetry - data stays in your database)
+- **Test Coverage** - Added 10 new test files (+226 tests):
+  - `auth-routes.test.js` (29 tests) - Auth endpoints
+  - `classificationProgress-routes.test.js` (6 tests) - Classification progress
+  - `patterns-routes.test.js` (40 tests) - Patterns routes (90.52% coverage)
+  - `route-authentication.test.js` (59 tests) - Route auth verification
+  - `scheduler-routes.test.js` (18 tests) - Scheduler routes
+  - `setup-routes.test.js` (11 tests) - Setup endpoints
+  - `startupService.test.js` (20 tests) - Startup service
+  - `user-routes.test.js` (17 tests) - User profile/password endpoints
+  - `webSocketService.test.js` (12 tests) - WebSocket service
+  - Function coverage: 58.11% → 58.58%
+- **OMDb Timeout Configuration** - Added `OMDB_REQUEST_TIMEOUT_MS` support for configurable OMDb request timeout (default 15000ms)
+- **OMDb Retry Configuration** - Added `OMDB_MAX_RETRIES` support for configurable transient-retry attempts (default 2)
+- **Enrichment Retry Stale Recovery** - Added automatic stale-row recovery for `enrichment_retry_queue` via `ENRICHMENT_RETRY_STALE_MS` (default 20 minutes)
+- **Resilience Test Coverage** - Added targeted tests for:
+  - OMDb concurrent request pacing serialization
+  - Enrichment retry stale-processing recovery behavior
+- **CSRF Protection** - Added double-submit CSRF protection for cookie-authenticated write requests (`classifarr_csrf_token` cookie + `X-CSRF-Token` header) with dedicated middleware tests
+- **Client CSRF Regression Guard** - Added `client/src/__tests__/security/csrfClientUsage.test.js` to fail builds when mutating `axios`/`fetch` calls bypass the shared `@/api` client
 
 ### Changed
 
-- None yet.
+- **Route Authentication** - Protected 21 previously unprotected routes:
+  - Tier 1 (Admin-only): `/reclassification`, `/policies`, `/mappings`, `/confidence`, `/rag`, `/patterns`, `/scheduler`, `/settings/path-mappings`, `/media-server`, `/classification`, `/settings`
+  - Tier 2 (Authenticated): `/feedback`, `/prompts`, `/presets`, `/requests`, `/suggestions`, `/migration`, `/rating-normalization`, `/sync`, `/clarifications`
+- **JWT Token Storage** - Migrated from localStorage to httpOnly cookies (XSS-proof)
+- **Client API Layer** - Updated `client/src/api/index.js` for cookie-based auth with automatic token refresh
+- **Client API Layer** - Write requests now automatically attach `X-CSRF-Token` from CSRF cookie, including refresh flow
+- **Client API Standardization** - Migrated remaining auth/setup/settings/migration mutating requests from direct `axios`/`fetch` usage to shared `@/api` client wrappers for consistent CSRF/auth handling
+- **Client API Cleanup** - Removed deprecated SmartRuleForm-only API wrappers from `client/src/api/index.js` (legacy rule-builder helper methods not used by active UI flows)
+- **Login/Setup Views** - Updated `Login.vue`, `SetupAccount.vue` for cookie-based authentication
+- **Cookie SameSite Policy** - Changed from `strict` to `lax` for browser compatibility
+- **CORS Warning Behavior** - Moved CORS_ORIGIN warning to startup-only
+- **Webhook Authentication** - Secret key now required; requests rejected with 401 if not configured
+- **Webhook Settings UX** - Authorization Header controls moved directly under Webhook Endpoint/JSON Payload with inline `Unmask/Mask`, `Regenerate`, and `Copy` actions
+- **Webhook Secret Reveal Safety** - Added inactivity-based auto-remask for revealed Authorization Header values (default 60s, timer resets on reveal/copy activity)
+- **API Key Permission UX** - Removed `Webhook Only` option from Settings → Security create-key dropdown (webhook auth now handled in Webhooks settings via Authorization Header)
+- **OMDb Request Pacing** - Global OMDb rate limiting now serializes concurrent requests to prevent startup/backlog bursts from creating timeout storms
+- **API Key Logging** - Key no longer logged to console; view only in UI after login
+- **Debug Endpoints** - Gated with `NODE_ENV !== 'production'` check
+- **Dependency Updates** - All production dependencies updated; `npm audit` shows 0 vulnerabilities
+- **Feedback Route** - Now uses `req.user.id` from JWT instead of request body
+- **Security Environment Docs** - Documented `FORCE_SECURE_COOKIES` (for HTTPS vs local HTTP) and `CSRF_PROTECTION` in `.env.example`
+- **OMDb Environment Docs** - Documented `OMDB_REQUEST_TIMEOUT_MS` and `OMDB_MAX_RETRIES` in `.env.example` for self-hosted tuning
+
+### Deprecated
+
+- **Rule Builder** - Removed deprecated rule builder feature (replaced by Policy Engine):
+  - Deleted `server/src/routes/ruleBuilder.js`
+  - Deleted `server/src/services/ruleBuilder.js`
+  - Deleted `server/src/__tests__/ruleBuilder.test.js`
+  - Deleted orphan `client/src/components/SmartRuleForm.vue` (no active route/import usage)
 
 ### Fixed
 
-- None yet.
+- **Critical: Unauthenticated Settings Access** - Applied `authenticateToken` + `requireAdmin` to settings routes
+- **Critical: Unauthenticated Classification Access** - Applied `authenticateToken` + `requireAdmin` to classification routes
+- **Critical: Unauthenticated Media Server Access** - Applied `authenticateToken` + `requireAdmin` to media-server routes
+- **Cookie-Based Authentication** - Multiple fixes for session persistence:
+  - Fixed cookie maxAge unit (was 900ms, now 900000ms = 15 minutes)
+  - Added cookie-parser middleware for Express
+  - Fixed `authenticateTokenOrApiKey` to check cookies (previously only checked headers)
+  - Fixed `IS_SECURE` logic to use `FORCE_SECURE_COOKIES` env var instead of NODE_ENV
+  - Fixed CORS to reflect origin instead of wildcard (required for credentials)
+- **PostgreSQL tmpfs Permissions** - Fixed tmpfs mount (`uid=1000,gid=1000,mode=770`)
+- **OMDb Daily Limit Reset** - Fixed timezone mismatch causing quota reset on every request
+- **OMDb Test Timezone Mismatch** - Fixed `hasRemainingQuota` tests to use local timezone (`en-CA`) matching production code
+- **Webhook Secret Decrypt Failures After Restart** - Added automatic webhook secret rotation/recovery when stored encrypted secret cannot be decrypted (e.g., encryption-key mismatch/corruption), preventing repeated `Failed to decrypt webhook secret` errors
+- **Webhook Runtime Auth Config** - Webhook route now uses unmasked config (`getConfig({ mask: false })`) so encrypted secrets validate correctly during inbound webhook auth
+- **Encryption Key Persistence Fallback** - When `API_KEY_ENCRYPTION_KEY` is unset, Classifarr now persists a generated key to `/app/data/secrets/api_key_encryption_key` and reuses it across restarts to avoid decrypt regressions
+- **Enrichment Retry Noise Reduction** - OMDb `not found` results now hand off immediately to Tavily fallback (no extra pending retry churn), and interim retry-state logs no longer raise warning-level bug reports
+- **OMDb Transient Retry Logging** - Transient OMDb retry warnings remain visible in runtime logs but are no longer persisted to the DB bug-report stream
+- **Enrichment Retry Test Cleanup** - Removed outdated test for Tavily processing when OMDb quota unavailable (Tavily has monthly credits, not auto-retried)
+- **Jest CLI Flag Update** - Fixed deprecated `--testPathPattern` to `--testPathPatterns` in `server/package.json`
+- **Tavily Warning Spam** - Suppressed repeated warnings; now only logs at debug level
+- **Webhook Secret Handling Regression** - Fixed masked secret preservation in `/api/settings/webhook` updates so masked placeholders are never persisted as live secrets
+- **Webhook URL/Test Secret Source** - `/api/settings/webhook/url` and `/api/settings/webhook/test` now use decrypted full secret values instead of masked config values
+- **Authorization Header Unmask Reliability** - Fixed initial unmask/remask flow where secret reveal could fail until regenerate
+- **Logs Settings CSRF Regression** - Fixed Settings → Logs mutating actions (`Clear All`, `Prune Old`, resolve operations) to use shared API client and include CSRF token automatically
+- **Legacy Migration CSRF Coverage Gap** - Fixed migration dashboard/wizard POST operations by routing through shared `@/api` client instead of raw `fetch`
+- **Enrichment Retry Queue Stale Rows** - Fixed stale `processing` rows that could remain stuck after restart/interruption by auto-recovering them to `pending`/`failed` with attempt accounting
+- **Enrichment Retry Queue Pending Drift** - Fixed stale `pending` rows that already had enrichment metadata (OMDb/Tavily) by auto-resolving them to `completed`, so pending counts represent actionable work without manual SQL cleanup
+- **Enrichment Retry Selection Guard** - Retry processing now skips rows where required metadata is already present, preventing re-processing and re-inflated pending counters
+- **OMDb Timeout Burst Amplification** - Reduced repeated OMDb timeout cascades under concurrent enrichment load by enforcing serialized pacing between requests
+- **OMDb Retry Telemetry Clarity** - Added retry context (`maxRetries`, timeout) to transient OMDb warning logs and prevented terminal transient-unavailable warnings from being persisted as DB bug-report noise
+
+### Security
+
+- **CIS Docker Benchmark 4.8** - Added setuid/setgid binary removal to Dockerfile
+- **CIS Docker Benchmark 5.3** - Added capability restrictions (`cap_drop: ALL`, selective `cap_add`)
+- **CIS Docker Benchmark 5.10** - Added memory limits (2G) to docker-compose
+- **CIS Docker Benchmark 5.12** - Added read-only root filesystem with tmpfs for writable paths
+- **CIS Docker Benchmark 5.25** - Added `no-new-privileges` security option
+- **CIS Score Improvement** - 74% → 79%
+- **OWASP API Security** - 90% → 100%
 
 ---
 

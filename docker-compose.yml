@@ -4,41 +4,39 @@ services:
       context: .
       dockerfile: Dockerfile
     image: ghcr.io/cloudbyday90/classifarr:latest
-    # pgvector auto-selects AVX when supported, otherwise uses generic build
     container_name: classifarr
     user: "1000:1000"
     ports:
       - "21324:21324"
     environment:
-      - PUID=1000 # Your user ID (run `id -u` to find)
-      - PGID=1000 # Your group ID (run `id -g` to find)
-      - TZ=America/New_York # Your timezone
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-America/New_York}
+      FORCE_SECURE_COOKIES: ${FORCE_SECURE_COOKIES:-false}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
     volumes:
       - ./data:/app/data
-      # ═══════════════════════════════════════════════════════════════
-      # MEDIA ACCESS (Required for Re-Classification feature)
-      # ═══════════════════════════════════════════════════════════════
-      # Map your media folders so Classifarr can move files during
-      # re-classification. Write access is required.
-      #
-      # Format: /host/path:/container/path
-      #
-      # Example for single media folder:
-      # - /mnt/user/media:/data/media
-      #
-      # Example for separate movie/tv folders:
-      # - /mnt/user/movies:/data/movies
-      # - /mnt/user/tv:/data/tv
-      # ═══════════════════════════════════════════════════════════════
+      # Required for re-classification moves: replace host path with your media root
+      - /path/to/media:/data/media:rw
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql:uid=1000,gid=1000,mode=770
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:21324/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
     networks:
       - classifarr_internal
 

@@ -1,38 +1,91 @@
 # Classifarr
 
-Route every request to the right library, with policy-driven decisions you can actually trust.
-
-Classifarr sits between your request sources and your media stack, classifies each item using policy + metadata + historical signals, and routes it to the correct Radarr/Sonarr destination.  
-When confidence is low, it asks you for a decision instead of guessing.
+Route every request to the right library with policy-driven decisions you can trust.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.42.0--alpha-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.43.0--alpha-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
+
+Classifarr is an AI- and RAG-powered media classification and routing service. It runs as the decision layer between request inputs (Overseerr/Jellyseerr webhooks, manual/API submissions, and media sync) and your automation stack, then uses metadata, policy rules, and AI/RAG signals to auto-route high-confidence matches to the correct Radarr/Sonarr destination while sending low-confidence cases to review.
 
 ## Why Classifarr
 
-- No more manual sorting across multiple movie/TV libraries.
-- Fewer bad AI guesses through policy-first classification.
-- Clear operator control when uncertainty appears.
-- One operational surface instead of bouncing between pages.
+- Helps route requests across multiple libraries using policy-based decisions.
+- Reduces manual sorting by automatically handling high-confidence items.
+- Keeps low-confidence and ambiguous cases in a review flow, including Discord policy-driven clarification questions.
+- Includes queue, retry, and logging tools to support day-to-day operations.
+- Supports local, cloud, and hybrid AI/RAG deployments.
+- Provides feedback and tuning workflows to improve routing over time.
 
-## What Makes It Different
+## Features
 
-Classifarr is built around an action-first **Command Center**:
+Classifarr is a full operations platform for classification, routing, review, and continuous tuning.
 
-- `Alerts`: urgent operational problems.
-- `Processing`: active work, queue health, and progress.
-- `Needs Attention`: policy questions and confirm/change decisions.
-- `Errors`: retry and dismiss controls.
-- `Recently Completed`: fast feedback loop.
-- `Quick Add`: manual TMDB request flow.
-- `Libraries` + `Today`: library-level and system-level visibility.
+### 1. Classification and Decisioning
 
-You still keep `/history` for historical audits and reclassification workflows.
+- Policy-driven routing for movie and TV requests with confidence scoring.
+- Human-in-the-loop handling for low-confidence cases (pending decisions and clarifications).
+- Classification history with profile snapshots and correction workflows.
+- Manual request submission plus direct classify/reclassify endpoints.
 
-## How Classification Works
+### 2. Policy and Preset Management
 
-This is the end-to-end pipeline from ingest to final routing:
+- Policy Builder workflow for creating and maintaining routing rules.
+- Preset catalog and custom presets with policy-level assignment.
+- Pattern discovery and pattern approval/rejection workflows.
+- Policy feedback and tuning suggestions with impact views.
+
+### 3. Command Center and Observability
+
+- Command Center home for queue health, alerts, retries, and actions.
+- Live queue stats, failed/pending views, and bulk recovery controls.
+- Detailed logs module with filtering, export, resolve, cleanup, and clear actions.
+- System health views for dependencies (database, media servers, AI, metadata providers).
+
+### 4. Library and Media Orchestration
+
+- Media server ingestion and sync support for Plex, Jellyfin, and Emby.
+- Library mappings to Radarr/Sonarr instances, root folders, and quality profiles.
+- Path mapping and path translation verification for host/container/NAS layouts.
+- Reclassification batch engine with validate, execute, pause/resume, retry, and skip.
+
+### 5. AI and Provider Routing
+
+- Local and cloud classification providers: Ollama, OpenAI, Gemini, OpenRouter, LiteLLM, custom endpoints.
+- Provider status checks, model discovery, test actions, and warmup controls.
+- AI usage tracking and budget visibility for operational control.
+- Provider lock and fallback-aware behavior for resilience.
+
+### 6. RAG and Embeddings
+
+- Separate RAG settings for text and image embeddings.
+- Text embedding modes for local, cloud, and split-provider deployments.
+- Image embedding support via local image embedding service and cloud providers.
+- Backfill orchestration: manual, scheduled, idle-time, and real-time options.
+- RAG health, circuit breaker status, migration tooling, and metrics/export endpoints.
+
+### 7. Integrations and Automation
+
+- Webhook listener endpoints for Overseerr/Jellyseerr style integrations.
+- Webhook configuration management with generated Authorization Header secrets.
+- API keys for automation with route-level permission enforcement.
+- Notification center plus Discord integration, including policy-driven questions and response handling.
+
+### 8. Security and Access Control
+
+- JWT auth with session controls (list/revoke sessions, logout-all).
+- CSRF protection for cookie-authenticated write routes.
+- Route guards for admin vs read-write vs read-only capabilities.
+- Runtime security knobs for cookies, CORS, and transport expectations.
+
+### 9. Operations and Lifecycle
+
+- Setup wizard and first-run admin account creation.
+- Backup export/import, preview, download, and cleanup flows.
+- Migration dashboard and migration APIs for legacy rule movement.
+- Scheduler for recurring sync, queue, enrichment, and maintenance tasks.
+
+## Classification Flow
 
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
@@ -40,106 +93,446 @@ This is the end-to-end pipeline from ingest to final routing:
 
 Direct diagram link: [`docs/assets/issue-262-classification-flow-v042.svg`](docs/assets/issue-262-classification-flow-v042.svg)
 
-## Command Center Experience
+## Quick Start (Docker Compose)
 
-The Command Center replaces fragmented dashboard workflows with one vertical, always-available operational view.
-
-Core interaction model:
-
-- See what needs action now.
-- Resolve decisions inline (`Confirm`, `Change`, `Yes/No`).
-- Retry failures without leaving the page.
-- Track live progress with refresh-safe data behavior.
-
-Global notification model:
-
-- Bell icon with unread count.
-- Unread/read grouping in panel.
-- `Mark All Read` and per-item read actions.
-- Full notifications page at `/notifications`.
-
-## Quick Start
-
-### Requirements
-
-- Docker + Docker Compose
-- TMDB API key
-- OMDb API key (recommended)
-- Media Server configured with Radarr/Sonarr mappings
-- AI provider (Ollama, OpenAI, Gemini, or OpenRouter)
-
-### Run with Docker Compose
+Use this baseline compose:
 
 ```yaml
 services:
   classifarr:
-    image: ghcr.io/cloudbyday90/classifarr:latest
+    image: ghcr.io/cloudbyday90/classifarr:v0.43.0-alpha
     container_name: classifarr
+    user: "1000:1000"
     ports:
       - "21324:21324"
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/New_York
+      PUID: 1000
+      PGID: 1000
+      TZ: America/New_York
+      FORCE_SECURE_COOKIES: "false"
+      CORS_ORIGIN: ""
     volumes:
       - ./data:/app/data
-      - /path/to/media:/data/media
+      - /path/to/media:/data/media:rw
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql:uid=1000,gid=1000,mode=770
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
     extra_hosts:
       - "host.docker.internal:host-gateway"
 ```
+
+Start:
 
 ```bash
 docker compose up -d
 ```
 
-Open `http://localhost:21324`.
+Open:
 
-### First Setup Order
+- `http://localhost:21324`
 
-1. Create admin account.
-2. Configure Media Server and Radarr/Sonarr mappings.
-3. Add TMDB and OMDb keys.
-4. Configure AI provider and budget controls.
-5. Optional: configure Discord integration.
+## Compose Notes (Important)
 
-## Daily Workflow
+- `./data:/app/data` is required for database persistence and generated runtime settings.
+- `/path/to/media:/data/media:rw` is required for re-classification move operations.
+- `PUID` and `PGID` are used by the container entrypoint to align ownership with NAS and host permissions.
+- `read_only: true` makes the container root filesystem immutable; writable paths are provided via volumes and `tmpfs`.
+- Compose healthcheck is intentionally omitted for a lean file. The Docker image still has an internal `HEALTHCHECK` instruction.
+
+## Required and Recommended Inputs
+
+Required:
+
+- TMDB API key.
+- Media server and Radarr/Sonarr mappings.
+- A valid `/data/media` bind mount for move operations.
+
+Recommended:
+
+- OMDb API key for richer enrichment.
+- AI provider configuration for model-assisted classification.
+
+## AI Provider Strategy (Classification)
+
+Classifarr supports both local and cloud classification providers:
+
+- `ollama` (local, no per-token cloud cost).
+- `openai`, `gemini`, `openrouter`, `litellm`, `custom` (cloud/API providers).
+- `anthropic` models are supported via `openrouter`, `litellm`, or `custom` endpoint routing.
+- Optional Ollama fallback can be enabled when primary provider is cloud.
+
+Practical recommendation:
+
+- Local-first/self-hosted default: use `ollama` as the primary classification provider.
+- Cloud-first: use your cloud provider as primary and enable Ollama fallback for resilience/cost control.
+
+### Cloud Provider Recommendations
+
+Use this as a practical selection guide:
+
+| Provider Path | Best For | Notes |
+|---|---|---|
+| `openai` | Highest consistency for strict JSON/structured classification output | Good default when you want reliability first |
+| `gemini` | Best value/latency balance for always-on classification | Strong cost/performance profile for medium/large libraries |
+| `openrouter` | Fast model switching across vendors | Best when you want one key and rapid experimentation |
+| `litellm` / `custom` | Teams running a gateway/proxy across multiple providers | Best for centralized policy, routing, and enterprise-style controls |
+| `anthropic` (via OpenRouter/LiteLLM/Custom) | Conservative, safety-oriented reasoning style | No direct Anthropic selector in Settings today; route Claude through proxy-compatible paths |
+
+Model selection strategy:
+
+- Start with each provider's fast/mini tier model for day-to-day classification.
+- Move to higher-tier models only if your misclassification rate remains high.
+- Prefer stable model IDs for production and test newer models in staging first.
+
+Pricing note:
+
+- Provider pricing and model catalogs change frequently. Use provider dashboards for live cost checks before locking budgets.
+
+### Ollama Local Recommendations (AI + RAG Text)
+
+Source catalog:
+
+- <https://ollama.com/search>
+
+Local cost model:
+
+- No per-token API billing.
+- Tradeoff is local hardware utilization (VRAM/RAM), latency, and throughput.
+
+#### Local AI (Classification) Picks
+
+| Profile | Recommended model(s) | Why |
+|---|---|---|
+| Low-resource local host | `qwen3:4b`, `gemma3:4b` | Good speed on smaller hardware with acceptable quality |
+| Best overall default | `qwen3:8b`, `llama3.1:8b` | Strong quality/speed balance for routine classification |
+| Hard edge-case reasoning | `deepseek-r1:14b`, `qwen3:14b` | Better reasoning on ambiguous metadata, but slower |
+| Premium local quality | `qwen3:32b` (or larger) | Highest local quality when hardware allows |
+
+#### Local RAG Text Embedding Picks
+
+| Profile | Recommended model(s) | Why |
+|---|---|---|
+| Best default | `nomic-embed-text` | Strong retrieval quality with efficient footprint |
+| Higher-quality semantic retrieval | `mxbai-embed-large` | Better retrieval precision at higher compute cost |
+| Multilingual-heavy libraries | `bge-m3`, `qwen3-embedding` | Better multilingual embedding behavior |
+| Very lightweight | `all-minilm`, `embeddinggemma` | Fastest local embedding for constrained systems |
+
+Quick start pulls:
+
+```bash
+ollama pull qwen3:8b
+ollama pull nomic-embed-text
+```
+
+Classifarr settings pattern:
+
+1. Set AI provider to `ollama` and choose your generation model.
+2. In RAG Text Embeddings, set mode to `same` (or `separate_ollama` for a dedicated embedding instance).
+3. Choose an embedding model such as `nomic-embed-text` or `mxbai-embed-large`.
+
+#### Ollama Recommendations by GPU VRAM
+
+Use these as practical starting points for local deployments.
+
+Important:
+
+- Model file size is not the full runtime memory footprint.
+- You need headroom for KV cache/context, concurrent requests, and background system load.
+- For stability, target model size at roughly 60-75% of available VRAM.
+- Use Q4/Q5 quantizations for best fit on consumer GPUs; higher quantizations need more VRAM.
+
+| GPU VRAM | Example GPUs | Recommended local AI model | Fallback model (if OOM/slow) | Why this is the default pick |
+|---|---|---|---|---|
+| 4 GB | GTX 1650, RTX 3050 (4GB), RX 6400 | `qwen3:4b` (2.5GB) | `gemma3:4b` (3.3GB) | Best fit with enough headroom for stable inference on low-VRAM cards |
+| 8 GB | RTX 3060 Ti, RTX 4060 Laptop, RX 7600 | `qwen3:8b` (5.2GB) | `llama3.1:8b` (4.9GB) | Best quality-to-speed default for routine Classifarr classification |
+| 12 GB | RTX 3060 12GB, RTX 4070 Super, RX 7700 XT | `gemma3:12b` (8.1GB) | `qwen3:8b` (5.2GB) | Uses available VRAM efficiently while preserving practical context headroom |
+| 16 GB | RTX 4060 Ti 16GB, Arc A770 16GB, RX 7800 XT | `qwen3:14b` (9.3GB) | `gemma3:12b` (8.1GB) | Better reasoning than 8B class with good operational headroom |
+| 24 GB | RTX 3090, RTX 4090 | `qwen3:30b` (19GB) | `qwen3:14b` (9.3GB) | Premium local quality while leaving safer room than 20GB+ alternatives |
+| 48 GB+ | RTX A6000, L40S, H100/H200 class | `qwen3:32b` (20GB) | `qwen3:30b` (19GB) | Strong highest-quality general default; extra VRAM can be used for concurrency/context |
+
+| GPU VRAM | RAG text embedding recommendation | Fit guidance |
+|---|---|---|
+| 4 GB | `nomic-embed-text` (274MB) | Safest default; leaves headroom for system and app workloads |
+| 8 GB | `nomic-embed-text` or `mxbai-embed-large` (670MB) | Both run comfortably; choose by retrieval quality preference |
+| 12 GB | `mxbai-embed-large`, `bge-m3`, `qwen3-embedding` | Room for better multilingual retrieval without pressure |
+| 16 GB+ | `bge-m3` or `qwen3-embedding` with higher concurrency | Better when indexing large libraries or running parallel jobs |
+
+Model size references above are from Ollama library pages (Q4 variants shown in Ollama details).
+
+### Current Model Picks (As of 2026-02-25)
+
+These picks are optimized for Classifarr's workload: structured JSON classification, high request volume, and occasional hard edge-case reasoning.
+
+| Task | Best value | Best quality | Why |
+|---|---|---|---|
+| Daily automated classification | `gemini-2.5-flash-lite` or `gpt-5-mini` | `gpt-5.1` or `claude-sonnet-4-6` | Most items are routine; use low-cost fast models by default, escalate only when needed |
+| Ambiguous/edge-case routing | `gemini-2.5-flash` | `gpt-5.1` / `claude-sonnet-4-6` / `claude-opus-4-6` | Better reasoning and instruction-following on conflicting metadata |
+| Very high-throughput, lowest cost | `gpt-5-nano` or `gemini-2.5-flash-lite` | N/A | Best when you prioritize throughput and low spend over absolute quality |
+| Premium "one-shot" difficult items | N/A | `claude-opus-4-6` | Best for hardest multi-step cases, highest cost tier |
+
+### Price-to-Performance Reference (Text Models)
+
+Prices are per 1M tokens (input/output), using provider-published pricing.
+
+| Provider | Model | Price | Best for in Classifarr |
+|---|---|---|---|
+| OpenAI | `gpt-5-mini` | $0.25 / $2.00 | Best OpenAI default for cost/quality balance |
+| OpenAI | `gpt-5.1` | $1.25 / $10.00 | Higher-accuracy difficult classifications |
+| OpenAI | `gpt-5-nano` | $0.05 / $0.40 | Ultra-cheap high-volume simple tasks |
+| Google Gemini | `gemini-2.5-flash-lite` | $0.10 / $0.40 | Lowest-cost Gemini option for routine requests |
+| Google Gemini | `gemini-2.5-flash` | $0.30 / $2.50 | Strong default blend of quality, latency, and cost |
+| Google Gemini | `gemini-2.5-pro` | $1.25 / $10.00 (<=200k prompt) | Hard reasoning/coding-style edge cases |
+| Anthropic | `claude-haiku-4-5` | starts at $1 / $5 | Fast, cheaper Claude path |
+| Anthropic | `claude-sonnet-4-6` | starts at $3 / $15 | Best Anthropic balance (recommended Claude tier) |
+| Anthropic | `claude-opus-4-6` | starts at $5 / $25 | Highest-capability Claude tier |
+
+### Text Embedding Recommendations (As of 2026-02-25)
+
+Use these defaults for Classifarr RAG unless you have a specific retrieval failure pattern:
+
+| Scenario | Best value | Best quality | Notes |
+|---|---|---|---|
+| General movie/TV semantic retrieval | `text-embedding-3-small` | `text-embedding-3-large` | Strong default quality/cost for most libraries |
+| Multilingual libraries | `gemini-embedding-001` | `voyage-4` / `voyage-4-large` | Better cross-language retrieval behavior |
+| Code/technical-heavy corpora | `voyage-code-3` | `voyage-code-3` | Specialized for code retrieval |
+| Local-only / no cloud spend | `nomic-embed-text` | `mxbai-embed-large` | Run in `separate_ollama` mode |
+
+### Text Embedding Price-to-Performance
+
+Prices below are provider-published rates and units:
+
+| Provider | Model | Price | Unit | Typical Classifarr use |
+|---|---|---|---|---|
+| OpenAI | `text-embedding-3-small` | $0.02 | per 1M input tokens | Best default cost/performance |
+| OpenAI | `text-embedding-3-large` | $0.13 | per 1M input tokens | Highest OpenAI retrieval quality |
+| OpenAI | `text-embedding-ada-002` | $0.10 | per 1M input tokens | Legacy compatibility only |
+| Gemini | `gemini-embedding-001` | $0.15 ($0.075 batch) | per 1M input tokens | High-quality multilingual with tunable output dimensionality |
+| Voyage AI | `voyage-4-lite` | $0.02 | per 1M tokens | Lowest-cost Voyage text embedding |
+| Voyage AI | `voyage-4` | $0.06 | per 1M tokens | Balanced quality/cost for retrieval |
+| Voyage AI | `voyage-4-large` | $0.12 | per 1M tokens | Highest Voyage general retrieval quality |
+| Cohere | `embed-v4.0` | See Cohere pricing page | provider pricing units | Modern Cohere text/multimodal embedding path |
+| Ollama (local) | `nomic-embed-text`, `mxbai-embed-large`, `bge-m3`, `all-minilm` | API cost = $0 | local compute | Best when privacy and predictable cost matter most |
+
+### Text Embedding Task Mapping
+
+| Task | Recommended model |
+|---|---|
+| Default first deployment | `text-embedding-3-small` or local `nomic-embed-text` |
+| Highest retrieval quality | `text-embedding-3-large` or `voyage-4-large` |
+| Budget-constrained large backfills | `text-embedding-3-small`, `voyage-4-lite`, or local `all-minilm` |
+| Multilingual catalog focus | `gemini-embedding-001` or `voyage-4` |
+
+Operational notes:
+
+- Changing embedding model or dimensionality can require re-embedding existing vectors.
+- Keep one embedding family stable per library where possible to reduce retrieval drift.
+- If you run cloud classification, using local Ollama embeddings is still a strong cost-control pattern.
+
+### Classifarr-Specific Recommendations
+
+1. Start with one of:
+   `gpt-5-mini`, `gemini-2.5-flash`, or `claude-sonnet-4-6` (via OpenRouter/LiteLLM/custom).
+2. If monthly cost is the primary constraint:
+   prefer `gemini-2.5-flash-lite` or `gpt-5-nano`.
+3. If quality on tricky metadata is the primary constraint:
+   move to `gpt-5.1` or `claude-sonnet-4-6`.
+4. Keep embeddings cost-efficient first:
+   use `text-embedding-3-small` (or local Ollama embeddings) before moving to higher-cost embedding tiers.
+
+### Anthropic in Current UI
+
+- Classifarr currently does not expose a direct `anthropic` provider selector in Settings -> AI.
+- Use Claude models through:
+  `openrouter`, `litellm`, or `custom` OpenAI-compatible gateway paths.
+- Example model IDs for those routes:
+  `claude-haiku-4-5`, `claude-sonnet-4-6`, `claude-opus-4-6`.
+
+## RAG Provider Strategy (Embeddings)
+
+RAG and embeddings are configured separately from classification in Settings -> RAG & Embeddings.
+
+Text embeddings modes:
+
+- `same`: use the same provider path as classification.
+- `separate_ollama`: use a dedicated Ollama embedding endpoint/model.
+- `cloud`: use cloud embedding providers (`openai`, `gemini`, `voyage`, `openrouter`, `cohere`).
+
+Image embeddings modes:
+
+- `disabled` (default and valid).
+- `separate_local`: use a dedicated local image embedding service.
+- `cloud`: use cloud image embedding providers (`vertex`, `voyage`, `cohere`).
+
+### Local Image Embedding Service (Recommended)
+
+For local/self-hosted image embeddings, use:
+
+- [`cloudbyday90/classifarr-image-embedding-service`](https://github.com/cloudbyday90/classifarr-image-embedding-service)
+
+Classifarr-compatible API contract:
+
+- `GET /health`
+- `GET /models`
+- `POST /embed-image`
+
+Minimal compose example:
+
+```yaml
+services:
+  image-embedder:
+    image: ghcr.io/cloudbyday90/classifarr-image-embedder:latest
+    container_name: image-embedder
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+```
+
+Then in Classifarr:
+
+- Settings -> RAG & Embeddings -> Image Embeddings
+- Mode: `separate_local`
+- Host: `image-embedder` (same compose network) or `host.docker.internal` (cross-container host access)
+- Port: `8000`
+
+### Cloud Image Embeddings: Availability
+
+Yes, cloud image embedding providers do exist, and Classifarr currently supports:
+
+- Vertex AI image embeddings (model path defaults to `multimodalembedding@001`)
+- Voyage multimodal embeddings (default `voyage-multimodal-3.5`)
+- Cohere image embeddings via `embed` API (`embed-english-v3.0` or `embed-multilingual-v3.0`)
+
+Practical guidance:
+
+- Start with `separate_local` for predictable cost/privacy.
+- Move to cloud only if you need managed scale or provider-specific quality characteristics.
+
+Practical recommendation:
+
+- Best default: text embeddings enabled, image embeddings disabled initially.
+- If classification is cloud and you want lower cost, set text embeddings to `separate_ollama`.
+- Enable image embeddings only after text embeddings are stable and backfill is healthy.
+
+Important:
+
+- Changing embedding mode/model can require re-embedding to keep vectors consistent.
+
+## Local HTTP vs HTTPS
+
+For local/LAN HTTP deployments:
+
+- Keep `FORCE_SECURE_COOKIES=false`.
+- Keep `CSRF_PROTECTION=true` (recommended; it works on local HTTP).
+- Keep `CORS_ORIGIN` empty unless you need a stricter browser allowlist.
+- Optional: set `SECURITY_HEADERS_STRICT=false` if browser isolation warnings on plain HTTP LAN IPs are disruptive.
+
+For public or HTTPS deployments:
+
+- Set `FORCE_SECURE_COOKIES=true`.
+- Keep `CSRF_PROTECTION=true`.
+- Keep `SECURITY_HEADERS_STRICT=true`.
+- Set explicit `CORS_ORIGIN` allowlist values.
+
+## Runtime Settings (Auto-generated)
+
+In Docker deployments, Classifarr auto-creates this file if it does not exist:
+
+- `/app/data/config/runtime.json`
+
+Runtime precedence:
+
+1. DB/UI setting
+2. Runtime JSON
+3. Environment variable
+4. Built-in default
+
+Reference:
+
+- [`docs/runtime-settings.example.json`](docs/runtime-settings.example.json)
+
+Current runtime keys:
+
+- `force_secure_cookies`
+- `csrf_protection`
+- `cors_origin`
+- `omdb_request_timeout_ms`
+- `omdb_retry_timeout_multiplier`
+- `omdb_max_request_timeout_ms`
+- `omdb_max_retries`
+- `omdb_ssl_warn_throttle_ms`
+
+Default values in generated `runtime.json`:
+
+```json
+{
+  "force_secure_cookies": false,
+  "csrf_protection": true,
+  "cors_origin": "",
+  "omdb_request_timeout_ms": 30000,
+  "omdb_retry_timeout_multiplier": 2,
+  "omdb_max_request_timeout_ms": 60000,
+  "omdb_max_retries": 3,
+  "omdb_ssl_warn_throttle_ms": 900000
+}
+```
+
+Security note:
+
+- Empty `cors_origin` means "allow all origins." This is local-friendly but not recommended for internet-exposed deployments.
+
+## CORS_ORIGIN Guidance
+
+Examples:
+
+- Single origin: `CORS_ORIGIN=https://classifarr.example.com`
+- Multiple origins: `CORS_ORIGIN=https://classifarr.example.com,https://ops.example.com`
+- Local relaxed mode: `CORS_ORIGIN=` (empty)
+
+Production behavior:
+
+- In production mode, Classifarr warns on startup if no CORS restriction is configured.
+
+## First-Time Setup Order
+
+1. Create the admin account.
+2. Configure media server and Radarr/Sonarr mappings.
+3. Configure TMDB and OMDb keys.
+4. Configure AI provider and any budget controls.
+5. Optionally configure Discord integration.
+6. Validate queue and routing from Command Center.
+
+## Daily Operations
 
 1. Open Command Center.
-2. Clear critical `Alerts` first.
-3. Resolve `Needs Attention` decisions.
-4. Retry any `Errors`.
-5. Monitor `Processing` and `Today` status.
-6. Use `Quick Add` for manual requests.
-7. Use `/history` for audits and reclassification.
+2. Clear `Alerts`.
+3. Resolve `Needs Attention` items.
+4. Retry actionable `Errors`.
+5. Verify enrichment progress and retry queue state.
+6. Use `/history` for audit and reclassification checks.
 
-## Configuration Model
-
-Settings are intentionally scoped:
-
-- `Media Server`: connections, mappings, sync behavior.
-- `AI`: providers, model selection, budget controls.
-- `Notifications`: Discord + in-app behavior.
-- `Queue`: advanced maintenance operations.
-- `Security`: auth and API key management.
-
-Advanced queue maintenance remains in settings, not main Command Center actions:
-
-- Reprocess completed
-- Clear and re-sync
-
-## API and Integrations
+## API, Auth, and Integrations
 
 Swagger UI:
 
 - `http://localhost:21324/api/docs`
 
-Auth:
+Authentication model:
 
-- Web UI uses JWT session auth.
-- Automations use API keys with `X-API-Key`.
+- Web UI: cookie-based session auth.
+- Cookie-authenticated write requests: CSRF header required.
+- Automation/API clients: `X-API-Key` (no CSRF required for API-key auth).
 
-Common operational endpoints:
+Common endpoints:
 
 - `GET /api/libraries`
 - `POST /api/media-server/sync`
@@ -148,57 +541,142 @@ Common operational endpoints:
 - `GET /api/classification/history`
 - `GET /api/queue/live-stats`
 
-API reference docs:
+API docs:
 
 - `docs/api/README.md`
+- `docs/api/authentication.md`
 - `docs/api/classification.md`
 - `docs/api/libraries.md`
 - `docs/api/media-sync.md`
-- `docs/api/system-health.md`
+- `docs/api/policies.md`
+- `docs/api/system.md`
+- `docs/api/webhooks.md`
+
+## Webhook Integration Notes
+
+For Overseerr/Jellyseerr webhook setup:
+
+- Use the webhook endpoint shown in Settings -> Webhooks.
+- Use the generated Authorization Header value from the same page.
+- Authorization Header is masked by default.
+- `Unmask` reveal uses an inactivity auto-remask timer (default 60 seconds).
+- `Regenerate` rotates the header and invalidates the previous one.
+
+## OMDb Behavior and Tuning
+
+OMDb calls use runtime-configurable timeout and retry behavior.
+
+Current default behavior:
+
+- Base request timeout: `30000ms`
+- Retry timeout multiplier: `2`
+- Max timeout cap: `60000ms`
+- Max retries: `3`
+
+Operational notes:
+
+- Transient OMDb timeouts are logged as warnings and retried.
+- Retry queue stale processing rows are auto-recovered.
+- Retry queue rows already enriched are auto-resolved to prevent inflated pending counts.
+
+## Upgrade Notes for Existing Deployments
+
+- Existing compose files continue to work.
+- You do not need to add every new environment variable to get the new behavior.
+- New runtime keys are auto-added to `/app/data/config/runtime.json` when missing.
+- You should still update compose over time for security hardening and documentation parity.
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
+npm --prefix server install
+npm --prefix client install
+```
+
+Run locally:
+
+```bash
+npm --prefix server run dev
+npm --prefix client run dev
+```
+
+Build frontend:
+
+```bash
+npm --prefix client run build
+```
+
+## Testing and Quality Gates
+
+Full tests:
+
+```bash
+npm test
+```
+
+Coverage:
+
+```bash
+npm run test:coverage
+```
+
+Server integration tests:
+
+```bash
+npm --prefix server run test:integration
+```
+
+Security and docs checks:
+
+```bash
+npm --prefix server run lint:security
+npm run lint:docs
+```
+
+CI-aligned run:
+
+```bash
+npm run test:ci
+```
 
 ## Troubleshooting
 
-### Policy question card is missing
+OMDb timeout warnings:
 
-- Confirm item is `awaiting_decision`.
-- Verify pending payload includes `policy_question`.
-- Use `Change` fallback if structured options are missing.
+- External OMDb latency can cause intermittent timeout warnings.
+- Confirm OMDb key validity and outbound connectivity.
+- Tune runtime values in `runtime.json` before hardcoding deployment-wide env overrides.
 
-### Notifications look stale
+`CSRF validation failed` on write actions:
 
-- Refresh once to rehydrate unread count.
-- Verify read-state endpoints are reachable.
-- Confirm auth/session has not expired.
+- Refresh the browser session and retry.
+- Ensure mutating requests are sent through the shared `@/api` client.
+- Confirm cookie settings align with HTTP vs HTTPS deployment mode.
 
-### Processing or enrichment seems stuck
+Webhook auth failures:
 
-- Check worker/AI status in `Today`.
-- Trigger manual module refresh.
-- Inspect queue and container logs for retries/timeouts.
+- Regenerate Authorization Header in Settings -> Webhooks.
+- Re-save webhook settings after encryption-key changes.
 
-### External metadata failures (OMDb/TMDB)
+## Documentation Index
 
-- Temporary upstream errors can retry automatically.
-- Validate API keys and network connectivity.
-- Investigate repeated non-transient failures in logs.
-- Optional OMDb SSL tuning env vars: `OMDB_SSL_WARN_THROTTLE_MS`, `OMDB_SSL_BLOCK_MS`, `OMDB_SSL_RECOVERY_PROBE_MS`.
+Core:
 
-### Browser COOP/OAC warnings on LAN HTTP
-
-- If you access Classifarr over plain HTTP on a private LAN IP (for example `http://192.168.x.x:21324`), browser console warnings about COOP/OAC can appear.
-- Optional env var: set `SECURITY_HEADERS_STRICT=false` to disable those headers for HTTP LAN usage.
-- Keep `SECURITY_HEADERS_STRICT=true` when running behind HTTPS (recommended default).
-
-## Documentation
-
-Core docs:
-
-- `docs/issue-262-implementation-plan.md`
-- `docs/issue-262-interface-design.md`
 - `docs/architecture/policy-engine.md`
-- `docs/presets/README.md`
+- `docs/implementation_plan_webhook_authorization_header_unmask.md`
+- `docs/implementation_plan_smart_rule_form_deprecation.md`
 
-Operational/docs references:
+Security:
+
+- `SECURITY.md`
+- `docs/SECURITY_REVIEW.md`
+- `docs/SECURITY_BENCHMARKS.md`
+- `docs/security-fixes/ROUTE-auth-audit.md`
+
+Operations:
 
 - `docs/testing/coverage.md`
 - `docs/MIGRATION_SYSTEM.md`
@@ -206,7 +684,7 @@ Operational/docs references:
 - `docs/POSTGRESQL.md`
 - `docs/nodejs-24-migration.md`
 
-Setup guides:
+Setup:
 
 - `PLEX_SETUP.md`
 - `DISCORD_SETUP.md`
@@ -217,12 +695,12 @@ Setup guides:
 
 Contributors list: `CONTRIBUTORS.md`
 
-For contributions, open an issue/PR with:
+For contribution proposals, include:
 
 1. Problem statement
 2. Reproduction details
-3. Proposed implementation scope
+3. Implementation scope
 
 ## License
 
-MIT License. See `LICENSE`.
+GPL-3.0. See `LICENSE`.

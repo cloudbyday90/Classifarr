@@ -617,7 +617,14 @@ router.post('/:id/rules', requireReadWrite, async (req, res) => {
 });
 
 // DEBUG ENDPOINT
+// Gate with NODE_ENV check - not available in production
 router.get('/:id/rules/debug-insert', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({
+      error: 'Debug endpoint not available in production'
+    });
+  }
+
   try {
     const { id } = req.params;
     const result = await db.query(
@@ -689,6 +696,138 @@ router.delete('/:id/rules/:ruleId', requireReadWrite, async (req, res) => {
     res.json({ success: true, deletedId: result.rows[0].id });
   } catch (error) {
     logger.error('Failed to delete library rule', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/libraries/{id}/rules/preview:
+ *   post:
+ *     summary: Preview which items match a set of rule conditions
+ */
+router.post('/:id/rules/preview', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let { criteria } = req.body;
+
+    if (!criteria) {
+      return res.status(400).json({ error: 'criteria is required' });
+    }
+
+    let query = 'SELECT * FROM media_server_items WHERE library_id = $1';
+    const params = [id];
+    let paramIndex = 2;
+
+    if (!Array.isArray(criteria)) {
+      criteria = [criteria];
+    }
+
+    for (const condition of criteria) {
+      const { field, operator, value } = condition;
+
+      if (!value || (Array.isArray(value) && value.length === 0)) continue;
+
+      switch (field) {
+        case 'content_type':
+          if (operator === 'is_one_of') {
+            const types = Array.isArray(value) ? value : [value];
+            query += ` AND metadata->'content_analysis'->>'type' = ANY($${paramIndex})`;
+            params.push(types);
+          } else {
+            query += ` AND metadata->'content_analysis'->>'type' = $${paramIndex}`;
+            params.push(value);
+          }
+          paramIndex++;
+          break;
+
+        case 'genres':
+          if (operator === 'contains') {
+            query += ` AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(genres) AS g WHERE LOWER(g) = LOWER($${paramIndex}))`;
+            params.push(value);
+            paramIndex++;
+          } else if (operator === 'is_one_of') {
+            const genres = Array.isArray(value) ? value : [value];
+            query += ` AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(genres) AS g WHERE LOWER(g) = ANY(SELECT LOWER(unnest($${paramIndex}::text[]))))`;
+            params.push(genres);
+            paramIndex++;
+          } else if (operator === 'not_contains') {
+            query += ` AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(genres) AS g WHERE LOWER(g) = LOWER($${paramIndex}))`;
+            params.push(value);
+            paramIndex++;
+          }
+          break;
+
+        case 'keywords':
+        case 'tags':
+          if (operator === 'contains') {
+            query += ` AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(tags) AS t WHERE LOWER(t) LIKE LOWER($${paramIndex}))`;
+            params.push(`%${value}%`);
+            paramIndex++;
+          }
+          break;
+
+        case 'title':
+          if (operator === 'contains') {
+            query += ` AND LOWER(title) LIKE LOWER($${paramIndex})`;
+            params.push(`%${value}%`);
+            paramIndex++;
+          }
+          break;
+
+        case 'year':
+          if (operator === 'equals') {
+            query += ` AND year = $${paramIndex}`;
+            params.push(parseInt(value));
+          } else if (operator === 'greater_than') {
+            query += ` AND year > $${paramIndex}`;
+            params.push(parseInt(value));
+          } else if (operator === 'less_than') {
+            query += ` AND year < $${paramIndex}`;
+            params.push(parseInt(value));
+          } else if (operator === 'between' && value.includes(',')) {
+            const [min, max] = value.split(',').map(v => parseInt(v.trim()));
+            query += ` AND year >= $${paramIndex} AND year <= $${paramIndex + 1}`;
+            params.push(min, max);
+            paramIndex++;
+          }
+          paramIndex++;
+          break;
+
+        case 'certification':
+        case 'content_rating':
+          if (operator === 'equals') {
+            query += ` AND (metadata->>'content_rating' = $${paramIndex} OR metadata->>'certification' = $${paramIndex})`;
+            params.push(value);
+          } else if (operator === 'is_one_of') {
+            const certs = Array.isArray(value) ? value : [value];
+            query += ` AND (metadata->>'content_rating' = ANY($${paramIndex}) OR metadata->>'certification' = ANY($${paramIndex}))`;
+            params.push(certs);
+          }
+          paramIndex++;
+          break;
+
+        case 'original_language':
+          if (operator === 'equals') {
+            query += ` AND metadata->>'original_language' = $${paramIndex}`;
+            params.push(value);
+            paramIndex++;
+          } else if (operator === 'is_one_of') {
+            const langs = Array.isArray(value) ? value : [value];
+            query += ` AND metadata->>'original_language' = ANY($${paramIndex})`;
+            params.push(langs);
+            paramIndex++;
+          }
+          break;
+      }
+    }
+
+    query += ' ORDER BY added_at DESC LIMIT 50';
+
+    const result = await db.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    logger.error('Failed to preview rules', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

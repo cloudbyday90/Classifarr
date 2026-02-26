@@ -5,6 +5,10 @@
  * Integration tests for OMDb service with rate limiting
  */
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
 const mockAxios = {
     get: jest.fn()
 };
@@ -33,6 +37,16 @@ jest.mock('../utils/retryUtils', () => ({
 }));
 
 const db = require('../config/database');
+const runtimeSettingsPath = path.join(os.tmpdir(), 'classifarr-omdb-integration-test-runtime.json');
+
+process.env.RUNTIME_SETTINGS_FILE = runtimeSettingsPath;
+fs.writeFileSync(runtimeSettingsPath, JSON.stringify({
+    omdb_request_timeout_ms: 15000,
+    omdb_retry_timeout_multiplier: 2,
+    omdb_max_request_timeout_ms: 30000,
+    omdb_max_retries: 2,
+    omdb_ssl_warn_throttle_ms: 900000
+}), 'utf8');
 
 const REAL_EXAMPLES = [
     { title: 'The Matrix', year: 1999, type: 'movie', imdbID: 'tt0133093', rated: 'R', genre: 'Action, Sci-Fi' },
@@ -93,6 +107,14 @@ function setupDbMock() {
 
 describe('OMDb Integration Tests', () => {
     let omdbService;
+
+    afterAll(() => {
+        try {
+            fs.unlinkSync(runtimeSettingsPath);
+        } catch {
+            // ignore temp file cleanup failures
+        }
+    });
 
     beforeAll(() => {
         setupDbMock();

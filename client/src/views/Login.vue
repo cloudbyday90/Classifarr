@@ -68,7 +68,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import axios from 'axios'
+import api from '@/api'
 import { useToast } from '@/stores/toast'
 
 const router = useRouter()
@@ -102,17 +102,9 @@ const login = async () => {
   error.value = ''
 
   try {
-    const response = await axios.post('/api/auth/login', {
-      identifier: form.value.identifier,
-      password: form.value.password
-    })
+    const response = await api.login(form.value.identifier, form.value.password)
 
     if (response.data.success) {
-      // Store the token for authenticated requests
-      localStorage.setItem('auth_token', response.data.token)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`
-
-      // Redirect to the original destination or dashboard
       const redirectTo = route.query.redirect || '/'
       router.push(redirectTo)
     }

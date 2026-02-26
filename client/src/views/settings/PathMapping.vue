@@ -163,7 +163,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/api'
 import { useToast } from '@/stores/toast'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
@@ -190,7 +190,7 @@ onMounted(async () => {
 const loadMappings = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/settings/path-mappings')
+    const response = await api.get('/settings/path-mappings')
     mappings.value = response.data
   } catch (error) {
     console.error('Failed to load path mappings:', error)
@@ -203,7 +203,7 @@ const loadMappings = async () => {
 const saveMapping = async () => {
   saving.value = true
   try {
-    await axios.post('/api/settings/path-mappings', newMapping.value)
+    await api.post('/settings/path-mappings', newMapping.value)
     toast.success('Path mapping added')
     showAddModal.value = false
     newMapping.value = { arr_path: '', local_path: '' }
@@ -222,7 +222,7 @@ const deleteMapping = async (mapping) => {
   }
 
   try {
-    await axios.delete(`/api/settings/path-mappings/${mapping.id}`)
+    await api.delete(`/settings/path-mappings/${mapping.id}`)
     toast.success('Path mapping deleted')
     await loadMappings()
   } catch (error) {
@@ -234,7 +234,7 @@ const deleteMapping = async (mapping) => {
 const verifyMapping = async (mapping) => {
   verifyingId.value = mapping.id
   try {
-    const response = await axios.post(`/api/settings/path-mappings/${mapping.id}/verify`)
+    const response = await api.post(`/settings/path-mappings/${mapping.id}/verify`)
     if (response.data.verified) {
       toast.success(`Path "${mapping.local_path}" is accessible`)
     } else {
@@ -252,7 +252,7 @@ const verifyMapping = async (mapping) => {
 const verifyAll = async () => {
   verifyingAll.value = true
   try {
-    const response = await axios.post('/api/settings/path-mappings/verify-all')
+    const response = await api.post('/settings/path-mappings/verify-all')
     const { verified, failed } = response.data.summary
     if (failed === 0) {
       toast.success(`All ${verified} path mappings verified successfully`)

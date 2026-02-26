@@ -105,7 +105,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/api'
 
 const router = useRouter()
 
@@ -153,20 +153,17 @@ const createAccount = async () => {
   error.value = ''
 
   try {
-    const response = await axios.post('/api/setup/create-admin', {
+    const response = await api.post('/setup/create-admin', {
       username: form.value.username,
       password: form.value.password,
       confirmPassword: form.value.confirmPassword
     })
 
     if (response.data.success) {
-      // Store the token for authenticated requests
-      if (response.data.token) {
-        localStorage.setItem('auth_token', response.data.token)
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`
+      if (response.data.refreshToken) {
+        sessionStorage.setItem('classifarr_refresh_token', response.data.refreshToken)
       }
 
-      // Redirect directly to dashboard - configure services in Settings
       router.push('/')
     }
   } catch (err) {

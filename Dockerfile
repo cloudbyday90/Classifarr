@@ -113,6 +113,10 @@ RUN apk add --no-cache --virtual .build-deps make gcc musl-dev \
     && cd / && rm -rf pgvector-0.8.0 pgvector.tar.gz \
     && apk del .build-deps
 
+# Remove setuid/setgid binaries for security (CIS Docker Benchmark 4.8)
+# This reduces privilege escalation attack surface
+RUN find / -perm /6000 -type f -exec chmod a-s {} \; 2>/dev/null || true
+
 # Create non-root user for security
 # Remove existing node user (UID/GID 1000) from base image to avoid conflicts
 RUN deluser --remove-home node 2>/dev/null || true && \

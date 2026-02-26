@@ -128,7 +128,7 @@ class ClassificationService {
       // Record classification activity for idle detection
       idleDetector.recordActivity();
 
-      // Parse payload - supports multiple formats (Overseerr, Plex gap analysis, Rule Builder)
+      // Parse payload - supports multiple formats (Overseerr, Plex gap analysis, legacy root-field payload)
       const { media_type, tmdbId, title, year, existingMetadata, taskId } = this.parseOverseerrPayload(overseerrPayload);
 
       logger.info(`Starting classification for ${media_type}: ${title} (TMDB: ${tmdbId || 'searching...'})`);
@@ -347,7 +347,7 @@ class ClassificationService {
     // Handle multiple payload formats:
     // 1. Overseerr webhook: has media.tmdbId and media.media_type
     // 2. Plex gap analysis: has title, tmdb_id (maybe), media.media_type
-    // 3. Rule builder: has title, tmdb_id (maybe), media_type at root
+    // 3. Legacy/manual payload: has title, tmdb_id (maybe), media_type at root
 
     // Extract media type - check multiple locations
     let media_type = payload.media?.media_type || payload.media_type || 'movie';

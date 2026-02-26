@@ -18,6 +18,19 @@
 
 <template>
   <div class="space-y-6">
+    <div v-if="!loading && !config.secret_key && config.enabled" class="p-4 bg-red-900/20 border border-red-800 rounded-lg">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">⚠️</span>
+        <div>
+          <div class="font-medium text-red-400">Webhook Security Warning</div>
+          <p class="text-sm text-red-300">
+            No secret key configured. All webhook requests will be rejected. 
+            <button @click="isEditing = true" class="underline hover:text-white">Configure now</button>
+          </p>
+        </div>
+      </div>
+    </div>
+
     <div class="flex items-center justify-between">
       <div>
         <h2 class="text-xl font-semibold mb-2">Request Manager Webhook</h2>
@@ -52,13 +65,32 @@
             <div class="flex gap-4">
               <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">2</div>
               <div>
+                <h4 class="font-medium text-white mb-1">Copy the Secret Key</h4>
+                <p class="text-sm mb-2">Generate a secret key in Classifarr (below) and copy it.</p>
+              </div>
+            </div>
+
+            <div class="flex gap-4">
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">3</div>
+              <div>
+                <h4 class="font-medium text-white mb-1">Add Authorization Header</h4>
+                <p class="text-sm mb-2">Paste the secret key into the <strong>Authorization Header</strong> field in Overseerr.</p>
+                <div class="text-xs bg-yellow-900/20 text-yellow-500 p-2 rounded-sm border border-yellow-900/30">
+                  ⚠️ Required. Webhooks will be rejected without the secret key.
+                </div>
+              </div>
+            </div>
+
+            <div class="flex gap-4">
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">4</div>
+              <div>
                 <h4 class="font-medium text-white mb-1">Add Webhook URL</h4>
                 <p class="text-sm mb-2">Copy the <strong>Webhook Endpoint</strong> from this page and paste it into the <strong>Webhook URL</strong> field in Overseerr.</p>
               </div>
             </div>
 
             <div class="flex gap-4">
-              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">3</div>
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">5</div>
               <div>
                 <h4 class="font-medium text-white mb-1">Set JSON Payload</h4>
                 <p class="text-sm mb-2">Copy the <strong>JSON Payload</strong> template from this page and paste it into the <strong>JSON Payload</strong> field in Overseerr.</p>
@@ -69,7 +101,7 @@
             </div>
 
             <div class="flex gap-4">
-              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">4</div>
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">6</div>
               <div>
                 <h4 class="font-medium text-white mb-1">Select Notification Types</h4>
                 <p class="text-sm mb-2">Check the events you want to trigger classification:</p>
@@ -82,7 +114,7 @@
             </div>
 
             <div class="flex gap-4">
-              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">5</div>
+              <div class="flex-none w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold">7</div>
               <div>
                 <h4 class="font-medium text-white mb-1">Test and Save</h4>
                 <p class="text-sm">Click <strong>Test</strong> in Overseerr to verify connectivity. You should see a success message and a new entry in the Classifarr logs. Finally, click <strong>Save</strong>.</p>
@@ -160,6 +192,12 @@
                </div>
             </div>
           </div>
+
+          <WebhookAuthorizationHeaderCard
+            :masked-secret-key="config.secret_key"
+            :auto-generate-if-missing="true"
+            @secret-updated="handleSecretUpdated"
+          />
 
           <!-- Quick Stats -->
           <div v-if="stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-700">
@@ -403,29 +441,6 @@
                 </div>
               </div>
             </Card>
-
-            <Card>
-              <h3 class="text-lg font-medium mb-4">Security</h3>
-              <div class="space-y-4">
-                <div>
-                  <label class="block text-sm font-medium mb-2">Secret Key</label>
-                  <div class="flex gap-2">
-                    <PasswordInput
-                      v-model="displaySecretKey"
-                      :readonly="true"
-                      placeholder="Optional"
-                      class="flex-1"
-                    />
-                    <Button @click="generateKey" variant="primary" size="sm" :disabled="generating">
-                      {{ config.secret_key ? 'Regenerate' : 'Generate' }}
-                    </Button>
-                  </div>
-                  <p class="text-xs text-gray-500 mt-2">
-                    Adds <code class="bg-gray-800 px-1 rounded-sm">?key=YOUR_KEY</code> to the URL
-                  </p>
-                </div>
-              </div>
-            </Card>
           </div>
         </div>
 
@@ -482,6 +497,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </template>
@@ -490,13 +506,13 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
-import { Card, Button, Toggle, PasswordInput, Spinner } from '@/components/common'
+import { Card, Button, Toggle, Spinner } from '@/components/common'
+import WebhookAuthorizationHeaderCard from '@/components/settings/WebhookAuthorizationHeaderCard.vue'
 
 const toast = useToast()
 
 const loading = ref(true)
 const loadingLogs = ref(false)
-const generating = ref(false)
 const testing = ref(false)
 const isEditing = ref(false)
 
@@ -589,8 +605,6 @@ const webhookUrl = computed(() => {
   return url
 })
 
-const displaySecretKey = computed(() => config.value.secret_key || '')
-
 const showSetupHelp = ref(false)
 
 // ... (existing code)
@@ -644,6 +658,13 @@ const loadConfig = async () => {
     const response = await api.getWebhookConfig()
     if (response.data) {
       config.value = response.data
+      if (!config.value.secret_key) {
+        const generated = await api.generateWebhookKey()
+        const fullSecret = generated.data?.secret_key
+        if (fullSecret) {
+          config.value.secret_key = `${MASKED_TOKEN_PREFIX}${fullSecret.slice(-4)}`
+        }
+      }
     }
   } catch (error) {
     console.error('Failed to load webhook config:', error)
@@ -659,26 +680,6 @@ const saveConfig = async () => {
   } catch (error) {
     console.error('Failed to save config:', error)
     toast.error('Failed to save configuration')
-  }
-}
-
-const generateKey = async () => {
-  if (config.value.secret_key) {
-    if (!confirm('Are you sure? This will invalidate the existing secret key.')) {
-      return
-    }
-  }
-
-  generating.value = true
-  try {
-    const response = await api.generateWebhookKey()
-    config.value = response.data
-    toast.success('Secret key generated successfully! Make sure to copy it.')
-  } catch (error) {
-    console.error('Failed to generate key:', error)
-    toast.error('Failed to generate secret key')
-  } finally {
-    generating.value = false
   }
 }
 
@@ -706,32 +707,8 @@ const copyUrl = async () => {
   }
 }
 
-const copySecretKey = async () => {
-  if (!config.value.secret_key) {
-    toast.error('No secret key to copy')
-    return
-  }
-  try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(config.value.secret_key)
-      toast.success('Secret key copied to clipboard')
-      return
-    }
-
-    const textArea = document.createElement('textarea')
-    textArea.value = config.value.secret_key
-    textArea.style.position = 'fixed'
-    textArea.style.left = '-9999px'
-    document.body.appendChild(textArea)
-    textArea.focus()
-    textArea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textArea)
-    toast.success('Secret key copied to clipboard')
-  } catch (error) {
-    console.error('Failed to copy secret key:', error)
-    toast.error('Failed to copy secret key')
-  }
+const handleSecretUpdated = (maskedSecretKey) => {
+  config.value.secret_key = maskedSecretKey
 }
 
 const loadStats = async () => {

@@ -1,5 +1,50 @@
 # Classifarr Release Notes
 
+## [v0.43.0-alpha] - 2026-02-26
+
+**Title: Safer automation with clearer day-to-day control**
+
+> [!IMPORTANT]
+> After upgrading, restart the container (`docker compose down && docker compose up -d --build`) and sign in again. If you access Classifarr from another host, set `CORS_ORIGIN` to your app URL.
+
+### 🎉 What You'll Notice
+
+- Webhook Authorization Header management is built directly into Webhooks settings with unmask, regenerate, copy, and auto-remask behavior.
+- API/session security is stronger with cookie + CSRF protections across write actions.
+- Queue and enrichment handling is more stable under OMDb timeouts and stale retry rows.
+
+### 📊 Quick Visual
+
+```text
+Impact Snapshot
+Security      [██████████] 100%
+Reliability   [█████████░] 90%
+Operations    [█████████░] 90%
+```
+
+### ✨ Highlights
+
+- Policy Builder is now the active workflow and legacy Smart Rule Form paths are removed.
+- Runtime settings can auto-generate in Docker at `/app/data/config/runtime.json`.
+- API key and webhook secret handling now use stronger encryption and safer reveal/update behavior.
+
+### 🔧 Reliability Improvements
+
+- OMDb timeout/retry behavior is tunable and transient timeout noise is reduced.
+- Enrichment retry processing now recovers stale rows and prevents inflated pending counts.
+- Logs/settings mutating actions now consistently use authenticated CSRF-protected client calls.
+
+### 👥 Who This Helps
+
+- **End users:** Fewer stuck queue states and clearer webhook setup.
+- **Operators/admins:** Better security defaults, cleaner logs, and better recovery behavior.
+
+### 📚 Want Technical Details?
+
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.42.8a-alpha] - 2026-02-23
 
 **Title: Fixed Embedding Model Warm-up Endpoint**

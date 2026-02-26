@@ -30,7 +30,6 @@ docker build --build-arg PGVECTOR_BUILD=avx --build-arg PGVECTOR_AVX_OPTFLAGS="-
 docker build --build-arg PGVECTOR_BUILD=avx2 --build-arg PGVECTOR_AVX2_OPTFLAGS="-mavx2" -t classifarr:avx2 .
 ```
 
-
 ## Version Compatibility
 
 PostgreSQL data directories are **version-specific**. A data directory created with PostgreSQL version X can **only** be opened by PostgreSQL version X.

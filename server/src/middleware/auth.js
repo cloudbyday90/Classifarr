@@ -18,13 +18,22 @@
 
 const authService = require('../services/auth');
 
-/**
- * Middleware to verify JWT token
- */
+function extractToken(req) {
+  if (req.cookies && req.cookies.access_token) {
+    return req.cookies.access_token;
+  }
+
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1];
+  }
+
+  return null;
+}
+
 async function authenticateToken(req, res, next) {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = extractToken(req);
 
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -38,9 +47,6 @@ async function authenticateToken(req, res, next) {
   }
 }
 
-/**
- * Middleware to check if user is admin
- */
 function requireAdmin(req, res, next) {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Admin access required' });
@@ -48,13 +54,9 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-/**
- * Optional authentication - adds user to request if token is valid, but doesn't require it
- */
 async function optionalAuth(req, res, next) {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = extractToken(req);
 
     if (token) {
       const user = await authService.verifyToken(token);

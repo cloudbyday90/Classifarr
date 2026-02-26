@@ -43,10 +43,7 @@ export default {
   methods: {
     async checkLegacyRules() {
       try {
-        const token = localStorage.getItem('auth_token');
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
-        const response = await fetch(`/api/migration/libraries/${this.libraryId}/rules`, { headers });
+        const response = await fetch(`/api/migration/libraries/${this.libraryId}/rules`);
         
         if (!response.ok) {
           console.error('Failed to check legacy rules: HTTP', response.status, response.statusText);

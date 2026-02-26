@@ -209,31 +209,20 @@ router.beforeEach(async (to, from, next) => {
       return
     }
 
-    // Check for valid authentication token
+    // Check for valid authentication using cookie-based auth
     if (!setupData.setupRequired) {
-      const token = localStorage.getItem('auth_token')
-
-      if (!token) {
-        // No token, redirect to login with original destination
-        next({ name: 'Login', query: { redirect: to.fullPath } })
-        return
-      }
-
-      // Verify token is still valid
       try {
         const authResponse = await fetch('/api/auth/me', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         })
 
         if (!authResponse.ok) {
-          // Token invalid/expired, clear it and redirect to login
-          localStorage.removeItem('auth_token')
+          sessionStorage.removeItem('classifarr_refresh_token')
           next({ name: 'Login', query: { redirect: to.fullPath } })
           return
         }
       } catch (authError) {
-        // Auth check failed, redirect to login
-        localStorage.removeItem('auth_token')
+        sessionStorage.removeItem('classifarr_refresh_token')
         next({ name: 'Login', query: { redirect: to.fullPath } })
         return
       }

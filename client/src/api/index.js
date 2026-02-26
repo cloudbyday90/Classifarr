@@ -18,47 +18,190 @@
 
 import axios from 'axios'
 
+const REFRESH_TOKEN_KEY = 'classifarr_refresh_token'
+const CSRF_COOKIE_NAME = 'classifarr_csrf_token'
+
+let refreshInProgress = null
+
+function getCookieValue(name) {
+  if (typeof document === 'undefined' || !document.cookie) {
+    return null
+  }
+
+  const encodedName = `${encodeURIComponent(name)}=`
+  const cookies = document.cookie.split(';')
+
+  for (const rawCookie of cookies) {
+    const cookie = rawCookie.trim()
+    if (cookie.startsWith(encodedName)) {
+      return decodeURIComponent(cookie.substring(encodedName.length))
+    }
+  }
+
+  return null
+}
+
+function getCsrfToken() {
+  return getCookieValue(CSRF_COOKIE_NAME)
+}
+
+function getRefreshToken() {
+  const stored = sessionStorage.getItem(REFRESH_TOKEN_KEY)
+  return stored || null
+}
+
+function setRefreshToken(token) {
+  if (token) {
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, token)
+  } else {
+    sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+  }
+}
+
 const apiClient = axios.create({
   baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 })
 
-// Add request interceptor to attach auth token
+async function refreshAccessToken() {
+  const refreshToken = getRefreshToken()
+  
+  if (!refreshToken) {
+    throw new Error('No refresh token available')
+  }
+
+  if (refreshInProgress) {
+    return refreshInProgress
+  }
+
+  refreshInProgress = (async () => {
+    try {
+      const csrfToken = getCsrfToken()
+      const response = await axios.post('/api/auth/refresh', {
+        refreshToken
+      }, {
+        withCredentials: true,
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
+      })
+
+      if (response.data.refreshToken) {
+        setRefreshToken(response.data.refreshToken)
+      }
+
+      return response
+    } catch (error) {
+      setRefreshToken(null)
+      throw error
+    } finally {
+      refreshInProgress = null
+    }
+  })()
+
+  return refreshInProgress
+}
+
 apiClient.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    const method = (config.method || 'get').toUpperCase()
+    const needsCsrfHeader = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+
+    if (needsCsrfHeader) {
+      const csrfToken = getCsrfToken()
+      if (csrfToken) {
+        config.headers = {
+          ...(config.headers || {}),
+          'X-CSRF-Token': csrfToken
+        }
+      }
     }
+
     return config
   },
   error => Promise.reject(error)
 )
 
-// Add response interceptor for error handling
 apiClient.interceptors.response.use(
   response => response,
-  error => {
-    // Handle 401 Unauthorized - session expired
-    if (error.response?.status === 401) {
-      // Clear auth token
-      localStorage.removeItem('auth_token')
+  async error => {
+    const originalRequest = error.config
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+    originalRequest._retry = true
+
+    try {
+      await refreshAccessToken()
+      return apiClient(originalRequest)
+    } catch (refreshError) {
+      setRefreshToken(null)
       
-      // Redirect to login with expired flag
       if (window.location.pathname !== '/login') {
         window.location.href = '/login?expired=true'
       }
+      
+      return Promise.reject(error)
     }
+  }
+
+  if (error.response?.status === 401) {
+    setRefreshToken(null)
     
-    console.error('API Error:', error)
-    return Promise.reject(error)
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login?expired=true'
+    }
+  }
+
+  return Promise.reject(error)
   }
 )
 
 export default {
-  // Generic HTTP methods for direct API calls
+  login(identifier, password) {
+    return apiClient.post('/auth/login', { identifier, password }).then(response => {
+      if (response.data.refreshToken) {
+        setRefreshToken(response.data.refreshToken)
+      }
+      return response
+    })
+  },
+
+  logout() {
+    const refreshToken = getRefreshToken()
+    setRefreshToken(null)
+    return apiClient.post('/auth/logout', { refreshToken })
+  },
+
+  logoutAll() {
+    setRefreshToken(null)
+    return apiClient.post('/auth/logout-all')
+  },
+
+  getMe() {
+    return apiClient.get('/auth/me')
+  },
+
+  getSessions() {
+    return apiClient.get('/auth/sessions')
+  },
+
+  revokeSession(sessionId) {
+    return apiClient.delete(`/auth/sessions/${sessionId}`)
+  },
+
+  changePassword(currentPassword, newPassword, confirmPassword) {
+    return apiClient.post('/auth/change-password', { currentPassword, newPassword, confirmPassword })
+  },
+
+  getSessionInfo() {
+    return apiClient.get('/auth/session')
+  },
+
+  clearAuth() {
+    setRefreshToken(null)
+  },
+
   get(url, config) {
     return apiClient.get(url, config)
   },
@@ -75,7 +218,6 @@ export default {
     return apiClient.delete(url, config)
   },
 
-  // General Settings (supports optional category for queue, scheduler, etc.)
   getSettings(category = null) {
     if (category) {
       return apiClient.get(`/settings/category/${category}`)
@@ -83,15 +225,12 @@ export default {
     return apiClient.get('/settings')
   },
   updateSettings(categoryOrSettings, settings = null) {
-    // Support both updateSettings(settings) and updateSettings(category, settings)
     if (settings !== null && typeof categoryOrSettings === 'string') {
       return apiClient.put(`/settings/category/${categoryOrSettings}`, settings)
     }
-    // Legacy: updateSettings(settings)
     return apiClient.put('/settings', categoryOrSettings)
   },
 
-  // Media Server
   getMediaServerConfig() {
     return apiClient.get('/media-server')
   },
@@ -107,14 +246,11 @@ export default {
   triggerIngestion() {
     return apiClient.post('/media-server/ingest')
   },
-  // Returns all media servers as an array (currently max 1 is active)
   async getMediaServers() {
     const response = await apiClient.get('/media-server')
-    // Wrap single server in array, or return empty array if none configured
     return { data: response.data ? [response.data] : [] }
   },
 
-  // Plex OAuth
   createPlexPin() {
     return apiClient.post('/plex/pin')
   },
@@ -137,7 +273,6 @@ export default {
     return apiClient.post('/plex/save-server', { name, url, token, clientIdentifier })
   },
 
-  // Jellyfin Auth
   testJellyfinConnection(serverUrl) {
     return apiClient.post('/jellyfin/test', { serverUrl })
   },
@@ -160,7 +295,6 @@ export default {
     return apiClient.post('/jellyfin/save', { serverUrl, token, serverName })
   },
 
-  // Emby Auth
   testEmbyConnection(serverUrl) {
     return apiClient.post('/emby/test', { serverUrl })
   },
@@ -174,7 +308,6 @@ export default {
     return apiClient.post('/emby/save', { serverUrl, token, serverName })
   },
 
-  // Libraries
   getLibraries() {
     return apiClient.get('/libraries')
   },
@@ -199,14 +332,8 @@ export default {
   getLibraryRules(id) {
     return apiClient.get(`/libraries/${id}/rules`)
   },
-  getLibraryRule(libraryId, ruleId) {
-    return apiClient.get(`/libraries/${libraryId}/rules/${ruleId}`)
-  },
   addLibraryRule(id, data) {
     return apiClient.post(`/libraries/${id}/rules`, data)
-  },
-  updateLibraryRule(id, ruleId, data) {
-    return apiClient.put(`/libraries/${id}/rules/${ruleId}`, data)
   },
   deleteLibraryRule(id, ruleId) {
     return apiClient.delete(`/libraries/${id}/rules/${ruleId}`)
@@ -214,41 +341,11 @@ export default {
   getRuleSuggestions(id) {
     return apiClient.get(`/libraries/${id}/rules/suggest`)
   },
-  getSmartSuggestions(id) {
-    return apiClient.get(`/libraries/${id}/rules/smart-suggest`)
-  },
-  getPatternSuggestions(libraryId, contentType) {
-    return apiClient.get(`/libraries/${libraryId}/rule-suggestions/${contentType}`)
-  },
-  getAvailablePatterns(libraryId) {
-    return apiClient.get(`/libraries/${libraryId}/available-patterns`)
-  },
   getPendingSuggestions() {
     return apiClient.get('/libraries/pending-suggestions')
   },
   dismissSuggestions(libraryId) {
     return apiClient.post(`/libraries/${libraryId}/dismiss-suggestions`)
-  },
-  refreshPatterns(libraryId) {
-    return apiClient.post(`/libraries/${libraryId}/refresh-patterns`)
-  },
-  dismissPattern(libraryId, patternType, patternValue) {
-    return apiClient.post(`/libraries/${libraryId}/dismiss-pattern`, { patternType, patternValue })
-  },
-  restorePattern(libraryId, patternType, patternValue) {
-    return apiClient.post(`/libraries/${libraryId}/restore-pattern`, { patternType, patternValue })
-  },
-  getDismissedPatterns(libraryId) {
-    return apiClient.get(`/libraries/${libraryId}/dismissed-patterns`)
-  },
-  autoGenerateRules(id) {
-    return apiClient.post(`/libraries/${id}/rules/auto-generate`)
-  },
-  autoGenerateAllRules() {
-    return apiClient.post('/libraries/auto-generate-all')
-  },
-  getLabelPresets() {
-    return apiClient.get('/libraries/label-presets/all')
   },
   getLibraryArrOptions(id) {
     return apiClient.get(`/libraries/${id}/arr-options`)
@@ -260,7 +357,6 @@ export default {
     return apiClient.post('/libraries/sync-arr-profiles')
   },
 
-  // Library Profiles (v0.38.0+)
   getLibraryProfile(libraryId) {
     return apiClient.get(`/libraries/${libraryId}/profile`)
   },
@@ -268,7 +364,6 @@ export default {
     return apiClient.post(`/libraries/${libraryId}/profile/refresh`)
   },
 
-  // Classification
   classify(data) {
     return apiClient.post('/classification/classify', data)
   },
@@ -288,31 +383,6 @@ export default {
     return apiClient.get('/classification/progress')
   },
 
-  // Rule Builder
-  startRuleBuilder(data) {
-    return apiClient.post('/rule-builder/start', data)
-  },
-  sendRuleBuilderMessage(data) {
-    return apiClient.post('/rule-builder/message', data)
-  },
-  generateRule(data) {
-    return apiClient.post('/rule-builder/generate', data)
-  },
-  testRule(data) {
-    return apiClient.post('/rule-builder/test', data)
-  },
-  previewRule(data) {
-    return apiClient.post('/rule-builder/preview', data)
-  },
-
-  getRuleStats(libraryId) {
-    return apiClient.get(`/rule-builder/stats/${libraryId}`)
-  },
-  analyzeLibrary(libraryId) {
-    return apiClient.post(`/rule-builder/analyze/${libraryId}`)
-  },
-
-  // Patterns
   getPatterns(params) {
     return apiClient.get('/patterns', { params })
   },
@@ -353,7 +423,6 @@ export default {
     return apiClient.get('/patterns/cost-summary')
   },
 
-  // Settings
   getSettings() {
     return apiClient.get('/settings')
   },
@@ -361,7 +430,6 @@ export default {
     return apiClient.put('/settings', data)
   },
 
-  // Radarr
   getRadarrConfig() {
     return apiClient.get('/settings/radarr')
   },
@@ -384,7 +452,6 @@ export default {
     return apiClient.get(`/settings/radarr/${id}/quality-profiles`)
   },
 
-  // Sonarr
   getSonarrConfig() {
     return apiClient.get('/settings/sonarr')
   },
@@ -407,7 +474,6 @@ export default {
     return apiClient.get(`/settings/sonarr/${id}/quality-profiles`)
   },
 
-  // Ollama
   getOllamaConfig() {
     return apiClient.get('/settings/ollama')
   },
@@ -421,7 +487,6 @@ export default {
     return apiClient.get('/settings/ollama/models', { params: { host, port } })
   },
 
-  // TMDB
   getTMDBConfig() {
     return apiClient.get('/settings/tmdb')
   },
@@ -429,7 +494,6 @@ export default {
     return apiClient.put('/settings/tmdb', data)
   },
 
-  // Notifications
   getNotificationConfig() {
     return apiClient.get('/settings/notifications')
   },
@@ -437,7 +501,6 @@ export default {
     return apiClient.put('/settings/notifications', data)
   },
 
-  // Tavily
   getTavilyConfig() {
     return apiClient.get('/settings/tavily')
   },
@@ -451,7 +514,6 @@ export default {
     return apiClient.post('/settings/tavily/search', data)
   },
 
-  // OMDb
   getOMDbConfig() {
     return apiClient.get('/settings/omdb')
   },
@@ -465,7 +527,6 @@ export default {
     return apiClient.post('/settings/omdb/search', data)
   },
 
-  // AI Providers
   getAIConfig() {
     return apiClient.get('/settings/ai')
   },
@@ -503,7 +564,6 @@ export default {
     return apiClient.post('/settings/ai/reset-usage')
   },
 
-  // Webhook
   getWebhookConfig() {
     return apiClient.get('/settings/webhook')
   },
@@ -512,6 +572,9 @@ export default {
   },
   generateWebhookKey() {
     return apiClient.post('/settings/webhook/generate-key')
+  },
+  getWebhookSecret() {
+    return apiClient.get('/settings/webhook/secret')
   },
   getWebhookUrl() {
     return apiClient.get('/settings/webhook/url')
@@ -526,7 +589,6 @@ export default {
     return apiClient.post('/settings/webhook/test')
   },
 
-  // Queue
   getQueueStats() {
     return apiClient.get('/queue/stats')
   },
@@ -540,7 +602,6 @@ export default {
     return apiClient.post(`/queue/task/${taskId}/cancel`)
   },
 
-  // Multi-Request Manager
   getWebhookConfigs() {
     return apiClient.get('/settings/webhook/configs')
   },
@@ -550,7 +611,7 @@ export default {
   createWebhookConfig(config) {
     return apiClient.post('/settings/webhook/configs', config)
   },
-  updateWebhookConfig(id, config) {
+  updateWebhookSourceConfig(id, config) {
     return apiClient.put(`/settings/webhook/configs/${id}`, config)
   },
   deleteWebhookConfig(id) {
@@ -560,7 +621,6 @@ export default {
     return apiClient.post(`/settings/webhook/configs/${id}/primary`)
   },
 
-  // Manual Requests
   searchTMDB(query, type = 'multi') {
     return apiClient.get('/requests/search', { params: { q: query, type } })
   },
@@ -571,7 +631,6 @@ export default {
     return apiClient.get('/requests/recent', { params: { limit } })
   },
 
-  // In-app Notifications
   getNotifications(params = {}) {
     return apiClient.get('/notifications', { params })
   },
@@ -597,7 +656,6 @@ export default {
     return apiClient.post('/notifications/clear-read')
   },
 
-  // System
   getSystemHealth() {
     return apiClient.get('/system/health')
   },
@@ -605,7 +663,6 @@ export default {
     return apiClient.get('/system/status')
   },
 
-  // Statistics
   getDetailedStats() {
     return apiClient.get('/stats/detailed')
   },
@@ -613,7 +670,6 @@ export default {
     return apiClient.get('/stats/daily', { params: { days } })
   },
 
-  // Scheduler
   getScheduledTasks() {
     return apiClient.get('/scheduler')
   },
@@ -630,7 +686,6 @@ export default {
     return apiClient.post(`/scheduler/${id}/run`)
   },
 
-  // Backup & Restore
   createBackup(options) {
     return apiClient.post('/backup/export', options)
   },
@@ -650,7 +705,6 @@ export default {
     return apiClient.post('/backup/preview', { filename, password })
   },
 
-  // Queue Settings
   getQueueSettings() {
     return apiClient.get('/settings/category/queue')
   },
@@ -658,10 +712,6 @@ export default {
     return apiClient.put('/settings/category/queue', settings)
   },
 
-  // Queue Management
-  getQueueStats() {
-    return apiClient.get('/queue/stats').then(r => r.data)
-  },
   getQueuePending(limit = 20) {
     return apiClient.get(`/queue/pending?limit=${limit}`).then(r => r.data)
   },
@@ -696,7 +746,6 @@ export default {
     return apiClient.post('/queue/clear-and-resync')
   },
 
-  // Live Dashboard
   getLiveStats() {
     return apiClient.get('/queue/live-stats')
   },
@@ -709,14 +758,10 @@ export default {
   resolvePendingClassification(classificationId, payload) {
     return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
   },
-  getPendingTasks(limit = 5) {
-    return apiClient.get(`/queue/pending?limit=${limit}`)
-  },
   getOllamaStatus() {
     return apiClient.get('/queue/ollama-status')
   },
 
-  // Enrichment Retry Queue
   getRetryStats() {
     return apiClient.get('/queue/retry-stats')
   },
@@ -727,7 +772,6 @@ export default {
     return apiClient.post('/queue/retry-backfill')
   },
 
-  // Batch Reclassification
   createReclassificationBatch(items, pauseOnError = true) {
     return apiClient.post('/reclassification/batch', { items, pauseOnError })
   },
@@ -762,7 +806,6 @@ export default {
     return apiClient.get(`/reclassification/batches?limit=${limit}`)
   },
 
-  // Tuning Suggestions
   getSuggestions(status = 'pending', policyId = null) {
     const params = {}
     if (status) params.status = status
@@ -785,9 +828,6 @@ export default {
     return apiClient.get(`/suggestions/policy/${policyId}/summary`)
   },
 
-  // API Keys (Security Settings)
-  // NOTE: Full keys can be viewed again by authenticated users
-  // This is intentional - users should be able to retrieve keys they may have lost
   getApiKeys() {
     return apiClient.get('/keys')
   },
@@ -801,6 +841,6 @@ export default {
     return apiClient.delete(`/keys/${id}`)
   },
   revealApiKey(id) {
-    return apiClient.get(`/keys/${id}/reveal`)
+    return apiClient.get(`/keys/${id}`)
   },
 }

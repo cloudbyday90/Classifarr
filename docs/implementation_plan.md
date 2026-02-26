@@ -286,4 +286,3 @@ System Preset Card
 | `client/package.json` | MODIFY | Bump version to 0.38.0 |
 | `server/package.json` | MODIFY | Bump version to 0.38.0 |
 | `client/src/components/layout/Sidebar.vue` | MODIFY | Update version display |
-

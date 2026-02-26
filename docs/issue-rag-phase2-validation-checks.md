@@ -162,4 +162,3 @@ LIMIT 20;"
   - Queries: **1**, **2**, **3**
 - Validate index presence and query-plan evidence:
   - Queries: **4**, **5**
-

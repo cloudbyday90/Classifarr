@@ -133,7 +133,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/api'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 
 const apiKey = ref('')
@@ -154,7 +154,7 @@ const connectionStatus = ref({
 
 onMounted(async () => {
   try {
-    const response = await axios.get('/api/settings/tmdb')
+    const response = await api.get('/settings/tmdb')
     if (response.data) {
       apiKey.value = response.data.api_key || ''
       language.value = response.data.language || 'en-US'
@@ -178,7 +178,7 @@ const testConnection = async () => {
   loading.value = true
   connectionStatus.value = { status: 'testing' }
   try {
-    const response = await axios.post('/api/settings/tmdb/test', {
+    const response = await api.post('/settings/tmdb/test', {
       api_key: apiKey.value,
     })
     
@@ -208,7 +208,7 @@ const saveConfig = async () => {
   saving.value = true
   connectionStatus.value.status = 'idle'
   try {
-    await axios.put('/api/settings/tmdb', {
+    await api.put('/settings/tmdb', {
       api_key: apiKey.value,
       language: language.value,
     })

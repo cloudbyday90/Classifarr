@@ -48,7 +48,9 @@ describe('API Key Authentication Middleware', () => {
     req = {
       headers: {},
       ip: '127.0.0.1',
-      connection: { remoteAddress: '127.0.0.1' }
+      connection: { remoteAddress: '127.0.0.1' },
+      originalUrl: '/',
+      url: '/'
     };
     
     res = {
@@ -71,12 +73,18 @@ describe('API Key Authentication Middleware', () => {
       req.headers['x-api-key'] = 'clf_validkey123456789012345678901';
       apiKeyService.validateApiKey.mockResolvedValue(mockValidKey);
       apiKeyService.updateLastUsed.mockResolvedValue(true);
+      apiKeyService.logAudit.mockResolvedValue(true);
 
       await authenticateApiKey(req, res, next);
 
       expect(apiKeyService.validateApiKey).toHaveBeenCalledWith('clf_validkey123456789012345678901');
       expect(req.apiKey).toEqual(mockValidKey);
       expect(apiKeyService.updateLastUsed).toHaveBeenCalledWith(1, '127.0.0.1');
+      expect(apiKeyService.logAudit).toHaveBeenCalledWith(1, 'used', expect.objectContaining({
+        endpoint: '/',
+        ipAddress: '127.0.0.1',
+        userAgent: undefined
+      }));
       expect(next).toHaveBeenCalled();
       expect(res.status).not.toHaveBeenCalled();
     });
@@ -133,6 +141,7 @@ describe('API Key Authentication Middleware', () => {
       req.headers['x-api-key'] = 'clf_validkey123456789012345678901';
       apiKeyService.validateApiKey.mockResolvedValue(mockValidKey);
       apiKeyService.updateLastUsed.mockRejectedValue(new Error('Update failed'));
+      apiKeyService.logAudit.mockResolvedValue(true);
 
       await authenticateApiKey(req, res, next);
 
@@ -154,6 +163,7 @@ describe('API Key Authentication Middleware', () => {
       req.headers['x-api-key'] = 'clf_validkey123456789012345678901';
       apiKeyService.validateApiKey.mockResolvedValue(mockValidKey);
       apiKeyService.updateLastUsed.mockResolvedValue(true);
+      apiKeyService.logAudit.mockResolvedValue(true);
 
       await authenticateApiKey(req, res, next);
 
@@ -174,6 +184,7 @@ describe('API Key Authentication Middleware', () => {
       req.headers['x-api-key'] = 'clf_validkey123456789012345678901';
       apiKeyService.validateApiKey.mockResolvedValue(mockValidKey);
       apiKeyService.updateLastUsed.mockResolvedValue(true);
+      apiKeyService.logAudit.mockResolvedValue(true);
 
       await authenticateTokenOrApiKey(req, res, next);
 

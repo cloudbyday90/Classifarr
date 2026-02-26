@@ -19,10 +19,14 @@
 const apiKeyService = require('../services/apiKeyService');
 const authService = require('../services/auth');
 
-/**
- * Middleware to authenticate API key from X-API-Key header
- * Adds apiKey object to request if valid
- */
+const WEBHOOK_ENDPOINTS = [
+  '/api/webhook',
+];
+
+function isWebhookEndpoint(path) {
+  return WEBHOOK_ENDPOINTS.some(ep => path.startsWith(ep));
+}
+
 async function authenticateApiKey(req, res, next) {
   try {
     const apiKey = req.headers['x-api-key'];
@@ -37,22 +41,22 @@ async function authenticateApiKey(req, res, next) {
       return res.status(401).json({ error: 'Invalid or expired API key' });
     }
     
-    // Get client IP address
     const ip = req.ip || req.connection.remoteAddress;
+    const endpoint = req.originalUrl || req.url;
+    const userAgent = req.headers['user-agent'];
     
-    // Update last used timestamp and IP (non-blocking)
-    // Track consecutive failures to detect persistent issues
     apiKeyService.updateLastUsed(validKey.id, ip).catch(err => {
       console.error('Error updating API key last used for key %s: %s', validKey.id, err.message);
-      
-      // Log additional warning if this appears to be a persistent issue
-      if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
-        console.warn('Database connection issue detected while tracking API key usage. ' +
-                     'Key %s usage tracking may be incomplete.', validKey.id);
-      }
     });
     
-    // Attach API key info to request
+    apiKeyService.logAudit(validKey.id, 'used', {
+      endpoint,
+      ipAddress: ip,
+      userAgent
+    }).catch(err => {
+      console.error('Error logging API key audit:', err.message);
+    });
+    
     req.apiKey = validKey;
     
     next();
@@ -62,22 +66,22 @@ async function authenticateApiKey(req, res, next) {
   }
 }
 
-/**
- * Middleware to check for either JWT token or API key
- * Allows both authentication methods
- */
 async function authenticateTokenOrApiKey(req, res, next) {
-  // Check for API key first
   const apiKey = req.headers['x-api-key'];
   
   if (apiKey) {
     return authenticateApiKey(req, res, next);
   }
   
-  // Fall back to JWT authentication
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    let token = null;
+    
+    if (req.cookies && req.cookies.access_token) {
+      token = req.cookies.access_token;
+    } else {
+      const authHeader = req.headers['authorization'];
+      token = authHeader && authHeader.split(' ')[1];
+    }
     
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -91,17 +95,42 @@ async function authenticateTokenOrApiKey(req, res, next) {
   }
 }
 
-/**
- * Middleware to require read-write permissions
- * Must be used after authenticateApiKey or authenticateTokenOrApiKey
- */
 function requireReadWrite(req, res, next) {
-  // If authenticated via API key, check permissions
-  if (req.apiKey && req.apiKey.permissions === 'read_only') {
-    return res.status(403).json({ error: 'This endpoint requires read-write permissions' });
+  if (req.apiKey) {
+    if (req.apiKey.permissions === 'read_only') {
+      return res.status(403).json({ error: 'This endpoint requires read-write permissions' });
+    }
+    if (req.apiKey.permissions === 'webhook_only') {
+      return res.status(403).json({ error: 'This endpoint requires read-write permissions. Webhook-only keys cannot access this endpoint.' });
+    }
   }
   
-  // If authenticated via JWT, allow (users have full access)
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  if (req.apiKey) {
+    if (req.apiKey.permissions !== 'admin') {
+      return res.status(403).json({ error: 'This endpoint requires admin permissions' });
+    }
+  }
+  
+  if (req.user) {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+  }
+  
+  next();
+}
+
+function requireWebhookOrAdmin(req, res, next) {
+  if (req.apiKey) {
+    if (req.apiKey.permissions === 'webhook_only' && !isWebhookEndpoint(req.originalUrl || req.url)) {
+      return res.status(403).json({ error: 'Webhook-only keys can only access webhook endpoints' });
+    }
+  }
+  
   next();
 }
 
@@ -109,4 +138,6 @@ module.exports = {
   authenticateApiKey,
   authenticateTokenOrApiKey,
   requireReadWrite,
+  requireAdmin,
+  requireWebhookOrAdmin,
 };

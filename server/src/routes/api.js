@@ -17,11 +17,11 @@
  */
 
 const express = require('express');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const webhookRouter = require('./webhook');
 const mediaServerRouter = require('./mediaServer');
 const librariesRouter = require('./libraries');
 const classificationRouter = require('./classification');
-const ruleBuilderRouter = require('./ruleBuilder');
 const settingsRouter = require('./settings');
 const logsRouter = require('./logs');
 const mediaSyncRouter = require('./mediaSync');
@@ -54,39 +54,45 @@ const notificationsRouter = require('./notifications');
 const router = express.Router();
 
 // Mount all route modules
+// Public routes (no auth)
 router.use('/webhook', webhookRouter);
-router.use('/media-server', mediaServerRouter);
-router.use('/libraries', librariesRouter);
-router.use('/classification', classificationRouter);
-router.use('/rule-builder', ruleBuilderRouter);
-router.use('/settings', settingsRouter);
-router.use('/logs', logsRouter);
-router.use('/media-sync', mediaSyncRouter);
-router.use('/clarifications', clarificationRouter);
 router.use('/plex', plexOAuthRouter);
 router.use('/jellyfin', jellyfinAuthRouter);
 router.use('/emby', embyAuthRouter);
+
+// Routes with internal auth
+router.use('/libraries', librariesRouter);
+router.use('/logs', logsRouter);
+router.use('/media-sync', mediaSyncRouter);
 router.use('/queue', queueRouter);
-router.use('/requests', requestsRouter);
 router.use('/stats', statsRouter);
-router.use('/scheduler', schedulerRouter);
 router.use('/backup', backupRouter);
-router.use('/mappings', mappingsRouter);
-router.use('/reclassification', reclassificationRouter);
-router.use('/settings/path-mappings', pathMappingsRouter);
-router.use('/confidence', confidenceRouter);
-router.use('/rag', ragRouter);
-router.use('/patterns', patternsRouter);
-router.use('/feedback', feedbackRouter);
-router.use('/prompts', promptsRouter);
-router.use('/policies', policiesRouter);
-router.use('/presets', presetsRouter);
-router.use('/suggestions', suggestionsRouter);
-router.use('/migration', migrationRouter);
-router.use('/rating-normalization', ratingNormalizationRouter);
-router.use('/sync', syncRouter);
-router.use('/keys', apiKeysRouter); // API key management
-router.use('/notifications', notificationsRouter);
+
+// Tier 1: Admin-Only Routes
+router.use('/media-server', authenticateToken, requireAdmin, mediaServerRouter);
+router.use('/classification', authenticateToken, requireAdmin, classificationRouter);
+router.use('/settings', authenticateToken, requireAdmin, settingsRouter);
+router.use('/reclassification', authenticateToken, requireAdmin, reclassificationRouter);
+router.use('/policies', authenticateToken, requireAdmin, policiesRouter);
+router.use('/mappings', authenticateToken, requireAdmin, mappingsRouter);
+router.use('/confidence', authenticateToken, requireAdmin, confidenceRouter);
+router.use('/rag', authenticateToken, requireAdmin, ragRouter);
+router.use('/patterns', authenticateToken, requireAdmin, patternsRouter);
+router.use('/scheduler', authenticateToken, requireAdmin, schedulerRouter);
+router.use('/settings/path-mappings', authenticateToken, requireAdmin, pathMappingsRouter);
+
+// Tier 2: Authenticated User Routes
+router.use('/clarifications', authenticateToken, clarificationRouter);
+router.use('/requests', authenticateToken, requestsRouter);
+router.use('/feedback', authenticateToken, feedbackRouter);
+router.use('/prompts', authenticateToken, promptsRouter);
+router.use('/presets', authenticateToken, presetsRouter);
+router.use('/suggestions', authenticateToken, suggestionsRouter);
+router.use('/migration', authenticateToken, migrationRouter);
+router.use('/rating-normalization', authenticateToken, ratingNormalizationRouter);
+router.use('/sync', authenticateToken, syncRouter);
+router.use('/keys', authenticateToken, requireAdmin, apiKeysRouter);
+router.use('/notifications', authenticateToken, notificationsRouter);
 
 // Root API endpoint
 router.get('/', (req, res) => {
@@ -99,7 +105,6 @@ router.get('/', (req, res) => {
       mediaServer: '/api/media-server',
       libraries: '/api/libraries',
       classification: '/api/classification',
-      ruleBuilder: '/api/rule-builder',
       settings: '/api/settings',
       logs: '/api/logs',
       mediaSync: '/api/media-sync',

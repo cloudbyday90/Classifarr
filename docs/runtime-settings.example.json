@@ -1,0 +1,10 @@
+{
+  "force_secure_cookies": false,
+  "csrf_protection": true,
+  "cors_origin": "",
+  "omdb_request_timeout_ms": 30000,
+  "omdb_retry_timeout_multiplier": 2,
+  "omdb_max_request_timeout_ms": 60000,
+  "omdb_max_retries": 3,
+  "omdb_ssl_warn_throttle_ms": 900000
+}

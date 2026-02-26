@@ -116,9 +116,7 @@ export default {
     };
 
     const loadOverview = async () => {
-      const response = await fetch('/api/stats/overview', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-      });
+      const response = await fetch('/api/stats/overview');
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           console.error('Authentication failed. Please log in again.');
@@ -130,9 +128,7 @@ export default {
     };
 
     const loadPolicies = async () => {
-      const response = await fetch('/api/stats/policies', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-      });
+      const response = await fetch('/api/stats/policies');
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           console.error('Authentication failed. Please log in again.');
@@ -144,9 +140,7 @@ export default {
     };
 
     const loadLiveFeed = async () => {
-      const response = await fetch('/api/stats/live-feed?limit=20', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-      });
+      const response = await fetch('/api/stats/live-feed?limit=20');
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           console.error('Authentication failed. Please log in again.');
@@ -158,9 +152,7 @@ export default {
     };
 
     const loadAlerts = async () => {
-      const response = await fetch('/api/stats/alerts', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-      });
+      const response = await fetch('/api/stats/alerts');
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           console.error('Authentication failed. Please log in again.');

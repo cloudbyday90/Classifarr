@@ -100,6 +100,8 @@
 </template>
 
 <script>
+import api from '@/api';
+
 export default {
   name: 'MigrationWizard',
   props: {
@@ -136,19 +138,11 @@ export default {
     async loadRules() {
       this.loading = true;
       try {
-        const token = localStorage.getItem('auth_token');
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
-        const response = await fetch(`/api/migration/libraries/${this.library.library_id}/rules`, { headers });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to load rules: ${response.status} ${response.statusText}`);
-        }
-        
-        this.rules = await response.json();
+        const response = await api.get(`/migration/libraries/${this.library.library_id}/rules`);
+        this.rules = response.data;
       } catch (error) {
         console.error('Failed to load rules:', error);
-        this.showNotification('error', 'Failed to load rules. Please try again.');
+        this.showNotification('error', error.response?.data?.error || 'Failed to load rules. Please try again.');
       } finally {
         this.loading = false;
       }
@@ -156,16 +150,8 @@ export default {
     async analyzeRule(rule) {
       this.analyzing = rule.id;
       try {
-        const token = localStorage.getItem('auth_token');
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
-        const response = await fetch(`/api/migration/rules/${rule.id}/analyze`, { headers });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to analyze rule: ${response.status} ${response.statusText}`);
-        }
-        
-        const analysis = await response.json();
+        const response = await api.get(`/migration/rules/${rule.id}/analyze`);
+        const analysis = response.data;
         
         this.analyses = { ...this.analyses, [rule.id]: analysis };
         
@@ -175,7 +161,7 @@ export default {
         }
       } catch (error) {
         console.error('Failed to analyze rule:', error);
-        this.showNotification('error', 'Failed to analyze rule. Please try again.');
+        this.showNotification('error', error.response?.data?.error || 'Failed to analyze rule. Please try again.');
       } finally {
         this.analyzing = null;
       }
@@ -186,36 +172,24 @@ export default {
     async migrateRule(ruleId, suggestion) {
       this.migrating = ruleId;
       try {
-        const token = localStorage.getItem('auth_token');
-        const headers = {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        };
-
-        const response = await fetch(`/api/migration/rules/${ruleId}/migrate`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ migrationChoice: suggestion }),
+        await api.post(`/migration/rules/${ruleId}/migrate`, {
+          migrationChoice: suggestion,
         });
 
-        if (response.ok) {
-          // Remove from selectedSuggestions
-          const { [ruleId]: _, ...rest } = this.selectedSuggestions;
-          this.selectedSuggestions = rest;
-          
-          // Mark rule as migrated
-          const ruleIndex = this.rules.findIndex(r => r.id === ruleId);
-          if (ruleIndex !== -1) {
-            this.rules[ruleIndex].migrated_at = new Date().toISOString();
-          }
-          
-          this.$emit('migrated');
-        } else {
-          throw new Error('Migration failed');
+        // Remove from selectedSuggestions
+        const { [ruleId]: _, ...rest } = this.selectedSuggestions;
+        this.selectedSuggestions = rest;
+
+        // Mark rule as migrated
+        const ruleIndex = this.rules.findIndex(r => r.id === ruleId);
+        if (ruleIndex !== -1) {
+          this.rules[ruleIndex].migrated_at = new Date().toISOString();
         }
+
+        this.$emit('migrated');
       } catch (error) {
         console.error('Failed to migrate rule:', error);
-        this.showNotification('error', 'Migration failed. Please try again.');
+        this.showNotification('error', error.response?.data?.error || 'Migration failed. Please try again.');
       } finally {
         this.migrating = null;
       }

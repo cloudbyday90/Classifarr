@@ -43,7 +43,7 @@ class SchedulerService {
 
         // DISABLED: Auto-learn rules - feature removed as it creates duplicates
         // and makes assumptions that don't work for diverse library naming conventions.
-        // Users should create rules manually via the Smart Rule Builder.
+        // Users should manage classification behavior via Policies, Presets, and Tuning.
         // this.schedule('auto-learn-rules', '*/30 * * * *', () => this.runAutoLearnRules());
         // setTimeout(() => this.runAutoLearnRules(), 120000);
 

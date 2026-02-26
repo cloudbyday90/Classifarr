@@ -54,7 +54,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/api'
 
 const settings = ref({
   app_name: 'Classifarr',
@@ -66,7 +66,7 @@ const status = ref(null)
 
 onMounted(async () => {
   try {
-    const response = await axios.get('/api/settings')
+    const response = await api.get('/settings')
     if (response.data) {
       settings.value = {
         app_name: response.data.app_name || 'Classifarr',
@@ -82,7 +82,7 @@ const saveSettings = async () => {
   saving.value = true
   status.value = null
   try {
-    await axios.put('/api/settings', settings.value)
+    await api.put('/settings', settings.value)
     status.value = { type: 'success', message: 'Settings saved successfully!' }
   } catch (error) {
     status.value = { type: 'error', message: `Failed to save: ${error.message}` }

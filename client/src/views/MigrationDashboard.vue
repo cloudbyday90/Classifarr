@@ -93,6 +93,7 @@
 <script>
 import MigrationLibraryCard from '@/components/migration/MigrationLibraryCard.vue';
 import MigrationWizard from '@/components/migration/MigrationWizard.vue';
+import api from '@/api';
 
 export default {
   name: 'MigrationDashboard',
@@ -131,24 +132,13 @@ export default {
     async loadData() {
       this.loading = true;
       try {
-        const token = localStorage.getItem('auth_token');
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
-        const [statusRes, librariesRes] = await Promise.all([
-          fetch('/api/migration/status', { headers }),
-          fetch('/api/migration/libraries', { headers }),
+        const [statusResponse, librariesResponse] = await Promise.all([
+          api.get('/migration/status'),
+          api.get('/migration/libraries'),
         ]);
 
-        if (!statusRes.ok) {
-          throw new Error(`Failed to fetch migration status: ${statusRes.status} ${statusRes.statusText}`);
-        }
-
-        if (!librariesRes.ok) {
-          throw new Error(`Failed to fetch migration libraries: ${librariesRes.status} ${librariesRes.statusText}`);
-        }
-
-        this.migrationStatus = await statusRes.json();
-        this.librariesWithRules = await librariesRes.json();
+        this.migrationStatus = statusResponse.data;
+        this.librariesWithRules = librariesResponse.data;
       } catch (error) {
         console.error('Failed to load migration data:', error);
         this.showNotification('error', 'Failed to load migration data. Please try again.');
@@ -175,32 +165,10 @@ export default {
     },
     async performMigration(library) {
       try {
-        const token = localStorage.getItem('auth_token');
-        const headers = {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        };
-
-        const response = await fetch(`/api/migration/libraries/${library.library_id}/migrate-all`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ autoSuggest: true }),
+        const response = await api.post(`/migration/libraries/${library.library_id}/migrate-all`, {
+          autoSuggest: true,
         });
-
-        if (!response.ok) {
-          let errorMessage = 'Migration request failed.';
-          try {
-            const errorBody = await response.json();
-            if (errorBody && errorBody.error) {
-              errorMessage = errorBody.error;
-            }
-          } catch (_) {
-            // Ignore JSON parse errors
-          }
-          throw new Error(errorMessage);
-        }
-
-        const results = await response.json();
+        const results = response.data;
         const successCount = results.filter(r => r.migrated).length;
         
         // Show success notification

@@ -85,6 +85,10 @@ Keep technical details (migrations, internals, test matrices) in `CHANGELOG.md`.
 Before committing, run these checks to ensure CI will pass:
 
 ```bash
+# Check for dependency vulnerabilities
+npm --prefix server audit
+npm --prefix client audit
+
 # Run server tests
 npm --prefix server test
 
@@ -99,6 +103,19 @@ npm run check-copyright
 
 # Optional but recommended: run full CI script locally
 npm run test:ci
+```
+
+If `npm audit` finds vulnerabilities:
+```bash
+# Review vulnerabilities and assess risk
+npm audit
+
+# Fix safe updates (patch/minor versions)
+npm audit fix
+
+# For major version updates, review breaking changes first
+npm outdated
+# Then update specific packages after reviewing migration guides
 ```
 
 If copyright check fails, fix headers:

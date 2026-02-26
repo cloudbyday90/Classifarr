@@ -272,4 +272,3 @@ You're responsible for renewing certificates:
 5. **Protect private keys** - never share or commit them to version control
 6. **Use mTLS** for highly sensitive deployments
 7. **Monitor certificate expiration** dates
-

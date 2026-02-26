@@ -32,7 +32,7 @@ const router = express.Router();
  */
 router.post('/', async (req, res) => {
     try {
-        const feedbackData = req.body;
+        const feedbackData = { ...req.body, userId: req.user.id };
 
         // Validate required fields
         if (!feedbackData.tmdb_id || !feedbackData.selected_library_id || !feedbackData.selected_policy_id) {
@@ -210,19 +210,10 @@ router.get('/policies/:id/stats', async (req, res) => {
 router.post('/suggestions/:id/apply', async (req, res) => {
     try {
         const suggestionId = parseInt(req.params.id);
-        const rawUserId = req.body.userId;
+        const userId = req.user.id;
 
         if (isNaN(suggestionId)) {
             return res.status(400).json({ error: 'Invalid suggestion ID' });
-        }
-
-        if (rawUserId === undefined || rawUserId === null) {
-            return res.status(401).json({ error: 'Authentication required: userId is missing' });
-        }
-
-        const userId = parseInt(rawUserId);
-        if (isNaN(userId)) {
-            return res.status(400).json({ error: 'Invalid user ID' });
         }
 
         const result = await feedbackAnalysis.applySuggestion(suggestionId, userId);
@@ -251,20 +242,11 @@ router.post('/suggestions/:id/apply', async (req, res) => {
 router.post('/suggestions/:id/reject', async (req, res) => {
     try {
         const suggestionId = parseInt(req.params.id);
-        const rawUserId = req.body.userId;
+        const userId = req.user.id;
         const reason = req.body.reason || 'Not applicable';
 
         if (isNaN(suggestionId)) {
             return res.status(400).json({ error: 'Invalid suggestion ID' });
-        }
-
-        if (rawUserId === undefined || rawUserId === null) {
-            return res.status(401).json({ error: 'Authentication required: userId is missing' });
-        }
-
-        const userId = parseInt(rawUserId);
-        if (isNaN(userId)) {
-            return res.status(400).json({ error: 'Invalid user ID' });
         }
 
         const result = await feedbackAnalysis.rejectSuggestion(suggestionId, userId, reason);

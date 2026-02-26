@@ -34,6 +34,7 @@ const embeddingRouter = require('../services/embeddingRouter');
 const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
 const startupService = require('../services/startupService');
 const pathTestService = require('../services/pathTestService');
+const runtimeSettings = require('../config/runtimeSettings');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { createLogger } = require('../utils/logger');
 const {
@@ -135,6 +136,8 @@ router.put('/', async (req, res) => {
         [key, value]
       );
     }
+
+    await runtimeSettings.refreshFromDatabase();
 
     res.json({ success: true });
   } catch (error) {
@@ -242,6 +245,8 @@ router.put('/category/:name', async (req, res) => {
         [fullKey, serializedValue]
       );
     }
+
+    await runtimeSettings.refreshFromDatabase();
 
     res.json({ success: true, category, updated: Object.keys(settings).length });
   } catch (error) {
@@ -1778,6 +1783,16 @@ router.post('/tavily/search', async (req, res) => {
 // ============================================
 
 const webhookService = require('../services/webhook');
+const WEBHOOK_MASK_CHAR = '•';
+
+const isMaskedWebhookSecret = (secret) => {
+  if (!secret || typeof secret !== 'string') {
+    return false;
+  }
+
+  // Accept both standard masked token format and legacy/custom masked variants.
+  return isMaskedToken(secret) || secret.includes(WEBHOOK_MASK_CHAR);
+};
 
 /**
  * @swagger
@@ -1788,9 +1803,12 @@ const webhookService = require('../services/webhook');
 router.get('/webhook', async (req, res) => {
   try {
     const config = await webhookService.getConfig();
+    const fullSecret = await webhookService.getFullSecret();
 
     // Mask secret key for security
-    if (config.secret_key) {
+    if (fullSecret) {
+      config.secret_key = maskToken(fullSecret);
+    } else if (config.secret_key) {
       config.secret_key = maskToken(config.secret_key);
     }
 
@@ -1808,20 +1826,25 @@ router.get('/webhook', async (req, res) => {
  */
 router.put('/webhook', async (req, res) => {
   try {
-    const config = req.body;
-
-    // Get existing config to preserve secret key if masked value is sent
-    const existingConfig = await webhookService.getConfig();
+    const config = { ...req.body };
 
     // Use existing secret key if the provided one is masked
-    if (config.secret_key && isMaskedToken(config.secret_key)) {
-      config.secret_key = existingConfig.secret_key;
+    if (config.secret_key && isMaskedWebhookSecret(config.secret_key)) {
+      const fullSecret = await webhookService.getFullSecret();
+      if (fullSecret) {
+        config.secret_key = fullSecret;
+      } else {
+        delete config.secret_key;
+      }
     }
 
     const result = await webhookService.updateConfig(config);
+    const fullSecret = await webhookService.getFullSecret();
 
     // Mask secret key in response
-    if (result.secret_key) {
+    if (fullSecret) {
+      result.secret_key = maskToken(fullSecret);
+    } else if (result.secret_key) {
       result.secret_key = maskToken(result.secret_key);
     }
 
@@ -1840,13 +1863,33 @@ router.put('/webhook', async (req, res) => {
 router.post('/webhook/generate-key', async (req, res) => {
   try {
     const secretKey = webhookService.generateSecretKey();
-
     const config = await webhookService.updateConfig({ secret_key: secretKey });
 
     res.json({
       ...config,
-      secret_key: secretKey, // Return full key on generation
+      secret_key: secretKey,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/settings/webhook/secret:
+ *   get:
+ *     summary: Reveal the full webhook secret key
+ *     description: Returns the full decrypted webhook secret for authenticated admin users
+ */
+router.get('/webhook/secret', async (req, res) => {
+  try {
+    const secretKey = await webhookService.getFullSecret();
+    
+    if (!secretKey) {
+      return res.status(404).json({ error: 'No webhook secret configured' });
+    }
+    
+    res.json({ secret_key: secretKey });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1860,12 +1903,12 @@ router.post('/webhook/generate-key', async (req, res) => {
  */
 router.get('/webhook/url', async (req, res) => {
   try {
-    const config = await webhookService.getConfig();
+    const secretKey = await webhookService.getFullSecret();
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     let url = `${baseUrl}/api/webhook/overseerr`;
-    if (config.secret_key) {
-      url += `?key=${config.secret_key}`;
+    if (secretKey) {
+      url += `?key=${encodeURIComponent(secretKey)}`;
     }
 
     res.json({ url });
@@ -1920,7 +1963,7 @@ router.get('/webhook/stats', async (req, res) => {
  */
 router.post('/webhook/test', async (req, res) => {
   try {
-    const config = await webhookService.getConfig();
+    const secretKey = await webhookService.getFullSecret();
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     const testPayload = {
@@ -1938,8 +1981,8 @@ router.post('/webhook/test', async (req, res) => {
 
     // Make internal request to webhook endpoint
     let url = `${baseUrl}/api/webhook/overseerr`;
-    if (config.secret_key) {
-      url += `?key=${config.secret_key}`;
+    if (secretKey) {
+      url += `?key=${encodeURIComponent(secretKey)}`;
     }
 
     const response = await axios.post(url, testPayload, {

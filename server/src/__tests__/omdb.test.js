@@ -5,6 +5,10 @@
  * Tests for OMDb service
  */
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
 const mockAxios = {
     get: jest.fn()
 };
@@ -35,10 +39,33 @@ jest.mock('../utils/retryUtils', () => ({
     calculateBackoff: jest.fn((attempt) => 1000 * Math.pow(2, attempt))
 }));
 
+const runtimeSettingsPath = path.join(os.tmpdir(), 'classifarr-omdb-test-runtime.json');
+process.env.RUNTIME_SETTINGS_FILE = runtimeSettingsPath;
+process.env.OMDB_REQUEST_TIMEOUT_MS = '15000';
+process.env.OMDB_MAX_RETRIES = '2';
+process.env.OMDB_RETRY_TIMEOUT_MULTIPLIER = '2';
+process.env.OMDB_MAX_REQUEST_TIMEOUT_MS = '30000';
+
+fs.writeFileSync(runtimeSettingsPath, JSON.stringify({
+    omdb_request_timeout_ms: 15000,
+    omdb_retry_timeout_multiplier: 2,
+    omdb_max_request_timeout_ms: 30000,
+    omdb_max_retries: 2,
+    omdb_ssl_warn_throttle_ms: 900000
+}), 'utf8');
+
 const db = require('../config/database');
 const omdbService = require('../services/omdb');
 
 describe('OMDbService', () => {
+    afterAll(() => {
+        try {
+            fs.unlinkSync(runtimeSettingsPath);
+        } catch {
+            // ignore temp file cleanup failures
+        }
+    });
+
     beforeEach(() => {
         jest.restoreAllMocks();
         jest.clearAllMocks();
@@ -204,6 +231,10 @@ describe('OMDbService', () => {
 
             expect(elapsed1).toBeLessThan(100);
             expect(elapsed2).toBeGreaterThanOrEqual(900);
+            expect(mockAxios.get).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({ timeout: 15000 })
+            );
         });
 
         it('should not delay when enough time has passed', async () => {
@@ -236,6 +267,32 @@ describe('OMDbService', () => {
             omdbService._resetRateLimiter();
             expect(omdbService._resetRateLimiter).toBeDefined();
         });
+
+        it('should serialize concurrent requests to honor minimum interval', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockAxios.get.mockResolvedValue({ data: mockOmdbResponse });
+
+            omdbService._resetRateLimiter();
+            const start = Date.now();
+            await Promise.all([
+                omdbService.getByTitle('Concurrent Movie 1', 2020, 'movie'),
+                omdbService.getByTitle('Concurrent Movie 2', 2021, 'movie')
+            ]);
+            const elapsed = Date.now() - start;
+
+            expect(elapsed).toBeGreaterThanOrEqual(900);
+            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+        });
     });
 
     describe('Transient Network Error Handling', () => {
@@ -262,6 +319,32 @@ describe('OMDbService', () => {
             ).rejects.toBeDefined();
 
             expect(mockAxios.get).toHaveBeenCalledTimes(2);
+        });
+
+        it('should increase request timeout on retry attempt', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockAxios.get.mockRejectedValue({
+                message: 'socket hang up',
+                code: 'ECONNRESET'
+            });
+
+            await expect(
+                omdbService.getByTitle('Retry Timeout Test', 2024, 'movie')
+            ).rejects.toBeDefined();
+
+            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            expect(mockAxios.get.mock.calls[0][1].timeout).toBe(15000);
+            expect(mockAxios.get.mock.calls[1][1].timeout).toBe(30000);
         });
     });
 
@@ -348,7 +431,7 @@ describe('OMDbService', () => {
 
     describe('hasRemainingQuota', () => {
         it('should return available when under limit', async () => {
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleDateString('en-CA');
             db.query.mockResolvedValue({
                 rows: [{
                     id: 1,
@@ -367,7 +450,7 @@ describe('OMDbService', () => {
         });
 
         it('should return unavailable when at limit', async () => {
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleDateString('en-CA');
             db.query.mockResolvedValue({
                 rows: [{
                     id: 1,
@@ -386,7 +469,7 @@ describe('OMDbService', () => {
         });
 
         it('should return unavailable when over limit', async () => {
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleDateString('en-CA');
             db.query.mockResolvedValue({
                 rows: [{
                     id: 1,
@@ -404,7 +487,7 @@ describe('OMDbService', () => {
         });
 
         it('should reset counter if new day', async () => {
-            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
             db.query.mockResolvedValue({
                 rows: [{
                     id: 1,

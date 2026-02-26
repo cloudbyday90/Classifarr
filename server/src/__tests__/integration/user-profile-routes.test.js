@@ -51,7 +51,7 @@ describe('User Profile Routes Integration Tests', () => {
         testUserId = userResult.rows[0].id;
 
         // Generate a test JWT token for regular user
-        testToken = await authService.generateToken({ 
+        testToken = await authService.generateAccessToken({ 
             id: testUserId, 
             username: testUsername,
             role: 'user'
@@ -66,7 +66,7 @@ describe('User Profile Routes Integration Tests', () => {
         adminUserId = adminResult.rows[0].id;
 
         // Generate a test JWT token for admin user
-        adminToken = await authService.generateToken({ 
+        adminToken = await authService.generateAccessToken({ 
             id: adminUserId, 
             username: adminUsername,
             role: 'admin'

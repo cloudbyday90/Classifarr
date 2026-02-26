@@ -93,6 +93,29 @@ describe('EnrichmentRetryService', () => {
     });
 
     describe('getStats', () => {
+        it('should auto-resolve stale rows before aggregating stats', async () => {
+            const normalizeSpy = jest.spyOn(service, 'normalizeTavilyMonthlyDeferredRows').mockResolvedValue(0);
+            const resolveSpy = jest.spyOn(service, 'resolveRetriesWithExistingMetadata').mockResolvedValue(4);
+            const failSpy = jest.spyOn(service, 'failExhaustedPendingRetries').mockResolvedValue(0);
+
+            mockDb.query.mockResolvedValue({
+                rows: [
+                    { enrichment_type: 'tavily', status: 'pending', count: '2' }
+                ]
+            });
+
+            const stats = await service.getStats();
+
+            expect(normalizeSpy).toHaveBeenCalled();
+            expect(resolveSpy).toHaveBeenCalledWith();
+            expect(failSpy).toHaveBeenCalledWith();
+            expect(stats.tavily.pending).toBe(2);
+
+            normalizeSpy.mockRestore();
+            resolveSpy.mockRestore();
+            failSpy.mockRestore();
+        });
+
         it('should return stats grouped by enrichment type and status', async () => {
             mockDb.query.mockResolvedValue({
                 rows: [
@@ -133,6 +156,79 @@ describe('EnrichmentRetryService', () => {
             const stats = await service.getStats();
 
             expect(stats.total.pending).toBe(5);
+        });
+    });
+
+    describe('resolveRetriesWithExistingMetadata', () => {
+        it('should resolve stale rows for a specific enrichment type', async () => {
+            mockDb.query.mockResolvedValue({
+                rowCount: 3,
+                rows: [
+                    { id: 1, media_item_id: 10, enrichment_type: 'tavily' },
+                    { id: 2, media_item_id: 11, enrichment_type: 'tavily' },
+                    { id: 3, media_item_id: 12, enrichment_type: 'tavily' }
+                ]
+            });
+
+            const resolved = await service.resolveRetriesWithExistingMetadata('tavily');
+
+            expect(resolved).toBe(3);
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining("AND erq.enrichment_type = $1"),
+                ['tavily']
+            );
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Auto-resolved stale enrichment retry rows',
+                expect.objectContaining({ enrichmentType: 'tavily', resolved: 3 })
+            );
+        });
+
+        it('should return zero when no stale rows were resolved', async () => {
+            mockDb.query.mockResolvedValue({ rowCount: 0, rows: [] });
+
+            const resolved = await service.resolveRetriesWithExistingMetadata();
+
+            expect(resolved).toBe(0);
+            expect(mockLogger.info).not.toHaveBeenCalledWith(
+                'Auto-resolved stale enrichment retry rows',
+                expect.any(Object)
+            );
+        });
+    });
+
+    describe('recoverStaleProcessingRetries', () => {
+        it('should recover stale processing rows for a specific enrichment type', async () => {
+            mockDb.query.mockResolvedValue({
+                rowCount: 2,
+                rows: [
+                    { id: 11, media_item_id: 101, enrichment_type: 'omdb' },
+                    { id: 12, media_item_id: 102, enrichment_type: 'omdb' }
+                ]
+            });
+
+            const recovered = await service.recoverStaleProcessingRetries('omdb');
+
+            expect(recovered).toBe(2);
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining("WHERE status = 'processing'"),
+                [20 * 60 * 1000, 'omdb']
+            );
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                'Recovered stale enrichment retry rows',
+                expect.objectContaining({ count: 2, enrichmentType: 'omdb' })
+            );
+        });
+
+        it('should return zero and not log warning when no stale rows exist', async () => {
+            mockDb.query.mockResolvedValue({ rowCount: 0, rows: [] });
+
+            const recovered = await service.recoverStaleProcessingRetries();
+
+            expect(recovered).toBe(0);
+            expect(mockLogger.warn).not.toHaveBeenCalledWith(
+                'Recovered stale enrichment retry rows',
+                expect.any(Object)
+            );
         });
     });
 
@@ -210,28 +306,6 @@ describe('EnrichmentRetryService', () => {
                 'Enrichment retry queue: OMDb daily limit reached, pausing until next day',
                 expect.objectContaining({ used: 1000, limit: 1000 })
             );
-            getStatsSpy.mockRestore();
-        });
-
-        it('should still process Tavily when OMDb quota is unavailable', async () => {
-            mockOmdbService.hasRemainingQuota = jest.fn().mockResolvedValue({
-                available: false,
-                used: 1000,
-                limit: 1000
-            });
-            const getStatsSpy = jest.spyOn(service, 'getStats')
-                .mockResolvedValueOnce({ omdb: { pending: 4 }, tavily: { pending: 12 } });
-            const processSpy = jest.spyOn(service, 'processRetryQueue')
-                .mockResolvedValue({ processed: 12, success: 8, failed: 4 });
-
-            await service.triggerProcessing();
-
-            expect(processSpy).toHaveBeenCalledWith(50, 'tavily');
-            expect(mockLogger.info).toHaveBeenCalledWith(
-                'Enrichment retry queue: Processing up to 50 Tavily items (12 pending)'
-            );
-
-            processSpy.mockRestore();
             getStatsSpy.mockRestore();
         });
 
@@ -580,7 +654,7 @@ describe('EnrichmentRetryService', () => {
                 [71, 'OMDb not found', 'omdb_exhausted_fallback_to_tavily']
             );
             expect(mockLogger.info).toHaveBeenCalledWith(
-                'OMDb retry exhausted; item moved to Tavily fallback',
+                'OMDb metadata miss; item moved to Tavily fallback',
                 expect.objectContaining({
                     queueId: 71,
                     mediaItemId: 171,
@@ -590,6 +664,45 @@ describe('EnrichmentRetryService', () => {
             expect(mockLogger.error).not.toHaveBeenCalledWith(
                 'Enrichment retry exhausted without required metadata',
                 expect.any(Object)
+            );
+        });
+
+        it('should hand off OMDb not-found item to Tavily fallback before max attempts', async () => {
+            const mockItem = {
+                queue_id: 73,
+                media_item_id: 173,
+                attempts: 1,
+                max_attempts: 3,
+                title: 'Immediate Fallback Item',
+                year: 2024,
+                tmdb_id: 73113,
+                imdb_id: 'tt7311333',
+                media_type: 'movie'
+            };
+
+            configureRetryDbMock({
+                pendingRows: [mockItem],
+                tavilyFallbackRow: { id: 101, status: 'pending', reason: 'OMDb not found' }
+            });
+
+            mockOmdbService.getByIMDBId.mockResolvedValue(null);
+            mockOmdbService.getByTitle.mockResolvedValue(null);
+
+            const result = await service.processRetryQueue(50, 'omdb');
+
+            expect(result.processed).toBe(1);
+            expect(result.failed).toBe(0);
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining("SET status = 'skipped'"),
+                [73, 'OMDb not found', 'omdb_exhausted_fallback_to_tavily']
+            );
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'OMDb metadata miss; item moved to Tavily fallback',
+                expect.objectContaining({
+                    queueId: 73,
+                    mediaItemId: 173,
+                    tavilyQueueId: 101
+                })
             );
         });
 
@@ -643,6 +756,16 @@ describe('EnrichmentRetryService', () => {
                 expect.stringContaining('attempts >= max_attempts'),
                 ['tavily_monthly_quota_deferred', 'omdb']
             );
+        });
+
+        it('should resolve stale rows before processing selected enrichment type', async () => {
+            const resolveSpy = jest.spyOn(service, 'resolveRetriesWithExistingMetadata').mockResolvedValue(2);
+            configureRetryDbMock({ pendingRows: [] });
+
+            await service.processRetryQueue(50, 'omdb');
+
+            expect(resolveSpy).toHaveBeenCalledWith('omdb');
+            resolveSpy.mockRestore();
         });
 
         it('should move item to failed in catch path when attempts are exhausted', async () => {

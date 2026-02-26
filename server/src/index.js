@@ -24,6 +24,7 @@ const morgan = require('morgan');
 const path = require('path');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const cookieParser = require('cookie-parser');
 
 const db = require('./config/database');
 const apiRouter = require('./routes/api');
@@ -33,24 +34,67 @@ const systemRouter = require('./routes/system');
 const discordBot = require('./services/discordBot');
 const queueService = require('./services/queueService');
 const errorHandler = require('./middleware/errorHandler');
+const { ensureCsrfCookie, csrfProtection } = require('./middleware/csrf');
 const { setLoggerDb } = require('./utils/logger');
 const providerLock = require('./services/providerLock');
 const avxGuard = require('./services/avxGuard');
+const runtimeSettings = require('./config/runtimeSettings');
 
 const app = express();
 const PORT = process.env.PORT || 21324;
 const SECURITY_HEADERS_STRICT = (process.env.SECURITY_HEADERS_STRICT || 'true').toLowerCase() !== 'false';
 
-// Middleware
+const corsOptions = {
+  origin: (origin, callback) => {
+    const allowedOrigins = runtimeSettings.getCorsOriginsList();
+    if (allowedOrigins.length === 0) {
+      if (!origin) return callback(null, true);
+      return callback(null, origin);
+    }
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      callback(null, origin);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Webhook-Key', 'X-CSRF-Token'],
+};
+
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", "'unsafe-inline'"],
+  styleSrc: ["'self'", "'unsafe-inline'"],
+  imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+  fontSrc: ["'self'", 'data:'],
+  connectSrc: ["'self'"],
+  frameSrc: ["'none'"],
+  objectSrc: ["'none'"],
+  baseUri: ["'self'"],
+  formAction: ["'self'"],
+  frameAncestors: ["'none'"],
+};
+
+if (process.env.NODE_ENV !== 'production') {
+  cspDirectives.connectSrc.push('http://localhost:*', 'ws://localhost:*');
+}
+
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: cspDirectives,
+  },
   crossOriginOpenerPolicy: SECURITY_HEADERS_STRICT ? undefined : false,
   originAgentCluster: SECURITY_HEADERS_STRICT,
 }));
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(morgan('combined'));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(ensureCsrfCookie);
+app.use('/api', csrfProtection);
 
 // Swagger configuration
 const swaggerOptions = {
@@ -108,7 +152,8 @@ const classificationProgressRouter = require('./routes/classificationProgress');
 app.use('/api/classification/progress', classificationProgressRouter);
 
 // Fallback to index.html for client-side routing (MUST BE LAST)
-app.get('*', (req, res) => {
+// Express 5 requires named wildcards: {*splat} matches all paths including /
+app.get('{*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
@@ -285,6 +330,14 @@ async function initializeServices() {
   } catch (error) {
     console.warn('Default API key generation failed:', error.message);
   }
+
+  // Ensure webhook secret key exists
+  try {
+    const webhookService = require('./services/webhook');
+    await webhookService.ensureSecretKey();
+  } catch (error) {
+    console.warn('Webhook secret key generation failed:', error.message);
+  }
 }
 
 // Start server
@@ -313,6 +366,22 @@ async function startServer() {
     } catch (upgradeError) {
       console.error('Post-upgrade task error:', upgradeError.message);
       // Continue anyway - post-upgrade tasks are non-critical
+    }
+
+    // Ensure runtime settings file exists/syncs defaults for container deployments.
+    runtimeSettings.ensureRuntimeSettingsFile();
+
+    // Load DB-backed runtime settings overrides after migrations have run.
+    await runtimeSettings.refreshFromDatabase();
+    const effectiveOmdbRuntime = runtimeSettings.getOmdbRuntimeConfig();
+    console.log('OMDb runtime configuration loaded', effectiveOmdbRuntime);
+
+    if (process.env.NODE_ENV === 'production' && runtimeSettings.getCorsOriginsList().length === 0) {
+      console.warn('WARNING: CORS origin restriction is not configured in production.');
+      console.warn('Set one of:');
+      console.warn('  - settings.cors_origin in DB/UI');
+      console.warn(`  - ${runtimeSettings.getRuntimeSettingsFilePath()} (runtime.json)`);
+      console.warn('  - CORS_ORIGIN environment variable');
     }
 
     // Record pgvector CPU compatibility info for UI/diagnostics

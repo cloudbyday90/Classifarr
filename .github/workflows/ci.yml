@@ -65,6 +65,11 @@ jobs:
           cd server
           npm run lint:tests
 
+      - name: Lint server security rules
+        run: |
+          cd server
+          npm run lint:security
+
       - name: Install client dependencies
         run: |
           cd client

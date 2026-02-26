@@ -10,6 +10,7 @@
 
 const axios = require('axios');
 const db = require('../config/database');
+const runtimeSettings = require('../config/runtimeSettings');
 const { createLogger } = require('../utils/logger');
 
 const { calculateBackoff } = require('../utils/retryUtils');
@@ -17,8 +18,13 @@ const { calculateBackoff } = require('../utils/retryUtils');
 const logger = createLogger('OMDbService');
 
 let lastRequestTime = 0;
+let rateLimitLock = Promise.resolve();
 const MIN_REQUEST_INTERVAL_MS = 1000;
-const OMDB_SSL_WARN_THROTTLE_MS = parseInt(process.env.OMDB_SSL_WARN_THROTTLE_MS || '', 10) || (15 * 60 * 1000);
+
+function getAttemptTimeoutMs(attempt, omdbRuntime) {
+    const scaledTimeout = Math.round(omdbRuntime.requestTimeoutMs * Math.pow(omdbRuntime.retryTimeoutMultiplier, attempt));
+    return Math.min(omdbRuntime.maxRequestTimeoutMs, scaledTimeout);
+}
 
 function isCertificateError(error) {
     if (!error) {
@@ -39,14 +45,26 @@ function getCertificateErrorSignature(error) {
 }
 
 async function enforceRateLimit() {
-    const now = Date.now();
-    const elapsed = now - lastRequestTime;
-    if (elapsed < MIN_REQUEST_INTERVAL_MS) {
-        const waitTime = MIN_REQUEST_INTERVAL_MS - elapsed;
-        logger.debug('OMDb rate limit: waiting before request', { waitMs: waitTime });
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+    const previousLock = rateLimitLock;
+    let releaseLock;
+    rateLimitLock = new Promise(resolve => {
+        releaseLock = resolve;
+    });
+
+    await previousLock.catch(() => {});
+
+    try {
+        const now = Date.now();
+        const elapsed = now - lastRequestTime;
+        if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+            const waitTime = MIN_REQUEST_INTERVAL_MS - elapsed;
+            logger.debug('OMDb rate limit: waiting before request', { waitMs: waitTime });
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+        lastRequestTime = Date.now();
+    } finally {
+        releaseLock();
     }
-    lastRequestTime = Date.now();
 }
 
 class OMDbLimitReachedError extends Error {
@@ -72,7 +90,7 @@ class OMDbService {
         const now = Date.now();
         const signature = getCertificateErrorSignature(error);
         const isSameSignature = signature === this.lastSslWarnSignature;
-        const inThrottleWindow = (now - this.lastSslWarnAt) < OMDB_SSL_WARN_THROTTLE_MS;
+        const inThrottleWindow = (now - this.lastSslWarnAt) < runtimeSettings.getOmdbRuntimeConfig().sslWarnThrottleMs;
 
         if (isSameSignature && inThrottleWindow) {
             return false;
@@ -96,8 +114,12 @@ class OMDbService {
                 return { available: false, used: 0, limit: 0, reason: 'OMDb API key not configured' };
             }
 
-            const today = new Date().toISOString().split('T')[0];
-            const lastReset = config.last_reset_date ? new Date(config.last_reset_date).toISOString().split('T')[0] : null;
+            const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
+            const lastReset = config.last_reset_date 
+                ? (typeof config.last_reset_date === 'string' 
+                    ? config.last_reset_date.split('T')[0] 
+                    : new Date(config.last_reset_date).toLocaleDateString('en-CA'))
+                : null;
 
             let requestsToday = config.requests_today || 0;
 
@@ -130,9 +152,13 @@ class OMDbService {
                 throw new Error('OMDb API key not configured');
             }
 
-            const today = new Date().toISOString().split('T')[0];
-            // Format existing date to YYYY-MM-DD for comparison
-            const lastReset = config.last_reset_date ? new Date(config.last_reset_date).toISOString().split('T')[0] : null;
+            const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local timezone
+            // Format existing date to YYYY-MM-DD for comparison (handle both Date objects and strings)
+            const lastReset = config.last_reset_date 
+                ? (typeof config.last_reset_date === 'string' 
+                    ? config.last_reset_date.split('T')[0] 
+                    : new Date(config.last_reset_date).toLocaleDateString('en-CA'))
+                : null;
 
             let requestsToday = config.requests_today || 0;
 
@@ -270,9 +296,11 @@ class OMDbService {
      */
     async getByTitle(title, year, type = 'movie', apiKey) {
         let configId = null;
-        const maxRetries = 2; // Total attempts = 1 initial + 1 retry
+        const omdbRuntime = runtimeSettings.getOmdbRuntimeConfig();
+        const maxRetries = omdbRuntime.maxRetries;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const requestTimeoutMs = getAttemptTimeoutMs(attempt, omdbRuntime);
             try {
                 // Enforce rate limit managed by DB
                 const { apiKey: validApiKey, configId: id } = await this.checkAndIncrementUsage();
@@ -295,7 +323,7 @@ class OMDbService {
 
                 const response = await axios.get(this.baseUrl, {
                     params,
-                    timeout: 15000, // 15 second timeout
+                    timeout: requestTimeoutMs,
                 });
 
                 if (response.data.Response === 'True') {
@@ -328,12 +356,15 @@ class OMDbService {
                     logger.warn('OMDb API transient error, retrying', {
                         title,
                         attempt: attempt + 1,
+                        maxRetries,
                         status,
                         code: error.code,
                         message: error.message,
+                        timeoutMs: requestTimeoutMs,
+                        baseTimeoutMs: omdbRuntime.requestTimeoutMs,
                         delayMs: delay,
                         isCloudflare
-                    }, { error });
+                    }, { error, skipDbPersist: true });
 
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
@@ -348,10 +379,13 @@ class OMDbService {
                 if (isTransientNetworkError || isCloudflareError) {
                     logger.warn('OMDb API unavailable after retries', {
                         title,
+                        maxRetries,
                         status,
                         code: error.code,
-                        message: error.message
-                    }, { error });
+                        message: error.message,
+                        timeoutMs: requestTimeoutMs,
+                        baseTimeoutMs: omdbRuntime.requestTimeoutMs
+                    }, { error, skipDbPersist: true });
                     throw error; // Throw to trigger fallback
                 }
 
@@ -386,9 +420,11 @@ class OMDbService {
      */
     async getByIMDBId(imdbId, apiKey) {
         let configId = null;
-        const maxRetries = 2; // Total attempts = 1 initial + 1 retry
+        const omdbRuntime = runtimeSettings.getOmdbRuntimeConfig();
+        const maxRetries = omdbRuntime.maxRetries;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const requestTimeoutMs = getAttemptTimeoutMs(attempt, omdbRuntime);
             try {
                 logger.debug('OMDb lookup by IMDB ID', { imdbId, attempt: attempt + 1 });
 
@@ -403,7 +439,7 @@ class OMDbService {
                         i: imdbId,
                         plot: 'short'
                     },
-                    timeout: 15000 // 15 second timeout
+                    timeout: requestTimeoutMs
                 });
 
                 if (response.data.Response === 'True') {
@@ -435,12 +471,15 @@ class OMDbService {
                     logger.warn('OMDb API transient error (IMDB ID), retrying', {
                         imdbId,
                         attempt: attempt + 1,
+                        maxRetries,
                         status,
                         code: error.code,
                         message: error.message,
+                        timeoutMs: requestTimeoutMs,
+                        baseTimeoutMs: omdbRuntime.requestTimeoutMs,
                         delayMs: delay,
                         isCloudflare
-                    }, { error });
+                    }, { error, skipDbPersist: true });
 
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
@@ -455,10 +494,13 @@ class OMDbService {
                 if (isTransientNetworkError || isCloudflareError) {
                     logger.warn('OMDb API unavailable after retries (IMDB ID)', {
                         imdbId,
+                        maxRetries,
                         status,
                         code: error.code,
-                        message: error.message
-                    }, { error });
+                        message: error.message,
+                        timeoutMs: requestTimeoutMs,
+                        baseTimeoutMs: omdbRuntime.requestTimeoutMs
+                    }, { error, skipDbPersist: true });
                     throw error;
                 }
 
@@ -588,6 +630,7 @@ class OMDbService {
 
     _resetRateLimiter() {
         lastRequestTime = 0;
+        rateLimitLock = Promise.resolve();
         this.lastSslWarnAt = 0;
         this.lastSslWarnSignature = null;
     }

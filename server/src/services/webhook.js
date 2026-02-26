@@ -17,14 +17,83 @@
  */
 
 const db = require('../config/database');
-const crypto = require('crypto');
 const { createLogger } = require('../utils/logger');
+const { 
+  encryptValue, 
+  decryptValue, 
+  formatEncryptedValue, 
+  parseEncryptedValue, 
+  generateRandomKey,
+  maskKey,
+  constantTimeCompare 
+} = require('../utils/encryption');
+
 const logger = createLogger('WebhookService');
 
+const SECRET_PREFIX = 'whsec_';
+const SECRET_BYTE_LENGTH = 32;
+
 class WebhookService {
-  async getConfig() {
+  _isEncrypted(value) {
+    return value && value.includes('$') && value.split('$').length === 3;
+  }
+
+  _maskConfig(config) {
+    if (!config) return config;
+    if (config.secret_key) {
+      if (this._isEncrypted(config.secret_key)) {
+        config.secret_key = maskKey(SECRET_PREFIX, 6) + '••••••••';
+      } else if (config.secret_key.startsWith(SECRET_PREFIX)) {
+        config.secret_key = maskKey(config.secret_key, 12);
+      } else {
+        config.secret_key = maskKey(SECRET_PREFIX, 6) + '••••••••';
+      }
+    }
+    return config;
+  }
+
+  _maskConfigs(configs) {
+    if (!configs || !Array.isArray(configs)) return configs;
+    return configs.map(c => this._maskConfig(c));
+  }
+
+  _encryptSecret(secret) {
+    const { encrypted, iv, authTag } = encryptValue(secret);
+    return formatEncryptedValue(encrypted, iv, authTag);
+  }
+
+  _decryptSecret(encryptedSecret) {
+    const { encrypted, iv, authTag } = parseEncryptedValue(encryptedSecret);
+    return decryptValue(encrypted, iv, authTag);
+  }
+
+  async _rotateSecretAfterDecryptFailure(id) {
+    const newSecret = this.generateSecretKey();
+    const encryptedSecret = this._encryptSecret(newSecret);
+    await db.query(
+      `UPDATE webhook_config
+       SET secret_key = $1,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [encryptedSecret, id]
+    );
+    logger.warn(
+      'Rotated webhook secret after decrypt failure',
+      {
+        configId: id,
+        reason: 'encryption_key_mismatch_or_corruption'
+      },
+      { skipDbPersist: true }
+    );
+    return newSecret;
+  }
+
+  async getConfig(options = {}) {
+    const { mask = true } = options;
     const result = await db.query('SELECT * FROM webhook_config WHERE webhook_type = $1 AND enabled = true LIMIT 1', ['overseerr']);
-    return result.rows[0] || {
+    const config = result.rows[0]
+      ? { ...result.rows[0] }
+      : {
       enabled: true,
       process_pending: true,
       process_approved: true,
@@ -34,6 +103,38 @@ class WebhookService {
       notify_on_error: true,
       include_specials: false
     };
+    return mask ? this._maskConfig(config) : config;
+  }
+
+  async getFullSecret(options = {}) {
+    const { autoRecover = true } = options;
+    const result = await db.query('SELECT id, secret_key FROM webhook_config WHERE webhook_type = $1 LIMIT 1', ['overseerr']);
+    if (!result.rows[0] || !result.rows[0].secret_key) {
+      return null;
+    }
+    
+    const { id, secret_key: storedSecret } = result.rows[0];
+    
+    if (!this._isEncrypted(storedSecret)) {
+      return storedSecret;
+    }
+    
+    try {
+      return this._decryptSecret(storedSecret);
+    } catch (error) {
+      logger.warn(
+        'Failed to decrypt webhook secret',
+        {
+          error: error.message,
+          autoRecover
+        },
+        { skipDbPersist: true }
+      );
+      if (autoRecover && id) {
+        return this._rotateSecretAfterDecryptFailure(id);
+      }
+      return null;
+    }
   }
 
   async updateConfig(config) {
@@ -48,6 +149,16 @@ class WebhookService {
       enabled,
       include_specials
     } = config;
+
+    let finalSecretKey = null;
+    
+    if (secret_key !== undefined) {
+      if (secret_key && secret_key.startsWith(SECRET_PREFIX)) {
+        finalSecretKey = this._encryptSecret(secret_key);
+      } else if (secret_key) {
+        finalSecretKey = secret_key;
+      }
+    }
 
     const result = await db.query(
       `UPDATE webhook_config
@@ -64,7 +175,7 @@ class WebhookService {
        WHERE webhook_type = $10
        RETURNING *`,
       [
-        secret_key,
+        finalSecretKey,
         process_pending,
         process_approved,
         process_auto_approved,
@@ -78,7 +189,9 @@ class WebhookService {
     );
 
     if (result.rows.length === 0) {
-      // Insert if doesn't exist
+      const newSecret = this.generateSecretKey();
+      const encryptedSecret = this._encryptSecret(newSecret);
+
       const insertResult = await db.query(
         `INSERT INTO webhook_config (
           webhook_type, secret_key, process_pending, process_approved, 
@@ -88,7 +201,7 @@ class WebhookService {
         RETURNING *`,
         [
           'overseerr',
-          secret_key,
+          encryptedSecret,
           process_pending !== false,
           process_approved !== false,
           process_auto_approved !== false,
@@ -99,19 +212,43 @@ class WebhookService {
           include_specials === true
         ]
       );
-      return insertResult.rows[0];
+      
+      const inserted = insertResult.rows[0];
+      inserted.secret_key = newSecret;
+      return inserted;
     }
 
-    return result.rows[0];
+    return this._maskConfig(result.rows[0]);
   }
 
   generateSecretKey() {
-    return crypto.randomBytes(32).toString('hex');
+    return generateRandomKey(SECRET_PREFIX, SECRET_BYTE_LENGTH);
   }
 
-  validateAuth(providedKey, config) {
-    if (!config.secret_key) return true; // No key required
-    return providedKey === config.secret_key;
+  async validateAuth(providedKey, config) {
+    if (!providedKey) return false;
+    
+    let storedSecret = config.secret_key;
+    if (!storedSecret) return false;
+    
+    if (this._isEncrypted(storedSecret)) {
+      try {
+        storedSecret = this._decryptSecret(storedSecret);
+      } catch (error) {
+        logger.warn(
+          'Failed to decrypt webhook secret for validation',
+          { error: error.message },
+          { skipDbPersist: true }
+        );
+        return false;
+      }
+    }
+    
+    const key = providedKey.startsWith('Bearer ') 
+      ? providedKey.slice(7) 
+      : providedKey;
+    
+    return constantTimeCompare(key, storedSecret);
   }
 
   sanitizePayload(body, options = {}) {
@@ -162,16 +299,12 @@ class WebhookService {
     const notification_type = body.notification_type || body.event;
     const subject = body.subject || '';
 
-    // Extract media information
     const media = body.media || {};
     const request = body.request || {};
-    // Support both old format (nested requestedBy) and new format (requestedBy_* prefixed fields)
     const requestedBy = request.requestedBy || body.requestedBy || {};
 
-    // Determine media type
     let media_type = media.media_type || media.mediaType;
     if (!media_type) {
-      // Fallback: try to infer from subject
       media_type = subject.includes('Movie') ? 'movie' : 'tv';
     }
 
@@ -179,22 +312,18 @@ class WebhookService {
       notification_type,
       event_name: body.event || notification_type,
       media_type,
-      // Handle both old format (media.tmdbId) and new explicit format
       tmdb_id: media.tmdbId || media.tmdb_id,
       tvdb_id: media.tvdbId || media.tvdb_id,
-      // Handle both old (request.id) and new (request.request_id) formats
       request_id: request.request_id || request.id || body.request_id,
       title: subject || media.title || media.name,
       year: media.releaseDate ? new Date(media.releaseDate).getFullYear() : null,
       poster_path: media.posterPath || media.poster_path || body.image,
       is_4k: request.is4k || body.is_4k || false,
-      // Handle both old (nested requestedBy) and new (requestedBy_* prefixed) formats
       requested_by_username: request.requestedBy_username || requestedBy.username || requestedBy.displayName,
       requested_by_email: request.requestedBy_email || requestedBy.email,
       requested_by_avatar: request.requestedBy_avatar || requestedBy.avatar,
       requested_seasons: request.seasons ? JSON.stringify(request.seasons) : null,
       requested_at: request.createdAt || body.createdAt,
-      // New fields from enhanced payload
       media_status: media.status,
       media_status_4k: media.status4k
     };
@@ -244,7 +373,6 @@ class WebhookService {
   async updateLogStatus(logId, status, result = {}) {
     const endTime = Date.now();
 
-    // Get the start time from the log
     const logResult = await db.query(
       'SELECT received_at FROM webhook_log WHERE id = $1',
       [logId]
@@ -401,7 +529,6 @@ class WebhookService {
 
     const result = await db.query(query, params);
 
-    // Get total count
     let countQuery = 'SELECT COUNT(*) FROM webhook_log WHERE 1=1';
     const countParams = [];
     let countParamIndex = 1;
@@ -428,8 +555,6 @@ class WebhookService {
     };
   }
 
-  // ==================== MULTI-MANAGER SUPPORT ====================
-
   async getAllConfigs() {
     const result = await db.query(
       'SELECT id, name, webhook_type, manager_url, is_primary, enabled, include_specials, created_at FROM webhook_config ORDER BY is_primary DESC, created_at ASC'
@@ -439,7 +564,7 @@ class WebhookService {
 
   async getConfigById(id) {
     const result = await db.query('SELECT * FROM webhook_config WHERE id = $1', [id]);
-    return result.rows[0] || null;
+    return this._maskConfig(result.rows[0] || null);
   }
 
   async createConfig(config) {
@@ -448,7 +573,7 @@ class WebhookService {
       webhook_type = 'overseerr',
       manager_url = null,
       is_primary = false,
-      secret_key = null,
+      secret_key,
       process_pending = true,
       process_approved = true,
       process_auto_approved = true,
@@ -459,26 +584,30 @@ class WebhookService {
       include_specials = false
     } = config;
 
-    // If setting as primary, unset other primaries
     if (is_primary) {
       await db.query('UPDATE webhook_config SET is_primary = false WHERE is_primary = true');
     }
+
+    const newSecret = secret_key || this.generateSecretKey();
+    const encryptedSecret = this._encryptSecret(newSecret);
 
     const result = await db.query(
       `INSERT INTO webhook_config (
         name, webhook_type, manager_url, is_primary, secret_key,
         process_pending, process_approved, process_auto_approved, process_declined,
         notify_on_receive, notify_on_error, enabled, include_specials
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *`,
       [
-        name, webhook_type, manager_url, is_primary, secret_key,
+        name, webhook_type, manager_url, is_primary, encryptedSecret,
         process_pending, process_approved, process_auto_approved, process_declined,
         notify_on_receive, notify_on_error, enabled, include_specials
       ]
     );
 
-    return result.rows[0];
+    const inserted = result.rows[0];
+    inserted.secret_key = newSecret;
+    return inserted;
   }
 
   async updateConfigById(id, config) {
@@ -498,9 +627,17 @@ class WebhookService {
       include_specials
     } = config;
 
-    // If setting as primary, unset other primaries
     if (is_primary) {
       await db.query('UPDATE webhook_config SET is_primary = false WHERE is_primary = true AND id != $1', [id]);
+    }
+
+    let encryptedSecret = null;
+    if (secret_key !== undefined) {
+      if (secret_key && secret_key.startsWith(SECRET_PREFIX)) {
+        encryptedSecret = this._encryptSecret(secret_key);
+      } else if (secret_key) {
+        encryptedSecret = secret_key;
+      }
     }
 
     const result = await db.query(
@@ -522,23 +659,21 @@ class WebhookService {
       WHERE id = $14
       RETURNING *`,
       [
-        name, webhook_type, manager_url, is_primary, secret_key,
+        name, webhook_type, manager_url, is_primary, encryptedSecret,
         process_pending, process_approved, process_auto_approved, process_declined,
         notify_on_receive, notify_on_error, enabled, include_specials, id
       ]
     );
 
-    return result.rows[0];
+    return this._maskConfig(result.rows[0]);
   }
 
   async deleteConfig(id) {
-    // Don't delete if it's the only config
     const countResult = await db.query('SELECT COUNT(*) FROM webhook_config');
     if (parseInt(countResult.rows[0].count) <= 1) {
       throw new Error('Cannot delete the only webhook configuration');
     }
 
-    // If deleting primary, set another as primary
     const configResult = await db.query('SELECT is_primary FROM webhook_config WHERE id = $1', [id]);
     const wasPrimary = configResult.rows[0]?.is_primary;
 
@@ -559,7 +694,60 @@ class WebhookService {
       'UPDATE webhook_config SET is_primary = true WHERE id = $1 RETURNING *',
       [id]
     );
-    return result.rows[0];
+    return this._maskConfig(result.rows[0]);
+  }
+
+  async ensureSecretKey() {
+    const result = await db.query(
+      "SELECT id, secret_key FROM webhook_config WHERE webhook_type = $1 LIMIT 1",
+      ['overseerr']
+    );
+    
+    if (result.rows.length === 0) {
+      const newSecret = this.generateSecretKey();
+      const encryptedSecret = this._encryptSecret(newSecret);
+      
+      await db.query(
+        `INSERT INTO webhook_config (webhook_type, secret_key, enabled)
+         VALUES ($1, $2, true)
+         RETURNING *`,
+        ['overseerr', encryptedSecret]
+      );
+      
+      console.log('✓ Auto-generated webhook secret key');
+      console.log('  You can view this key in Settings → Webhooks');
+      return newSecret;
+    }
+    
+    const existing = result.rows[0];
+    if (!existing.secret_key) {
+      const newSecret = this.generateSecretKey();
+      const encryptedSecret = this._encryptSecret(newSecret);
+      
+      await db.query(
+        'UPDATE webhook_config SET secret_key = $1 WHERE id = $2',
+        [encryptedSecret, existing.id]
+      );
+      
+      console.log('✓ Auto-generated webhook secret key');
+      console.log('  You can view this key in Settings → Webhooks');
+      return newSecret;
+    }
+
+    if (this._isEncrypted(existing.secret_key)) {
+      try {
+        this._decryptSecret(existing.secret_key);
+      } catch (error) {
+        logger.warn(
+          'Existing webhook secret cannot be decrypted, rotating secret',
+          { error: error.message, configId: existing.id },
+          { skipDbPersist: true }
+        );
+        return this._rotateSecretAfterDecryptFailure(existing.id);
+      }
+    }
+    
+    return null;
   }
 }
 

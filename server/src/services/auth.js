@@ -22,24 +22,17 @@ const crypto = require('crypto');
 const db = require('../config/database');
 
 const SALT_ROUNDS = 12;
+const ACCESS_TOKEN_EXPIRY = '15m';
+const REFRESH_TOKEN_EXPIRY_DAYS = 7;
 
-/**
- * Hash a password using bcrypt
- */
 async function hashPassword(password) {
   return bcrypt.hash(password, SALT_ROUNDS);
 }
 
-/**
- * Verify a password against a hash
- */
 async function verifyPassword(password, hash) {
   return bcrypt.compare(password, hash);
 }
 
-/**
- * Validate password strength
- */
 function validatePasswordStrength(password) {
   if (!password || password.length < 8) {
     return { valid: false, message: 'Password must be at least 8 characters long' };
@@ -64,12 +57,8 @@ function validatePasswordStrength(password) {
   return { valid: true };
 }
 
-/**
- * Generate or retrieve active JWT secret
- */
 async function getJWTSecret() {
   try {
-    // Check for active secret
     const result = await db.query(
       'SELECT secret FROM jwt_secrets WHERE is_active = true ORDER BY created_at DESC LIMIT 1'
     );
@@ -78,7 +67,6 @@ async function getJWTSecret() {
       return result.rows[0].secret;
     }
 
-    // Generate new secret
     const secret = crypto.randomBytes(64).toString('hex');
     await db.query(
       'INSERT INTO jwt_secrets (secret, is_active) VALUES ($1, true)',
@@ -88,32 +76,103 @@ async function getJWTSecret() {
     return secret;
   } catch (error) {
     console.error('Error getting JWT secret:', error);
-    // Fallback to environment variable or generate temporary one
     return process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
   }
 }
 
-/**
- * Generate JWT token for user
- */
-async function generateToken(user) {
+async function generateAccessToken(user) {
   const secret = await getJWTSecret();
 
   const payload = {
     id: user.id,
     username: user.username,
     role: user.role,
+    type: 'access'
   };
 
   return jwt.sign(payload, secret, {
-    expiresIn: '7d',
+    expiresIn: ACCESS_TOKEN_EXPIRY,
     issuer: 'classifarr'
   });
 }
 
-/**
- * Verify JWT token
- */
+function generateRefreshTokenString() {
+  return crypto.randomBytes(48).toString('base64url');
+}
+
+async function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+async function generateRefreshToken(userId, userAgent = null, deviceInfo = null) {
+  const tokenString = generateRefreshTokenString();
+  const tokenHash = await hashToken(tokenString);
+  
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+
+  await db.query(
+    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, device_info)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [userId, tokenHash, expiresAt, userAgent, deviceInfo ? JSON.stringify(deviceInfo) : null]
+  );
+
+  return tokenString;
+}
+
+async function validateRefreshToken(tokenString, userId = null) {
+  const tokenHash = await hashToken(tokenString);
+  
+  let query = `SELECT id, user_id, expires_at, revoked_at 
+          FROM refresh_tokens 
+          WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > NOW()`;
+  const params = [tokenHash];
+  
+  if (userId) {
+    query += ' AND user_id = $2';
+    params.push(userId);
+  }
+
+  const result = await db.query(query, params);
+
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+async function revokeRefreshToken(tokenString, revokedByIp = null) {
+  const tokenHash = await hashToken(tokenString);
+  
+  const result = await db.query(
+    `UPDATE refresh_tokens 
+     SET revoked_at = NOW(), revoked_by_ip = $1
+     WHERE token_hash = $2 AND revoked_at IS NULL`,
+    [revokedByIp, tokenHash]
+  );
+
+  return result.rowCount > 0;
+}
+
+async function revokeAllUserTokens(userId, exceptTokenHash = null) {
+  let query = `UPDATE refresh_tokens 
+               SET revoked_at = NOW() 
+               WHERE user_id = $1 AND revoked_at IS NULL`;
+  const params = [userId];
+
+  if (exceptTokenHash) {
+    query += ' AND token_hash != $2';
+    params.push(exceptTokenHash);
+  }
+
+  const result = await db.query(query, params);
+  return result.rowCount;
+}
+
+async function cleanupExpiredTokens() {
+  const result = await db.query(
+    `DELETE FROM refresh_tokens WHERE expires_at < NOW() AND revoked_at IS NULL`
+  );
+  return result.rowCount;
+}
+
 async function verifyToken(token) {
   const secret = await getJWTSecret();
 
@@ -124,9 +183,6 @@ async function verifyToken(token) {
   }
 }
 
-/**
- * Log audit event
- */
 async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
   try {
     await db.query(
@@ -135,7 +191,6 @@ async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
       [userId, action, ipAddress, userAgent, JSON.stringify(metadata)]
     );
   } catch (error) {
-    // Critical: Log to console as fallback when database logging fails
     console.error('AUDIT LOG FAILURE:', {
       userId,
       action,
@@ -143,16 +198,10 @@ async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
       timestamp: new Date().toISOString(),
       error: error.message
     });
-    // In production, this should also write to a file or external logging service
   }
 }
 
-/**
- * Authenticate user with username and password
- * Username can be an email if that's what the user registered with
- */
 async function authenticate(identifier, password) {
-  // Always search by username (which may be an email format)
   const query = 'SELECT * FROM users WHERE username = $1 AND is_active = true';
 
   const result = await db.query(query, [identifier]);
@@ -168,25 +217,41 @@ async function authenticate(identifier, password) {
     throw new Error('Invalid credentials');
   }
 
-  // Update last login
   await db.query(
     'UPDATE users SET last_login = NOW() WHERE id = $1',
     [user.id]
   );
 
-  // Remove password hash from returned user object
   delete user.password_hash;
 
   return user;
+}
+
+function getCookieOptions(isSecure = false) {
+  return {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: 'lax',
+    maxAge: 15 * 60 * 1000,
+    path: '/'
+  };
 }
 
 module.exports = {
   hashPassword,
   verifyPassword,
   validatePasswordStrength,
-  generateToken,
+  generateAccessToken,
+  generateRefreshToken,
+  validateRefreshToken,
+  revokeRefreshToken,
+  revokeAllUserTokens,
+  cleanupExpiredTokens,
   verifyToken,
   auditLog,
   authenticate,
   getJWTSecret,
+  getCookieOptions,
+  ACCESS_TOKEN_EXPIRY,
+  REFRESH_TOKEN_EXPIRY_DAYS,
 };

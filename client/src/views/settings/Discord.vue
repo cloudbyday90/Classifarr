@@ -302,7 +302,7 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
-import axios from 'axios'
+import api from '@/api'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 
 const config = ref({
@@ -342,7 +342,7 @@ const connectionStatus = ref({
 
 onMounted(async () => {
   try {
-    const response = await axios.get('/api/settings/notifications')
+    const response = await api.get('/settings/notifications')
     if (response.data) {
       config.value = {
         bot_token: response.data.bot_token || '',
@@ -391,7 +391,7 @@ const startEditing = async () => {
 
 const fetchChannelDetails = async (channelId) => {
   try {
-    const response = await axios.get(`/api/settings/discord/channel/${channelId}`);
+    const response = await api.get(`/settings/discord/channel/${channelId}`);
     if (response.data) {
       configuredChannel.value = response.data;
       
@@ -424,7 +424,7 @@ const fetchChannelDetails = async (channelId) => {
 const loadServers = async () => {
   loadingServers.value = true
   try {
-    const response = await axios.get('/api/settings/discord/servers', {
+    const response = await api.get('/settings/discord/servers', {
       params: { bot_token: config.value.bot_token },
     })
     servers.value = response.data || []
@@ -446,7 +446,7 @@ const onServerChange = async () => {
   }
 
   try {
-    const response = await axios.get(`/api/settings/discord/channels/${selectedServer.value}`, {
+    const response = await api.get(`/settings/discord/channels/${selectedServer.value}`, {
       params: { bot_token: config.value.bot_token },
     })
     channels.value = response.data || []
@@ -469,7 +469,7 @@ const testConnection = async () => {
       requestBody.channel_id = config.value.channel_id;
     }
     
-    const response = await axios.post('/api/settings/discord/test', requestBody)
+    const response = await api.post('/settings/discord/test', requestBody)
     
     if (response.data.success) {
       // Build details object for ConnectionStatus component
@@ -540,7 +540,7 @@ const saveConfig = async () => {
     }
     
     // Save configuration - server commits to database before returning
-    await axios.put('/api/settings/notifications', config.value)
+    await api.put('/settings/notifications', config.value)
     
     // If successfully saved, re-fetch channel details to update the "Connected" card
     if (config.value.channel_id) {

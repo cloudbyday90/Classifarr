@@ -157,9 +157,7 @@ export default {
 
     const loadStats = async () => {
       try {
-        const response = await fetch(`/api/stats/policies/${props.policy.id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        });
+        const response = await fetch(`/api/stats/policies/${props.policy.id}`);
         if (response.ok) {
           stats.value = await response.json();
         }
@@ -170,9 +168,7 @@ export default {
 
     const loadComparison = async () => {
       try {
-        const response = await fetch(`/api/stats/policies/${props.policy.id}/compare`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
-        });
+        const response = await fetch(`/api/stats/policies/${props.policy.id}/compare`);
         if (response.ok) {
           comparison.value = await response.json();
         }

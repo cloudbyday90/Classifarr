@@ -13,6 +13,7 @@ const logger = createLogger('EnrichmentRetryService');
 const TAVILY_MONTHLY_DEFERRED_REASON = 'tavily_monthly_quota_deferred';
 const TAVILY_MONTHLY_DEFERRED_MESSAGE = 'Tavily monthly quota reached; deferred until next month reset';
 const OMDB_FALLBACK_REASON = 'omdb_exhausted_fallback_to_tavily';
+const ENRICHMENT_RETRY_STALE_MS = Number.parseInt(process.env.ENRICHMENT_RETRY_STALE_MS || '', 10) || (20 * 60 * 1000);
 
 class EnrichmentRetryService {
     constructor() {
@@ -110,6 +111,8 @@ class EnrichmentRetryService {
 
         this.processingInProgress = true;
         try {
+            await this.recoverStaleProcessingRetries();
+
             const initialStats = await this.getStats();
             const pendingOmdb = initialStats.omdb?.pending || 0;
             const pendingTavily = initialStats.tavily?.pending || 0;
@@ -148,14 +151,22 @@ class EnrichmentRetryService {
             }
 
             if (pendingTavily > 0) {
-                const tavilyBatchLimit = 50;
-                logger.info(`Enrichment retry queue: Processing up to ${tavilyBatchLimit} Tavily items (${pendingTavily} pending)`);
-                const tavilyResult = await this.processRetryQueue(tavilyBatchLimit, 'tavily');
-                logger.info('Enrichment retry queue: Tavily processed', {
-                    processed: tavilyResult.processed,
-                    success: tavilyResult.success,
-                    failed: tavilyResult.failed
-                });
+                const tavilyConfig = await db.query(
+                    `SELECT api_key, is_active FROM tavily_config WHERE is_active = true LIMIT 1`
+                );
+
+                if (tavilyConfig.rows.length === 0) {
+                    logger.debug(`Enrichment retry queue: ${pendingTavily} Tavily items pending but Tavily not configured, skipping`);
+                } else {
+                    const tavilyBatchLimit = 50;
+                    logger.info(`Enrichment retry queue: Processing up to ${tavilyBatchLimit} Tavily items (${pendingTavily} pending)`);
+                    const tavilyResult = await this.processRetryQueue(tavilyBatchLimit, 'tavily');
+                    logger.info('Enrichment retry queue: Tavily processed', {
+                        processed: tavilyResult.processed,
+                        success: tavilyResult.success,
+                        failed: tavilyResult.failed
+                    });
+                }
             }
         } catch (error) {
             logger.error('Error processing enrichment retry queue', {
@@ -165,6 +176,45 @@ class EnrichmentRetryService {
         } finally {
             this.processingInProgress = false;
         }
+    }
+
+    /**
+     * Recover stale rows stuck in processing state (typically from restarts/crashes).
+     * Retries consume one attempt so repeatedly stale rows cannot loop forever.
+     * @param {string|null} enrichmentType - Optional enrichment type scope
+     * @returns {Promise<number>} number of rows recovered
+     */
+    async recoverStaleProcessingRetries(enrichmentType = null) {
+        const hasTypeFilter = typeof enrichmentType === 'string' && enrichmentType.trim().length > 0;
+        const typeClause = hasTypeFilter ? 'AND enrichment_type = $2' : '';
+        const params = [ENRICHMENT_RETRY_STALE_MS];
+        if (hasTypeFilter) {
+            params.push(enrichmentType);
+        }
+
+        const result = await db.query(`
+      UPDATE enrichment_retry_queue
+      SET status = CASE WHEN attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END,
+          attempts = LEAST(attempts + 1, max_attempts),
+          completed_at = CASE WHEN attempts + 1 >= max_attempts THEN NOW() ELSE NULL END,
+          error_message = COALESCE(error_message, 'Recovered stale processing retry'),
+          last_attempt_at = NOW()
+      WHERE status = 'processing'
+        AND COALESCE(last_attempt_at, created_at) < NOW() - ($1 * INTERVAL '1 millisecond')
+        ${typeClause}
+      RETURNING id, media_item_id, enrichment_type
+    `, params);
+
+        if (result.rowCount > 0) {
+            logger.warn('Recovered stale enrichment retry rows', {
+                count: result.rowCount,
+                enrichmentType: hasTypeFilter ? enrichmentType : 'all',
+                thresholdMs: ENRICHMENT_RETRY_STALE_MS,
+                queueIds: result.rows.slice(0, 20).map(row => row.id)
+            });
+        }
+
+        return result.rowCount || 0;
     }
 
     /**
@@ -195,6 +245,52 @@ class EnrichmentRetryService {
             logger.info('Auto-healed exhausted pending enrichment retries', {
                 enrichmentType: hasTypeFilter ? enrichmentType : 'all',
                 updated: result.rowCount
+            });
+        }
+
+        return result.rowCount || 0;
+    }
+
+    /**
+     * Auto-resolve stale retry rows when required enrichment metadata already exists.
+     * This heals historical/stale queue rows and keeps pending stats actionable.
+     * @param {string|null} enrichmentType - Optional enrichment type scope
+     * @returns {number} number of rows updated
+     */
+    async resolveRetriesWithExistingMetadata(enrichmentType = null) {
+        const hasTypeFilter = typeof enrichmentType === 'string' && enrichmentType.trim().length > 0;
+        const params = [];
+        const typeClause = hasTypeFilter ? 'AND erq.enrichment_type = $1' : '';
+
+        if (hasTypeFilter) {
+            params.push(enrichmentType);
+        }
+
+        const result = await db.query(`
+      UPDATE enrichment_retry_queue erq
+      SET status = 'completed',
+          completed_at = COALESCE(erq.completed_at, NOW()),
+          error_message = COALESCE(erq.error_message, 'Auto-resolved: required enrichment metadata already present')
+      FROM media_server_items msi
+      WHERE erq.media_item_id = msi.id
+        AND erq.status IN ('pending', 'processing')
+        ${typeClause}
+        AND (
+          (erq.enrichment_type = 'omdb' AND msi.metadata->'omdb' IS NOT NULL)
+          OR (erq.enrichment_type = 'tavily' AND (
+            msi.metadata->'tavily_imdb' IS NOT NULL
+            OR msi.metadata->'tavily_advisory' IS NOT NULL
+            OR msi.metadata->'omdb' IS NOT NULL
+          ))
+          OR (erq.enrichment_type = 'tmdb' AND msi.metadata->'tmdb' IS NOT NULL)
+        )
+      RETURNING erq.id, erq.media_item_id, erq.enrichment_type
+    `, params);
+
+        if (result.rowCount > 0) {
+            logger.info('Auto-resolved stale enrichment retry rows', {
+                enrichmentType: hasTypeFilter ? enrichmentType : 'all',
+                resolved: result.rowCount
             });
         }
 
@@ -245,6 +341,7 @@ class EnrichmentRetryService {
      */
     async getStats() {
         await this.normalizeTavilyMonthlyDeferredRows();
+        await this.resolveRetriesWithExistingMetadata();
         await this.failExhaustedPendingRetries();
 
         const result = await db.query(`
@@ -284,7 +381,9 @@ class EnrichmentRetryService {
      * @param {string} enrichmentType - Type to process ('tavily', 'omdb', etc.)
      */
     async processRetryQueue(limit = 50, enrichmentType = 'tavily') {
+        await this.recoverStaleProcessingRetries(enrichmentType);
         await this.normalizeTavilyMonthlyDeferredRows();
+        await this.resolveRetriesWithExistingMetadata(enrichmentType);
         const autoFailed = await this.failExhaustedPendingRetries(enrichmentType);
 
         if (enrichmentType === 'tavily') {
@@ -293,7 +392,6 @@ class EnrichmentRetryService {
             );
 
             if (tavilyConfig.rows.length === 0) {
-                logger.warn('Tavily not configured or inactive, skipping retry processing');
                 return { processed: 0, success: 0, failed: 0, autoFailed, skipped: true, reason: 'Tavily not configured' };
             }
 
@@ -319,6 +417,15 @@ class EnrichmentRetryService {
       WHERE erq.status = 'pending' 
         AND erq.enrichment_type = $1
         AND erq.attempts < erq.max_attempts
+        AND (
+          (erq.enrichment_type <> 'omdb' OR msi.metadata->'omdb' IS NULL)
+          AND (erq.enrichment_type <> 'tavily' OR (
+            msi.metadata->'tavily_imdb' IS NULL
+            AND msi.metadata->'tavily_advisory' IS NULL
+            AND msi.metadata->'omdb' IS NULL
+          ))
+          AND (erq.enrichment_type <> 'tmdb' OR msi.metadata->'tmdb' IS NULL)
+        )
         AND (
           erq.enrichment_type <> 'tavily'
           OR erq.reason IS DISTINCT FROM $3
@@ -396,9 +503,18 @@ class EnrichmentRetryService {
                     const exhausted = nextAttempts >= (item.max_attempts || 0);
                     const resultError = result.error || 'Unknown error';
 
+                    // Expected OMDb metadata misses should hand off immediately to Tavily fallback.
+                    if (enrichmentType === 'omdb' && this.isExpectedOmdbMiss(resultError)) {
+                        const handledByFallback = await this.handleOmdbFallback(item, resultError, { exhausted: false });
+                        if (handledByFallback) {
+                            processed++;
+                            continue;
+                        }
+                    }
+
                     // OMDb exhaustion should hand off to Tavily instead of terminal erroring.
                     if (enrichmentType === 'omdb' && exhausted) {
-                        const handledByFallback = await this.handleExhaustedOmdbFallback(item, resultError);
+                        const handledByFallback = await this.handleOmdbFallback(item, resultError, { exhausted: true });
                         if (handledByFallback) {
                             processed++;
                             continue;
@@ -423,7 +539,7 @@ class EnrichmentRetryService {
                             error: resultError
                         });
                     } else {
-                        logger.warn('Enrichment retry failed; item remains pending', {
+                        logger.info('Enrichment retry failed; item remains pending', {
                             queueId: item.queue_id,
                             mediaItemId: item.media_item_id,
                             enrichmentType,
@@ -463,7 +579,8 @@ class EnrichmentRetryService {
      * @param {string} resultError
      * @returns {Promise<boolean>}
      */
-    async handleExhaustedOmdbFallback(item, resultError) {
+    async handleOmdbFallback(item, resultError, options = {}) {
+        const { exhausted = false } = options;
         const fallbackReason = this.buildOmdbFallbackReason(resultError);
 
         await this.queueForRetry(item.media_item_id, 'tavily', fallbackReason, 5);
@@ -503,7 +620,9 @@ class EnrichmentRetryService {
         };
 
         if (this.isExpectedOmdbMiss(resultError)) {
-            logger.info('OMDb retry exhausted; item moved to Tavily fallback', logPayload);
+            logger.info(exhausted
+                ? 'OMDb retry exhausted; item moved to Tavily fallback'
+                : 'OMDb metadata miss; item moved to Tavily fallback', logPayload);
         } else {
             logger.warn('OMDb retry exhausted after operational errors; item moved to Tavily fallback', logPayload);
         }
@@ -529,6 +648,20 @@ class EnrichmentRetryService {
             normalized.includes('movie not found') ||
             normalized.includes('series not found') ||
             normalized.includes('error getting data');
+    }
+
+    isTransientOmdbTransportError(error) {
+        const code = String(error?.code || '').toUpperCase();
+        const normalized = String(error?.message || '').toLowerCase();
+
+        return code === 'ECONNABORTED' ||
+            code === 'ETIMEDOUT' ||
+            code === 'ECONNRESET' ||
+            code === 'ENOTFOUND' ||
+            code === 'EAI_AGAIN' ||
+            normalized.includes('timeout') ||
+            normalized.includes('socket hang up') ||
+            normalized.includes('cloudflare');
     }
 
     /**
@@ -626,7 +759,15 @@ class EnrichmentRetryService {
 
             return { success: false, error: 'OMDb not found' };
         } catch (error) {
-            logger.error('OMDb enrichment failed', { error: error.message, item: item.title });
+            if (this.isTransientOmdbTransportError(error)) {
+                logger.warn('OMDb enrichment transient error', {
+                    item: item.title,
+                    error: error.message,
+                    code: error.code || null
+                });
+            } else {
+                logger.error('OMDb enrichment failed', { error: error.message, item: item.title });
+            }
             return { success: false, error: error.message };
         }
     }

@@ -166,7 +166,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import axios from 'axios'
+import api from '@/api'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 
 const config = ref({
@@ -201,7 +201,7 @@ const connectionStatus = ref({
 
 onMounted(async () => {
   try {
-    const response = await axios.get('/api/settings/ollama')
+    const response = await api.get('/settings/ollama')
     if (response.data) {
       config.value = {
         host: response.data.host || 'host.docker.internal',
@@ -227,7 +227,7 @@ onMounted(async () => {
 const refreshModels = async () => {
   loadingModels.value = true
   try {
-    const response = await axios.get('/api/settings/ollama/models', {
+    const response = await api.get('/settings/ollama/models', {
       params: {
         host: config.value.host,
         port: config.value.port,
@@ -251,7 +251,7 @@ const testConnection = async () => {
   loading.value = true
   connectionStatus.value = { status: 'testing' }
   try {
-    const response = await axios.post('/api/settings/ollama/test', {
+    const response = await api.post('/settings/ollama/test', {
       host: config.value.host,
       port: config.value.port,
     })
@@ -283,7 +283,7 @@ const saveConfig = async () => {
   saving.value = true
   connectionStatus.value.status = 'idle' // Reset status on save start to clear old errors
   try {
-    await axios.put('/api/settings/ollama', config.value)
+    await api.put('/settings/ollama', config.value)
     
     // On success, exit edit mode and show "Saved" state
     isConfigured.value = true

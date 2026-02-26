@@ -65,7 +65,7 @@ const handleWebhook = async (req, res) => {
 
   try {
     // 1. Get config and validate auth
-    const config = await webhookService.getConfig();
+    const config = await webhookService.getConfig({ mask: false });
 
     if (!config.enabled) {
       logger.warn('Webhook disabled, rejecting request');
@@ -75,9 +75,20 @@ const handleWebhook = async (req, res) => {
       });
     }
 
-    const authKey = req.query.key || req.headers['x-webhook-key'];
+    const authKey = req.query.key || 
+                     req.headers['x-webhook-key'] || 
+                     req.headers['authorization'];
 
-    if (config.secret_key && !webhookService.validateAuth(authKey, config)) {
+    if (!config.secret_key) {
+      logger.warn('Webhook rejected: no secret_key configured');
+      return res.status(401).json({
+        success: false,
+        error: 'Webhook secret not configured. Please set a secret key in webhook settings.'
+      });
+    }
+
+    const isValidAuth = await webhookService.validateAuth(authKey, config);
+    if (!isValidAuth) {
       logger.warn('Invalid webhook authentication', {
         providedKey: authKey ? 'present' : 'missing'
       });

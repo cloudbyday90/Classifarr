@@ -193,7 +193,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/api'
 
 const config = ref({
   enabled: false,
@@ -218,7 +218,7 @@ onMounted(async () => {
 
 const loadConfig = async () => {
   try {
-    const response = await axios.get('/api/settings/ssl')
+    const response = await api.get('/settings/ssl')
     if (response.data) {
       config.value = { ...config.value, ...response.data }
     }
@@ -232,7 +232,7 @@ const testCertificates = async () => {
   testResult.value = null
 
   try {
-    const response = await axios.post('/api/settings/ssl/test', {
+    const response = await api.post('/settings/ssl/test', {
       cert_path: config.value.cert_path,
       key_path: config.value.key_path,
       ca_path: config.value.ca_path
@@ -264,7 +264,7 @@ const saveConfig = async () => {
   saveMessage.value = ''
 
   try {
-    const response = await axios.put('/api/settings/ssl', config.value)
+    const response = await api.put('/settings/ssl', config.value)
     saveSuccess.value = true
     saveMessage.value = response.data.message || 'SSL configuration saved successfully. Restart required for changes to take effect.'
   } catch (error) {

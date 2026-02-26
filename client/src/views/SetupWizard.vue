@@ -204,7 +204,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/api'
 
 const router = useRouter()
 
@@ -251,7 +251,7 @@ const testTmdb = async () => {
   testing.value = true
   stepStatus.value = null
   try {
-    const response = await axios.post('/api/settings/tmdb/test', {
+    const response = await api.post('/settings/tmdb/test', {
       api_key: tmdb.value.api_key,
     })
     
@@ -271,7 +271,7 @@ const testOllama = async () => {
   testing.value = true
   stepStatus.value = null
   try {
-    const response = await axios.post('/api/settings/ollama/test', {
+    const response = await api.post('/settings/ollama/test', {
       host: ollama.value.host,
       port: ollama.value.port,
     })
@@ -302,7 +302,7 @@ const testDiscord = async () => {
   testing.value = true
   stepStatus.value = null
   try {
-    const response = await axios.post('/api/settings/discord/test', {
+    const response = await api.post('/settings/discord/test', {
       bot_token: discord.value.bot_token,
     })
     
@@ -333,17 +333,17 @@ const finishSetup = async () => {
   
   try {
     // Save TMDB (required)
-    await axios.put('/api/settings/tmdb', tmdb.value)
+    await api.put('/settings/tmdb', tmdb.value)
     
     // Save Ollama if configured
     if (ollama.value.host && ollama.value.port) {
-      await axios.put('/api/settings/ollama', ollama.value)
+      await api.put('/settings/ollama', ollama.value)
     }
     
     // Save Discord if configured
     if (discord.value.bot_token && discord.value.channel_id) {
       discord.value.enabled = true
-      await axios.put('/api/settings/notifications', discord.value)
+      await api.put('/settings/notifications', discord.value)
     }
     
     // Redirect to dashboard

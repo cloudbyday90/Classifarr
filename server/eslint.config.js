@@ -27,10 +27,32 @@ const jestGlobals = {
   jest: 'readonly',
   test: 'readonly'
 };
+const securityPlugin = require('eslint-plugin-security');
 
 module.exports = [
   {
     ignores: ['node_modules/**', 'coverage/**']
+  },
+  {
+    files: ['src/**/*.js'],
+    ignores: ['src/__tests__/**'],
+    plugins: {
+      security: securityPlugin
+    },
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script'
+    },
+    rules: {
+      // High signal / low false-positive checks.
+      'security/detect-eval-with-expression': 'error',
+      'security/detect-new-buffer': 'error',
+      'security/detect-buffer-noassert': 'error',
+      'security/detect-child-process': 'warn',
+      'security/detect-bidi-characters': 'error',
+      // Common false-positive in normal property access patterns.
+      'security/detect-object-injection': 'off'
+    }
   },
   {
     files: ['src/__tests__/**/*.js'],

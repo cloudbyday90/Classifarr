@@ -48,8 +48,10 @@ router.post('/', authenticateToken, apiKeyLimiter, async (req, res) => {
     const { name, permissions, expires_at } = req.body;
     
     // Validate permissions
-    if (permissions && !['read_only', 'read_write'].includes(permissions)) {
-      return res.status(400).json({ error: 'Invalid permissions. Must be read_only or read_write' });
+    if (permissions && !apiKeyService.VALID_PERMISSIONS.includes(permissions)) {
+      return res.status(400).json({
+        error: `Invalid permissions. Must be one of: ${apiKeyService.VALID_PERMISSIONS.join(', ')}`
+      });
     }
     
     // Parse expiration date if provided

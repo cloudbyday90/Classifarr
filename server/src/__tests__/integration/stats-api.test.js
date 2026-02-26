@@ -43,7 +43,7 @@ describe('Stats API Integration Tests', () => {
         testUserId = userRes.rows[0].id;
 
         // Generate JWT token for authentication
-        testToken = await authService.generateToken({
+        testToken = await authService.generateAccessToken({
             id: testUserId,
             username: 'test-stats-user',
             role: 'admin'

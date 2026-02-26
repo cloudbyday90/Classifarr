@@ -210,7 +210,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import axios from 'axios'
+import api from '@/api'
 
 const stats = ref({
   needsNormalization: 0,
@@ -238,7 +238,7 @@ const progressPercent = computed(() => {
 async function fetchStats() {
   isRefreshing.value = true
   try {
-    const response = await axios.get('/api/rating-normalization/stats')
+    const response = await api.get('/rating-normalization/stats')
     stats.value = response.data
   } catch (error) {
     console.error('Failed to fetch stats:', error)
@@ -257,7 +257,7 @@ async function startBackfill() {
   errorMessage.value = ''
   
   try {
-    const response = await axios.post('/api/rating-normalization/backfill')
+    const response = await api.post('/rating-normalization/backfill')
     if (response.data.success) {
       successMessage.value = `Successfully queued ${response.data.queued} items for normalization`
       setTimeout(() => { successMessage.value = '' }, 5000)
@@ -283,7 +283,7 @@ async function finalize() {
   errorMessage.value = ''
   
   try {
-    const response = await axios.post('/api/rating-normalization/finalize')
+    const response = await api.post('/rating-normalization/finalize')
     if (response.data.success) {
       successMessage.value = 'Library profiles successfully regenerated'
       setTimeout(() => { successMessage.value = '' }, 5000)

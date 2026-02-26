@@ -1,6 +1,6 @@
 {
   "name": "classifarr-server",
-  "version": "0.42.8a-alpha",
+  "version": "0.43.0-alpha",
   "engines": {
     "node": ">=24.11.0",
     "npm": ">=10.0.0"
@@ -14,11 +14,12 @@
     "test:unit": "node ./scripts/run-jest.mjs",
     "test:integration": "node ./scripts/run-jest.mjs -c jest.integration.config.js --runInBand",
     "test:coverage": "node ./scripts/run-jest.mjs --coverage",
-    "test:coverage:unit": "node ./scripts/run-jest.mjs --testPathPattern=__tests__/unit --coverage",
+    "test:coverage:unit": "node ./scripts/run-jest.mjs --coverage",
     "test:coverage:integration": "node ./scripts/run-jest.mjs -c jest.integration.config.js --coverage",
     "test:watch": "node ./scripts/run-jest.mjs --watch",
     "test:ci": "node ./scripts/run-jest.mjs --ci --coverage --maxWorkers=2",
     "lint:tests": "eslint \"src/__tests__/**/*.js\"",
+    "lint:security": "eslint \"src/**/*.js\" --ignore-pattern \"src/__tests__/**\"",
     "check-copyright": "node ../scripts/check-copyright.js",
     "update-copyright": "node ../scripts/update-copyright.js",
     "generate-contributors": "node ../scripts/generate-contributors.js"
@@ -26,12 +27,13 @@
   "dependencies": {
     "axios": "^1.13.5",
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "discord.js": "^14.25.1",
     "dotenv": "^17.3.1",
-    "express": "^4.22.1",
+    "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
-    "helmet": "^7.2.0",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
     "node-cron": "^4.2.1",
@@ -42,7 +44,8 @@
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11.12.0",
-    "eslint": "10.0.0",
+    "eslint": "^10.0.2",
+    "eslint-plugin-security": "^3.0.1",
     "jest": "^30.2.0",
     "nodemon": "^3.1.13",
     "pg-mem": "^3.0.13",
