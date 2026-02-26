@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Gitleaks CI Config Parsing** - Corrected `.gitleaks.toml` allowlist schema so the `Gitleaks Secret Scan` workflow loads config successfully and no longer fails with `Allowlist.Regexes[0]` type errors.
+
 ## [v0.43.0a-alpha] - 2026-02-26
 
 ### Added

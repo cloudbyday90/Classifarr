@@ -5,7 +5,6 @@ description = "Allow documentation placeholders"
 paths = [
   '''docs/.*\.md$''',
 ]
-
-[[allowlist.regexes]]
-description = "Documentation API key placeholders"
-regex = '''clf_your.*key'''
+regexes = [
+  '''clf_your.*key''',
+]
