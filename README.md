@@ -706,4 +706,5 @@ For contribution proposals, include:
 
 ## License
 
-GPL-3.0. See `LICENSE`.
+GPL-3.0-or-later. See `LICENSE` for the canonical GPL text and `COPYRIGHT.md`
+for the project copyright notice.
