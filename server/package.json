@@ -55,6 +55,6 @@
   "overrides": {
     "undici": ">=6.23.0",
     "glob": ">=10.0.0",
-    "minimatch": ">=10.2.1"
+    "minimatch": "10.2.3"
   }
 }
