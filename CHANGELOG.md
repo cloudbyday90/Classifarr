@@ -10,11 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Dependency Maintenance** - Bumped server dependencies `pg` to `8.19.0`, `pg-mem` to `3.0.14`, and `eslint-plugin-security` to `4.0.0`.
-- **Security Workflow Tooling** - Upgraded the GitHub Actions Trivy filesystem scan from `aquasecurity/trivy-action@0.30.0` to `0.34.1`.
+- **Security Workflow Tooling** - Switched the GitHub Actions Trivy filesystem scan to install Trivy directly from Aqua's Debian repository and run the `trivy fs` CLI in CI.
 
 ### Fixed
 
 - **Dependency PR CI Reliability** - Updated the Gitleaks workflow to fetch full PR history and pinned `minimatch` to `10.2.3` across root, client, and server lockfiles so audit, OSV, and Trivy checks no longer fail on dependency update PRs.
+- **Trivy Workflow Upstream Breakage** - Removed the failing `aquasecurity/trivy-action` setup path so filesystem security scans no longer abort while trying to check out the upstream `aquasecurity/trivy` repository.
 
 ## [v0.43.1b-alpha] - 2026-02-26
 
