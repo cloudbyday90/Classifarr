@@ -19,14 +19,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install Trivy
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y trivy
+          trivy --version
+
       - name: Run Trivy (filesystem)
-        uses: aquasecurity/trivy-action@0.34.1
-        with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: 1
-          format: table
-          skip-dirs: .git,node_modules,server/node_modules,client/node_modules,client/dist,client/coverage,server/coverage,data,.tmp
+        shell: bash
+        run: |
+          trivy fs \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format table \
+            --skip-dirs .git \
+            --skip-dirs node_modules \
+            --skip-dirs server/node_modules \
+            --skip-dirs client/node_modules \
+            --skip-dirs client/dist \
+            --skip-dirs client/coverage \
+            --skip-dirs server/coverage \
+            --skip-dirs data \
+            --skip-dirs .tmp \
+            .
