@@ -180,7 +180,7 @@ describe('AIResponseParser', () => {
         });
 
         it('should parse CLARIFY format with 3 options', () => {
-            const response = 'CLARIFY|Uncertain content type|Mixed signals from genres|What type is this?|Action Movies|Documentaries|Review manually';
+            const response = 'CLARIFY|Uncertain content type|Mixed signals from genres|What type is this?|Action Movies|Documentaries|Family Movies';
             const context = {
                 libraries: mockLibraries,
                 metadata: mockMetadata
@@ -190,7 +190,7 @@ describe('AIResponseParser', () => {
 
             expect(result.clarification.options).toHaveLength(3);
             expect(result.clarification.options[0].label).toBe('Action Movies');
-            expect(result.clarification.options[2].label).toBe('Review manually');
+            expect(result.clarification.options[2].label).toBe('Family Movies');
         });
 
         it('should map options to libraries', () => {
@@ -208,7 +208,10 @@ describe('AIResponseParser', () => {
             expect(result.clarification.options[1].library_name).toBe('Drama Movies');
         });
 
-        it('should handle options that do not match libraries', () => {
+        it('should fall through when all options fail to match a library', () => {
+            // If the AI suggests library names that don't exist, parseClarifyFormat
+            // drops all options and returns null, so parse() falls through to a
+            // fallback result rather than storing broken options with null library_id.
             const response = 'CLARIFY|Test|Why|Question|Unknown Library|Review manually';
             const context = {
                 libraries: mockLibraries,
@@ -217,12 +220,12 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context);
 
-            expect(result.clarification.options[0].library_id).toBeNull();
-            expect(result.clarification.options[1].library_id).toBeNull();
+            // Should NOT produce a clarify result with null library IDs
+            expect(result.format).not.toBe('clarify');
         });
 
         it('should include signal context in policy question', () => {
-            const response = 'CLARIFY|Test|Why|Question|Opt1|Opt2';
+            const response = 'CLARIFY|Test|Why|Question|Action Movies|Drama Movies';
             const context = {
                 libraries: mockLibraries,
                 signalContext: mockSignalContext,
@@ -236,7 +239,7 @@ describe('AIResponseParser', () => {
         });
 
         it('should use suggested library from signalContext', () => {
-            const response = 'CLARIFY|Test|Why|Question|Opt1|Opt2';
+            const response = 'CLARIFY|Test|Why|Question|Action Movies|Drama Movies';
             const context = {
                 libraries: mockLibraries,
                 signalContext: mockSignalContext,
@@ -304,7 +307,7 @@ describe('AIResponseParser', () => {
         });
 
         it('should fall back to CLARIFY when others are not present', () => {
-            const response = 'CLARIFY|Problem|Why|Question|Opt1|Opt2';
+            const response = 'CLARIFY|Problem|Why|Question|Action Movies|Drama Movies';
             const context = {
                 libraries: mockLibraries,
                 metadata: mockMetadata
@@ -447,14 +450,14 @@ describe('AIResponseParser', () => {
             expect(options[1].library_id).toBe(2);
         });
 
-        it('should return null for unmatched options', () => {
+        it('should filter out unmatched options', () => {
+            // Unmatched library names are dropped rather than stored with null library_id
             const options = aiResponseParser.mapOptionsToLibraries(
                 ['Unknown Library', 'Review manually'],
                 mockLibraries
             );
 
-            expect(options[0].library_id).toBeNull();
-            expect(options[1].library_id).toBeNull();
+            expect(options).toHaveLength(0);
         });
     });
 

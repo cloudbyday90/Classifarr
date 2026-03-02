@@ -1664,7 +1664,7 @@ ${response}
     };
     let pass2Candidate = null;
 
-    if (trigger.trigger === 'policy_prompt_select' && remainingBudget() > 0) {
+    if ((trigger.trigger === 'policy_prompt_select' || trigger.trigger === 'policy_prompt_confirm') && remainingBudget() > 0) {
       const evidence = extractVerifiableEvidence(expandedMetadata, config.policy_recheck_identifier_caps);
       if (evidence.totalTokens > 0 || (pass2Matches && pass2Matches.length > 0)) {
         try {

@@ -672,6 +672,22 @@ describe('Classification Details Storage', () => {
   });
 
   test('should store rag_details when RAG context is available', async () => {
+    // Disable rag loop for this test — it verifies rag_details storage from
+    // policyResult.ragCache, not second-pass behaviour.
+    db.query.mockImplementation((text) => {
+      const query = typeof text === 'string' ? text : '';
+      if (query.includes('ai_provider_config')) {
+        return { rows: [{ id: 1, rag_retrieval_loop_enabled: false }] };
+      }
+      if (query.includes('FROM libraries')) {
+        return { rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] };
+      }
+      if (query.includes('INSERT INTO classification_history') || query.includes('INSERT INTO logs') || query.includes('INSERT INTO error_logs')) {
+        return { rows: [{ id: 12345, error_id: 67890 }] };
+      }
+      return { rows: [] };
+    });
+
     const mockPolicyResult = {
       action: 'prompt_confirm',
       confidence: 85,

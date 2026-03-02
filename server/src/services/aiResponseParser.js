@@ -237,8 +237,19 @@ class AIResponseParser {
             optionTexts.push(match[6].trim());
         }
 
-        // Map option texts to library objects
+        // Map option texts to library objects; unmatched names are filtered out
         const options = this.mapOptionsToLibraries(optionTexts, libraries);
+
+        // Require at least 2 valid options — if the AI suggested non-existent libraries
+        // we cannot present a meaningful clarification question.
+        if (options.length < 2) {
+            logger.warn('parseClarifyFormat: fewer than 2 valid library options after mapping — falling through', {
+                title: context.metadata?.title,
+                requestedOptions: optionTexts,
+                matchedCount: options.length,
+            });
+            return null;
+        }
 
         logger.info('AI requests clarification', {
             title: metadata?.title,
@@ -312,13 +323,23 @@ class AIResponseParser {
                 });
             }
 
+            if (!matchedLibrary) {
+                // AI suggested a library name that doesn't exist in the database.
+                // Return null and filter below to avoid storing broken options.
+                logger.warn('AI suggested library name that does not match any known library — option dropped', {
+                    suggested: opt,
+                    knownLibraries: libraries.map(l => l.name),
+                });
+                return null;
+            }
+
             return {
                 label: opt,
                 value: opt.toLowerCase().replace(/\s+/g, '_').substring(0, 30),
-                library_id: matchedLibrary?.id || null,
-                library_name: matchedLibrary?.name || null,
+                library_id: matchedLibrary.id,
+                library_name: matchedLibrary.name,
             };
-        });
+        }).filter(Boolean);
     }
 
     parseNarrativeSuggestion(response, context, mode = 'classify') {

@@ -1,6 +1,6 @@
 {
   "name": "classifarr-client",
-  "version": "0.43.1b-alpha",
+  "version": "0.43.2-alpha",
   "license": "GPL-3.0-or-later",
   "engines": {
     "node": ">=24.11.0",

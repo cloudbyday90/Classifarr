@@ -27,6 +27,7 @@ describe('ragLoopConfig', () => {
             studios: 3,
             cast: 3
         });
+        expect(defaults.policy_recheck_confidence_gain_multiplier).toBe(2);
     });
 
     test('normalizes invalid/raw values into deterministic safe values', () => {
@@ -35,6 +36,7 @@ describe('ragLoopConfig', () => {
             rag_loop_low_confidence_threshold: 999,
             rag_retry_strategy: 'invalid',
             rag_retry_low_signal_similarity_floor: -2,
+            policy_recheck_confidence_gain_multiplier: 99,
             policy_recheck_identifier_caps: {
                 keywords: 999,
                 genres: 'abc',
@@ -63,6 +65,7 @@ describe('ragLoopConfig', () => {
         expect(normalizedConfig.rag_loop_auto_fallback_min_apply_samples).toBe(1);
         expect(normalizedConfig.rag_loop_auto_fallback_consecutive_breaches).toBe(100);
         expect(normalizedConfig.rag_loop_auto_fallback_cooldown_ms).toBe(86400000);
+        expect(normalizedConfig.policy_recheck_confidence_gain_multiplier).toBe(10); // clamped from 99
         expect(warnings.length).toBeGreaterThan(0);
     });
 

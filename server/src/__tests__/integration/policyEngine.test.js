@@ -305,6 +305,33 @@ describe('PolicyEngine Integration Tests', () => {
             expect(policyEngine.scoreMediaType(config, item1)).toBe(100);
             expect(policyEngine.scoreMediaType(config, item2)).toBe(0);
         });
+
+        test('scoreStudios should return 0 when require_any is set and item has no studio data', () => {
+            // Regression test: previously returned 50 (neutral) regardless of require_any,
+            // which inflated scores for studio-specific libraries when item lacked studio metadata.
+            const config = {
+                require_any: ['Disney', 'Pixar']
+            };
+
+            // Item with no studios at all
+            const itemNoStudios = {};
+            expect(policyEngine.scoreStudios(config, itemNoStudios)).toBe(0);
+
+            // Item with empty studios array
+            const itemEmptyStudios = { studios: [] };
+            expect(policyEngine.scoreStudios(config, itemEmptyStudios)).toBe(0);
+        });
+
+        test('scoreStudios should return 50 (neutral) when no require_any and item has no studio data', () => {
+            // When there is no explicit studio requirement, missing studio data is neutral —
+            // it should not penalise the library.
+            const config = {
+                prefer: ['Disney']
+            };
+
+            const itemNoStudios = {};
+            expect(policyEngine.scoreStudios(config, itemNoStudios)).toBe(50);
+        });
     });
 
     describe('evaluatePresetSignals', () => {
@@ -346,6 +373,75 @@ describe('PolicyEngine Integration Tests', () => {
 
             const score = await policyEngine.evaluatePresetSignals(signals, item);
             expect(score).toBe(0);
+        });
+
+        test('should hard-block preset when language require_any fails, even if genre matches', async () => {
+            // Regression test: "Anime Movies" preset has require_any: ['ja'].
+            // A Chinese animated film (original_language: 'zh') must score 0 for the
+            // entire preset, not a blended average with the passing genre signal.
+            // Previously, blending genre=80 + language=0 produced ~40, surfacing
+            // "Anime Movies" as the top candidate for non-Japanese animation like Ne Zha 2.
+            const signals = {
+                genres: {
+                    require_any: ['Animation'],
+                    weight: 1.0
+                },
+                language: {
+                    require_any: ['ja'],
+                    weight: 1.0
+                }
+            };
+
+            const item = {
+                genres: ['Animation', 'Action', 'Fantasy'],
+                original_language: 'zh'  // Chinese — should hard-fail the 'ja' language requirement
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBe(0);
+        });
+
+        test('should pass language require_any when item language matches', async () => {
+            const signals = {
+                genres: {
+                    require_any: ['Animation'],
+                    weight: 1.0
+                },
+                language: {
+                    require_any: ['ja'],
+                    weight: 1.0
+                }
+            };
+
+            const item = {
+                genres: ['Animation', 'Action'],
+                original_language: 'ja'
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBeGreaterThan(0);
+        });
+
+        test('should not hard-block preset when language only has prefer (no require_any)', async () => {
+            // language.prefer is a soft signal — non-preferred language should lower score, not block
+            const signals = {
+                genres: {
+                    require_any: ['Animation'],
+                    weight: 1.0
+                },
+                language: {
+                    prefer: ['ja'],
+                    weight: 1.0
+                }
+            };
+
+            const item = {
+                genres: ['Animation'],
+                original_language: 'zh'
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBeGreaterThan(0);
         });
     });
 

@@ -167,4 +167,183 @@ describe('PolicyQuestionBuilder', () => {
       policy_name: 'Movies Policy'
     }));
   });
+
+  test('should generate a language conflict question when policyResult has languageConflicts', async () => {
+    // Ne Zha 2 scenario: Anime Movies (requires 'ja') was hard-blocked because
+    // the film is Chinese ('zh'). policyEngine passes this as a languageConflict.
+    // The question should surface the conflict, not ask about themes.
+    const libraries = [
+      { id: 11, name: 'Anime Movies', media_type: 'movie' },
+      { id: 14, name: 'Family', media_type: 'movie' },
+      { id: 15, name: 'Movies', media_type: 'movie' },
+    ];
+
+    const policyResult = {
+      ranked: [
+        { library_id: 14, library_name: 'Family', score: 52, policy_id: 2, policy_name: 'Family Policy', scores: {}, weights: {} },
+        { library_id: 15, library_name: 'Movies', score: 48, policy_id: 3, policy_name: 'Movies Policy', scores: {}, weights: {} },
+      ],
+      languageConflicts: [
+        {
+          policy_id: 1,
+          policy_name: 'Anime Movies Policy',
+          library_id: 11,
+          library_name: 'Anime Movies',
+          score: 0,
+          required_languages: ['ja'],
+          item_language: 'zh',
+        }
+      ]
+    };
+
+    const result = await policyQuestionBuilder.build({
+      metadata: {
+        title: 'Ne Zha 2',
+        media_type: 'movie',
+        original_language: 'zh',
+        genres: ['Animation', 'Action', 'Fantasy'],
+      },
+      policyResult,
+      libraries,
+    });
+
+    expect(result).toBeDefined();
+    expect(result.problem_summary).toBe('Language conflict');
+    expect(result.question).toContain('Chinese');
+    expect(result.question).toContain('Anime Movies');
+    expect(result.question).toContain('Japanese');
+    // Anime Movies should be one of the presented options
+    expect(result.options.some(o => o.library_name === 'Anime Movies')).toBe(true);
+    // All options must have real library_id values (no nulls)
+    expect(result.options.every(o => o.library_id != null)).toBe(true);
+  });
+
+  test('should generate a language conflict question covering all conflicts when multiple libraries require different languages', async () => {
+    // Two libraries both require Japanese; the Chinese item conflicts with both.
+    // The question should mention both libraries and offer valid options for all.
+    const libraries = [
+      { id: 11, name: 'Anime Movies', media_type: 'movie' },
+      { id: 12, name: 'Anime Classics', media_type: 'movie' },
+      { id: 15, name: 'Movies', media_type: 'movie' },
+    ];
+
+    const policyResult = {
+      ranked: [
+        { library_id: 15, library_name: 'Movies', score: 45, policy_id: 3, policy_name: 'Movies Policy', scores: {}, weights: {} },
+      ],
+      languageConflicts: [
+        {
+          policy_id: 1,
+          policy_name: 'Anime Movies Policy',
+          library_id: 11,
+          library_name: 'Anime Movies',
+          score: 0,
+          required_languages: ['ja'],
+          item_language: 'zh',
+        },
+        {
+          policy_id: 2,
+          policy_name: 'Anime Classics Policy',
+          library_id: 12,
+          library_name: 'Anime Classics',
+          score: 0,
+          required_languages: ['ja'],
+          item_language: 'zh',
+        },
+      ]
+    };
+
+    const result = await policyQuestionBuilder.build({
+      metadata: {
+        title: 'Detective Conan Movie',
+        media_type: 'movie',
+        original_language: 'zh',
+        genres: ['Animation'],
+      },
+      policyResult,
+      libraries,
+    });
+
+    expect(result).toBeDefined();
+    expect(result.problem_summary).toBe('Language conflict');
+    expect(result.question).toContain('Chinese');
+    // Multi-conflict path: question should mention both conflicting library names
+    expect(result.question).toContain('Anime Movies');
+    expect(result.question).toContain('Anime Classics');
+    // All options must have real library_id values
+    expect(result.options.every(o => o.library_id != null)).toBe(true);
+    // Both conflict libraries should appear in options
+    const optionIds = result.options.map(o => o.library_id);
+    expect(optionIds).toContain(11);
+    expect(optionIds).toContain(12);
+  });
+
+  test('should generate a language mismatch question when known language conflicts with active candidate presets', async () => {
+    // Scenario: Anime Movies IS in ranked candidates (preset scored it via genre only,
+    // language preset not attached), but its policy's presets have language: { require_any: ['ja'] }.
+    // The known language 'zh' doesn't match. Should ask which library, not a broken Yes/No.
+    const libraries = [
+      { id: 11, name: 'Anime Movies', media_type: 'movie' },
+      { id: 14, name: 'Family', media_type: 'movie' },
+    ];
+
+    jest.spyOn(policyQuestionBuilder, 'getPresetsByPolicy').mockResolvedValueOnce({
+      1: [{ preset_id: 10, preset_name: 'Anime', signals: { language: { require_any: ['ja'] } } }]
+    });
+
+    const policyResult = {
+      ranked: [
+        { library_id: 11, library_name: 'Anime Movies', score: 40, policy_id: 1, policy_name: 'Anime Movies Policy', scores: {}, weights: {} },
+        { library_id: 14, library_name: 'Family', score: 35, policy_id: 2, policy_name: 'Family Policy', scores: {}, weights: {} },
+      ],
+      languageConflicts: [],
+    };
+
+    const result = await policyQuestionBuilder.build({
+      metadata: {
+        title: 'Ne Zha 2',
+        media_type: 'movie',
+        original_language: 'zh',
+        genres: ['Animation'],
+      },
+      policyResult,
+      libraries,
+    });
+
+    expect(result).toBeDefined();
+    expect(result.problem_summary).toBe('Language mismatch');
+    expect(result.question).toContain('Chinese');
+    expect(result.why_uncertain).toContain('Anime Movies');
+    expect(result.why_uncertain).toContain('Japanese');
+    // Should NOT ask "Is this Japanese content? Yes → Anime Movies"
+    expect(result.question).not.toContain('Japanese');
+
+    jest.restoreAllMocks();
+  });
+
+  test('should format expanded language codes using human-readable labels', () => {
+    // Regression guard: LANGUAGE_LABELS now covers all common ISO 639-1 codes.
+    // These must return readable names, not raw uppercase fallback strings.
+    const cases = [
+      ['ar', 'Arabic'],
+      ['tr', 'Turkish'],
+      ['sv', 'Swedish'],
+      ['nl', 'Dutch'],
+      ['pl', 'Polish'],
+      ['he', 'Hebrew'],
+      ['fa', 'Farsi'],
+      ['th', 'Thai'],
+      ['vi', 'Vietnamese'],
+      ['id', 'Indonesian'],
+    ];
+
+    for (const [code, expected] of cases) {
+      expect(policyQuestionBuilder.formatLanguage(code)).toBe(expected);
+    }
+
+    // Unknown codes should still fall back gracefully (uppercase)
+    expect(policyQuestionBuilder.formatLanguage('xx')).toBe('XX');
+    // Null / undefined should return the default label
+    expect(policyQuestionBuilder.formatLanguage(null)).toBe('non-English');
+  });
 });

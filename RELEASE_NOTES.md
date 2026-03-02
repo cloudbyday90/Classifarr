@@ -1,5 +1,44 @@
 # Classifarr Release Notes
 
+## v0.43.2-alpha
+**Title: Foreign-language films route smarter, fewer items stuck in review**
+
+### 🎉 What You'll Notice
+- Foreign-language films (Chinese, Korean, French, etc.) are far less likely to get stuck in "Needs Attention" or route to the wrong library.
+- Items waiting for policy confirmation now benefit from a full intelligence pass before asking you anything, so many resolve automatically.
+- When you do get a clarification question, it now lists all conflicting libraries — not just the first one.
+- Language names in clarification questions are now correctly labeled for 47 languages (up from 13).
+
+### 📊 Quick Visual
+```text
+Foreign-Language Routing Improvements
+Language signal in RAG queries  [██████████] Complete
+Conflict question completeness  [██████████] All conflicts shown
+Language label coverage         [█████████░] 47 languages (was 13)
+prompt_confirm → RAG loop       [██████████] Now active
+Silent wrong-library guard      [██████████] Blocked at gate
+```
+
+### ✨ Highlights
+- Chinese, Korean, French, and 41 other non-English languages now inject a language keyword into RAG retrieval queries so the similarity search actually knows what language it's looking for.
+- Items sitting at "needs confirmation" now run a second-pass retrieval and scoring pass before surfacing to you, matching the same treatment that "needs selection" items already received.
+- A new safety guard prevents a high-confidence second pass from silently auto-routing an item that still has a language policy conflict — it surfaces as a question instead.
+
+### 🔧 Reliability Improvements
+- Fixed a bug where a language policy conflict could bleed through and assign a 0-score library entry instead of hard-blocking it.
+- Fixed studio scoring returning a misleading "50% neutral" when no studio data was available and a `require_any` rule was configured — now correctly returns 0.
+- Fixed clarification questions only naming the first conflicting library when multiple policies conflicted.
+- New operator-tunable config (`policy_recheck_confidence_gain_multiplier`, default: 2×) controls how large a confidence jump is needed for a second-pass to auto-adopt without an action upgrade.
+
+### 👥 Who This Helps
+- **End users**: Foreign-language movie/show requests are more likely to route automatically or present a clear, accurate clarification question.
+- **Operators/admins**: Fewer "stuck" items in Needs Attention for non-English content. New tuning knob for fine-grained second-pass adoption control.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## [v0.43.1b-alpha] - 2026-02-26
 
 **Title: Cleaner notifications and quieter logs for daily operations**

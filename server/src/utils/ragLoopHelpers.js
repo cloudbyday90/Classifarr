@@ -74,10 +74,25 @@ const TRACE_ALLOWED_STAGES = new Set([
 ]);
 const TRACE_ALLOWED_TRIGGERS = new Set([
     'policy_prompt_select',
+    'policy_prompt_confirm',
     'ai_low_confidence',
     'legacy_low_signal'
 ]);
 const TRACE_SENSITIVE_PATTERN = /api[_-]?key|token|authorization|password|secret|bearer/i;
+
+// ISO 639-1 → lowercase English label used as RAG retrieval query keywords.
+// Excludes 'en' (English); English-language items don't need a language hint.
+const LANGUAGE_QUERY_KEYWORDS = Object.freeze({
+    es: 'spanish',  fr: 'french',    de: 'german',     it: 'italian',   pt: 'portuguese',
+    ru: 'russian',  ar: 'arabic',    zh: 'chinese',    ja: 'japanese',  ko: 'korean',
+    hi: 'hindi',    ta: 'tamil',     te: 'telugu',     kn: 'kannada',   ml: 'malayalam',
+    mr: 'marathi',  bn: 'bengali',   pa: 'punjabi',    ur: 'urdu',      th: 'thai',
+    vi: 'vietnamese', id: 'indonesian', ms: 'malay',   nl: 'dutch',     pl: 'polish',
+    sv: 'swedish',  da: 'danish',    nb: 'norwegian',  fi: 'finnish',   cs: 'czech',
+    hu: 'hungarian', ro: 'romanian', el: 'greek',      tr: 'turkish',   uk: 'ukrainian',
+    bg: 'bulgarian', hr: 'croatian', sk: 'slovak',     ca: 'catalan',   he: 'hebrew',
+    fa: 'farsi'
+});
 
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -330,7 +345,7 @@ function getRecheckEligibility(item = {}, metadata = {}, config = {}) {
         1
     );
 
-    if (trigger !== 'policy_prompt_select') {
+    if (trigger !== 'policy_prompt_select' && trigger !== 'policy_prompt_confirm') {
         return {
             eligible: false,
             reasonCode: RAG_LOOP_REASON_CODES.TRIGGER_NOT_POLICY,
@@ -642,11 +657,35 @@ function evaluatePolicyRecheckGate({
 
     // Allow adoption when action upgraded with any improvement,
     // OR when there's significant improvement even without action upgrade
-    // (e.g., doubled confidence gain, or both similarity AND margin thresholds met)
+    // (e.g., multiplied confidence gain, or both similarity AND margin thresholds met).
+    // Multiplier is configurable via policy_recheck_confidence_gain_multiplier (default: 2).
+    const confidenceGainMultiplier = clamp(toNumber(config.policy_recheck_confidence_gain_multiplier, 2), 1, 10);
     const significantImprovement =
-        confidenceGain >= (minConfidenceGain * 2) ||
+        confidenceGain >= (minConfidenceGain * confidenceGainMultiplier) ||
         (similarityDelta >= minSimilarityDelta && marginDelta >= minMarginDelta);
     const shouldAdopt = (actionUpgraded && measurableImprovement) || significantImprovement;
+
+    // Language-conflict guard: if policyAfter resolves to auto_classify but the item
+    // still has language-conflicting libraries detected, do NOT silently auto-route.
+    // The conflict must be surfaced as a clarification question (policyQuestionBuilder),
+    // not absorbed by the recheck gate. Applies to both adoption paths.
+    const afterLanguageConflicts = Array.isArray(policyAfter.languageConflicts)
+        ? policyAfter.languageConflicts
+        : [];
+    if (shouldAdopt && afterLanguageConflicts.length > 0 && policyAfter.action === 'auto_classify') {
+        return {
+            shouldAdopt: false,
+            actionUpgraded,
+            measurableImprovement,
+            reason: 'language_conflict_present',
+            metrics: {
+                confidenceGain,
+                similarityDelta,
+                marginDelta,
+                conflictCount: afterLanguageConflicts.length
+            }
+        };
+    }
 
     return {
         shouldAdopt,
@@ -945,6 +984,7 @@ function extractVerifiableEvidence(metadata = {}, identifierCaps = {}) {
         cast,
         titles,
         collection: collection || null,
+        language: metadata.original_language || null,
         totalTokens: keywords.length + genres.length + studios.length + cast.length + titles.length + (collection ? 1 : 0)
     };
 }
@@ -992,6 +1032,16 @@ function expandRetrievalMetadata(metadata = {}, options = {}) {
         }
     }
 
+    // Inject a language keyword for non-English original_language so retrieval
+    // queries carry the language signal (e.g. 'chinese', 'korean', 'french').
+    const langCode = metadata.original_language;
+    if (langCode && langCode !== 'en') {
+        const langKeyword = LANGUAGE_QUERY_KEYWORDS[langCode.toLowerCase()];
+        if (langKeyword && !expanded.keywords.includes(langKeyword)) {
+            expanded.keywords = [...expanded.keywords, langKeyword];
+        }
+    }
+
     expanded.rag_query_overrides = {
         pass: options.pass || 'pass2',
         alias_terms: aliasTerms,
@@ -1000,7 +1050,8 @@ function expandRetrievalMetadata(metadata = {}, options = {}) {
             genres: evidence.genres,
             studios: evidence.studios,
             cast: evidence.cast,
-            collection: evidence.collection
+            collection: evidence.collection,
+            language: evidence.language
         }
     };
 
@@ -1059,6 +1110,35 @@ function shouldTriggerSecondPass({
         };
     }
 
+    if (policyResult?.action === 'prompt_confirm' && config.policy_recheck_below_prompt_threshold_enabled) {
+        const skipWhenAiConfident = config.policy_recheck_skip_when_ai_confident_enabled !== false;
+        const ranked = Array.isArray(policyResult?.ranked) ? policyResult.ranked : [];
+        const top = ranked[0] || null;
+        const aiConfidence = toNumber(aiResult?.confidence, 0);
+        const autoThreshold = top ? toNumber(top.auto_classify_threshold, NaN) : NaN;
+        const hasConflictSignal = signalContext?.hasConflict === true;
+        const hasPromptRiskSignal = aiResult?.needs_clarification === true || hasConflictSignal;
+
+        if (
+            skipWhenAiConfident &&
+            Number.isFinite(autoThreshold) &&
+            aiConfidence >= autoThreshold &&
+            !hasPromptRiskSignal
+        ) {
+            return {
+                run: false,
+                trigger: 'policy_prompt_confirm',
+                reason: RAG_LOOP_REASON_CODES.POLICY_PROMPT_RISK_CLEAR
+            };
+        }
+
+        return {
+            run: true,
+            trigger: 'policy_prompt_confirm',
+            reason: 'policy_first'
+        };
+    }
+
     const lowConfidenceThreshold = clamp(toNumber(config.rag_loop_low_confidence_threshold, 70), 0, 100);
 
     if (!policyResult && aiResult && aiResult.needs_clarification !== true && toNumber(aiResult.confidence, 0) < lowConfidenceThreshold) {
@@ -1091,7 +1171,7 @@ function isMetadataEnrichmentEligible({
     config = {},
     attempts = 0
 } = {}) {
-    if (trigger !== 'policy_prompt_select') {
+    if (trigger !== 'policy_prompt_select' && trigger !== 'policy_prompt_confirm') {
         return {
             eligible: false,
             reason: 'trigger_not_policy'
@@ -1164,6 +1244,13 @@ function isAiRerunEligible({
     }
 
     if (trigger === 'policy_prompt_select' && policyAfter?.action !== 'prompt_select') {
+        return {
+            eligible: false,
+            reason: 'policy_recheck_resolved'
+        };
+    }
+
+    if (trigger === 'policy_prompt_confirm' && policyAfter?.action === 'auto_classify') {
         return {
             eligible: false,
             reason: 'policy_recheck_resolved'

@@ -7,15 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [v0.43.2-alpha] - 2026-03-02
 
+### Added
+
+- **RAG Loop: `policy_prompt_confirm` Trigger** - `prompt_confirm` policy results now enter the full second-pass RAG loop pipeline (previously only `prompt_select` did). Added `'policy_prompt_confirm'` to `TRACE_ALLOWED_TRIGGERS`, mirrored the `shouldTriggerSecondPass()` branch, relaxed guards in `getRecheckEligibility()`, `isMetadataEnrichmentEligible()`, and `isAiRerunEligible()`, and extended the policy recheck block in `classification.js`.
+- **RAG Loop: Language Keyword Injection in Query Expansion** - Added `LANGUAGE_QUERY_KEYWORDS` constant (41 non-English ISO 639-1 codes → lowercase English labels) to `ragLoopHelpers.js`. `expandRetrievalMetadata()` now appends the language label (e.g. `'chinese'`, `'korean'`) to expanded keywords for any non-English `original_language`. `extractVerifiableEvidence()` now returns `language: metadata.original_language` on the evidence object. `evidence_tokens` in `rag_query_overrides` now includes a `language` field.
+- **Config: `policy_recheck_confidence_gain_multiplier`** - Added configurable multiplier (default: 2, range: 1–10) to `ragLoopConfig.js`. Replaces the hardcoded `* 2` in `evaluatePolicyRecheckGate()`'s `significantImprovement` computation.
+- **Policy Engine: Full Language Conflict Surface in Questions** - `policyQuestionBuilder.buildLanguageConflictQuestion()` now incorporates all detected language conflicts (not just the first). Single vs. multi-conflict text differs accordingly; all conflict libraries are listed first in options.
+- **Policy Engine: Expanded Language Labels** - `LANGUAGE_LABELS` in `policyQuestionBuilder.js` expanded from 13 to 47 ISO 639-1 codes covering major world, South/Southeast Asian, European, and Middle Eastern languages.
 - **Dependency Maintenance** - Bumped server dependencies `pg` to `8.19.0`, `pg-mem` to `3.0.14`, and `eslint-plugin-security` to `4.0.0`.
 - **Security Workflow Tooling** - Switched the GitHub Actions Trivy filesystem scan to install Trivy directly from Aqua's Debian repository and run the `trivy fs` CLI in CI.
 
 ### Fixed
 
+- **Policy Engine: `mapOptionsToLibraries()` Null Library ID** - Fixed `aiResponseParser` storing `library_id: null` when AI returned an option without a matched library, causing null entries in policy question options.
+- **Policy Engine: Language Hard-Block in `evaluatePresetSignals()`** - Fixed language signal blending a `0` score instead of hard-blocking when a required-language preset was not met.
+- **Policy Engine: Language Conflict Propagation in `evaluateItem()`** - Language-conflicting policies are now excluded from `evaluations` via a `languageConflictPolicyIds` Set even when profile/RAG/history scores would otherwise be positive. `languageConflicts` is returned on all result objects.
+- **Policy Engine: `buildLanguageConflictQuestion()` New Method + Case B** - Added `buildLanguageConflictQuestion()` method to `policyQuestionBuilder`; fixed Case B (conflict + single eligible library) generating wrong question type.
+- **Policy Engine: `scoreStudios()` Neutral-50 When No Studio Data** - `scoreStudios()` now returns `0` (not `50`) when `require_any` is configured and the item has no production company data.
+- **RAG Loop: Language Conflict Guard in Recheck Gate** - `evaluatePolicyRecheckGate()` now blocks `shouldAdopt` when `policyAfter.action === 'auto_classify'` and `policyAfter.languageConflicts.length > 0`, returning `reason: 'language_conflict_present'` with `conflictCount` in metrics. Guard does not apply to `prompt_confirm`/`prompt_select` actions.
 - **Dependency PR CI Reliability** - Updated the Gitleaks workflow to fetch full PR history and pinned `minimatch` to `10.2.3` across root, client, and server lockfiles so audit, OSV, and Trivy checks no longer fail on dependency update PRs.
 - **Trivy Workflow Upstream Breakage** - Removed the failing `aquasecurity/trivy-action` setup path so filesystem security scans no longer abort while trying to check out the upstream `aquasecurity/trivy` repository.
+
+### Tests
+
+- Added 12 new tests across `ragLoopHelpers.test.js` covering `policy_prompt_confirm` trigger paths, language conflict gate blocking/permitting, language keyword injection (zh, ko, en skip, no double-inject), and configurable multiplier (3×, 1×).
+- Extended `ragLoopConfig.test.js` to assert `policy_recheck_confidence_gain_multiplier` default (`2`) and clamp behavior (99 → 10).
+- Fixed `classification.test.js` `rag_details` storage test to mock `rag_retrieval_loop_enabled: false` after `prompt_confirm` now triggers the second pass.
+- Test count: 1782 passing (up from 1773 at start of session).
 
 ## [v0.43.1b-alpha] - 2026-02-26
 

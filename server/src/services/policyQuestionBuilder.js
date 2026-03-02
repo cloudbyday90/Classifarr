@@ -23,25 +23,59 @@ const { mergePresetSignals, normalizeSignalConfig } = require('../utils/policySi
 const logger = createLogger('policyQuestionBuilder');
 
 const LANGUAGE_LABELS = {
+  // Major world languages
   en: 'English',
-  ja: 'Japanese',
-  ko: 'Korean',
-  zh: 'Chinese',
-  hi: 'Hindi',
-  ta: 'Tamil',
-  te: 'Telugu',
+  es: 'Spanish',
   fr: 'French',
   de: 'German',
-  es: 'Spanish',
   it: 'Italian',
   pt: 'Portuguese',
   ru: 'Russian',
+  ar: 'Arabic',
+  zh: 'Chinese',
+  ja: 'Japanese',
+  ko: 'Korean',
+  hi: 'Hindi',
+  // South/Southeast Asian
+  ta: 'Tamil',
+  te: 'Telugu',
+  kn: 'Kannada',
+  ml: 'Malayalam',
+  mr: 'Marathi',
+  bn: 'Bengali',
+  pa: 'Punjabi',
+  ur: 'Urdu',
+  th: 'Thai',
+  vi: 'Vietnamese',
+  id: 'Indonesian',
+  ms: 'Malay',
+  // European
+  nl: 'Dutch',
+  pl: 'Polish',
+  sv: 'Swedish',
+  da: 'Danish',
+  nb: 'Norwegian',
+  fi: 'Finnish',
+  cs: 'Czech',
+  hu: 'Hungarian',
+  ro: 'Romanian',
+  el: 'Greek',
+  tr: 'Turkish',
+  uk: 'Ukrainian',
+  bg: 'Bulgarian',
+  hr: 'Croatian',
+  sk: 'Slovak',
+  ca: 'Catalan',
+  // Middle East / Other
+  he: 'Hebrew',
+  fa: 'Farsi',
 };
 
 class PolicyQuestionBuilder {
   async build({ metadata = {}, policyResult = null, libraries = [], suggestedLibrary = null, ragContext = null, aiResult = null, maxOptions = 3 }) {
     const mediaType = metadata.media_type?.toLowerCase();
     const filteredLibraries = this.filterLibrariesByMediaType(libraries, mediaType);
+    const languageConflicts = policyResult?.languageConflicts || [];
 
     const candidates = this.buildCandidates(policyResult, filteredLibraries, suggestedLibrary, maxOptions);
     if (candidates.length === 0) {
@@ -51,6 +85,18 @@ class PolicyQuestionBuilder {
         aiResult,
         policyResult
       });
+    }
+
+    // ── Language conflict check (before preset load) ─────────────────────────
+    // If policyEngine flagged language conflicts, surface them now.
+    // This must happen before the hasPresets guard, since the conflicting library
+    // was excluded from ranked (and therefore has no presets loaded here).
+    const originalLanguage = (metadata.original_language || '').toLowerCase();
+    if (originalLanguage && originalLanguage !== 'en' && languageConflicts.length > 0) {
+      const conflictQuestion = this.buildLanguageConflictQuestion(
+        metadata, candidates, languageConflicts, { ragContext, aiResult, policyResult }
+      );
+      if (conflictQuestion) return conflictQuestion;
     }
 
     const policyIds = Array.from(new Set(candidates.map(c => c.policy_id).filter(Boolean)));
@@ -70,7 +116,8 @@ class PolicyQuestionBuilder {
     const languageQuestion = this.buildLanguageQuestion(metadata, candidates, presetsByPolicy, {
       ragContext,
       aiResult,
-      policyResult
+      policyResult,
+      languageConflicts,
     });
     if (languageQuestion) {
       return languageQuestion;
@@ -80,6 +127,62 @@ class PolicyQuestionBuilder {
       ragContext,
       aiResult,
       policyResult
+    });
+  }
+
+  /**
+   * Generate a question when policyEngine detected one or more hard language conflicts.
+   * Conflicting libraries were excluded from auto-routing because their presets require
+   * a language the item doesn't have (e.g., Anime Movies requires 'ja', item is 'zh').
+   * We surface all conflicts here so the user can consciously decide.
+   */
+  buildLanguageConflictQuestion(metadata, candidates, languageConflicts, extras = {}) {
+    if (!languageConflicts || languageConflicts.length === 0) return null;
+
+    const originalLanguage = (metadata.original_language || '').toLowerCase();
+    if (!originalLanguage) return null;
+
+    const itemLangLabel = this.formatLanguage(originalLanguage);
+
+    // All conflicting libraries go first in the options list (deduped against regular candidates)
+    const conflictLibraries = languageConflicts.map(c => ({ id: c.library_id, name: c.library_name }));
+    const regularLibraries = candidates.map(c => c.library).filter(Boolean);
+    const conflictLibraryIds = new Set(conflictLibraries.map(l => l.id));
+    const additionalLibraries = regularLibraries.filter(l => !conflictLibraryIds.has(l.id));
+    const allLibraries = [...conflictLibraries, ...additionalLibraries];
+    const options = allLibraries.slice(0, 3).map(lib => this.toOption(lib.name, lib));
+
+    if (options.length < 2) return null;
+
+    // Scale question text to number of conflicts
+    let question, whyUncertain;
+    if (languageConflicts.length === 1) {
+      const conflict = languageConflicts[0];
+      const conflictLangLabel = this.formatLanguage(conflict.required_languages[0]);
+      question = `This is ${itemLangLabel} content. "${conflict.library_name}" normally requires ${conflictLangLabel} titles — should it still go there, or to a different library?`;
+      whyUncertain = `Content is in ${itemLangLabel}, but "${conflict.library_name}" is configured for ${conflictLangLabel} content only.`;
+    } else {
+      const conflictNames = languageConflicts.map(c => `"${c.library_name}"`).join(' and ');
+      question = `This is ${itemLangLabel} content, but ${conflictNames} normally require different language content. Should it go to one of them anyway, or to a different library?`;
+      whyUncertain = `Content is in ${itemLangLabel}, but the top candidate libraries are configured for other languages.`;
+    }
+
+    const conflictCandidateMeta = languageConflicts.map(c => ({
+      library_id: c.library_id,
+      library_name: c.library_name,
+      score: 0,
+      policy_id: c.policy_id,
+      policy_name: c.policy_name,
+      library: { id: c.library_id, name: c.library_name },
+    }));
+
+    return this.buildQuestionPayload(metadata, {
+      problem_summary: 'Language conflict',
+      why_uncertain: whyUncertain,
+      question,
+      options,
+      candidates: [...candidates, ...conflictCandidateMeta],
+      extras,
     });
   }
 
@@ -189,6 +292,9 @@ class PolicyQuestionBuilder {
     const languageRelevant = !originalLanguage || originalLanguage !== 'en';
     if (!languageRelevant) return null;
 
+    // Note: hard language conflicts (policyEngine's languageConflicts) are handled
+    // upstream in build() via buildLanguageConflictQuestion() before we reach here.
+
     const languageCandidates = candidates
       .map(candidate => ({
         ...candidate,
@@ -200,6 +306,7 @@ class PolicyQuestionBuilder {
       return null;
     }
 
+    // ── Case A: Unknown language with multiple language-preset candidates ───────
     if (!originalLanguage && languageCandidates.length > 1) {
       const options = languageCandidates.slice(0, 3).map(candidate => {
         const code = candidate.languages[0];
@@ -218,8 +325,31 @@ class PolicyQuestionBuilder {
     }
 
     const targetLanguage = originalLanguage || languageCandidates[0].languages[0];
-    const targetCandidate = languageCandidates.find(candidate => candidate.languages.includes(targetLanguage)) || languageCandidates[0];
-    const fallbackCandidate = candidates.find(candidate => candidate.library_id !== targetCandidate.library_id);
+    const targetCandidate = languageCandidates.find(candidate => candidate.languages.includes(targetLanguage));
+
+    // ── Case B: Known language but no candidate's presets match it ──────────────
+    // The old code fell back to languageCandidates[0] here and asked an incoherent
+    // "Is this Chinese? Yes → Anime Movies (which requires Japanese)" question.
+    // Instead, surface a direct library selection with clear context.
+    if (!targetCandidate && originalLanguage) {
+      const mismatchedLib = languageCandidates[0];
+      const mismatchedLangLabel = this.formatLanguage(mismatchedLib.languages[0]);
+      const itemLangLabel = this.formatLanguage(originalLanguage);
+      const options = candidates.slice(0, 3).map(c => this.toOption(c.library.name, c.library));
+
+      return this.buildQuestionPayload(metadata, {
+        problem_summary: 'Language mismatch',
+        why_uncertain: `This is ${itemLangLabel} content, but "${mismatchedLib.library.name}" is configured for ${mismatchedLangLabel} content.`,
+        question: `This is ${itemLangLabel} content. Which library should it go to?`,
+        options,
+        candidates,
+        extras,
+      });
+    }
+
+    // ── Case C: Known language matches a candidate; standard Yes/No confirm ─────
+    const resolvedTargetCandidate = targetCandidate || languageCandidates[0];
+    const fallbackCandidate = candidates.find(candidate => candidate.library_id !== resolvedTargetCandidate.library_id);
 
     if (!fallbackCandidate) {
       return this.buildLibrarySelectionQuestion(metadata, candidates.map(c => c.library), {
@@ -236,10 +366,10 @@ class PolicyQuestionBuilder {
 
     return this.buildQuestionPayload(metadata, {
       problem_summary: 'Language clarification',
-      why_uncertain: `Language presets favor ${targetCandidate.library.name}, but we need confirmation.`,
+      why_uncertain: `Language presets favor ${resolvedTargetCandidate.library.name}, but we need confirmation.`,
       question,
       options: [
-        this.toOption(`Yes → ${targetCandidate.library.name}`, targetCandidate.library),
+        this.toOption(`Yes → ${resolvedTargetCandidate.library.name}`, resolvedTargetCandidate.library),
         this.toOption(`No → ${fallbackCandidate.library.name}`, fallbackCandidate.library)
       ],
       candidates,

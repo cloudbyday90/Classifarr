@@ -107,6 +107,41 @@ describe('ragLoopHelpers', () => {
             expect(result.run).toBe(true);
             expect(result.trigger).toBe('ai_low_confidence');
         });
+
+        test('uses policy_prompt_confirm trigger when action is prompt_confirm', () => {
+            const result = shouldTriggerSecondPass({
+                config: {
+                    rag_retrieval_loop_enabled: true,
+                    policy_recheck_below_prompt_threshold_enabled: true
+                },
+                policyResult: { action: 'prompt_confirm', ranked: [{ score: 68, auto_classify_threshold: 75 }] },
+                aiResult: { confidence: 60 }
+            });
+
+            expect(result.run).toBe(true);
+            expect(result.trigger).toBe('policy_prompt_confirm');
+            expect(result.reason).toBe('policy_first');
+        });
+
+        test('skips prompt_confirm trigger when AI is confident and no risk signals', () => {
+            const result = shouldTriggerSecondPass({
+                config: {
+                    rag_retrieval_loop_enabled: true,
+                    policy_recheck_below_prompt_threshold_enabled: true,
+                    policy_recheck_skip_when_ai_confident_enabled: true
+                },
+                policyResult: {
+                    action: 'prompt_confirm',
+                    ranked: [{ score: 72, auto_classify_threshold: 70 }]
+                },
+                aiResult: { confidence: 88, needs_clarification: false },
+                signalContext: { hasConflict: false }
+            });
+
+            expect(result.run).toBe(false);
+            expect(result.trigger).toBe('policy_prompt_confirm');
+            expect(result.reason).toBe('policy_prompt_risk_clear');
+        });
     });
 
     describe('detectRagConflict', () => {
@@ -236,6 +271,60 @@ describe('ragLoopHelpers', () => {
             expect(gate.shouldAdopt).toBe(true);
         });
 
+        test('respects configurable confidence gain multiplier (3x)', () => {
+            // minConfidenceGain=5, multiplier=3 → threshold is 15
+            const pass1Diagnostics = summarizePassDiagnostics([{ libraryId: 1, similarity: 0.50 }]);
+            const pass2Diagnostics = summarizePassDiagnostics([{ libraryId: 1, similarity: 0.55 }]);
+
+            const gateBelow = evaluatePolicyRecheckGate({
+                policyBefore: { action: 'prompt_select', confidence: 40 },
+                policyAfter: { action: 'prompt_select', confidence: 54 }, // +14, below 3x threshold
+                pass1Diagnostics,
+                pass2Diagnostics,
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5,
+                    policy_recheck_confidence_gain_multiplier: 3
+                }
+            });
+            expect(gateBelow.shouldAdopt).toBe(false);
+
+            const gateAbove = evaluatePolicyRecheckGate({
+                policyBefore: { action: 'prompt_select', confidence: 40 },
+                policyAfter: { action: 'prompt_select', confidence: 56 }, // +16, meets 3x threshold
+                pass1Diagnostics,
+                pass2Diagnostics,
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5,
+                    policy_recheck_confidence_gain_multiplier: 3
+                }
+            });
+            expect(gateAbove.shouldAdopt).toBe(true);
+        });
+
+        test('multiplier of 1 allows adoption on any measurable confidence gain', () => {
+            // minConfidenceGain=5, multiplier=1 → threshold is 5 (same as base)
+            const pass1Diagnostics = summarizePassDiagnostics([{ libraryId: 1, similarity: 0.50 }]);
+            const pass2Diagnostics = summarizePassDiagnostics([{ libraryId: 1, similarity: 0.55 }]);
+
+            const gate = evaluatePolicyRecheckGate({
+                policyBefore: { action: 'prompt_select', confidence: 40 },
+                policyAfter: { action: 'prompt_select', confidence: 46 }, // +6, meets 1x threshold
+                pass1Diagnostics,
+                pass2Diagnostics,
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5,
+                    policy_recheck_confidence_gain_multiplier: 1
+                }
+            });
+            expect(gate.shouldAdopt).toBe(true);
+        });
+
         test('comparePassResults adopts via confidence alone (OR-based)', () => {
             const pass1Diagnostics = summarizePassDiagnostics([
                 { libraryId: 1, similarity: 0.60 }
@@ -271,6 +360,70 @@ describe('ragLoopHelpers', () => {
 
             // Confidence improved (+12), similarity did NOT meet delta — OR gate should still adopt
             expect(compare.adopt).toBe(true);
+        });
+
+        test('blocks adoption when policyAfter has language conflicts and resolves to auto_classify', () => {
+            const pass1Diagnostics = summarizePassDiagnostics([
+                { libraryId: 1, similarity: 0.58 }
+            ]);
+            const pass2Diagnostics = summarizePassDiagnostics([
+                { libraryId: 1, similarity: 0.80 }
+            ]);
+
+            const gate = evaluatePolicyRecheckGate({
+                policyBefore: { action: 'prompt_select', confidence: 45 },
+                policyAfter: {
+                    action: 'auto_classify',
+                    confidence: 82,
+                    languageConflicts: [
+                        { policy_id: 5, library_id: 11, library_name: 'Anime Movies', item_language: 'zh', required_languages: ['ja'] }
+                    ]
+                },
+                pass1Diagnostics,
+                pass2Diagnostics,
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5
+                }
+            });
+
+            // Even though confidence gain and similarity delta both qualify, language conflict must block
+            expect(gate.shouldAdopt).toBe(false);
+            expect(gate.reason).toBe('language_conflict_present');
+            expect(gate.metrics.conflictCount).toBe(1);
+        });
+
+        test('does not block adoption when policyAfter has language conflicts but action is not auto_classify', () => {
+            const pass1Diagnostics = summarizePassDiagnostics([
+                { libraryId: 1, similarity: 0.58 }
+            ]);
+            const pass2Diagnostics = summarizePassDiagnostics([
+                { libraryId: 1, similarity: 0.80 }
+            ]);
+
+            const gate = evaluatePolicyRecheckGate({
+                policyBefore: { action: 'prompt_select', confidence: 45 },
+                policyAfter: {
+                    action: 'prompt_confirm',
+                    confidence: 68,
+                    languageConflicts: [
+                        { policy_id: 5, library_id: 11, library_name: 'Anime Movies', item_language: 'zh', required_languages: ['ja'] }
+                    ]
+                },
+                pass1Diagnostics,
+                pass2Diagnostics,
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5
+                }
+            });
+
+            // prompt_confirm with language conflict is fine — candidate will have needs_clarification: true
+            // and question builder will surface the conflict. Gate should adopt the upgrade.
+            expect(gate.shouldAdopt).toBe(true);
+            expect(gate.reason).toBe('policy_upgrade_accepted');
         });
     });
 
@@ -311,12 +464,56 @@ describe('ragLoopHelpers', () => {
                 minTokenLength: 2
             });
 
-            expect(expanded.keywords).toEqual(['action', 'anime', 'space']);
+            // 'japanese' is appended after cap because language injection runs post-normalization
+            expect(expanded.keywords).toEqual(['action', 'anime', 'space', 'japanese']);
             expect(expanded.genres).toEqual(['animation', 'sci-fi']);
             expect(expanded.cast).toHaveLength(1);
             expect(expanded.production_companies).toHaveLength(1);
             expect(expanded.rag_query_overrides.alias_terms).toHaveLength(2);
             expect(expanded.rag_query_overrides.evidence_tokens.keywords).toContain('anime');
+            expect(expanded.rag_query_overrides.evidence_tokens.language).toBe('ja');
+        });
+
+        test('injects language keyword for non-English original_language', () => {
+            const zh = expandRetrievalMetadata({
+                title: 'Ne Zha 2',
+                original_language: 'zh',
+                keywords: ['action'],
+                genres: ['Animation']
+            });
+            expect(zh.keywords).toContain('chinese');
+            expect(zh.rag_query_overrides.evidence_tokens.language).toBe('zh');
+
+            const ko = expandRetrievalMetadata({
+                title: 'Parasite',
+                original_language: 'ko',
+                keywords: ['thriller'],
+                genres: ['Drama']
+            });
+            expect(ko.keywords).toContain('korean');
+            expect(ko.rag_query_overrides.evidence_tokens.language).toBe('ko');
+        });
+
+        test('does not inject language keyword for English original_language', () => {
+            const expanded = expandRetrievalMetadata({
+                title: 'Avengers',
+                original_language: 'en',
+                keywords: ['action', 'superhero'],
+                genres: ['Action']
+            });
+            expect(expanded.keywords).not.toContain('english');
+            expect(expanded.rag_query_overrides.evidence_tokens.language).toBe('en');
+        });
+
+        test('does not double-inject language keyword when already present in keywords', () => {
+            const expanded = expandRetrievalMetadata({
+                title: 'Spirited Away',
+                original_language: 'ja',
+                keywords: ['anime', 'japanese', 'fantasy'],
+                genres: ['Animation']
+            });
+            const japaneseCount = expanded.keywords.filter((k) => k === 'japanese').length;
+            expect(japaneseCount).toBe(1);
         });
 
         test('reports sparse metadata and enforces learning guard', () => {
@@ -392,6 +589,19 @@ describe('ragLoopHelpers', () => {
             });
             expect(exhausted.eligible).toBe(false);
             expect(exhausted.reason).toBe('attempt_cap_reached');
+
+            const confirmEligible = isMetadataEnrichmentEligible({
+                trigger: 'policy_prompt_confirm',
+                metadata: { tmdb_id: 123 },
+                metadataCompleteness: { isSparse: true },
+                config: {
+                    policy_recheck_metadata_enrichment_enabled: true,
+                    policy_recheck_metadata_max_attempts: 1
+                },
+                attempts: 0
+            });
+            expect(confirmEligible.eligible).toBe(true);
+            expect(confirmEligible.reason).toBe('eligible');
         });
     });
 
@@ -446,6 +656,38 @@ describe('ragLoopHelpers', () => {
             });
             expect(eligible.eligible).toBe(true);
             expect(eligible.reason).toBe('eligible');
+
+            // prompt_confirm resolved to auto_classify → skip AI rerun
+            const confirmResolved = isAiRerunEligible({
+                trigger: 'policy_prompt_confirm',
+                aiCallsUsed: 1,
+                config: {
+                    policy_recheck_max_ai_calls_per_item: 3,
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10
+                },
+                pass1Diagnostics: { topSimilarity: 0.55, marginPoints: 8 },
+                pass2Diagnostics: { topSimilarity: 0.75, marginPoints: 25 },
+                policyAfter: { action: 'auto_classify' }
+            });
+            expect(confirmResolved.eligible).toBe(false);
+            expect(confirmResolved.reason).toBe('policy_recheck_resolved');
+
+            // prompt_confirm still at prompt_confirm level → AI rerun still useful
+            const confirmNotResolved = isAiRerunEligible({
+                trigger: 'policy_prompt_confirm',
+                aiCallsUsed: 1,
+                config: {
+                    policy_recheck_max_ai_calls_per_item: 3,
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10
+                },
+                pass1Diagnostics: { topSimilarity: 0.55, marginPoints: 8 },
+                pass2Diagnostics: { topSimilarity: 0.75, marginPoints: 25 },
+                policyAfter: { action: 'prompt_confirm' }
+            });
+            expect(confirmNotResolved.eligible).toBe(true);
+            expect(confirmNotResolved.reason).toBe('eligible');
         });
     });
 
@@ -493,6 +735,25 @@ describe('ragLoopHelpers', () => {
             );
             expect(missingType.eligible).toBe(false);
             expect(missingType.reasonCode).toBe(RAG_LOOP_REASON_CODES.MISSING_MEDIA_TYPE);
+
+            // policy_prompt_confirm should pass the trigger guard (not blocked as TRIGGER_NOT_POLICY)
+            const confirmTrigger = getRecheckEligibility(
+                {
+                    trigger: 'policy_prompt_confirm',
+                    policyContext: { hasPolicyContext: true }
+                },
+                {
+                    media_type: 'movie',
+                    genres: ['drama'],
+                    keywords: ['family']
+                },
+                {
+                    policy_recheck_identifier_caps: { keywords: 8, genres: 5, studios: 3, cast: 3 }
+                }
+            );
+            expect(confirmTrigger.eligible).toBe(false);
+            // Must fail on MISSING_TMDB_ID, not on TRIGGER_NOT_POLICY
+            expect(confirmTrigger.reasonCode).toBe(RAG_LOOP_REASON_CODES.MISSING_TMDB_ID);
         });
 
         test('rejects non-authoritative identifiers when authoritative evidence is absent', () => {

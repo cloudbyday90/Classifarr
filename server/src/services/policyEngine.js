@@ -136,11 +136,49 @@ class PolicyEngine {
                 }
             }
 
-            // 4. Evaluate each policy
+            // 4. Evaluate each policy; simultaneously detect language conflict candidates.
+            // A language conflict arises when a policy's preset requires a language the
+            // item doesn't have (e.g., requiring 'ja' but item is 'zh'). The preset
+            // hard-block (evaluatePresetSignals → 0) fires correctly, but profile/RAG/
+            // history can still produce a positive overall evaluatePolicy score. We must
+            // therefore detect conflicts for ALL policies — not just those that scored 0 —
+            // and exclude conflicting policies from evaluations so a Chinese film can
+            // never auto-route to a Japanese-only library via non-preset signal drift.
             const evaluations = [];
+            const languageConflicts = [];
+            const languageConflictPolicyIds = new Set();
+            const itemLanguage = (item.original_language || '').toLowerCase();
+
             for (const policy of candidatePolicies) {
                 const evaluation = await this.evaluatePolicy(policy, item, ragCache);
-                if (evaluation.score > 0) {
+
+                // Detect language conflicts before deciding whether to use the score.
+                // Must run regardless of evaluation.score value (see comment above).
+                if (itemLanguage && itemLanguage !== 'en') {
+                    for (const preset of (policy.presets || [])) {
+                        const signals = preset.signals || {};
+                        const requiredLangs = (signals.language?.require_any || []).map(l => l.toLowerCase());
+                        if (requiredLangs.length > 0 && !requiredLangs.includes(itemLanguage)) {
+                            languageConflicts.push({
+                                policy_id: policy.id,
+                                policy_name: policy.name,
+                                library_id: policy.library_id,
+                                library_name: policy.library_name,
+                                score: 0,
+                                required_languages: requiredLangs,
+                                item_language: itemLanguage,
+                            });
+                            languageConflictPolicyIds.add(policy.id);
+                            break; // one conflict entry per policy is sufficient
+                        }
+                    }
+                }
+
+                // Only include in ranked evaluations when score > 0 AND no language
+                // conflict. Language conflicts are fundamental disqualifiers that prevent
+                // auto-classification into the wrong library even when other signals boost
+                // the score above zero.
+                if (evaluation.score > 0 && !languageConflictPolicyIds.has(policy.id)) {
                     evaluations.push(evaluation);
                 }
             }
@@ -150,7 +188,8 @@ class PolicyEngine {
                 return {
                     action: 'manual',
                     confidence: 0,
-                    ranked: []
+                    ranked: [],
+                    languageConflicts,
                 };
             }
 
@@ -164,11 +203,13 @@ class PolicyEngine {
                 title: item.title,
                 action: result.action,
                 topLibrary: result.library?.library_name,
-                topScore: result.confidence
+                topScore: result.confidence,
+                languageConflictCount: languageConflicts.length,
             });
 
             return {
                 ...result,
+                languageConflicts,
                 ragCache: anyPolicyUsesRAG ? ragCache : { matches: [], timestamp: Date.now() }
             };
 
@@ -545,6 +586,13 @@ class PolicyEngine {
 
             if (signals.language) {
                 const score = this.scoreLanguage(signals.language, item);
+                // If language has explicit requirements (require_any) and the item doesn't match,
+                // hard-block the entire preset — same behavior as media_type.
+                // A Chinese animated film failing a 'require_any: [ja]' language preset should
+                // score 0 for the preset, not a blended average with a passing genre score.
+                if (score === 0 && signals.language.require_any && signals.language.require_any.length > 0) {
+                    return 0;
+                }
                 const weight = signals.language.weight ?? 1.0;
                 scores.push(score * weight);
                 totalWeight += weight;
@@ -734,7 +782,13 @@ class PolicyEngine {
                 .filter(Boolean)
                 .map(s => s.toLowerCase());
 
-            if (studios.length === 0) return 50; // Neutral if no studio data
+            if (studios.length === 0) {
+                // If the library explicitly requires specific studios, missing studio data
+                // cannot satisfy that requirement — return 0 to avoid inflating the score.
+                // (Consistent with how scoreGenres handles missing genre data.)
+                if (config.require_any && config.require_any.length > 0) return 0;
+                return 50; // Neutral when no explicit requirement and item has no studio metadata
+            }
 
             let score = 50;
 

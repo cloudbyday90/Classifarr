@@ -60,6 +60,7 @@ const RAG_LOOP_CONFIG_MANIFEST = Object.freeze({
     policy_recheck_min_similarity_delta: { type: 'number', default: 0.08, min: 0, max: 1 },
     policy_recheck_min_margin_delta: { type: 'number', default: 10, min: 0, max: 100 },
     policy_recheck_min_confidence_gain: { type: 'number', default: 5, min: 0, max: 100 },
+    policy_recheck_confidence_gain_multiplier: { type: 'number', default: 2, min: 1, max: 10 },
     policy_recheck_max_ai_calls_per_item: { type: 'integer', default: 2, min: 1, max: 5 },
     policy_recheck_metadata_enrichment_enabled: { type: 'boolean', default: true },
     policy_recheck_metadata_missing_fields_min: { type: 'integer', default: 2, min: 0, max: 10 },
