@@ -411,4 +411,152 @@ describe('ClassificationService - routeToArr mapping fallback', () => {
       })
     );
   });
+
+  test('skips addMovie and returns already_in_arr when movie pre-check finds it in Radarr', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 4,
+        url: 'http://radarr:7878',
+        api_key: 'radarr-key',
+        is_active: true
+      }]
+    });
+
+    radarrService.getMovieByTmdbId.mockResolvedValueOnce({
+      id: 999,
+      tmdbId: 777,
+      title: 'Already Here',
+      monitored: true
+    });
+
+    const result = await classificationService.routeToArr(
+      { title: 'Already Here', tmdb_id: 777, year: 2024 },
+      {
+        id: 11,
+        arr_type: 'radarr',
+        arr_id: 4,
+        radarr_settings: {
+          root_folder_path: '/movies',
+          quality_profile_id: 3
+        }
+      }
+    );
+
+    expect(result.routed).toBe(true);
+    expect(result.reason).toBe('already_in_arr');
+    expect(radarrService.addMovie).not.toHaveBeenCalled();
+  });
+
+  test('proceeds with addMovie when pre-check returns null (movie not in Radarr)', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 4,
+        url: 'http://radarr:7878',
+        api_key: 'radarr-key',
+        is_active: true
+      }]
+    });
+
+    radarrService.getMovieByTmdbId.mockResolvedValueOnce(null);
+    radarrService.addMovie.mockResolvedValueOnce({ id: 100 });
+
+    const result = await classificationService.routeToArr(
+      { title: 'New Movie', tmdb_id: 888, year: 2024 },
+      {
+        id: 11,
+        arr_type: 'radarr',
+        arr_id: 4,
+        radarr_settings: {
+          root_folder_path: '/movies',
+          quality_profile_id: 3
+        }
+      }
+    );
+
+    expect(result.routed).toBe(true);
+    expect(result.reason).toBe('routed');
+    expect(radarrService.addMovie).toHaveBeenCalled();
+  });
+
+  test('skips addSeries and returns already_in_arr when series pre-check finds it in Sonarr', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 2,
+        url: 'http://sonarr:8989',
+        api_key: 'sonarr-key',
+        is_active: true
+      }]
+    });
+
+    tmdbService.getExternalIds.mockResolvedValueOnce({ tvdb_id: 81189 });
+    sonarrService.searchSeries.mockResolvedValueOnce([
+      {
+        tvdbId: 81189,
+        title: 'Breaking Bad',
+        seasons: [{ seasonNumber: 1, monitored: true }]
+      }
+    ]);
+    sonarrService.getSeriesByTvdbId.mockResolvedValueOnce({
+      id: 42,
+      tvdbId: 81189,
+      title: 'Breaking Bad',
+      monitored: true
+    });
+
+    const result = await classificationService.routeToArr(
+      { title: 'Breaking Bad', tmdb_id: 999 },
+      {
+        id: 10,
+        arr_type: 'sonarr',
+        arr_id: 2,
+        sonarr_settings: {
+          root_folder_path: '/tv',
+          quality_profile_id: 7
+        }
+      }
+    );
+
+    expect(result.routed).toBe(true);
+    expect(result.reason).toBe('already_in_arr');
+    expect(sonarrService.addSeries).not.toHaveBeenCalled();
+  });
+
+  test('proceeds with addSeries when Sonarr pre-check returns null', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        id: 2,
+        url: 'http://sonarr:8989',
+        api_key: 'sonarr-key',
+        is_active: true
+      }]
+    });
+
+    tmdbService.getExternalIds.mockResolvedValueOnce({ tvdb_id: 81189 });
+    sonarrService.searchSeries.mockResolvedValueOnce([
+      {
+        tvdbId: 81189,
+        title: 'Breaking Bad',
+        seasons: [{ seasonNumber: 1, monitored: false }]
+      }
+    ]);
+    sonarrService.getSeriesByTvdbId.mockResolvedValueOnce(null);
+    sonarrService.addSeries.mockResolvedValueOnce({ id: 5 });
+
+    const result = await classificationService.routeToArr(
+      { title: 'Breaking Bad', tmdb_id: 999 },
+      {
+        id: 10,
+        arr_type: 'sonarr',
+        arr_id: 2,
+        sonarr_settings: {
+          root_folder_path: '/tv',
+          quality_profile_id: 7
+        }
+      }
+    );
+
+    expect(result.routed).toBe(true);
+    expect(result.reason).toBe('routed');
+    expect(sonarrService.addSeries).toHaveBeenCalled();
+  });
 });

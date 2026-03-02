@@ -1,5 +1,35 @@
 # Classifarr Release Notes
 
+## v0.43.2a-alpha
+**Title: Movies and shows already in your library no longer surface as errors**
+
+### 🎉 What You'll Notice
+- Requesting a movie or show you already have in Radarr or Sonarr no longer produces an error in routing.
+- Duplicate requests are quietly resolved as "already in library" — no noise in Error Logs or Needs Attention.
+- Both Radarr and Sonarr now handle this gracefully with the same two-layer defense.
+
+### 📊 Quick Visual
+```text
+Routing Reliability
+Radarr already-exists handled  [██████████] Clean
+Sonarr already-exists handled  [██████████] Clean
+Duplicate request noise         [██████████] Eliminated
+```
+
+### 🔧 Reliability Improvements
+- Radarr no longer throws a 400 error when requesting a movie that already exists in your library — it detects the duplicate and marks routing as successful.
+- Sonarr receives the same fix — series that are already tracked no longer generate spurious routing errors.
+- Routing now pre-checks if the item is already present before attempting to add it, with a secondary 400-response catch as a race-condition safety net.
+
+### 👥 Who This Helps
+- **End users**: Re-requesting a title that's already in your library resolves silently instead of producing an error.
+- **Operators/admins**: Fewer false-positive errors in Command Center and Error Logs for items already present in Radarr or Sonarr.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.43.2-alpha
 **Title: Foreign-language films route smarter, fewer items stuck in review**
 

@@ -3576,10 +3576,38 @@ Think step by step, then respond with ONLY one of the formats above.`;
           },
         };
 
-        await radarrService.addMovie(baseUrl, config.api_key, movieData);
-        logger.info(`Added movie to Radarr: ${metadata.title}`);
-        routingResult.routed = true;
-        routingResult.reason = 'routed';
+        // Pre-check: skip add if movie is already in the Radarr library
+        let existingMovie = null;
+        if (metadata.tmdb_id) {
+          try {
+            existingMovie = await radarrService.getMovieByTmdbId(baseUrl, config.api_key, metadata.tmdb_id);
+          } catch (_) {
+            // pre-check failed; fall through and attempt the add
+          }
+        }
+
+        if (existingMovie) {
+          logger.info(`Movie already in Radarr library (pre-check): ${metadata.title}`, {
+            radarrId: existingMovie.id,
+            tmdbId: metadata.tmdb_id,
+            monitored: existingMovie.monitored,
+          });
+          routingResult.routed = true;
+          routingResult.reason = 'already_in_arr';
+          return routingResult;
+        }
+
+        const addResult = await radarrService.addMovie(baseUrl, config.api_key, movieData);
+        if (addResult?.alreadyExists) {
+          // 400 safety net — reached only under a race condition
+          logger.info(`Movie already in Radarr library (post-add 400): ${metadata.title}`);
+          routingResult.routed = true;
+          routingResult.reason = 'already_in_arr';
+        } else {
+          logger.info(`Added movie to Radarr: ${metadata.title}`);
+          routingResult.routed = true;
+          routingResult.reason = 'routed';
+        }
         return routingResult;
       } else if (resolvedLibrary.arr_type === 'sonarr') {
         const sonarrConfig = await db.query(
@@ -3735,11 +3763,37 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
         delete seriesData.id;
 
+        // Pre-check: skip add if series is already in the Sonarr library
+        let existingSeries = null;
         try {
-          await sonarrService.addSeries(baseUrl, config.api_key, seriesData);
-          logger.info(`Added series to Sonarr: ${metadata.title}`);
+          existingSeries = await sonarrService.getSeriesByTvdbId(baseUrl, config.api_key, tvdbId);
+        } catch (_) {
+          // pre-check failed; fall through and attempt the add
+        }
+
+        if (existingSeries) {
+          logger.info(`Series already in Sonarr library (pre-check): ${metadata.title}`, {
+            sonarrId: existingSeries.id,
+            tvdbId,
+            monitored: existingSeries.monitored,
+          });
           routingResult.routed = true;
-          routingResult.reason = 'routed';
+          routingResult.reason = 'already_in_arr';
+          return routingResult;
+        }
+
+        try {
+          const addResult = await sonarrService.addSeries(baseUrl, config.api_key, seriesData);
+          if (addResult?.alreadyExists) {
+            // 400 safety net — reached only under a race condition
+            logger.info(`Series already in Sonarr library (post-add 400): ${metadata.title}`);
+            routingResult.routed = true;
+            routingResult.reason = 'already_in_arr';
+          } else {
+            logger.info(`Added series to Sonarr: ${metadata.title}`);
+            routingResult.routed = true;
+            routingResult.reason = 'routed';
+          }
           return routingResult;
         } catch (sonarrError) {
           logger.error('Failed to add series to Sonarr', {

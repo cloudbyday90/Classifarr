@@ -210,6 +210,16 @@ class RadarrService {
       });
       return response.data;
     } catch (error) {
+      // Radarr returns 400 when the movie already exists in the library
+      if (error.response?.status === 400) {
+        const body = error.response.data;
+        const msgs = Array.isArray(body)
+          ? body.map(e => `${e.errorCode || ''} ${e.errorMessage || ''}`).join(' ')
+          : String(body || '');
+        if (/MovieExistsValidator/i.test(msgs) || /already (been |)added/i.test(msgs)) {
+          return { alreadyExists: true };
+        }
+      }
       throw new Error(`Failed to add movie to Radarr: ${error.message}`);
     }
   }

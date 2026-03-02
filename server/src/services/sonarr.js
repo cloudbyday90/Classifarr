@@ -212,6 +212,16 @@ class SonarrService {
       });
       return response.data;
     } catch (error) {
+      // Sonarr returns 400 when the series already exists in the library
+      if (error.response?.status === 400) {
+        const body = error.response.data;
+        const msgs = Array.isArray(body)
+          ? body.map(e => `${e.errorCode || ''} ${e.errorMessage || ''}`).join(' ')
+          : String(body || '');
+        if (/already been added/i.test(msgs) || /SeriesExistsValidator/i.test(msgs)) {
+          return { alreadyExists: true };
+        }
+      }
       throw new Error(`Failed to add series to Sonarr: ${error.message}`);
     }
   }

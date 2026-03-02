@@ -255,7 +255,43 @@ describe('RadarrService', () => {
         });
 
         it('should throw error on failure', async () => {
-            mockAxios.post.mockRejectedValue(new Error('Already exists'));
+            mockAxios.post.mockRejectedValue(new Error('network error'));
+
+            await expect(service.addMovie('http://localhost:7878', 'test-key', {}))
+                .rejects.toThrow('Failed to add movie to Radarr');
+        });
+
+        it('should return alreadyExists:true when Radarr 400 MovieExistsValidator', async () => {
+            const err = new Error('Request failed with status code 400');
+            err.response = {
+                status: 400,
+                data: [{ errorCode: 'MovieExistsValidator', errorMessage: 'This movie has already been added' }]
+            };
+            mockAxios.post.mockRejectedValue(err);
+
+            const result = await service.addMovie('http://localhost:7878', 'test-key', { tmdbId: 603 });
+            expect(result).toEqual({ alreadyExists: true });
+        });
+
+        it('should return alreadyExists:true when Radarr 400 message says already added', async () => {
+            const err = new Error('Request failed with status code 400');
+            err.response = {
+                status: 400,
+                data: [{ errorCode: 'SomeOtherCode', errorMessage: 'This movie has already been added to your library' }]
+            };
+            mockAxios.post.mockRejectedValue(err);
+
+            const result = await service.addMovie('http://localhost:7878', 'test-key', { tmdbId: 603 });
+            expect(result).toEqual({ alreadyExists: true });
+        });
+
+        it('should throw on non-exists 400 errors', async () => {
+            const err = new Error('Request failed with status code 400');
+            err.response = {
+                status: 400,
+                data: [{ errorCode: 'InvalidQualityProfile', errorMessage: 'Quality profile is invalid' }]
+            };
+            mockAxios.post.mockRejectedValue(err);
 
             await expect(service.addMovie('http://localhost:7878', 'test-key', {}))
                 .rejects.toThrow('Failed to add movie to Radarr');

@@ -260,7 +260,43 @@ describe('SonarrService', () => {
         });
 
         it('should throw error on failure', async () => {
-            mockAxios.post.mockRejectedValue(new Error('Already exists'));
+            mockAxios.post.mockRejectedValue(new Error('network error'));
+
+            await expect(service.addSeries('http://localhost:8989', 'test-key', {}))
+                .rejects.toThrow('Failed to add series to Sonarr');
+        });
+
+        it('should return alreadyExists:true when Sonarr 400 says series already been added', async () => {
+            const err = new Error('Request failed with status code 400');
+            err.response = {
+                status: 400,
+                data: [{ propertyName: 'TvdbId', errorMessage: 'This series has already been added' }]
+            };
+            mockAxios.post.mockRejectedValue(err);
+
+            const result = await service.addSeries('http://localhost:8989', 'test-key', { tvdbId: 81189 });
+            expect(result).toEqual({ alreadyExists: true });
+        });
+
+        it('should return alreadyExists:true when Sonarr 400 SeriesExistsValidator', async () => {
+            const err = new Error('Request failed with status code 400');
+            err.response = {
+                status: 400,
+                data: [{ errorCode: 'SeriesExistsValidator', errorMessage: 'Series already exists' }]
+            };
+            mockAxios.post.mockRejectedValue(err);
+
+            const result = await service.addSeries('http://localhost:8989', 'test-key', { tvdbId: 81189 });
+            expect(result).toEqual({ alreadyExists: true });
+        });
+
+        it('should throw on non-exists 400 errors', async () => {
+            const err = new Error('Request failed with status code 400');
+            err.response = {
+                status: 400,
+                data: [{ propertyName: 'RootFolderPath', errorMessage: 'Invalid root folder path' }]
+            };
+            mockAxios.post.mockRejectedValue(err);
 
             await expect(service.addSeries('http://localhost:8989', 'test-key', {}))
                 .rejects.toThrow('Failed to add series to Sonarr');

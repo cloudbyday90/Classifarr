@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.2a-alpha] - 2026-03-02
+
+### Fixed
+
+- **Radarr: "Already Exists" 400 Handling in `addMovie()`** - `addMovie()` in `radarr.js` now detects Radarr's 400 response when a movie already exists in the library (matched via `MovieExistsValidator` errorCode or "already been added"/"already added" in the error message body) and returns `{ alreadyExists: true }` instead of throwing. Any other 400 (e.g., bad quality profile) still throws.
+- **Sonarr: "Already Exists" 400 Handling in `addSeries()`** - `addSeries()` in `sonarr.js` receives parity fix — detects Sonarr's 400 "This series has already been added" (matched via "already been added" or `SeriesExistsValidator`) and returns `{ alreadyExists: true }` instead of throwing.
+- **`routeToArr()`: Radarr Pre-Check + `alreadyExists` Handling** - `routeToArr()` Radarr path in `classification.js` now calls `getMovieByTmdbId` before attempting `addMovie`. If the movie is already present, routing returns `{ routed: true, reason: 'already_in_arr' }` immediately without calling `addMovie`. If a race condition bypasses the pre-check, the `{ alreadyExists: true }` result from `addMovie()` is caught and handled identically.
+- **`routeToArr()`: Sonarr Pre-Check + `alreadyExists` Handling** - Same two-layer defense applied to the `routeToArr()` Sonarr path using `getSeriesByTvdbId` pre-check and `addSeries()` `alreadyExists` result handling.
+
+### Tests
+
+- Added 4 new tests to `radarr.test.js`: `alreadyExists` return via `MovieExistsValidator` errorCode, `alreadyExists` return via "already added" message, non-exists 400 still throws, network error still throws.
+- Added 4 new tests to `sonarr.test.js`: parity coverage for matching Sonarr 400 body patterns.
+- Added 4 new tests to `classification-routing.test.js`: Radarr pre-check found → skip `addMovie`; Radarr pre-check null → proceed to add; Sonarr pre-check found → skip `addSeries`; Sonarr pre-check null → proceed to add.
+- Test count: 1792 passing (up from 1782 at v0.43.2-alpha).
+
 ## [v0.43.2-alpha] - 2026-03-02
 
 ### Added
