@@ -1,7 +1,7 @@
 # Classifarr Release Notes
 
-## v0.43.3-alpha
-**Title: Hard-to-find titles are now matched more accurately — aliases, genres, and cast all count**
+## [Unreleased]
+**Hard-to-find titles are now matched more accurately — aliases, genres, and cast all count**
 
 ### 🔍 What You'll Notice
 - Titles with alternate names, non-English originals, or franchise identifiers are far more likely to surface the right library match on the first try.
