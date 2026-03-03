@@ -42,17 +42,54 @@ COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access met
 
 
 --
+-- Name: extract_jsonb_name_text(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.extract_jsonb_name_text(arr jsonb) RETURNS text
+    LANGUAGE sql IMMUTABLE
+    AS $$
+    SELECT COALESCE(
+        string_agg(
+            CASE
+                WHEN jsonb_typeof(elem) = 'string' THEN elem #>> '{}'
+                WHEN jsonb_typeof(elem) = 'object' AND (elem ? 'name') THEN elem->>'name'
+                ELSE NULL
+            END,
+            ' '
+        ),
+        ''
+    )
+    FROM jsonb_array_elements(
+        CASE WHEN arr IS NOT NULL AND jsonb_typeof(arr) = 'array' THEN arr ELSE '[]'::jsonb END
+    ) AS elem
+$$;
+
+
+--
 -- Name: update_classification_search_text(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.update_classification_search_text() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    genre_text   TEXT := '';
+    keyword_text TEXT := '';
 BEGIN
-    NEW.search_text := to_tsvector('english', 
-        COALESCE(NEW.title, '') || ' ' ||
+    IF NEW.metadata IS NOT NULL AND NEW.metadata ? 'genres' THEN
+        genre_text := public.extract_jsonb_name_text(NEW.metadata->'genres');
+    END IF;
+
+    IF NEW.metadata IS NOT NULL AND NEW.metadata ? 'keywords' THEN
+        keyword_text := public.extract_jsonb_name_text(NEW.metadata->'keywords');
+    END IF;
+
+    NEW.search_text := to_tsvector('english',
+        COALESCE(NEW.title, '')        || ' ' ||
         COALESCE(NEW.library_name, '') || ' ' ||
-        COALESCE(NEW.method, '')
+        COALESCE(NEW.method, '')       || ' ' ||
+        COALESCE(genre_text, '')       || ' ' ||
+        COALESCE(keyword_text, '')
     );
     RETURN NEW;
 END;

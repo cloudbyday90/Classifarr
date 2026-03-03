@@ -595,5 +595,41 @@ describe('RAGRetriever', () => {
                 })
             );
         });
+
+        it('should derive expansionTermCount from real fullTextSearch expansion and log it via hybridSearch', async () => {
+            // Uses the real fullTextSearch implementation (only db.query is mocked) to verify
+            // that the expansion parsing → term counting → ragLogger.logOperation wiring is correct.
+            embeddingRouter.getConfig.mockResolvedValue({ rag_fusion_method: 'rrf', rag_rrf_k: 60 });
+            jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([]);
+            db.query.mockResolvedValue({ rows: [] });
+
+            const metadataWithOverrides = {
+                title: 'Test Movie',
+                library_name: 'Movies',
+                rag_query_overrides: {
+                    alias_terms: ['Alias One'],
+                    evidence_tokens: {
+                        genres: ['Action', 'Thriller'],
+                        keywords: ['spy'],
+                        cast: ['Actor A']  // cast must NOT be counted; it is not indexed
+                    }
+                }
+            };
+
+            await ragRetriever.hybridSearch(metadataWithOverrides, 5, { useExpandedQuery: true });
+
+            // alias_terms(1) + genres(2) + keywords(1) = 4 terms; cast excluded
+            expect(ragLogger.logOperation).toHaveBeenCalledWith(
+                'hybrid_search',
+                expect.any(Number),
+                true,
+                expect.objectContaining({
+                    metadata: expect.objectContaining({
+                        expandedQuery: true,
+                        expansionTermCount: 4
+                    })
+                })
+            );
+        });
     });
 });

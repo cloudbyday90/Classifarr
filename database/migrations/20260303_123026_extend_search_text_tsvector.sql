@@ -28,7 +28,8 @@
 --      to also concatenate genre and keyword text from metadata.
 --   3. Backfills search_text for all existing rows.
 --
--- Safe for existing installs: uses COALESCE and IF EXISTS guards throughout.
+-- Note: this migration assumes classification_history, its search_text column,
+-- and its metadata column already exist. It will fail if any of these are missing.
 
 -- ============================================================================
 -- 1. HELPER: extract text from a JSONB array of strings or {name:...} objects
@@ -103,4 +104,6 @@ SET search_text = to_tsvector('english',
         CASE WHEN metadata IS NOT NULL AND metadata ? 'keywords'
              THEN metadata->'keywords' ELSE '[]'::jsonb END
     ), '')
-);
+)
+WHERE search_text IS NULL
+   OR (metadata IS NOT NULL AND (metadata ? 'genres' OR metadata ? 'keywords'));
