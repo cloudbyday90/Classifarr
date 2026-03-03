@@ -21,6 +21,7 @@ const embeddingService = require('../services/embeddingService');
 const embeddingRouter = require('../services/embeddingRouter');
 const imageEmbeddingProvider = require('../services/imageEmbeddingProvider');
 const db = require('../config/database');
+const ragLogger = require('../utils/ragLogger');
 
 jest.mock('../services/embeddingService');
 jest.mock('../services/embeddingRouter');
@@ -37,6 +38,10 @@ jest.mock('../utils/logger', () => ({
         warn: jest.fn(),
         debug: jest.fn()
     })
+}));
+jest.mock('../utils/ragLogger', () => ({
+    logOperation: jest.fn().mockResolvedValue(undefined),
+    logError: jest.fn().mockResolvedValue(undefined)
 }));
 
 describe('RAGRetriever', () => {
@@ -449,6 +454,143 @@ describe('RAGRetriever', () => {
             await expect(
                 ragRetriever.hybridSearch({ title: 'Test' }, 5, { signal: controller.signal })
             ).rejects.toThrow('aborted');
+        });
+    });
+
+    describe('fullTextSearch with expanded query', () => {
+        it('should use only title and library_name when useExpandedQuery is false (pass-1 regression)', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+
+            await ragRetriever.fullTextSearch(
+                {
+                    title: 'My Movie',
+                    library_name: 'Movies',
+                    rag_query_overrides: {
+                        alias_terms: ['Alias One'],
+                        evidence_tokens: { genres: ['Action'], keywords: ['hero'], cast: ['Actor A'] }
+                    }
+                },
+                5,
+                { useExpandedQuery: false }
+            );
+
+            const [queryStr, params] = db.query.mock.calls[0];
+            expect(queryStr).toContain('plainto_tsquery');
+            expect(queryStr).not.toContain('websearch_to_tsquery');
+            expect(params[0]).toBe('My Movie Movies');
+        });
+
+        it('should append alias_terms, genres, keywords, and cast when useExpandedQuery is true', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+
+            await ragRetriever.fullTextSearch(
+                {
+                    title: 'My Movie',
+                    library_name: 'Movies',
+                    rag_query_overrides: {
+                        alias_terms: ['My Film'],
+                        evidence_tokens: {
+                            genres: ['Action', 'Thriller'],
+                            keywords: ['hero', 'spy'],
+                            cast: ['Actor A']
+                        }
+                    }
+                },
+                5,
+                { useExpandedQuery: true }
+            );
+
+            const [queryStr, params] = db.query.mock.calls[0];
+            expect(queryStr).toContain('websearch_to_tsquery');
+            const searchString = params[0];
+            expect(searchString).toContain('My Movie');
+            expect(searchString).toContain('Movies');
+            expect(searchString).toContain('My Film');
+            expect(searchString).toContain('Action');
+            expect(searchString).toContain('Thriller');
+            expect(searchString).toContain('hero');
+            expect(searchString).toContain('spy');
+            expect(searchString).toContain('Actor A');
+        });
+
+        it('should fall back to plainto_tsquery when useExpandedQuery is true but no rag_query_overrides', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+
+            await ragRetriever.fullTextSearch(
+                { title: 'My Movie', library_name: 'Movies' },
+                5,
+                { useExpandedQuery: true }
+            );
+
+            const [queryStr] = db.query.mock.calls[0];
+            expect(queryStr).toContain('plainto_tsquery');
+            expect(queryStr).not.toContain('websearch_to_tsquery');
+        });
+    });
+
+    describe('hybridSearch passes useExpandedQuery to fullTextSearch', () => {
+        beforeEach(() => {
+            jest.restoreAllMocks();
+            jest.clearAllMocks();
+            ragLogger.logOperation.mockResolvedValue(undefined);
+            ragLogger.logError.mockResolvedValue(undefined);
+        });
+
+        it('should pass useExpandedQuery through to fullTextSearch', async () => {
+            embeddingRouter.getConfig.mockResolvedValue({ rag_fusion_method: 'rrf', rag_rrf_k: 60 });
+            jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([]);
+            const ftsSpy = jest.spyOn(ragRetriever, 'fullTextSearch').mockResolvedValue([]);
+
+            await ragRetriever.hybridSearch({ title: 'Test' }, 5, { useExpandedQuery: true });
+
+            expect(ftsSpy).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.any(Number),
+                expect.objectContaining({ useExpandedQuery: true })
+            );
+        });
+
+        it('should log expandedQuery:true and expansionTermCount when useExpandedQuery is set', async () => {
+            embeddingRouter.getConfig.mockResolvedValue({ rag_fusion_method: 'rrf', rag_rrf_k: 60 });
+            jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([]);
+            jest.spyOn(ragRetriever, 'fullTextSearch').mockImplementation(async (metadata, limit, opts) => {
+                opts._expansionTermCount = 4;
+                return [];
+            });
+
+            await ragRetriever.hybridSearch({ title: 'Test' }, 5, { useExpandedQuery: true });
+
+            expect(ragLogger.logOperation).toHaveBeenCalledWith(
+                'hybrid_search',
+                expect.any(Number),
+                true,
+                expect.objectContaining({
+                    metadata: expect.objectContaining({
+                        expandedQuery: true,
+                        expansionTermCount: 4
+                    })
+                })
+            );
+        });
+
+        it('should log expandedQuery:false and expansionTermCount:0 when useExpandedQuery is not set', async () => {
+            embeddingRouter.getConfig.mockResolvedValue({ rag_fusion_method: 'rrf', rag_rrf_k: 60 });
+            jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([]);
+            jest.spyOn(ragRetriever, 'fullTextSearch').mockResolvedValue([]);
+
+            await ragRetriever.hybridSearch({ title: 'Test' }, 5, {});
+
+            expect(ragLogger.logOperation).toHaveBeenCalledWith(
+                'hybrid_search',
+                expect.any(Number),
+                true,
+                expect.objectContaining({
+                    metadata: expect.objectContaining({
+                        expandedQuery: false,
+                        expansionTermCount: 0
+                    })
+                })
+            );
         });
     });
 });
