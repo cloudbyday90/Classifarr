@@ -1,34 +1,41 @@
 # Classifarr Release Notes
 
 ## [Unreleased]
-**Hard-to-find titles are now matched more accurately — aliases, genres, and cast all count**
 
-### 🔍 What You'll Notice
-- Titles with alternate names, non-English originals, or franchise identifiers are far more likely to surface the right library match on the first try.
-- Ambiguous media — anime with Japanese titles, franchise films, or genre-heavy shows — benefit from a smarter second-pass search that considers much more than just the title.
+---
+
+## v0.43.3-alpha
+**Title: Fresh installs are faster and cleaner — no more startup noise**
+
+### 🎉 What You'll Notice
+- A brand-new Classifarr instance starts up faster: the database is initialized from a single snapshot instead of replaying 107 migrations one by one.
+- The setup account page no longer shows a "CSRF validation failed" error when your browser still has a cookie from a previous installation.
+- No more unexpected log cleanup messages or error-level warnings on first boot — the system now correctly identifies a fresh install and skips upgrade-only housekeeping.
+- Hard-to-find titles — especially those with aliases, alternate names, or non-English originals — are now matched more accurately in second-pass retrieval.
 
 ### 📊 Quick Visual
 ```text
-Pass-2 Search Signal Coverage
-Title + library name    [██████████] Always
-Aliases / alt titles    [██████████] Now included
-Genre names             [██████████] Now included
-Keywords                [██████████] Now included
-Cast names              [██████████] Now included
+Fresh Install Health (before → after)
+CSRF error on setup page       [✗] → [✓] Fixed
+PostUpgrade tasks firing (×5)  [✗] → [✓] Skipped (fresh install)
+IdleBackfill ERROR on boot     [✗] → [✓] INFO (RAG not yet configured)
+Startup time (107 migrations)  [✗] → [✓] Snapshot fast-path
+Test suite flaky failures       [✗] → [✓] Deterministic (1803/1803)
 ```
 
 ### ✨ Highlights
-- When Classifarr runs its second-pass retrieval for an ambiguous item, it now feeds alias names, genre labels, plot keywords, and cast names into the full-text search — not just the plain title.
-- For example, "My Neighbor Totoro" also searches for "Tonari no Totoro", "animation", "fantasy", "Studio Ghibli film", and key cast names — dramatically improving recall for non-English and hard-to-spell titles.
-- Existing history entries are automatically re-indexed to include genre and keyword data, so improvements apply retroactively.
+- Fresh installs now load from a pre-built database snapshot — all tables, seed data, and migration history in one file. The sequential 107-migration path is preserved as a fallback.
+- Three startup errors that only occurred on new instances have been eliminated: the CSRF setup blocker, repeated log-clear warnings, and an idle backfill error logged before any AI provider is configured.
+- Second-pass title search now incorporates alias names, genres, plot keywords, and cast — so items with non-English originals or franchise subtitles are far more likely to match on the first try.
 
 ### 🔧 Reliability Improvements
-- The search engine switches to a more flexible query mode (`websearch_to_tsquery`) when expanded terms are present, allowing partial and phrase matching across the richer term set.
-- Expansion metrics (`expandedQuery`, `expansionTermCount`) are now recorded in operation logs, providing a data trail for future recall analysis.
+- Fixed a long-standing intermittent test failure in the queue service caused by shared mock state bleeding between test files. The full test suite now passes deterministically across repeated runs.
+- Post-upgrade tasks (like log cleanup) now correctly recognize a fresh install and mark themselves complete without running — they exist to migrate data from older versions, not to act on empty databases.
+- The idle backfill service no longer logs an ERROR when no AI provider has been configured yet. It now exits quietly with an INFO message until you've set one up.
 
 ### 👥 Who This Helps
-- **End users**: Titles with aliases, franchises, or non-English originals are much less likely to land in "Needs Attention" due to a missed similarity match.
-- **Operators/admins**: Operation logs now capture whether expansion was active and how many terms were used — useful for diagnosing retrieval quality on tricky items.
+- **New users / operators**: The setup experience is now smooth out of the box — no CSRF error, no confusing log-clear warnings, no spurious ERROR logs before configuration.
+- **Everyone**: Hard-to-find titles with aliases or non-English names have improved retrieval in the second-pass similarity search.
 
 ### 📚 Want Technical Details?
 See `CHANGELOG.md` for full technical details.

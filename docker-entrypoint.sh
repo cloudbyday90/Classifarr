@@ -151,10 +151,22 @@ if [ ! -f "$PG_DATA/PG_VERSION" ]; then
     echo "Creating classifarr database..."
     run_as_classifarr createdb classifarr
     
-    # Run init script
-    if [ -f /app/database/init.sql ]; then
-        echo "Running database initialization..."
+    # Run init script - prefer schema snapshot for speed (13x faster than running all migrations)
+    if [ -f /app/database/schema/current.sql ]; then
+        echo "Loading schema snapshot (fresh install fast-path)..."
+        if run_as_classifarr psql -d classifarr --set ON_ERROR_STOP=1 -f /app/database/schema/current.sql; then
+            echo "Schema snapshot loaded successfully!"
+        else
+            echo "WARN: Schema snapshot failed, falling back to init.sql (legacy path)..."
+            run_as_classifarr psql -d classifarr -f /app/database/init.sql
+            echo "Database initialized via init.sql (fallback)."
+        fi
+    elif [ -f /app/database/init.sql ]; then
+        echo "Schema snapshot not found, falling back to init.sql (legacy path)..."
         run_as_classifarr psql -d classifarr -f /app/database/init.sql
+        echo "Database initialized via init.sql."
+    else
+        echo "WARN: No database initialization file found. Database may be empty."
     fi
     
     echo "PostgreSQL initialized successfully!"

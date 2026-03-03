@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.3-alpha] - 2026-03-03
+
 ### Added
 
+- **Schema Snapshot Fast-Path (Fresh Installs)** — `docker-entrypoint.sh` now loads `database/schema/current.sql` directly on a fresh install instead of applying all 107 migrations sequentially via `init.sql`. The snapshot path is verified with `ON_ERROR_STOP=1` and falls back to `init.sql` on failure. Reduces fresh install startup time significantly.
+- **Schema Snapshot: Seed Data Embedding** — `scripts/dump-schema.js` now auto-splices seed INSERTs from 8 data-only migrations (`005`, `006`, `019`, `043`, `044`, `046`, `20260201_010000`, `20260226_002000`) into `current.sql` after every `npm run db:dump-schema`. The snapshot is fully self-contained: DDL + seed data + `schema_migrations` table DDL + 107 migration tracking rows.
+- **Schema Snapshot: `schema_migrations` Table DDL** — `current.sql` now includes `CREATE TABLE IF NOT EXISTS public.schema_migrations (...)` so it can be applied to a completely empty database without a missing-table error (previously `pg_dump --exclude-table` stripped the DDL too).
 - **RAG: `expandedQuery` and `expansionTermCount` fields in `hybrid_search` operation logs** — `ragLogger.logOperation` for `hybrid_search` now records whether query expansion was active (`expandedQuery: true/false`) and how many extra terms were injected into the FTS query (`expansionTermCount`). Enables future recall measurement on ambiguous queries.
 - **Migration `20260303_123026_extend_search_text_tsvector`** — Extends the `update_classification_search_text()` trigger and backfills existing rows so the `search_text` tsvector also indexes genre and keyword names extracted from the `metadata` JSONB column. Includes helper function `extract_jsonb_name_text()` supporting both string arrays and `{id,name}` object arrays. Safe for existing installs.
 
@@ -19,7 +24,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fresh Install: CSRF Validation Failed on Setup Page** — `csrfProtection` middleware (`server/src/middleware/csrf.js`) now exempts the `/setup` route prefix from CSRF validation. A stale `access_token` browser cookie left over from a prior (wiped) installation no longer blocks admin account creation on a fresh instance. Setup routes are pre-authentication and rate-limited (10/hr); no security regression.
+- **Fresh Install: `PostUpgradeService` Executing Historical Tasks on New Instances** — Added `isFreshInstall()` check (queries `SELECT COUNT(*) FROM users`). When no users exist, all pending post-upgrade tasks are pre-seeded as complete without executing. Previously all 5 versions' tasks would fire on first boot (including 5× `clearLogs()`) because `post_upgrade_tasks` was empty.
+- **Fresh Install: `IdleBackfillService` Logging ERROR When AI Provider Unconfigured** — `loadConfig()` now returns `{ rag_enabled: false, idle_backfill_enabled: false }` as a safe default when `ai_provider_config` has no row yet. The service exits via the existing "RAG is disabled" INFO path instead of logging `[ERROR] Idle backfill NOT started: Failed to load configuration` on every idle detection cycle.
 - **RAG FTS: `fullTextSearch()` no longer ignores expanded metadata in pass-2 hybrid retrieval** — Previously, pass-2 calls to `hybridSearch()` used only `title + library_name` for full-text search regardless of the enriched `rag_query_overrides` payload. Expanded terms are now incorporated.
+- **RAG FTS: pass-2 OR semantics, unindexed cast exclusion, options mutation guard** — FTS pass-2 expansion now uses OR semantics for correct `websearch_to_tsquery` phrase handling; cast terms excluded when the `tsvector` does not index cast strings; options object mutation guard removed to prevent cross-call state bleed.
+
+### Tests
+
+- **`csrf.middleware.test.js`** — Added 2 tests for `/setup` exemption: stale-cookie POST to `/api/setup/*` allowed; non-setup POST to `/api/other` still blocked (403). Suite now 10 tests.
+- **`postUpgradeService.test.js`** — Added fresh-install pre-seed test: verifies `executed: 0`, `TRUNCATE` never called, all tasks marked complete; updated 2 stale test descriptions. Suite now 13 tests.
+- **`idleBackfillService.test.js`** — Added direct `loadConfig()` unit test asserting safe defaults (`rag_enabled: false`) for fresh install (empty `ai_provider_config`); added no-throw test for DB errors in `loadConfig()`; corrected 2 stale test descriptions. Suite now 14 tests.
+- **`queueService.test.js`** — Fixed inter-test mock contamination that caused 3 intermittent failures in full-suite runs: replaced `jest.clearAllMocks()` with `jest.resetAllMocks()` (also resets mock implementations, not just call counts) and added `aiAvailable`, `omdbSslBlockedUntil`, `lastOmdbSslProbeAt` to `beforeEach` state reset. Suite now runs deterministically across repeated full runs.
+- **Test count: 1803 passing** (up from 1792 at v0.43.2a-alpha).
 
 ## [v0.43.2a-alpha] - 2026-03-02
 

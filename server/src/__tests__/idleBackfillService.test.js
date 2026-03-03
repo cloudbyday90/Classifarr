@@ -127,9 +127,11 @@ describe('IdleBackfillService', () => {
     });
 
     describe('Bug #2: Early exit should not leave isRunning = true', () => {
-        test('should not set isRunning when config load fails', async () => {
+        test('should not set isRunning when no config row exists (uses disabled defaults)', async () => {
+            // Empty rows → loadConfig returns { rag_enabled: false, idle_backfill_enabled: false }
+            // Service exits via the "RAG is disabled" path, never setting isRunning
             db.query.mockResolvedValueOnce({
-                rows: [] // No config returned
+                rows: []
             });
 
             await idleBackfillService.startIdleBackfill();
@@ -158,17 +160,29 @@ describe('IdleBackfillService', () => {
     });
 
     describe('Bug #4: Config load failure handling', () => {
-        test('should handle null config from loadConfig', async () => {
-            db.query.mockResolvedValueOnce({
-                rows: [] // Empty result, loadConfig returns null
-            });
+        test('should return disabled defaults when no config row exists (fresh install)', async () => {
+            // Fresh install: ai_provider_config has no row yet.
+            // loadConfig() must return a safe disabled object, NOT null, so the
+            // service exits quietly via the RAG-disabled path instead of logging an error.
+            db.query.mockResolvedValueOnce({ rows: [] });
 
-            await idleBackfillService.startIdleBackfill();
+            const config = await idleBackfillService.loadConfig();
 
+            expect(config).not.toBeNull();
+            expect(config.rag_enabled).toBe(false);
+            expect(config.idle_backfill_enabled).toBe(false);
             expect(idleBackfillService.isRunning).toBe(false);
         });
 
-        test('should handle config load error gracefully', async () => {
+        test('should not throw when DB query errors', async () => {
+            db.query.mockRejectedValueOnce(new Error('Database connection failed'));
+
+            // Should resolve (not throw/reject) — catch block absorbs the error
+            await idleBackfillService.loadConfig();
+            expect(idleBackfillService.isRunning).toBe(false);
+        });
+
+        test('should not set isRunning when DB errors during config load', async () => {
             db.query.mockRejectedValueOnce(new Error('Database connection failed'));
 
             await idleBackfillService.startIdleBackfill();

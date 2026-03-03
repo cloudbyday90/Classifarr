@@ -102,4 +102,38 @@ describe('CSRF Middleware', () => {
   test('exports expected CSRF header name', () => {
     expect(CSRF_HEADER_NAME).toBe('x-csrf-token');
   });
+
+  describe('setup route exemption', () => {
+    beforeEach(() => {
+      // Mount middleware at /api to mirror real app — req.path is then relative
+      app = express();
+      app.use(cookieParser());
+      app.use(express.json());
+      app.use('/api', ensureCsrfCookie);
+      app.use('/api', csrfProtection);
+      app.post('/api/setup/create-admin', (req, res) => res.json({ success: true }));
+      app.post('/api/other', (req, res) => res.json({ success: true }));
+    });
+
+    test('allows POST to /api/setup/* with stale access_token cookie and no CSRF header', async () => {
+      // Simulates a user who has a leftover access_token from a prior (wiped) install
+      const res = await request(app)
+        .post('/api/setup/create-admin')
+        .set('Cookie', ['access_token=stale-token-from-prior-install'])
+        .send({ username: 'admin', password: 'secret' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    test('still rejects POST to non-setup /api/* with stale access_token and no CSRF header', async () => {
+      // Exemption must be scoped to /setup only — other routes remain protected
+      const res = await request(app)
+        .post('/api/other')
+        .set('Cookie', ['access_token=stale-token']);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toBe('CSRF validation failed');
+    });
+  });
 });

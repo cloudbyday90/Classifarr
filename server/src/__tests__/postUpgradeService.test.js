@@ -47,6 +47,7 @@ describe('PostUpgradeService', () => {
             db.query
                 .mockResolvedValueOnce({ rows: [] }) // ensureTableExists check
                 .mockResolvedValueOnce({ rows: [] }) // getExecutedTaskIds - no tasks executed yet
+                .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // isFreshInstall - has users, not fresh
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs - TRUNCATE error_log
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs - TRUNCATE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_logs
@@ -76,6 +77,22 @@ describe('PostUpgradeService', () => {
             expect(result.skipped).toBe(0);
         });
 
+        it('should pre-seed all tasks as complete on a fresh install without executing them', async () => {
+            db.query
+                .mockResolvedValueOnce({ rows: [] }) // ensureTableExists check
+                .mockResolvedValueOnce({ rows: [] }) // getExecutedTaskIds - nothing done yet
+                .mockResolvedValueOnce({ rows: [{ count: '0' }] }) // isFreshInstall - no users
+                .mockResolvedValue({ rowCount: 1 }); // markTaskComplete × N
+
+            const result = await postUpgradeService.runPendingTasks();
+
+            expect(result.executed).toBe(0);
+            expect(result.skipped).toBeGreaterThan(0);
+            // TRUNCATE should never have been called
+            expect(db.query).not.toHaveBeenCalledWith('TRUNCATE TABLE error_log');
+            expect(db.query).not.toHaveBeenCalledWith('TRUNCATE TABLE app_log');
+        });
+
         it('should skip tasks that have already been executed', async () => {
             // Mock that tasks are already executed
             db.query
@@ -103,6 +120,7 @@ describe('PostUpgradeService', () => {
             db.query
                 .mockResolvedValueOnce({ rows: [] }) // ensureTableExists check
                 .mockResolvedValueOnce({ rows: [] }) // getExecutedTaskIds
+                .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // isFreshInstall - has users, not fresh
                 .mockRejectedValueOnce(new Error('Failed to truncate')) // clear_logs fails
                 .mockResolvedValueOnce({ rowCount: 5 }) // backfill_library_name succeeds
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for backfill

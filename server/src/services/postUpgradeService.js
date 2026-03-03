@@ -67,6 +67,21 @@ const POST_UPGRADE_TASKS = {
 
 class PostUpgradeService {
     /**
+     * Detect whether this is a brand-new installation (no users exist yet).
+     * On a fresh install, post-upgrade tasks should be pre-seeded as complete
+     * rather than executed — they exist to migrate/clean up data from prior
+     * versions, which doesn't apply when there's no prior data.
+     */
+    async isFreshInstall() {
+        try {
+            const result = await db.query('SELECT COUNT(*) FROM users');
+            return parseInt(result.rows[0].count, 10) === 0;
+        } catch (_err) {
+            return false;
+        }
+    }
+
+    /**
      * Run all pending post-upgrade tasks
      */
     async runPendingTasks() {
@@ -93,6 +108,17 @@ class PostUpgradeService {
             if (pendingTasks.length === 0) {
                 logger.info('All post-upgrade tasks already completed');
                 return { executed: 0, skipped: executedTaskIds.length };
+            }
+
+            // On a fresh install there is no prior-version data to clean up or
+            // transform.  Mark every task as done without running it so that the
+            // service is quiet and future upgrade tasks work correctly.
+            if (await this.isFreshInstall()) {
+                logger.info('Fresh install detected — pre-seeding all post-upgrade tasks as complete (no prior data to process)');
+                for (const task of pendingTasks) {
+                    await this.markTaskComplete(task);
+                }
+                return { executed: 0, skipped: allTasks.length };
             }
 
             logger.info(`Found ${pendingTasks.length} pending post-upgrade tasks`);

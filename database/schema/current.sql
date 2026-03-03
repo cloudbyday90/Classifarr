@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-02-18T14:02:10.121Z
--- Latest Migration: 20260218_082300_add_ai_rerun_method.sql
+-- Generated: 2026-03-03T16:51:02.201Z
+-- Latest Migration: 20260303_130000_add_policy_recheck_confidence_gain_multiplier.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,13 +12,12 @@
 --
 
 
--- Dumped from database version 17.7
--- Dumped by pg_dump version 17.7
+-- Dumped from database version 15.15 (Debian 15.15-1.pgdg12+1)
+-- Dumped by pg_dump version 15.15 (Debian 15.15-1.pgdg12+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -76,12 +75,14 @@ DECLARE
     genre_text   TEXT := '';
     keyword_text TEXT := '';
 BEGIN
+    -- Extract genre names from metadata JSONB if present
     IF NEW.metadata IS NOT NULL AND NEW.metadata ? 'genres' THEN
-        genre_text := public.extract_jsonb_name_text(NEW.metadata->'genres');
+        genre_text := extract_jsonb_name_text(NEW.metadata->'genres');
     END IF;
 
+    -- Extract keyword names from metadata JSONB if present
     IF NEW.metadata IS NOT NULL AND NEW.metadata ? 'keywords' THEN
-        keyword_text := public.extract_jsonb_name_text(NEW.metadata->'keywords');
+        keyword_text := extract_jsonb_name_text(NEW.metadata->'keywords');
     END IF;
 
     NEW.search_text := to_tsvector('english',
@@ -276,6 +277,8 @@ CREATE TABLE public.ai_provider_config (
     rag_loop_auto_fallback_last_version character varying(64),
     rag_loop_auto_recover_last_attempt_version character varying(64),
     rag_loop_auto_recover_last_attempt_at timestamp without time zone,
+    policy_recheck_skip_when_ai_confident_enabled boolean DEFAULT true,
+    policy_recheck_confidence_gain_multiplier numeric(5,2) DEFAULT 2,
     CONSTRAINT ai_cfg_alias_max_terms_chk CHECK (((rag_alias_max_terms >= 1) AND (rag_alias_max_terms <= 20))),
     CONSTRAINT ai_cfg_alias_min_token_len_chk CHECK (((rag_alias_min_token_length >= 1) AND (rag_alias_min_token_length <= 10))),
     CONSTRAINT ai_cfg_alias_source_policy_chk CHECK (((rag_alias_source_policy)::text = 'authoritative_only'::text)),
@@ -292,6 +295,7 @@ CREATE TABLE public.ai_provider_config (
     CONSTRAINT ai_cfg_half_open_probe_chk CHECK (((rag_loop_half_open_probe_count >= 1) AND (rag_loop_half_open_probe_count <= 20))),
     CONSTRAINT ai_cfg_policy_recheck_ai_calls_chk CHECK (((policy_recheck_max_ai_calls_per_item >= 1) AND (policy_recheck_max_ai_calls_per_item <= 5))),
     CONSTRAINT ai_cfg_policy_recheck_attempts_chk CHECK (((policy_recheck_max_attempts >= 0) AND (policy_recheck_max_attempts <= 5))),
+    CONSTRAINT ai_cfg_policy_recheck_conf_gain_mult_chk CHECK (((policy_recheck_confidence_gain_multiplier >= 1.0) AND (policy_recheck_confidence_gain_multiplier <= 10.0))),
     CONSTRAINT ai_cfg_policy_recheck_id_caps_shape_chk CHECK (((jsonb_typeof(policy_recheck_identifier_caps) = 'object'::text) AND (policy_recheck_identifier_caps ? 'keywords'::text) AND (policy_recheck_identifier_caps ? 'genres'::text) AND (policy_recheck_identifier_caps ? 'studios'::text) AND (policy_recheck_identifier_caps ? 'cast'::text) AND (((((policy_recheck_identifier_caps - 'keywords'::text) - 'genres'::text) - 'studios'::text) - 'cast'::text) = '{}'::jsonb) AND ((policy_recheck_identifier_caps ->> 'keywords'::text) ~ '^\d+$'::text) AND ((policy_recheck_identifier_caps ->> 'genres'::text) ~ '^\d+$'::text) AND ((policy_recheck_identifier_caps ->> 'studios'::text) ~ '^\d+$'::text) AND ((policy_recheck_identifier_caps ->> 'cast'::text) ~ '^\d+$'::text) AND ((((policy_recheck_identifier_caps ->> 'keywords'::text))::integer >= 0) AND (((policy_recheck_identifier_caps ->> 'keywords'::text))::integer <= 25)) AND ((((policy_recheck_identifier_caps ->> 'genres'::text))::integer >= 0) AND (((policy_recheck_identifier_caps ->> 'genres'::text))::integer <= 25)) AND ((((policy_recheck_identifier_caps ->> 'studios'::text))::integer >= 0) AND (((policy_recheck_identifier_caps ->> 'studios'::text))::integer <= 25)) AND ((((policy_recheck_identifier_caps ->> 'cast'::text))::integer >= 0) AND (((policy_recheck_identifier_caps ->> 'cast'::text))::integer <= 25)))),
     CONSTRAINT ai_cfg_policy_recheck_id_caps_type_chk CHECK ((jsonb_typeof(policy_recheck_identifier_caps) = 'object'::text)),
     CONSTRAINT ai_cfg_policy_recheck_metadata_attempts_chk CHECK (((policy_recheck_metadata_max_attempts >= 0) AND (policy_recheck_metadata_max_attempts <= 5))),
@@ -884,6 +888,13 @@ COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_recover_last_attempt_a
 
 
 --
+-- Name: COLUMN ai_provider_config.policy_recheck_confidence_gain_multiplier; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.policy_recheck_confidence_gain_multiplier IS 'Multiplier applied to minimum confidence gain threshold during second-pass recheck (1.0-10.0).';
+
+
+--
 -- Name: ai_provider_config_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -979,6 +990,41 @@ ALTER SEQUENCE public.ai_usage_monthly_id_seq OWNED BY public.ai_usage_monthly.i
 
 
 --
+-- Name: api_key_audit; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_key_audit (
+    id integer NOT NULL,
+    api_key_id integer,
+    action character varying(50) NOT NULL,
+    endpoint character varying(255),
+    ip_address inet,
+    user_agent text,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: api_key_audit_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.api_key_audit_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: api_key_audit_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.api_key_audit_id_seq OWNED BY public.api_key_audit.id;
+
+
+--
 -- Name: api_keys; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1028,7 +1074,7 @@ COMMENT ON COLUMN public.api_keys.key_prefix IS 'First 8 characters of the API k
 -- Name: COLUMN api_keys.permissions; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.api_keys.permissions IS 'Permission level: read_only, read_write, or admin';
+COMMENT ON COLUMN public.api_keys.permissions IS 'Permission level: read_only, read_write, webhook_only, or admin';
 
 
 --
@@ -1509,7 +1555,7 @@ ALTER SEQUENCE public.classification_corrections_id_seq OWNED BY public.classifi
 CREATE TABLE public.classification_embeddings (
     id integer NOT NULL,
     classification_id integer NOT NULL,
-    embedding public.vector NOT NULL,
+    embedding public.vector(768) NOT NULL,
     embedding_dims integer NOT NULL,
     provider character varying(50) NOT NULL,
     model character varying(100) NOT NULL,
@@ -1857,7 +1903,7 @@ CREATE TABLE public.custom_presets (
     id integer NOT NULL,
     name character varying(100) NOT NULL,
     description text,
-    icon character varying(10) DEFAULT '⚙️'::character varying,
+    icon character varying(10) DEFAULT '??????'::character varying,
     category character varying(50) DEFAULT 'custom'::character varying,
     signals jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_by integer,
@@ -2389,17 +2435,17 @@ ALTER SEQUENCE public.learning_conflicts_id_seq OWNED BY public.learning_conflic
 CREATE TABLE public.learning_patterns (
     id integer NOT NULL,
     tmdb_id integer,
+    media_type character varying(20) DEFAULT 'unknown'::character varying NOT NULL,
     library_id integer,
     pattern_type character varying(50),
     pattern_data jsonb,
     confidence numeric(5,2),
     usage_count integer DEFAULT 0,
     success_rate numeric(5,2) DEFAULT 100.00,
-    created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now(),
-    media_type character varying(20) DEFAULT 'unknown'::character varying NOT NULL,
     metadata jsonb,
-    created_by character varying(100)
+    created_by character varying(100),
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
 );
 
 
@@ -3784,15 +3830,15 @@ COMMENT ON TABLE public.rag_metrics IS 'Performance metrics for RAG operations (
 --
 
 CREATE VIEW public.rag_health_summary AS
- SELECT count(*) FILTER (WHERE (created_at >= (now() - '24:00:00'::interval))) AS operations_24h,
-    count(*) FILTER (WHERE (created_at >= (now() - '01:00:00'::interval))) AS operations_1h,
-    count(*) FILTER (WHERE ((success = true) AND (created_at >= (now() - '24:00:00'::interval)))) AS successful_24h,
-    count(*) FILTER (WHERE ((success = false) AND (created_at >= (now() - '24:00:00'::interval)))) AS failed_24h,
-    avg(duration_ms) FILTER (WHERE (created_at >= (now() - '24:00:00'::interval))) AS avg_duration_ms_24h,
-    count(*) FILTER (WHERE (((operation)::text = 'semantic_search'::text) AND (created_at >= (now() - '24:00:00'::interval)))) AS semantic_searches_24h,
-    count(*) FILTER (WHERE (((operation)::text = 'hybrid_search'::text) AND (created_at >= (now() - '24:00:00'::interval)))) AS hybrid_searches_24h,
-    count(*) FILTER (WHERE (((operation)::text = 'embedding_generation'::text) AND (created_at >= (now() - '24:00:00'::interval)))) AS embeddings_generated_24h,
-    count(*) FILTER (WHERE (((operation)::text = 'pattern_mining'::text) AND (created_at >= (now() - '24:00:00'::interval)))) AS pattern_mining_runs_24h
+ SELECT count(*) FILTER (WHERE (rag_metrics.created_at >= (now() - '24:00:00'::interval))) AS operations_24h,
+    count(*) FILTER (WHERE (rag_metrics.created_at >= (now() - '01:00:00'::interval))) AS operations_1h,
+    count(*) FILTER (WHERE ((rag_metrics.success = true) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS successful_24h,
+    count(*) FILTER (WHERE ((rag_metrics.success = false) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS failed_24h,
+    avg(rag_metrics.duration_ms) FILTER (WHERE (rag_metrics.created_at >= (now() - '24:00:00'::interval))) AS avg_duration_ms_24h,
+    count(*) FILTER (WHERE (((rag_metrics.operation)::text = 'semantic_search'::text) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS semantic_searches_24h,
+    count(*) FILTER (WHERE (((rag_metrics.operation)::text = 'hybrid_search'::text) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS hybrid_searches_24h,
+    count(*) FILTER (WHERE (((rag_metrics.operation)::text = 'embedding_generation'::text) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS embeddings_generated_24h,
+    count(*) FILTER (WHERE (((rag_metrics.operation)::text = 'pattern_mining'::text) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS pattern_mining_runs_24h
    FROM public.rag_metrics;
 
 
@@ -3855,6 +3901,78 @@ CREATE SEQUENCE public.rag_metrics_id_seq
 --
 
 ALTER SEQUENCE public.rag_metrics_id_seq OWNED BY public.rag_metrics.id;
+
+
+--
+-- Name: refresh_tokens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.refresh_tokens (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    token_hash character varying(255) NOT NULL,
+    expires_at timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT now(),
+    revoked_at timestamp without time zone,
+    revoked_by_ip inet,
+    user_agent text,
+    device_info jsonb
+);
+
+
+--
+-- Name: TABLE refresh_tokens; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.refresh_tokens IS 'Refresh tokens for secure JWT session management';
+
+
+--
+-- Name: COLUMN refresh_tokens.token_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.refresh_tokens.token_hash IS 'Hashed refresh token (plaintext never stored)';
+
+
+--
+-- Name: COLUMN refresh_tokens.expires_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.refresh_tokens.expires_at IS 'Token expiration timestamp';
+
+
+--
+-- Name: COLUMN refresh_tokens.revoked_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.refresh_tokens.revoked_at IS 'When token was revoked (null if active)';
+
+
+--
+-- Name: COLUMN refresh_tokens.device_info; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.refresh_tokens.device_info IS 'Optional device metadata for user session management';
+
+
+--
+-- Name: refresh_tokens_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.refresh_tokens_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: refresh_tokens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.refresh_tokens_id_seq OWNED BY public.refresh_tokens.id;
 
 
 --
@@ -4399,6 +4517,13 @@ ALTER TABLE ONLY public.ai_usage_monthly ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: api_key_audit id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key_audit ALTER COLUMN id SET DEFAULT nextval('public.api_key_audit_id_seq'::regclass);
+
+
+--
 -- Name: api_keys id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4833,6 +4958,13 @@ ALTER TABLE ONLY public.rag_metrics ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: refresh_tokens id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.refresh_tokens ALTER COLUMN id SET DEFAULT nextval('public.refresh_tokens_id_seq'::regclass);
+
+
+--
 -- Name: scheduled_tasks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4939,6 +5071,14 @@ ALTER TABLE ONLY public.ai_usage_monthly
 
 ALTER TABLE ONLY public.ai_usage_monthly
     ADD CONSTRAINT ai_usage_monthly_year_month_provider_key UNIQUE (year_month, provider);
+
+
+--
+-- Name: api_key_audit api_key_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key_audit
+    ADD CONSTRAINT api_key_audit_pkey PRIMARY KEY (id);
 
 
 --
@@ -5278,6 +5418,14 @@ ALTER TABLE ONLY public.learning_patterns
 
 
 --
+-- Name: learning_patterns learning_patterns_tmdb_id_media_type_pattern_type_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.learning_patterns
+    ADD CONSTRAINT learning_patterns_tmdb_id_media_type_pattern_type_key UNIQUE (tmdb_id, media_type, pattern_type);
+
+
+--
 -- Name: learning_patterns learning_patterns_tmdb_media_type_pattern_type_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5306,7 +5454,7 @@ ALTER TABLE ONLY public.libraries
 --
 
 ALTER TABLE ONLY public.libraries
-    ADD CONSTRAINT libraries_name_media_type_unique UNIQUE (media_server_id, name, media_type);
+    ADD CONSTRAINT libraries_name_media_type_unique UNIQUE (name, media_type);
 
 
 --
@@ -5411,6 +5559,14 @@ ALTER TABLE ONLY public.library_profiles
 
 ALTER TABLE ONLY public.library_rules
     ADD CONSTRAINT library_rules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: library_rules library_rules_unique_rule; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_rules
+    ADD CONSTRAINT library_rules_unique_rule UNIQUE (library_id, rule_type, operator, value);
 
 
 --
@@ -5646,6 +5802,22 @@ ALTER TABLE ONLY public.rag_metrics
 
 
 --
+-- Name: refresh_tokens refresh_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.refresh_tokens
+    ADD CONSTRAINT refresh_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: refresh_tokens refresh_tokens_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.refresh_tokens
+    ADD CONSTRAINT refresh_tokens_token_hash_key UNIQUE (token_hash);
+
+
+--
 -- Name: scheduled_tasks scheduled_tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5779,6 +5951,27 @@ ALTER TABLE ONLY public.webhook_config
 
 ALTER TABLE ONLY public.webhook_log
     ADD CONSTRAINT webhook_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_api_key_audit_action; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_key_audit_action ON public.api_key_audit USING btree (action);
+
+
+--
+-- Name: idx_api_key_audit_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_key_audit_created_at ON public.api_key_audit USING btree (created_at);
+
+
+--
+-- Name: idx_api_key_audit_key_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_key_audit_key_id ON public.api_key_audit USING btree (api_key_id);
 
 
 --
@@ -6391,6 +6584,13 @@ CREATE INDEX idx_library_custom_rules_library ON public.library_custom_rules USI
 
 
 --
+-- Name: idx_library_custom_rules_library_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_library_custom_rules_library_id ON public.library_custom_rules USING btree (library_id);
+
+
+--
 -- Name: idx_library_labels_library; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6430,6 +6630,13 @@ CREATE INDEX idx_library_policies_source ON public.library_policies USING gin (s
 --
 
 CREATE INDEX idx_library_profiles_library ON public.library_profiles USING btree (library_id);
+
+
+--
+-- Name: idx_library_rules_exception; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_library_rules_exception ON public.library_rules USING btree (is_exception);
 
 
 --
@@ -6755,6 +6962,27 @@ CREATE INDEX idx_rag_metrics_success ON public.rag_metrics USING btree (success,
 
 
 --
+-- Name: idx_refresh_tokens_expires_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_refresh_tokens_expires_at ON public.refresh_tokens USING btree (expires_at);
+
+
+--
+-- Name: idx_refresh_tokens_token_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_refresh_tokens_token_hash ON public.refresh_tokens USING btree (token_hash);
+
+
+--
+-- Name: idx_refresh_tokens_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_refresh_tokens_user_id ON public.refresh_tokens USING btree (user_id);
+
+
+--
 -- Name: idx_scheduled_tasks_next_run; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6899,6 +7127,21 @@ CREATE INDEX idx_webhook_log_type ON public.webhook_log USING btree (webhook_typ
 --
 
 CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON public.classification_history FOR EACH ROW EXECUTE FUNCTION public.update_classification_search_text();
+
+
+--
+-- Name: library_rules_v2 trigger_library_rules_v2_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_library_rules_v2_updated_at BEFORE UPDATE ON public.library_rules_v2 FOR EACH ROW EXECUTE FUNCTION public.update_library_rules_v2_updated_at();
+
+
+--
+-- Name: api_key_audit api_key_audit_api_key_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_key_audit
+    ADD CONSTRAINT api_key_audit_api_key_id_fkey FOREIGN KEY (api_key_id) REFERENCES public.api_keys(id) ON DELETE CASCADE;
 
 
 --
@@ -7406,6 +7649,14 @@ ALTER TABLE ONLY public.radarr_config
 
 
 --
+-- Name: refresh_tokens refresh_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.refresh_tokens
+    ADD CONSTRAINT refresh_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: scheduled_tasks scheduled_tasks_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7459,6 +7710,1179 @@ ALTER TABLE ONLY public.webhook_log
 
 
 
+
+-- ============================================================
+-- Seed Data (from data-only migrations, auto-appended by scripts/dump-schema.js)
+-- These INSERT statements are idempotent (ON CONFLICT DO NOTHING / DO UPDATE).
+-- ============================================================
+
+SELECT pg_catalog.set_config('search_path', 'public', false);
+
+-- === Seed: 005_add_require_all_confirmations_setting.sql ===
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ * Licensed under GPL-3.0 - See LICENSE file for details.
+ */
+
+-- Migration: Add require_all_confirmations setting
+-- This setting allows users to request confirmation for all classifications,
+-- regardless of confidence level
+
+INSERT INTO settings (key, value) 
+VALUES ('require_all_confirmations', 'false')
+ON CONFLICT (key) DO NOTHING;
+
+-- === Seed: 006_add_clarification_settings.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+--
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+-- Migration: Add AI Clarification Settings
+-- These settings control the AI-driven clarification system
+
+-- Add enable_clarification setting
+INSERT INTO
+    settings (key, value)
+VALUES (
+        'enable_clarification',
+        'true'
+    ) ON CONFLICT (key) DO NOTHING;
+
+-- Add clarification_threshold setting (default 75%)
+INSERT INTO
+    settings (key, value)
+VALUES (
+        'clarification_threshold',
+        '75'
+    ) ON CONFLICT (key) DO NOTHING;
+
+-- === Seed: 019_cleanup_omdb_config.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+--
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+-- Cleanup duplicate OMDb configuration rows
+-- Preserves existing configuration and consolidates to id=1
+
+-- === Seed: 043_seed_content_presets.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+--
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+-- v0.37.0: Content Presets Seed Data
+-- ═══════════════════════════════════════════════════════════════════════════
+-- This migration seeds the content_presets table with 46 comprehensive
+-- presets covering all categories for real-world Plex/Emby/Jellyfin library
+-- classification.
+-- 
+-- Related Issue: #95
+-- Depends on: #91 (PR #105) - Policy Database Schema
+-- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+
+-- ============================================================================
+-- SIGNAL SCHEMA REFERENCE (TypeScript)
+-- ============================================================================
+-- interface PresetSignals {
+--     certifications?: {
+--         mode: 'include' | 'exclude' | 'max';
+--         include?: string[];
+--         exclude?: string[];
+--         max?: string;
+--         weight?: number;
+--     };
+--     genres?: {
+--         prefer?: string[];
+--         require_any?: string[];
+--         require_all?: string[];
+--         exclude?: string[];
+--         weight?: number;
+--     };
+--     keywords?: {
+--         prefer?: string[];
+--         require_any?: string[];
+--         exclude?: string[];
+--         weight?: number;
+--     };
+--     studios?: {
+--         prefer?: string[];
+--         require_any?: string[];
+--         exclude?: string[];
+--         weight?: number;
+--     };
+--     release_year?: {
+--         min?: number;
+--         max?: number;
+--         weight?: number;
+--     };
+--     vote_average?: {
+--         min?: number;
+--         max?: number;
+--         weight?: number;
+--     };
+--     runtime?: {
+--         min_minutes?: number;
+--         max_minutes?: number;
+--         weight?: number;
+--     };
+--     language?: {
+--         prefer?: string[];
+--         require_any?: string[];
+--         exclude?: string[];
+--         weight?: number;
+--     };
+--     media_type?: {
+--         include: ('movie' | 'tv')[];
+--     };
+-- }
+-- ============================================================================
+
+-- ============================================================================
+-- CONTENT PRESETS SEED DATA
+-- ============================================================================
+-- Insert system presets with idempotency using ON CONFLICT
+-- user_id = NULL for system presets (allows unique constraint to work)
+-- ============================================================================
+
+INSERT INTO content_presets (key, name, description, icon, category, signals, is_system, display_order)
+VALUES
+-- ============================================================================
+-- CATEGORY: AUDIENCE (display_order 1-4)
+-- ============================================================================
+('family_friendly', 'Family-Friendly', 'Content suitable for all ages. Excludes R-rated and adult content.', '👨‍👩‍👧‍👦', 'audience',
+ '{"certifications": {"mode": "include", "include": ["G", "PG", "PG-13", "TV-Y", "TV-Y7", "TV-G", "TV-PG", "TV-14"], "exclude": ["R", "NC-17", "TV-MA"], "weight": 1.5}, "genres": {"prefer": ["Animation", "Family", "Comedy", "Adventure"], "exclude": ["Horror"], "weight": 1.0}, "keywords": {"exclude": ["gore", "explicit", "adult", "violence", "drug use"], "weight": 0.5}}',
+ true, 1),
+
+('kids_only', 'Kids Only', 'Content specifically for young children (ages 2-7).', '🧒', 'audience',
+ '{"certifications": {"mode": "include", "include": ["G", "TV-Y", "TV-Y7", "TV-G"], "weight": 2.0}, "genres": {"require_any": ["Animation", "Family"], "weight": 1.5}, "runtime": {"max_minutes": 120, "weight": 0.3}, "keywords": {"prefer": ["children", "kids", "educational", "cartoon"], "exclude": ["scary", "dark", "violence"], "weight": 0.8}}',
+ true, 2),
+
+('teen', 'Teen Content', 'Content appropriate for teenagers (13-17).', '🎒', 'audience',
+ '{"certifications": {"mode": "include", "include": ["PG", "PG-13", "TV-PG", "TV-14"], "weight": 1.5}, "genres": {"prefer": ["Action", "Adventure", "Comedy", "Science Fiction", "Fantasy"], "weight": 1.0}}',
+ true, 3),
+
+('adult_only', 'Adult Only', 'Mature content for adults only (18+).', '🔞', 'audience',
+ '{"certifications": {"mode": "include", "include": ["R", "NC-17", "TV-MA"], "weight": 2.0}, "genres": {"prefer": ["Thriller", "Horror", "Crime", "Drama"], "weight": 0.8}, "keywords": {"prefer": ["mature", "adult", "graphic"], "weight": 0.5}}',
+ true, 4),
+
+-- ============================================================================
+-- CATEGORY: GENRE (display_order 10-24)
+-- ============================================================================
+('animated', 'Animated Content', 'All animation including cartoons, CGI, and anime.', '🎨', 'genre',
+ '{"genres": {"require_any": ["Animation"], "weight": 2.0}, "keywords": {"prefer": ["animated", "animation", "cartoon", "cgi", "pixar", "dreamworks", "ghibli"], "weight": 0.5}}',
+ true, 10),
+
+('anime', 'Anime', 'Japanese animation specifically.', '⛩️', 'genre',
+ '{"genres": {"require_any": ["Animation"], "weight": 1.0}, "keywords": {"require_any": ["anime"], "prefer": ["manga", "shonen", "seinen", "shojo", "ghibli", "japanese animation"], "weight": 1.5}, "language": {"prefer": ["ja"], "weight": 1.0}}',
+ true, 11),
+
+('action_adventure', 'Action & Adventure', 'High-energy action and adventure content.', '💥', 'genre',
+ '{"genres": {"require_any": ["Action", "Adventure"], "prefer": ["Thriller"], "weight": 2.0}, "keywords": {"prefer": ["action", "adventure", "hero", "battle", "fight", "explosion"], "weight": 0.5}}',
+ true, 12),
+
+('comedy', 'Comedy', 'Comedies, sitcoms, and humorous content.', '😂', 'genre',
+ '{"genres": {"require_any": ["Comedy"], "weight": 2.0}, "keywords": {"prefer": ["funny", "humor", "comedy", "parody", "satire"], "weight": 0.5}}',
+ true, 13),
+
+('horror_scary', 'Horror & Scary', 'Horror movies and scary content.', '👻', 'genre',
+ '{"genres": {"require_any": ["Horror"], "prefer": ["Thriller"], "weight": 2.0}, "keywords": {"prefer": ["horror", "scary", "slasher", "supernatural", "haunted", "zombie", "vampire", "ghost"], "weight": 1.0}}',
+ true, 14),
+
+('drama', 'Drama', 'Dramatic films and series.', '🎭', 'genre',
+ '{"genres": {"require_any": ["Drama"], "exclude": ["Comedy"], "weight": 2.0}}',
+ true, 15),
+
+('romance', 'Romance', 'Romantic movies and series.', '💕', 'genre',
+ '{"genres": {"require_any": ["Romance"], "prefer": ["Drama", "Comedy"], "weight": 2.0}, "keywords": {"prefer": ["love", "romance", "romantic", "relationship"], "weight": 0.5}}',
+ true, 16),
+
+('scifi', 'Science Fiction', 'Science fiction and futuristic content.', '🚀', 'genre',
+ '{"genres": {"require_any": ["Science Fiction"], "prefer": ["Adventure", "Action"], "weight": 2.0}, "keywords": {"prefer": ["sci-fi", "space", "future", "alien", "robot", "technology"], "weight": 0.5}}',
+ true, 17),
+
+('fantasy', 'Fantasy', 'Fantasy and magical content.', '🧙', 'genre',
+ '{"genres": {"require_any": ["Fantasy"], "prefer": ["Adventure", "Action"], "weight": 2.0}, "keywords": {"prefer": ["magic", "wizard", "dragon", "mythical", "supernatural", "fairy tale"], "weight": 0.5}}',
+ true, 18),
+
+('documentary', 'Documentary', 'Documentaries and non-fiction.', '📚', 'genre',
+ '{"genres": {"require_any": ["Documentary"], "weight": 2.0}, "keywords": {"prefer": ["documentary", "real", "true story", "biography"], "weight": 0.5}}',
+ true, 19),
+
+('crime_mystery', 'Crime & Mystery', 'Crime dramas, mysteries, and thrillers.', '🔍', 'genre',
+ '{"genres": {"require_any": ["Crime", "Mystery"], "prefer": ["Thriller", "Drama"], "weight": 2.0}, "keywords": {"prefer": ["detective", "murder", "investigation", "crime", "police"], "weight": 0.5}}',
+ true, 20),
+
+('western', 'Western', 'Western films and series.', '🤠', 'genre',
+ '{"genres": {"require_any": ["Western"], "weight": 2.0}, "keywords": {"prefer": ["cowboy", "western", "frontier", "wild west"], "weight": 0.5}}',
+ true, 21),
+
+('musical', 'Musical', 'Musicals and music-focused content.', '🎵', 'genre',
+ '{"genres": {"require_any": ["Music"], "weight": 2.0}, "keywords": {"prefer": ["musical", "singing", "dance", "broadway", "concert"], "weight": 1.0}}',
+ true, 22),
+
+('sports', 'Sports', 'Sports movies and documentaries.', '⚽', 'genre',
+ '{"genres": {"require_any": ["Sports"], "weight": 2.0}, "keywords": {"prefer": ["sports", "football", "basketball", "baseball", "soccer", "athlete"], "weight": 0.8}}',
+ true, 23),
+
+('war', 'War', 'War films and military content.', '⚔️', 'genre',
+ '{"genres": {"require_any": ["War"], "prefer": ["History", "Drama", "Action"], "weight": 2.0}, "keywords": {"prefer": ["war", "military", "soldier", "battle", "army"], "weight": 0.5}}',
+ true, 24),
+
+-- ============================================================================
+-- CATEGORY: TEMPORAL (display_order 40-44)
+-- ============================================================================
+('classic_films', 'Classic Films', 'Movies released before 1980.', '🎞️', 'temporal',
+ '{"release_year": {"max": 1979, "weight": 2.0}, "media_type": {"include": ["movie"]}}',
+ true, 40),
+
+('golden_age', 'Golden Age (1930-1960)', 'Films from Hollywood Golden Age.', '🌟', 'temporal',
+ '{"release_year": {"min": 1930, "max": 1960, "weight": 2.0}, "media_type": {"include": ["movie"]}}',
+ true, 41),
+
+('80s', '1980s', 'Content from the 1980s.', '📼', 'temporal',
+ '{"release_year": {"min": 1980, "max": 1989, "weight": 2.0}}',
+ true, 42),
+
+('90s', '1990s', 'Content from the 1990s.', '💿', 'temporal',
+ '{"release_year": {"min": 1990, "max": 1999, "weight": 2.0}}',
+ true, 43),
+
+('recent_releases', 'Recent Releases', 'Content from the last 2 years.', '🆕', 'temporal',
+ '{"release_year": {"min": 2025, "weight": 2.0}}',
+ true, 44),
+
+-- ============================================================================
+-- CATEGORY: QUALITY (display_order 50-51)
+-- ============================================================================
+('highly_rated', 'Highly Rated', 'Content with 7.0+ rating on TMDB.', '⭐', 'quality',
+ '{"vote_average": {"min": 7.0, "weight": 1.5}}',
+ true, 50),
+
+('hidden_gems', 'Hidden Gems', 'Lesser-known but highly rated content.', '💎', 'quality',
+ '{"vote_average": {"min": 7.0, "weight": 1.5}, "keywords": {"prefer": ["indie", "independent", "art house"], "weight": 0.5}}',
+ true, 51),
+
+-- ============================================================================
+-- CATEGORY: FRANCHISE (display_order 55-61)
+-- ============================================================================
+('marvel_mcu', 'Marvel MCU', 'Marvel Cinematic Universe films and shows.', '🦸', 'franchise',
+ '{"studios": {"require_any": ["Marvel Studios"], "weight": 2.0}, "keywords": {"prefer": ["marvel", "mcu", "avengers", "superhero"], "weight": 1.0}}',
+ true, 55),
+
+('dc_universe', 'DC Universe', 'DC Comics films and shows.', '🦇', 'franchise',
+ '{"studios": {"require_any": ["DC Entertainment", "DC Films", "DC Studios"], "weight": 2.0}, "keywords": {"prefer": ["dc", "batman", "superman", "justice league", "superhero"], "weight": 1.0}}',
+ true, 56),
+
+('star_wars', 'Star Wars', 'Star Wars films and series.', '🌌', 'franchise',
+ '{"studios": {"require_any": ["Lucasfilm"], "weight": 1.5}, "keywords": {"require_any": ["star wars"], "prefer": ["jedi", "sith", "force", "skywalker"], "weight": 2.0}}',
+ true, 57),
+
+('disney', 'Disney', 'Walt Disney Animation Studios films.', '🏰', 'franchise',
+ '{"studios": {"require_any": ["Walt Disney Pictures", "Walt Disney Animation Studios"], "weight": 2.0}}',
+ true, 58),
+
+('pixar', 'Pixar', 'Pixar Animation Studios films.', '🎯', 'franchise',
+ '{"studios": {"require_any": ["Pixar"], "weight": 2.0}}',
+ true, 59),
+
+('ghibli', 'Studio Ghibli', 'Studio Ghibli animated films.', '🌸', 'franchise',
+ '{"studios": {"require_any": ["Studio Ghibli"], "weight": 2.0}, "keywords": {"prefer": ["ghibli", "miyazaki"], "weight": 1.0}}',
+ true, 60),
+
+('dreamworks', 'DreamWorks', 'DreamWorks Animation films.', '🌙', 'franchise',
+ '{"studios": {"require_any": ["DreamWorks Animation"], "weight": 2.0}}',
+ true, 61),
+
+-- ============================================================================
+-- CATEGORY: REGIONAL (display_order 70-74)
+-- ============================================================================
+('hollywood', 'Hollywood', 'American/Hollywood productions.', '🇺🇸', 'regional',
+ '{"language": {"require_any": ["en"], "weight": 1.5}, "studios": {"prefer": ["Warner Bros.", "Universal Pictures", "Paramount", "20th Century Studios", "Sony Pictures"], "weight": 1.0}}',
+ true, 70),
+
+('british', 'British', 'British productions.', '🇬🇧', 'regional',
+ '{"language": {"require_any": ["en"], "weight": 0.5}, "studios": {"prefer": ["BBC", "Working Title", "Aardman"], "weight": 1.5}, "keywords": {"prefer": ["british", "uk", "england", "bbc"], "weight": 1.0}}',
+ true, 71),
+
+('bollywood', 'Bollywood', 'Indian/Bollywood productions.', '🇮🇳', 'regional',
+ '{"language": {"require_any": ["hi", "ta", "te"], "weight": 2.0}, "keywords": {"prefer": ["bollywood", "indian"], "weight": 1.0}}',
+ true, 72),
+
+('korean', 'Korean', 'Korean films and dramas.', '🇰🇷', 'regional',
+ '{"language": {"require_any": ["ko"], "weight": 2.0}, "keywords": {"prefer": ["korean", "k-drama", "kdrama"], "weight": 1.0}}',
+ true, 73),
+
+('foreign', 'Foreign/International', 'Non-English language films.', '🌍', 'regional',
+ '{"language": {"exclude": ["en"], "weight": 2.0}}',
+ true, 74),
+
+-- ============================================================================
+-- CATEGORY: SEASONAL (display_order 80-81)
+-- ============================================================================
+('christmas_holiday', 'Christmas & Holiday', 'Christmas and holiday seasonal content.', '🎄', 'seasonal',
+ '{"keywords": {"require_any": ["christmas", "holiday", "santa", "xmas"], "prefer": ["winter", "snow", "festive"], "weight": 2.0}, "genres": {"prefer": ["Family", "Comedy", "Romance"], "weight": 0.5}}',
+ true, 80),
+
+('halloween', 'Halloween', 'Halloween and spooky seasonal content.', '🎃', 'seasonal',
+ '{"keywords": {"require_any": ["halloween"], "prefer": ["spooky", "scary", "witch", "monster", "haunted"], "weight": 2.0}, "genres": {"prefer": ["Horror", "Thriller", "Fantasy"], "weight": 0.8}}',
+ true, 81),
+
+-- ============================================================================
+-- CATEGORY: TV-SPECIFIC (display_order 85-90)
+-- ============================================================================
+('tv_sitcom', 'Sitcoms', 'Situation comedies with short episodes.', '📺', 'tv',
+ '{"media_type": {"include": ["tv"]}, "genres": {"require_any": ["Comedy"], "weight": 1.5}, "runtime": {"max_minutes": 35, "weight": 1.0}, "keywords": {"prefer": ["sitcom", "laugh track", "comedy series"], "weight": 0.5}}',
+ true, 85),
+
+('tv_drama', 'Drama Series', 'Dramatic TV series.', '🎬', 'tv',
+ '{"media_type": {"include": ["tv"]}, "genres": {"require_any": ["Drama"], "exclude": ["Comedy"], "weight": 2.0}}',
+ true, 86),
+
+('tv_reality', 'Reality TV', 'Reality and competition shows.', '🏆', 'tv',
+ '{"media_type": {"include": ["tv"]}, "genres": {"require_any": ["Reality"], "weight": 2.0}, "keywords": {"prefer": ["reality", "competition", "contest", "dating"], "weight": 1.0}}',
+ true, 87),
+
+('tv_animated', 'Animated Series', 'Animated TV series (non-anime).', '✏️', 'tv',
+ '{"media_type": {"include": ["tv"]}, "genres": {"require_any": ["Animation"], "weight": 2.0}, "keywords": {"exclude": ["anime"], "weight": 0.5}}',
+ true, 88),
+
+('tv_anime', 'Anime Series', 'Japanese animated TV series.', '🎌', 'tv',
+ '{"media_type": {"include": ["tv"]}, "genres": {"require_any": ["Animation"], "weight": 1.0}, "keywords": {"require_any": ["anime"], "weight": 2.0}, "language": {"prefer": ["ja"], "weight": 1.0}}',
+ true, 89),
+
+('tv_miniseries', 'Miniseries', 'Limited series and miniseries.', '📖', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"prefer": ["miniseries", "limited series", "mini-series"], "weight": 2.0}}',
+ true, 90)
+
+ON CONFLICT (key, user_id) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    icon = EXCLUDED.icon,
+    category = EXCLUDED.category,
+    signals = EXCLUDED.signals,
+    is_system = EXCLUDED.is_system,
+    display_order = EXCLUDED.display_order,
+    updated_at = NOW();
+
+-- ============================================================================
+-- VERIFICATION
+-- ============================================================================
+
+-- Log successful completion
+
+-- === Seed: 044_expand_content_presets.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+--
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+-- v0.37.0: Expand Content Presets (46 → 168)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- This migration expands content presets from 46 to 168 comprehensive presets
+-- covering all real-world classification scenarios for Plex/Emby/Jellyfin.
+-- 
+-- Related Issue: #95 (Content Presets)
+-- Depends on: Migration 043 (Initial 46 Content Presets)
+-- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+
+-- ============================================================================
+-- CONTENT PRESETS EXPANSION - 122 NEW PRESETS
+-- ============================================================================
+-- Insert system presets with idempotency using ON CONFLICT
+-- user_id = NULL for system presets (allows unique constraint to work)
+-- ============================================================================
+
+INSERT INTO content_presets (key, name, description, icon, category, signals, is_system, display_order)
+VALUES
+-- ============================================================================
+-- CATEGORY: AUDIENCE - 4 new presets (display_order 5-8)
+-- ============================================================================
+('kids_older', 'Older Kids', 'Content for ages 8-12, PG content appropriate for older children.', '🎒', 'audience',
+ '{"certifications": {"mode": "include", "include": ["PG", "TV-PG"], "weight": 1.5}, "genres": {"prefer": ["Adventure", "Comedy", "Animation", "Family"], "weight": 1.0}, "keywords": {"prefer": ["kids", "children", "adventure"], "exclude": ["scary", "violence"], "weight": 0.5}}',
+ true, 5),
+
+('young_adult', 'Young Adult', 'Content for ages 17-25, PG-13/R rated young adult themes.', '🎓', 'audience',
+ '{"certifications": {"mode": "include", "include": ["PG-13", "R", "TV-14"], "weight": 1.5}, "genres": {"prefer": ["Drama", "Romance", "Action", "Science Fiction"], "weight": 1.0}, "keywords": {"prefer": ["coming of age", "teen", "young adult"], "weight": 0.8}}',
+ true, 6),
+
+('date_night', 'Date Night', 'Romance and comedy content perfect for couples.', '💑', 'audience',
+ '{"genres": {"require_any": ["Romance", "Comedy"], "prefer": ["Drama"], "exclude": ["Horror"], "weight": 2.0}, "keywords": {"prefer": ["romantic", "love", "relationship"], "exclude": ["gore", "violence"], "weight": 0.8}}',
+ true, 7),
+
+('background', 'Background Viewing', 'Light casual content suitable for background viewing.', '🛋️', 'audience',
+ '{"genres": {"prefer": ["Comedy", "Reality", "Documentary"], "exclude": ["Horror", "Thriller"], "weight": 1.0}, "runtime": {"max_minutes": 45, "weight": 0.5}, "keywords": {"prefer": ["light", "casual", "relaxing"], "weight": 0.5}}',
+ true, 8),
+
+-- ============================================================================
+-- CATEGORY: GENRE CORE - 5 new presets (display_order 25-29)
+-- ============================================================================
+('action', 'Action', 'High-octane action films and series.', '💥', 'genre',
+ '{"genres": {"require_any": ["Action"], "weight": 2.0}, "keywords": {"prefer": ["action", "fight", "battle", "explosion", "chase"], "weight": 0.5}}',
+ true, 25),
+
+('thriller', 'Thriller', 'Suspenseful thriller content.', '😰', 'genre',
+ '{"genres": {"require_any": ["Thriller"], "weight": 2.0}, "keywords": {"prefer": ["suspense", "tension", "thriller"], "weight": 0.5}}',
+ true, 26),
+
+('mystery', 'Mystery', 'Mystery and detective content.', '🔍', 'genre',
+ '{"genres": {"require_any": ["Mystery"], "weight": 2.0}, "keywords": {"prefer": ["mystery", "detective", "investigation", "whodunit"], "weight": 0.5}}',
+ true, 27),
+
+('history', 'Historical', 'Historical films and series.', '🏛️', 'genre',
+ '{"genres": {"require_any": ["History"], "weight": 2.0}, "keywords": {"prefer": ["historical", "period", "history", "based on true events"], "weight": 0.5}}',
+ true, 28),
+
+('biographical', 'Biographical', 'Biography and biopic content.', '📖', 'genre',
+ '{"keywords": {"require_any": ["biography", "biopic", "based on true story"], "weight": 2.0}, "genres": {"prefer": ["Drama", "History"], "weight": 0.8}}',
+ true, 29),
+
+-- ============================================================================
+-- CATEGORY: GENRE SUBGENRES - 25 new presets (display_order 30-54)
+-- ============================================================================
+('action_comedy', 'Action Comedy', 'Action films with comedic elements.', '🤣', 'genre',
+ '{"genres": {"require_all": ["Action", "Comedy"], "weight": 2.0}}',
+ true, 30),
+
+('romantic_comedy', 'Romantic Comedy', 'Romantic comedies and rom-coms.', '💕', 'genre',
+ '{"genres": {"require_all": ["Romance", "Comedy"], "weight": 2.0}}',
+ true, 31),
+
+('dark_comedy', 'Dark Comedy', 'Comedy with dark or morbid themes.', '🖤', 'genre',
+ '{"genres": {"require_any": ["Comedy"], "weight": 1.0}, "keywords": {"require_any": ["dark comedy", "black comedy"], "weight": 2.0}}',
+ true, 32),
+
+('standup', 'Stand-Up Comedy', 'Stand-up comedy specials and performances.', '🎤', 'genre',
+ '{"genres": {"require_any": ["Comedy"], "weight": 1.0}, "keywords": {"require_any": ["stand-up", "standup", "comedy special"], "weight": 2.0}}',
+ true, 33),
+
+('horror_comedy', 'Horror Comedy', 'Horror films with comedic elements.', '👻', 'genre',
+ '{"genres": {"require_all": ["Horror", "Comedy"], "weight": 2.0}}',
+ true, 34),
+
+('slasher', 'Slasher', 'Slasher horror films.', '🔪', 'genre',
+ '{"genres": {"require_any": ["Horror"], "weight": 1.5}, "keywords": {"require_any": ["slasher", "serial killer", "knife"], "weight": 2.0}}',
+ true, 35),
+
+('psychological_horror', 'Psychological Horror', 'Psychological and mind-bending horror.', '🧠', 'genre',
+ '{"genres": {"require_any": ["Horror", "Thriller"], "weight": 1.5}, "keywords": {"require_any": ["psychological", "mind", "paranoia"], "weight": 2.0}}',
+ true, 36),
+
+('supernatural', 'Supernatural', 'Supernatural and paranormal content.', '👁️', 'genre',
+ '{"keywords": {"require_any": ["supernatural", "paranormal", "ghost", "spirit"], "weight": 2.0}, "genres": {"prefer": ["Horror", "Thriller", "Fantasy"], "weight": 1.0}}',
+ true, 37),
+
+('monster', 'Monster Movies', 'Monster and creature features.', '🦖', 'genre',
+ '{"keywords": {"require_any": ["monster", "creature", "kaiju"], "weight": 2.0}, "genres": {"prefer": ["Horror", "Science Fiction", "Action"], "weight": 1.0}}',
+ true, 38),
+
+('zombie', 'Zombie', 'Zombie films and series.', '🧟', 'genre',
+ '{"keywords": {"require_any": ["zombie", "undead", "walking dead"], "weight": 2.0}, "genres": {"prefer": ["Horror", "Thriller"], "weight": 1.0}}',
+ true, 39),
+
+('vampire', 'Vampire', 'Vampire films and series.', '🧛', 'genre',
+ '{"keywords": {"require_any": ["vampire", "dracula", "bloodsucker"], "weight": 2.0}, "genres": {"prefer": ["Horror", "Fantasy"], "weight": 1.0}}',
+ true, 40),
+
+('psychological_thriller', 'Psychological Thriller', 'Mind-bending psychological thrillers.', '😰', 'genre',
+ '{"genres": {"require_any": ["Thriller"], "weight": 1.5}, "keywords": {"require_any": ["psychological", "mind game", "paranoia"], "weight": 2.0}}',
+ true, 41),
+
+('spy', 'Spy/Espionage', 'Spy and espionage thrillers.', '🕵️', 'genre',
+ '{"keywords": {"require_any": ["spy", "espionage", "secret agent", "intelligence"], "weight": 2.0}, "genres": {"prefer": ["Thriller", "Action"], "weight": 1.0}}',
+ true, 42),
+
+('heist', 'Heist', 'Heist and caper films.', '💰', 'genre',
+ '{"keywords": {"require_any": ["heist", "robbery", "caper", "theft"], "weight": 2.0}, "genres": {"prefer": ["Crime", "Thriller", "Action"], "weight": 1.0}}',
+ true, 43),
+
+('disaster', 'Disaster', 'Disaster and survival films.', '🌋', 'genre',
+ '{"keywords": {"require_any": ["disaster", "earthquake", "tornado", "tsunami", "survival"], "weight": 2.0}, "genres": {"prefer": ["Action", "Thriller"], "weight": 1.0}}',
+ true, 44),
+
+('martial_arts', 'Martial Arts', 'Martial arts action films.', '🥋', 'genre',
+ '{"keywords": {"require_any": ["martial arts", "kung fu", "karate", "wushu"], "weight": 2.0}, "genres": {"prefer": ["Action"], "weight": 1.0}}',
+ true, 45),
+
+('noir', 'Film Noir', 'Film noir and neo-noir.', '🎩', 'genre',
+ '{"keywords": {"require_any": ["noir", "neo-noir", "detective noir"], "weight": 2.0}, "genres": {"prefer": ["Crime", "Thriller", "Mystery"], "weight": 1.0}}',
+ true, 46),
+
+('cyberpunk', 'Cyberpunk', 'Cyberpunk and tech-dystopia.', '🤖', 'genre',
+ '{"keywords": {"require_any": ["cyberpunk", "cyber", "hacker", "dystopia"], "weight": 2.0}, "genres": {"prefer": ["Science Fiction"], "weight": 1.0}}',
+ true, 47),
+
+('space_opera', 'Space Opera', 'Epic space opera adventures.', '🌌', 'genre',
+ '{"keywords": {"require_any": ["space opera", "space adventure", "galaxy"], "weight": 2.0}, "genres": {"require_any": ["Science Fiction"], "weight": 1.5}}',
+ true, 48),
+
+('post_apocalyptic', 'Post-Apocalyptic', 'Post-apocalyptic survival content.', '☢️', 'genre',
+ '{"keywords": {"require_any": ["post-apocalyptic", "apocalypse", "wasteland", "end of world"], "weight": 2.0}, "genres": {"prefer": ["Science Fiction", "Action"], "weight": 1.0}}',
+ true, 49),
+
+('dystopian', 'Dystopian', 'Dystopian future scenarios.', '🏚️', 'genre',
+ '{"keywords": {"require_any": ["dystopian", "dystopia", "totalitarian"], "weight": 2.0}, "genres": {"prefer": ["Science Fiction", "Drama"], "weight": 1.0}}',
+ true, 50),
+
+('superhero', 'Superhero', 'Superhero films and series.', '🦸', 'genre',
+ '{"keywords": {"require_any": ["superhero", "super hero", "comic book"], "weight": 2.0}, "genres": {"prefer": ["Action", "Science Fiction", "Fantasy"], "weight": 1.0}}',
+ true, 51),
+
+('courtroom', 'Courtroom Drama', 'Legal and courtroom dramas.', '⚖️', 'genre',
+ '{"keywords": {"require_any": ["courtroom", "legal", "lawyer", "trial"], "weight": 2.0}, "genres": {"prefer": ["Drama", "Crime"], "weight": 1.0}}',
+ true, 52),
+
+('medical', 'Medical Drama', 'Medical dramas and hospital settings.', '🏥', 'genre',
+ '{"keywords": {"require_any": ["medical", "hospital", "doctor", "surgeon"], "weight": 2.0}, "genres": {"prefer": ["Drama"], "weight": 1.0}}',
+ true, 53),
+
+('political', 'Political', 'Political dramas and thrillers.', '🏛️', 'genre',
+ '{"keywords": {"require_any": ["political", "politics", "election", "government"], "weight": 2.0}, "genres": {"prefer": ["Drama", "Thriller"], "weight": 1.0}}',
+ true, 54),
+
+-- ============================================================================
+-- CATEGORY: GENRE SPECIAL INTEREST - 15 new presets (display_order 55-69)
+-- ============================================================================
+('true_crime', 'True Crime', 'True crime documentaries and series.', '🔎', 'genre',
+ '{"keywords": {"require_any": ["true crime", "murder", "investigation"], "weight": 2.0}, "genres": {"prefer": ["Documentary", "Crime"], "weight": 1.0}}',
+ true, 55),
+
+('nature', 'Nature & Wildlife', 'Nature and wildlife documentaries.', '🦁', 'genre',
+ '{"keywords": {"require_any": ["nature", "wildlife", "animal", "planet earth"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 56),
+
+('science', 'Science & Tech', 'Science and technology documentaries.', '🔬', 'genre',
+ '{"keywords": {"require_any": ["science", "technology", "physics", "space", "cosmos"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 57),
+
+('travel', 'Travel & Culture', 'Travel and cultural documentaries.', '✈️', 'genre',
+ '{"keywords": {"require_any": ["travel", "culture", "journey", "world"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 58),
+
+('food', 'Food & Cooking', 'Food and cooking content.', '🍳', 'genre',
+ '{"keywords": {"require_any": ["food", "cooking", "chef", "culinary", "cuisine"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 59),
+
+('music_doc', 'Music Documentary', 'Music documentaries and biopics.', '🎸', 'genre',
+ '{"keywords": {"require_any": ["music", "musician", "band", "singer"], "weight": 2.0}, "genres": {"require_any": ["Documentary", "Music"], "weight": 1.5}}',
+ true, 60),
+
+('art_culture', 'Art & Culture', 'Art and cultural documentaries.', '🎨', 'genre',
+ '{"keywords": {"require_any": ["art", "artist", "painting", "sculpture", "museum"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 61),
+
+('faith_spiritual', 'Faith & Spiritual', 'Faith-based and spiritual content.', '🙏', 'genre',
+ '{"keywords": {"require_any": ["faith", "spiritual", "religion", "christian", "gospel"], "weight": 2.0}, "genres": {"prefer": ["Documentary", "Drama"], "weight": 0.8}}',
+ true, 62),
+
+('educational', 'Educational', 'Educational and instructional content.', '📚', 'genre',
+ '{"keywords": {"require_any": ["educational", "learning", "instructional", "tutorial"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 63),
+
+('conspiracy', 'Conspiracy/Unexplained', 'Conspiracy and unexplained mysteries.', '👽', 'genre',
+ '{"keywords": {"require_any": ["conspiracy", "mystery", "unexplained", "paranormal", "ufo"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 64),
+
+('sports_doc', 'Sports Documentary', 'Sports documentaries and films.', '🏆', 'genre',
+ '{"keywords": {"require_any": ["sports", "athlete", "championship"], "weight": 2.0}, "genres": {"require_any": ["Documentary", "Sports"], "weight": 1.5}}',
+ true, 65),
+
+('concert', 'Concert Films', 'Concert films and live performances.', '🎤', 'genre',
+ '{"keywords": {"require_any": ["concert", "live performance", "tour"], "weight": 2.0}, "genres": {"prefer": ["Music", "Documentary"], "weight": 1.0}}',
+ true, 66),
+
+('behind_scenes', 'Behind the Scenes', 'Behind-the-scenes and making-of documentaries.', '🎬', 'genre',
+ '{"keywords": {"require_any": ["behind the scenes", "making of", "documentary"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 67),
+
+('interview', 'Interview/Talk', 'Interview and talk-based content.', '💬', 'genre',
+ '{"keywords": {"require_any": ["interview", "conversation", "talk"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 68),
+
+('essay', 'Video Essay', 'Video essays and analytical content.', '📝', 'genre',
+ '{"keywords": {"require_any": ["video essay", "essay", "analysis", "critique"], "weight": 2.0}, "genres": {"prefer": ["Documentary"], "weight": 1.0}}',
+ true, 69),
+
+-- ============================================================================
+-- CATEGORY: FRANCHISE - 18 new presets (display_order 70-88)
+-- ============================================================================
+('illumination', 'Illumination', 'Illumination Entertainment animated films.', '🍌', 'franchise',
+ '{"studios": {"require_any": ["Illumination Entertainment", "Illumination"], "weight": 2.0}}',
+ true, 70),
+
+('sony_animation', 'Sony Animation', 'Sony Pictures Animation films.', '🕷️', 'franchise',
+ '{"studios": {"require_any": ["Sony Pictures Animation"], "weight": 2.0}}',
+ true, 71),
+
+('laika', 'Laika', 'Laika stop-motion animated films.', '🎭', 'franchise',
+ '{"studios": {"require_any": ["Laika"], "weight": 2.0}}',
+ true, 73),
+
+('blue_sky', 'Blue Sky', 'Blue Sky Studios animated films.', '🧊', 'franchise',
+ '{"studios": {"require_any": ["Blue Sky Studios"], "weight": 2.0}}',
+ true, 74),
+
+('marvel_other', 'Marvel (Non-MCU)', 'Marvel films outside the MCU.', '🕷️', 'franchise',
+ '{"keywords": {"require_any": ["marvel"], "weight": 2.0}, "studios": {"exclude": ["Marvel Studios"], "weight": 1.0}}',
+ true, 75),
+
+('star_trek', 'Star Trek', 'Star Trek films and series.', '🖖', 'franchise',
+ '{"keywords": {"require_any": ["star trek", "enterprise", "starfleet"], "weight": 2.0}}',
+ true, 76),
+
+('harry_potter', 'Wizarding World', 'Harry Potter and Wizarding World films.', '⚡', 'franchise',
+ '{"keywords": {"require_any": ["harry potter", "wizarding world", "fantastic beasts"], "weight": 2.0}}',
+ true, 77),
+
+('lotr', 'Middle-earth', 'Lord of the Rings and Middle-earth content.', '💍', 'franchise',
+ '{"keywords": {"require_any": ["lord of the rings", "hobbit", "middle-earth"], "weight": 2.0}}',
+ true, 78),
+
+('james_bond', 'James Bond', 'James Bond 007 films.', '🍸', 'franchise',
+ '{"keywords": {"require_any": ["james bond", "007"], "weight": 2.0}}',
+ true, 79),
+
+('fast_furious', 'Fast & Furious', 'Fast & Furious franchise films.', '🚗', 'franchise',
+ '{"keywords": {"require_any": ["fast and furious", "fast & furious"], "weight": 2.0}}',
+ true, 80),
+
+('jurassic', 'Jurassic', 'Jurassic Park/World franchise films.', '🦖', 'franchise',
+ '{"keywords": {"require_any": ["jurassic park", "jurassic world"], "weight": 2.0}}',
+ true, 81),
+
+('monsterverse', 'Monsterverse', 'Legendary Monsterverse films.', '🦍', 'franchise',
+ '{"keywords": {"require_any": ["monsterverse", "godzilla", "kong"], "weight": 2.0}}',
+ true, 82),
+
+('conjuring', 'Conjuring Universe', 'The Conjuring Universe horror films.', '👁️', 'franchise',
+ '{"keywords": {"require_any": ["conjuring", "annabelle", "nun", "valak"], "weight": 2.0}}',
+ true, 83),
+
+('a24', 'A24', 'A24 independent films.', '🅰️', 'franchise',
+ '{"studios": {"require_any": ["A24"], "weight": 2.0}}',
+ true, 84),
+
+('blumhouse', 'Blumhouse', 'Blumhouse Productions horror films.', '🎃', 'franchise',
+ '{"studios": {"require_any": ["Blumhouse Productions", "Blumhouse"], "weight": 2.0}}',
+ true, 85),
+
+('neon', 'Neon', 'Neon independent films.', '💡', 'franchise',
+ '{"studios": {"require_any": ["Neon"], "weight": 2.0}}',
+ true, 86),
+
+('searchlight', 'Searchlight', 'Searchlight Pictures films.', '🔦', 'franchise',
+ '{"studios": {"require_any": ["Searchlight Pictures", "Fox Searchlight"], "weight": 2.0}}',
+ true, 87),
+
+('focus', 'Focus Features', 'Focus Features films.', '🎯', 'franchise',
+ '{"studios": {"require_any": ["Focus Features"], "weight": 2.0}}',
+ true, 88),
+
+-- ============================================================================
+-- CATEGORY: TEMPORAL - 7 new presets (display_order 89-95)
+-- ============================================================================
+('silent_era', 'Silent Era', 'Silent films from before 1930.', '🎬', 'temporal',
+ '{"release_year": {"max": 1929, "weight": 2.0}, "media_type": {"include": ["movie"]}}',
+ true, 89),
+
+('new_hollywood', 'New Hollywood', 'New Hollywood era films (1967-1980).', '🎥', 'temporal',
+ '{"release_year": {"min": 1967, "max": 1980, "weight": 2.0}, "media_type": {"include": ["movie"]}}',
+ true, 90),
+
+('2000s', '2000s', 'Content from the 2000s decade.', '📀', 'temporal',
+ '{"release_year": {"min": 2000, "max": 2009, "weight": 2.0}}',
+ true, 91),
+
+('2010s', '2010s', 'Content from the 2010s decade.', '📱', 'temporal',
+ '{"release_year": {"min": 2010, "max": 2019, "weight": 2.0}}',
+ true, 92),
+
+('2020s', '2020s', 'Content from the 2020s decade.', '🦠', 'temporal',
+ '{"release_year": {"min": 2020, "max": 2029, "weight": 2.0}}',
+ true, 93),
+
+('retro', 'Retro', 'Retro content from before 2000.', '📺', 'temporal',
+ '{"release_year": {"max": 1999, "weight": 2.0}}',
+ true, 94),
+
+('modern', 'Modern', 'Modern content from 2000 onwards.', '🎬', 'temporal',
+ '{"release_year": {"min": 2000, "weight": 2.0}}',
+ true, 95),
+
+-- ============================================================================
+-- CATEGORY: QUALITY - 8 new presets (display_order 96-103)
+-- ============================================================================
+('critically_acclaimed', 'Critically Acclaimed', 'Critically acclaimed with high review scores.', '🏆', 'quality',
+ '{"vote_average": {"min": 8.0, "weight": 2.0}}',
+ true, 96),
+
+('popular', 'Popular', 'Popular and widely watched content.', '📈', 'quality',
+ '{"keywords": {"prefer": ["popular", "trending", "blockbuster"], "weight": 1.5}}',
+ true, 97),
+
+('cult_classic', 'Cult Classics', 'Cult classic films with devoted followings.', '🕯️', 'quality',
+ '{"keywords": {"require_any": ["cult classic", "cult film"], "weight": 2.0}}',
+ true, 98),
+
+('award_winners', 'Award Winners', 'Award-winning films and series.', '🏅', 'quality',
+ '{"keywords": {"prefer": ["oscar", "academy award", "emmy", "golden globe"], "weight": 1.5}, "vote_average": {"min": 7.5, "weight": 1.0}}',
+ true, 99),
+
+('indie', 'Independent', 'Independent and art house films.', '🎭', 'quality',
+ '{"keywords": {"require_any": ["independent", "indie", "art house"], "weight": 2.0}}',
+ true, 100),
+
+('blockbuster', 'Blockbusters', 'Big-budget blockbuster films.', '💰', 'quality',
+ '{"keywords": {"require_any": ["blockbuster", "big budget"], "weight": 1.5}, "genres": {"prefer": ["Action", "Science Fiction", "Adventure"], "weight": 0.8}}',
+ true, 101),
+
+('underrated', 'Underrated', 'Underrated and overlooked gems.', '🤫', 'quality',
+ '{"keywords": {"require_any": ["underrated", "overlooked", "hidden"], "weight": 2.0}}',
+ true, 102),
+
+('so_bad_good', 'So Bad It''s Good', 'So bad they''re good, guilty pleasure films.', '🧀', 'quality',
+ '{"keywords": {"require_any": ["so bad", "guilty pleasure", "campy"], "weight": 2.0}}',
+ true, 103),
+
+-- ============================================================================
+-- CATEGORY: SEASONAL - 6 new presets (display_order 104-109)
+-- ============================================================================
+('thanksgiving', 'Thanksgiving', 'Thanksgiving-themed content.', '🦃', 'seasonal',
+ '{"keywords": {"require_any": ["thanksgiving", "turkey day"], "weight": 2.0}, "genres": {"prefer": ["Family", "Comedy", "Drama"], "weight": 0.5}}',
+ true, 104),
+
+('valentines', 'Valentine''s Day', 'Valentine''s Day romantic content.', '💘', 'seasonal',
+ '{"keywords": {"require_any": ["valentine", "valentines day"], "weight": 2.0}, "genres": {"prefer": ["Romance", "Comedy"], "weight": 1.0}}',
+ true, 105),
+
+('easter', 'Easter', 'Easter-themed family content.', '🐰', 'seasonal',
+ '{"keywords": {"require_any": ["easter", "bunny", "egg"], "weight": 2.0}, "genres": {"prefer": ["Family", "Animation"], "weight": 0.5}}',
+ true, 106),
+
+('new_years', 'New Year''s', 'New Year''s celebration content.', '🎆', 'seasonal',
+ '{"keywords": {"require_any": ["new year", "new years eve"], "weight": 2.0}, "genres": {"prefer": ["Comedy", "Romance", "Drama"], "weight": 0.5}}',
+ true, 107),
+
+('summer', 'Summer Vibes', 'Summer-themed light content.', '☀️', 'seasonal',
+ '{"keywords": {"require_any": ["summer", "beach", "vacation"], "weight": 2.0}, "genres": {"prefer": ["Comedy", "Romance", "Adventure"], "weight": 0.5}}',
+ true, 108),
+
+('winter', 'Winter/Cozy', 'Winter and cozy content.', '❄️', 'seasonal',
+ '{"keywords": {"require_any": ["winter", "snow", "cozy"], "weight": 2.0}, "genres": {"prefer": ["Drama", "Romance", "Family"], "weight": 0.5}}',
+ true, 109),
+
+-- ============================================================================
+-- CATEGORY: REGIONAL - 20 new presets (display_order 110-129)
+-- ============================================================================
+('english', 'English', 'English-language content.', '🇺🇸', 'regional',
+ '{"language": {"require_any": ["en"], "weight": 2.0}}',
+ true, 110),
+
+('australian', 'Australian', 'Australian productions.', '🇦🇺', 'regional',
+ '{"language": {"require_any": ["en"], "weight": 1.0}, "keywords": {"prefer": ["australian", "australia", "aussie"], "weight": 1.5}}',
+ true, 111),
+
+('canadian', 'Canadian', 'Canadian productions.', '🇨🇦', 'regional',
+ '{"language": {"require_any": ["en", "fr"], "weight": 1.0}, "keywords": {"prefer": ["canadian", "canada"], "weight": 1.5}}',
+ true, 112),
+
+('japanese', 'Japanese', 'Japanese films (non-anime).', '🇯🇵', 'regional',
+ '{"language": {"require_any": ["ja"], "weight": 2.0}, "keywords": {"exclude": ["anime"], "weight": 1.0}}',
+ true, 113),
+
+('chinese', 'Chinese', 'Chinese-language films.', '🇨🇳', 'regional',
+ '{"language": {"require_any": ["zh"], "weight": 2.0}}',
+ true, 114),
+
+('hong_kong', 'Hong Kong', 'Hong Kong cinema.', '🇭🇰', 'regional',
+ '{"language": {"require_any": ["zh", "yue"], "weight": 2.0}, "keywords": {"prefer": ["hong kong"], "weight": 1.0}}',
+ true, 115),
+
+('taiwanese', 'Taiwanese', 'Taiwanese films.', '🇹🇼', 'regional',
+ '{"language": {"require_any": ["zh"], "weight": 2.0}, "keywords": {"prefer": ["taiwanese", "taiwan"], "weight": 1.0}}',
+ true, 116),
+
+('indian', 'Indian', 'Indian films (Bollywood, Tollywood, etc).', '🇮🇳', 'regional',
+ '{"language": {"require_any": ["hi", "ta", "te", "ml"], "weight": 2.0}}',
+ true, 117),
+
+('spanish', 'Spanish', 'Spanish-language films from Spain.', '🇪🇸', 'regional',
+ '{"language": {"require_any": ["es"], "weight": 2.0}, "keywords": {"prefer": ["spanish", "spain"], "weight": 0.5}}',
+ true, 118),
+
+('latin_american', 'Latin American', 'Latin American films and series.', '🌎', 'regional',
+ '{"language": {"require_any": ["es", "pt"], "weight": 2.0}, "keywords": {"prefer": ["latin", "latinoamérica"], "weight": 0.5}}',
+ true, 119),
+
+('mexican', 'Mexican', 'Mexican films and series.', '🇲🇽', 'regional',
+ '{"language": {"require_any": ["es"], "weight": 2.0}, "keywords": {"prefer": ["mexican", "mexico"], "weight": 1.0}}',
+ true, 120),
+
+('brazilian', 'Brazilian', 'Brazilian films and series.', '🇧🇷', 'regional',
+ '{"language": {"require_any": ["pt"], "weight": 2.0}, "keywords": {"prefer": ["brazilian", "brazil"], "weight": 1.0}}',
+ true, 121),
+
+('french', 'French', 'French-language films.', '🇫🇷', 'regional',
+ '{"language": {"require_any": ["fr"], "weight": 2.0}}',
+ true, 122),
+
+('german', 'German', 'German-language films.', '🇩🇪', 'regional',
+ '{"language": {"require_any": ["de"], "weight": 2.0}}',
+ true, 123),
+
+('italian', 'Italian', 'Italian-language films.', '🇮🇹', 'regional',
+ '{"language": {"require_any": ["it"], "weight": 2.0}}',
+ true, 124),
+
+('scandinavian', 'Scandinavian', 'Scandinavian films and series.', '🇸🇪', 'regional',
+ '{"language": {"require_any": ["sv", "no", "da", "fi"], "weight": 2.0}}',
+ true, 125),
+
+('russian', 'Russian', 'Russian-language films.', '🇷🇺', 'regional',
+ '{"language": {"require_any": ["ru"], "weight": 2.0}}',
+ true, 126),
+
+('turkish', 'Turkish', 'Turkish-language films and series.', '🇹🇷', 'regional',
+ '{"language": {"require_any": ["tr"], "weight": 2.0}}',
+ true, 127),
+
+('thai', 'Thai', 'Thai-language films and series.', '🇹🇭', 'regional',
+ '{"language": {"require_any": ["th"], "weight": 2.0}}',
+ true, 128),
+
+('arabic', 'Arabic', 'Arabic-language films and series.', '🇸🇦', 'regional',
+ '{"language": {"require_any": ["ar"], "weight": 2.0}}',
+ true, 129),
+
+-- ============================================================================
+-- CATEGORY: TV - 14 new presets (display_order 130-143)
+-- ============================================================================
+('tv_procedural', 'Procedural', 'TV procedural dramas.', '🚔', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["procedural", "case of the week"], "weight": 2.0}, "genres": {"prefer": ["Crime", "Drama"], "weight": 1.0}}',
+ true, 130),
+
+('tv_soap', 'Soap Opera', 'Soap operas and melodramas.', '💔', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["soap opera", "telenovela"], "weight": 2.0}, "genres": {"prefer": ["Drama"], "weight": 1.0}}',
+ true, 131),
+
+('tv_anthology', 'Anthology', 'Anthology series.', '📚', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["anthology", "anthology series"], "weight": 2.0}}',
+ true, 132),
+
+('tv_variety', 'Variety Show', 'Variety and sketch shows.', '🎪', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["variety", "sketch"], "weight": 2.0}, "genres": {"prefer": ["Comedy"], "weight": 1.0}}',
+ true, 133),
+
+('tv_talk', 'Talk Show', 'Talk shows and interviews.', '🎙️', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["talk show", "interview show"], "weight": 2.0}}',
+ true, 134),
+
+('tv_game', 'Game Show', 'Game shows and competitions.', '🎲', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["game show", "quiz"], "weight": 2.0}}',
+ true, 135),
+
+('tv_news', 'News', 'News programs.', '📰', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["news", "newscast"], "weight": 2.0}}',
+ true, 136),
+
+('tv_kids', 'Kids TV', 'Children''s television programs.', '🧒', 'tv',
+ '{"media_type": {"include": ["tv"]}, "certifications": {"mode": "include", "include": ["TV-Y", "TV-Y7", "TV-G"], "weight": 2.0}, "genres": {"prefer": ["Family", "Animation"], "weight": 1.0}}',
+ true, 137),
+
+('tv_dating', 'Dating Shows', 'Dating and relationship reality shows.', '💕', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["dating", "dating show", "bachelor"], "weight": 2.0}, "genres": {"prefer": ["Reality"], "weight": 1.0}}',
+ true, 138),
+
+('tv_cooking', 'Cooking Shows', 'Cooking and food competition shows.', '👨‍🍳', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["cooking show", "chef", "baking"], "weight": 2.0}}',
+ true, 139),
+
+('tv_true_crime', 'True Crime Series', 'True crime TV series.', '🔎', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["true crime"], "weight": 2.0}, "genres": {"prefer": ["Documentary", "Crime"], "weight": 1.0}}',
+ true, 140),
+
+('tv_late_night', 'Late Night', 'Late night talk and variety shows.', '🌙', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["late night", "tonight show"], "weight": 2.0}}',
+ true, 141),
+
+('tv_daytime', 'Daytime', 'Daytime television programming.', '☀️', 'tv',
+ '{"media_type": {"include": ["tv"]}, "keywords": {"require_any": ["daytime"], "weight": 2.0}}',
+ true, 142),
+
+('tv_documentary', 'Doc Series', 'Documentary television series.', '📚', 'tv',
+ '{"media_type": {"include": ["tv"]}, "genres": {"require_any": ["Documentary"], "weight": 2.0}}',
+ true, 143)
+
+ON CONFLICT (key, user_id) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    icon = EXCLUDED.icon,
+    category = EXCLUDED.category,
+    signals = EXCLUDED.signals,
+    is_system = EXCLUDED.is_system,
+    display_order = EXCLUDED.display_order,
+    updated_at = NOW();
+
+-- ============================================================================
+-- VERIFICATION
+-- ============================================================================
+
+-- Log successful completion
+
+-- === Seed: 046_event_detection_presets.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+--
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+-- v0.37.0: Event Detection Presets
+-- ═══════════════════════════════════════════════════════════════════════════
+-- This migration migrates event detection from hardcoded detectEventContent()
+-- to PolicyEngine presets, enabling policy-based event classification.
+--
+-- Related Issue: #98 (AI Optimization & Event Detection Migration)
+-- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+
+-- ============================================================================
+-- EVENT DETECTION PRESETS - 6 new presets
+-- ============================================================================
+-- These presets replace the hardcoded event detection logic in detectEventContent()
+-- Event types: holiday, sports, ppv, concert, standup, awards
+-- ============================================================================
+
+INSERT INTO
+    content_presets (
+        key,
+        name,
+        description,
+        icon,
+        category,
+        signals,
+        is_system,
+        display_order
+    )
+VALUES
+    -- Holiday Content
+    (
+        'event_holiday',
+        'Holiday & Seasonal',
+        'Christmas, Halloween, and seasonal content',
+        '🎄',
+        'events',
+        '{"keywords": {"require_any": ["christmas", "xmas", "santa", "santa claus", "north pole", "reindeer", "rudolph", "frosty", "snowman", "christmas eve", "yuletide", "noel", "nativity", "scrooge", "grinch", "krampus", "nutcracker", "polar express", "mistletoe", "candy cane", "gingerbread", "halloween", "trick or treat", "haunted", "hanukkah", "chanukah", "kwanzaa", "thanksgiving", "easter", "valentines day", "new years eve"], "weight": 2.0}, "base_confidence": 95}',
+        true,
+        200
+    ),
+
+-- Sports Content
+(
+    'event_sports',
+    'Sports & Athletics',
+    'Sports events, documentaries, and athletics',
+    '🏈',
+    'events',
+    '{"keywords": {"require_any": ["nfl", "nba", "mlb", "nhl", "mls", "fifa", "uefa", "premier league", "super bowl", "world series", "stanley cup", "world cup", "championship", "playoffs", "tournament", "olympics", "olympic games", "espn", "sports documentary", "football game", "basketball game", "baseball game", "hockey game", "soccer match", "tennis match", "golf tournament", "motorsports", "nascar", "formula 1", "f1", "grand prix", "marathon", "30 for 30"], "weight": 2.0}, "genres": {"prefer": ["Sport", "Documentary"], "weight": 0.5}, "base_confidence": 92}',
+    true,
+    201
+),
+
+-- PPV/Combat Sports
+(
+    'event_ppv',
+    'PPV & Combat Sports',
+    'UFC, MMA, boxing, wrestling events',
+    '🥊',
+    'events',
+    '{"keywords": {"require_any": ["ufc", "mma", "ultimate fighting", "bellator", "pride fc", "one championship", "mixed martial arts", "cage fight", "octagon", "boxing", "heavyweight", "middleweight", "welterweight", "title fight", "championship bout", "knockout", "wwe", "wrestling", "wrestlemania", "royal rumble", "summerslam", "aew", "pro wrestling", "smackdown", "pay per view", "ppv", "fight night", "main event"], "weight": 2.0}, "base_confidence": 93}',
+    true,
+    202
+),
+
+-- Concert/Live Music
+(
+    'event_concert',
+    'Concert & Live Music',
+    'Live concerts, music festivals, performances',
+    '🎵',
+    'events',
+    '{"keywords": {"require_any": ["concert", "live performance", "live tour", "world tour", "music festival", "coachella", "lollapalooza", "glastonbury", "rock concert", "pop concert", "symphony", "orchestra", "unplugged", "acoustic session", "mtv unplugged", "live album", "concert film", "tour documentary"], "weight": 2.0}, "genres": {"prefer": ["Music", "Documentary"], "weight": 0.5}, "base_confidence": 90}',
+    true,
+    203
+),
+
+-- Stand-up Comedy
+(
+    'event_standup',
+    'Stand-up Comedy',
+    'Comedy specials and stand-up performances',
+    '🎤',
+    'events',
+    '{"keywords": {"require_any": ["stand-up", "standup", "comedy special", "netflix special", "hbo special", "live at the apollo", "def comedy jam", "comedian", "comedy tour", "comedy central", "roast", "just for laughs", "improv", "one-man show", "one-woman show"], "weight": 2.0}, "genres": {"prefer": ["Comedy"], "weight": 0.8}, "base_confidence": 90}',
+    true,
+    204
+),
+
+-- Awards Shows
+(
+    'event_awards',
+    'Awards & Ceremonies',
+    'Award shows, galas, red carpet events',
+    '🏆',
+    'events',
+    '{"keywords": {"require_any": ["oscars", "academy awards", "emmys", "golden globes", "grammys", "tony awards", "bafta", "mtv awards", "vma", "ama", "billboard awards", "peoples choice", "critics choice", "sag awards", "bet awards", "award ceremony", "award show", "red carpet"], "weight": 2.0}, "base_confidence": 88}',
+    true,
+    205
+) ON CONFLICT (key, user_id) DO
+UPDATE
+SET
+    signals = EXCLUDED.signals,
+    description = EXCLUDED.description,
+    display_order = EXCLUDED.display_order,
+    updated_at = NOW();
+
+-- ============================================================================
+-- MIGRATION HELPER: Auto-attach event presets to libraries with event_detection_type
+-- ============================================================================
+-- This function migrates existing libraries using event_detection_type to use
+-- the new event presets via PolicyEngine
+-- ============================================================================
+
+
+
+
+-- ============================================================================
+-- VERIFICATION
+-- ============================================================================
+-- Check that event presets were created successfully
+
+-- === Seed: 20260201_010000_add_discord_display_options.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+
+-- Migration: Add Discord Display Options Settings
+-- Created: 2026-02-01
+-- Related: PR #254 (Remove duplicate confidence threshold sliders)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Add Discord display option settings
+INSERT INTO confidence_settings (setting_key, setting_value, description, default_value)
+VALUES
+  (
+    'discord_include_signal_breakdown',
+    'true',
+    'Always include AI signal breakdown in Discord verification messages',
+    'true'
+  ),
+  (
+    'discord_show_similar_items',
+    'true',
+    'Show top 3 similar items already in library in Discord messages',
+    'true'
+  )
+ON CONFLICT (setting_key) DO UPDATE SET
+  description = EXCLUDED.description,
+  default_value = EXCLUDED.default_value;
+
+-- Add comment explaining these settings
+COMMENT ON TABLE confidence_settings IS 
+  'Configuration settings for confidence thresholds and behavior. 
+   Policy thresholds control both classification AND Discord notification behavior.
+   Discord display settings control what information is shown in notification messages.';
+
+-- === Seed: 20260226_002000_seed_runtime_security_defaults.sql ===
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
+-- This program is free software: licensed under GPL-3.0
+-- See LICENSE file for details.
+
+-- Migration: Seed runtime security defaults for existing deployments
+-- Purpose:
+--   Ensure required runtime-security keys exist for upgraded installs
+--   without overriding admin-configured values.
+
+INSERT INTO settings (key, value)
+VALUES
+  ('force_secure_cookies', 'false'),
+  ('csrf_protection', 'true'),
+  ('cors_origin', '')
+ON CONFLICT (key) DO NOTHING;
+
+-- Migration tracking table
+-- (excluded via --exclude-table=schema_migrations but required for tracking)
+CREATE TABLE IF NOT EXISTS public.schema_migrations (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) UNIQUE NOT NULL,
+    applied_at TIMESTAMP DEFAULT NOW()
+);
 
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
@@ -7564,6 +8988,15 @@ FROM unnest(ARRAY[
     '20260217_192610_fix_classification_method_constraint.sql',
     '20260217_224200_add_missing_classification_methods.sql',
     '20260217_233000_add_policy_recheck_method.sql',
-    '20260218_082300_add_ai_rerun_method.sql'
+    '20260218_082300_add_ai_rerun_method.sql',
+    '20260218_150000_backfill_missing_rag_text_hnsw_index.sql',
+    '20260218_223500_defer_tavily_exhausted_retries.sql',
+    '20260218_231500_restore_tavily_quota_rows_to_pending.sql',
+    '20260219_010500_add_policy_recheck_skip_when_ai_confident.sql',
+    '20260224_130000_add_api_key_audit.sql',
+    '20260224_140000_add_refresh_tokens.sql',
+    '20260226_002000_seed_runtime_security_defaults.sql',
+    '20260303_123026_extend_search_text_tsvector.sql',
+    '20260303_130000_add_policy_recheck_confidence_gain_multiplier.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

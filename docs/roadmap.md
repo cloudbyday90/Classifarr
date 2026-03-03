@@ -102,6 +102,14 @@ Status labels:
   - Effort: Low (JSON export/import)
   - Impact: Medium (multi-instance management)
 
+### Developer Experience
+
+- **Fix Jest Unicode Output in PowerShell (Windows)**
+  - Issue: PowerShell defaults to OEM CP437 encoding, so Jest's `✓`/`✗`/`●` symbols render as garbled sequences (e.g., `ΓêÜ`, `Γ£ô`, `ΓùÅ`) in terminal output
+  - Solution: Add `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8` to `$PROFILE`, or set `terminal.integrated.env.windows` → `PYTHONIOENCODING: utf-8` in VS Code settings
+  - Effort: Very Low (one-line config change)
+  - Impact: Medium (cleaner CI/local output, easier to read test results at a glance)
+
 ---
 
 ## Medium Complexity, Important
@@ -147,6 +155,18 @@ Status labels:
   - **Goal**: Upgrade `eslint` and `ajv` once a compatible release chain exists.
   - **Effort**: Low (dependency updates)
   - **Impact**: High (security compliance)
+
+- **Expand Integration Test Coverage — Untested Route Layer** *(partially complete — top 3 priorities done March 2026)*
+  - **Issue**: Gap analysis (March 2026) found 22 of 38 route files have zero integration test coverage. The largest gaps are against the most-used endpoints.
+  - **Priority order by risk × size:**
+    1. ~~`auth.js` (324 lines) — login → token → refresh → logout → change-password → session list~~ ✅ `auth-routes.test.js` — 33 tests
+    2. ~~`libraries.js` (1865 lines) — labels, arr-settings, CRUD; largest uncovered route in the codebase~~ ✅ `libraries-api.test.js` — 22 tests
+    3. ~~`queue.js` (581 lines) — HTTP endpoint coverage for retry, dismiss, clear-failed, cancel-all~~ ✅ `queue-api.test.js` — 28 tests
+    4. `webhook.js` — inbound event → queue insertion → response; external trigger path is completely untested
+    5. `backup.js` — export → import round-trip integrity (data in must match data out)
+    6. `patterns.js` (739 lines) — DB-level assertion that learned patterns persist, conflict-check, and influence future classification
+  - **Effort**: Medium (testcontainer infrastructure already exists; mostly writing request/assertion chains)
+  - **Impact**: High (prevents silent regressions in the core classification and auth paths; closes the gap between 80% unit coverage and actual end-to-end confidence)
 
 ### Search & Filtering
 

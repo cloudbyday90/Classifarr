@@ -61,9 +61,19 @@ function ensureCsrfCookie(req, res, next) {
   return next();
 }
 
+// Paths always exempt from CSRF (pre-authentication endpoints).
+// This middleware is mounted at /api so req.path is relative — use paths without /api prefix.
+const CSRF_EXEMPT_PREFIXES = ['/setup'];
+
 function csrfProtection(req, res, next) {
   const csrfEnabled = runtimeSettings.getValue('csrf_protection');
   if (!csrfEnabled || SAFE_METHODS.has(req.method)) {
+    return next();
+  }
+
+  // Setup routes are pre-authentication — always exempt.
+  // A stale access_token cookie from a prior (wiped) install must not block admin account creation.
+  if (CSRF_EXEMPT_PREFIXES.some(prefix => req.path.startsWith(prefix))) {
     return next();
   }
 

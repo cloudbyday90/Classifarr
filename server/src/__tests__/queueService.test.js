@@ -57,13 +57,23 @@ jest.mock('../services/scheduler', () => ({
 
 describe('QueueService', () => {
     beforeEach(() => {
+        // restoreAllMocks: restores jest.spyOn mocks to their original implementations.
+        // resetAllMocks: resets all jest.fn() mock implementations to undefined-returning stubs.
+        // Using both ensures no mock state (calls OR implementations) bleeds between tests.
         jest.restoreAllMocks();
-        jest.clearAllMocks();
+        jest.resetAllMocks();
+
+        // Reset all QueueService singleton instance state to clean defaults.
+        // Omitting any of these causes inter-test contamination for stateful paths
+        // (e.g. SSL-blocked state persisting into the recovery probe test).
         queueService.processing = 0;
         queueService.running = false;
+        queueService.aiAvailable = true;
         queueService.omdbLimitHit = false;
         queueService.lastOmdbCircuitWarnAt = 0;
         queueService.lastOmdbSslWarnAt = 0;
+        queueService.omdbSslBlockedUntil = 0;
+        queueService.lastOmdbSslProbeAt = 0;
     });
 
     describe('enqueue', () => {

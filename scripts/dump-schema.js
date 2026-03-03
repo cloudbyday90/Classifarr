@@ -163,6 +163,14 @@ try {
 
 ${schema}
 
+-- Migration tracking table
+-- (excluded via --exclude-table=schema_migrations but required for tracking)
+CREATE TABLE IF NOT EXISTS public.schema_migrations (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) UNIQUE NOT NULL,
+    applied_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -177,9 +185,59 @@ ON CONFLICT (filename) DO NOTHING;
   
   fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
   fs.writeFileSync(OUTPUT_PATH, schemaFile);
-  
+
+  // ── Splice seed data from data-only migrations ─────────────────────────────
+  // pg_dump --schema-only omits INSERT statements from migrations. Any migration
+  // that only seeds data (no DDL) must be re-applied explicitly so fresh installs
+  // have all required default settings, content presets, etc.
+  const SEED_MIGRATIONS = [
+    '005_add_require_all_confirmations_setting.sql',
+    '006_add_clarification_settings.sql',
+    '019_cleanup_omdb_config.sql',
+    '043_seed_content_presets.sql',
+    '044_expand_content_presets.sql',
+    '046_event_detection_presets.sql',
+    '20260201_010000_add_discord_display_options.sql',
+    '20260226_002000_seed_runtime_security_defaults.sql',
+  ];
+
+  const seedParts = [
+    '',
+    '-- ============================================================',
+    '-- Seed Data (from data-only migrations, auto-appended by scripts/dump-schema.js)',
+    '-- These INSERT statements are idempotent (ON CONFLICT DO NOTHING / DO UPDATE).',
+    '-- ============================================================',
+    '',
+    // pg_dump sets search_path='' so unqualified table names in seed migrations
+    // would fail without this reset.
+    "SELECT pg_catalog.set_config('search_path', 'public', false);",
+    '',
+  ];
+
+  for (const filename of SEED_MIGRATIONS) {
+    const filepath = path.join(migrationsDir, filename);
+    if (!fs.existsSync(filepath)) {
+      console.warn('⚠️  Seed migration not found, skipping:', filename);
+      continue;
+    }
+    let sql = fs.readFileSync(filepath, 'utf8').replace(/^\uFEFF/, '');
+    // Strip standalone BEGIN/COMMIT/ROLLBACK and DO $$ ... END $$; verification blocks
+    sql = sql
+      .replace(/^\s*(BEGIN|COMMIT|ROLLBACK)\s*;.*$/gm, '')
+      .replace(/^DO\s+\$\$[\s\S]*?END\s+\$\$\s*;/gm, '');
+    seedParts.push(`-- === Seed: ${filename} ===`);
+    seedParts.push(sql.trim());
+    seedParts.push('');
+  }
+
+  const SEED_ANCHOR = '-- Mark all migrations as applied (prevents re-running)';
+  let snapshot = fs.readFileSync(OUTPUT_PATH, 'utf8');
+  snapshot = snapshot.replace(SEED_ANCHOR, seedParts.join('\n') + '\n' + SEED_ANCHOR);
+  fs.writeFileSync(OUTPUT_PATH, snapshot);
+
   console.log('✅ Schema dumped to:', OUTPUT_PATH);
   console.log('📊 Includes migrations through:', latestMigration);
+  console.log('🌱 Seed data included from', SEED_MIGRATIONS.length, 'data-only migrations');
 } catch (error) {
   console.error('❌ Schema dump failed:', error.message);
   process.exit(1);

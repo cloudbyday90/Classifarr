@@ -56,6 +56,10 @@ class IdleBackfillService {
                 if (this.config.idle_threshold) {
                     idleDetector.setIdleThreshold(this.config.idle_threshold);
                 }
+            } else {
+                // No configuration row yet (fresh install, provider not set up).
+                // Return a safe default so callers see "disabled" rather than null.
+                this.config = { rag_enabled: false, idle_backfill_enabled: false };
             }
 
             return this.config;
@@ -93,7 +97,8 @@ class IdleBackfillService {
             const config = await this.loadConfig();
             
             if (!config) {
-                logger.error('Idle backfill NOT started: Failed to load configuration');
+                // loadConfig() already logged the underlying DB error
+                logger.warn('Idle backfill NOT started: configuration could not be loaded (DB error)');
                 return;
             }
 
