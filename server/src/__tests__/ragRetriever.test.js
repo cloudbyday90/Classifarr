@@ -339,7 +339,7 @@ describe('RAGRetriever', () => {
                 library_name: 'Movies'
             });
 
-            expect(results).toHaveLength(1);
+            expect(results.matches).toHaveLength(1);
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringContaining('plainto_tsquery'),
                 expect.any(Array)
@@ -348,7 +348,7 @@ describe('RAGRetriever', () => {
 
         it('should return empty for no search terms', async () => {
             const results = await ragRetriever.fullTextSearch({});
-            expect(results).toEqual([]);
+            expect(results.matches).toEqual([]);
         });
     });
 
@@ -375,9 +375,10 @@ describe('RAGRetriever', () => {
                 { classificationId: 1, similarity: 0.9, libraryId: 1 }
             ]);
             // Mock fullTextSearch
-            jest.spyOn(ragRetriever, 'fullTextSearch').mockResolvedValue([
-                { classificationId: 2, textScore: 0.8, libraryId: 2 }
-            ]);
+            jest.spyOn(ragRetriever, 'fullTextSearch').mockResolvedValue({
+                matches: [{ classificationId: 2, textScore: 0.8, libraryId: 2 }],
+                expansionTermCount: 0
+            });
 
             const results = await ragRetriever.hybridSearch({ title: 'Test' });
 
@@ -480,7 +481,7 @@ describe('RAGRetriever', () => {
             expect(params[0]).toBe('My Movie Movies');
         });
 
-        it('should append alias_terms, genres, keywords, and cast when useExpandedQuery is true', async () => {
+        it('should append alias_terms, genres, and keywords (not cast) with OR semantics when useExpandedQuery is true', async () => {
             db.query.mockResolvedValue({ rows: [] });
 
             await ragRetriever.fullTextSearch(
@@ -510,7 +511,10 @@ describe('RAGRetriever', () => {
             expect(searchString).toContain('Thriller');
             expect(searchString).toContain('hero');
             expect(searchString).toContain('spy');
-            expect(searchString).toContain('Actor A');
+            // Cast is not indexed in search_text tsvector; must not appear in FTS query
+            expect(searchString).not.toContain('Actor A');
+            // Expansion terms must be OR-separated (not AND/space-joined)
+            expect(searchString).toContain(' OR ');
         });
 
         it('should fall back to plainto_tsquery when useExpandedQuery is true but no rag_query_overrides', async () => {
@@ -539,7 +543,7 @@ describe('RAGRetriever', () => {
         it('should pass useExpandedQuery through to fullTextSearch', async () => {
             embeddingRouter.getConfig.mockResolvedValue({ rag_fusion_method: 'rrf', rag_rrf_k: 60 });
             jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([]);
-            const ftsSpy = jest.spyOn(ragRetriever, 'fullTextSearch').mockResolvedValue([]);
+            const ftsSpy = jest.spyOn(ragRetriever, 'fullTextSearch').mockResolvedValue({ matches: [], expansionTermCount: 0 });
 
             await ragRetriever.hybridSearch({ title: 'Test' }, 5, { useExpandedQuery: true });
 
@@ -553,9 +557,8 @@ describe('RAGRetriever', () => {
         it('should log expandedQuery:true and expansionTermCount when useExpandedQuery is set', async () => {
             embeddingRouter.getConfig.mockResolvedValue({ rag_fusion_method: 'rrf', rag_rrf_k: 60 });
             jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([]);
-            jest.spyOn(ragRetriever, 'fullTextSearch').mockImplementation(async (metadata, limit, opts) => {
-                opts._expansionTermCount = 4;
-                return [];
+            jest.spyOn(ragRetriever, 'fullTextSearch').mockImplementation(async () => {
+                return { matches: [], expansionTermCount: 4 };
             });
 
             await ragRetriever.hybridSearch({ title: 'Test' }, 5, { useExpandedQuery: true });
@@ -576,7 +579,7 @@ describe('RAGRetriever', () => {
         it('should log expandedQuery:false and expansionTermCount:0 when useExpandedQuery is not set', async () => {
             embeddingRouter.getConfig.mockResolvedValue({ rag_fusion_method: 'rrf', rag_rrf_k: 60 });
             jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([]);
-            jest.spyOn(ragRetriever, 'fullTextSearch').mockResolvedValue([]);
+            jest.spyOn(ragRetriever, 'fullTextSearch').mockResolvedValue({ matches: [], expansionTermCount: 0 });
 
             await ragRetriever.hybridSearch({ title: 'Test' }, 5, {});
 

@@ -494,7 +494,7 @@ class RAGRetriever {
             const semanticMatches = await this.semanticSearch(metadata, limit, options);
 
             // Get full-text matches
-            const textMatches = await this.fullTextSearch(metadata, limit, options);
+            const { matches: textMatches, expansionTermCount } = await this.fullTextSearch(metadata, limit, options);
 
             let results;
             if (fusionMethod === 'rrf') {
@@ -519,7 +519,7 @@ class RAGRetriever {
                     textMatches: textMatches.length,
                     fusedResults: results.length,
                     expandedQuery: useExpandedQuery,
-                    expansionTermCount: useExpandedQuery ? (options._expansionTermCount || 0) : 0
+                    expansionTermCount: useExpandedQuery ? expansionTermCount : 0
                 }
             });
 
@@ -552,6 +552,7 @@ class RAGRetriever {
             ].filter(Boolean);
 
             let expansionTermCount = 0;
+            let searchTerms;
 
             if (useExpandedQuery && metadata.rag_query_overrides) {
                 const overrides = metadata.rag_query_overrides;
@@ -559,15 +560,19 @@ class RAGRetriever {
                 const evidenceTokens = overrides.evidence_tokens || {};
                 const genres = Array.isArray(evidenceTokens.genres) ? evidenceTokens.genres : [];
                 const keywords = Array.isArray(evidenceTokens.keywords) ? evidenceTokens.keywords : [];
-                const cast = Array.isArray(evidenceTokens.cast) ? evidenceTokens.cast : [];
-                const extraTerms = [...aliasTerms, ...genres, ...keywords, ...cast].filter(Boolean);
-                expansionTermCount = extraTerms.length;
-                baseTerms.push(...extraTerms);
+                // Cast and aliases not indexed in search_text tsvector; omit from FTS to avoid zero-match expansion
+                const ftsExpansionTerms = [...aliasTerms, ...genres, ...keywords].filter(Boolean);
+                expansionTermCount = ftsExpansionTerms.length;
+                // Use OR semantics so each expansion term broadens rather than restricts results
+                const baseQuery = baseTerms.join(' ');
+                searchTerms = ftsExpansionTerms.length > 0
+                    ? `${baseQuery} OR ${ftsExpansionTerms.join(' OR ')}`
+                    : baseQuery;
+            } else {
+                searchTerms = baseTerms.join(' ');
             }
 
-            const searchTerms = baseTerms.join(' ');
-
-            if (!searchTerms) return [];
+            if (!searchTerms) return { matches: [], expansionTermCount: 0 };
             
             checkAbort(signal, 'full-text search');
 
@@ -594,9 +599,7 @@ class RAGRetriever {
                 LIMIT $2
             `, [searchTerms, limit]);
 
-            options._expansionTermCount = expansionTermCount;
-
-            return result.rows.map(row => ({
+            const matches = result.rows.map(row => ({
                 classificationId: row.classification_id,
                 title: row.title,
                 mediaType: row.media_type,
@@ -604,13 +607,14 @@ class RAGRetriever {
                 libraryName: row.library_name,
                 textScore: Math.round(row.text_score * 100) / 100
             }));
+            return { matches, expansionTermCount };
 
         } catch (error) {
             if (error.name === 'AbortError') {
                 throw error;
             }
             logger.debug('Full-text search failed', { error: error.message });
-            return [];
+            return { matches: [], expansionTermCount: 0 };
         }
     }
 
