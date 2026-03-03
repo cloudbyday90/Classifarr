@@ -4,6 +4,22 @@
 
 ---
 
+## v0.43.3a-alpha
+**Title: Cleaner restarts — no more stale queue task warnings**
+
+### 🎉 What You'll Notice
+- When Classifarr restarts (update, `docker stop`, or Unraid/Synology container restart), you will no longer see a `WARN Reset stale processing tasks on startup` log message listing task IDs. Queue tasks that were running at shutdown are now cleanly reset before the process exits.
+
+### ✨ Highlights
+- Added graceful SIGTERM/SIGINT shutdown handling. On a clean stop, the server now: stops the queue worker, resets any in-flight tasks back to `pending`, closes the HTTP listener, then exits. Tasks resume normally on next startup without any startup noise.
+- Crash/OOM kills are unaffected — the existing startup reset still catches those. This fix only eliminates the warning on intentional restarts.
+
+### 🔧 Technical Details
+- `QueueService.gracefulShutdown()` — stops worker loop and flushes `status = 'processing'` → `pending` in one DB UPDATE before exit.
+- `server/src/index.js` — `process.on('SIGTERM'/'SIGINT')` handlers added; HTTP server closed gracefully; 10-second force-exit watchdog prevents a hung shutdown from blocking container stop.
+
+---
+
 ## v0.43.3-alpha
 **Title: Fresh installs are faster and cleaner — no more startup noise**
 

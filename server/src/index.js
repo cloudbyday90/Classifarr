@@ -41,6 +41,7 @@ const avxGuard = require('./services/avxGuard');
 const runtimeSettings = require('./config/runtimeSettings');
 
 const app = express();
+let server = null; // module-scope ref used by graceful shutdown handler
 const PORT = process.env.PORT || 21324;
 const SECURITY_HEADERS_STRICT = (process.env.SECURITY_HEADERS_STRICT || 'true').toLowerCase() !== 'false';
 const ENFORCE_HTTPS_HEADERS = (process.env.ENFORCE_HTTPS_HEADERS || 'false').toLowerCase() === 'true';
@@ -403,7 +404,7 @@ async function startServer() {
     await initializeServices();
 
     // Start listening
-    app.listen(PORT, '0.0.0.0', () => {
+    server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`Classifarr server running on port ${PORT}`);
       console.log(`API Documentation: http://localhost:${PORT}/api/docs`);
       console.log(`Health Check: http://localhost:${PORT}/health`);
@@ -415,3 +416,37 @@ async function startServer() {
 }
 
 startServer();
+
+/**
+ * Graceful shutdown handler — invoked on SIGTERM (Docker stop) and SIGINT (Ctrl-C).
+ * Resets any in-flight queue tasks back to 'pending' so they aren't treated as
+ * zombie tasks on the next boot, eliminating the spurious stale-task WARN.
+ */
+async function gracefulShutdown(signal) {
+  console.log(`Received ${signal}, starting graceful shutdown`);
+
+  // Force-exit after 10 s if something hangs (DB unreachable, etc.)
+  const forceExit = setTimeout(() => {
+    console.error('Graceful shutdown timed out after 10 s, forcing exit');
+    process.exit(1);
+  }, 10_000);
+  forceExit.unref();
+
+  try {
+    await queueService.gracefulShutdown();
+  } catch (err) {
+    console.error('Queue graceful shutdown error:', err.message);
+  }
+
+  if (server) {
+    server.close(() => {
+      console.log('HTTP server closed');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));

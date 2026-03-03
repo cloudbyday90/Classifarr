@@ -1089,6 +1089,30 @@ class QueueService {
     }
 
     /**
+     * Graceful shutdown: stop the worker loop and reset any in-flight tasks back
+     * to 'pending' so they are retried on next startup without a stale-task WARN.
+     */
+    async gracefulShutdown() {
+        this.stopWorker();
+        try {
+            const result = await this.db.query(
+                `UPDATE task_queue
+                 SET status = 'pending', started_at = NULL, error_message = NULL
+                 WHERE status = 'processing'
+                 RETURNING id`
+            );
+            if (result.rowCount > 0) {
+                this.logger.info('Graceful shutdown: reset in-flight tasks to pending', {
+                    count: result.rowCount,
+                    taskIds: result.rows.map(r => r.id),
+                });
+            }
+        } catch (err) {
+            this.logger.error('Graceful shutdown: failed to reset in-flight tasks', { error: err.message });
+        }
+    }
+
+    /**
      * Get queue statistics
      */
     async getStats() {

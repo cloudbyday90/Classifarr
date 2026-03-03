@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.3a-alpha] - 2026-03-03
+
+### Fixed
+
+- **Graceful Shutdown: In-Flight Queue Tasks No Longer Left as Stale on Restart** — `QueueService` gained a `gracefulShutdown()` method that calls `stopWorker()` and immediately resets any `status = 'processing'` rows back to `pending` before the process exits. `server/src/index.js` now registers `SIGTERM` and `SIGINT` handlers that invoke this, then close the HTTP server cleanly and call `process.exit(0)`. Previously, Docker container restarts (rolling update, `docker stop`, OOM kill) would leave whatever tasks were in-flight locked as `processing`, causing a spurious `WARN Reset stale processing tasks on startup` on the next boot with a list of task IDs. Crash/OOM kills are still handled by the existing startup reset — this fix only eliminates the noise on clean restarts. A 10-second force-exit timeout guards against a hung shutdown.
+
 ## [v0.43.3-alpha] - 2026-03-03
 
 ### Added
