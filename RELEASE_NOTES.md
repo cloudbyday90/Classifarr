@@ -1,5 +1,40 @@
 # Classifarr Release Notes
 
+## [Unreleased]
+**Hard-to-find titles are now matched more accurately — aliases, genres, and cast all count**
+
+### 🔍 What You'll Notice
+- Titles with alternate names, non-English originals, or franchise identifiers are far more likely to surface the right library match on the first try.
+- Ambiguous media — anime with Japanese titles, franchise films, or genre-heavy shows — benefit from a smarter second-pass search that considers much more than just the title.
+
+### 📊 Quick Visual
+```text
+Pass-2 Search Signal Coverage
+Title + library name    [██████████] Always
+Aliases / alt titles    [██████████] Now included
+Genre names             [██████████] Now included
+Keywords                [██████████] Now included
+Cast names              [██████████] Now included
+```
+
+### ✨ Highlights
+- When Classifarr runs its second-pass retrieval for an ambiguous item, it now feeds alias names, genre labels, plot keywords, and cast names into the full-text search — not just the plain title.
+- For example, "My Neighbor Totoro" also searches for "Tonari no Totoro", "animation", "fantasy", "Studio Ghibli film", and key cast names — dramatically improving recall for non-English and hard-to-spell titles.
+- Existing history entries are automatically re-indexed to include genre and keyword data, so improvements apply retroactively.
+
+### 🔧 Reliability Improvements
+- The search engine switches to a more flexible query mode (`websearch_to_tsquery`) when expanded terms are present, allowing partial and phrase matching across the richer term set.
+- Expansion metrics (`expandedQuery`, `expansionTermCount`) are now recorded in operation logs, providing a data trail for future recall analysis.
+
+### 👥 Who This Helps
+- **End users**: Titles with aliases, franchises, or non-English originals are much less likely to land in "Needs Attention" due to a missed similarity match.
+- **Operators/admins**: Operation logs now capture whether expansion was active and how many terms were used — useful for diagnosing retrieval quality on tricky items.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.43.2a-alpha
 **Title: Movies and shows already in your library no longer surface as errors**
 

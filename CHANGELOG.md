@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **RAG: `expandedQuery` and `expansionTermCount` fields in `hybrid_search` operation logs** — `ragLogger.logOperation` for `hybrid_search` now records whether query expansion was active (`expandedQuery: true/false`) and how many extra terms were injected into the FTS query (`expansionTermCount`). Enables future recall measurement on ambiguous queries.
+- **Migration `20260303_123026_extend_search_text_tsvector`** — Extends the `update_classification_search_text()` trigger and backfills existing rows so the `search_text` tsvector also indexes genre and keyword names extracted from the `metadata` JSONB column. Includes helper function `extract_jsonb_name_text()` supporting both string arrays and `{id,name}` object arrays. Safe for existing installs.
+
+### Changed
+
+- **RAG FTS: pass-2 queries now use expanded terms** — `fullTextSearch()` with `options.useExpandedQuery: true` incorporates `alias_terms`, `genres`, `keywords`, and `cast` from `metadata.rag_query_overrides` into the search string. `hybridSearch()` forwards its `options` (including `useExpandedQuery`) to `fullTextSearch()` so pass-2 calls automatically benefit.
+- **RAG FTS: `websearch_to_tsquery` for expanded queries** — When expanded terms are present `fullTextSearch()` switches from `plainto_tsquery` to `websearch_to_tsquery` for broader, more flexible matching. Pass-1 / unexpanded queries continue to use `plainto_tsquery` (no regression).
+
+### Fixed
+
+- **RAG FTS: `fullTextSearch()` no longer ignores expanded metadata in pass-2 hybrid retrieval** — Previously, pass-2 calls to `hybridSearch()` used only `title + library_name` for full-text search regardless of the enriched `rag_query_overrides` payload. Expanded terms are now incorporated.
+
 ## [v0.43.2a-alpha] - 2026-03-02
 
 ### Fixed

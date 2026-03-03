@@ -494,7 +494,7 @@ class RAGRetriever {
             const semanticMatches = await this.semanticSearch(metadata, limit, options);
 
             // Get full-text matches
-            const textMatches = await this.fullTextSearch(metadata, limit, options);
+            const { matches: textMatches, expansionTermCount } = await this.fullTextSearch(metadata, limit, options);
 
             let results;
             if (fusionMethod === 'rrf') {
@@ -510,13 +510,16 @@ class RAGRetriever {
 
             // Log operation metrics
             const duration = Date.now() - startTime;
+            const useExpandedQuery = options.useExpandedQuery === true;
             await ragLogger.logOperation('hybrid_search', duration, true, {
                 itemsProcessed: results.length,
                 metadata: {
                     fusionMethod,
                     semanticMatches: semanticMatches.length,
                     textMatches: textMatches.length,
-                    fusedResults: results.length
+                    fusedResults: results.length,
+                    expandedQuery: useExpandedQuery,
+                    expansionTermCount: useExpandedQuery ? expansionTermCount : 0
                 }
             });
 
@@ -538,18 +541,48 @@ class RAGRetriever {
 
     async fullTextSearch(metadata, limit = 5, options = {}) {
         const signal = options.signal || null;
+        const useExpandedQuery = options.useExpandedQuery === true;
         
         try {
             checkAbort(signal, 'full-text search');
             
-            const searchTerms = [
+            const baseTerms = [
                 metadata.title,
                 metadata.library_name
-            ].filter(Boolean).join(' ');
+            ].filter(Boolean);
 
-            if (!searchTerms) return [];
+            let expansionTermCount = 0;
+            let searchTerms;
+
+            if (useExpandedQuery && metadata.rag_query_overrides) {
+                const overrides = metadata.rag_query_overrides;
+                const aliasTerms = Array.isArray(overrides.alias_terms) ? overrides.alias_terms : [];
+                const evidenceTokens = overrides.evidence_tokens || {};
+                const genres = Array.isArray(evidenceTokens.genres) ? evidenceTokens.genres : [];
+                const keywords = Array.isArray(evidenceTokens.keywords) ? evidenceTokens.keywords : [];
+                // Cast and aliases not indexed in search_text tsvector; omit from FTS to avoid zero-match expansion
+                const ftsExpansionTerms = [...aliasTerms, ...genres, ...keywords].filter(Boolean);
+                expansionTermCount = ftsExpansionTerms.length;
+                // Use OR semantics so each expansion term broadens rather than restricts results
+                const baseQuery = baseTerms.join(' ');
+                searchTerms = ftsExpansionTerms.length > 0
+                    ? `${baseQuery} OR ${ftsExpansionTerms.join(' OR ')}`
+                    : baseQuery;
+            } else {
+                searchTerms = baseTerms.join(' ');
+            }
+
+            if (!searchTerms) return { matches: [], expansionTermCount: 0 };
             
             checkAbort(signal, 'full-text search');
+
+            // Explicitly whitelist to prevent any possibility of SQL injection
+            const tsQueryFn = (useExpandedQuery && expansionTermCount > 0)
+                ? 'websearch_to_tsquery'
+                : 'plainto_tsquery';
+            if (tsQueryFn !== 'websearch_to_tsquery' && tsQueryFn !== 'plainto_tsquery') {
+                throw new Error(`Invalid tsQueryFn: ${tsQueryFn}`);
+            }
 
             const result = await db.query(`
                 SELECT 
@@ -558,15 +591,15 @@ class RAGRetriever {
                     media_type,
                     library_id,
                     library_name,
-                    ts_rank(search_text, plainto_tsquery('english', $1)) as text_score
+                    ts_rank(search_text, ${tsQueryFn}('english', $1)) as text_score
                 FROM classification_history
-                WHERE search_text @@ plainto_tsquery('english', $1)
+                WHERE search_text @@ ${tsQueryFn}('english', $1)
                 AND library_id IS NOT NULL
                 ORDER BY text_score DESC
                 LIMIT $2
             `, [searchTerms, limit]);
 
-            return result.rows.map(row => ({
+            const matches = result.rows.map(row => ({
                 classificationId: row.classification_id,
                 title: row.title,
                 mediaType: row.media_type,
@@ -574,13 +607,14 @@ class RAGRetriever {
                 libraryName: row.library_name,
                 textScore: Math.round(row.text_score * 100) / 100
             }));
+            return { matches, expansionTermCount };
 
         } catch (error) {
             if (error.name === 'AbortError') {
                 throw error;
             }
             logger.debug('Full-text search failed', { error: error.message });
-            return [];
+            return { matches: [], expansionTermCount: 0 };
         }
     }
 
