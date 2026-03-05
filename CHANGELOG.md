@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **`immutable` (dev) upgraded to `>=4.3.8` via `overrides`** — OSV scan flagged `immutable@4.3.7` (transitive dependency of `pg-mem`, the in-memory PostgreSQL used in unit tests) with **GHSA-wf6x-7x77-mvgw** (CVSS 8.7, High). The vulnerability is in a dev/test-only dependency with no production exposure, but the scan gate blocks tagging until it is resolved. Added `"immutable": ">=4.3.8"` to `server/package.json` `overrides` so npm resolves the transitive dep to `5.1.5` (latest), eliminating the advisory. `pg-mem@3.0.14` itself was also updated from the previously stale `3.0.13`.
+
 ## [v0.43.5-beta] - 2026-03-05
 
 ### Fixed
