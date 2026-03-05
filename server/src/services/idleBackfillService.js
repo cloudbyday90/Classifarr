@@ -7,7 +7,7 @@
  */
 
 const db = require('../config/database');
-const { withTransaction, tryAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
+const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
 const embeddingService = require('./embeddingService');
 const idleDetector = require('../utils/idleDetector');
 const { createLogger } = require('../utils/logger');
@@ -120,146 +120,143 @@ class IdleBackfillService {
             }
 
             // Advisory lock guard: prevents split-brain races in multi-process deployments.
-            // Acquire a transaction-scoped lock before inserting the backfill_runs record.
-            let lockAcquired = false;
-            await withTransaction(async (client) => {
-                lockAcquired = await tryAdvisoryLock(client, DB_ADVISORY_LOCKS.IDLE_BACKFILL);
-                if (!lockAcquired) {
-                    logger.info('Idle backfill skipped: advisory lock held by another process');
-                }
-            });
-            if (!lockAcquired) {
-                return;
-            }
+            // Session-level lock is held for the full duration of the backfill run.
+            const lockAcquired = await withSessionAdvisoryLock(
+                DB_ADVISORY_LOCKS.IDLE_BACKFILL,
+                async () => {
+                    this.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
 
-            this.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
-
-            // Check for pending items BEFORE setting isRunning
-            const pendingCount = await this.getPendingCount();
-            if (pendingCount === 0) {
-                logger.info('Idle backfill NOT started: No pending embeddings');
-                return;
-            }
-
-            // Create run record with total BEFORE setting isRunning
-            const runResult = await db.query(`
-                INSERT INTO backfill_runs (type, status, total)
-                VALUES ('idle', 'running', $1)
-                RETURNING id
-            `, [pendingCount]);
-            runId = runResult.rows[0].id;
-
-            // Only set isRunning after database record is successfully created
-            this.isRunning = true;
-            logger.info('Starting idle backfill...', { pending: pendingCount, runId });
-
-            let totalProcessed = 0;
-
-            try {
-                // Note: For optimal performance with multiple models, configure your Ollama:
-                // OLLAMA_KEEP_ALIVE=-1 (keep models loaded indefinitely)
-                // OLLAMA_MAX_LOADED_MODELS=2 (or more for your model count)
-                // The keep_alive parameter on embed requests handles keeping models loaded
-
-                while (this.isRunning && idleDetector.isIdle()) {
-                    const pending = await this.getPendingEmbeddings(this.batchSize);
-
-                    if (pending.length === 0) {
-                        logger.info('No pending embeddings, idle backfill complete');
-                        break;
+                    // Check for pending items BEFORE setting isRunning
+                    const pendingCount = await this.getPendingCount();
+                    if (pendingCount === 0) {
+                        logger.info('Idle backfill NOT started: No pending embeddings');
+                        return;
                     }
 
-                    for (const item of pending) {
-                        // Check if still idle before each item
-                        if (!idleDetector.isIdle()) {
-                            logger.info('Classification activity detected, pausing idle backfill');
-                            break;
-                        }
+                    // Create run record with total BEFORE setting isRunning
+                    const runResult = await db.query(`
+                        INSERT INTO backfill_runs (type, status, total)
+                        VALUES ('idle', 'running', $1)
+                        RETURNING id
+                    `, [pendingCount]);
+                    runId = runResult.rows[0].id;
 
-                        // Check if manual backfill has started
-                        if (this.manualBackfillService) {
-                            const manualStatus = await this.manualBackfillService.getStatus();
-                            if (manualStatus.status === 'running') {
-                                logger.info('Manual backfill started, stopping idle backfill');
+                    // Only set isRunning after database record is successfully created
+                    this.isRunning = true;
+                    logger.info('Starting idle backfill...', { pending: pendingCount, runId });
+
+                    let totalProcessed = 0;
+
+                    try {
+                        // Note: For optimal performance with multiple models, configure your Ollama:
+                        // OLLAMA_KEEP_ALIVE=-1 (keep models loaded indefinitely)
+                        // OLLAMA_MAX_LOADED_MODELS=2 (or more for your model count)
+                        // The keep_alive parameter on embed requests handles keeping models loaded
+
+                        while (this.isRunning && idleDetector.isIdle()) {
+                            const pending = await this.getPendingEmbeddings(this.batchSize);
+
+                            if (pending.length === 0) {
+                                logger.info('No pending embeddings, idle backfill complete');
                                 break;
                             }
-                        }
 
-                        if (!this.isRunning) {
-                            break;
-                        }
+                            for (const item of pending) {
+                                // Check if still idle before each item
+                                if (!idleDetector.isIdle()) {
+                                    logger.info('Classification activity detected, pausing idle backfill');
+                                    break;
+                                }
 
-                        try {
-                            if (item.needsText) {
-                                await embeddingService.generateAndStore(item.id, {
-                                    ...item.metadata,
-                                    title: item.title,
-                                    media_type: item.media_type,
-                                    library_name: item.library_name
-                                });
-                            } else if (item.needsImage) {
-                                await embeddingService.generateImageEmbedding(item.id, {
-                                    ...item.metadata,
-                                    title: item.title,
-                                    media_type: item.media_type,
-                                    library_name: item.library_name
-                                });
+                                // Check if manual backfill has started
+                                if (this.manualBackfillService) {
+                                    const manualStatus = await this.manualBackfillService.getStatus();
+                                    if (manualStatus.status === 'running') {
+                                        logger.info('Manual backfill started, stopping idle backfill');
+                                        break;
+                                    }
+                                }
+
+                                if (!this.isRunning) {
+                                    break;
+                                }
+
+                                try {
+                                    if (item.needsText) {
+                                        await embeddingService.generateAndStore(item.id, {
+                                            ...item.metadata,
+                                            title: item.title,
+                                            media_type: item.media_type,
+                                            library_name: item.library_name
+                                        });
+                                    } else if (item.needsImage) {
+                                        await embeddingService.generateImageEmbedding(item.id, {
+                                            ...item.metadata,
+                                            title: item.title,
+                                            media_type: item.media_type,
+                                            library_name: item.library_name
+                                        });
+                                    }
+                                    totalProcessed++;
+
+                                    // Update run progress
+                                    await db.query(
+                                        'UPDATE backfill_runs SET processed = $1 WHERE id = $2',
+                                        [totalProcessed, runId]
+                                    );
+                                } catch (error) {
+                                    if (error.message === 'PROVIDER_OFFLINE') {
+                                        logger.warn('Provider offline detected - pausing idle backfill for 5 minutes');
+                                        await this.sleep(300000); // Wait 5 minutes
+                                        
+                                        // Reset idle check so we don't immediately exit if user moved mouse during sleep
+                                        // but logic will check isIdle() at loop start anyway.
+                                        // Breaking the inner loop to re-evaluate conditions
+                                        break; 
+                                    }
+
+                                    logger.error('Failed to generate embedding in idle backfill', {
+                                        id: item.id,
+                                        title: item.title,
+                                        error: error.message
+                                    });
+                                }
                             }
-                            totalProcessed++;
 
-                            // Update run progress
-                            await db.query(
-                                'UPDATE backfill_runs SET processed = $1 WHERE id = $2',
-                                [totalProcessed, runId]
-                            );
-                        } catch (error) {
-                            if (error.message === 'PROVIDER_OFFLINE') {
-                                logger.warn('Provider offline detected - pausing idle backfill for 5 minutes');
-                                await this.sleep(300000); // Wait 5 minutes
-                                
-                                // Reset idle check so we don't immediately exit if user moved mouse during sleep
-                                // but logic will check isIdle() at loop start anyway.
-                                // Breaking the inner loop to re-evaluate conditions
-                                break; 
+                            // Brief pause between batches
+                            if (this.isRunning && idleDetector.isIdle()) {
+                                await this.sleep(1000);
                             }
-
-                            logger.error('Failed to generate embedding in idle backfill', {
-                                id: item.id,
-                                title: item.title,
-                                error: error.message
-                            });
                         }
-                    }
 
-                    // Brief pause between batches
-                    if (this.isRunning && idleDetector.isIdle()) {
-                        await this.sleep(1000);
+                        // Mark as completed
+                        await db.query(`
+                            UPDATE backfill_runs 
+                            SET status = 'completed', 
+                                completed_at = NOW(),
+                                processed = $1
+                            WHERE id = $2
+                        `, [totalProcessed, runId]);
+
+                        logger.info('Idle backfill completed', { processed: totalProcessed });
+                    } catch (error) {
+                        logger.error('Idle backfill error', { error: error.message });
+
+                        await db.query(`
+                            UPDATE backfill_runs 
+                            SET status = 'failed', 
+                                completed_at = NOW(),
+                                error = $1,
+                                processed = $2
+                            WHERE id = $3
+                        `, [error.message, totalProcessed, runId]);
+                    } finally {
+                        this.isRunning = false;
                     }
                 }
-
-                // Mark as completed
-                await db.query(`
-                    UPDATE backfill_runs 
-                    SET status = 'completed', 
-                        completed_at = NOW(),
-                        processed = $1
-                    WHERE id = $2
-                `, [totalProcessed, runId]);
-
-                logger.info('Idle backfill completed', { processed: totalProcessed });
-            } catch (error) {
-                logger.error('Idle backfill error', { error: error.message });
-
-                await db.query(`
-                    UPDATE backfill_runs 
-                    SET status = 'failed', 
-                        completed_at = NOW(),
-                        error = $1,
-                        processed = $2
-                    WHERE id = $3
-                `, [error.message, totalProcessed, runId]);
-            } finally {
-                this.isRunning = false;
+            );
+            if (!lockAcquired) {
+                logger.info('Idle backfill skipped: advisory lock held by another process');
             }
         } catch (error) {
             logger.error('Idle backfill startup error', { error: error.message });

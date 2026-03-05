@@ -18,13 +18,19 @@
 
 -- Migration: Add indexes to support scheduled security cleanup jobs
 --
--- idx_refresh_tokens_expires_at: supports batch-delete of expired/revoked tokens
+-- idx_refresh_tokens_expires_at: supports batch-delete of expired tokens
+-- idx_refresh_tokens_revoked_at: supports batch-delete of explicitly revoked tokens
 -- idx_api_key_audit_created_at: supports batch-delete of old audit rows by age
--- Both use IF NOT EXISTS for idempotency.
+-- All use IF NOT EXISTS for idempotency.
 
 -- Index to support efficient expired token cleanup
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at
     ON public.refresh_tokens (expires_at);
+
+-- Partial index to support efficient cleanup of revoked tokens
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked_at
+    ON public.refresh_tokens (revoked_at)
+    WHERE revoked_at IS NOT NULL;
 
 -- Index to support efficient audit log pruning
 CREATE INDEX IF NOT EXISTS idx_api_key_audit_created_at

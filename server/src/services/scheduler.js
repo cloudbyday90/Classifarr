@@ -167,7 +167,8 @@ class SchedulerService {
      * Controlled by API_AUDIT_RETENTION_DAYS env var (default: 90).
      */
     async runApiKeyAuditPrune() {
-        const retentionDays = parseInt(process.env.API_AUDIT_RETENTION_DAYS) || 90;
+        const parsedRetentionDays = parseInt(process.env.API_AUDIT_RETENTION_DAYS, 10);
+        const retentionDays = Number.isFinite(parsedRetentionDays) ? parsedRetentionDays : 90;
         try {
             const result = await db.query(
                 `DELETE FROM api_key_audit

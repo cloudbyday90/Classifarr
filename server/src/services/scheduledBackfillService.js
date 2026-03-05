@@ -7,7 +7,7 @@
  */
 
 const db = require('../config/database');
-const { withTransaction, tryAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
+const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
 const embeddingService = require('./embeddingService');
 const { createLogger } = require('../utils/logger');
 const { parseDaysConfig } = require('../utils/backfillHelpers');
@@ -144,115 +144,113 @@ class ScheduledBackfillService {
         }
 
         // Advisory lock guard: prevents split-brain races in multi-process deployments.
-        let lockAcquired = false;
-        await withTransaction(async (client) => {
-            lockAcquired = await tryAdvisoryLock(client, DB_ADVISORY_LOCKS.SCHEDULED_BACKFILL);
-            if (!lockAcquired) {
-                logger.info('Scheduled backfill skipped: advisory lock held by another process');
-            }
-        });
-        if (!lockAcquired) {
-            return;
-        }
+        // Session-level lock is held for the full duration of the backfill run.
+        const lockAcquired = await withSessionAdvisoryLock(
+            DB_ADVISORY_LOCKS.SCHEDULED_BACKFILL,
+            async () => {
+                this.isRunning = true;
+                const startTime = Date.now();
+                let processed = 0;
+                const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
 
-        this.isRunning = true;
-        const startTime = Date.now();
-        let processed = 0;
-        const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
-
-        logger.info('Starting scheduled backfill', {
-            batchSize: this.schedule.batchSize,
-            maxDuration: this.schedule.maxDuration
-        });
-
-        // Create run record
-        const runResult = await db.query(`
-            INSERT INTO backfill_runs (type, status)
-            VALUES ('scheduled', 'running')
-            RETURNING id
-        `);
-        const runId = runResult.rows[0].id;
-
-        try {
-            while (Date.now() - startTime < this.schedule.maxDuration) {
-                const pending = await embeddingService.getPendingEmbeddings({
-                    limit: this.schedule.batchSize,
-                    includeImage
+                logger.info('Starting scheduled backfill', {
+                    batchSize: this.schedule.batchSize,
+                    maxDuration: this.schedule.maxDuration
                 });
 
-                if (pending.length === 0) {
-                    logger.info('No more pending embeddings');
-                    break;
-                }
+                // Create run record
+                const runResult = await db.query(`
+                    INSERT INTO backfill_runs (type, status)
+                    VALUES ('scheduled', 'running')
+                    RETURNING id
+                `);
+                const runId = runResult.rows[0].id;
 
-                for (const item of pending) {
-                    if (Date.now() - startTime >= this.schedule.maxDuration) {
-                        logger.info('Max duration reached, stopping scheduled backfill');
-                        break;
-                    }
-
-                    try {
-                        if (item.needsText) {
-                            await embeddingService.generateAndStore(item.id, {
-                                ...item.metadata,
-                                title: item.title,
-                                media_type: item.media_type,
-                                library_name: item.library_name
-                            });
-                        } else if (item.needsImage) {
-                            await embeddingService.generateImageEmbedding(item.id, {
-                                ...item.metadata,
-                                title: item.title,
-                                media_type: item.media_type,
-                                library_name: item.library_name
-                            });
-                        }
-                        processed++;
-
-                        // Update progress every 10 items
-                        if (processed % 10 === 0) {
-                            await db.query(
-                                'UPDATE backfill_runs SET processed = $1 WHERE id = $2',
-                                [processed, runId]
-                            );
-                        }
-                    } catch (error) {
-                        logger.error('Failed to generate embedding in scheduled backfill', {
-                            id: item.id,
-                            title: item.title,
-                            error: error.message
+                try {
+                    while (Date.now() - startTime < this.schedule.maxDuration) {
+                        const pending = await embeddingService.getPendingEmbeddings({
+                            limit: this.schedule.batchSize,
+                            includeImage
                         });
+
+                        if (pending.length === 0) {
+                            logger.info('No more pending embeddings');
+                            break;
+                        }
+
+                        for (const item of pending) {
+                            if (Date.now() - startTime >= this.schedule.maxDuration) {
+                                logger.info('Max duration reached, stopping scheduled backfill');
+                                break;
+                            }
+
+                            try {
+                                if (item.needsText) {
+                                    await embeddingService.generateAndStore(item.id, {
+                                        ...item.metadata,
+                                        title: item.title,
+                                        media_type: item.media_type,
+                                        library_name: item.library_name
+                                    });
+                                } else if (item.needsImage) {
+                                    await embeddingService.generateImageEmbedding(item.id, {
+                                        ...item.metadata,
+                                        title: item.title,
+                                        media_type: item.media_type,
+                                        library_name: item.library_name
+                                    });
+                                }
+                                processed++;
+
+                                // Update progress every 10 items
+                                if (processed % 10 === 0) {
+                                    await db.query(
+                                        'UPDATE backfill_runs SET processed = $1 WHERE id = $2',
+                                        [processed, runId]
+                                    );
+                                }
+                            } catch (error) {
+                                logger.error('Failed to generate embedding in scheduled backfill', {
+                                    id: item.id,
+                                    title: item.title,
+                                    error: error.message
+                                });
+                            }
+                        }
                     }
+
+                    const duration = Date.now() - startTime;
+
+                    await db.query(`
+                        UPDATE backfill_runs 
+                        SET status = 'completed', 
+                            completed_at = NOW(),
+                            processed = $1
+                        WHERE id = $2
+                    `, [processed, runId]);
+
+                    logger.info('Scheduled backfill completed', {
+                        processed,
+                        durationMs: duration
+                    });
+                } catch (error) {
+                    logger.error('Scheduled backfill error', { error: error.message });
+
+                    await db.query(`
+                        UPDATE backfill_runs 
+                        SET status = 'failed', 
+                            completed_at = NOW(),
+                            error = $1,
+                            processed = $2
+                        WHERE id = $3
+                    `, [error.message, processed, runId]);
+                } finally {
+                    this.isRunning = false;
                 }
             }
-
-            const duration = Date.now() - startTime;
-
-            await db.query(`
-                UPDATE backfill_runs 
-                SET status = 'completed', 
-                    completed_at = NOW(),
-                    processed = $1
-                WHERE id = $2
-            `, [processed, runId]);
-
-            logger.info('Scheduled backfill completed', {
-                processed,
-                durationMs: duration
-            });
-        } catch (error) {
-            logger.error('Scheduled backfill error', { error: error.message });
-
-            await db.query(`
-                UPDATE backfill_runs 
-                SET status = 'failed', 
-                    completed_at = NOW(),
-                    error = $1,
-                    processed = $2
-                WHERE id = $3
-            `, [error.message, processed, runId]);
-        } finally {
-            this.isRunning = false;
+        );
+        if (!lockAcquired) {
+            logger.info('Scheduled backfill skipped: advisory lock held by another process');
         }
     }
 

@@ -7005,6 +7005,13 @@ CREATE INDEX idx_refresh_tokens_expires_at ON public.refresh_tokens USING btree 
 
 
 --
+-- Name: idx_refresh_tokens_revoked_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_refresh_tokens_revoked_at ON public.refresh_tokens USING btree (revoked_at) WHERE (revoked_at IS NOT NULL);
+
+
+--
 -- Name: idx_refresh_tokens_token_hash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9103,7 +9110,6 @@ FROM unnest(ARRAY[
     '20260305_100000_optimize_task_queue_indexes.sql',
     '20260305_100100_add_updated_at_triggers.sql',
     '20260305_110000_add_security_cleanup_indexes.sql',
-    '20260305_120000_add_classification_history_check_constraints.sql',
-    '20260305_130000_validate_classification_history_constraints.sql'
+    '20260305_120000_add_classification_history_check_constraints.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

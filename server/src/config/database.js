@@ -18,8 +18,12 @@
 
 const { Pool } = require('pg');
 
-const SLOW_QUERY_THRESHOLD_MS = process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS !== undefined
+const parsedSlowQueryThreshold = process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS !== undefined
   ? parseInt(process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS, 10)
+  : NaN;
+
+const SLOW_QUERY_THRESHOLD_MS = Number.isFinite(parsedSlowQueryThreshold)
+  ? parsedSlowQueryThreshold
   : 500;
 
 const pool = new Pool({
@@ -97,6 +101,10 @@ async function withTransaction(fn) {
       await client.query('ROLLBACK');
     } catch (rollbackErr) {
       // Log rollback failure but still throw original error
+      console.error('Failed to rollback transaction', {
+        rollbackError: rollbackErr,
+        originalError: error,
+      });
     }
     throw error;
   } finally {
@@ -130,11 +138,43 @@ const DB_ADVISORY_LOCKS = {
   MANUAL_BACKFILL: 1003,
 };
 
+/**
+ * Execute `fn()` while holding a session-level advisory lock for the full duration.
+ * Unlike the transaction-scoped pg_try_advisory_xact_lock used in tryAdvisoryLock(),
+ * this lock is held on a dedicated client until fn() resolves — surviving COMMIT/ROLLBACK.
+ * The lock is explicitly released with pg_advisory_unlock() in a finally block.
+ *
+ * @param {number} lockKey - integer lock key (from DB_ADVISORY_LOCKS)
+ * @param {function} fn - async function to execute while lock is held
+ * @returns {Promise<boolean>} true if lock was acquired (fn was called), false otherwise
+ */
+async function withSessionAdvisoryLock(lockKey, fn) {
+  const client = await pool.connect();
+  try {
+    const { rows } = await client.query(
+      'SELECT pg_try_advisory_lock($1) AS acquired',
+      [lockKey]
+    );
+    if (!rows[0].acquired) {
+      return false;
+    }
+    try {
+      await fn();
+      return true;
+    } finally {
+      await client.query('SELECT pg_advisory_unlock($1)', [lockKey]);
+    }
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   query: timedQuery,
   pool,
   healthCheck,
   withTransaction,
   tryAdvisoryLock,
+  withSessionAdvisoryLock,
   DB_ADVISORY_LOCKS,
 };
