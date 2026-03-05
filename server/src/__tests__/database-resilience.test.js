@@ -336,11 +336,11 @@ describe('Database Resilience', () => {
         let warnSpy;
 
         beforeEach(() => {
-            warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+            warnSpy = createConsoleSpy('warn', { suppress: true });
         });
 
         afterEach(() => {
-            warnSpy.mockRestore();
+            warnSpy.restore();
         });
 
         it('does not log for fast queries', async () => {
@@ -356,7 +356,7 @@ describe('Database Resilience', () => {
             }));
             const db = require('../config/database');
             await db.query('SELECT 1');
-            expect(warnSpy).not.toHaveBeenCalled();
+            expect(warnSpy.spy).not.toHaveBeenCalled();
         });
 
         it('logs [SLOW QUERY] when query exceeds threshold', async () => {
@@ -373,7 +373,7 @@ describe('Database Resilience', () => {
             }));
             const db = require('../config/database');
             await db.query('SELECT slow_thing FROM table');
-            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[SLOW QUERY]'));
+            expect(warnSpy.spy).toHaveBeenCalledWith(expect.stringContaining('[SLOW QUERY]'));
             delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
         });
 
@@ -392,8 +392,8 @@ describe('Database Resilience', () => {
             }));
             const db = require('../config/database');
             await db.query(longQuery);
-            expect(warnSpy).toHaveBeenCalled();
-            const warnCall = warnSpy.mock.calls[0][0];
+            expect(warnSpy.spy).toHaveBeenCalled();
+            const warnCall = warnSpy.spy.mock.calls[0][0];
             // Extract the query portion after the duration
             const queryPart = warnCall.split('— ')[1];
             expect(queryPart.length).toBeLessThanOrEqual(120);
@@ -413,7 +413,7 @@ describe('Database Resilience', () => {
             }));
             const db = require('../config/database');
             await db.query('SELECT 1');
-            expect(warnSpy).not.toHaveBeenCalled();
+            expect(warnSpy.spy).not.toHaveBeenCalled();
             delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
         });
     });
