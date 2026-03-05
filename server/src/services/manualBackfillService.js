@@ -7,6 +7,7 @@
  */
 
 const db = require('../config/database');
+const { withTransaction, tryAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
 const embeddingService = require('./embeddingService');
 const embeddingProvider = require('./embeddingProvider');
 const { createLogger } = require('../utils/logger');
@@ -64,6 +65,18 @@ class ManualBackfillService {
 
         if (this.state.status === 'running') {
             throw new Error('Backfill already running');
+        }
+
+        // Advisory lock guard: prevents split-brain races in multi-process deployments.
+        let lockAcquired = false;
+        await withTransaction(async (client) => {
+            lockAcquired = await tryAdvisoryLock(client, DB_ADVISORY_LOCKS.MANUAL_BACKFILL);
+            if (!lockAcquired) {
+                logger.info('Manual backfill skipped: advisory lock held by another process');
+            }
+        });
+        if (!lockAcquired) {
+            throw new Error('Backfill already running in another process');
         }
 
         this.state.batchSize = options.batchSize || 50;

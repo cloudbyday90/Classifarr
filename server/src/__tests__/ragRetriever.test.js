@@ -30,7 +30,17 @@ jest.mock('../services/imageEmbeddingProvider', () => ({
     getConfig: jest.fn(),
     isConfigured: jest.fn()
 }));
-jest.mock('../config/database');
+jest.mock('../config/database', () => {
+    const mockPool = { connect: jest.fn() };
+    return {
+        query: jest.fn(),
+        pool: mockPool,
+        healthCheck: jest.fn(),
+        withTransaction: jest.fn(),
+        tryAdvisoryLock: jest.fn(),
+        DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003 }
+    };
+});
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
@@ -45,6 +55,8 @@ jest.mock('../utils/ragLogger', () => ({
 }));
 
 describe('RAGRetriever', () => {
+    let mockPoolClient;
+
     beforeEach(() => {
         jest.clearAllMocks();
         imageEmbeddingProvider.embedImageFromUrl.mockResolvedValue(null);
@@ -52,6 +64,19 @@ describe('RAGRetriever', () => {
         imageEmbeddingProvider.isConfigured.mockReturnValue(false);
         embeddingService.formatForEmbedding.mockReturnValue('query');
         embeddingService.resolvePosterUrl.mockReturnValue(null);
+
+        // Default pool client mock for semanticSearch (uses db.pool.connect internally)
+        mockPoolClient = {
+            query: jest.fn().mockResolvedValue({ rows: [] }),
+            release: jest.fn()
+        };
+        db.pool.connect.mockResolvedValue(mockPoolClient);
+    });
+
+    afterEach(() => {
+        // Restore any spies (e.g. jest.spyOn(ragRetriever, 'semanticSearch')) so they
+        // don't bleed into subsequent tests.
+        jest.restoreAllMocks();
     });
 
     describe('semanticSearch', () => {
@@ -63,19 +88,23 @@ describe('RAGRetriever', () => {
             imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'local' });
             imageEmbeddingProvider.isConfigured.mockReturnValue(true);
 
-            // Mock DB search result
-            db.query.mockResolvedValue({
-                rows: [
-                    {
-                        classification_id: 1,
-                        combined_similarity: 0.93,
-                        text_similarity: 0.95,
-                        image_similarity: 0.92,
-                        title: 'Test',
-                        media_type: 'movie'
-                    }
-                ]
-            });
+            // Mock pool client: BEGIN resolves, SET LOCAL resolves, CTE returns rows, COMMIT resolves
+            mockPoolClient.query
+                .mockResolvedValueOnce({}) // BEGIN
+                .mockResolvedValueOnce({}) // SET LOCAL hnsw.ef_search
+                .mockResolvedValueOnce({  // CTE query
+                    rows: [
+                        {
+                            classification_id: 1,
+                            combined_similarity: 0.93,
+                            text_similarity: 0.95,
+                            image_similarity: 0.92,
+                            title: 'Test',
+                            media_type: 'movie'
+                        }
+                    ]
+                })
+                .mockResolvedValueOnce({}); // COMMIT
 
             // Mock config enabled and threshold
             embeddingRouter.isEnabled.mockResolvedValue(true);
@@ -125,7 +154,7 @@ describe('RAGRetriever', () => {
 
         it('should skip image embedding when image mode is disabled', async () => {
             embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
-            db.query.mockResolvedValue({ rows: [] });
+            // pool client returns empty rows (default mockPoolClient resolves to { rows: [] })
             embeddingRouter.isEnabled.mockResolvedValue(true);
             embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
             embeddingRouter.getConfig.mockResolvedValue({
@@ -145,18 +174,22 @@ describe('RAGRetriever', () => {
 
         it('should fall back to text-only when no poster is available', async () => {
             embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
-            db.query.mockResolvedValue({
-                rows: [
-                    {
-                        classification_id: 1,
-                        combined_similarity: 0.9,
-                        text_similarity: 0.9,
-                        image_similarity: null,
-                        title: 'Test',
-                        media_type: 'movie'
-                    }
-                ]
-            });
+            mockPoolClient.query
+                .mockResolvedValueOnce({}) // BEGIN
+                .mockResolvedValueOnce({}) // SET LOCAL hnsw.ef_search
+                .mockResolvedValueOnce({  // CTE query
+                    rows: [
+                        {
+                            classification_id: 1,
+                            combined_similarity: 0.9,
+                            text_similarity: 0.9,
+                            image_similarity: null,
+                            title: 'Test',
+                            media_type: 'movie'
+                        }
+                    ]
+                })
+                .mockResolvedValueOnce({}); // COMMIT
             embeddingRouter.isEnabled.mockResolvedValue(true);
             embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
             embeddingRouter.getConfig.mockResolvedValue({
@@ -179,18 +212,22 @@ describe('RAGRetriever', () => {
 
         it('should return unfiltered candidates when threshold filtering is disabled', async () => {
             embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
-            db.query.mockResolvedValue({
-                rows: [
-                    {
-                        classification_id: 1,
-                        combined_similarity: 0.42,
-                        text_similarity: 0.42,
-                        image_similarity: null,
-                        title: 'Low Similarity Match',
-                        media_type: 'movie'
-                    }
-                ]
-            });
+            mockPoolClient.query
+                .mockResolvedValueOnce({}) // BEGIN
+                .mockResolvedValueOnce({}) // SET LOCAL hnsw.ef_search
+                .mockResolvedValueOnce({  // CTE query
+                    rows: [
+                        {
+                            classification_id: 1,
+                            combined_similarity: 0.42,
+                            text_similarity: 0.42,
+                            image_similarity: null,
+                            title: 'Low Similarity Match',
+                            media_type: 'movie'
+                        }
+                    ]
+                })
+                .mockResolvedValueOnce({}); // COMMIT
             embeddingRouter.isEnabled.mockResolvedValue(true);
             embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
             embeddingRouter.getConfig.mockResolvedValue({
@@ -207,7 +244,7 @@ describe('RAGRetriever', () => {
 
         it('should build expanded pass2 query text deterministically', async () => {
             embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
-            db.query.mockResolvedValue({ rows: [] });
+            // pool client default returns { rows: [] } for all calls
             embeddingRouter.isEnabled.mockResolvedValue(true);
             embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
             embeddingRouter.getConfig.mockResolvedValue({
@@ -630,6 +667,72 @@ describe('RAGRetriever', () => {
                     })
                 })
             );
+        });
+    });
+
+    describe('HNSW ef_search tuning', () => {
+        it('semanticSearch issues SET LOCAL hnsw.ef_search before vector query', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            await ragRetriever.semanticSearch({ title: 'Query' });
+
+            // Find the SET LOCAL call in pool client query calls
+            const queries = mockPoolClient.query.mock.calls.map(call => call[0]);
+            const setLocalIdx = queries.findIndex(q => typeof q === 'string' && q.includes('SET LOCAL hnsw.ef_search'));
+            const cteIdx = queries.findIndex(q => typeof q === 'string' && q.includes('WITH candidates AS'));
+            expect(setLocalIdx).toBeGreaterThanOrEqual(0);
+            expect(cteIdx).toBeGreaterThanOrEqual(0);
+            expect(setLocalIdx).toBeLessThan(cteIdx);
+        });
+
+        it('ef_search value defaults to 80 when PGVECTOR_EF_SEARCH is unset', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            await ragRetriever.semanticSearch({ title: 'Query' });
+
+            const setLocalCall = mockPoolClient.query.mock.calls.find(
+                call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
+            );
+            expect(setLocalCall).toBeDefined();
+            // Default value should be 80 (or whatever PGVECTOR_EF_SEARCH is set to in the test env)
+            expect(setLocalCall[1][0]).toBeGreaterThanOrEqual(40);
+        });
+
+        it('client is released even when vector query throws', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            // Make the CTE query throw
+            mockPoolClient.query
+                .mockResolvedValueOnce({}) // BEGIN
+                .mockResolvedValueOnce({}) // SET LOCAL
+                .mockRejectedValueOnce(new Error('vector query failed')); // CTE
+
+            const result = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            // Should return [] (error is caught), and client should be released
+            expect(result).toEqual([]);
+            expect(mockPoolClient.release).toHaveBeenCalled();
         });
     });
 });

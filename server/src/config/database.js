@@ -18,6 +18,10 @@
 
 const { Pool } = require('pg');
 
+const SLOW_QUERY_THRESHOLD_MS = process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS !== undefined
+  ? parseInt(process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS, 10)
+  : 500;
+
 const pool = new Pool({
   host: process.env.POSTGRES_HOST || 'localhost',
   port: parseInt(process.env.POSTGRES_PORT || '5432'),
@@ -57,8 +61,80 @@ async function healthCheck() {
   }
 }
 
+/**
+ * Timed query wrapper — logs slow queries that exceed POSTGRES_SLOW_QUERY_THRESHOLD_MS.
+ * Uses process.hrtime.bigint() for nanosecond precision.
+ */
+async function timedQuery(text, params) {
+  const start = process.hrtime.bigint();
+  try {
+    return await pool.query(text, params);
+  } finally {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+    if (durationMs > SLOW_QUERY_THRESHOLD_MS) {
+      const truncated = typeof text === 'string' ? text.slice(0, 120).replace(/\s+/g, ' ').trim() : '[non-string]';
+      console.warn(`[SLOW QUERY] ${durationMs.toFixed(2)}ms — ${truncated}`);
+    }
+  }
+}
+
+/**
+ * Execute `fn(client)` inside a BEGIN/COMMIT transaction.
+ * Always releases the client in finally. Re-throws after ROLLBACK.
+ *
+ * @param {function} fn - async function that receives a pg PoolClient
+ * @returns {Promise<*>} result of fn
+ */
+async function withTransaction(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackErr) {
+      // Log rollback failure but still throw original error
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Attempt to acquire a transaction-scoped advisory lock.
+ * Must be called INSIDE an active transaction (BEGIN already issued).
+ * Lock is automatically released when the transaction commits or rolls back.
+ *
+ * @param {object} client - active pooled client with an open transaction
+ * @param {number} lockKey - integer lock key (unique per service)
+ * @returns {Promise<boolean>} true if lock acquired, false if already held
+ */
+async function tryAdvisoryLock(client, lockKey) {
+  const result = await client.query(
+    'SELECT pg_try_advisory_xact_lock($1) AS acquired',
+    [lockKey]
+  );
+  return result.rows[0].acquired === true;
+}
+
+/**
+ * Advisory lock key constants — one per service that needs distributed startup protection.
+ */
+const DB_ADVISORY_LOCKS = {
+  IDLE_BACKFILL: 1001,
+  SCHEDULED_BACKFILL: 1002,
+  MANUAL_BACKFILL: 1003,
+};
+
 module.exports = {
-  query: (text, params) => pool.query(text, params),
+  query: timedQuery,
   pool,
   healthCheck,
+  withTransaction,
+  tryAdvisoryLock,
+  DB_ADVISORY_LOCKS,
 };

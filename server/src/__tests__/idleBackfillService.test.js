@@ -10,7 +10,10 @@ const db = require('../config/database');
 
 // Mock all dependencies
 jest.mock('../config/database', () => ({
-    query: jest.fn()
+    query: jest.fn(),
+    withTransaction: jest.fn(),
+    tryAdvisoryLock: jest.fn(),
+    DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003 }
 }));
 
 jest.mock('../services/embeddingService', () => ({
@@ -50,6 +53,13 @@ describe('IdleBackfillService', () => {
         embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
         embeddingService.getPendingCount.mockResolvedValue(0);
         embeddingService.getPendingEmbeddings.mockResolvedValue([]);
+
+        // Default: advisory lock acquired (so existing tests pass)
+        db.withTransaction.mockImplementation(async (fn) => {
+            const mockClient = { query: jest.fn() };
+            return fn(mockClient);
+        });
+        db.tryAdvisoryLock.mockResolvedValue(true);
     });
 
     describe('Configuration', () => {
@@ -275,6 +285,29 @@ describe('IdleBackfillService', () => {
                 isRunning: true,
                 config: { idle_batch_size: 20 }
             });
+        });
+    });
+
+    describe('Advisory lock guard', () => {
+        test('skips backfill when advisory lock is not acquired', async () => {
+            // Set up config so the service would normally proceed
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    rag_enabled: true,
+                    idle_backfill_enabled: true,
+                    idle_threshold: 300,
+                    idle_batch_size: 10
+                }]
+            });
+            idleDetector.isIdle.mockReturnValue(true);
+
+            // Advisory lock not acquired
+            db.tryAdvisoryLock.mockResolvedValue(false);
+
+            await idleBackfillService.startIdleBackfill();
+
+            // isRunning should remain false — no backfill was started
+            expect(idleBackfillService.isRunning).toBe(false);
         });
     });
 });

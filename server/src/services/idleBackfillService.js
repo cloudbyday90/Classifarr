@@ -7,6 +7,7 @@
  */
 
 const db = require('../config/database');
+const { withTransaction, tryAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
 const embeddingService = require('./embeddingService');
 const idleDetector = require('../utils/idleDetector');
 const { createLogger } = require('../utils/logger');
@@ -115,6 +116,19 @@ class IdleBackfillService {
 
             if (this.isRunning) {
                 logger.info('Idle backfill NOT started: Already running');
+                return;
+            }
+
+            // Advisory lock guard: prevents split-brain races in multi-process deployments.
+            // Acquire a transaction-scoped lock before inserting the backfill_runs record.
+            let lockAcquired = false;
+            await withTransaction(async (client) => {
+                lockAcquired = await tryAdvisoryLock(client, DB_ADVISORY_LOCKS.IDLE_BACKFILL);
+                if (!lockAcquired) {
+                    logger.info('Idle backfill skipped: advisory lock held by another process');
+                }
+            });
+            if (!lockAcquired) {
                 return;
             }
 

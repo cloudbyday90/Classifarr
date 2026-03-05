@@ -34,7 +34,12 @@ jest.mock('../services/embeddingProvider', () => ({
         getStatus: jest.fn()
     }
 }));
-jest.mock('../config/database');
+jest.mock('../config/database', () => ({
+    query: jest.fn(),
+    withTransaction: jest.fn(),
+    tryAdvisoryLock: jest.fn(),
+    DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003 }
+}));
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
@@ -50,6 +55,13 @@ describe('ManualBackfillService', () => {
         jest.resetAllMocks();
         await manualBackfillService.clear();
         embeddingProvider.circuitBreaker.getStatus.mockReturnValue({ state: 'CLOSED' });
+
+        // Default: advisory lock acquired (so existing tests pass)
+        db.withTransaction.mockImplementation(async (fn) => {
+            const mockClient = { query: jest.fn() };
+            return fn(mockClient);
+        });
+        db.tryAdvisoryLock.mockResolvedValue(true);
     });
 
     it('rejects start when RAG is disabled', async () => {

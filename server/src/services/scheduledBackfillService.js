@@ -7,6 +7,7 @@
  */
 
 const db = require('../config/database');
+const { withTransaction, tryAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
 const embeddingService = require('./embeddingService');
 const { createLogger } = require('../utils/logger');
 const { parseDaysConfig } = require('../utils/backfillHelpers');
@@ -139,6 +140,18 @@ class ScheduledBackfillService {
 
         if (this.isRunning) {
             logger.warn('Scheduled backfill already running');
+            return;
+        }
+
+        // Advisory lock guard: prevents split-brain races in multi-process deployments.
+        let lockAcquired = false;
+        await withTransaction(async (client) => {
+            lockAcquired = await tryAdvisoryLock(client, DB_ADVISORY_LOCKS.SCHEDULED_BACKFILL);
+            if (!lockAcquired) {
+                logger.info('Scheduled backfill skipped: advisory lock held by another process');
+            }
+        });
+        if (!lockAcquired) {
             return;
         }
 
