@@ -4,6 +4,58 @@
 
 ---
 
+## v0.43.5-beta
+**Title: First beta — a complete, hardened foundation months in the making**
+
+> [!IMPORTANT]
+> **Existing installs:** This release runs database migrations that widen several columns from INTEGER to BIGINT and recreates foreign keys. On large installations the migration may take a few seconds per table. A container restart after the first upgrade is recommended to activate `pg_stat_statements` query profiling (the extension is pre-loaded on new installs automatically).
+
+### 🎉 What You'll Notice
+- Classifarr graduates from alpha to **beta** — every originally-planned core feature is in place and working.
+- The system handles high-volume queues more reliably: in-flight tasks survive crashes and rolling restarts faster than before, duplicate tasks are automatically prevented, and advisory locks prevent split-brain races between processes.
+- Scheduled maintenance now runs in the background: old logs, expired tokens, and audit records are cleaned up automatically — no operator action needed.
+- AI-powered semantic search returns more relevant results with less latency thanks to HNSW index warm-up on startup and tuned search parameters.
+- The database is built to scale: primary keys, IDs, and counters have been upgraded to 64-bit (BIGINT) across all tables — overflow is no longer a theoretical concern for long-running instances.
+
+### 📊 Quick Visual
+```text
+v0.43.5-beta Foundation Summary
+─────────────────────────────────────────────────
+Database foundation  [██████████] Production-ready
+Queue reliability    [██████████] Crash/restart safe
+Auto-maintenance     [██████████] Fully automated
+RAG/AI search        [█████████░] Tuned + warmed
+Test coverage        [████████░░] 1903 unit / 574 integration
+─────────────────────────────────────────────────
+Months of iteration → First Beta
+```
+
+### ✨ Highlights
+- **64-bit upgrade complete** — All ID columns across every table are now BIGINT. High-volume instances will never hit an integer overflow, even after years of continuous operation.
+- **Queue visibility timeouts** — Inspired by Amazon SQS: when a worker claims a task it sets a lease timer. If the worker crashes before finishing, the task becomes visible again automatically — no restart required to recover stuck items.
+- **Task deduplication** — A partial unique index prevents the same deferred job (e.g. rating normalization) from being queued twice when the scheduler fires while a previous run is still in progress.
+- **Advisory locks for all backfill and scheduler jobs** — On multi-replica or rolling-restart deployments, concurrent processes now coordinate so no two workers process the same job simultaneously.
+- **Automatic log and token housekeeping** — Three new nightly jobs keep the database lean: log retention (configurable window), expired auth token pruning, and API key audit log rotation. All run without any operator input.
+- **Database query profiling built in** — `pg_stat_statements` is now enabled by default, giving you a live view of slow queries in any PostgreSQL monitoring tool.
+- **HNSW index pre-warming** — On each container start, both vector search indexes are loaded into shared memory before the first request arrives, eliminating cold-start latency on the first AI/RAG classification.
+
+### 🔧 Reliability Improvements
+- Pool connections now have explicit timeouts (connection, idle, statement) — runaway queries no longer tie up pool slots indefinitely.
+- All transaction management across the codebase has been unified into `withTransaction()` — no more raw `BEGIN`/`ROLLBACK` calls that could silently leave pool connections in a dirty state.
+- Graceful shutdown correctly resets in-flight tasks and closes the HTTP server before exit — rolling updates produce no stale `processing` rows and no startup noise.
+- Slow queries are logged automatically at the `WARN` level with elapsed time — you get visibility into database performance without needing an external monitoring stack.
+- Check constraints on `classification_history` (confidence range, completed rows must have a library) are now validated at the database level, not just application level.
+
+### 👥 Who This Helps
+- **End users:** Faster AI search responses, no more duplicate classification tasks, and more accurate auto-routing for ambiguous media.
+- **Operators/admins:** The database stays lean with zero manual maintenance. Query profiling and slow-query logging make performance issues immediately visible. Existing installs upgrade automatically with safe, low-lock migrations.
+- **Self-hosters running Unraid/Synology/homelab:** Visibility-timeout crash recovery means your queue recovers on its own after a power cycle or host restart — you don't need to babysit it.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details including every migration, index change, test addition, and service-level fix.
+
+---
+
 ## v0.43.3a-alpha
 **Title: Cleaner restarts — no more stale queue task warnings**
 
