@@ -158,4 +158,73 @@ describe('SchedulerService', () => {
             );
         });
     });
+
+    describe('cleanupStaleAwaitingDecisions', () => {
+        it('skips when no stale rows', async () => {
+            const dbModule = require('../config/database');
+            dbModule.query.mockResolvedValue({ rowCount: 0, rows: [] });
+
+            await scheduler.cleanupStaleAwaitingDecisions();
+
+            // Only the UPDATE should have been called, no INSERT to task_queue
+            const insertCall = dbModule.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('INSERT INTO task_queue')
+            );
+            expect(insertCall).toBeUndefined();
+        });
+
+        it('resets stale rows and re-queues them in task_queue', async () => {
+            const dbModule = require('../config/database');
+            const staleRows = [
+                { id: 1, title: 'Old Movie', tmdb_id: 100, media_type: 'movie' },
+                { id: 2, title: 'Old Show', tmdb_id: 200, media_type: 'tv' }
+            ];
+
+            dbModule.query.mockImplementation((sql) => {
+                if (sql && sql.includes('UPDATE classification_history')) {
+                    return Promise.resolve({ rowCount: 2, rows: staleRows });
+                }
+                if (sql && sql.includes('INSERT INTO task_queue')) {
+                    return Promise.resolve({ rowCount: 1, rows: [] });
+                }
+                return Promise.resolve({ rowCount: 0, rows: [] });
+            });
+
+            await scheduler.cleanupStaleAwaitingDecisions();
+
+            const insertCalls = dbModule.query.mock.calls.filter(
+                ([sql]) => sql && sql.includes('INSERT INTO task_queue')
+            );
+            expect(insertCalls).toHaveLength(2);
+        });
+
+        it('handles queue insert failure gracefully without stopping other rows', async () => {
+            const dbModule = require('../config/database');
+            const staleRows = [
+                { id: 1, title: 'Old Movie', tmdb_id: 100, media_type: 'movie' },
+                { id: 2, title: 'Old Show', tmdb_id: 200, media_type: 'tv' }
+            ];
+
+            let insertCallCount = 0;
+            dbModule.query.mockImplementation((sql) => {
+                if (sql && sql.includes('UPDATE classification_history')) {
+                    return Promise.resolve({ rowCount: 2, rows: staleRows });
+                }
+                if (sql && sql.includes('INSERT INTO task_queue')) {
+                    insertCallCount++;
+                    if (insertCallCount === 1) {
+                        return Promise.reject(new Error('Queue insert failed'));
+                    }
+                    return Promise.resolve({ rowCount: 1, rows: [] });
+                }
+                return Promise.resolve({ rowCount: 0, rows: [] });
+            });
+
+            // Should not throw even if first insert fails
+            await expect(scheduler.cleanupStaleAwaitingDecisions()).resolves.toBeUndefined();
+
+            // Both inserts should have been attempted
+            expect(insertCallCount).toBe(2);
+        });
+    });
 });

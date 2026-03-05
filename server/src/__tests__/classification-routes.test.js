@@ -535,4 +535,29 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(response.body.error).toBe('db offline');
     });
   });
+
+  describe('GET /api/classification/pending/count', () => {
+    test('excludes rows older than 7 days from the count', async () => {
+      db.query.mockResolvedValueOnce({ rows: [{ count: '3' }] });
+
+      const response = await request(app)
+        .get('/api/classification/pending/count');
+
+      expect(response.status).toBe(200);
+      expect(response.body.count).toBe(3);
+
+      const [sql] = db.query.mock.calls[0];
+      expect(sql).toMatch(/NOW\(\).*-.*INTERVAL/i);
+      expect(sql).toMatch(/awaiting_decision/);
+    });
+
+    test('returns 500 on database error', async () => {
+      db.query.mockRejectedValueOnce(new Error('DB error'));
+
+      const response = await request(app)
+        .get('/api/classification/pending/count');
+
+      expect(response.status).toBe(500);
+    });
+  });
 });

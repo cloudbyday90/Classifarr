@@ -32,6 +32,10 @@ const { randomUUID } = require('crypto');
 const router = express.Router();
 const logger = createLogger('classification');
 
+// Number of days after which an awaiting_decision row is considered stale.
+// Matches the threshold used in the daily cleanupStaleAwaitingDecisions scheduler job.
+const STALE_AWAITING_DECISION_DAYS = 7;
+
 function safeParseJsonObject(value, fallback = {}) {
   if (value === null || value === undefined) {
     return fallback;
@@ -720,8 +724,15 @@ router.post('/retry', requireReadWrite, async (req, res) => {
  */
 router.get('/pending/count', async (req, res) => {
   try {
+    // Exclude rows older than STALE_AWAITING_DECISION_DAYS — they are stale (Discord delivery
+    // failed, session lost, etc.) and are handled separately by the daily cleanup job.
+    // classification_history has created_at but no updated_at column.
     const result = await db.query(
-      `SELECT COUNT(*) as count FROM classification_history WHERE status = 'awaiting_decision'`
+      `SELECT COUNT(*) as count 
+       FROM classification_history 
+       WHERE status = 'awaiting_decision'
+         AND created_at >= NOW() - ($1 || ' days')::INTERVAL`,
+      [STALE_AWAITING_DECISION_DAYS]
     );
     res.json({ count: parseInt(result.rows[0].count) });
   } catch (error) {

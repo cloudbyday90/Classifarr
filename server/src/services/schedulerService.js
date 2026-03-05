@@ -106,11 +106,27 @@ class SchedulerService {
 
             if (pendingCount === 0) return;
 
-            // Check last backfill time (stored in embedding_costs)
-            const lastBackfillResult = await db.query(`
-                SELECT MAX(created_at) as last_run FROM embedding_costs
+            // Check if a scheduler backfill is already running, and when the last one completed.
+            // Checking is_running prevents overlapping executions when a batch takes longer
+            // than the poll interval or longer than the 5-minute throttle window.
+            const statusResult = await db.query(`
+                SELECT
+                    EXISTS(
+                        SELECT 1 FROM backfill_runs
+                        WHERE type = 'scheduler' AND status = 'running'
+                    ) AS is_running,
+                    (
+                        SELECT MAX(completed_at)
+                        FROM backfill_runs
+                        WHERE type = 'scheduler' AND status = 'completed'
+                    ) AS last_run
             `);
-            const lastRun = lastBackfillResult.rows[0]?.last_run;
+            const { is_running: isRunning, last_run: lastRun } = statusResult.rows[0];
+
+            if (isRunning) {
+                logger.debug('RAG backfill: skipped (run already in progress)');
+                return;
+            }
 
             // Run every 5 minutes (or if never ran)
             const shouldRun = !lastRun || (Date.now() - new Date(lastRun).getTime()) > 5 * 60 * 1000;
@@ -128,12 +144,21 @@ class SchedulerService {
      * Run a batch of RAG embedding backfills
      */
     async runRagBackfill() {
+        let runId = null;
         try {
             const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
             const pending = await embeddingService.getPendingEmbeddings({
                 limit: 10,
                 includeImage
             });
+
+            if (pending.length === 0) return;
+
+            const runResult = await db.query(
+                `INSERT INTO backfill_runs (type, status, total) VALUES ('scheduler', 'running', $1) RETURNING id`,
+                [pending.length]
+            );
+            runId = runResult.rows[0].id;
 
             let processed = 0;
             let failed = 0;
@@ -163,11 +188,22 @@ class SchedulerService {
                 }
             }
 
+            await db.query(
+                `UPDATE backfill_runs SET status = 'completed', completed_at = NOW(), processed = $1 WHERE id = $2`,
+                [processed, runId]
+            );
+
             if (processed > 0) {
-                logger.info(`RAG backfill batch complete`, { processed, failed });
+                logger.info('RAG backfill batch complete', { processed, failed });
             }
         } catch (error) {
             logger.error('RAG backfill failed', { error: error.message });
+            if (runId) {
+                await db.query(
+                    `UPDATE backfill_runs SET status = 'failed', completed_at = NOW(), error = $1 WHERE id = $2`,
+                    [error.message, runId]
+                ).catch(() => {});
+            }
         }
     }
 
