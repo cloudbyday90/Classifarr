@@ -1246,4 +1246,55 @@ describe('QueueService', () => {
             expect(sql).toMatch(/ORDER BY.*priority.*DESC.*created_at.*ASC/s);
         });
     });
+
+    describe('resetStaleProcessingTasks', () => {
+        function makeClient(acquiredValue, rowCount = 0, rows = []) {
+            return {
+                query: jest.fn().mockImplementation((sql, params) => {
+                    if (sql && sql.includes('pg_try_advisory_xact_lock')) {
+                        return Promise.resolve({ rows: [{ acquired: acquiredValue }] });
+                    }
+                    if (sql && sql.includes('UPDATE task_queue')) {
+                        return Promise.resolve({ rowCount, rows });
+                    }
+                    return Promise.resolve({ rows: [] });
+                }),
+                release: jest.fn()
+            };
+        }
+
+        it('resetStaleProcessingTasks: acquires advisory lock and resets rows', async () => {
+            const mockRows = [{ id: 1 }, { id: 2 }];
+            const mockClient = makeClient(true, 2, mockRows);
+            db.pool = { connect: jest.fn().mockResolvedValue(mockClient) };
+
+            const count = await queueService.resetStaleProcessingTasks();
+
+            expect(count).toBe(2);
+            const updateCall = mockClient.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('UPDATE task_queue')
+            );
+            expect(updateCall).toBeDefined();
+            // Should COMMIT when lock is acquired
+            const commitCall = mockClient.query.mock.calls.find(([sql]) => sql === 'COMMIT');
+            expect(commitCall).toBeDefined();
+        });
+
+        it('resetStaleProcessingTasks: skips when advisory lock unavailable', async () => {
+            const mockClient = makeClient(false);
+            db.pool = { connect: jest.fn().mockResolvedValue(mockClient) };
+
+            const count = await queueService.resetStaleProcessingTasks();
+
+            expect(count).toBe(0);
+            // Should not issue UPDATE
+            const updateCall = mockClient.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('UPDATE task_queue')
+            );
+            expect(updateCall).toBeUndefined();
+            // Should ROLLBACK when lock is unavailable
+            const rollbackCall = mockClient.query.mock.calls.find(([sql]) => sql === 'ROLLBACK');
+            expect(rollbackCall).toBeDefined();
+        });
+    });
 });

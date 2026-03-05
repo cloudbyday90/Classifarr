@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`gracefulShutdown()` races with `resetStaleProcessingTasks()` on rolling restarts** — `QueueService.resetStaleProcessingTasks()` now wraps its startup UPDATE inside a `pg_try_advisory_xact_lock` transaction. If two containers overlap during a K8s rolling update, only the first one to acquire the lock (key `STARTUP_RESET = 1234567890`, added to `DB_ADVISORY_LOCKS`) will reset stale `processing` rows; the second silently skips. This prevents two containers from both re-queueing the same in-flight task and processing it twice.
+- **`schedulerService.checkRagBackfillSchedule()` queried wrong table** — The 5-minute throttle gate for the lightweight RAG backfill incorrectly read `MAX(created_at)` from `embedding_costs` (an AI billing table that updates constantly, permanently suppressing the backfill on busy instances). The query now reads `MAX(completed_at)` from `backfill_runs WHERE type = 'scheduler' AND status = 'completed'`. `runRagBackfill()` now inserts a `backfill_runs` row (type `'scheduler'`) at the start of each batch and marks it `completed` or `failed` when done, consistent with the pattern used by `scheduledBackfillService` and `idleBackfillService`.
+- **`GET /api/classification/pending/count` badge inflation from stale `awaiting_decision` rows** — The Command Center badge count now excludes rows where `updated_at` is older than 7 days, preventing permanently-stuck Discord items (disconnected bot, deleted message, lost session) from inflating the count indefinitely. A new daily scheduler job `cleanupStaleAwaitingDecisions` (runs at 04:00) resets these stale rows back to `pending` and re-inserts a `task_queue` entry so they are re-classified with fresh context.
+
 ## [v0.43.4-alpha] - 2026-03-05
 
 ### Performance

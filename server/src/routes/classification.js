@@ -720,8 +720,15 @@ router.post('/retry', requireReadWrite, async (req, res) => {
  */
 router.get('/pending/count', async (req, res) => {
   try {
+    // Exclude rows older than 7 days — they are stale (Discord delivery failed,
+    // session lost, etc.) and are handled separately by the daily cleanup job.
+    const STALE_AWAITING_DECISION_DAYS = 7;
     const result = await db.query(
-      `SELECT COUNT(*) as count FROM classification_history WHERE status = 'awaiting_decision'`
+      `SELECT COUNT(*) as count 
+       FROM classification_history 
+       WHERE status = 'awaiting_decision'
+         AND updated_at >= NOW() - ($1 || ' days')::INTERVAL`,
+      [STALE_AWAITING_DECISION_DAYS]
     );
     res.json({ count: parseInt(result.rows[0].count) });
   } catch (error) {

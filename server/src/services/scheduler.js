@@ -73,6 +73,10 @@ class SchedulerService {
 
         // Daily pruning of old api_key_audit rows (3:10 AM)
         this.schedule('api-key-audit-prune', '10 3 * * *', () => this.runApiKeyAuditPrune());
+
+        // Daily cleanup of stale awaiting_decision rows (4 AM)
+        // Re-queues items stuck waiting for Discord responses for more than 7 days
+        this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions());
     }
 
     /**
@@ -186,7 +190,50 @@ class SchedulerService {
     }
 
     /**
-     * Schedule a task
+     * Daily cleanup of stale awaiting_decision classification rows.
+     * Rows older than STALE_AWAITING_DECISION_DAYS days are reset to 'pending' and
+     * re-queued for classification so the Command Center badge stays accurate.
+     */
+    async cleanupStaleAwaitingDecisions() {
+        const STALE_AWAITING_DECISION_DAYS = 7;
+        try {
+            const result = await db.query(`
+                UPDATE classification_history
+                SET status = 'pending',
+                    pending_reason = 'Re-queued after stale awaiting_decision (>7 days)',
+                    updated_at = NOW()
+                WHERE status = 'awaiting_decision'
+                  AND updated_at < NOW() - ($1 || ' days')::INTERVAL
+                RETURNING id, title, tmdb_id, media_type
+            `, [STALE_AWAITING_DECISION_DAYS]);
+
+            if (result.rowCount === 0) return;
+
+            logger.info('Stale awaiting_decision cleanup: reset rows', { count: result.rowCount });
+
+            for (const row of result.rows) {
+                try {
+                    await db.query(
+                        `INSERT INTO task_queue (task_type, priority, payload, status)
+                         VALUES ('classification', 5, $1::jsonb, 'pending')
+                         ON CONFLICT DO NOTHING`,
+                        [JSON.stringify({
+                            tmdb_id: row.tmdb_id,
+                            media_type: row.media_type,
+                            title: row.title,
+                            source: 'stale_cleanup'
+                        })]
+                    );
+                } catch (queueErr) {
+                    logger.warn('Stale cleanup: failed to re-queue item', { id: row.id, error: queueErr.message });
+                }
+            }
+        } catch (error) {
+            logger.error('Stale awaiting_decision cleanup failed', { error: error.message });
+        }
+    }
+
+    /**
      * @param {string} name - Task name
      * @param {string} cronExpression - Cron expression
      * @param {Function} handler - Task handler

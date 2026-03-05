@@ -995,19 +995,33 @@ class QueueService {
     }
 
     /**
-     * Reset any tasks stuck in 'processing' state from previous runs
-     * This handles zombie tasks left behind after crashes/restarts
+     * Reset any tasks stuck in 'processing' state from previous runs.
+     * Uses a transaction-level advisory lock to prevent two containers from
+     * racing during a rolling restart (K8s maxSurge > 0). If another container
+     * already holds the lock it is already doing the reset — skip silently.
      */
     async resetStaleProcessingTasks() {
+        const { DB_ADVISORY_LOCKS } = require('../config/database');
+        const client = await this.db.pool.connect();
         try {
-            const result = await this.db.query(
+            await client.query('BEGIN');
+            const lockResult = await client.query(
+                'SELECT pg_try_advisory_xact_lock($1) AS acquired',
+                [DB_ADVISORY_LOCKS.STARTUP_RESET]
+            );
+            if (!lockResult.rows[0].acquired) {
+                this.logger.info('resetStaleProcessingTasks: skipped (another container holds startup lock)');
+                await client.query('ROLLBACK');
+                return 0;
+            }
+            const result = await client.query(
                 `UPDATE task_queue 
-                 SET status = 'pending', started_at = NULL, 
+                 SET status = 'pending', started_at = NULL,
                      error_message = 'Reset on startup - previous worker crashed'
                  WHERE status = 'processing'
                  RETURNING id`
             );
-
+            await client.query('COMMIT');
             if (result.rowCount > 0) {
                 this.logger.warn('Reset stale processing tasks on startup', {
                     count: result.rowCount,
@@ -1016,8 +1030,11 @@ class QueueService {
             }
             return result.rowCount;
         } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
             this.logger.error('Failed to reset stale tasks', { error: error.message });
             return 0;
+        } finally {
+            client.release();
         }
     }
 
