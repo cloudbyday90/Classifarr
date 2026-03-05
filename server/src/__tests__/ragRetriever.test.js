@@ -708,8 +708,8 @@ describe('RAGRetriever', () => {
                 call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
             );
             expect(setLocalCall).toBeDefined();
-            // Default value should be 80 (or whatever PGVECTOR_EF_SEARCH is set to in the test env)
-            expect(setLocalCall[1][0]).toBeGreaterThanOrEqual(40);
+            // EF_SEARCH is evaluated at module load time; env var should not be set in test env
+            expect(setLocalCall[1][0]).toBe(parseInt(process.env.PGVECTOR_EF_SEARCH) || 80);
         });
 
         it('client is released even when vector query throws', async () => {

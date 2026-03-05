@@ -141,6 +141,10 @@ describe('SchedulerService', () => {
             dbModule.query.mockRejectedValue(new Error('DB connection failed'));
 
             await expect(scheduler.runRefreshTokenCleanup()).resolves.toBeUndefined();
+            expect(logger.error).toHaveBeenCalledWith(
+                'Refresh token cleanup failed',
+                expect.objectContaining({ error: 'DB connection failed' })
+            );
         });
 
         it('runApiKeyAuditPrune logs error and does not throw on DB failure', async () => {
@@ -148,6 +152,10 @@ describe('SchedulerService', () => {
             dbModule.query.mockRejectedValue(new Error('DB connection failed'));
 
             await expect(scheduler.runApiKeyAuditPrune()).resolves.toBeUndefined();
+            expect(logger.error).toHaveBeenCalledWith(
+                'API key audit prune failed',
+                expect.objectContaining({ error: 'DB connection failed' })
+            );
         });
     });
 });
