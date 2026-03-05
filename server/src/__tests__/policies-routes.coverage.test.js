@@ -9,9 +9,17 @@
 const request = require('supertest');
 const express = require('express');
 
-jest.mock('../config/database', () => ({
-  query: jest.fn()
-}));
+jest.mock('../config/database', () => {
+  const queryMock = jest.fn();
+  return {
+    query: queryMock,
+    // withTransaction calls fn with a fake client whose .query is the same mock as
+    // db.query, so existing mockResolvedValueOnce chains work without change.
+    // The default implementation survives jest.clearAllMocks() (clearAllMocks only
+    // clears mock.calls/results, not the registered implementation).
+    withTransaction: jest.fn(async (fn) => fn({ query: queryMock })),
+  };
+});
 
 jest.mock('../utils/logger', () => ({
   createLogger: () => ({
@@ -217,19 +225,17 @@ describe('Policies routes coverage', () => {
 
     test('creates policy with presets and commits transaction', async () => {
       db.query
-        .mockResolvedValueOnce({}) // BEGIN
         .mockResolvedValueOnce({
           rows: [{ id: 77, library_id: 4, name: 'Family Policy' }]
         }) // INSERT policy
         .mockResolvedValueOnce({}) // INSERT preset 1
         .mockResolvedValueOnce({}) // INSERT preset 2
-        .mockResolvedValueOnce({}) // COMMIT
         .mockResolvedValueOnce({
           rows: [{ id: 77, library_id: 4, name: 'Family Policy', library_name: 'Family' }]
-        })
+        }) // SELECT complete policy
         .mockResolvedValueOnce({
           rows: [{ id: 5, key: 'family', weight: 1.0 }]
-        });
+        }); // SELECT presets
 
       const res = await request(app)
         .post('/api/policies')
@@ -247,20 +253,17 @@ describe('Policies routes coverage', () => {
         })
         .expect(201);
 
-      expect(db.query).toHaveBeenCalledWith('BEGIN');
-      expect(db.query).toHaveBeenCalledWith('COMMIT');
+      expect(db.withTransaction).toHaveBeenCalled();
       expect(res.body.id).toBe(77);
       expect(res.body.presets).toHaveLength(1);
     });
 
-    test('rolls back when insert fails after BEGIN', async () => {
+    test('rolls back when preset insert fails', async () => {
       db.query
-        .mockResolvedValueOnce({}) // BEGIN
         .mockResolvedValueOnce({
           rows: [{ id: 12, library_id: 1, name: 'Broken policy' }]
-        })
-        .mockRejectedValueOnce(new Error('policy preset insert failed'))
-        .mockResolvedValueOnce({}); // ROLLBACK
+        }) // INSERT policy
+        .mockRejectedValueOnce(new Error('policy preset insert failed')); // INSERT preset throws
 
       const res = await request(app)
         .post('/api/policies')
@@ -272,38 +275,34 @@ describe('Policies routes coverage', () => {
         .expect(500);
 
       expect(res.body.error).toContain('policy preset insert failed');
-      expect(db.query).toHaveBeenCalledWith('ROLLBACK');
+      // withTransaction handles ROLLBACK internally; verify it was invoked
+      expect(db.withTransaction).toHaveBeenCalled();
     });
   });
 
   describe('PUT /api/policies/:id', () => {
-    test('validates update constraints and rolls back', async () => {
-      db.query
-        .mockResolvedValueOnce({}) // BEGIN
-        .mockResolvedValueOnce({}); // ROLLBACK
-
+    test('validates update constraints', async () => {
       const res = await request(app)
         .put('/api/policies/8')
         .send({ auto_classify_threshold: -1 })
         .expect(400);
 
       expect(res.body.error).toContain('auto_classify_threshold');
-      expect(db.query).toHaveBeenCalledWith('ROLLBACK');
+      // Validation now runs before opening a transaction — no DB calls made
+      expect(db.query).not.toHaveBeenCalled();
     });
 
     test('updates policy with preset replacement', async () => {
       db.query
-        .mockResolvedValueOnce({}) // BEGIN
-        .mockResolvedValueOnce({}) // UPDATE
+        .mockResolvedValueOnce({}) // UPDATE policy
         .mockResolvedValueOnce({}) // DELETE presets
         .mockResolvedValueOnce({}) // INSERT preset
-        .mockResolvedValueOnce({}) // COMMIT
         .mockResolvedValueOnce({
           rows: [{ id: 8, name: 'Updated', library_id: 1, library_name: 'Movies' }]
-        })
+        }) // SELECT updated policy
         .mockResolvedValueOnce({
           rows: [{ id: 3, weight: 2.0 }]
-        });
+        }); // SELECT presets
 
       const res = await request(app)
         .put('/api/policies/8')
@@ -317,16 +316,15 @@ describe('Policies routes coverage', () => {
         })
         .expect(200);
 
+      expect(db.withTransaction).toHaveBeenCalled();
       expect(res.body.name).toBe('Updated');
       expect(res.body.presets).toHaveLength(1);
     });
 
     test('returns 404 after update when policy no longer exists', async () => {
       db.query
-        .mockResolvedValueOnce({}) // BEGIN
-        .mockResolvedValueOnce({}) // UPDATE
-        .mockResolvedValueOnce({}) // COMMIT
-        .mockResolvedValueOnce({ rows: [] }); // SELECT updated policy
+        .mockResolvedValueOnce({}) // UPDATE policy
+        .mockResolvedValueOnce({ rows: [] }); // SELECT updated policy — not found
 
       await request(app)
         .put('/api/policies/404')

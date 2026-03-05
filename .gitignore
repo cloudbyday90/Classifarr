@@ -14,9 +14,15 @@ local_test_*.js
 
 # Test output files
 test_output*.txt
+logs*.txt
 test_results*.json
 
 # Intermediate processing artifacts
 .tmp/
 # Local AI tooling config
 opencode.jsonc
+
+# Local debug / investigation scripts (never commit to repo root)
+debug_*.js
+diagnostic_*.js
+check_*.js

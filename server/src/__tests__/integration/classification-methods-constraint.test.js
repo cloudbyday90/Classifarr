@@ -70,7 +70,7 @@ describe('Classification Methods Database Constraint', () => {
         INSERT INTO classification_history 
           (title, media_type, method, status, confidence, library_name, reason)
         VALUES 
-          ($1, 'movie', $2, 'completed', 100, 'Test Library', 'Test')
+          ($1, 'movie', $2, 'pending', 100, 'Test Library', 'Test')
         RETURNING id
       `, [testId, method]);
       

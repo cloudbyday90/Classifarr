@@ -919,7 +919,9 @@ async function checkQueueWorker() {
                  SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing,
                  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
                  MAX(started_at) AS last_activity
-             FROM task_queue`
+             FROM task_queue
+             WHERE status IN ('pending', 'processing')
+                OR (status = 'completed' AND completed_at > NOW() - INTERVAL '1 hour')`
         );
 
         const processingCount = parseInt(result.rows[0].processing) || 0;

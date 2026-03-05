@@ -8,6 +8,7 @@
 
 const cron = require('node-cron');
 const db = require('../config/database');
+const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const queueService = require('./queueService');
 const mediaSyncService = require('./mediaSync');
@@ -34,12 +35,15 @@ class SchedulerService {
 
         // Run gap analysis every hour
         // This finds items that haven't been analyzed and queues them
-        this.schedule('gap-analysis', '*/5 * * * *', () => this.runGapAnalysis()); // Every 5 minutes
+        // Advisory lock: prevents two processes from running gap analysis in parallel
+        // during a rolling restart overlap window.
+        this.schedule('gap-analysis', '*/5 * * * *', () => this.runGapAnalysis(), DB_ADVISORY_LOCKS.GAP_ANALYSIS); // Every 5 minutes
 
         // Also run on startup after a delay
         setTimeout(() => this.runGapAnalysis(), 30000); // 30s delay
 
         // Run library watchdog every 5 minutes to catch empty libraries
+        // No advisory lock: single-query, idempotent, harmless to run twice
         this.schedule('library-watchdog', '*/5 * * * *', () => this.runLibraryWatchdog());
 
         // Run watchdog shortly after startup
@@ -54,33 +58,35 @@ class SchedulerService {
 
         // Periodic library sync every 6 hours to keep Plex data fresh
         // This ensures TMDB IDs and other metadata stay up-to-date
-        this.schedule('library-sync', '0 */6 * * *', () => this.runPeriodicLibrarySync());
+        this.schedule('library-sync', '0 */6 * * *', () => this.runPeriodicLibrarySync(), DB_ADVISORY_LOCKS.LIBRARY_SYNC);
 
         // Also run initial sync after startup (2 min delay)
         setTimeout(() => this.runPeriodicLibrarySync(), 120000);
 
         // Process retry queue every 5 minutes for AI-unavailable retries
-        this.schedule('retry-queue', '*/5 * * * *', () => this.processRetryQueue());
+        this.schedule('retry-queue', '*/5 * * * *', () => this.processRetryQueue(), DB_ADVISORY_LOCKS.RETRY_QUEUE);
 
         // Also run initial retry queue check after startup (1 min delay)
         setTimeout(() => this.processRetryQueue(), 60000);
 
         // Process enrichment retry queue every 6 hours as safety net for OMDb and Tavily
         // Tavily monthly-quota deferred items remain pending and are automatically retried after month reset.
-        this.schedule('enrichment-retry-queue', '0 */6 * * *', () => this.processEnrichmentRetryQueue());
+        this.schedule('enrichment-retry-queue', '0 */6 * * *', () => this.processEnrichmentRetryQueue(), DB_ADVISORY_LOCKS.ENRICHMENT_RETRY_QUEUE);
 
         // Daily rating normalization check at 3 AM
-        this.schedule('rating-normalization-check', '0 3 * * *', () => this.runRatingNormalizationCheck());
+        this.schedule('rating-normalization-check', '0 3 * * *', () => this.runRatingNormalizationCheck(), DB_ADVISORY_LOCKS.RATING_NORMALIZATION_CHECK);
 
         // Daily cleanup of expired refresh tokens (3:05 AM — 5 min offset from rating normalization)
+        // No advisory lock: idempotent batch DELETE, safe to run twice
         this.schedule('refresh-token-cleanup', '5 3 * * *', () => this.runRefreshTokenCleanup());
 
         // Daily pruning of old api_key_audit rows (3:10 AM)
+        // No advisory lock: idempotent batch DELETE, safe to run twice
         this.schedule('api-key-audit-prune', '10 3 * * *', () => this.runApiKeyAuditPrune());
 
         // Daily cleanup of stale awaiting_decision rows (4 AM)
         // Re-queues items stuck waiting for Discord responses for more than 7 days
-        this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions());
+        this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions(), DB_ADVISORY_LOCKS.STALE_CLEANUP);
     }
 
     /**
@@ -139,7 +145,7 @@ class SchedulerService {
                     WHERE original_rating IS NULL
                       AND content_rating IS NOT NULL
                       AND ${needsSQL}
-                    ON CONFLICT DO NOTHING
+                    ON CONFLICT (task_type, (payload->>'media_item_id')) WHERE status IN ('pending', 'processing') DO NOTHING
                 `);
             }
         } catch (error) {
@@ -239,8 +245,12 @@ class SchedulerService {
      * @param {string} name - Task name
      * @param {string} cronExpression - Cron expression
      * @param {Function} handler - Task handler
+     * @param {number|null} [lockKey=null] - Optional DB_ADVISORY_LOCKS key.
+     *   When provided, the job is wrapped with withSessionAdvisoryLock() so only
+     *   one process runs the job at a time — preventing double-execution during
+     *   rolling restarts where two containers briefly overlap.
      */
-    schedule(name, cronExpression, handler) {
+    schedule(name, cronExpression, handler, lockKey = null) {
         if (this.tasks.has(name)) {
             this.tasks.get(name).stop();
         }
@@ -248,7 +258,15 @@ class SchedulerService {
         const task = cron.schedule(cronExpression, async () => {
             logger.info(`Starting scheduled task: ${name}`);
             try {
-                await handler();
+                if (lockKey !== null) {
+                    const acquired = await withSessionAdvisoryLock(lockKey, handler);
+                    if (!acquired) {
+                        logger.debug(`Scheduled task ${name} skipped — advisory lock held by another process`, { lockKey });
+                        return;
+                    }
+                } else {
+                    await handler();
+                }
                 logger.info(`Completed scheduled task: ${name}`);
             } catch (error) {
                 logger.error(`Failed scheduled task: ${name}`, { error: error.message });
@@ -279,34 +297,28 @@ class SchedulerService {
      */
     async runLibraryWatchdog() {
         try {
-            // Get all active libraries
-            const libraries = await db.query('SELECT id, name FROM libraries WHERE is_active = true');
+            // Single query returns active libraries that are empty AND have no running sync,
+            // replacing the previous 2N round-trips (COUNT per library + sync-status per library).
+            // NOT EXISTS short-circuits on the first matching row, avoiding full table scans.
+            const result = await db.query(`
+                SELECT l.id, l.name
+                FROM libraries l
+                WHERE l.is_active = true
+                  AND NOT EXISTS (
+                      SELECT 1 FROM media_server_items msi WHERE msi.library_id = l.id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM media_server_sync_status ss
+                       WHERE ss.library_id = l.id AND ss.status = 'running'
+                  )
+            `);
 
-            for (const library of libraries.rows) {
-                // Check if library is empty
-                const countResult = await db.query(
-                    'SELECT COUNT(*) FROM media_server_items WHERE library_id = $1',
-                    [library.id]
-                );
-                const count = parseInt(countResult.rows[0].count);
-
-                if (count === 0) {
-                    // Check if sync is already running
-                    const statusResult = await db.query(
-                        `SELECT id FROM media_server_sync_status 
-                         WHERE library_id = $1 AND status = 'running'
-                         ORDER BY created_at DESC LIMIT 1`,
-                        [library.id]
-                    );
-
-                    if (statusResult.rows.length === 0) {
-                        logger.info(`Watchdog: Library ${library.name} (${library.id}) is empty. Triggering auto-sync...`);
-                        // Run in background, don't await completion here
-                        mediaSyncService.syncLibrary(library.id).catch(err => {
-                            logger.error(`Watchdog: Auto-sync failed for ${library.name}`, { error: err.message });
-                        });
-                    }
-                }
+            for (const library of result.rows) {
+                logger.info(`Watchdog: Library ${library.name} (${library.id}) is empty. Triggering auto-sync...`);
+                // Run in background, don't await completion here
+                mediaSyncService.syncLibrary(library.id).catch(err => {
+                    logger.error(`Watchdog: Auto-sync failed for ${library.name}`, { error: err.message });
+                });
             }
         } catch (error) {
             logger.error('Error running library watchdog', { error: error.message });
@@ -366,70 +378,74 @@ class SchedulerService {
                     const data = analysis.rows[0];
                     const kw = keywordAnalysis.rows[0];
                     const total = parseInt(kw.total) || 1;
-                    let rulesCreated = 0;
 
-                    // Create rating rule if consistent
+                    // Collect all candidate rules in memory, then bulk-insert in one round-trip
+                    // using UNNEST. Previously each rule was a separate INSERT (up to 6+ queries
+                    // per library). ON CONFLICT DO NOTHING semantics are preserved.
+                    const rulesToInsert = [];
+
+                    // Rating rule: if library has a consistent, narrow rating set
                     if (data.ratings && data.ratings.length > 0 && data.ratings.length <= 5) {
-                        await db.query(`
-                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
-                            VALUES ($1, 'rating', 'includes', $2, $3, false, true, 10)
-                            ON CONFLICT DO NOTHING
-                        `, [library.id, data.ratings.join(','), `Auto: Ratings ${data.ratings.join(', ')}`]);
-                        rulesCreated++;
+                        rulesToInsert.push({
+                            rule_type: 'rating',
+                            operator: 'includes',
+                            value: data.ratings.join(','),
+                            description: `Auto: Ratings ${data.ratings.join(', ')}`
+                        });
                     }
 
-                    // Create genre rule if dominant genres exist
+                    // Genre rule: if dominant genres exist
                     if (data.genres && data.genres.length > 0 && data.genres.length <= 10) {
                         const topGenres = data.genres.slice(0, 5);
-                        await db.query(`
-                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
-                            VALUES ($1, 'genre', 'includes', $2, $3, false, true, 10)
-                            ON CONFLICT DO NOTHING
-                        `, [library.id, topGenres.join(','), `Auto: Genres ${topGenres.join(', ')}`]);
-                        rulesCreated++;
+                        rulesToInsert.push({
+                            rule_type: 'genre',
+                            operator: 'includes',
+                            value: topGenres.join(','),
+                            description: `Auto: Genres ${topGenres.join(', ')}`
+                        });
                     }
 
-                    // Create language rule if non-English dominant
+                    // Language rule: if non-English dominant
                     if (data.languages && data.languages.length === 1 && data.languages[0] !== 'en') {
-                        await db.query(`
-                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
-                            VALUES ($1, 'language', 'equals', $2, $3, false, true, 10)
-                            ON CONFLICT DO NOTHING
-                        `, [library.id, data.languages[0], `Auto: Language ${data.languages[0]}`]);
-                        rulesCreated++;
+                        rulesToInsert.push({
+                            rule_type: 'language',
+                            operator: 'equals',
+                            value: data.languages[0],
+                            description: `Auto: Language ${data.languages[0]}`
+                        });
                     }
 
-                    // Keyword Rules
+                    // Keyword rules
                     const christmasRatio = parseInt(kw.christmas_count) / total;
                     const holidayRatio = parseInt(kw.holiday_count) / total;
                     const hallmarkRatio = parseInt(kw.hallmark_count) / total;
 
                     if (christmasRatio >= 0.3) {
-                        await db.query(`
-                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
-                            VALUES ($1, 'keyword', 'contains', 'christmas,xmas,holiday,santa,snowman,elf', $2, false, true, 10)
-                            ON CONFLICT DO NOTHING
-                        `, [library.id, `Auto: Christmas Content`]);
-                        rulesCreated++;
+                        rulesToInsert.push({
+                            rule_type: 'keyword',
+                            operator: 'contains',
+                            value: 'christmas,xmas,holiday,santa,snowman,elf',
+                            description: 'Auto: Christmas Content'
+                        });
                     } else if (holidayRatio >= 0.3) {
-                        await db.query(`
-                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
-                            VALUES ($1, 'keyword', 'contains', 'holiday,christmas,seasonal', $2, false, true, 10)
-                            ON CONFLICT DO NOTHING
-                        `, [library.id, `Auto: Holiday Content`]);
-                        rulesCreated++;
+                        rulesToInsert.push({
+                            rule_type: 'keyword',
+                            operator: 'contains',
+                            value: 'holiday,christmas,seasonal',
+                            description: 'Auto: Holiday Content'
+                        });
                     }
 
                     if (hallmarkRatio >= 0.3) {
-                        await db.query(`
-                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
-                            VALUES ($1, 'keyword', 'contains', 'hallmark', $2, false, true, 10)
-                            ON CONFLICT DO NOTHING
-                        `, [library.id, `Auto: Hallmark Productions`]);
-                        rulesCreated++;
+                        rulesToInsert.push({
+                            rule_type: 'keyword',
+                            operator: 'contains',
+                            value: 'hallmark',
+                            description: 'Auto: Hallmark Productions'
+                        });
                     }
 
-                    // Anime Detection
+                    // Anime detection
                     const libraryName = library.name.toLowerCase();
                     const hasAnimeGenre = data.genres && (
                         data.genres.includes('Animation') ||
@@ -440,21 +456,42 @@ class SchedulerService {
                     const libraryIsAnime = libraryName.includes('anime');
 
                     if ((hasAnimeGenre && isJapanese) || (hasAnimeGenre && libraryIsAnime)) {
-                        // Add Japanese language rule if not already present
-                        await db.query(`
-                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
-                            VALUES ($1, 'language', 'equals', 'ja', 'Auto: Japanese Anime Content', false, true, 10)
-                            ON CONFLICT DO NOTHING
-                        `, [library.id]);
-                        rulesCreated++;
+                        rulesToInsert.push({
+                            rule_type: 'language',
+                            operator: 'equals',
+                            value: 'ja',
+                            description: 'Auto: Japanese Anime Content'
+                        });
+                        rulesToInsert.push({
+                            rule_type: 'genre',
+                            operator: 'includes',
+                            value: 'Animation,Anime',
+                            description: 'Auto: Anime/Animation'
+                        });
+                    }
 
-                        // Add Animation/Anime genre rule
+                    // Bulk-insert all rules for this library in a single round-trip.
+                    // UNNEST expands parallel arrays into rows; the scalar $1 is broadcast
+                    // to every generated row via the SELECT projection.
+                    const rulesCreated = rulesToInsert.length;
+                    if (rulesCreated > 0) {
                         await db.query(`
-                            INSERT INTO library_rules (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
-                            VALUES ($1, 'genre', 'includes', 'Animation,Anime', 'Auto: Anime/Animation', false, true, 10)
+                            INSERT INTO library_rules
+                                (library_id, rule_type, operator, value, description, is_exception, is_active, priority)
+                            SELECT $1,
+                                   UNNEST($2::text[]),
+                                   UNNEST($3::text[]),
+                                   UNNEST($4::text[]),
+                                   UNNEST($5::text[]),
+                                   false, true, 10
                             ON CONFLICT DO NOTHING
-                        `, [library.id]);
-                        rulesCreated++;
+                        `, [
+                            library.id,
+                            rulesToInsert.map(r => r.rule_type),
+                            rulesToInsert.map(r => r.operator),
+                            rulesToInsert.map(r => r.value),
+                            rulesToInsert.map(r => r.description)
+                        ]);
                     }
 
                     logger.info(`Auto-learn: Created ${rulesCreated} rules for "${library.name}"`);

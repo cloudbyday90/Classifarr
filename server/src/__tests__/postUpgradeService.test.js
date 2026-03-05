@@ -48,24 +48,24 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rows: [] }) // ensureTableExists check
                 .mockResolvedValueOnce({ rows: [] }) // getExecutedTaskIds - no tasks executed yet
                 .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // isFreshInstall - has users, not fresh
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs - TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs - DELETE error_log (unresolved only)
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_logs
                 .mockResolvedValueOnce({ rowCount: 5 }) // backfill_library_name
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - backfill_library_name
                 .mockResolvedValueOnce({ rowCount: 2 }) // clear_stale_retry_queue
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_stale_retry_queue
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - DELETE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_logs (v0.41.2)
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - DELETE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_logs (v0.41.3)
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.42.7) - TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.42.7) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.42.7) - DELETE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.42.7) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_logs (v0.42.7)
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.43.1b) - TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.43.1b) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.43.1b) - DELETE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.43.1b) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete - clear_logs (v0.43.1b)
 
             // Mock fs operations for clear_logs
@@ -89,8 +89,8 @@ describe('PostUpgradeService', () => {
             expect(result.executed).toBe(0);
             expect(result.skipped).toBeGreaterThan(0);
             // TRUNCATE should never have been called
-            expect(db.query).not.toHaveBeenCalledWith('TRUNCATE TABLE error_log');
-            expect(db.query).not.toHaveBeenCalledWith('TRUNCATE TABLE app_log');
+            expect(db.query).not.toHaveBeenCalledWith('DELETE FROM error_log WHERE resolved = false');
+            expect(db.query).not.toHaveBeenCalledWith('DELETE FROM app_log');
         });
 
         it('should skip tasks that have already been executed', async () => {
@@ -126,17 +126,17 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for backfill
                 .mockResolvedValueOnce({ rowCount: 2 }) // clear_stale_retry_queue succeeds
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for clear_stale_retry_queue
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - DELETE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for clear_logs (v0.41.2)
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - DELETE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.3) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for clear_logs (v0.41.3)
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.42.7) - TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.42.7) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.42.7) - DELETE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.42.7) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for clear_logs (v0.42.7)
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.43.1b) - TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.43.1b) - TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.43.1b) - DELETE error_log
+                .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.43.1b) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }); // markTaskComplete for clear_logs (v0.43.1b)
 
             const result = await postUpgradeService.runPendingTasks();
@@ -149,8 +149,8 @@ describe('PostUpgradeService', () => {
     describe('executeTask', () => {
         it('should execute clear_logs task', async () => {
             db.query
-                .mockResolvedValueOnce({ rowCount: 10 }) // TRUNCATE error_log
-                .mockResolvedValueOnce({ rowCount: 5 }); // TRUNCATE app_log
+                .mockResolvedValueOnce({ rowCount: 10 }) // DELETE error_log (unresolved only)
+                .mockResolvedValueOnce({ rowCount: 5 }); // DELETE app_log
 
             fs.readdir.mockResolvedValue(['app.log', 'error.log']);
             fs.writeFile.mockResolvedValue();
@@ -161,8 +161,8 @@ describe('PostUpgradeService', () => {
                 description: 'Test'
             });
 
-            expect(db.query).toHaveBeenCalledWith('TRUNCATE TABLE error_log');
-            expect(db.query).toHaveBeenCalledWith('TRUNCATE TABLE app_log');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM error_log WHERE resolved = false');
+            expect(db.query).toHaveBeenCalledWith('DELETE FROM app_log');
         });
 
         it('should execute clear_embedding_queue task', async () => {

@@ -24,13 +24,32 @@
 -- separately (after a data-cleanup pass if needed) to validate existing rows.
 
 -- Enforce confidence is a percentage between 0 and 100 (or NULL for unscored rows)
-ALTER TABLE public.classification_history
-    ADD CONSTRAINT chk_classification_confidence_range
-    CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 100))
-    NOT VALID;
+-- DO block guards idempotency: safe to re-run if migration was partially applied.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_classification_confidence_range'
+          AND conrelid = 'public.classification_history'::regclass
+    ) THEN
+        ALTER TABLE public.classification_history
+            ADD CONSTRAINT chk_classification_confidence_range
+            CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 100))
+            NOT VALID;
+    END IF;
+END $$;
 
 -- Enforce completed rows always reference a library
-ALTER TABLE public.classification_history
-    ADD CONSTRAINT chk_classification_completed_has_library
-    CHECK (status IS DISTINCT FROM 'completed' OR library_id IS NOT NULL)
-    NOT VALID;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'chk_classification_completed_has_library'
+          AND conrelid = 'public.classification_history'::regclass
+    ) THEN
+        ALTER TABLE public.classification_history
+            ADD CONSTRAINT chk_classification_completed_has_library
+            CHECK (status IS DISTINCT FROM 'completed' OR library_id IS NOT NULL)
+            NOT VALID;
+    END IF;
+END $$;

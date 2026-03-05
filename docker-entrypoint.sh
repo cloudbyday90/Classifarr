@@ -139,7 +139,14 @@ if [ ! -f "$PG_DATA/PG_VERSION" ]; then
     # Configure PostgreSQL to listen on localhost only
     echo "listen_addresses = 'localhost'" >> "$PG_DATA/postgresql.conf"
     echo "unix_socket_directories = '/run/postgresql'" >> "$PG_DATA/postgresql.conf"
-    
+
+    # Enable pg_stat_statements for query profiling (available via postgresql17-contrib)
+    echo "" >> "$PG_DATA/postgresql.conf"
+    echo "# Query statistics (required by pg_stat_statements extension)" >> "$PG_DATA/postgresql.conf"
+    echo "shared_preload_libraries = 'pg_stat_statements'" >> "$PG_DATA/postgresql.conf"
+    echo "pg_stat_statements.track = all" >> "$PG_DATA/postgresql.conf"
+    echo "pg_stat_statements.max = 10000" >> "$PG_DATA/postgresql.conf"
+
     # Start PostgreSQL temporarily to create database
     run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
     
@@ -192,6 +199,16 @@ else
         exit 1
     fi
     
+    # Ensure pg_stat_statements is configured (idempotent — only adds if not already present)
+    # Must be done BEFORE pg_ctl start so the library is loaded from the first connection.
+    if ! grep -q "pg_stat_statements" "$PG_DATA/postgresql.conf" 2>/dev/null; then
+        echo "Adding pg_stat_statements to PostgreSQL configuration..."
+        printf '\n# Query statistics (required by pg_stat_statements extension)\n' >> "$PG_DATA/postgresql.conf"
+        echo "shared_preload_libraries = 'pg_stat_statements'" >> "$PG_DATA/postgresql.conf"
+        echo "pg_stat_statements.track = all" >> "$PG_DATA/postgresql.conf"
+        echo "pg_stat_statements.max = 10000" >> "$PG_DATA/postgresql.conf"
+    fi
+
     # Start existing PostgreSQL
     echo "Starting existing PostgreSQL database (version $DATA_PG_VERSION)..."
     run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start

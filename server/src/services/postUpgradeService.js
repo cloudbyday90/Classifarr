@@ -252,9 +252,11 @@ class PostUpgradeService {
         logger.info('Clearing logs...');
         logger.warn('All application and error logs will now be permanently deleted from the database and log files.');
 
-        // Clear database log tables (destructive: removes all history)
-        await db.query('TRUNCATE TABLE error_log');
-        await db.query('TRUNCATE TABLE app_log');
+        // Clear database log tables.
+        // error_log: delete only unresolved rows so resolved (operator-reviewed) entries are preserved.
+        // app_log: has no resolved concept — delete all rows.
+        await db.query('DELETE FROM error_log WHERE resolved = false');
+        await db.query('DELETE FROM app_log');
 
         // Clear log files if they exist (destructive: truncates contents)
         const logDir = path.join(__dirname, '../../logs');

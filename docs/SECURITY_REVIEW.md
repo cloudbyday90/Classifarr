@@ -2,8 +2,12 @@
 
 - **Repository:** `https://github.com/cloudbyday90/Classifarr`
 - **Review date:** 2026-02-24
-- **Last updated:** 2026-02-25
+- **Last updated:** 2026-03-05
 - **Method:** Manual code review + automated dependency scanning
+
+## Per-Release Security Checklist
+
+See [`docs/SECURITY_CHECKLIST.md`](SECURITY_CHECKLIST.md) for the mandatory pre-release verification checklist derived from this review. All 31 baseline findings are represented as verifiable check items, plus the 3 post-review findings from 2026-03-05. The checklist is referenced in `.agent/workflows/release.md` Step 4 and must be completed and signed off before every release.
 
 ## Scope and Method
 
@@ -25,6 +29,8 @@ Manual code review covering auth/session management, sensitive routes, command e
 - **Post-review hardening (2026-02-25):** Fixed webhook auth bypass in route handler (`await validateAuth`) and hardened constant-time compare for unequal-length inputs
 - **Post-review hardening (2026-02-25):** Added CSRF protection for cookie-authenticated mutating requests (`classifarr_csrf_token` + `X-CSRF-Token`), compatible with local HTTP when `FORCE_SECURE_COOKIES=false`
 - **Post-review completion (2026-02-25):** Added `SECURITY.md`, integrated `eslint-plugin-security` SAST linting in CI, and added required gitleaks/Trivy security scan workflows
+
+**Post-review hardening (2026-03-05):** Unreleased branch security audit identified and resolved three additional findings: (1) `check_ollama_config.js` was still tracked in git despite the `debug_*.js`/`check_*.js` `.gitignore` cleanup — it executed `SELECT * FROM ollama_config` and `process.exit()` as a root-level debug artifact; removed via `git rm`. (2) `db.healthCheck()` returned raw pg `err.message` (which can contain internal host IPs, port numbers, and database names) — production path now returns `'Database connection failed'` generic string to prevent topology disclosure if the function is ever wired to the unauthenticated `/health/*` endpoints; covered by new test `'healthCheck sanitizes error message in production'` in `database-resilience.test.js`. (3) `logs.txt` (8 800+ lines of Docker startup output) was committed to the repository; removed via `git rm --cached` and `logs*.txt` added to `.gitignore`. No new credential exposure found; no benchmark status changes.
 
 **31 baseline findings total** - All addressed: 30 fixed, 1 acknowledged as design decision (#11), plus 2 post-review regressions fixed.
 

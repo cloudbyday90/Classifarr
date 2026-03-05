@@ -20,7 +20,17 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { PostgreSqlContainer } = require('@testcontainers/postgresql');
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+// Register the same int8 type-parser as database.js so the test pool returns
+// bigint PK values as JS numbers (matching production behavior after the
+// 20260305_200500_bigint_primary_keys migration). This must be set before any
+// pool is created since pg.types is a module-level singleton.
+types.setTypeParser(20, (val) => {
+    if (val === null) return null;
+    const num = parseInt(val, 10);
+    return (num > Number.MAX_SAFE_INTEGER || num < Number.MIN_SAFE_INTEGER) ? val : num;
+});
 
 const verboseLogs = process.env.INTEGRATION_TEST_VERBOSE === 'true';
 const isPrimaryWorker = !process.env.JEST_WORKER_ID || process.env.JEST_WORKER_ID === '1';
@@ -117,7 +127,10 @@ beforeAll(async () => {
 
         const failedMigrations = [];
         const knownOptionalFailures = [
-            'extension "vector" is not available'  // pgvector extension not in test container
+            'extension "vector" is not available',      // pgvector not in test container
+            'pg_stat_statements must be loaded via shared_preload_libraries', // requires postgresql.conf config
+            'could not open extension control file',    // extension not in this postgres build
+            'already exists',                           // idempotent re-run of DDL without IF NOT EXISTS
         ];
 
         // Ensure migration tracking table exists (align with production migration runner)
@@ -189,15 +202,45 @@ afterAll(async () => {
 
 // Mock the database module to use our test pool
 jest.mock('../../config/database', () => {
+    const getPool = () => require('./setup').getPool();
+
+    const mockWithTransaction = async (fn) => {
+        const client = await getPool().connect();
+        try {
+            await client.query('BEGIN');
+            const result = await fn(client);
+            await client.query('COMMIT');
+            return result;
+        } catch (error) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (rbErr) {
+                console.error('[integration-test] Rollback error:', rbErr.message);
+            }
+            throw error;
+        } finally {
+            client.release();
+        }
+    };
+
     return {
         get query() {
-            const setupModule = require('./setup');
-            return (text, params) => setupModule.getPool().query(text, params);
+            return (text, params) => getPool().query(text, params);
         },
         get pool() {
-            const setupModule = require('./setup');
-            return setupModule.getPool();
-        }
+            return getPool();
+        },
+        withTransaction: mockWithTransaction,
+        healthCheck: async () => ({ connected: true, responseTime: 0 }),
+        tryAdvisoryLock: async () => true,
+        withSessionAdvisoryLock: async (_lockKey, fn) => { await fn(); return true; },
+        prewarmHnswIndexes: async () => ({ loaded: false, error: 'pg_prewarm not available in integration test environment' }),
+        checkPgStatStatements: async () => ({ active: false, reason: 'skipped in integration test environment' }),
+        DB_ADVISORY_LOCKS: {
+            IDLE_BACKFILL: 1001,
+            SCHEDULED_BACKFILL: 1002,
+            MANUAL_BACKFILL: 1003,
+        },
     };
 });
 

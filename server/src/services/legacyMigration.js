@@ -337,59 +337,57 @@ class LegacyMigration {
         }
         
         const ruleData = rule.rows[0];
-        
-        await db.query('BEGIN');
-        
-        try {
-              if (migrationChoice.type === 'preset') {
-                  // Attach preset to library's policy
-                  const policy = await this.getOrCreatePolicy(ruleData.library_id);
 
-                  if (!migrationChoice.preset_id) {
-                      throw createMigrationError(
-                          'Preset id is required for preset migration',
-                          'PRESET_ID_REQUIRED',
-                          400
-                      );
-                  }
+        await db.withTransaction(async (client) => {
+            if (migrationChoice.type === 'preset') {
+                // Attach preset to library's policy
+                const policy = await this.getOrCreatePolicy(ruleData.library_id, client);
 
-                  const presetResult = await db.query(
-                      'SELECT id, is_system, is_public, user_id FROM content_presets WHERE id = $1',
-                      [migrationChoice.preset_id]
-                  );
+                if (!migrationChoice.preset_id) {
+                    throw createMigrationError(
+                        'Preset id is required for preset migration',
+                        'PRESET_ID_REQUIRED',
+                        400
+                    );
+                }
 
-                  if (presetResult.rows.length === 0) {
-                      throw createMigrationError(
-                          `Preset not found: ${migrationChoice.preset_id}`,
-                          'PRESET_NOT_FOUND',
-                          404
-                      );
-                  }
+                const presetResult = await client.query(
+                    'SELECT id, is_system, is_public, user_id FROM content_presets WHERE id = $1',
+                    [migrationChoice.preset_id]
+                );
 
-                  const preset = presetResult.rows[0];
-                  const isAllowed = preset.is_system
-                      || preset.is_public
-                      || (userId && preset.user_id === userId);
+                if (presetResult.rows.length === 0) {
+                    throw createMigrationError(
+                        `Preset not found: ${migrationChoice.preset_id}`,
+                        'PRESET_NOT_FOUND',
+                        404
+                    );
+                }
 
-                  if (!isAllowed) {
-                      throw createMigrationError(
-                          'Preset is not accessible to the current user',
-                          'PRESET_NOT_ALLOWED',
-                          403
-                      );
-                  }
+                const preset = presetResult.rows[0];
+                const isAllowed = preset.is_system
+                    || preset.is_public
+                    || (userId && preset.user_id === userId);
 
-                  await db.query(`
-                      INSERT INTO policy_presets (policy_id, preset_id, weight)
-                      VALUES ($1, $2, $3)
-                      ON CONFLICT (policy_id, preset_id) DO NOTHING
+                if (!isAllowed) {
+                    throw createMigrationError(
+                        'Preset is not accessible to the current user',
+                        'PRESET_NOT_ALLOWED',
+                        403
+                    );
+                }
+
+                await client.query(`
+                    INSERT INTO policy_presets (policy_id, preset_id, weight)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (policy_id, preset_id) DO NOTHING
                 `, [policy.id, migrationChoice.preset_id, 1.0]);
-                
+
             } else if (migrationChoice.type === 'override') {
                 // Create policy override
-                const policy = await this.getOrCreatePolicy(ruleData.library_id);
-                
-                await db.query(`
+                const policy = await this.getOrCreatePolicy(ruleData.library_id, client);
+
+                await client.query(`
                     INSERT INTO policy_overrides (
                         policy_id, signal_type, override_config, reason
                     ) VALUES ($1, $2, $3, $4)
@@ -400,46 +398,42 @@ class LegacyMigration {
                     migrationChoice.override_config.reason
                 ]);
             }
-            
+
             // Mark rule as migrated
-            await db.query(`
+            await client.query(`
                 UPDATE library_custom_rules 
                 SET migrated_at = NOW(), migrated_by = $2, migration_type = $3
                 WHERE id = $1
             `, [ruleId, userId || null, migrationChoice.type]);
-            
-            await db.query('COMMIT');
-            
-            logger.info('Rule migrated successfully', { 
-                ruleId, 
-                migrationType: migrationChoice.type 
-            });
-            
-            return { success: true };
-            
-        } catch (error) {
-            await db.query('ROLLBACK');
-            logger.error('Migration failed', { ruleId, error: error.message });
-            throw error;
-        }
+        });
+
+        logger.info('Rule migrated successfully', {
+            ruleId,
+            migrationType: migrationChoice.type
+        });
+
+        return { success: true };
     }
-    
+
     /**
-     * Get or create a default policy for a library
+     * Get or create a default policy for a library.
+     * @param {number} libraryId
+     * @param {import('pg').PoolClient|object} [txClient=db] - optional pinned transaction client;
+     *   pass the client from db.withTransaction so the SELECT/INSERT runs in the same transaction.
      */
-    async getOrCreatePolicy(libraryId) {
-        let policy = await db.query(`
+    async getOrCreatePolicy(libraryId, txClient = db) {
+        let policy = await txClient.query(`
             SELECT * FROM library_policies WHERE library_id = $1 LIMIT 1
         `, [libraryId]);
-        
+
         if (policy.rows.length === 0) {
-            policy = await db.query(`
+            policy = await txClient.query(`
                 INSERT INTO library_policies (library_id, name, description, enabled)
                 VALUES ($1, 'Default Policy', 'Auto-created during migration', true)
                 RETURNING *
             `, [libraryId]);
         }
-        
+
         return policy.rows[0];
     }
     

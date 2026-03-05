@@ -404,12 +404,9 @@ router.post('/', async (req, res) => {
             });
         }
 
-        // Begin transaction
-        await db.query('BEGIN');
-
-        try {
+        const policy = await db.withTransaction(async (client) => {
             // Create policy
-            const policyResult = await db.query(`
+            const policyResult = await client.query(`
                 INSERT INTO library_policies (
                     library_id, name, description, enabled, priority, sort_order,
                     auto_classify_threshold, prompt_threshold, require_ai_validation,
@@ -426,49 +423,46 @@ router.post('/', async (req, res) => {
                 combination_mode
             ]);
 
-            const policy = policyResult.rows[0];
+            const p = policyResult.rows[0];
 
             // Attach presets
             if (presets && presets.length > 0) {
                 for (const preset of presets) {
-                    await db.query(`
+                    await client.query(`
                         INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
                         VALUES ($1, $2, $3, $4)
-                    `, [policy.id, preset.preset_id, preset.weight || 1.0, preset.customSignals || null]);
+                    `, [p.id, preset.preset_id, preset.weight || 1.0, preset.customSignals || null]);
                 }
             }
 
-            await db.query('COMMIT');
+            return p;
+        });
 
-            // Fetch complete policy with presets
-            const completePolicy = await db.query(`
-                SELECT 
-                    lp.*,
-                    l.name as library_name,
-                    l.media_type as library_media_type
-                FROM library_policies lp
-                JOIN libraries l ON lp.library_id = l.id
-                WHERE lp.id = $1
-            `, [policy.id]);
+        // Fetch complete policy with presets (reads committed data outside transaction)
+        const completePolicy = await db.query(`
+            SELECT 
+                lp.*,
+                l.name as library_name,
+                l.media_type as library_media_type
+            FROM library_policies lp
+            JOIN libraries l ON lp.library_id = l.id
+            WHERE lp.id = $1
+        `, [policy.id]);
 
-            const presetsResult = await db.query(`
-                SELECT 
-                    cp.*,
-                    pp.weight,
-                    pp.custom_signals
-                FROM policy_presets pp
-                JOIN content_presets cp ON pp.preset_id = cp.id
-                WHERE pp.policy_id = $1
-            `, [policy.id]);
+        const presetsResult = await db.query(`
+            SELECT 
+                cp.*,
+                pp.weight,
+                pp.custom_signals
+            FROM policy_presets pp
+            JOIN content_presets cp ON pp.preset_id = cp.id
+            WHERE pp.policy_id = $1
+        `, [policy.id]);
 
-            const result = completePolicy.rows[0];
-            result.presets = presetsResult.rows;
+        const result = completePolicy.rows[0];
+        result.presets = presetsResult.rows;
 
-            res.status(201).json(result);
-        } catch (error) {
-            await db.query('ROLLBACK');
-            throw error;
-        }
+        res.status(201).json(result);
     } catch (error) {
         logger.error('Failed to create policy', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -504,52 +498,42 @@ router.put('/:id', async (req, res) => {
             presets
         } = req.body;
 
-        // Begin transaction
-        await db.query('BEGIN');
+        // Validate before opening a transaction — avoids consuming a pool slot for input errors
+        if (auto_classify_threshold !== undefined && (auto_classify_threshold < 0 || auto_classify_threshold > 100)) {
+            return res.status(400).json({ error: 'auto_classify_threshold must be between 0 and 100' });
+        }
+        if (prompt_threshold !== undefined && (prompt_threshold < 0 || prompt_threshold > 100)) {
+            return res.status(400).json({ error: 'prompt_threshold must be between 0 and 100' });
+        }
 
-        try {
-            // Validate thresholds if provided
-            if (auto_classify_threshold !== undefined && (auto_classify_threshold < 0 || auto_classify_threshold > 100)) {
-                await db.query('ROLLBACK');
-                return res.status(400).json({ error: 'auto_classify_threshold must be between 0 and 100' });
-            }
-            if (prompt_threshold !== undefined && (prompt_threshold < 0 || prompt_threshold > 100)) {
-                await db.query('ROLLBACK');
-                return res.status(400).json({ error: 'prompt_threshold must be between 0 and 100' });
-            }
+        // Validate weights if provided
+        if (preset_weight !== undefined && (preset_weight < 0 || preset_weight > 1)) {
+            return res.status(400).json({ error: 'preset_weight must be between 0 and 1' });
+        }
+        if (pattern_weight !== undefined && (pattern_weight < 0 || pattern_weight > 1)) {
+            return res.status(400).json({ error: 'pattern_weight must be between 0 and 1' });
+        }
+        if (rag_weight !== undefined && (rag_weight < 0 || rag_weight > 1)) {
+            return res.status(400).json({ error: 'rag_weight must be between 0 and 1' });
+        }
+        if (history_weight !== undefined && (history_weight < 0 || history_weight > 1)) {
+            return res.status(400).json({ error: 'history_weight must be between 0 and 1' });
+        }
 
-            // Validate weights if provided
-            if (preset_weight !== undefined && (preset_weight < 0 || preset_weight > 1)) {
-                await db.query('ROLLBACK');
-                return res.status(400).json({ error: 'preset_weight must be between 0 and 1' });
+        // If all weights are provided, validate they sum to 1.0
+        if (preset_weight !== undefined && pattern_weight !== undefined &&
+            rag_weight !== undefined && history_weight !== undefined) {
+            const totalWeight = preset_weight + pattern_weight + rag_weight + history_weight;
+            if (Math.abs(totalWeight - 1.0) > 0.001) {
+                return res.status(400).json({
+                    error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`
+                });
             }
-            if (pattern_weight !== undefined && (pattern_weight < 0 || pattern_weight > 1)) {
-                await db.query('ROLLBACK');
-                return res.status(400).json({ error: 'pattern_weight must be between 0 and 1' });
-            }
-            if (rag_weight !== undefined && (rag_weight < 0 || rag_weight > 1)) {
-                await db.query('ROLLBACK');
-                return res.status(400).json({ error: 'rag_weight must be between 0 and 1' });
-            }
-            if (history_weight !== undefined && (history_weight < 0 || history_weight > 1)) {
-                await db.query('ROLLBACK');
-                return res.status(400).json({ error: 'history_weight must be between 0 and 1' });
-            }
+        }
 
-            // If all weights are provided, validate they sum to 1.0
-            if (preset_weight !== undefined && pattern_weight !== undefined &&
-                rag_weight !== undefined && history_weight !== undefined) {
-                const totalWeight = preset_weight + pattern_weight + rag_weight + history_weight;
-                if (Math.abs(totalWeight - 1.0) > 0.001) {
-                    await db.query('ROLLBACK');
-                    return res.status(400).json({
-                        error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`
-                    });
-                }
-            }
-
+        await db.withTransaction(async (client) => {
             // Update policy
-            await db.query(`
+            await client.query(`
                 UPDATE library_policies SET
                     name = COALESCE($1, name),
                     description = COALESCE($2, description),
@@ -580,54 +564,49 @@ router.put('/:id', async (req, res) => {
             // Update presets if provided
             if (presets !== undefined) {
                 // Remove existing presets
-                await db.query('DELETE FROM policy_presets WHERE policy_id = $1', [id]);
+                await client.query('DELETE FROM policy_presets WHERE policy_id = $1', [id]);
 
                 // Add new presets
                 if (presets.length > 0) {
                     for (const preset of presets) {
-                        await db.query(`
+                        await client.query(`
                             INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
                             VALUES ($1, $2, $3, $4)
                         `, [id, preset.preset_id, preset.weight || 1.0, preset.customSignals || null]);
                     }
                 }
             }
+        });
 
-            await db.query('COMMIT');
+        // Fetch updated policy (reads committed data outside transaction)
+        const policyResult = await db.query(`
+            SELECT 
+                lp.*,
+                l.name as library_name,
+                l.media_type as library_media_type
+            FROM library_policies lp
+            JOIN libraries l ON lp.library_id = l.id
+            WHERE lp.id = $1
+        `, [id]);
 
-            // Fetch updated policy
-            const policyResult = await db.query(`
-                SELECT 
-                    lp.*,
-                    l.name as library_name,
-                    l.media_type as library_media_type
-                FROM library_policies lp
-                JOIN libraries l ON lp.library_id = l.id
-                WHERE lp.id = $1
-            `, [id]);
-
-            if (policyResult.rows.length === 0) {
-                return res.status(404).json({ error: 'Policy not found' });
-            }
-
-            const presetsResult = await db.query(`
-                SELECT 
-                    cp.*,
-                    pp.weight,
-                    pp.custom_signals
-                FROM policy_presets pp
-                JOIN content_presets cp ON pp.preset_id = cp.id
-                WHERE pp.policy_id = $1
-            `, [id]);
-
-            const policy = policyResult.rows[0];
-            policy.presets = presetsResult.rows;
-
-            res.json(policy);
-        } catch (error) {
-            await db.query('ROLLBACK');
-            throw error;
+        if (policyResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Policy not found' });
         }
+
+        const presetsResult = await db.query(`
+            SELECT 
+                cp.*,
+                pp.weight,
+                pp.custom_signals
+            FROM policy_presets pp
+            JOIN content_presets cp ON pp.preset_id = cp.id
+            WHERE pp.policy_id = $1
+        `, [id]);
+
+        const policy = policyResult.rows[0];
+        policy.presets = presetsResult.rows;
+
+        res.json(policy);
     } catch (error) {
         logger.error('Failed to update policy', { error: error.message, id: req.params.id });
         res.status(500).json({ error: error.message });

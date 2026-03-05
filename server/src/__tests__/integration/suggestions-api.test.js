@@ -348,7 +348,7 @@ describe('Suggestions API Integration Tests', () => {
             expect(response.body.pending_count).toBeDefined();
             expect(response.body.applied_count).toBeDefined();
             expect(response.body.rejected_count).toBeDefined();
-            expect(typeof response.body.pending_count).toBe('string'); // COUNT returns bigint as string
+            expect(typeof response.body.pending_count).toBe('number'); // COUNT returns bigint; type parser converts to number
         });
     });
 });

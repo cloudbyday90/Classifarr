@@ -218,6 +218,28 @@ describe('Database Resilience', () => {
             expect(result).toMatchObject({ healthy: false, error: 'Connection refused' });
         });
 
+        it('healthCheck sanitizes error message in production (no internal host/db info disclosed)', async () => {
+            const originalEnv = process.env.NODE_ENV;
+            process.env.NODE_ENV = 'production';
+            try {
+                jest.resetModules();
+                jest.mock('pg', () => ({
+                    Pool: jest.fn().mockImplementation(() => ({
+                        on: jest.fn(),
+                        connect: jest.fn().mockRejectedValue(new Error('connect ECONNREFUSED 172.20.0.2:5432'))
+                    }))
+                }));
+                const db = require('../config/database');
+                const result = await db.healthCheck();
+                expect(result.healthy).toBe(false);
+                expect(result.error).toBe('Database connection failed');
+                expect(result.error).not.toMatch(/172\.20|ECONNREFUSED|5432/);
+            } finally {
+                process.env.NODE_ENV = originalEnv;
+                jest.resetModules();
+            }
+        });
+
         it('healthCheck should always release the client even on query failure', async () => {
             jest.resetModules();
             const mockClient = {

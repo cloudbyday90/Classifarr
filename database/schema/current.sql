@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-03-03T16:51:02.201Z
--- Latest Migration: 20260303_130000_add_policy_recheck_confidence_gain_multiplier.sql
+-- Generated: 2026-03-05T19:34:44.171Z
+-- Latest Migration: 20260307_000000_add_rag_log_cleanup_and_indexes.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,12 +12,13 @@
 --
 
 
--- Dumped from database version 15.15 (Debian 15.15-1.pgdg12+1)
--- Dumped by pg_dump version 15.15 (Debian 15.15-1.pgdg12+1)
+-- Dumped from database version 17.8
+-- Dumped by pg_dump version 17.8
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -25,6 +26,48 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: pg_prewarm; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_prewarm WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_prewarm; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_prewarm IS 'prewarm relation data';
+
+
+--
+-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';
+
+
+--
+-- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
+
 
 --
 -- Name: vector; Type: EXTENSION; Schema: -; Owner: -
@@ -115,7 +158,7 @@ $$;
 -- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE OR REPLACE FUNCTION public.update_updated_at_column() RETURNS trigger
+CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -328,11 +371,11 @@ CREATE TABLE public.ai_provider_config (
     CONSTRAINT ai_cfg_rag_conflict_min_votes_chk CHECK (((rag_conflict_min_votes_per_library >= 1) AND (rag_conflict_min_votes_per_library <= 10))),
     CONSTRAINT ai_cfg_rag_conflict_top_n_chk CHECK (((rag_conflict_top_n >= 1) AND (rag_conflict_top_n <= 50))),
     CONSTRAINT ai_cfg_rag_conflict_vote_gap_chk CHECK (((rag_conflict_max_vote_gap >= 0) AND (rag_conflict_max_vote_gap <= 10))),
-    CONSTRAINT ai_cfg_rag_loop_mode_chk CHECK (((rag_loop_rollout_mode)::text = ANY ((ARRAY['shadow'::character varying, 'apply'::character varying])::text[]))),
+    CONSTRAINT ai_cfg_rag_loop_mode_chk CHECK (((rag_loop_rollout_mode)::text = ANY (ARRAY[('shadow'::character varying)::text, ('apply'::character varying)::text]))),
     CONSTRAINT ai_cfg_rag_low_conf_chk CHECK (((rag_loop_low_confidence_threshold >= 0) AND (rag_loop_low_confidence_threshold <= 100))),
     CONSTRAINT ai_cfg_rag_max_pass_chk CHECK (((rag_loop_max_passes >= 1) AND (rag_loop_max_passes <= 2))),
     CONSTRAINT ai_cfg_rag_retry_low_signal_floor_chk CHECK (((rag_retry_low_signal_similarity_floor >= 0.00) AND (rag_retry_low_signal_similarity_floor <= 1.00))),
-    CONSTRAINT ai_cfg_rag_retry_strategy_chk CHECK (((rag_retry_strategy)::text = ANY ((ARRAY['auto'::character varying, 'hybrid'::character varying, 'semantic'::character varying])::text[]))),
+    CONSTRAINT ai_cfg_rag_retry_strategy_chk CHECK (((rag_retry_strategy)::text = ANY (ARRAY[('auto'::character varying)::text, ('hybrid'::character varying)::text, ('semantic'::character varying)::text]))),
     CONSTRAINT ai_cfg_resilience_error_rate_chk CHECK (((rag_loop_resilience_error_rate_threshold >= 0.00) AND (rag_loop_resilience_error_rate_threshold <= 1.00))),
     CONSTRAINT ai_cfg_resilience_min_samples_chk CHECK (((rag_loop_resilience_min_samples >= 1) AND (rag_loop_resilience_min_samples <= 10000))),
     CONSTRAINT ai_cfg_resilience_timeout_rate_chk CHECK (((rag_loop_resilience_timeout_rate_threshold >= 0.00) AND (rag_loop_resilience_timeout_rate_threshold <= 1.00))),
@@ -935,7 +978,7 @@ ALTER SEQUENCE public.ai_provider_config_id_seq OWNED BY public.ai_provider_conf
 --
 
 CREATE TABLE public.ai_usage_log (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     provider character varying(50),
     model character varying(100),
     prompt_tokens integer,
@@ -947,7 +990,8 @@ CREATE TABLE public.ai_usage_log (
     success boolean DEFAULT true,
     error_message text,
     created_at timestamp without time zone DEFAULT now()
-);
+)
+WITH (autovacuum_vacuum_scale_factor='0.10', autovacuum_analyze_scale_factor='0.10');
 
 
 --
@@ -955,7 +999,6 @@ CREATE TABLE public.ai_usage_log (
 --
 
 CREATE SEQUENCE public.ai_usage_log_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1146,13 +1189,14 @@ ALTER SEQUENCE public.api_keys_id_seq OWNED BY public.api_keys.id;
 --
 
 CREATE TABLE public.app_log (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     level character varying(10) NOT NULL,
     module character varying(100) NOT NULL,
     message text NOT NULL,
     metadata jsonb,
     created_at timestamp without time zone DEFAULT now()
-);
+)
+WITH (autovacuum_vacuum_scale_factor='0.10', autovacuum_analyze_scale_factor='0.10');
 
 
 --
@@ -1160,7 +1204,6 @@ CREATE TABLE public.app_log (
 --
 
 CREATE SEQUENCE public.app_log_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1188,7 +1231,7 @@ CREATE TABLE public.app_notifications (
     is_read boolean DEFAULT false,
     created_at timestamp without time zone DEFAULT now(),
     read_at timestamp without time zone,
-    CONSTRAINT app_notifications_type_check CHECK (((type)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'error'::character varying, 'success'::character varying])::text[])))
+    CONSTRAINT app_notifications_type_check CHECK (((type)::text = ANY (ARRAY[('info'::character varying)::text, ('warning'::character varying)::text, ('error'::character varying)::text, ('success'::character varying)::text])))
 );
 
 
@@ -1237,8 +1280,8 @@ CREATE TABLE public.arr_profiles_cache (
     profile_path character varying(500),
     profile_data jsonb,
     last_synced timestamp without time zone DEFAULT now(),
-    CONSTRAINT arr_profiles_cache_arr_type_check CHECK (((arr_type)::text = ANY ((ARRAY['radarr'::character varying, 'sonarr'::character varying])::text[]))),
-    CONSTRAINT arr_profiles_cache_profile_type_check CHECK (((profile_type)::text = ANY ((ARRAY['root_folder'::character varying, 'quality_profile'::character varying, 'tag'::character varying])::text[])))
+    CONSTRAINT arr_profiles_cache_arr_type_check CHECK (((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text]))),
+    CONSTRAINT arr_profiles_cache_profile_type_check CHECK (((profile_type)::text = ANY (ARRAY[('root_folder'::character varying)::text, ('quality_profile'::character varying)::text, ('tag'::character varying)::text])))
 );
 
 
@@ -1267,14 +1310,15 @@ ALTER SEQUENCE public.arr_profiles_cache_id_seq OWNED BY public.arr_profiles_cac
 --
 
 CREATE TABLE public.audit_log (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     user_id integer,
     action character varying(100) NOT NULL,
     ip_address character varying(50),
     user_agent text,
     metadata jsonb,
     created_at timestamp without time zone DEFAULT now()
-);
+)
+WITH (autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
 
 
 --
@@ -1282,7 +1326,6 @@ CREATE TABLE public.audit_log (
 --
 
 CREATE SEQUENCE public.audit_log_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1499,7 +1542,7 @@ ALTER SEQUENCE public.clarification_questions_id_seq OWNED BY public.clarificati
 
 CREATE TABLE public.clarification_responses (
     id integer NOT NULL,
-    classification_id integer,
+    classification_id bigint,
     question_id integer,
     discord_user_id character varying(100),
     response_value character varying(100),
@@ -1536,7 +1579,7 @@ ALTER SEQUENCE public.clarification_responses_id_seq OWNED BY public.clarificati
 
 CREATE TABLE public.classification_corrections (
     id integer NOT NULL,
-    classification_id integer,
+    classification_id bigint,
     original_library_id integer,
     corrected_library_id integer,
     corrected_by character varying(100),
@@ -1570,7 +1613,7 @@ ALTER SEQUENCE public.classification_corrections_id_seq OWNED BY public.classifi
 
 CREATE TABLE public.classification_embeddings (
     id integer NOT NULL,
-    classification_id integer NOT NULL,
+    classification_id bigint NOT NULL,
     embedding public.vector(768) NOT NULL,
     embedding_dims integer NOT NULL,
     provider character varying(50) NOT NULL,
@@ -1620,7 +1663,7 @@ ALTER SEQUENCE public.classification_embeddings_id_seq OWNED BY public.classific
 --
 
 CREATE TABLE public.classification_history (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     tmdb_id integer,
     media_type character varying(20) NOT NULL,
     title character varying(500) NOT NULL,
@@ -1646,10 +1689,13 @@ CREATE TABLE public.classification_history (
     retry_after timestamp without time zone,
     retry_count integer DEFAULT 0,
     max_retries integer DEFAULT 3,
-    CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[]))),
-    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY ((ARRAY['existing_media'::character varying, 'manual_correction'::character varying, 'manual_classification'::character varying, 'exact_match'::character varying, 'learned_pattern'::character varying, 'source_library'::character varying, 'policy_auto'::character varying, 'policy_prompt'::character varying, 'policy_recheck'::character varying, 'ai_verified'::character varying, 'ai_analysis'::character varying, 'ai_rerun'::character varying, 'signal_calculation'::character varying, 'fallback'::character varying, 'queued_for_retry'::character varying, 'custom_rule'::character varying, 'rule_match'::character varying, 'ai_fallback'::character varying, 'holiday_detection'::character varying, 'library_rule'::character varying, 'rag_improved'::character varying, 'authoritative_source_library'::character varying, 'policy_engine'::character varying])::text[]))),
-    CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY ((ARRAY['completed'::character varying, 'failed'::character varying, 'corrected'::character varying, 'awaiting_decision'::character varying, 'pending'::character varying, 'pending_retry'::character varying, 'verified'::character varying, 'reclassified'::character varying, 'routed'::character varying])::text[])))
-);
+    CONSTRAINT chk_classification_completed_has_library CHECK ((((status)::text IS DISTINCT FROM 'completed'::text) OR (library_id IS NOT NULL))),
+    CONSTRAINT chk_classification_confidence_range CHECK (((confidence IS NULL) OR ((confidence >= (0)::numeric) AND (confidence <= (100)::numeric)))),
+    CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
+    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY (ARRAY[('existing_media'::character varying)::text, ('manual_correction'::character varying)::text, ('manual_classification'::character varying)::text, ('exact_match'::character varying)::text, ('learned_pattern'::character varying)::text, ('source_library'::character varying)::text, ('policy_auto'::character varying)::text, ('policy_prompt'::character varying)::text, ('policy_recheck'::character varying)::text, ('ai_verified'::character varying)::text, ('ai_analysis'::character varying)::text, ('ai_rerun'::character varying)::text, ('signal_calculation'::character varying)::text, ('fallback'::character varying)::text, ('queued_for_retry'::character varying)::text, ('custom_rule'::character varying)::text, ('rule_match'::character varying)::text, ('ai_fallback'::character varying)::text, ('holiday_detection'::character varying)::text, ('library_rule'::character varying)::text, ('rag_improved'::character varying)::text, ('authoritative_source_library'::character varying)::text, ('policy_engine'::character varying)::text]))),
+    CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('corrected'::character varying)::text, ('awaiting_decision'::character varying)::text, ('pending'::character varying)::text, ('pending_retry'::character varying)::text, ('verified'::character varying)::text, ('reclassified'::character varying)::text, ('routed'::character varying)::text])))
+)
+WITH (fillfactor='80', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
 
 
 --
@@ -1685,7 +1731,6 @@ COMMENT ON COLUMN public.classification_history.max_retries IS 'Maximum number o
 --
 
 CREATE SEQUENCE public.classification_history_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1822,7 +1867,7 @@ ALTER SEQUENCE public.confidence_thresholds_id_seq OWNED BY public.confidence_th
 
 CREATE TABLE public.content_analysis_log (
     id integer NOT NULL,
-    classification_id integer,
+    classification_id bigint,
     tmdb_id integer,
     detected_type character varying(50),
     confidence integer,
@@ -2079,7 +2124,7 @@ ALTER SEQUENCE public.embedding_costs_id_seq OWNED BY public.embedding_costs.id;
 
 CREATE TABLE public.embedding_errors (
     id integer NOT NULL,
-    classification_id integer,
+    classification_id bigint,
     error_message text NOT NULL,
     stack_trace text,
     retry_count integer DEFAULT 0,
@@ -2115,7 +2160,7 @@ ALTER SEQUENCE public.embedding_errors_id_seq OWNED BY public.embedding_errors.i
 
 CREATE TABLE public.embedding_retry_queue (
     id integer NOT NULL,
-    classification_id integer NOT NULL,
+    classification_id bigint NOT NULL,
     attempt_count integer DEFAULT 0,
     max_attempts integer DEFAULT 5,
     last_error text,
@@ -2198,7 +2243,7 @@ ALTER SEQUENCE public.enrichment_retry_queue_id_seq OWNED BY public.enrichment_r
 --
 
 CREATE TABLE public.error_log (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     error_id uuid DEFAULT gen_random_uuid(),
     level character varying(10) NOT NULL,
     module character varying(100) NOT NULL,
@@ -2215,15 +2260,16 @@ CREATE TABLE public.error_log (
     rag_context jsonb,
     duration_ms integer,
     recoverable boolean DEFAULT true,
-    classification_id integer,
+    classification_id bigint,
     error_stage character varying(50),
     reason_code character varying(80),
     correlation_id uuid,
     sql_state character varying(10),
-    CONSTRAINT error_log_error_stage_check CHECK (((error_stage IS NULL) OR ((error_stage)::text = ANY ((ARRAY['gate'::character varying, 'enrichment'::character varying, 'retrieval_pass2'::character varying, 'policy_recheck'::character varying, 'ai_rerun'::character varying, 'trace'::character varying])::text[])))),
-    CONSTRAINT error_log_level_check CHECK (((level)::text = ANY ((ARRAY['ERROR'::character varying, 'WARN'::character varying, 'INFO'::character varying, 'DEBUG'::character varying])::text[]))),
+    CONSTRAINT error_log_error_stage_check CHECK (((error_stage IS NULL) OR ((error_stage)::text = ANY (ARRAY[('gate'::character varying)::text, ('enrichment'::character varying)::text, ('retrieval_pass2'::character varying)::text, ('policy_recheck'::character varying)::text, ('ai_rerun'::character varying)::text, ('trace'::character varying)::text])))),
+    CONSTRAINT error_log_level_check CHECK (((level)::text = ANY (ARRAY[('ERROR'::character varying)::text, ('WARN'::character varying)::text, ('INFO'::character varying)::text, ('DEBUG'::character varying)::text]))),
     CONSTRAINT error_log_sql_state_format_check CHECK (((sql_state IS NULL) OR ((sql_state)::text ~ '^[A-Z0-9]{1,10}$'::text)))
-);
+)
+WITH (autovacuum_vacuum_scale_factor='0.10', autovacuum_analyze_scale_factor='0.10');
 
 
 --
@@ -2273,7 +2319,6 @@ COMMENT ON COLUMN public.error_log.sql_state IS 'SQLSTATE code captured for data
 --
 
 CREATE SEQUENCE public.error_log_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -2335,8 +2380,8 @@ CREATE TABLE public.label_presets (
     tmdb_match_field character varying(50),
     tmdb_match_values text[],
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT label_presets_category_check CHECK (((category)::text = ANY ((ARRAY['rating'::character varying, 'content_type'::character varying, 'genre'::character varying, 'language'::character varying])::text[]))),
-    CONSTRAINT label_presets_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying, 'both'::character varying])::text[])))
+    CONSTRAINT label_presets_category_check CHECK (((category)::text = ANY (ARRAY[('rating'::character varying)::text, ('content_type'::character varying)::text, ('genre'::character varying)::text, ('language'::character varying)::text]))),
+    CONSTRAINT label_presets_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text, ('both'::character varying)::text])))
 );
 
 
@@ -2375,7 +2420,7 @@ CREATE TABLE public.learned_corrections (
     user_note text,
     corrected_by character varying(255),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT learned_corrections_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[])))
+    CONSTRAINT learned_corrections_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text])))
 );
 
 
@@ -2542,8 +2587,8 @@ CREATE TABLE public.libraries (
     classified_count integer DEFAULT 0,
     avg_confidence numeric(5,2) DEFAULT 0,
     last_analyzed_at timestamp with time zone,
-    CONSTRAINT libraries_arr_type_check CHECK (((arr_type)::text = ANY ((ARRAY['radarr'::character varying, 'sonarr'::character varying])::text[]))),
-    CONSTRAINT libraries_media_type_check CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[])))
+    CONSTRAINT libraries_arr_type_check CHECK (((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text]))),
+    CONSTRAINT libraries_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text])))
 );
 
 
@@ -2584,7 +2629,7 @@ CREATE TABLE public.library_arr_mappings (
     classifarr_path_prefix character varying(512),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT library_arr_mappings_arr_type_check CHECK (((arr_type)::text = ANY ((ARRAY['radarr'::character varying, 'sonarr'::character varying])::text[])))
+    CONSTRAINT library_arr_mappings_arr_type_check CHECK (((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text])))
 );
 
 
@@ -2694,7 +2739,7 @@ CREATE TABLE public.library_labels (
     label_preset_id integer,
     rule_type character varying(20) NOT NULL,
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT library_labels_rule_type_check CHECK (((rule_type)::text = ANY ((ARRAY['include'::character varying, 'exclude'::character varying])::text[])))
+    CONSTRAINT library_labels_rule_type_check CHECK (((rule_type)::text = ANY (ARRAY[('include'::character varying)::text, ('exclude'::character varying)::text])))
 );
 
 
@@ -2993,7 +3038,7 @@ CREATE TABLE public.media_requests (
     is_4k boolean DEFAULT false,
     requested_seasons text,
     request_status character varying(50) DEFAULT 'pending'::character varying,
-    classification_id integer,
+    classification_id bigint,
     routed_to_library_id integer,
     routed_to_library_name character varying(255),
     arr_type character varying(20),
@@ -3041,7 +3086,7 @@ CREATE TABLE public.media_server (
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
     client_identifier character varying(255),
-    CONSTRAINT media_server_type_check CHECK (((type)::text = ANY ((ARRAY['plex'::character varying, 'emby'::character varying, 'jellyfin'::character varying])::text[])))
+    CONSTRAINT media_server_type_check CHECK (((type)::text = ANY (ARRAY[('plex'::character varying)::text, ('emby'::character varying)::text, ('jellyfin'::character varying)::text])))
 );
 
 
@@ -3174,7 +3219,7 @@ CREATE TABLE public.media_server_sync_status (
     started_at timestamp without time zone,
     completed_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT media_server_sync_status_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying])::text[])))
+    CONSTRAINT media_server_sync_status_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('running'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text])))
 );
 
 
@@ -3380,7 +3425,7 @@ CREATE TABLE public.pattern_analysis_config (
 CREATE TABLE public.pattern_match_log (
     id integer NOT NULL,
     pattern_id integer NOT NULL,
-    classification_id integer NOT NULL,
+    classification_id bigint NOT NULL,
     matched_value text,
     confidence_contribution numeric(4,2),
     suggestion_used boolean DEFAULT false,
@@ -3846,15 +3891,15 @@ COMMENT ON TABLE public.rag_metrics IS 'Performance metrics for RAG operations (
 --
 
 CREATE VIEW public.rag_health_summary AS
- SELECT count(*) FILTER (WHERE (rag_metrics.created_at >= (now() - '24:00:00'::interval))) AS operations_24h,
-    count(*) FILTER (WHERE (rag_metrics.created_at >= (now() - '01:00:00'::interval))) AS operations_1h,
-    count(*) FILTER (WHERE ((rag_metrics.success = true) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS successful_24h,
-    count(*) FILTER (WHERE ((rag_metrics.success = false) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS failed_24h,
-    avg(rag_metrics.duration_ms) FILTER (WHERE (rag_metrics.created_at >= (now() - '24:00:00'::interval))) AS avg_duration_ms_24h,
-    count(*) FILTER (WHERE (((rag_metrics.operation)::text = 'semantic_search'::text) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS semantic_searches_24h,
-    count(*) FILTER (WHERE (((rag_metrics.operation)::text = 'hybrid_search'::text) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS hybrid_searches_24h,
-    count(*) FILTER (WHERE (((rag_metrics.operation)::text = 'embedding_generation'::text) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS embeddings_generated_24h,
-    count(*) FILTER (WHERE (((rag_metrics.operation)::text = 'pattern_mining'::text) AND (rag_metrics.created_at >= (now() - '24:00:00'::interval)))) AS pattern_mining_runs_24h
+ SELECT count(*) FILTER (WHERE (created_at >= (now() - '24:00:00'::interval))) AS operations_24h,
+    count(*) FILTER (WHERE (created_at >= (now() - '01:00:00'::interval))) AS operations_1h,
+    count(*) FILTER (WHERE ((success = true) AND (created_at >= (now() - '24:00:00'::interval)))) AS successful_24h,
+    count(*) FILTER (WHERE ((success = false) AND (created_at >= (now() - '24:00:00'::interval)))) AS failed_24h,
+    avg(duration_ms) FILTER (WHERE (created_at >= (now() - '24:00:00'::interval))) AS avg_duration_ms_24h,
+    count(*) FILTER (WHERE (((operation)::text = 'semantic_search'::text) AND (created_at >= (now() - '24:00:00'::interval)))) AS semantic_searches_24h,
+    count(*) FILTER (WHERE (((operation)::text = 'hybrid_search'::text) AND (created_at >= (now() - '24:00:00'::interval)))) AS hybrid_searches_24h,
+    count(*) FILTER (WHERE (((operation)::text = 'embedding_generation'::text) AND (created_at >= (now() - '24:00:00'::interval)))) AS embeddings_generated_24h,
+    count(*) FILTER (WHERE (((operation)::text = 'pattern_mining'::text) AND (created_at >= (now() - '24:00:00'::interval)))) AS pattern_mining_runs_24h
    FROM public.rag_metrics;
 
 
@@ -4061,6 +4106,19 @@ ALTER SEQUENCE public.scheduled_tasks_id_seq OWNED BY public.scheduled_tasks.id;
 
 
 --
+-- Name: schema_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.schema_migrations_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
 -- Name: schema_migrations_new_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -4238,7 +4296,7 @@ ALTER SEQUENCE public.ssl_config_id_seq OWNED BY public.ssl_config.id;
 --
 
 CREATE TABLE public.task_queue (
-    id integer NOT NULL,
+    id bigint NOT NULL,
     task_type character varying(50) NOT NULL,
     payload jsonb NOT NULL,
     status character varying(20) DEFAULT 'pending'::character varying,
@@ -4256,8 +4314,10 @@ CREATE TABLE public.task_queue (
     phase_index integer,
     phase_started_at timestamp without time zone,
     phase_history jsonb DEFAULT '[]'::jsonb,
-    CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[])))
-);
+    visible_at timestamp with time zone,
+    CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
+)
+WITH (fillfactor='75', autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_threshold='50', autovacuum_analyze_scale_factor='0.05', autovacuum_vacuum_cost_delay='2');
 
 
 --
@@ -4293,7 +4353,6 @@ COMMENT ON COLUMN public.task_queue.phase_history IS 'JSON array of completed ph
 --
 
 CREATE SEQUENCE public.task_queue_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -4393,7 +4452,7 @@ CREATE TABLE public.users (
     last_login timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
-    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'user'::character varying])::text[])))
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('user'::character varying)::text])))
 );
 
 
@@ -4480,7 +4539,7 @@ CREATE TABLE public.webhook_log (
     requested_by_email character varying(255),
     is_4k boolean DEFAULT false,
     processing_status character varying(20) DEFAULT 'received'::character varying,
-    classification_id integer,
+    classification_id bigint,
     routed_to_library character varying(255),
     error_message text,
     processing_time_ms integer,
@@ -5223,26 +5282,6 @@ ALTER TABLE ONLY public.classification_embeddings
 
 ALTER TABLE ONLY public.classification_history
     ADD CONSTRAINT classification_history_pkey PRIMARY KEY (id);
-
-
---
--- Name: classification_history chk_classification_confidence_range; Type: CHECK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE public.classification_history
-    ADD CONSTRAINT chk_classification_confidence_range
-    CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 100))
-    NOT VALID;
-
-
---
--- Name: classification_history chk_classification_completed_has_library; Type: CHECK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE public.classification_history
-    ADD CONSTRAINT chk_classification_completed_has_library
-    CHECK (status IS DISTINCT FROM 'completed' OR library_id IS NOT NULL)
-    NOT VALID;
 
 
 --
@@ -6032,10 +6071,10 @@ CREATE INDEX idx_api_keys_prefix ON public.api_keys USING btree (key_prefix);
 
 
 --
--- Name: idx_app_log_created_at; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_app_log_created_at_brin; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_app_log_created_at ON public.app_log USING btree (created_at DESC);
+CREATE INDEX idx_app_log_created_at_brin ON public.app_log USING brin (created_at) WITH (pages_per_range='128');
 
 
 --
@@ -6067,10 +6106,10 @@ CREATE INDEX idx_arr_profiles_cache_type ON public.arr_profiles_cache USING btre
 
 
 --
--- Name: idx_audit_log_created_at; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_audit_log_created_at_brin; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_audit_log_created_at ON public.audit_log USING btree (created_at);
+CREATE INDEX idx_audit_log_created_at_brin ON public.audit_log USING brin (created_at) WITH (pages_per_range='128');
 
 
 --
@@ -6253,6 +6292,13 @@ CREATE INDEX idx_classification_history_rag_trace_outcome ON public.classificati
 --
 
 CREATE INDEX idx_classification_history_retry_queue ON public.classification_history USING btree (retry_after, status) WHERE (retry_after IS NOT NULL);
+
+
+--
+-- Name: idx_classification_history_title_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_history_title_trgm ON public.classification_history USING gin (title public.gin_trgm_ops);
 
 
 --
@@ -6452,10 +6498,10 @@ CREATE INDEX idx_error_log_correlation_id ON public.error_log USING btree (corre
 
 
 --
--- Name: idx_error_log_created_at; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_error_log_created_at_brin; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_error_log_created_at ON public.error_log USING btree (created_at DESC);
+CREATE INDEX idx_error_log_created_at_brin ON public.error_log USING brin (created_at) WITH (pages_per_range='128');
 
 
 --
@@ -6498,6 +6544,13 @@ CREATE INDEX idx_error_log_resolved ON public.error_log USING btree (resolved);
 --
 
 CREATE INDEX idx_error_log_stage_reason ON public.error_log USING btree (error_stage, reason_code);
+
+
+--
+-- Name: idx_error_log_unresolved_errors; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_error_log_unresolved_errors ON public.error_log USING btree (created_at DESC) WHERE ((resolved = false) AND ((level)::text = 'ERROR'::text));
 
 
 --
@@ -7068,10 +7121,24 @@ CREATE INDEX idx_sync_status_status ON public.media_server_sync_status USING btr
 
 
 --
+-- Name: idx_task_queue_active_item_dedup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_task_queue_active_item_dedup ON public.task_queue USING btree (task_type, ((payload ->> 'media_item_id'::text))) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying])::text[]));
+
+
+--
 -- Name: idx_task_queue_active_phase; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_task_queue_active_phase ON public.task_queue USING btree (current_phase) WHERE (((status)::text = 'processing'::text) AND (current_phase IS NOT NULL));
+
+
+--
+-- Name: idx_task_queue_dequeue; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_queue_dequeue ON public.task_queue USING btree (priority DESC, created_at, next_retry_at) WHERE ((status)::text = 'pending'::text);
 
 
 --
@@ -7088,14 +7155,11 @@ CREATE INDEX idx_task_queue_next_retry ON public.task_queue USING btree (next_re
 CREATE INDEX idx_task_queue_priority ON public.task_queue USING btree (priority DESC, created_at) WHERE ((status)::text = 'pending'::text);
 
 
+--
+-- Name: idx_task_queue_processing_stale; Type: INDEX; Schema: public; Owner: -
+--
+
 CREATE INDEX idx_task_queue_processing_stale ON public.task_queue USING btree (started_at) WHERE ((status)::text = 'processing'::text);
-
-
---
--- Name: idx_task_queue_dequeue; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_task_queue_dequeue ON public.task_queue USING btree (priority DESC, created_at, next_retry_at) WHERE ((status)::text = 'pending'::text);
 
 
 --
@@ -7103,6 +7167,13 @@ CREATE INDEX idx_task_queue_dequeue ON public.task_queue USING btree (priority D
 --
 
 CREATE INDEX idx_task_queue_status ON public.task_queue USING btree (status);
+
+
+--
+-- Name: idx_task_queue_visible_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_queue_visible_at ON public.task_queue USING btree (visible_at) WHERE (((status)::text = 'processing'::text) AND (visible_at IS NOT NULL));
 
 
 --
@@ -7183,48 +7254,6 @@ CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON pub
 
 
 --
--- Name: library_rules_v2 trigger_library_rules_v2_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trigger_library_rules_v2_updated_at BEFORE UPDATE ON public.library_rules_v2 FOR EACH ROW EXECUTE FUNCTION public.update_library_rules_v2_updated_at();
-
-
---
--- Name: radarr_config trg_radarr_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_radarr_config_updated_at BEFORE UPDATE ON public.radarr_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: sonarr_config trg_sonarr_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_sonarr_config_updated_at BEFORE UPDATE ON public.sonarr_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: ollama_config trg_ollama_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_ollama_config_updated_at BEFORE UPDATE ON public.ollama_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: tmdb_config trg_tmdb_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_tmdb_config_updated_at BEFORE UPDATE ON public.tmdb_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: notification_config trg_notification_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_notification_config_updated_at BEFORE UPDATE ON public.notification_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
 -- Name: libraries trg_libraries_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -7239,10 +7268,52 @@ CREATE TRIGGER trg_library_custom_rules_updated_at BEFORE UPDATE ON public.libra
 
 
 --
+-- Name: notification_config trg_notification_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_notification_config_updated_at BEFORE UPDATE ON public.notification_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: ollama_config trg_ollama_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_ollama_config_updated_at BEFORE UPDATE ON public.ollama_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: radarr_config trg_radarr_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_radarr_config_updated_at BEFORE UPDATE ON public.radarr_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: settings trg_settings_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER trg_settings_updated_at BEFORE UPDATE ON public.settings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: sonarr_config trg_sonarr_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_sonarr_config_updated_at BEFORE UPDATE ON public.sonarr_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: tmdb_config trg_tmdb_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_tmdb_config_updated_at BEFORE UPDATE ON public.tmdb_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: library_rules_v2 trigger_library_rules_v2_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_library_rules_v2_updated_at BEFORE UPDATE ON public.library_rules_v2 FOR EACH ROW EXECUTE FUNCTION public.update_library_rules_v2_updated_at();
 
 
 --
@@ -7820,6 +7891,15 @@ ALTER TABLE ONLY public.webhook_log
 
 
 
+-- Migration tracking table
+-- (excluded via --exclude-table=schema_migrations but required for tracking)
+CREATE TABLE IF NOT EXISTS public.schema_migrations (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) UNIQUE NOT NULL,
+    applied_at TIMESTAMP DEFAULT NOW()
+);
+
+
 -- ============================================================
 -- Seed Data (from data-only migrations, auto-appended by scripts/dump-schema.js)
 -- These INSERT statements are idempotent (ON CONFLICT DO NOTHING / DO UPDATE).
@@ -7925,7 +8005,6 @@ VALUES (
 -- Depends on: #91 (PR #105) - Policy Database Schema
 -- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
 -- ═══════════════════════════════════════════════════════════════════════════
-
 
 -- ============================================================================
 -- SIGNAL SCHEMA REFERENCE (TypeScript)
@@ -8243,7 +8322,6 @@ ON CONFLICT (key, user_id) DO UPDATE SET
 -- Depends on: Migration 043 (Initial 46 Content Presets)
 -- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
 -- ═══════════════════════════════════════════════════════════════════════════
-
 
 -- ============================================================================
 -- CONTENT PRESETS EXPANSION - 122 NEW PRESETS
@@ -8814,7 +8892,6 @@ ON CONFLICT (key, user_id) DO UPDATE SET
 -- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
 -- ═══════════════════════════════════════════════════════════════════════════
 
-
 -- ============================================================================
 -- EVENT DETECTION PRESETS - 6 new presets
 -- ============================================================================
@@ -8921,7 +8998,6 @@ SET
 
 
 
-
 -- ============================================================================
 -- VERIFICATION
 -- ============================================================================
@@ -8984,14 +9060,6 @@ VALUES
   ('csrf_protection', 'true'),
   ('cors_origin', '')
 ON CONFLICT (key) DO NOTHING;
-
--- Migration tracking table
--- (excluded via --exclude-table=schema_migrations but required for tracking)
-CREATE TABLE IF NOT EXISTS public.schema_migrations (
-    id SERIAL PRIMARY KEY,
-    filename VARCHAR(255) UNIQUE NOT NULL,
-    applied_at TIMESTAMP DEFAULT NOW()
-);
 
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
@@ -9110,6 +9178,19 @@ FROM unnest(ARRAY[
     '20260305_100000_optimize_task_queue_indexes.sql',
     '20260305_100100_add_updated_at_triggers.sql',
     '20260305_110000_add_security_cleanup_indexes.sql',
-    '20260305_120000_add_classification_history_check_constraints.sql'
+    '20260305_120000_add_classification_history_check_constraints.sql',
+    '20260305_130000_validate_classification_history_constraints.sql',
+    '20260305_150000_add_task_queue_item_dedup_index.sql',
+    '20260305_200000_enable_pg_stat_statements.sql',
+    '20260305_200100_enable_pg_trgm.sql',
+    '20260305_200200_enable_pg_prewarm.sql',
+    '20260305_200300_fillfactor_hot_update_tables.sql',
+    '20260305_200400_autovacuum_tuning.sql',
+    '20260305_200500_bigint_primary_keys.sql',
+    '20260305_200600_brin_log_indexes.sql',
+    '20260305_200700_bigint_classification_history_pk.sql',
+    '20260305_200800_bigint_error_log_classification_id.sql',
+    '20260306_000000_add_task_queue_visible_at.sql',
+    '20260307_000000_add_rag_log_cleanup_and_indexes.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

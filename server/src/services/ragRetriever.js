@@ -17,6 +17,14 @@ const { expandRetrievalMetadata } = require('../utils/ragLoopHelpers');
 const logger = createLogger('RAGRetriever');
 
 const EF_SEARCH = parseInt(process.env.PGVECTOR_EF_SEARCH) || 80;
+const EF_SEARCH_CANDIDATES = parseInt(process.env.PGVECTOR_EF_SEARCH_CANDIDATES) || 40;
+const CANDIDATE_LIMIT_MAX = parseInt(process.env.PGVECTOR_CANDIDATE_LIMIT) || 200;
+
+// Short-lived in-process TTL for embedding count/minimum checks.
+// Eliminates redundant SELECT COUNT(*) round-trips when multiple concurrent
+// classification tasks call semanticSearch() within the same burst window.
+// (e.g. MAX_CONCURRENT = 5 tasks → 10 extra DB queries/s without caching)
+const EMBEDDING_STATS_TTL_MS = 30_000; // 30 seconds
 
 function checkAbort(signal, operation = 'operation') {
     if (signal?.aborted) {
@@ -32,6 +40,15 @@ function checkAbort(signal, operation = 'operation') {
  * Performs semantic similarity search to find similar past classifications
  */
 class RAGRetriever {
+    constructor() {
+        // In-process TTL cache for lightweight pre-check queries.
+        // Both fields reset to their zero values so the first call always fetches.
+        this._embeddingCountCache = null;
+        this._embeddingCountCachedAt = 0;
+        this._hasMinimumCache = null;
+        this._hasMinimumCachedAt = 0;
+    }
+
     buildRetrievalText(metadata, options = {}) {
         const pass = options.pass || 'pass1';
         const useExpandedQuery = options.useExpandedQuery === true || pass !== 'pass1';
@@ -95,6 +112,7 @@ class RAGRetriever {
             const pass = options.pass || 'pass1';
             const applyThreshold = options.applyThreshold !== false;
             const expansionOptions = options.expansionOptions || {};
+            const efSearch = options.efSearch ?? EF_SEARCH;
 
             // Check if RAG is enabled
             const enabled = await embeddingRouter.isEnabled();
@@ -132,7 +150,7 @@ class RAGRetriever {
             const minRequired = config?.rag_min_history_count || 50;
 
             // Check minimum embeddings threshold
-            const hasMinimum = await embeddingService.hasMinimumEmbeddings();
+            const hasMinimum = await this._getHasMinimumCached();
             if (!hasMinimum) {
                 logger.info('RAG search skipped - not enough embeddings', { 
                     title: metadata.title,
@@ -188,13 +206,13 @@ class RAGRetriever {
             // Two-phase retrieval:
             // 1) Pull top-K by text similarity
             // 2) Re-rank by combined (text + image) similarity
-            const candidateLimit = Math.min(Math.max(limit * 5, 25), 200);
+            const candidateLimit = Math.min(Math.max(limit * 5, 25), CANDIDATE_LIMIT_MAX);
 
             const client = await db.pool.connect();
             let result;
             try {
                 await client.query('BEGIN');
-                await client.query('SET LOCAL hnsw.ef_search = $1', [EF_SEARCH]);
+                await client.query(`SET LOCAL hnsw.ef_search = ${efSearch}`);
                 result = await client.query(`
                 WITH candidates AS (
                     SELECT
@@ -330,7 +348,8 @@ class RAGRetriever {
     async semanticSearchCandidates(metadata, candidateLimit = 25, options = {}) {
         return this.semanticSearch(metadata, candidateLimit, {
             ...options,
-            applyThreshold: false
+            applyThreshold: false,
+            efSearch: options.efSearch ?? EF_SEARCH_CANDIDATES
         });
     }
 
@@ -339,17 +358,42 @@ class RAGRetriever {
      * @returns {Promise<number>} Count of non-stale embeddings
      */
     async getEmbeddingCount() {
+        const now = Date.now();
+        if (this._embeddingCountCache !== null && now - this._embeddingCountCachedAt < EMBEDDING_STATS_TTL_MS) {
+            return this._embeddingCountCache;
+        }
         try {
             const result = await db.query(`
                 SELECT COUNT(*) as count 
                 FROM classification_embeddings 
                 WHERE is_stale = false
             `);
-            return parseInt(result.rows[0]?.count || 0);
+            this._embeddingCountCache = parseInt(result.rows[0]?.count || 0);
+            this._embeddingCountCachedAt = now;
+            return this._embeddingCountCache;
         } catch (error) {
             logger.debug('Failed to get embedding count', { error: error.message });
             return 0;
         }
+    }
+
+    /**
+     * Cached wrapper for embeddingService.hasMinimumEmbeddings().
+     * Avoids a SELECT COUNT(*) on every semanticSearch/findSimilarItems call during
+     * burst classification by reusing the result for EMBEDDING_STATS_TTL_MS ms.
+     * The cache is instance-level; call sites that need a fresh check (e.g. health
+     * endpoints) should call embeddingService.hasMinimumEmbeddings() directly.
+     * @returns {Promise<boolean>}
+     */
+    async _getHasMinimumCached() {
+        const now = Date.now();
+        if (this._hasMinimumCache !== null && now - this._hasMinimumCachedAt < EMBEDDING_STATS_TTL_MS) {
+            return this._hasMinimumCache;
+        }
+        const result = await embeddingService.hasMinimumEmbeddings();
+        this._hasMinimumCache = result;
+        this._hasMinimumCachedAt = now;
+        return result;
     }
 
     /**
@@ -749,7 +793,7 @@ class RAGRetriever {
             }
 
             // Check minimum embeddings
-            const hasMinimum = await embeddingService.hasMinimumEmbeddings();
+            const hasMinimum = await this._getHasMinimumCached();
             if (!hasMinimum) {
                 return [];
             }

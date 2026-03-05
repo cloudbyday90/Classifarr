@@ -81,6 +81,17 @@ describe('ManualBackfillService', () => {
         );
     });
 
+    it('throws a configuration-not-found error on fresh install (no ai_provider_config row)', async () => {
+        db.query.mockResolvedValueOnce({ rows: [] }); // no row yet
+
+        const err = await manualBackfillService.start().catch(e => e);
+
+        expect(err).toBeInstanceOf(Error);
+        expect(err.message).toMatch(/configuration not found/i);
+        // Must NOT say "RAG is not enabled" — that message implies a deliberate operator choice
+        expect(err.message).not.toMatch(/not enabled/i);
+    });
+
     it('starts with includeImage and total from pending count', async () => {
         db.query
             .mockResolvedValueOnce({ rows: [{ rag_enabled: true }] })

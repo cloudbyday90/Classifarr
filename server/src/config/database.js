@@ -16,7 +16,33 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const { Pool } = require('pg');
+const pg = require('pg');
+const { Pool } = pg;
+
+// ─── Global int8 (bigint) type parser ─────────────────────────────────────────
+// PostgreSQL's pg driver returns BIGINT (OID 20 / int8) columns as JavaScript
+// *strings* by default to avoid precision loss for values > Number.MAX_SAFE_INTEGER
+// (9,007,199,254,740,991). This is safe but breaks existing code/tests that expect
+// numeric IDs.
+//
+// For primary key IDs (which are always incrementing integers well within JS safe
+// range for any realistic deployment), we convert to JS number. Only pathological
+// values > 2^53 fall back to string — in practice you'd need 9 quadrillion rows.
+//
+// This parser applies GLOBALLY to all Pool/Client instances in this process
+// (pg.types is a singleton). The same parser is registered in
+// server/src/__tests__/integration/setup.js so integration tests match.
+//
+// Defensive guard: test mocks may stub out the pg module without a `types` object.
+if (pg.types && typeof pg.types.setTypeParser === 'function') {
+  pg.types.setTypeParser(20, (val) => {
+    if (val === null) return null;
+    const num = parseInt(val, 10);
+    // Preserve precision for values outside JS safe integer range
+    return (num > Number.MAX_SAFE_INTEGER || num < Number.MIN_SAFE_INTEGER) ? val : num;
+  });
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 const parsedSlowQueryThreshold = process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS !== undefined
   ? parseInt(process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS, 10)
@@ -51,6 +77,11 @@ pool.on('error', (err) => {
 /**
  * Lightweight health check — used by /health endpoints.
  * Uses a pooled client and consumes a pool slot only for the brief duration of the check.
+ *
+ * Security note: pg error messages can contain internal host/IP/database details
+ * (e.g. "connect ECONNREFUSED 172.20.0.2:5432"). In production the error field is
+ * replaced with a generic string so unauthenticated /health endpoints cannot disclose
+ * internal network topology. The full message is preserved in development for debugging.
  */
 async function healthCheck() {
   let client;
@@ -59,7 +90,10 @@ async function healthCheck() {
     await client.query('SELECT 1');
     return { healthy: true };
   } catch (err) {
-    return { healthy: false, error: err.message };
+    const errorMsg = process.env.NODE_ENV === 'production'
+      ? 'Database connection failed'
+      : err.message;
+    return { healthy: false, error: errorMsg };
   } finally {
     if (client) client.release();
   }
@@ -131,12 +165,24 @@ async function tryAdvisoryLock(client, lockKey) {
 
 /**
  * Advisory lock key constants — one per service that needs distributed startup protection.
+ * Backfill services (1001-1003) use transaction-scoped or session-scoped locks.
+ * Scheduler jobs (2001+) use session-scoped locks via withSessionAdvisoryLock() so the
+ * lock is held for the full duration of the job and released when it completes.
+ * STARTUP_RESET uses a transaction-scoped lock (pg_try_advisory_xact_lock).
  */
 const DB_ADVISORY_LOCKS = {
   IDLE_BACKFILL: 1001,
   SCHEDULED_BACKFILL: 1002,
   MANUAL_BACKFILL: 1003,
   STARTUP_RESET: 1234567890,
+  // Scheduler job locks — prevent two processes from running the same job simultaneously
+  // during rolling restarts (e.g. K8s maxSurge, docker compose up --no-deps).
+  GAP_ANALYSIS: 2001,
+  LIBRARY_SYNC: 2002,
+  RETRY_QUEUE: 2003,
+  ENRICHMENT_RETRY_QUEUE: 2004,
+  RATING_NORMALIZATION_CHECK: 2005,
+  STALE_CLEANUP: 2006,
 };
 
 /**
@@ -170,6 +216,89 @@ async function withSessionAdvisoryLock(lockKey, fn) {
   }
 }
 
+/**
+ * Prewarm HNSW vector indexes into shared_buffers after a PostgreSQL restart.
+ *
+ * After every restart, shared_buffers is empty. The HNSW indexes must be loaded
+ * from disk before any ANN (approximate nearest-neighbour) search runs at full
+ * speed. Calling this function at startup front-loads that I/O so the first
+ * user-triggered RAG search is not disk-bound.
+ *
+ * Requires the pg_prewarm extension (migration 20260305_200200_enable_pg_prewarm).
+ * Gracefully no-ops if the extension is not installed or the indexes don't exist yet
+ * (e.g. before any embeddings have been generated).
+ *
+ * @returns {Promise<{loaded: boolean, blocks?: {text: number, image: number}, error?: string}>}
+ */
+async function prewarmHnswIndexes() {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COALESCE(pg_prewarm('idx_embeddings_hnsw'),       0) AS text_blocks,
+        COALESCE(pg_prewarm('idx_embeddings_image_hnsw'), 0) AS image_blocks
+    `);
+    const { text_blocks, image_blocks } = result.rows[0];
+    return {
+      loaded: true,
+      blocks: {
+        text:  parseInt(text_blocks,  10),
+        image: parseInt(image_blocks, 10),
+      },
+    };
+  } catch (err) {
+    // pg_prewarm not installed, or indexes don't exist yet — not fatal.
+    return { loaded: false, error: err.message };
+  }
+}
+
+/**
+ * Check whether pg_stat_statements is installed AND actively collecting data.
+ *
+ * The extension requires two independent conditions to be true:
+ *   1. The migration has run and the extension row exists in pg_extension.
+ *   2. 'pg_stat_statements' appears in shared_preload_libraries in postgresql.conf,
+ *      meaning PostgreSQL was started with it loaded.  This only takes effect after
+ *      a full container restart — installing the extension alone is not enough.
+ *
+ * Returns:
+ *   { active: true }                    — extension is installed and collecting
+ *   { active: false, reason: string }   — not collecting; reason explains why
+ *
+ * Used at startup to emit a one-time informational log so operators know whether
+ * query profiling data is available in pg_stat_statements.
+ *
+ * @returns {Promise<{active: boolean, reason?: string}>}
+ */
+async function checkPgStatStatements() {
+  try {
+    // Check if the extension is installed (migration has run).
+    const extResult = await pool.query(
+      `SELECT EXISTS(
+         SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements'
+       ) AS installed`
+    );
+    if (!extResult.rows[0].installed) {
+      return { active: false, reason: 'extension not installed — run pending migrations first' };
+    }
+
+    // Check if it is loaded in shared_preload_libraries (requires restart to activate).
+    const settingResult = await pool.query(
+      `SELECT setting FROM pg_settings WHERE name = 'shared_preload_libraries'`
+    );
+    const libraries = settingResult.rows[0]?.setting ?? '';
+    if (!libraries.includes('pg_stat_statements')) {
+      return {
+        active: false,
+        reason: 'extension installed but not loaded — recreate the container to activate shared_preload_libraries',
+      };
+    }
+
+    return { active: true };
+  } catch (err) {
+    return { active: false, reason: err.message };
+  }
+}
+
 module.exports = {
   query: timedQuery,
   pool,
@@ -178,4 +307,6 @@ module.exports = {
   tryAdvisoryLock,
   withSessionAdvisoryLock,
   DB_ADVISORY_LOCKS,
+  prewarmHnswIndexes,
+  checkPgStatStatements,
 };

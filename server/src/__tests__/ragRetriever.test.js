@@ -71,6 +71,12 @@ describe('RAGRetriever', () => {
             release: jest.fn()
         };
         db.pool.connect.mockResolvedValue(mockPoolClient);
+
+        // Reset embedding stats TTL cache so each test starts with a cold cache
+        ragRetriever._embeddingCountCache = null;
+        ragRetriever._embeddingCountCachedAt = 0;
+        ragRetriever._hasMinimumCache = null;
+        ragRetriever._hasMinimumCachedAt = 0;
     });
 
     afterEach(() => {
@@ -709,7 +715,8 @@ describe('RAGRetriever', () => {
             );
             expect(setLocalCall).toBeDefined();
             // EF_SEARCH is evaluated at module load time; env var should not be set in test env
-            expect(setLocalCall[1][0]).toBe(parseInt(process.env.PGVECTOR_EF_SEARCH) || 80);
+            const efSearchValue = parseInt(process.env.PGVECTOR_EF_SEARCH) || 80;
+            expect(setLocalCall[0]).toContain(`SET LOCAL hnsw.ef_search = ${efSearchValue}`);
         });
 
         it('client is released even when vector query throws', async () => {
@@ -733,6 +740,94 @@ describe('RAGRetriever', () => {
             // Should return [] (error is caught), and client should be released
             expect(result).toEqual([]);
             expect(mockPoolClient.release).toHaveBeenCalled();
+        });
+
+        it('semanticSearchCandidates uses lower ef_search (EF_SEARCH_CANDIDATES) by default', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            await ragRetriever.semanticSearchCandidates({ title: 'Query' });
+
+            const setLocalCall = mockPoolClient.query.mock.calls.find(
+                call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
+            );
+            expect(setLocalCall).toBeDefined();
+            // EF_SEARCH_CANDIDATES defaults to 40 (PGVECTOR_EF_SEARCH_CANDIDATES env var)
+            const efSearchCandidatesValue = parseInt(process.env.PGVECTOR_EF_SEARCH_CANDIDATES) || 40;
+            expect(setLocalCall[0]).toContain(`SET LOCAL hnsw.ef_search = ${efSearchCandidatesValue}`);
+        });
+
+        it('semanticSearch respects per-call efSearch option override', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            await ragRetriever.semanticSearch({ title: 'Query' }, 5, { efSearch: 120 });
+
+            const setLocalCall = mockPoolClient.query.mock.calls.find(
+                call => typeof call[0] === 'string' && call[0].includes('SET LOCAL hnsw.ef_search')
+            );
+            expect(setLocalCall).toBeDefined();
+            expect(setLocalCall[0]).toContain('SET LOCAL hnsw.ef_search = 120');
+        });
+    });
+
+    describe('Embedding stats TTL cache', () => {
+        it('getEmbeddingCount() returns cached value on second call without hitting DB', async () => {
+            db.query.mockResolvedValueOnce({ rows: [{ count: '42' }] });
+
+            const first = await ragRetriever.getEmbeddingCount();
+            const second = await ragRetriever.getEmbeddingCount();
+
+            expect(first).toBe(42);
+            expect(second).toBe(42);
+            expect(db.query).toHaveBeenCalledTimes(1);
+        });
+
+        it('getEmbeddingCount() re-queries DB after TTL expires', async () => {
+            // Seed an expired cache entry
+            ragRetriever._embeddingCountCache = 99;
+            ragRetriever._embeddingCountCachedAt = Date.now() - 31_000;
+
+            db.query.mockResolvedValueOnce({ rows: [{ count: '55' }] });
+
+            const result = await ragRetriever.getEmbeddingCount();
+
+            expect(result).toBe(55);
+            expect(db.query).toHaveBeenCalledTimes(1);
+        });
+
+        it('_getHasMinimumCached() calls hasMinimumEmbeddings only once per TTL window', async () => {
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+
+            await ragRetriever._getHasMinimumCached();
+            await ragRetriever._getHasMinimumCached();
+
+            expect(embeddingService.hasMinimumEmbeddings).toHaveBeenCalledTimes(1);
+        });
+
+        it('_getHasMinimumCached() re-calls hasMinimumEmbeddings after TTL expires', async () => {
+            // Seed an expired cache entry
+            ragRetriever._hasMinimumCache = false;
+            ragRetriever._hasMinimumCachedAt = Date.now() - 31_000;
+
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+
+            const result = await ragRetriever._getHasMinimumCached();
+
+            expect(result).toBe(true);
+            expect(embeddingService.hasMinimumEmbeddings).toHaveBeenCalledTimes(1);
         });
     });
 });

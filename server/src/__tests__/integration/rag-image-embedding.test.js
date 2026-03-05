@@ -66,6 +66,11 @@ describe('RAG Image Embedding Integration', () => {
 
     beforeEach(async () => {
         jest.clearAllMocks();
+        // Reset ragRetriever's singleton TTL cache so it re-queries the fresh test DB.
+        // Without this, a stale false cached from an earlier integration test suite
+        // (when classification_embeddings was empty) causes semanticSearch to return [].
+        ragRetriever._hasMinimumCache = null;
+        ragRetriever._hasMinimumCachedAt = 0;
         await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
         await pool.query('TRUNCATE TABLE classification_history RESTART IDENTITY CASCADE');
         await pool.query('TRUNCATE TABLE media_server_items RESTART IDENTITY CASCADE');

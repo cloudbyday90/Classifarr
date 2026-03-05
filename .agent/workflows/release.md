@@ -136,6 +136,17 @@ git add coverage-baseline.json
 git commit -m "chore(ci): update coverage ratchet baseline for intentional change"
 ```
 
+### Security Checklist (mandatory)
+
+Before committing, work through [`docs/SECURITY_CHECKLIST.md`](../../docs/SECURITY_CHECKLIST.md). All automated gates (Section A) must pass and must already be green from the steps above. Then verify the manual checks (Sections B–N) and complete the sign-off block.
+
+Key manual checks:
+- **Section B** — confirm no route auth regressions in `server/src/routes/api.js`
+- **Section G** — confirm no debug scripts or log files are tracked in git
+- **Section H** — confirm `healthCheck()` and global error handler sanitize in production
+
+The sign-off block from `SECURITY_CHECKLIST.md` should be included in the release commit message or attached to the release ticket.
+
 ## 5. Commit Changes
 
 // turbo

@@ -137,7 +137,7 @@ describe('Migration Routes Integration', () => {
 
       const messages = getMessages();
       expect(messages).toContain('Preset not found');
-      expect(messages).toContain('Migration failed');
+      expect(messages).toContain('Error migrating rule');
 
       return result;
     });
@@ -174,7 +174,7 @@ describe('Migration Routes Integration', () => {
 
       const messages = getMessages();
       expect(messages).toContain('Preset is not accessible');
-      expect(messages).toContain('Migration failed');
+      expect(messages).toContain('Error migrating rule');
 
       return result;
     });
@@ -227,7 +227,7 @@ describe('Migration Routes Integration', () => {
 
     const entry = response.body.find((item) => item.library_id === libraryId);
     expect(entry).toBeDefined();
-    expect(entry.rule_count).toBe('2');
+    expect(entry.rule_count).toBe(2); // COUNT returns bigint; type parser converts to number
   });
 
   test('lists unmigrated rules for a library', async () => {

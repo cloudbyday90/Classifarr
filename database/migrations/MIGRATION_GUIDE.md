@@ -332,3 +332,114 @@ See `019_cleanup_omdb_config.sql` for a reference implementation:
 
 - Cause: Migration didn't preserve existing data
 - Prevention: Always test on database with real data before merging
+
+---
+
+## Conventions for New Migrations
+
+### Use TIMESTAMPTZ for All New Timestamp Columns
+
+All new timestamp columns **must** use `TIMESTAMPTZ` (`timestamp with time zone`), not
+`TIMESTAMP` / `timestamp without time zone`.
+
+#### Why
+PostgreSQL stores `TIMESTAMPTZ` values in UTC internally and converts to the session
+timezone only on display. `TIMESTAMP WITHOUT TIME ZONE` stores the literal clock time
+with no timezone meaning, so if the server's `TimeZone` setting changes, stored values
+are silently reinterpreted.
+
+Classifarr containers set `TZ=UTC` in the Dockerfile env, but user overrides
+(e.g. `TZ=America/New_York` in docker-compose) and future image changes make timezone
+transparency important. `TIMESTAMPTZ` eliminates an entire class of subtle time bugs.
+
+#### Convention
+
+```sql
+-- ✅ Correct for new columns and new tables:
+created_at  TIMESTAMPTZ DEFAULT NOW()  NOT NULL,
+updated_at  TIMESTAMPTZ DEFAULT NOW()  NOT NULL,
+expires_at  TIMESTAMPTZ,
+
+-- ❌ Legacy (do not use in new migrations):
+created_at  TIMESTAMP DEFAULT NOW(),
+```
+
+#### Existing tables
+The original core tables (`classification_history`, `task_queue`, `users`, `audit_log`,
+etc.) use `TIMESTAMP WITHOUT TIME ZONE`. Converting these requires a full table rewrite
+and carries risk of timezone-shifted values if any deployment has ever run with a
+non-UTC `TZ`. **Do not alter existing timestamp columns** unless you are certain the
+installation's timezone has always been UTC. New columns added to existing tables
+should still use `TIMESTAMPTZ`.
+
+---
+
+## Long-Term: Table Partitioning for classification_history
+
+> **Target:** Installations with > 500,000 rows in `classification_history`.
+> For typical home media server deployments (< 200k rows), this is not needed.
+
+### Why partition?
+
+- Log pruning becomes `DROP TABLE classification_history_2024_01` (instant) instead
+  of `DELETE ... WHERE created_at < '…'` followed by a slow VACUUM.
+- Query planner skips irrelevant partitions for any date-filtered search.
+- AUTOVACUUM works on much smaller sub-tables, reducing per-cycle cost.
+- Future HNSW index maintenance (if embeddings are co-located) is isolated per partition.
+
+### Pre-conditions before partitioning
+
+1. **Audit foreign keys** that reference `classification_history.id`:
+   - `classification_corrections.classification_id`
+   - `clarification_responses.classification_id`
+   - `content_analysis_log.classification_id`
+   - `error_log.classification_id`
+   PostgreSQL **cannot partition a table that has foreign keys pointing at it** unless
+   you drop and recreate those constraints against the partitioned parent.
+
+2. **Back up the database** before any partitioning migration.
+
+3. **Pick a partition key**: `created_at` (range partitioning by month) is the
+   natural choice since all cleanup queries filter by date.
+
+### High-level migration plan
+
+```sql
+-- Rough outline — implement as a custom, tested migration:
+
+-- 1. Create new partitioned table (no data yet)
+CREATE TABLE classification_history_partitioned (
+    LIKE classification_history INCLUDING ALL
+) PARTITION BY RANGE (created_at);
+
+-- 2. Create initial monthly partitions
+CREATE TABLE classification_history_2024_01
+    PARTITION OF classification_history_partitioned
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+-- ... repeat for each historical month and the upcoming months
+
+-- 3. Copy data in batches (avoid long lock by using INSERT ... SELECT in chunks)
+--    or use pg_partman for automated partition management.
+
+-- 4. Swap tables (requires brief ACCESS EXCLUSIVE during rename):
+ALTER TABLE classification_history RENAME TO classification_history_old;
+ALTER TABLE classification_history_partitioned RENAME TO classification_history;
+
+-- 5. Recreate foreign key constraints against the new partitioned parent.
+
+-- 6. Drop the old table: DROP TABLE classification_history_old;
+```
+
+### Recommended tooling
+- [`pg_partman`](https://github.com/pgpartman/pg_partman): automates partition
+  creation, retention, and drop policies. Add to the Docker image and configure
+  in a migration to set a monthly retention schedule.
+- [`pg_cron`](https://github.com/citusdata/pg_cron): runs `pg_partman`'s maintenance
+  function on a schedule (e.g. nightly at 2am) inside PostgreSQL itself, without
+  needing an external cron job.
+
+### When to do this
+Plan the partitioning migration when `classification_history` exceeds 500,000 rows
+or when the nightly cleanup DELETE+VACUUM starts taking more than 30 seconds
+(observable via `pg_stat_statements`).
+

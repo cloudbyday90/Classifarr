@@ -407,36 +407,42 @@ router.get('/stats', async (req, res, next) => {
        LIMIT 10`
     );
 
-    // Recent 24h trend
-    const last24hResult = await db.query(
-      `SELECT 
-        COUNT(*) as logs_24h,
-        COUNT(*) FILTER (WHERE level = 'ERROR') as errors_24h,
-        COUNT(*) FILTER (WHERE level = 'WARN') as warnings_24h,
-        COUNT(*) FILTER (WHERE level = 'INFO') as info_24h,
-        COUNT(*) FILTER (WHERE level = 'DEBUG') as debug_24h
-       FROM error_log
-       WHERE created_at >= NOW() - INTERVAL '24 hours'`
-    );
-
-    // Recent 7d trend
-    const last7dResult = await db.query(
-      `SELECT 
-        COUNT(*) as logs_7d,
-        COUNT(*) FILTER (WHERE level = 'ERROR') as errors_7d,
-        COUNT(*) FILTER (WHERE level = 'WARN') as warnings_7d,
-        COUNT(*) FILTER (WHERE level = 'INFO') as info_7d,
-        COUNT(*) FILTER (WHERE level = 'DEBUG') as debug_7d
+    // Combined 24h + 7d trend — single scan using conditional aggregation
+    const trendsResult = await db.query(
+      `SELECT
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours') AS logs_24h,
+        COUNT(*) FILTER (WHERE level = 'ERROR' AND created_at >= NOW() - INTERVAL '24 hours') AS errors_24h,
+        COUNT(*) FILTER (WHERE level = 'WARN'  AND created_at >= NOW() - INTERVAL '24 hours') AS warnings_24h,
+        COUNT(*) FILTER (WHERE level = 'INFO'  AND created_at >= NOW() - INTERVAL '24 hours') AS info_24h,
+        COUNT(*) FILTER (WHERE level = 'DEBUG' AND created_at >= NOW() - INTERVAL '24 hours') AS debug_24h,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') AS logs_7d,
+        COUNT(*) FILTER (WHERE level = 'ERROR' AND created_at >= NOW() - INTERVAL '7 days') AS errors_7d,
+        COUNT(*) FILTER (WHERE level = 'WARN'  AND created_at >= NOW() - INTERVAL '7 days') AS warnings_7d,
+        COUNT(*) FILTER (WHERE level = 'INFO'  AND created_at >= NOW() - INTERVAL '7 days') AS info_7d,
+        COUNT(*) FILTER (WHERE level = 'DEBUG' AND created_at >= NOW() - INTERVAL '7 days') AS debug_7d
        FROM error_log
        WHERE created_at >= NOW() - INTERVAL '7 days'`
     );
 
+    const tr = trendsResult.rows[0];
     res.json({
       totals: totalsResult.rows[0],
       topModules: moduleResult.rows,
       trends: {
-        last24h: last24hResult.rows[0],
-        last7d: last7dResult.rows[0]
+        last24h: {
+          logs_24h:     tr.logs_24h,
+          errors_24h:   tr.errors_24h,
+          warnings_24h: tr.warnings_24h,
+          info_24h:     tr.info_24h,
+          debug_24h:    tr.debug_24h
+        },
+        last7d: {
+          logs_7d:     tr.logs_7d,
+          errors_7d:   tr.errors_7d,
+          warnings_7d: tr.warnings_7d,
+          info_7d:     tr.info_7d,
+          debug_7d:    tr.debug_7d
+        }
       }
     });
   } catch (error) {
@@ -485,7 +491,7 @@ router.post('/cleanup', async (req, res, next) => {
   try {
     // Get retention settings
     const settingsResult = await db.query(
-      `SELECT key, value FROM settings WHERE key IN ('log_retention_days', 'error_log_retention_days')`
+      `SELECT key, value FROM settings WHERE key IN ('log_retention_days', 'error_log_retention_days', 'rag_log_retention_days')`
     );
 
     const settings = {};
@@ -495,6 +501,7 @@ router.post('/cleanup', async (req, res, next) => {
 
     const errorRetentionDays = settings.error_log_retention_days || 90;
     const appLogRetentionDays = settings.log_retention_days || 30;
+    const ragLogRetentionDays = settings.rag_log_retention_days || 30;
 
     // Clean up old error logs
     const errorLogResult = await db.query(
@@ -512,16 +519,26 @@ router.post('/cleanup', async (req, res, next) => {
       [appLogRetentionDays]
     );
 
+    // Clean up old RAG logs
+    const ragLogResult = await db.query(
+      `DELETE FROM rag_logs
+       WHERE created_at < NOW() - INTERVAL '1 day' * $1
+       RETURNING id`,
+      [ragLogRetentionDays]
+    );
+
     logger.info('Log cleanup completed', {
       errorLogsDeleted: errorLogResult.rows.length,
-      appLogsDeleted: appLogResult.rows.length
+      appLogsDeleted: appLogResult.rows.length,
+      ragLogsDeleted: ragLogResult.rows.length
     });
 
     res.json({
       success: true,
       deleted: {
         errorLogs: errorLogResult.rows.length,
-        appLogs: appLogResult.rows.length
+        appLogs: appLogResult.rows.length,
+        ragLogs: ragLogResult.rows.length
       }
     });
   } catch (error) {
@@ -540,17 +557,20 @@ router.delete('/', async (req, res, next) => {
   try {
     const errorLogResult = await db.query('DELETE FROM error_log');
     const appLogResult = await db.query('DELETE FROM app_log');
+    const ragLogResult = await db.query('DELETE FROM rag_logs');
 
     logger.info('All logs cleared', {
       errorLogsDeleted: errorLogResult.rowCount,
-      appLogsDeleted: appLogResult.rowCount
+      appLogsDeleted: appLogResult.rowCount,
+      ragLogsDeleted: ragLogResult.rowCount
     });
 
     res.json({
       success: true,
       deleted: {
         errorLogs: errorLogResult.rowCount,
-        appLogs: appLogResult.rowCount
+        appLogs: appLogResult.rowCount,
+        ragLogs: ragLogResult.rowCount
       }
     });
   } catch (error) {

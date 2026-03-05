@@ -1250,6 +1250,49 @@ describe('QueueService', () => {
             const sql = db.query.mock.calls[0][0];
             expect(sql).toMatch(/ORDER BY.*priority.*DESC.*created_at.*ASC/s);
         });
+
+        it('dequeue SET includes visible_at assignment', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+            await queueService.dequeue();
+            const sql = db.query.mock.calls[0][0];
+            expect(sql).toMatch(/SET.*visible_at\s*=\s*NOW\(\)/s);
+        });
+
+        it('dequeue WHERE includes visibility-timeout recovery branch', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+            await queueService.dequeue();
+            const sql = db.query.mock.calls[0][0];
+            expect(sql).toMatch(/status\s*=\s*'processing'.*visible_at\s*<=\s*NOW\(\)/s);
+        });
+    });
+
+    describe('recoverExpiredVisibilityTasks', () => {
+        it('resets processing rows whose visible_at has expired', async () => {
+            db.query.mockResolvedValue({ rowCount: 2, rows: [{ id: 10 }, { id: 11 }] });
+            const count = await queueService.recoverExpiredVisibilityTasks();
+            expect(count).toBe(2);
+            const sql = db.query.mock.calls[0][0];
+            expect(sql).toMatch(/visible_at\s*<=\s*NOW\(\)/);
+            expect(sql).toMatch(/status\s*=\s*'pending'/);
+            expect(sql).toMatch(/visible_at\s*=\s*NULL/);
+        });
+
+        it('returns 0 and logs error when query fails', async () => {
+            db.query.mockRejectedValue(new Error('connection lost'));
+            const count = await queueService.recoverExpiredVisibilityTasks();
+            expect(count).toBe(0);
+            expect(queueService.logger.error).toHaveBeenCalledWith(
+                'Failed to recover expired visibility tasks',
+                expect.objectContaining({ error: 'connection lost' })
+            );
+        });
+
+        it('returns 0 without warn when no rows expired', async () => {
+            db.query.mockResolvedValue({ rowCount: 0, rows: [] });
+            const count = await queueService.recoverExpiredVisibilityTasks();
+            expect(count).toBe(0);
+            expect(queueService.logger.warn).not.toHaveBeenCalled();
+        });
     });
 
     describe('resetStaleProcessingTasks', () => {
@@ -1280,6 +1323,10 @@ describe('QueueService', () => {
                 ([sql]) => sql && sql.includes('UPDATE task_queue')
             );
             expect(updateCall).toBeDefined();
+            // Age guard must be present so very-recent tasks aren't reset on rolling restart
+            expect(updateCall[0]).toMatch(/started_at.*<.*NOW\(\).*INTERVAL/s);
+            // visible_at should also be cleared on reset
+            expect(updateCall[0]).toMatch(/visible_at\s*=\s*NULL/);
             // Should COMMIT when lock is acquired
             const commitCall = mockClient.query.mock.calls.find(([sql]) => sql === 'COMMIT');
             expect(commitCall).toBeDefined();
@@ -1312,6 +1359,139 @@ describe('QueueService', () => {
                 'Failed to reset stale tasks',
                 expect.objectContaining({ error: 'connection refused' })
             );
+        });
+    });
+
+    describe('gracefulShutdown', () => {
+        it('sets error_message to diagnostic note instead of NULL on in-flight tasks', async () => {
+            db.query.mockResolvedValue({ rowCount: 2, rows: [{ id: 10 }, { id: 11 }] });
+            queueService.running = true;
+
+            await queueService.gracefulShutdown();
+
+            const updateCall = db.query.mock.calls.find(
+                ([sql]) => typeof sql === 'string' && sql.includes("SET status = 'pending'")
+            );
+            expect(updateCall).toBeDefined();
+            expect(updateCall[0]).toContain("error_message = 'Reset by graceful shutdown'");
+            expect(updateCall[0]).not.toMatch(/error_message\s*=\s*NULL/);
+        });
+
+        it('does not throw when the DB update fails', async () => {
+            db.query.mockRejectedValue(new Error('DB gone'));
+            queueService.running = true;
+
+            await expect(queueService.gracefulShutdown()).resolves.toBeUndefined();
+            expect(queueService.logger.error).toHaveBeenCalledWith(
+                'Graceful shutdown: failed to reset in-flight tasks',
+                expect.objectContaining({ error: 'DB gone' })
+            );
+        });
+    });
+
+    describe('withOptionalTransaction', () => {
+        it('attaches rollbackFailed and rollbackError to thrown error when ROLLBACK also fails', async () => {
+            const workError = new Error('work bombed');
+            const mockClient = {
+                query: jest.fn()
+                    .mockResolvedValueOnce({})                           // BEGIN
+                    .mockRejectedValueOnce(new Error('rollback failed')), // ROLLBACK
+                release: jest.fn()
+            };
+            // database.js does not export connect; inject it so withOptionalTransaction
+            // takes the transactional code path instead of the no-op fallback.
+            db.connect = jest.fn().mockResolvedValue(mockClient);
+
+            const thrownError = await queueService
+                .withOptionalTransaction(async () => { throw workError; }, 'test-ctx')
+                .catch(e => e);
+
+            expect(thrownError).toBe(workError);
+            expect(thrownError.rollbackFailed).toBe(true);
+            expect(thrownError.rollbackError).toBe('rollback failed');
+            expect(mockClient.release).toHaveBeenCalled();
+        });
+
+        it('does not add rollback properties when ROLLBACK succeeds', async () => {
+            const workError = new Error('work failed cleanly');
+            const mockClient = {
+                query: jest.fn()
+                    .mockResolvedValueOnce({})  // BEGIN
+                    .mockResolvedValueOnce({}), // ROLLBACK
+                release: jest.fn()
+            };
+            db.connect = jest.fn().mockResolvedValue(mockClient);
+
+            const thrownError = await queueService
+                .withOptionalTransaction(async () => { throw workError; }, 'test-ctx')
+                .catch(e => e);
+
+            expect(thrownError).toBe(workError);
+            expect(thrownError.rollbackFailed).toBeUndefined();
+            expect(thrownError.rollbackError).toBeUndefined();
+            expect(mockClient.release).toHaveBeenCalled();
+        });
+    });
+
+    describe('rebuild_hnsw_index task', () => {
+        it('runs CREATE INDEX CONCURRENTLY for all three image indexes and completes task', async () => {
+            const task = {
+                id: 99,
+                task_type: 'rebuild_hnsw_index',
+                payload: JSON.stringify({ reason: 'image_dimension_mismatch', targetDims: 768 }),
+                attempts: 1,
+                max_attempts: 3
+            };
+
+            db.query.mockResolvedValue({ rows: [] });
+
+            await queueService.processTask(task);
+
+            const queryCalls = db.query.mock.calls.map(([sql]) => sql);
+
+            // All three indexes must be created with CONCURRENTLY (no transaction block)
+            const hnsw = queryCalls.find(s => s.includes('idx_embeddings_image_hnsw') && s.includes('CONCURRENTLY'));
+            expect(hnsw).toBeDefined();
+            expect(hnsw).toMatch(/USING hnsw/i);
+
+            const present = queryCalls.find(s => s.includes('idx_embeddings_image_present') && s.includes('CONCURRENTLY'));
+            expect(present).toBeDefined();
+
+            const hash = queryCalls.find(s => s.includes('idx_embeddings_image_hash') && s.includes('CONCURRENTLY'));
+            expect(hash).toBeDefined();
+
+            // Task must be marked completed
+            const completeCall = queryCalls.find(s => /UPDATE task_queue\s+SET status = 'completed'/i.test(s));
+            expect(completeCall).toBeDefined();
+        });
+
+        it('propagates error and fails task when CREATE INDEX CONCURRENTLY throws', async () => {
+            const task = {
+                id: 100,
+                task_type: 'rebuild_hnsw_index',
+                payload: JSON.stringify({ reason: 'image_dimension_mismatch', targetDims: 512 }),
+                attempts: 2,   // nextAttempt = 3 >= max_attempts(3) → permanent failure
+                max_attempts: 3
+            };
+
+            db.query.mockImplementation((sql) => {
+                if (typeof sql === 'string' && sql.includes('CREATE INDEX CONCURRENTLY')) {
+                    return Promise.reject(new Error('index build failed'));
+                }
+                return Promise.resolve({ rows: [] });
+            });
+
+            await queueService.processTask(task);
+
+            expect(queueService.logger.error).toHaveBeenCalledWith(
+                'Task processing failed',
+                expect.objectContaining({ taskId: 100, error: 'index build failed' })
+            );
+
+            const failCall = db.query.mock.calls.find(
+                ([sql]) => typeof sql === 'string' && /UPDATE task_queue\s+SET status = 'failed'/i.test(sql)
+            );
+            expect(failCall).toBeDefined();
         });
     });
 });

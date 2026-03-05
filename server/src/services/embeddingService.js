@@ -455,30 +455,30 @@ class EmbeddingService {
                 logger.warn(`Image embedding dimension mismatch detected (Target: ${targetDims}). Auto-healing image vector schema...`);
 
                 try {
-                    await db.query('BEGIN');
-                    await db.query('DROP INDEX IF EXISTS idx_embeddings_image_hnsw');
-                    await db.query('DROP INDEX IF EXISTS idx_embeddings_image_present');
-                    await db.query('DROP INDEX IF EXISTS idx_embeddings_image_hash');
-                    await db.query('ALTER TABLE classification_embeddings DROP COLUMN image_embedding');
-                    await db.query(`ALTER TABLE classification_embeddings ADD COLUMN image_embedding vector(${targetDims})`);
-                    await db.query(`
-                        CREATE INDEX IF NOT EXISTS idx_embeddings_image_hnsw
-                        ON classification_embeddings USING hnsw (image_embedding vector_cosine_ops)
-                        WITH (m = 16, ef_construction = 64)
-                    `);
-                    await db.query(`
-                        CREATE INDEX IF NOT EXISTS idx_embeddings_image_present
-                        ON classification_embeddings (image_provider, image_model)
-                        WHERE image_embedding IS NOT NULL
-                    `);
-                    await db.query(`
-                        CREATE INDEX IF NOT EXISTS idx_embeddings_image_hash
-                        ON classification_embeddings (image_embedding_hash, image_model, image_embedding_size)
-                        WHERE image_embedding_hash IS NOT NULL
-                    `);
-                    await db.query('COMMIT');
+                    // All schema DDL must run on a single pinned client — pool.query() dispatches
+                    // each statement to a random idle connection, breaking transaction isolation.
+                    // CREATE INDEX (especially HNSW) is intentionally excluded: HNSW builds are
+                    // CPU-proportional to table size and can block for minutes. B-tree supporting
+                    // indexes are also excluded so the heal transaction stays minimal.
+                    // All three indexes are rebuilt asynchronously via a rebuild_hnsw_index task.
+                    await db.withTransaction(async (client) => {
+                        await client.query('DROP INDEX IF EXISTS idx_embeddings_image_hnsw');
+                        await client.query('DROP INDEX IF EXISTS idx_embeddings_image_present');
+                        await client.query('DROP INDEX IF EXISTS idx_embeddings_image_hash');
+                        await client.query('ALTER TABLE classification_embeddings DROP COLUMN image_embedding');
+                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN image_embedding vector(${targetDims})`);
+                        // Index creation is deferred — see rebuild_hnsw_index task enqueued below.
+                    });
 
-                    logger.info(`Image vector schema auto-healed to vector(${targetDims}). Retrying storage...`);
+                    // Enqueue a background task to rebuild all three image indexes with
+                    // CREATE INDEX CONCURRENTLY, which cannot run inside a transaction.
+                    await db.query(
+                        `INSERT INTO task_queue (task_type, payload, priority, source, max_attempts)
+                         VALUES ('rebuild_hnsw_index', $1::jsonb, 5, 'system', 3)`,
+                        [JSON.stringify({ reason: 'image_dimension_mismatch', targetDims })]
+                    );
+
+                    logger.info(`Image vector schema auto-healed to vector(${targetDims}). HNSW index rebuild queued as background task.`);
 
                     await db.query(`
                         UPDATE classification_embeddings
@@ -508,7 +508,6 @@ class EmbeddingService {
                         provider: imageResult.provider
                     };
                 } catch (healError) {
-                    await db.query('ROLLBACK');
                     logger.error('Failed to auto-heal image embedding schema', {
                         classificationId,
                         error: healError.message
@@ -574,16 +573,15 @@ class EmbeddingService {
                     // Truncate and alter table to match new dimension
                     // We must truncate because existing vectors are incompatible
                     // Strategy: Drop and recreate column to avoid pgvector casting issues
-                    await db.query('BEGIN');
-                    await db.query('TRUNCATE TABLE classification_embeddings');
-                    await db.query('ALTER TABLE classification_embeddings DROP COLUMN embedding');
-                    await db.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`);
-
-                    // Re-create the index if needed (though dropping column usually drops index)
-                    // We'll create a basic IVFFLAT index for now if rows > 0, but since we truncated, 
-                    // we don't need to index immediately. The migration logic handles index creation usually.
-
-                    await db.query('COMMIT');
+                    // All DDL must run on a single pinned client — pool.query() dispatches each
+                    // statement to a random idle connection, breaking transaction isolation for DDL.
+                    await db.withTransaction(async (client) => {
+                        await client.query('TRUNCATE TABLE classification_embeddings');
+                        await client.query('ALTER TABLE classification_embeddings DROP COLUMN embedding');
+                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`);
+                        // Dropping the column removes dependent indexes; the migration runner
+                        // recreates them. Safe to skip here since the table was truncated anyway.
+                    });
 
                     logger.info(`Schema auto-healed to vector(${targetDims}). Retrying storage...`);
 
@@ -609,7 +607,6 @@ class EmbeddingService {
                     };
 
                 } catch (healingError) {
-                    await db.query('ROLLBACK');
                     logger.error('Failed to auto-heal database schema', { error: healingError.message });
                     throw error; // Throw original error if healing fails
                 }

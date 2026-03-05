@@ -364,6 +364,35 @@ async function startServer() {
       // Continue anyway - some migrations might fail if already applied
     }
 
+    // Prewarm HNSW vector indexes into shared_buffers after restart.
+    // Front-loads disk I/O so the first RAG search isn't cold from disk.
+    // Runs after migrations so the pg_prewarm extension is guaranteed to exist.
+    // Non-blocking: a failure here (e.g. extension not yet installed) is only logged.
+    try {
+      const prewarmResult = await db.prewarmHnswIndexes();
+      if (prewarmResult.loaded) {
+        console.log(`HNSW indexes prewarmed: ${prewarmResult.blocks.text} text blocks, ${prewarmResult.blocks.image} image blocks`);
+      }
+    } catch (prewarmError) {
+      console.warn('HNSW prewarm skipped:', prewarmError.message);
+    }
+
+    // Check whether pg_stat_statements is loaded and collecting.
+    // This is informational only — a missing/inactive extension does not block startup.
+    // The extension requires shared_preload_libraries to be set in postgresql.conf,
+    // which only takes effect after a container restart (docker-entrypoint.sh sets it
+    // on first boot / upgrade, but existing containers need a recreate to pick it up).
+    try {
+      const pgssResult = await db.checkPgStatStatements();
+      if (pgssResult.active) {
+        console.log('pg_stat_statements: active — query profiling is available');
+      } else {
+        console.warn(`pg_stat_statements: inactive — ${pgssResult.reason}`);
+      }
+    } catch (pgssError) {
+      console.warn('pg_stat_statements check failed:', pgssError.message);
+    }
+
     // Run post-upgrade tasks
     try {
       const postUpgradeService = require('./services/postUpgradeService');

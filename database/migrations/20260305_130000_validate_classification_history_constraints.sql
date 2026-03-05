@@ -29,8 +29,45 @@
 --   SELECT COUNT(*) FROM classification_history
 --     WHERE status = 'completed' AND library_id IS NULL;
 
-ALTER TABLE public.classification_history
-    VALIDATE CONSTRAINT chk_classification_confidence_range;
+-- Data scrub: clamp confidence to 0-100 range.
+-- Confidence should always be stored as a percentage (0-100) by the app, but
+-- this guards against any historical data from before that convention was enforced.
+UPDATE public.classification_history
+SET confidence = LEAST(GREATEST(confidence, 0), 100)
+WHERE confidence IS NOT NULL
+  AND (confidence < 0 OR confidence > 100);
 
-ALTER TABLE public.classification_history
-    VALIDATE CONSTRAINT chk_classification_completed_has_library;
+-- Data scrub: completed rows whose library was later deleted (ON DELETE SET NULL)
+-- would violate chk_classification_completed_has_library.
+-- Reclassify as 'failed' so the row remains meaningful and the constraint passes.
+UPDATE public.classification_history
+SET status        = 'failed',
+    error_message = COALESCE(error_message, 'Library was deleted after this item was classified')
+WHERE status    = 'completed'
+  AND library_id IS NULL;
+
+-- Validate confidence range constraint (idempotent: only runs if constraint is still NOT VALID)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname      = 'chk_classification_confidence_range'
+          AND conrelid     = 'public.classification_history'::regclass
+          AND NOT convalidated
+    ) THEN
+        EXECUTE 'ALTER TABLE public.classification_history VALIDATE CONSTRAINT chk_classification_confidence_range';
+    END IF;
+END $$;
+
+-- Validate completed-has-library constraint (idempotent: only runs if constraint is still NOT VALID)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname      = 'chk_classification_completed_has_library'
+          AND conrelid     = 'public.classification_history'::regclass
+          AND NOT convalidated
+    ) THEN
+        EXECUTE 'ALTER TABLE public.classification_history VALIDATE CONSTRAINT chk_classification_completed_has_library';
+    END IF;
+END $$;

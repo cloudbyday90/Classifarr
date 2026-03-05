@@ -60,7 +60,10 @@ class ManualBackfillService {
     async start(options = {}) {
         // Check if RAG is enabled before starting
         const configResult = await db.query('SELECT rag_enabled FROM ai_provider_config WHERE id = 1');
-        if (!configResult.rows[0]?.rag_enabled) {
+        if (configResult.rows.length === 0) {
+            throw new Error('RAG configuration not found. Complete setup in Settings before running backfill.');
+        }
+        if (!configResult.rows[0].rag_enabled) {
             throw new Error('RAG is not enabled. Please enable RAG in settings before running backfill.');
         }
 

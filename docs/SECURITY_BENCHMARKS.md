@@ -1307,6 +1307,7 @@ docker compose config
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-05 | 1.7.0 | Unreleased security hardening: (1) `check_ollama_config.js` and `logs.txt` removed from git tracking—`check_ollama_config.js` was a debug script doing `SELECT * FROM ollama_config` with `process.exit()`; (2) `db.healthCheck()` now returns a generic `'Database connection failed'` string in `NODE_ENV=production` instead of the raw pg `err.message` (which can contain internal host IPs/ports); `check_*.js` and `logs*.txt` patterns added to `.gitignore`. CWE-200 (Information Exposure) posture strengthened for future unauthenticated `/health` endpoint use. |
 | 2026-02-25 | 1.6.0 | Aligned benchmark claims with current docs and deployment behavior: documented Docker Content Trust, interface binding, and image pinning guidance in README; updated NIST GV.PO to compliant with SECURITY.md coverage; clarified HTTPS wording for local HTTP compatibility; added verification command checklist |
 | 2026-02-25 | 1.5.0 | Added enforced CI security gates for gitleaks and Trivy, integrated server SAST linting (`eslint-plugin-security`), and aligned benchmark scan language with implemented workflows |
 | 2026-02-25 | 1.4.0 | Implemented CSRF middleware for cookie-authenticated write requests (double-submit cookie/header), restored CWE-352 compliance, and documented local HTTP compatibility via `FORCE_SECURE_COOKIES=false` |

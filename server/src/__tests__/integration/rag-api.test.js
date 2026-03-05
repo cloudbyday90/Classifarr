@@ -516,15 +516,15 @@ describe('RAG API Integration Tests', () => {
             `, [mediaServer.rows[0].id]);
 
             const classificationOne = await pool.query(`
-                INSERT INTO classification_history (tmdb_id, media_type, title)
-                VALUES (100, 'movie', 'Pending Text')
+                INSERT INTO classification_history (tmdb_id, media_type, title, library_id)
+                VALUES (100, 'movie', 'Pending Text', $1)
                 RETURNING id
-            `);
+            `, [library.rows[0].id]);
             const classificationTwo = await pool.query(`
-                INSERT INTO classification_history (tmdb_id, media_type, title)
-                VALUES (200, 'movie', 'Pending Image')
+                INSERT INTO classification_history (tmdb_id, media_type, title, library_id)
+                VALUES (200, 'movie', 'Pending Image', $1)
                 RETURNING id
-            `);
+            `, [library.rows[0].id]);
 
             const dimsResult = await pool.query(`
                 SELECT format_type(att.atttypid, att.atttypmod) AS type

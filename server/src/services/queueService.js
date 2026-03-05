@@ -60,6 +60,15 @@ const OMDB_SSL_WARN_THROTTLE_MS = parseEnvMs(process.env.OMDB_SSL_WARN_THROTTLE_
 const OMDB_SSL_BLOCK_MS = parseEnvMs(process.env.OMDB_SSL_BLOCK_MS, 15 * 60 * 1000);
 const OMDB_SSL_RECOVERY_PROBE_MS = parseEnvMs(process.env.OMDB_SSL_RECOVERY_PROBE_MS, 60 * 1000);
 
+// Visibility timeout: how long a worker holds exclusive ownership of a task before
+// another worker (or the periodic recovery job) may re-claim it. Must exceed the
+// longest expected task duration. Configurable for environments with slow AI models.
+const VISIBILITY_TIMEOUT_MINUTES = parseInt(process.env.TASK_VISIBILITY_TIMEOUT_MINUTES || '10', 10);
+
+// How often the worker loop checks for tasks whose visibility window has expired
+// (as a safety net for crash recovery between restarts).
+const VISIBILITY_RECOVERY_INTERVAL_MS = 60_000;
+
 class QueueService {
     /**
      * Create a new QueueService instance
@@ -93,6 +102,8 @@ class QueueService {
         this.lastOmdbSslWarnAt = 0;
         this.omdbSslBlockedUntil = 0;
         this.lastOmdbSslProbeAt = 0;
+        // Tracks when visibility-timeout recovery last ran in the worker loop
+        this.lastRecoveryCheck = 0;
     }
 
     async isOmdbSslBlocked(omdbApiKey, title) {
@@ -169,11 +180,21 @@ class QueueService {
     async dequeue() {
         try {
             const result = await this.db.query(
+                // Picks up either:
+                //   (a) a pending task whose retry window has elapsed, OR
+                //   (b) a processing task whose visibility window has expired
+                //       (crash/OOM recovery — the worker that held this task is gone).
+                // Sets visible_at to NOW() + VISIBILITY_TIMEOUT_MINUTES so that if
+                // THIS worker also crashes, another worker can recover it after the window.
                 `UPDATE task_queue
-         SET status = 'processing', started_at = NOW()
+         SET status = 'processing', started_at = NOW(),
+             visible_at = NOW() + INTERVAL '${VISIBILITY_TIMEOUT_MINUTES} minutes'
          WHERE id = (
            SELECT id FROM task_queue
-           WHERE status = 'pending' AND next_retry_at <= NOW()
+           WHERE (status = 'pending' AND next_retry_at <= NOW())
+              OR (status = 'processing'
+                  AND visible_at IS NOT NULL
+                  AND visible_at <= NOW())
            ORDER BY priority DESC, created_at ASC
            LIMIT 1
            FOR UPDATE SKIP LOCKED
@@ -195,7 +216,7 @@ class QueueService {
         try {
             await this.db.query(
                 `UPDATE task_queue
-         SET status = 'completed', completed_at = NOW(), payload = payload || $2
+         SET status = 'completed', completed_at = NOW(), visible_at = NULL, payload = payload || $2
          WHERE id = $1`,
                 [taskId, JSON.stringify({ result })]
             );
@@ -228,7 +249,7 @@ class QueueService {
                     `UPDATE task_queue
            SET status = 'pending', error_message = $2, attempts = $3,
                next_retry_at = NOW() + INTERVAL '${delaySeconds} seconds',
-               started_at = NULL
+               started_at = NULL, visible_at = NULL
            WHERE id = $1`,
                     [taskId, errorMessage, nextAttempt]
                 );
@@ -977,6 +998,42 @@ class QueueService {
                     await this.processRatingNormalization(task);
                     break;
 
+                case 'rebuild_hnsw_index': {
+                    // Rebuilds image embedding indexes deferred from the dimension-mismatch auto-heal
+                    // in embeddingService.storeImageEmbedding(). HNSW builds are CPU-proportional to
+                    // table size and can block for minutes inside a transaction; running them here via
+                    // CREATE INDEX CONCURRENTLY avoids ACCESS EXCLUSIVE lock contention during writes.
+                    // IMPORTANT: CREATE INDEX CONCURRENTLY must NOT run inside a transaction block.
+                    // pool-level db.query() uses per-statement autocommit — withTransaction() must
+                    // never be used for these statements.
+                    this.logger.info('Rebuilding deferred HNSW and B-tree image indexes...');
+                    await this.db.query(`
+                        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_embeddings_image_hnsw
+                        ON classification_embeddings USING hnsw (image_embedding vector_cosine_ops)
+                        WITH (m = 16, ef_construction = 64)
+                    `);
+                    await this.db.query(`
+                        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_embeddings_image_present
+                        ON classification_embeddings (image_provider, image_model)
+                        WHERE image_embedding IS NOT NULL
+                    `);
+                    await this.db.query(`
+                        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_embeddings_image_hash
+                        ON classification_embeddings (image_embedding_hash, image_model, image_embedding_size)
+                        WHERE image_embedding_hash IS NOT NULL
+                    `);
+                    this.logger.info('HNSW and supporting image indexes rebuilt successfully.');
+                    await this.completeTask(task.id, {
+                        rebuilt: true,
+                        indexes: [
+                            'idx_embeddings_image_hnsw',
+                            'idx_embeddings_image_present',
+                            'idx_embeddings_image_hash'
+                        ]
+                    });
+                    break;
+                }
+
                 default:
                     this.logger.warn('Unknown task type', { taskType: task.task_type });
                     await this.failTask(task.id, `Unknown task type: ${task.task_type}`, task.attempts, task.max_attempts);
@@ -1016,10 +1073,15 @@ class QueueService {
                 return 0;
             }
             const result = await client.query(
+                // Age guard: only reset tasks that have been processing for more than
+                // VISIBILITY_TIMEOUT_MINUTES. Tasks started very recently (e.g. during
+                // a rolling restart overlap) are left alone and will self-recover via
+                // the visibility timeout in the worker loop.
                 `UPDATE task_queue 
-                 SET status = 'pending', started_at = NULL,
+                 SET status = 'pending', started_at = NULL, visible_at = NULL,
                      error_message = 'Reset on startup - previous worker crashed'
                  WHERE status = 'processing'
+                   AND (started_at IS NULL OR started_at < NOW() - INTERVAL '${VISIBILITY_TIMEOUT_MINUTES} minutes')
                  RETURNING id`
             );
             await client.query('COMMIT');
@@ -1055,6 +1117,16 @@ class QueueService {
         this.logger.info('Queue worker started');
 
         while (this.running) {
+            // Periodic visibility-timeout recovery — runs every VISIBILITY_RECOVERY_INTERVAL_MS.
+            // Re-queues any processing tasks whose window has expired due to worker crash/OOM.
+            const now = Date.now();
+            if (now - this.lastRecoveryCheck >= VISIBILITY_RECOVERY_INTERVAL_MS) {
+                this.lastRecoveryCheck = now;
+                this.recoverExpiredVisibilityTasks().catch(err => {
+                    this.logger.error('Visibility timeout recovery failed', { error: err.message });
+                });
+            }
+
             try {
                 if (this.processing < MAX_CONCURRENT) {
                     const task = await this.dequeue();
@@ -1067,7 +1139,7 @@ class QueueService {
                             if (!aiReady) {
                                 // Put task back in queue
                                 await this.db.query(
-                                    `UPDATE task_queue SET status = 'pending', started_at = NULL WHERE id = $1`,
+                                    `UPDATE task_queue SET status = 'pending', started_at = NULL, visible_at = NULL WHERE id = $1`,
                                     [task.id]
                                 );
                                 // Wait and continue
@@ -1110,12 +1182,44 @@ class QueueService {
      * Graceful shutdown: stop the worker loop and reset any in-flight tasks back
      * to 'pending' so they are retried on next startup without a stale-task WARN.
      */
+    /**
+     * Periodic recovery: re-queue any tasks whose visibility window has expired.
+     * Called from the worker loop every VISIBILITY_RECOVERY_INTERVAL_MS.
+     * Provides crash/OOM recovery without requiring a process restart.
+     *
+     * @returns {Promise<number>} number of tasks recovered
+     */
+    async recoverExpiredVisibilityTasks() {
+        try {
+            const result = await this.db.query(
+                `UPDATE task_queue
+                 SET status = 'pending', started_at = NULL, visible_at = NULL,
+                     error_message = 'Recovered: visibility timeout expired'
+                 WHERE status = 'processing'
+                   AND visible_at IS NOT NULL
+                   AND visible_at <= NOW()
+                 RETURNING id`
+            );
+            if (result.rowCount > 0) {
+                this.logger.warn('Recovered tasks with expired visibility timeout', {
+                    count: result.rowCount,
+                    taskIds: result.rows.map(r => r.id),
+                });
+            }
+            return result.rowCount;
+        } catch (error) {
+            this.logger.error('Failed to recover expired visibility tasks', { error: error.message });
+            return 0;
+        }
+    }
+
     async gracefulShutdown() {
         this.stopWorker();
         try {
             const result = await this.db.query(
                 `UPDATE task_queue
-                 SET status = 'pending', started_at = NULL, error_message = NULL
+                 SET status = 'pending', started_at = NULL, visible_at = NULL,
+                     error_message = 'Reset by graceful shutdown'
                  WHERE status = 'processing'
                  RETURNING id`
             );
@@ -1765,7 +1869,14 @@ class QueueService {
     }
 
     /**
-     * Clear all queue data and trigger fresh library sync
+     * Execute `work(client)` inside a transaction if a real pool is available;
+     * falls back to calling `work(db)` directly when `this.db` is a bare query
+     * object (e.g. in unit tests). Commits on success, rolls back on error,
+     * always releases the client in a finally block.
+     *
+     * @param {function} work - async fn receiving a pg PoolClient or db object
+     * @param {string} [context='transaction'] - label used in rollback warning logs
+     * @returns {Promise<*>} result of work
      */
     async withOptionalTransaction(work, context = 'transaction') {
         if (typeof this.db.connect !== 'function') {
@@ -1786,6 +1897,8 @@ class QueueService {
                     context,
                     error: rollbackError.message
                 });
+                error.rollbackFailed = true;
+                error.rollbackError = rollbackError.message;
             }
             throw error;
         } finally {

@@ -265,4 +265,101 @@ describe('SchedulerService (schedulerService.js)', () => {
             expect(failedUpdateCall[1][1]).toBe(77); // runId = 77
         });
     });
+
+    describe('runLogCleanup', () => {
+        it('deletes rows using retention settings read from the settings table', async () => {
+            const dbModule = require('../config/database');
+
+            dbModule.query.mockImplementation((sql) => {
+                if (sql.includes('log_retention_days')) {
+                    return Promise.resolve({
+                        rows: [
+                            { key: 'log_retention_days', value: '30' },
+                            { key: 'error_log_retention_days', value: '90' },
+                            { key: 'rag_log_retention_days', value: '14' }
+                        ]
+                    });
+                }
+                if (sql.includes('DELETE FROM error_log')) {
+                    return Promise.resolve({ rowCount: 7 });
+                }
+                if (sql.includes('DELETE FROM app_log')) {
+                    return Promise.resolve({ rowCount: 14 });
+                }
+                if (sql.includes('DELETE FROM rag_logs')) {
+                    return Promise.resolve({ rowCount: 3 });
+                }
+                return Promise.resolve({ rows: [] });
+            });
+
+            const result = await schedulerService.runLogCleanup();
+
+            expect(result).toEqual({ errorLogsDeleted: 7, appLogsDeleted: 14, ragLogsDeleted: 3 });
+
+            const errorDeleteCall = dbModule.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('DELETE FROM error_log')
+            );
+            expect(errorDeleteCall).toBeDefined();
+            expect(errorDeleteCall[1][0]).toBe(90); // error_log_retention_days = 90
+
+            const appDeleteCall = dbModule.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('DELETE FROM app_log')
+            );
+            expect(appDeleteCall).toBeDefined();
+            expect(appDeleteCall[1][0]).toBe(30); // log_retention_days = 30
+
+            const ragDeleteCall = dbModule.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('DELETE FROM rag_logs')
+            );
+            expect(ragDeleteCall).toBeDefined();
+            expect(ragDeleteCall[1][0]).toBe(14); // rag_log_retention_days = 14
+        });
+
+        it('falls back to default retention values (90d error / 30d app / 30d rag) when settings are absent', async () => {
+            const dbModule = require('../config/database');
+
+            dbModule.query.mockImplementation((sql) => {
+                if (sql.includes('log_retention_days')) return Promise.resolve({ rows: [] });
+                if (sql.includes('DELETE FROM error_log')) return Promise.resolve({ rowCount: 0 });
+                if (sql.includes('DELETE FROM app_log')) return Promise.resolve({ rowCount: 0 });
+                if (sql.includes('DELETE FROM rag_logs')) return Promise.resolve({ rowCount: 0 });
+                return Promise.resolve({ rows: [] });
+            });
+
+            await schedulerService.runLogCleanup();
+
+            const errorDeleteCall = dbModule.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('DELETE FROM error_log')
+            );
+            expect(errorDeleteCall[1][0]).toBe(90);
+
+            const appDeleteCall = dbModule.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('DELETE FROM app_log')
+            );
+            expect(appDeleteCall[1][0]).toBe(30);
+
+            const ragDeleteCall = dbModule.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('DELETE FROM rag_logs')
+            );
+            expect(ragDeleteCall[1][0]).toBe(30);
+        });
+
+        it('propagates database errors so executeTask can record the failure', async () => {
+            const dbModule = require('../config/database');
+            dbModule.query.mockRejectedValue(new Error('DB unavailable'));
+
+            await expect(schedulerService.runLogCleanup()).rejects.toThrow('DB unavailable');
+        });
+
+        it('executeTask dispatches cleanup_logs task_type to runLogCleanup', async () => {
+            const task = { id: 1, name: 'Log Cleanup', task_type: 'cleanup_logs' };
+            jest.spyOn(schedulerService, 'runLogCleanup').mockResolvedValue({ errorLogsDeleted: 0, appLogsDeleted: 0, ragLogsDeleted: 0 });
+            jest.spyOn(schedulerService, 'updateTaskAfterRun').mockResolvedValue();
+
+            await schedulerService.executeTask(task);
+
+            expect(schedulerService.runLogCleanup).toHaveBeenCalled();
+            expect(schedulerService.updateTaskAfterRun).toHaveBeenCalledWith(1, 'success', expect.anything());
+        });
+    });
 });

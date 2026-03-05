@@ -43,6 +43,14 @@ class SchedulerService {
             logger.debug('Enrichment retry queue backfill skipped', { error: err.message });
         }
 
+        // Seed built-in recurring tasks (idempotent — guarded by SELECT before INSERT)
+        try {
+            await this.ensureDefaultTasks();
+        } catch (err) {
+            // scheduled_tasks table may not exist yet on first boot before migrations apply
+            logger.debug('Could not seed default tasks', { error: err.message });
+        }
+
         // Then poll periodically
         this.pollInterval = setInterval(() => this.checkDueTasks(), this.checkIntervalMs);
     }
@@ -220,6 +228,9 @@ class SchedulerService {
                 case 'full_rescan':
                     result = await this.runFullRescan(task.library_id);
                     break;
+                case 'cleanup_logs':
+                    result = await this.runLogCleanup();
+                    break;
                 case 'pattern_analysis':
                     // Deprecated v0.38.0
                     result = { message: 'Pattern analysis is deprecated' };
@@ -258,6 +269,68 @@ class SchedulerService {
     }
 
     // runPatternAnalysis removed (Legacy Pattern Discovery Deprecated v0.38.0)
+
+    /**
+     * Delete expired rows from error_log and app_log using the operator-configured
+     * retention windows stored in the `settings` table. Mirrors the logic in
+     * POST /api/logs/cleanup so both manual and scheduled cleanups apply the same policy.
+     */
+    async runLogCleanup() {
+        const settingsResult = await db.query(
+            `SELECT key, value FROM settings WHERE key IN ('log_retention_days', 'error_log_retention_days', 'rag_log_retention_days')`
+        );
+        const settings = {};
+        for (const row of settingsResult.rows) {
+            settings[row.key] = parseInt(row.value, 10);
+        }
+        const errorRetentionDays = settings.error_log_retention_days || 90;
+        const appLogRetentionDays = settings.log_retention_days || 30;
+        const ragLogRetentionDays = settings.rag_log_retention_days || 30;
+
+        const errorLogResult = await db.query(
+            `DELETE FROM error_log WHERE created_at < NOW() - INTERVAL '1 day' * $1`,
+            [errorRetentionDays]
+        );
+        const appLogResult = await db.query(
+            `DELETE FROM app_log WHERE created_at < NOW() - INTERVAL '1 day' * $1`,
+            [appLogRetentionDays]
+        );
+        const ragLogResult = await db.query(
+            `DELETE FROM rag_logs WHERE created_at < NOW() - INTERVAL '1 day' * $1`,
+            [ragLogRetentionDays]
+        );
+
+        const errorDeleted = errorLogResult.rowCount ?? 0;
+        const appDeleted = appLogResult.rowCount ?? 0;
+        const ragDeleted = ragLogResult.rowCount ?? 0;
+
+        if (errorDeleted > 0 || appDeleted > 0 || ragDeleted > 0) {
+            logger.info('Log cleanup complete', { errorLogsDeleted: errorDeleted, appLogsDeleted: appDeleted, ragLogsDeleted: ragDeleted });
+        }
+
+        return { errorLogsDeleted: errorDeleted, appLogsDeleted: appDeleted, ragLogsDeleted: ragDeleted };
+    }
+
+    /**
+     * Seed built-in recurring scheduled tasks if they do not already exist.
+     * Safe to call on every boot — uses a SELECT guard before any INSERT.
+     */
+    async ensureDefaultTasks() {
+        const existing = await db.query(
+            `SELECT id FROM scheduled_tasks WHERE task_type = 'cleanup_logs' LIMIT 1`
+        );
+        if (existing.rows.length === 0) {
+            // Schedule first run for tomorrow at 02:30 so it does not fire on every restart
+            const firstRun = new Date();
+            firstRun.setDate(firstRun.getDate() + 1);
+            firstRun.setHours(2, 30, 0, 0);
+            await db.query(`
+                INSERT INTO scheduled_tasks (name, task_type, enabled, interval_minutes, next_run_at)
+                VALUES ('Log Cleanup', 'cleanup_logs', true, 1440, $1)
+            `, [firstRun]);
+            logger.info('Seeded default log cleanup task');
+        }
+    }
 
     async updateTaskAfterRun(taskId, status, result) {
         const intervalMinutes = await this.getTaskInterval(taskId);
