@@ -111,6 +111,22 @@ END;
 $$;
 
 
+--
+-- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE OR REPLACE FUNCTION public.update_updated_at_column() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF ROW(NEW.*) IS DISTINCT FROM ROW(OLD.*) THEN
+        NEW.updated_at = NOW();
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -7045,6 +7061,16 @@ CREATE INDEX idx_task_queue_next_retry ON public.task_queue USING btree (next_re
 CREATE INDEX idx_task_queue_priority ON public.task_queue USING btree (priority DESC, created_at) WHERE ((status)::text = 'pending'::text);
 
 
+CREATE INDEX idx_task_queue_processing_stale ON public.task_queue USING btree (started_at) WHERE ((status)::text = 'processing'::text);
+
+
+--
+-- Name: idx_task_queue_dequeue; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_queue_dequeue ON public.task_queue USING btree (priority DESC, created_at, next_retry_at) WHERE ((status)::text = 'pending'::text);
+
+
 --
 -- Name: idx_task_queue_status; Type: INDEX; Schema: public; Owner: -
 --
@@ -7134,6 +7160,62 @@ CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON pub
 --
 
 CREATE TRIGGER trigger_library_rules_v2_updated_at BEFORE UPDATE ON public.library_rules_v2 FOR EACH ROW EXECUTE FUNCTION public.update_library_rules_v2_updated_at();
+
+
+--
+-- Name: radarr_config trg_radarr_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_radarr_config_updated_at BEFORE UPDATE ON public.radarr_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: sonarr_config trg_sonarr_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_sonarr_config_updated_at BEFORE UPDATE ON public.sonarr_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: ollama_config trg_ollama_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_ollama_config_updated_at BEFORE UPDATE ON public.ollama_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: tmdb_config trg_tmdb_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_tmdb_config_updated_at BEFORE UPDATE ON public.tmdb_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: notification_config trg_notification_config_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_notification_config_updated_at BEFORE UPDATE ON public.notification_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: libraries trg_libraries_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_libraries_updated_at BEFORE UPDATE ON public.libraries FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: library_custom_rules trg_library_custom_rules_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_library_custom_rules_updated_at BEFORE UPDATE ON public.library_custom_rules FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: settings trg_settings_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_settings_updated_at BEFORE UPDATE ON public.settings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -8997,6 +9079,8 @@ FROM unnest(ARRAY[
     '20260224_140000_add_refresh_tokens.sql',
     '20260226_002000_seed_runtime_security_defaults.sql',
     '20260303_123026_extend_search_text_tsvector.sql',
-    '20260303_130000_add_policy_recheck_confidence_gain_multiplier.sql'
+    '20260303_130000_add_policy_recheck_confidence_gain_multiplier.sql',
+    '20260305_100000_optimize_task_queue_indexes.sql',
+    '20260305_100100_add_updated_at_triggers.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

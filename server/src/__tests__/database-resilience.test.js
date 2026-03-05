@@ -149,4 +149,90 @@ describe('Database Resilience', () => {
             expect(typeof db.query).toBe('function');
         });
     });
+
+    describe('Pool Configuration - Timeouts and Limits', () => {
+        it('should export healthCheck function', () => {
+            jest.resetModules();
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    query: jest.fn(),
+                    on: jest.fn(),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            expect(typeof db.healthCheck).toBe('function');
+        });
+
+        it('should have connectionTimeoutMillis configured', () => {
+            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
+            const content = fs.readFileSync(databasePath, 'utf-8');
+            expect(content).toMatch(/connectionTimeoutMillis/);
+        });
+
+        it('should have idleTimeoutMillis configured', () => {
+            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
+            const content = fs.readFileSync(databasePath, 'utf-8');
+            expect(content).toMatch(/idleTimeoutMillis/);
+        });
+
+        it('should have statement_timeout configured', () => {
+            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
+            const content = fs.readFileSync(databasePath, 'utf-8');
+            expect(content).toMatch(/statement_timeout/);
+        });
+
+        it('should have explicit max pool size configured', () => {
+            const databasePath = path.join(__dirname, '..', 'config', 'database.js');
+            const content = fs.readFileSync(databasePath, 'utf-8');
+            expect(content).toMatch(/POSTGRES_POOL_MAX/);
+        });
+
+        it('healthCheck should return { healthy: true } on successful connection', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({}),
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            const result = await db.healthCheck();
+            expect(result).toEqual({ healthy: true });
+        });
+
+        it('healthCheck should return { healthy: false, error } on connection failure', async () => {
+            jest.resetModules();
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockRejectedValue(new Error('Connection refused'))
+                }))
+            }));
+            const db = require('../config/database');
+            const result = await db.healthCheck();
+            expect(result).toMatchObject({ healthy: false, error: 'Connection refused' });
+        });
+
+        it('healthCheck should always release the client even on query failure', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn().mockRejectedValue(new Error('query error')),
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            await db.healthCheck();
+            expect(mockClient.release).toHaveBeenCalled();
+        });
+    });
 });

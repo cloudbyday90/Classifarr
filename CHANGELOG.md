@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.4-alpha] - 2026-03-05
+
+### Performance
+
+- **Database Pool: Timeout Configuration** — `database.js` now explicitly configures `connectionTimeoutMillis` (5 s), `idleTimeoutMillis` (30 s), `statement_timeout` (30 s), and `max` pool size on the `pg.Pool`. All four values are tunable via environment variables (`POSTGRES_POOL_MAX`, `POSTGRES_CONN_TIMEOUT_MS`, `POSTGRES_IDLE_TIMEOUT_MS`, `POSTGRES_STATEMENT_TIMEOUT_MS`). Previously the pool used `pg` defaults with no timeouts, meaning a saturated pool would hang requests indefinitely and a runaway query would hold a connection forever. Validated against March 2026 node-postgres community best practices.
+- **Database Pool: `healthCheck()` Export** — Added `healthCheck()` to `server/src/config/database.js`. The function acquires a dedicated client, executes `SELECT 1`, and returns `{ healthy: true }` or `{ healthy: false, error }`. Uses `try/finally` to always release the client. Available for use by `/health` endpoints to surface DB connectivity without consuming a pool slot long-term.
+- **Task Queue: Composite Partial Index for `dequeue()`** — Migration `20260305_100000_optimize_task_queue_indexes.sql` adds `idx_task_queue_dequeue` on `task_queue (priority DESC, created_at ASC, next_retry_at ASC) WHERE status = 'pending'`. This index is designed to support the `QueueService.dequeue()` pattern, which filters on pending tasks eligible for retry and orders by `priority DESC, created_at ASC`, allowing the planner to satisfy the filter and sort efficiently from the index. A second index `idx_task_queue_processing_stale` on `(started_at) WHERE status = 'processing'` speeds up `resetStaleProcessingTasks()` and `gracefulShutdown()`. Both indexes are created as part of the regular transactional migration and use `IF NOT EXISTS` for idempotency.
+- **Pagination: Eliminate Double `COUNT(*)` Round-Trip** — `GET /api/classification/history` now uses `COUNT(*) OVER()` window function to return the total row count in the same query as the page data instead of issuing a separate `SELECT COUNT(*)` query. This halves the database round-trips for every paginated history request and eliminates the race condition where a row could be inserted between the two queries. The `total_count` column is stripped from individual row objects before the response is serialized.
+- **Live Stats: Parallelize Independent Queries** — `GET /api/queue/live-stats` previously fired `todayResult`, `enrichmentResult`, and `enrichmentQueueResult` sequentially after the initial `Promise.all`. All five queries are now executed in a single `Promise.all`, reducing the endpoint's database wait time to the slowest single query instead of the sum of all queries.
+
+### Changed
+
+- **`updated_at` Triggers: DB-Level Enforcement** — Migration `20260305_100100_add_updated_at_triggers.sql` creates a shared `update_updated_at_column()` PL/pgSQL function and attaches it as a `BEFORE UPDATE` trigger on `radarr_config`, `sonarr_config`, `ollama_config`, `tmdb_config`, `notification_config`, `libraries`, `library_custom_rules`, and `settings`. The trigger uses `ROW(NEW.*) IS DISTINCT FROM ROW(OLD.*)` guard (2025 idiomatic best practice) so no-op `UPDATE SET x = x` statements do not bump `updated_at`, preventing spurious cache invalidation and audit noise. Migration is fully idempotent: checks for table existence, column existence, and existing trigger before creating.
+
+### Tests
+
+- **`database-resilience.test.js`** — Added `'Pool Configuration - Timeouts and Limits'` describe block with 8 new tests: static-analysis assertions that `connectionTimeoutMillis`, `idleTimeoutMillis`, `statement_timeout`, and `POSTGRES_POOL_MAX` are present in `database.js`; `healthCheck()` export existence; mock-based tests for healthy connection path, failed connection path, and client release guarantee on query failure. Suite grows from 4 tests to 12 tests.
+- **`queueService.test.js`** — Added `'dequeue SQL pattern'` describe block with 3 new tests asserting the dequeue SQL contains `FOR UPDATE SKIP LOCKED`, filters on `status = 'pending'` and `next_retry_at <= NOW()`, and orders by `priority DESC, created_at ASC`. These tests act as regression guards ensuring the SQL shape remains compatible with `idx_task_queue_dequeue`.
+
 ## [v0.43.3a-alpha] - 2026-03-03
 
 ### Fixed
