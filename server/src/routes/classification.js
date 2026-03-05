@@ -166,7 +166,8 @@ router.get('/history', async (req, res) => {
       SELECT 
         ch.*,
         l.name as library_name,
-        (SELECT COUNT(*) FROM classification_corrections WHERE classification_id = ch.id) as correction_count
+        (SELECT COUNT(*) FROM classification_corrections WHERE classification_id = ch.id) as correction_count,
+        COUNT(*) OVER() AS total_count
       FROM classification_history ch
       LEFT JOIN libraries l ON ch.library_id = l.id
       ${whereClause}
@@ -177,21 +178,18 @@ router.get('/history', async (req, res) => {
     params.push(normalizedLimit, offset);
     const result = await db.query(query, params);
 
-    // Get total count
-    const countQuery = `
-      SELECT COUNT(*) as total
-      FROM classification_history ch
-      ${whereClause}
-    `;
-    const countResult = await db.query(countQuery, params.slice(0, -2));
+    const total = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0;
 
     res.json({
-      data: result.rows,
+      data: result.rows.map(row => {
+        const { total_count, ...rest } = row;
+        return rest;
+      }),
       pagination: {
         page: normalizedPage,
         limit: normalizedLimit,
-        total: parseInt(countResult.rows[0].total),
-        totalPages: Math.ceil(countResult.rows[0].total / normalizedLimit),
+        total,
+        totalPages: Math.ceil(total / normalizedLimit),
       },
     });
   } catch (error) {

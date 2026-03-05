@@ -86,39 +86,34 @@ router.get('/gap-analysis-stats', async (req, res) => {
  */
 router.get('/live-stats', async (req, res) => {
     try {
-        const [queueStats, gapStats] = await Promise.all([
+        const [queueStats, gapStats, todayResult, enrichmentResult, enrichmentQueueResult] = await Promise.all([
             queueService.getStats(),
-            queueService.getGapAnalysisStats()
+            queueService.getGapAnalysisStats(),
+            // Today's classification counts:
+            // - new_classified: excludes source_library (new classifications only - for Dashboard)
+            // - all_classified: includes source_library (all activity - for Activity page)
+            db.query(`
+                SELECT 
+                    COUNT(*) FILTER (WHERE method != 'source_library') as new_classified,
+                    COUNT(*) as all_classified,
+                    AVG(confidence) FILTER (WHERE method != 'source_library') as new_avg_confidence,
+                    AVG(confidence) as all_avg_confidence
+                FROM classification_history 
+                WHERE created_at >= CURRENT_DATE
+            `),
+            db.query(`
+                SELECT 
+                    COUNT(*) as total_items,
+                    COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL OR metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as enriched,
+                    COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched,
+                    COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL) as omdb_enriched
+                FROM media_server_items
+            `),
+            db.query(`
+                SELECT COUNT(*) as pending FROM task_queue 
+                WHERE task_type = 'metadata_enrichment' AND status = 'pending'
+            `)
         ]);
-
-        // Get today's classification counts
-        // - classifiedToday: excludes source_library (new classifications only - for Dashboard)
-        // - allClassifiedToday: includes source_library (all activity - for Activity page)
-        const todayResult = await db.query(`
-            SELECT 
-                COUNT(*) FILTER (WHERE method != 'source_library') as new_classified,
-                COUNT(*) as all_classified,
-                AVG(confidence) FILTER (WHERE method != 'source_library') as new_avg_confidence,
-                AVG(confidence) as all_avg_confidence
-            FROM classification_history 
-            WHERE created_at >= CURRENT_DATE
-        `);
-
-        // Get enrichment progress stats
-        const enrichmentResult = await db.query(`
-            SELECT 
-                COUNT(*) as total_items,
-                COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL OR metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as enriched,
-                COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched,
-                COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL) as omdb_enriched
-            FROM media_server_items
-        `);
-
-        // Get enrichment queue pending count separately (metadata_enrichment tasks only)
-        const enrichmentQueueResult = await db.query(`
-            SELECT COUNT(*) as pending FROM task_queue 
-            WHERE task_type = 'metadata_enrichment' AND status = 'pending'
-        `);
         const enrichmentPending = parseInt(enrichmentQueueResult.rows[0]?.pending) || 0;
 
         const totalItems = parseInt(enrichmentResult.rows[0]?.total_items) || 0;

@@ -34,11 +34,8 @@ describe('Classification history filters', () => {
     db.query
       .mockResolvedValueOnce({
         rows: [
-          { id: 1, title: 'Motorvalley', media_type: 'tv', library_name: 'TV Shows' },
+          { id: 1, title: 'Motorvalley', media_type: 'tv', library_name: 'TV Shows', total_count: '1' },
         ],
-      })
-      .mockResolvedValueOnce({
-        rows: [{ total: '1' }],
       })
 
     const response = await request(app)
@@ -81,7 +78,6 @@ describe('Classification history filters', () => {
   test('normalizes page/limit bounds', async () => {
     db.query
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ total: '0' }] })
 
     const response = await request(app)
       .get('/api/classification/history')

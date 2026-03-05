@@ -1222,4 +1222,28 @@ describe('QueueService', () => {
             });
         });
     });
+
+    describe('dequeue SQL pattern', () => {
+        it('dequeue query uses FOR UPDATE SKIP LOCKED', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+            await queueService.dequeue();
+            const sql = db.query.mock.calls[0][0];
+            expect(sql).toMatch(/FOR UPDATE SKIP LOCKED/);
+        });
+
+        it('dequeue query filters by status pending and next_retry_at', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+            await queueService.dequeue();
+            const sql = db.query.mock.calls[0][0];
+            expect(sql).toMatch(/status.*=.*'pending'/);
+            expect(sql).toMatch(/next_retry_at.*<=.*NOW/);
+        });
+
+        it('dequeue query orders by priority DESC then created_at ASC', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+            await queueService.dequeue();
+            const sql = db.query.mock.calls[0][0];
+            expect(sql).toMatch(/ORDER BY.*priority.*DESC.*created_at.*ASC/s);
+        });
+    });
 });
