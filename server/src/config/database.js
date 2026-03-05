@@ -105,6 +105,10 @@ async function withTransaction(fn) {
         rollbackError: rollbackErr,
         originalError: error,
       });
+      console.error('Failed to rollback transaction', {
+        rollbackError: rollbackErr,
+        originalError: error,
+      });
     }
     throw error;
   } finally {
