@@ -42,7 +42,7 @@ pool.on('error', (err) => {
 
 /**
  * Lightweight health check — used by /health endpoints.
- * Uses a dedicated client so it does not consume a pool slot for the duration.
+ * Uses a pooled client and consumes a pool slot only for the brief duration of the check.
  */
 async function healthCheck() {
   let client;

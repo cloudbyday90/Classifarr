@@ -9,22 +9,24 @@
  *   ORDER BY priority DESC, created_at ASC
  *   FOR UPDATE SKIP LOCKED
  *
- * A composite partial index on (next_retry_at, priority DESC, created_at)
- * WHERE status = 'pending' allows the planner to satisfy the WHERE clause,
- * range scan on next_retry_at, and sort on priority+created_at entirely
- * from the index — avoiding a sequential scan and sort step.
+ * A composite partial index on (priority DESC, created_at ASC, next_retry_at ASC)
+ * WHERE status = 'pending' allows the planner to satisfy the ORDER BY
+ * priority+created_at directly from the index, while still supporting an
+ * efficient index condition on next_retry_at <= NOW() for ready tasks.
  *
- * Uses CONCURRENTLY to avoid AccessExclusiveLock on live instances.
+ * Note: CREATE INDEX CONCURRENTLY cannot run inside a transaction.
+ * Migrations run in a transaction (BEGIN/COMMIT), so CONCURRENTLY is omitted.
  * IF NOT EXISTS makes it safe to re-run (idempotent).
  */
 
--- Composite partial index for dequeue(): matches WHERE + ORDER BY exactly
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_queue_dequeue
-    ON task_queue (next_retry_at ASC, priority DESC, created_at ASC)
+-- Composite partial index for dequeue(): supports ORDER BY priority DESC, created_at ASC
+-- and the next_retry_at <= NOW() range filter for pending tasks
+CREATE INDEX IF NOT EXISTS idx_task_queue_dequeue
+    ON task_queue (priority DESC, created_at ASC, next_retry_at ASC)
     WHERE status = 'pending';
 
 -- Index for resetStaleProcessingTasks() and gracefulShutdown()
 -- which query WHERE status = 'processing'
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_queue_processing_stale
+CREATE INDEX IF NOT EXISTS idx_task_queue_processing_stale
     ON task_queue (started_at ASC)
     WHERE status = 'processing';
