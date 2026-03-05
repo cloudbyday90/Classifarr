@@ -106,13 +106,27 @@ class SchedulerService {
 
             if (pendingCount === 0) return;
 
-            // Check last completed scheduler backfill run
-            const lastBackfillResult = await db.query(`
-                SELECT MAX(completed_at) as last_run 
-                FROM backfill_runs 
-                WHERE type = 'scheduler' AND status = 'completed'
+            // Check if a scheduler backfill is already running, and when the last one completed.
+            // Checking is_running prevents overlapping executions when a batch takes longer
+            // than the poll interval or longer than the 5-minute throttle window.
+            const statusResult = await db.query(`
+                SELECT
+                    EXISTS(
+                        SELECT 1 FROM backfill_runs
+                        WHERE type = 'scheduler' AND status = 'running'
+                    ) AS is_running,
+                    (
+                        SELECT MAX(completed_at)
+                        FROM backfill_runs
+                        WHERE type = 'scheduler' AND status = 'completed'
+                    ) AS last_run
             `);
-            const lastRun = lastBackfillResult.rows[0]?.last_run;
+            const { is_running: isRunning, last_run: lastRun } = statusResult.rows[0];
+
+            if (isRunning) {
+                logger.debug('RAG backfill: skipped (run already in progress)');
+                return;
+            }
 
             // Run every 5 minutes (or if never ran)
             const shouldRun = !lastRun || (Date.now() - new Date(lastRun).getTime()) > 5 * 60 * 1000;

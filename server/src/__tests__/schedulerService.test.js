@@ -70,7 +70,7 @@ describe('SchedulerService (schedulerService.js)', () => {
                     return Promise.resolve({ rows: [{ rag_enabled: true }] });
                 }
                 if (sql.includes('backfill_runs')) {
-                    return Promise.resolve({ rows: [{ last_run: null }] });
+                    return Promise.resolve({ rows: [{ is_running: false, last_run: null }] });
                 }
                 return Promise.resolve({ rows: [] });
             });
@@ -96,7 +96,30 @@ describe('SchedulerService (schedulerService.js)', () => {
                     return Promise.resolve({ rows: [{ rag_enabled: true }] });
                 }
                 if (sql.includes('backfill_runs')) {
-                    return Promise.resolve({ rows: [{ last_run: recentRun.toISOString() }] });
+                    return Promise.resolve({ rows: [{ is_running: false, last_run: recentRun.toISOString() }] });
+                }
+                return Promise.resolve({ rows: [] });
+            });
+
+            embeddingModule.getPendingCount.mockResolvedValue(5);
+
+            jest.spyOn(schedulerService, 'runRagBackfill').mockResolvedValue();
+
+            await schedulerService.checkRagBackfillSchedule();
+
+            expect(schedulerService.runRagBackfill).not.toHaveBeenCalled();
+        });
+
+        it('skips when a scheduler run is already in progress', async () => {
+            const dbModule = require('../config/database');
+            const embeddingModule = require('../services/embeddingService');
+
+            dbModule.query.mockImplementation((sql) => {
+                if (sql.includes('rag_enabled')) {
+                    return Promise.resolve({ rows: [{ rag_enabled: true }] });
+                }
+                if (sql.includes('backfill_runs')) {
+                    return Promise.resolve({ rows: [{ is_running: true, last_run: null }] });
                 }
                 return Promise.resolve({ rows: [] });
             });
@@ -119,7 +142,7 @@ describe('SchedulerService (schedulerService.js)', () => {
                     return Promise.resolve({ rows: [{ rag_enabled: true }] });
                 }
                 if (sql.includes('backfill_runs')) {
-                    return Promise.resolve({ rows: [{ last_run: null }] });
+                    return Promise.resolve({ rows: [{ is_running: false, last_run: null }] });
                 }
                 return Promise.resolve({ rows: [] });
             });
