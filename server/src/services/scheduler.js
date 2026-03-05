@@ -203,10 +203,9 @@ class SchedulerService {
             const result = await db.query(`
                 UPDATE classification_history
                 SET status = 'pending',
-                    pending_reason = 'Re-queued after stale awaiting_decision (>7 days)',
-                    updated_at = NOW()
+                    pending_reason = 'Re-queued after stale awaiting_decision (>7 days)'
                 WHERE status = 'awaiting_decision'
-                  AND updated_at < NOW() - ($1 || ' days')::INTERVAL
+                  AND created_at < NOW() - ($1 || ' days')::INTERVAL
                 RETURNING id, title, tmdb_id, media_type
             `, [STALE_AWAITING_DECISION_DAYS]);
 

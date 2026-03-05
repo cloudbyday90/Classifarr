@@ -1002,8 +1002,9 @@ class QueueService {
      * already holds the lock it is already doing the reset — skip silently.
      */
     async resetStaleProcessingTasks() {
-        const client = await this.db.pool.connect();
+        let client;
         try {
+            client = await this.db.pool.connect();
             await client.query('BEGIN');
             const lockResult = await client.query(
                 'SELECT pg_try_advisory_xact_lock($1) AS acquired',
@@ -1030,11 +1031,11 @@ class QueueService {
             }
             return result.rowCount;
         } catch (error) {
-            await client.query('ROLLBACK').catch(() => {});
+            if (client) await client.query('ROLLBACK').catch(() => {});
             this.logger.error('Failed to reset stale tasks', { error: error.message });
             return 0;
         } finally {
-            client.release();
+            if (client) client.release();
         }
     }
 

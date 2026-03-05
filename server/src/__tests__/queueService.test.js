@@ -74,6 +74,11 @@ describe('QueueService', () => {
         queueService.lastOmdbSslWarnAt = 0;
         queueService.omdbSslBlockedUntil = 0;
         queueService.lastOmdbSslProbeAt = 0;
+
+        // The singleton captured defaultOmdbService at construction time (before jest.mock ran
+        // at module scope with virtual:true). Wire the virtual mock into the instance so that
+        // tests can control getByTitle / checkHealth via mock methods.
+        queueService.omdbService = require('../services/omdb');
     });
 
     describe('enqueue', () => {
@@ -1295,6 +1300,18 @@ describe('QueueService', () => {
             // Should ROLLBACK when lock is unavailable
             const rollbackCall = mockClient.query.mock.calls.find(([sql]) => sql === 'ROLLBACK');
             expect(rollbackCall).toBeDefined();
+        });
+
+        it('resetStaleProcessingTasks: returns 0 and logs error when pool.connect() throws', async () => {
+            db.pool = { connect: jest.fn().mockRejectedValue(new Error('connection refused')) };
+
+            const count = await queueService.resetStaleProcessingTasks();
+
+            expect(count).toBe(0);
+            expect(queueService.logger.error).toHaveBeenCalledWith(
+                'Failed to reset stale tasks',
+                expect.objectContaining({ error: 'connection refused' })
+            );
         });
     });
 });
