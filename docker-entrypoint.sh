@@ -199,12 +199,21 @@ else
         exit 1
     fi
     
-    # Ensure pg_stat_statements is configured (idempotent — only adds if not already present)
-    # Must be done BEFORE pg_ctl start so the library is loaded from the first connection.
+    # Ensure pg_stat_statements is configured (idempotent — must be done BEFORE pg_ctl
+    # start so the library is loaded from the very first connection, no restart needed).
     if ! grep -q "pg_stat_statements" "$PG_DATA/postgresql.conf" 2>/dev/null; then
-        echo "Adding pg_stat_statements to PostgreSQL configuration..."
-        printf '\n# Query statistics (required by pg_stat_statements extension)\n' >> "$PG_DATA/postgresql.conf"
-        echo "shared_preload_libraries = 'pg_stat_statements'" >> "$PG_DATA/postgresql.conf"
+        # Check if there is already a shared_preload_libraries line (without pg_stat_statements).
+        # If so, merge pg_stat_statements in rather than appending a second line — PostgreSQL
+        # only honours the last occurrence, so a duplicate line would silently drop other libs.
+        if grep -qE "^[[:space:]]*shared_preload_libraries[[:space:]]*=" "$PG_DATA/postgresql.conf" 2>/dev/null; then
+            echo "Merging pg_stat_statements into existing shared_preload_libraries..."
+            # Strip trailing quote(s), append ,pg_stat_statements, re-close the quote.
+            sed -i -E "s|^([[:space:]]*shared_preload_libraries[[:space:]]*=[[:space:]]*')(.*)'|\1\2,pg_stat_statements'|" "$PG_DATA/postgresql.conf"
+        else
+            echo "Adding pg_stat_statements to PostgreSQL configuration..."
+            printf '\n# Query statistics (required by pg_stat_statements extension)\n' >> "$PG_DATA/postgresql.conf"
+            echo "shared_preload_libraries = 'pg_stat_statements'" >> "$PG_DATA/postgresql.conf"
+        fi
         echo "pg_stat_statements.track = all" >> "$PG_DATA/postgresql.conf"
         echo "pg_stat_statements.max = 10000" >> "$PG_DATA/postgresql.conf"
     fi
