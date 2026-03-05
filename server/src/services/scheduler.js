@@ -17,6 +17,10 @@ const classificationService = require('./classification');
 
 const logger = createLogger('SchedulerService');
 
+// Number of days after which an awaiting_decision row is considered stale.
+// Matches the filter applied in GET /api/classification/pending/count.
+const STALE_AWAITING_DECISION_DAYS = 7;
+
 class SchedulerService {
     constructor() {
         this.tasks = new Map();
@@ -195,7 +199,6 @@ class SchedulerService {
      * re-queued for classification so the Command Center badge stays accurate.
      */
     async cleanupStaleAwaitingDecisions() {
-        const STALE_AWAITING_DECISION_DAYS = 7;
         try {
             const result = await db.query(`
                 UPDATE classification_history

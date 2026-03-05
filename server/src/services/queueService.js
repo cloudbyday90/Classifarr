@@ -36,6 +36,7 @@
 
 // Default dependencies - loaded at module level for DI support
 const defaultDb = require('../config/database');
+const { DB_ADVISORY_LOCKS } = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const defaultClassificationService = require('./classification');
 const defaultOllamaService = require('./ollama');
@@ -1001,7 +1002,6 @@ class QueueService {
      * already holds the lock it is already doing the reset — skip silently.
      */
     async resetStaleProcessingTasks() {
-        const { DB_ADVISORY_LOCKS } = require('../config/database');
         const client = await this.db.pool.connect();
         try {
             await client.query('BEGIN');
