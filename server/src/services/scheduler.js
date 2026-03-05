@@ -67,6 +67,12 @@ class SchedulerService {
 
         // Daily rating normalization check at 3 AM
         this.schedule('rating-normalization-check', '0 3 * * *', () => this.runRatingNormalizationCheck());
+
+        // Daily cleanup of expired refresh tokens (3:05 AM — 5 min offset from rating normalization)
+        this.schedule('refresh-token-cleanup', '5 3 * * *', () => this.runRefreshTokenCleanup());
+
+        // Daily pruning of old api_key_audit rows (3:10 AM)
+        this.schedule('api-key-audit-prune', '10 3 * * *', () => this.runApiKeyAuditPrune());
     }
 
     /**
@@ -130,6 +136,52 @@ class SchedulerService {
             }
         } catch (error) {
             logger.error('Daily normalization check failed', { error: error.message });
+        }
+    }
+
+    /**
+     * Daily cleanup of expired and long-revoked refresh tokens.
+     * Batch-deletes up to 1000 rows per run to avoid long lock holds.
+     * Controlled by REFRESH_TOKEN_CLEANUP_ENABLED env var (default: true).
+     */
+    async runRefreshTokenCleanup() {
+        if (process.env.REFRESH_TOKEN_CLEANUP_ENABLED === 'false') return;
+        try {
+            const result = await db.query(
+                `DELETE FROM refresh_tokens
+                 WHERE id IN (
+                     SELECT id FROM refresh_tokens
+                     WHERE expires_at < NOW() OR (revoked_at IS NOT NULL AND revoked_at < NOW() - INTERVAL '30 days')
+                     LIMIT 1000
+                 )`
+            );
+            logger.info('Refresh token cleanup complete', { deleted: result.rowCount });
+        } catch (error) {
+            logger.error('Refresh token cleanup failed', { error: error.message });
+        }
+    }
+
+    /**
+     * Daily pruning of old api_key_audit rows older than the configured retention window.
+     * Batch-deletes up to 1000 rows per run.
+     * Controlled by API_AUDIT_RETENTION_DAYS env var (default: 90).
+     */
+    async runApiKeyAuditPrune() {
+        const parsedRetentionDays = parseInt(process.env.API_AUDIT_RETENTION_DAYS, 10);
+        const retentionDays = Number.isFinite(parsedRetentionDays) ? parsedRetentionDays : 90;
+        try {
+            const result = await db.query(
+                `DELETE FROM api_key_audit
+                 WHERE id IN (
+                     SELECT id FROM api_key_audit
+                     WHERE created_at < NOW() - ($1 || ' days')::INTERVAL
+                     LIMIT 1000
+                 )`,
+                [retentionDays]
+            );
+            logger.info('API key audit prune complete', { deleted: result.rowCount, retentionDays });
+        } catch (error) {
+            logger.error('API key audit prune failed', { error: error.message });
         }
     }
 

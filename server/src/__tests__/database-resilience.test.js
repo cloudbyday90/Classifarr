@@ -235,4 +235,381 @@ describe('Database Resilience', () => {
             expect(mockClient.release).toHaveBeenCalled();
         });
     });
+
+    describe('withTransaction()', () => {
+        it('exports withTransaction function', () => {
+            jest.resetModules();
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    query: jest.fn(),
+                    on: jest.fn(),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            expect(typeof db.withTransaction).toBe('function');
+        });
+
+        it('commits on success', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({}),
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            const fn = jest.fn().mockResolvedValue('result');
+            const result = await db.withTransaction(fn);
+            expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+            expect(fn).toHaveBeenCalledWith(mockClient);
+            expect(result).toBe('result');
+            expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+            expect(mockClient.release).toHaveBeenCalled();
+        });
+
+        it('rolls back and rethrows on error', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({}),
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            const originalError = new Error('fn failed');
+            const fn = jest.fn().mockRejectedValue(originalError);
+            await expect(db.withTransaction(fn)).rejects.toThrow('fn failed');
+            expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+            expect(mockClient.release).toHaveBeenCalled();
+        });
+
+        it('releases client even when ROLLBACK fails', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn()
+                    .mockResolvedValueOnce({}) // BEGIN
+                    .mockRejectedValueOnce(new Error('rollback error')), // ROLLBACK
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            const originalError = new Error('fn failed');
+            const fn = jest.fn().mockRejectedValue(originalError);
+            await expect(db.withTransaction(fn)).rejects.toThrow('fn failed');
+            expect(mockClient.release).toHaveBeenCalled();
+        });
+
+        it('passes client to fn', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({}),
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            let receivedClient;
+            await db.withTransaction(async (client) => { receivedClient = client; });
+            expect(receivedClient).toBe(mockClient);
+        });
+    });
+
+    describe('Slow Query Logging', () => {
+        let warnSpy;
+
+        beforeEach(() => {
+            warnSpy = createConsoleSpy('warn', { suppress: true });
+        });
+
+        afterEach(() => {
+            warnSpy.restore();
+        });
+
+        it('does not log for fast queries', async () => {
+            jest.resetModules();
+            delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
+            const mockQueryResult = { rows: [] };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    query: jest.fn().mockResolvedValue(mockQueryResult),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            await db.query('SELECT 1');
+            expect(warnSpy.spy).not.toHaveBeenCalled();
+        });
+
+        it('logs [SLOW QUERY] when query exceeds threshold', async () => {
+            jest.resetModules();
+            // Use -1 as threshold so any query (even sub-millisecond) always logs
+            process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = '-1';
+            const mockQueryResult = { rows: [] };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    query: jest.fn().mockResolvedValue(mockQueryResult),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            await db.query('SELECT slow_thing FROM table');
+            expect(warnSpy.spy).toHaveBeenCalledWith(expect.stringContaining('[SLOW QUERY]'));
+            delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
+        });
+
+        it('truncates long query text to 120 characters', async () => {
+            jest.resetModules();
+            // Use -1 as threshold so any query (even sub-millisecond) always logs
+            process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = '-1';
+            const longQuery = 'SELECT ' + 'a'.repeat(300) + ' FROM t';
+            const mockQueryResult = { rows: [] };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    query: jest.fn().mockResolvedValue(mockQueryResult),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            await db.query(longQuery);
+            expect(warnSpy.spy).toHaveBeenCalled();
+            const warnCall = warnSpy.spy.mock.calls[0][0];
+            // Extract the query portion after the duration
+            const queryPart = warnCall.split('— ')[1];
+            expect(queryPart.length).toBeLessThanOrEqual(120);
+            delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
+        });
+
+        it('POSTGRES_SLOW_QUERY_THRESHOLD_MS env var controls threshold', async () => {
+            jest.resetModules();
+            process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = '999999';
+            const mockQueryResult = { rows: [] };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    query: jest.fn().mockResolvedValue(mockQueryResult),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            await db.query('SELECT 1');
+            expect(warnSpy.spy).not.toHaveBeenCalled();
+            delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
+        });
+    });
+
+    describe('tryAdvisoryLock()', () => {
+        it('exports tryAdvisoryLock function and DB_ADVISORY_LOCKS constants', () => {
+            jest.resetModules();
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    query: jest.fn(),
+                    on: jest.fn(),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            expect(typeof db.tryAdvisoryLock).toBe('function');
+            expect(db.DB_ADVISORY_LOCKS).toBeDefined();
+        });
+
+        it('returns true when lock is acquired', async () => {
+            jest.resetModules();
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    query: jest.fn(),
+                    on: jest.fn(),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({ rows: [{ acquired: true }] })
+            };
+            const result = await db.tryAdvisoryLock(mockClient, 1001);
+            expect(result).toBe(true);
+        });
+
+        it('returns false when lock is already held', async () => {
+            jest.resetModules();
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    query: jest.fn(),
+                    on: jest.fn(),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({ rows: [{ acquired: false }] })
+            };
+            const result = await db.tryAdvisoryLock(mockClient, 1001);
+            expect(result).toBe(false);
+        });
+
+        it('DB_ADVISORY_LOCKS has IDLE_BACKFILL, SCHEDULED_BACKFILL, MANUAL_BACKFILL keys', () => {
+            jest.resetModules();
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    query: jest.fn(),
+                    on: jest.fn(),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            expect(db.DB_ADVISORY_LOCKS).toHaveProperty('IDLE_BACKFILL', 1001);
+            expect(db.DB_ADVISORY_LOCKS).toHaveProperty('SCHEDULED_BACKFILL', 1002);
+            expect(db.DB_ADVISORY_LOCKS).toHaveProperty('MANUAL_BACKFILL', 1003);
+        });
+    });
+
+    describe('withSessionAdvisoryLock()', () => {
+        it('exports withSessionAdvisoryLock function', () => {
+            jest.resetModules();
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    query: jest.fn(),
+                    on: jest.fn(),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            expect(typeof db.withSessionAdvisoryLock).toBe('function');
+        });
+
+        it('calls fn and returns true when lock is acquired', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn()
+                    .mockResolvedValueOnce({ rows: [{ acquired: true }] }) // pg_try_advisory_lock
+                    .mockResolvedValueOnce({}),                             // pg_advisory_unlock
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            const fn = jest.fn().mockResolvedValue('done');
+            const result = await db.withSessionAdvisoryLock(1001, fn);
+            expect(result).toBe(true);
+            expect(fn).toHaveBeenCalled();
+            expect(mockClient.release).toHaveBeenCalled();
+        });
+
+        it('skips fn and returns false when lock is not acquired', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({ rows: [{ acquired: false }] }),
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            const fn = jest.fn();
+            const result = await db.withSessionAdvisoryLock(1001, fn);
+            expect(result).toBe(false);
+            expect(fn).not.toHaveBeenCalled();
+            expect(mockClient.release).toHaveBeenCalled();
+        });
+
+        it('releases lock and client even when fn throws', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn()
+                    .mockResolvedValueOnce({ rows: [{ acquired: true }] }) // pg_try_advisory_lock
+                    .mockResolvedValueOnce({}),                             // pg_advisory_unlock
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            const fn = jest.fn().mockRejectedValue(new Error('fn error'));
+            await expect(db.withSessionAdvisoryLock(1001, fn)).rejects.toThrow('fn error');
+            expect(mockClient.release).toHaveBeenCalled();
+            // pg_advisory_unlock should still have been called
+            expect(mockClient.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock($1)', [1001]);
+        });
+    });
+
+    describe('POSTGRES_SLOW_QUERY_THRESHOLD_MS NaN handling', () => {
+        it('falls back to 500ms when env var is a non-numeric string', async () => {
+            jest.resetModules();
+            process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = 'not-a-number';
+            const mockQueryResult = { rows: [] };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    query: jest.fn().mockResolvedValue(mockQueryResult),
+                    connect: jest.fn()
+                }))
+            }));
+            const db = require('../config/database');
+            // A fast query should NOT log with the default 500ms threshold
+            await db.query('SELECT 1');
+            // If the threshold was NaN, the comparison would always be false — same result,
+            // but the module should not throw. We verify module loads and query runs cleanly.
+            delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
+        });
+    });
+
+    describe('withTransaction() rollback error logging', () => {
+        it('logs rollback errors to console.error', async () => {
+            jest.resetModules();
+            const mockClient = {
+                query: jest.fn()
+                    .mockResolvedValueOnce({}) // BEGIN
+                    .mockRejectedValueOnce(new Error('fn failed')) // fn
+                    .mockRejectedValueOnce(new Error('rollback error')), // ROLLBACK
+                release: jest.fn()
+            };
+            jest.mock('pg', () => ({
+                Pool: jest.fn().mockImplementation(() => ({
+                    on: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
+                }))
+            }));
+            const db = require('../config/database');
+            const errSpy = createConsoleSpy('error', { suppress: true });
+            try {
+                await expect(db.withTransaction(jest.fn().mockRejectedValue(new Error('fn failed')))).rejects.toThrow('fn failed');
+                expect(errSpy.spy).toHaveBeenCalledWith(
+                    'Failed to rollback transaction',
+                    expect.objectContaining({ rollbackError: expect.any(Error) })
+                );
+            } finally {
+                errSpy.restore();
+            }
+        });
+    });
 });

@@ -7,6 +7,7 @@
  */
 
 const db = require('../config/database');
+const { DB_ADVISORY_LOCKS } = require('../config/database');
 const embeddingService = require('./embeddingService');
 const embeddingProvider = require('./embeddingProvider');
 const { createLogger } = require('../utils/logger');
@@ -31,6 +32,7 @@ class ManualBackfillService {
             includeImage: false
         };
         this.isProcessing = false; // Flag to prevent concurrent runBackfill() calls
+        this._lockClient = null;   // Dedicated client holding the session advisory lock
     }
 
     /**
@@ -66,29 +68,52 @@ class ManualBackfillService {
             throw new Error('Backfill already running');
         }
 
-        this.state.batchSize = options.batchSize || 50;
-        this.state.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
-        this.state.total = await this.getPendingCount(this.state.includeImage);
-        this.state.processed = 0;
-        this.state.startTime = Date.now();
-        this.state.status = 'running';
-        this.state.error = null;
-        this.state.eta = null;
+        // Advisory lock guard: prevents split-brain races in multi-process deployments.
+        // Session-level lock is acquired here and held until runBackfill() completes.
+        const lockClient = await db.pool.connect();
+        const { rows: lockRows } = await lockClient.query(
+            'SELECT pg_try_advisory_lock($1) AS acquired',
+            [DB_ADVISORY_LOCKS.MANUAL_BACKFILL]
+        );
+        if (!lockRows[0].acquired) {
+            lockClient.release();
+            logger.info('Manual backfill skipped: advisory lock held by another process');
+            throw new Error('Backfill already running in another process');
+        }
+        this._lockClient = lockClient;
 
-        logger.info('Manual backfill started', {
-            total: this.state.total,
-            batchSize: this.state.batchSize
-        });
+        try {
+            this.state.batchSize = options.batchSize || 50;
+            this.state.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+            this.state.total = await this.getPendingCount(this.state.includeImage);
+            this.state.processed = 0;
+            this.state.startTime = Date.now();
+            this.state.status = 'running';
+            this.state.error = null;
+            this.state.eta = null;
 
-        // Create run record
-        const runResult = await db.query(`
-            INSERT INTO backfill_runs (type, status, total)
-            VALUES ('manual', 'running', $1)
-            RETURNING id
-        `, [this.state.total]);
-        this.state.runId = runResult.rows[0].id;
+            logger.info('Manual backfill started', {
+                total: this.state.total,
+                batchSize: this.state.batchSize
+            });
 
-        // Run in background
+            // Create run record
+            const runResult = await db.query(`
+                INSERT INTO backfill_runs (type, status, total)
+                VALUES ('manual', 'running', $1)
+                RETURNING id
+            `, [this.state.total]);
+            this.state.runId = runResult.rows[0].id;
+        } catch (setupError) {
+            // Release the lock if setup fails before runBackfill() is called
+            await this._lockClient.query('SELECT pg_advisory_unlock($1)', [DB_ADVISORY_LOCKS.MANUAL_BACKFILL])
+                .catch((unlockErr) => logger.error('Failed to unlock advisory lock during setup error', { error: unlockErr.message }));
+            this._lockClient.release();
+            this._lockClient = null;
+            throw setupError;
+        }
+
+        // Run in background; lock is released in runBackfill()'s finally block
         this.runBackfill().catch(error => {
             logger.error('Manual backfill error', { error: error.message });
             this.state.error = error.message;
@@ -212,6 +237,13 @@ class ManualBackfillService {
             }
         } finally {
             this.isProcessing = false;
+            // Release session-level advisory lock held since start()
+            if (this._lockClient) {
+                await this._lockClient.query('SELECT pg_advisory_unlock($1)', [DB_ADVISORY_LOCKS.MANUAL_BACKFILL])
+                    .catch((unlockErr) => logger.error('Failed to unlock advisory lock', { error: unlockErr.message }));
+                this._lockClient.release();
+                this._lockClient = null;
+            }
         }
     }
 

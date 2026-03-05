@@ -16,6 +16,8 @@ const { expandRetrievalMetadata } = require('../utils/ragLoopHelpers');
 
 const logger = createLogger('RAGRetriever');
 
+const EF_SEARCH = parseInt(process.env.PGVECTOR_EF_SEARCH) || 80;
+
 function checkAbort(signal, operation = 'operation') {
     if (signal?.aborted) {
         const error = new Error(`${operation} aborted`);
@@ -188,7 +190,12 @@ class RAGRetriever {
             // 2) Re-rank by combined (text + image) similarity
             const candidateLimit = Math.min(Math.max(limit * 5, 25), 200);
 
-            const result = await db.query(`
+            const client = await db.pool.connect();
+            let result;
+            try {
+                await client.query('BEGIN');
+                await client.query('SET LOCAL hnsw.ef_search = $1', [EF_SEARCH]);
+                result = await client.query(`
                 WITH candidates AS (
                     SELECT
                         ce.id,
@@ -235,6 +242,13 @@ class RAGRetriever {
                 ORDER BY combined_similarity DESC
                 LIMIT $6
             `, [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit]);
+                await client.query('COMMIT');
+            } catch (err) {
+                await client.query('ROLLBACK').catch(() => {});
+                throw err;
+            } finally {
+                client.release();
+            }
 
             if (result.rows.length === 0) {
                 logger.info('RAG search returned no results', { 

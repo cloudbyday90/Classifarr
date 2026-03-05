@@ -10,7 +10,9 @@ const db = require('../config/database');
 
 // Mock all dependencies
 jest.mock('../config/database', () => ({
-    query: jest.fn()
+    query: jest.fn(),
+    withSessionAdvisoryLock: jest.fn(),
+    DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003 }
 }));
 
 jest.mock('../services/embeddingService', () => ({
@@ -50,6 +52,12 @@ describe('IdleBackfillService', () => {
         embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
         embeddingService.getPendingCount.mockResolvedValue(0);
         embeddingService.getPendingEmbeddings.mockResolvedValue([]);
+
+        // Default: advisory lock acquired — fn() is called and returns true
+        db.withSessionAdvisoryLock.mockImplementation(async (lockKey, fn) => {
+            await fn();
+            return true;
+        });
     });
 
     describe('Configuration', () => {
@@ -275,6 +283,29 @@ describe('IdleBackfillService', () => {
                 isRunning: true,
                 config: { idle_batch_size: 20 }
             });
+        });
+    });
+
+    describe('Advisory lock guard', () => {
+        test('skips backfill when advisory lock is not acquired', async () => {
+            // Set up config so the service would normally proceed
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    rag_enabled: true,
+                    idle_backfill_enabled: true,
+                    idle_threshold: 300,
+                    idle_batch_size: 10
+                }]
+            });
+            idleDetector.isIdle.mockReturnValue(true);
+
+            // Advisory lock not acquired — withSessionAdvisoryLock returns false without calling fn
+            db.withSessionAdvisoryLock.mockResolvedValue(false);
+
+            await idleBackfillService.startIdleBackfill();
+
+            // isRunning should remain false — no backfill was started
+            expect(idleBackfillService.isRunning).toBe(false);
         });
     });
 });

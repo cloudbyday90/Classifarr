@@ -5226,6 +5226,26 @@ ALTER TABLE ONLY public.classification_history
 
 
 --
+-- Name: classification_history chk_classification_confidence_range; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.classification_history
+    ADD CONSTRAINT chk_classification_confidence_range
+    CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 100))
+    NOT VALID;
+
+
+--
+-- Name: classification_history chk_classification_completed_has_library; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.classification_history
+    ADD CONSTRAINT chk_classification_completed_has_library
+    CHECK (status IS DISTINCT FROM 'completed' OR library_id IS NOT NULL)
+    NOT VALID;
+
+
+--
 -- Name: confidence_settings_audit confidence_settings_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6982,6 +7002,13 @@ CREATE INDEX idx_rag_metrics_success ON public.rag_metrics USING btree (success,
 --
 
 CREATE INDEX idx_refresh_tokens_expires_at ON public.refresh_tokens USING btree (expires_at);
+
+
+--
+-- Name: idx_refresh_tokens_revoked_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_refresh_tokens_revoked_at ON public.refresh_tokens USING btree (revoked_at) WHERE (revoked_at IS NOT NULL);
 
 
 --
@@ -9081,6 +9108,8 @@ FROM unnest(ARRAY[
     '20260303_123026_extend_search_text_tsvector.sql',
     '20260303_130000_add_policy_recheck_confidence_gain_multiplier.sql',
     '20260305_100000_optimize_task_queue_indexes.sql',
-    '20260305_100100_add_updated_at_triggers.sql'
+    '20260305_100100_add_updated_at_triggers.sql',
+    '20260305_110000_add_security_cleanup_indexes.sql',
+    '20260305_120000_add_classification_history_check_constraints.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
