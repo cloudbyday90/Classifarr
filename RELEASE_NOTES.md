@@ -4,6 +4,41 @@
 
 ---
 
+## v0.43.5a-beta
+**Title: Keeping the foundation secure — dependency hardening patch**
+
+### 🎉 What You'll Notice
+- Rate limiting now correctly handles IPv4 addresses mapped to IPv6 — a security corner case that could have allowed limit bypasses on some network setups.
+- All core dependencies are up to date with the latest bug fixes and compatibility improvements.
+
+### 📊 Quick Visual
+```text
+v0.43.5a-beta Security Patch
+─────────────────────────────────────────────────
+Security fixes   [██████████] 2 vulnerabilities resolved
+Dep freshness    [██████████] All major deps up to date
+Build pipeline   [██████████] CI actions on Node 24 runtime
+─────────────────────────────────────────────────
+```
+
+### ✨ Highlights
+- **Rate limit bypass patched** — `express-rate-limit` was updated to fix a security issue (GHSA-46wh-pxpv-q5gq) where IPv4 addresses expressed in IPv6 notation could bypass configured rate limits. Upgraded to 8.3.0 which resolves this.
+- **Dev dependency vulnerability resolved** — A transitive test-only dependency (`immutable`) was pinned to eliminate a high-severity advisory (GHSA-wf6x-7x77-mvgw). No production code is affected.
+
+### 🔧 Reliability Improvements
+- `axios` updated to 1.13.6 across all packages — improves error propagation and React Native / Browserify compatibility (no user-visible impact for server deployments).
+- `pg` updated to 8.20.0 — adds `onConnect` callback support for pool initialization; existing connection behaviour is unchanged.
+- CI build pipeline updated to use Node 24 runtime for all Docker GitHub Actions.
+
+### 👥 Who This Helps
+- **Operators/admins:** Rate limiting now works correctly for all clients regardless of IPv4/IPv6 address representation — no configuration change needed.
+- **Self-hosters:** No action required; the fix applies automatically on container restart.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.43.5-beta
 **Title: First beta — a complete, hardened foundation months in the making**
 

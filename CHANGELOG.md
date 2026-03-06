@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.43.5a-beta] - 2026-03-06
+
 ### Security
 
+- **`express-rate-limit` upgraded 8.2.1→8.3.0** — Fixes **GHSA-46wh-pxpv-q5gq**: IPv4 addresses mapped to IPv6 notation (e.g. `::ffff:1.2.3.4`) were not correctly normalised before checking against the rate limit store, allowing clients on dual-stack networks to bypass configured limits. Upgraded to 8.3.0 which includes the fix (`handle ipv4 mapped to ipv6`).
 - **`immutable` (dev) upgraded to `>=4.3.8` via `overrides`** — OSV scan flagged `immutable@4.3.7` (transitive dependency of `pg-mem`, the in-memory PostgreSQL used in unit tests) with **GHSA-wf6x-7x77-mvgw** (CVSS 8.7, High). The vulnerability is in a dev/test-only dependency with no production exposure, but the scan gate blocks tagging until it is resolved. Added `"immutable": ">=4.3.8"` to `server/package.json` `overrides` so npm resolves the transitive dep to `5.1.5` (latest), eliminating the advisory. `pg-mem@3.0.14` itself was also updated from the previously stale `3.0.13`.
+
+### Changed
+
+- **`axios` 1.13.5→1.13.6** (server, client, root) — Bug fixes: `AxiosError.message` is now correctly enumerable; `AxiosError.from` correctly copies the `status` property from the source error; fixed module exports for React Native and Browserify environments.
+- **`pg` 8.19.0→8.20.0** (server) — Adds `onConnect` callback to `pg.Pool` constructor options, allowing async initialization of newly created pooled clients. No behaviour change for existing usage.
+- **`postcss` 8.5.6→8.5.8** (client dev) — Fixes `Processor#version`; improves source map annotation cleaning performance.
+- **GitHub Actions: Docker actions updated to Node 24 runtime** — `docker/setup-buildx-action` v3→v4, `docker/build-push-action` v6→v7, `docker/metadata-action` v5→v6, `docker/login-action` v3→v4, `docker/setup-qemu-action` v3→v4. All require Actions Runner v2.327.1+. No workflow behaviour changes.
+
+### Fixed
+
+- **`database/migrations/MIGRATION_GUIDE.md`** — Removed consecutive blank lines that violated MD012 lint rule.
 
 ## [v0.43.5-beta] - 2026-03-05
 
