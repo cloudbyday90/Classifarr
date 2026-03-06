@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 
 - **`axios` bumped from `1.13.5` to `1.13.6`** in `/client` (PR #343) and `/server` (PR #342) — patch release; no vulnerabilities found.
-- **`postcss` bumped from `8.5.6` to `8.5.8`** in `/client` (dev, PR #341) — fixes `Processor#version` reporting and improves source-map annotation cleaning performance.
+- **`postcss` bumped from `8.4.32` to `8.5.8`** in `/client` (dev, PR #341) — fixes `Processor#version` reporting and improves source-map annotation cleaning performance.
 - **`pg` bumped from `8.19.0` to `8.20.0`** in `/server` (PR #340) — adds `onConnect` callback to `pg.Pool` constructor options for async initialisation of newly created pooled clients; fixes typo in `client.query()` deprecation notice.
 - **GitHub Actions Docker actions bumped to latest major versions** (PRs #335–#339):
   - `docker/setup-buildx-action` v3 → v4 — Node 24 runtime, updated `@actions/core` to 3.0.0.
