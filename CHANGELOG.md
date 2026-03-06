@@ -9,7 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **`express-rate-limit` upgraded from `8.2.1` to `8.3.0` in `/server`** — Fixes **GHSA-46wh-pxpv-q5gq**: IPv4-mapped-to-IPv6 addresses (e.g. `::ffff:1.2.3.4`) were not normalised before rate-limit key lookups, allowing a client to bypass per-IP limits by presenting the same address in both formats. (PR #344)
 - **`immutable` (dev) upgraded to `>=4.3.8` via `overrides`** — OSV scan flagged `immutable@4.3.7` (transitive dependency of `pg-mem`, the in-memory PostgreSQL used in unit tests) with **GHSA-wf6x-7x77-mvgw** (CVSS 8.7, High). The vulnerability is in a dev/test-only dependency with no production exposure, but the scan gate blocks tagging until it is resolved. Added `"immutable": ">=4.3.8"` to `server/package.json` `overrides` so npm resolves the transitive dep to `5.1.5` (latest), eliminating the advisory. `pg-mem@3.0.14` itself was also updated from the previously stale `3.0.13`.
+
+### Dependencies
+
+- **`axios` bumped from `1.13.5` to `1.13.6`** in `/client` (PR #343) and `/server` (PR #342) — patch release; no vulnerabilities found.
+- **`postcss` bumped from `8.5.6` to `8.5.8`** in `/client` (dev, PR #341) — fixes `Processor#version` reporting and improves source-map annotation cleaning performance.
+- **`pg` bumped from `8.19.0` to `8.20.0`** in `/server` (PR #340) — adds `onConnect` callback to `pg.Pool` constructor options for async initialisation of newly created pooled clients; fixes typo in `client.query()` deprecation notice.
+- **GitHub Actions Docker actions bumped to latest major versions** (PRs #335–#339):
+  - `docker/setup-buildx-action` v3 → v4 — Node 24 runtime, updated `@actions/core` to 3.0.0.
+  - `docker/setup-qemu-action` v3 → v4 — Node 24 runtime, updated `@actions/core` to 3.0.0.
+  - `docker/login-action` v3 → v4 — Node 24 runtime.
+  - `docker/metadata-action` v5 → v6 — Node 24 runtime.
+  - `docker/build-push-action` v6 → v7 — Node 24 runtime.
 
 ## [v0.43.5-beta] - 2026-03-05
 
