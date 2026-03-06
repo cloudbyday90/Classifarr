@@ -442,4 +442,3 @@ ALTER TABLE classification_history_partitioned RENAME TO classification_history;
 Plan the partitioning migration when `classification_history` exceeds 500,000 rows
 or when the nightly cleanup DELETE+VACUUM starts taking more than 30 seconds
 (observable via `pg_stat_statements`).
-
