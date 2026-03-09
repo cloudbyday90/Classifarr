@@ -3,25 +3,47 @@ name: Gitleaks Secret Scan
 on:
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - 'docs/**'
+      - 'logo/**'
   push:
     branches: [ main ]
     tags:
       - "v*"
+  schedule:
+    # Weekly scan on Wednesday at 02:00 UTC (staggered from CodeQL Mon, Trivy Tue)
+    - cron: '0 2 * * 3'
+  workflow_dispatch:  # Allow manual triggering (e.g. incident response)
 
 jobs:
   gitleaks:
     name: Detect Secrets
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
+      pull-requests: write  # Required for gitleaks to post PR review comments on leaks
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Full history required to scan all commits
 
       - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITLEAKS_LICENSE is only required for organization-owned repos.
+          # For personal account repos this is not needed.
+          # GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_ENABLE_COMMENTS: true   # Post PR review comments when leaks are found
+          GITLEAKS_ENABLE_SUMMARY: true    # Show job summary with findings
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true  # Upload SARIF artifact on leaks (for audit trail)
+          # NOTE: SARIF upload to GitHub Security tab is intentionally omitted.
+          # Gitleaks maintainers warn this gives a false sense of security:
+          # removing a secret in a later commit marks the alert "resolved" even
+          # though the secret remains visible in git history. Rotate any leaked
+          # secret immediately regardless of git history cleanup.
