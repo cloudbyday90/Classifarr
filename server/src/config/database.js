@@ -58,8 +58,10 @@ const pool = new Pool({
   database: process.env.POSTGRES_DB || 'classifarr',
   user: process.env.POSTGRES_USER || 'classifarr',
   password: process.env.POSTGRES_PASSWORD || 'classifarr_secret',
-  // Explicit pool sizing — default pg value is 10, but make it tunable
-  max: parseInt(process.env.POSTGRES_POOL_MAX) || 10,
+  // Explicit pool sizing — bumped to 15 to accommodate concurrent tasks each
+  // holding a dedicated vector-search transaction client plus graph/text queries.
+  // Override with POSTGRES_POOL_MAX env var.
+  max: parseInt(process.env.POSTGRES_POOL_MAX) || 15,
   // Fail fast if pool is exhausted rather than hanging indefinitely
   connectionTimeoutMillis: parseInt(process.env.POSTGRES_CONN_TIMEOUT_MS) || 5000,
   // Release idle connections after 30s (important for embedded/Docker deployments)

@@ -947,11 +947,15 @@ class QueueService {
                                     );
 
                                 if (existingEntry.rows.length === 0) {
+                                    const ragGraphExtractor = require('./ragGraphExtractor');
+                                    const graphRel = ragGraphExtractor.extract(enrichPayload);
+
                                     await this.db.query(
                                         `INSERT INTO classification_history (
                                             tmdb_id, media_type, title, year, library_id, status, 
-                                            confidence, method, reason, metadata
-                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                                            confidence, method, reason, metadata,
+                                            director_name, primary_studio_name, genre_names, cast_ids, cast_names
+                                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
                                         [
                                             enrichTmdbId || null,  // Now allows NULL
                                             enrichPayload.media?.media_type || 'movie',
@@ -964,7 +968,12 @@ class QueueService {
                                             enrichTmdbId
                                                 ? `Already in library: ${enrichSourceLibraryName}`
                                                 : `Already in library: ${enrichSourceLibraryName} (no TMDB match)`,
-                                            JSON.stringify(enrichPayload)
+                                            JSON.stringify(enrichPayload),
+                                            graphRel.director_name,
+                                            graphRel.primary_studio_name,
+                                            graphRel.genre_names,
+                                            graphRel.cast_ids,
+                                            graphRel.cast_names
                                         ]
                                     );
                                 }

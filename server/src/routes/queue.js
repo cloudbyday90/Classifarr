@@ -438,10 +438,13 @@ router.post('/tasks/:id/classify', requireReadWrite, async (req, res) => {
         const mediaType = metadata.media_type || library.media_type || 'movie';
 
         // Create classification history entry with manual_classification method
+        const ragGraphExtractor = require('../services/ragGraphExtractor');
+        const graphRel = ragGraphExtractor.extract(metadata);
+
         const insertResult = await db.query(
             `INSERT INTO classification_history 
-             (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, director_name, primary_studio_name, genre_names, cast_ids, cast_names)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
              RETURNING id`,
             [
                 tmdbId,
@@ -454,7 +457,12 @@ router.post('/tasks/:id/classify', requireReadWrite, async (req, res) => {
                 'manual_classification',
                 `Manually classified by ${resolved_by}`,
                 JSON.stringify(metadata),
-                'completed'
+                'completed',
+                graphRel.director_name,
+                graphRel.primary_studio_name,
+                graphRel.genre_names,
+                graphRel.cast_ids,
+                graphRel.cast_names
             ]
         );
 

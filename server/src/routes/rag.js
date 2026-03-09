@@ -1791,4 +1791,47 @@ router.post('/reset-config', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/rag/graph/fill-rate
+ * Graph relationship column fill-rate diagnostic (Phase 5 backfill readiness).
+ * Returns row counts and percentages for each relationship column so operators
+ * can verify the backfill script has been run before enabling rag_graph_enabled.
+ */
+router.get('/graph/fill-rate', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT
+                COUNT(*)                                                              AS total,
+                COUNT(director_name)                                                  AS has_director,
+                COUNT(primary_studio_name)                                            AS has_studio,
+                COUNT(genre_names)  FILTER (WHERE array_length(genre_names,  1) > 0) AS has_genres,
+                COUNT(cast_ids)     FILTER (WHERE array_length(cast_ids,     1) > 0) AS has_cast,
+                COUNT(collection_id)                                                  AS has_collection
+            FROM classification_history
+            WHERE metadata IS NOT NULL
+        `);
+
+        const row = result.rows[0];
+        const total = Number(row.total);
+        const pct = (n) => total > 0 ? Math.round((Number(n) / total) * 1000) / 10 : null;
+
+        res.json({
+            total,
+            has_director:   Number(row.has_director),
+            has_studio:     Number(row.has_studio),
+            has_genres:     Number(row.has_genres),
+            has_cast:       Number(row.has_cast),
+            has_collection: Number(row.has_collection),
+            pct_director:   pct(row.has_director),
+            pct_studio:     pct(row.has_studio),
+            pct_genres:     pct(row.has_genres),
+            pct_cast:       pct(row.has_cast),
+            pct_collection: pct(row.has_collection)
+        });
+    } catch (error) {
+        logger.error('Failed to get graph fill-rate', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

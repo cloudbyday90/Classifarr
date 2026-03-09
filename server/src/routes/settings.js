@@ -2401,6 +2401,16 @@ router.get('/ai', async (req, res) => {
         image_embedding_cache_max_mb: 1024,
         image_embedding_models_cache: null,
         image_embedding_models_cache_updated_at: null,
+        // Graph retrieval config (Issue 286)
+        rag_graph_enabled: false,
+        rag_graph_weight: 0.20,
+        rag_graph_collection_enabled: true,
+        rag_graph_director_enabled: true,
+        rag_graph_studio_enabled: false,
+        rag_graph_cast_enabled: false,
+        rag_graph_genre_enabled: false,
+        rag_graph_min_matches_to_apply: 1,
+        rag_graph_candidates_limit: 20,
         ...getRagLoopDefaultConfig()
       });
     }
@@ -2506,7 +2516,17 @@ router.put('/ai', async (req, res) => {
       image_embedding_concurrency,
       image_embedding_batch_size,
       image_embedding_cache_ttl_hours,
-      image_embedding_cache_max_mb
+      image_embedding_cache_max_mb,
+      // Graph retrieval configuration (Issue 286)
+      rag_graph_enabled,
+      rag_graph_weight,
+      rag_graph_collection_enabled,
+      rag_graph_director_enabled,
+      rag_graph_studio_enabled,
+      rag_graph_cast_enabled,
+      rag_graph_genre_enabled,
+      rag_graph_min_matches_to_apply,
+      rag_graph_candidates_limit
     } = req.body;
 
     // Fetch existing config to use as fallback for undefined values (partial updates)
@@ -2621,11 +2641,16 @@ router.put('/ai', async (req, res) => {
                 image_embedding_cloud_api_endpoint,
                 image_embedding_image_size, image_embedding_rps, image_embedding_concurrency, image_embedding_batch_size,
                 image_embedding_cache_ttl_hours, image_embedding_cache_max_mb,
+                rag_graph_enabled, rag_graph_weight,
+                rag_graph_collection_enabled, rag_graph_director_enabled, rag_graph_studio_enabled,
+                rag_graph_cast_enabled, rag_graph_genre_enabled,
+                rag_graph_min_matches_to_apply, rag_graph_candidates_limit,
                 updated_at
             ) VALUES (
                 1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
                 $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-                $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, NOW()
+                $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49,
+                $50, $51, $52, $53, $54, $55, $56, $57, $58, NOW()
             )
             ON CONFLICT (id) DO UPDATE SET
                 primary_provider = EXCLUDED.primary_provider,
@@ -2677,6 +2702,15 @@ router.put('/ai', async (req, res) => {
                 image_embedding_batch_size = EXCLUDED.image_embedding_batch_size,
                 image_embedding_cache_ttl_hours = EXCLUDED.image_embedding_cache_ttl_hours,
                 image_embedding_cache_max_mb = EXCLUDED.image_embedding_cache_max_mb,
+                rag_graph_enabled = EXCLUDED.rag_graph_enabled,
+                rag_graph_weight = EXCLUDED.rag_graph_weight,
+                rag_graph_collection_enabled = EXCLUDED.rag_graph_collection_enabled,
+                rag_graph_director_enabled = EXCLUDED.rag_graph_director_enabled,
+                rag_graph_studio_enabled = EXCLUDED.rag_graph_studio_enabled,
+                rag_graph_cast_enabled = EXCLUDED.rag_graph_cast_enabled,
+                rag_graph_genre_enabled = EXCLUDED.rag_graph_genre_enabled,
+                rag_graph_min_matches_to_apply = EXCLUDED.rag_graph_min_matches_to_apply,
+                rag_graph_candidates_limit = EXCLUDED.rag_graph_candidates_limit,
                 updated_at = NOW()
         `, [
       primary_provider ?? existing.primary_provider ?? 'none',
@@ -2727,7 +2761,16 @@ router.put('/ai', async (req, res) => {
       image_embedding_concurrency ?? existing.image_embedding_concurrency ?? 2,
       image_embedding_batch_size ?? existing.image_embedding_batch_size ?? 1,
       image_embedding_cache_ttl_hours ?? existing.image_embedding_cache_ttl_hours ?? 24,
-      image_embedding_cache_max_mb ?? existing.image_embedding_cache_max_mb ?? 1024
+      image_embedding_cache_max_mb ?? existing.image_embedding_cache_max_mb ?? 1024,
+      rag_graph_enabled ?? existing.rag_graph_enabled ?? false,
+      rag_graph_weight ?? existing.rag_graph_weight ?? 0.20,
+      rag_graph_collection_enabled ?? existing.rag_graph_collection_enabled ?? true,
+      rag_graph_director_enabled ?? existing.rag_graph_director_enabled ?? true,
+      rag_graph_studio_enabled ?? existing.rag_graph_studio_enabled ?? false,
+      rag_graph_cast_enabled ?? existing.rag_graph_cast_enabled ?? false,
+      rag_graph_genre_enabled ?? existing.rag_graph_genre_enabled ?? false,
+      rag_graph_min_matches_to_apply ?? existing.rag_graph_min_matches_to_apply ?? 1,
+      rag_graph_candidates_limit ?? existing.rag_graph_candidates_limit ?? 20
     ]);
 
     const ragLoopKeys = Object.keys(normalizedRagLoopConfig);

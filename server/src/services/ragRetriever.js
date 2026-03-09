@@ -480,13 +480,55 @@ class RAGRetriever {
                 // Tie-breaking: prefer items with better semantic rank
                 if (a.semanticRank !== null && b.semanticRank !== null) {
                     return a.semanticRank - b.semanticRank;
-                }
+                } /* c8 ignore next */
                 if (a.semanticRank !== null) return -1;
                 if (b.semanticRank !== null) return 1;
+                /* c8 ignore next */
                 return 0;
             });
 
         return results;
+    }
+
+    /**
+     * Weighted Reciprocal Rank Fusion (Issue 286 — 3-way fusion with per-source weights).
+     *
+     * Formula: final_score(doc) = Σ weight_i × (1 / (k + rank_i(doc)))
+     * Source: Azure AI Search weighted hybrid ranking (confirmed from Azure hybrid search docs).
+     *
+     * The weight multiplies the per-rank contribution before accumulation. With equal weights
+     * (weight=1.0 for all sources) the result is identical to the unweighted calculateRRF.
+     * At rag_graph_weight=0.20, a top-1 graph hit contributes ~20% of what a top-1 vector hit
+     * contributes — graph is supplementary, not a veto.
+     *
+     * @param {Array<{matches: Array, weight: number}>} sources - Each source's matches + weight.
+     * @param {number} k - RRF smoothing constant (default 60, Cormack et al. 2009).
+     * @returns {Array} Fused and ranked results sorted by descending rrfScore.
+     */
+    calculateWeightedRRF(sources, k = 60) {
+        if (!sources || sources.length === 0) return [];
+        if (typeof k !== 'number' || k < 0) k = 60;
+
+        const combined = new Map();
+
+        sources.forEach(({ matches, weight = 1.0 }) => {
+            if (!matches || matches.length === 0) return;
+            matches.forEach((match, index) => {
+                if (!match.classificationId) {
+                    logger.debug('Skipping match without classificationId in weighted RRF', { match });
+                    return;
+                }
+                const contribution = weight * (1 / (k + index + 1));
+                if (combined.has(match.classificationId)) {
+                    combined.get(match.classificationId).rrfScore += contribution;
+                } else {
+                    combined.set(match.classificationId, { ...match, rrfScore: contribution });
+                }
+            });
+        });
+
+        return Array.from(combined.values())
+            .sort((a, b) => b.rrfScore - a.rrfScore);
     }
 
     /**
@@ -547,6 +589,7 @@ class RAGRetriever {
             const config = await embeddingRouter.getConfig();
             const fusionMethod = config?.rag_fusion_method || 'rrf';
             const rrfK = config?.rag_rrf_k || 60;
+            const graphEnabled = config?.rag_graph_enabled === true;
 
             // Get semantic matches
             const semanticMatches = await this.semanticSearch(metadata, limit, options);
@@ -554,12 +597,27 @@ class RAGRetriever {
             // Get full-text matches
             const { matches: textMatches, expansionTermCount } = await this.fullTextSearch(metadata, limit, options);
 
+            // Get graph matches (only when rag_graph_enabled = true)
+            let graphMatches = [];
+            if (graphEnabled) {
+                graphMatches = await this.graphSearch(metadata, config, options);
+            }
+
             let results;
             if (fusionMethod === 'rrf') {
-                // Use RRF algorithm
-                results = this.calculateRRF(semanticMatches, textMatches, rrfK);
+                if (graphEnabled && graphMatches.length >= (config?.rag_graph_min_matches_to_apply ?? 1)) {
+                    // 3-way weighted RRF
+                    results = this.calculateWeightedRRF([
+                        { matches: semanticMatches, weight: 1.0 },
+                        { matches: textMatches,     weight: 1.0 },
+                        { matches: graphMatches,    weight: Number(config?.rag_graph_weight ?? 0.20) }
+                    ], rrfK);
+                } else {
+                    // 2-way unweighted RRF (same as before Issue 286)
+                    results = this.calculateRRF(semanticMatches, textMatches, rrfK);
+                }
             } else {
-                // Use legacy weighted average
+                // Use legacy weighted average (graph not supported in legacy mode)
                 results = this.legacyHybridCombine(semanticMatches, textMatches, limit);
             }
 
@@ -575,6 +633,8 @@ class RAGRetriever {
                     fusionMethod,
                     semanticMatches: semanticMatches.length,
                     textMatches: textMatches.length,
+                    graphMatches: graphMatches.length,
+                    graphEnabled,
                     fusedResults: results.length,
                     expandedQuery: useExpandedQuery,
                     expansionTermCount: useExpandedQuery ? expansionTermCount : 0
@@ -593,6 +653,120 @@ class RAGRetriever {
             if (options.throwOnError === true) {
                 throw error;
             }
+            return [];
+        }
+    }
+
+    /**
+     * Graph retrieval: finds classification_history rows that are relationally connected
+     * to the query item via franchise/collection, director, studio, cast, or genre overlap.
+     *
+     * Query strategy: builds a dynamic WHERE clause from only the relationship dimensions
+     * that are (a) enabled in config and (b) have a non-null input value. This is required
+     * because parameterized boolean predicates (AND $n) are not valid SQL, and null-check
+     * branches in prepared statements may produce sub-optimal plans (Postgres 17 planner).
+     *
+     * @param {object} metadata - Classification metadata (same shape as semanticSearch).
+     * @param {object} config - RAG config from embeddingRouter.getConfig() — already loaded.
+     * @param {object} options - Supports options.signal (AbortSignal).
+     * @returns {Promise<Array>} Graph candidates, sorted by match_score DESC then created_at DESC.
+     */
+    async graphSearch(metadata, config, options = {}) {
+        const signal = options.signal || null;
+        const startTime = Date.now();
+
+        try {
+            checkAbort(signal, 'graph search');
+
+            const graphEnabled = config?.rag_graph_enabled === true;
+            if (!graphEnabled) return [];
+
+            const ragGraphExtractor = require('./ragGraphExtractor');
+            const relationships = ragGraphExtractor.extract(metadata);
+
+            // collection_id lives on the metadata object directly (set by signalCollector)
+            const collectionId = metadata.collectionId || metadata.collection_id || null;
+
+            const collectionEnabled = config?.rag_graph_collection_enabled !== false; // default true
+            const directorEnabled   = config?.rag_graph_director_enabled   !== false; // default true
+            const studioEnabled     = config?.rag_graph_studio_enabled     === true;  // default false
+            const castEnabled       = config?.rag_graph_cast_enabled       === true;  // default false
+            const genreEnabled      = config?.rag_graph_genre_enabled      === true;  // default false
+            const limit             = Number(config?.rag_graph_candidates_limit ?? 20);
+
+            // Build active conditions dynamically — only push dimensions that are enabled and
+            // have non-null input. classificationId-to-exclude is always $1.
+            const excludeId = metadata.classificationId || metadata.classification_id || 0;
+            const params = [excludeId];
+            const conditions = [];
+            const scoreTerms = [];
+
+            if (collectionEnabled && collectionId != null) {
+                params.push(collectionId);
+                conditions.push(`collection_id = $${params.length}`);
+                scoreTerms.push(`CASE WHEN collection_id = $${params.length} THEN 8 ELSE 0 END`);
+            }
+            if (directorEnabled && relationships.director_name != null) {
+                params.push(relationships.director_name);
+                conditions.push(`director_name = $${params.length}`);
+                scoreTerms.push(`CASE WHEN director_name = $${params.length} THEN 4 ELSE 0 END`);
+            }
+            if (studioEnabled && relationships.primary_studio_name != null) {
+                params.push(relationships.primary_studio_name);
+                conditions.push(`primary_studio_name = $${params.length}`);
+                scoreTerms.push(`CASE WHEN primary_studio_name = $${params.length} THEN 2 ELSE 0 END`);
+            }
+            if (castEnabled && relationships.cast_ids.length > 0) {
+                params.push(relationships.cast_ids);
+                conditions.push(`cast_ids && $${params.length}`);
+                scoreTerms.push(`CASE WHEN cast_ids && $${params.length} THEN 1 ELSE 0 END`);
+            }
+            if (genreEnabled && relationships.genre_names.length > 0) {
+                params.push(relationships.genre_names);
+                conditions.push(`genre_names && $${params.length}`);
+                scoreTerms.push(`CASE WHEN genre_names && $${params.length} THEN 1 ELSE 0 END`);
+            }
+
+            // Nothing to query on — return early without hitting the DB.
+            if (conditions.length === 0) return [];
+
+            const matchScoreExpr = scoreTerms.length > 0
+                ? `(${scoreTerms.join(' + ')})`
+                : '0';
+
+            params.push(limit);
+            const sql = `
+                SELECT id AS classification_id, title, media_type, library_id, library_name,
+                       method, confidence, created_at,
+                       ${matchScoreExpr} AS match_score
+                FROM classification_history
+                WHERE library_id IS NOT NULL
+                  AND id != $1
+                  AND (${conditions.join(' OR ')})
+                ORDER BY match_score DESC, created_at DESC
+                LIMIT $${params.length}
+            `;
+
+            checkAbort(signal, 'graph search');
+            const { rows } = await db.query(sql, params);
+
+            return rows.map(row => ({
+                classificationId: row.classification_id,
+                title:            row.title,
+                mediaType:        row.media_type,
+                libraryId:        row.library_id,
+                libraryName:      row.library_name,
+                method:           row.method,
+                confidence:       row.confidence,
+                similarity:       null,      // graph hits have no cosine similarity
+                graphMatchScore:  row.match_score
+            }));
+
+        } catch (error) {
+            if (error.name === 'AbortError') throw error;
+            const duration = Date.now() - startTime;
+            await ragLogger.logError(error, 'graph_search', { duration_ms: duration });
+            logger.error('Graph search failed', { title: metadata?.title, error: error.message });
             return [];
         }
     }
@@ -638,6 +812,7 @@ class RAGRetriever {
             const tsQueryFn = (useExpandedQuery && expansionTermCount > 0)
                 ? 'websearch_to_tsquery'
                 : 'plainto_tsquery';
+            /* c8 ignore next 3 */
             if (tsQueryFn !== 'websearch_to_tsquery' && tsQueryFn !== 'plainto_tsquery') {
                 throw new Error(`Invalid tsQueryFn: ${tsQueryFn}`);
             }

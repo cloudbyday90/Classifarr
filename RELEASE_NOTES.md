@@ -1,5 +1,53 @@
 # Classifarr Release Notes
 
+## v0.43.7-beta
+**Title: Graph Retrieval — smarter library matching for sequels, spin-offs, and franchises**
+
+> [!IMPORTANT]
+> **Existing installs:** After upgrading, run the backfill script once to populate relationship data for past classifications:
+> ```
+> docker exec classifarr node server/src/scripts/backfillGraphRelationships.js
+> ```
+> Graph retrieval is **off by default** — you must enable it in Settings → RAG & Embeddings → Graph 🕸️. The backfill is optional but recommended before enabling.
+
+### 🎉 What You'll Notice
+- A new **Graph** tab in RAG & Embeddings settings lets you enable structured relationship matching alongside the existing AI search.
+- Sequels, franchise films, and spin-offs are now more reliably matched to earlier entries in your library — even when they look (or are described) very differently.
+- The match explanation now shows which signals contributed — semantic similarity, text search, and/or structural relationships.
+
+### 📊 Quick Visual
+```text
+v0.43.7-beta — Graph Retrieval
+────────────────────────────────────────────────
+Retrieval signals  Before   Now
+──────────────────────────────
+Vector (semantic)    ✓       ✓
+Full-text            ✓       ✓
+Graph (relational)   —       ✓  (opt-in)
+────────────────────────────────────────────────
+Franchise recall improvement (new film in    
+established series)       Low → High
+────────────────────────────────────────────────
+```
+
+### ✨ Highlights
+- **Graph retrieval is a third match path** — beyond semantic embeddings and keyword search, Classifarr can now find past classifications that share a franchise/collection, director, studio, cast overlap, or genre with the item being processed.
+- **Postgres-native — no new services** — No external graph database is required. The relationship data already existed in your classification history; it's just now indexed for fast relational lookups.
+- **Conservative defaults** — Graph weight is 0.20 (out of a total fusion budget of ~2.2), meaning it nudges rankings without overriding strong semantic matches. Collection and director are on by default; studio, cast, and genre are opt-in.
+- **Fill-rate panel** — The Graph settings tab shows what percentage of your past classifications already have relationship data populated, so you know whether to run the backfill.
+
+### 🔧 Reliability Improvements
+- Fixed a rare "timeout exceeded when trying to connect" error that could occur under heavy classification load — the database connection pool default was raised from 10 to 15 to give headroom for the additional graph query per task.
+
+### 👥 Who This Helps
+- **Users classifying franchise media** (MCU, Star Wars, long-running TV series, documentary series) — items that share a director or collection but embed differently from their predecessors now have a structural signal path.
+- **Operators/admins:** All graph settings are managed in the UI; no config files required. Pool size is tunable via `POSTGRES_POOL_MAX` if you run a high-concurrency setup.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for the full technical breakdown: migration details, API endpoints, test matrix, and formula derivations.
+
+---
+
 ## v0.43.6a-beta
 **Title: Query planner fix — automatic VACUUM ANALYZE after queue cleanup**
 

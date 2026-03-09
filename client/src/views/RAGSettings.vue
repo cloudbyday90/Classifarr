@@ -100,12 +100,14 @@ import TextEmbeddingsTab from './rag/TextEmbeddingsTab.vue'
 import ImageEmbeddingsTab from './rag/ImageEmbeddingsTab.vue'
 import BackfillTab from './rag/BackfillTab.vue'
 import AdvancedTab from './rag/AdvancedTab.vue'
+import GraphTab from './rag/GraphTab.vue'
 
 const tabs = [
   { id: 'overview', label: 'Overview', icon: '📊', component: OverviewTab },
   { id: 'text', label: 'Text Embeddings', icon: '🔤', component: TextEmbeddingsTab },
   { id: 'images', label: 'Image Embeddings', icon: '🖼️', component: ImageEmbeddingsTab },
   { id: 'backfill', label: 'Backfill', icon: '⏱️', component: BackfillTab },
+  { id: 'graph', label: 'Graph', icon: '🕸️', component: GraphTab },
   { id: 'advanced', label: 'Advanced', icon: '⚙️', component: AdvancedTab }
 ]
 

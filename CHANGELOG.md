@@ -9,6 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.43.7-beta] - 2026-03-09
+
+### Added
+
+- **Graph retrieval for RAG pipeline (`ragRetriever.graphSearch()`)** — New third retrieval path alongside the existing vector (semantic) and full-text paths. Queries Postgres directly against five indexed relationship columns (`collection_id`, `director_name`, `primary_studio_name`, `cast_ids[]`, `genre_names[]`) to find past classifications that are relationally connected to the query item — even when semantic similarity is too low to surface them (e.g. a new film in an established franchise that embeds very differently from earlier entries). Returns scored, ranked candidates using a configurable per-dimension scoring scheme; results are capped by `rag_graph_candidates_limit`.
+- **3-way weighted RRF fusion (`ragRetriever.calculateWeightedRRF()`)** — Replaces the previous 2-way `calculateRRF()` when graph retrieval is active. Each source contributes `weight * (1 / (k + rank + 1))` to the accumulated score. Graph weight defaults to `0.20` and is operator-adjustable. The existing `calculateRRF()` is retained (and used) when graph is disabled, so the pre-286 pipeline is reproduced exactly with `rag_graph_enabled: false`.
+- **Graph relationship extractor (`server/src/services/ragGraphExtractor.js`)** — Deterministic, synchronous function that extracts five structured signals from enriched TMDB metadata: `collection_id` (integer), `director_name` (string), `primary_studio_name` (string), `cast_ids` (integer array, top-5 by popularity), `genre_names` (string array). Called at classification write time (in both `classification.js` and `queueService.js`) to populate the new relationship columns on `classification_history`. Also called by `graphSearch()` at query time to extract signals from the item being classified.
+- **DB migration `20260309_120000_add_rag_graph_relationship_columns.sql`** — Adds five indexed columns to `classification_history`: `director_name VARCHAR(200)`, `primary_studio_name VARCHAR(200)`, `cast_ids INTEGER[]`, `genre_names TEXT[]`, plus a GIN index on each array column and a B-tree index on `director_name`. `collection_id` already existed and is already indexed; no change needed.
+- **DB migration `20260309_120100_add_rag_graph_config_columns.sql`** — Adds eight `rag_graph_*` settings columns to the config table: `rag_graph_enabled BOOLEAN DEFAULT false`, `rag_graph_weight NUMERIC(4,2) DEFAULT 0.20`, `rag_graph_collection_enabled BOOLEAN DEFAULT true`, `rag_graph_director_enabled BOOLEAN DEFAULT true`, `rag_graph_studio_enabled BOOLEAN DEFAULT false`, `rag_graph_cast_enabled BOOLEAN DEFAULT false`, `rag_graph_genre_enabled BOOLEAN DEFAULT false`, `rag_graph_min_matches_to_apply INTEGER DEFAULT 1`, `rag_graph_candidates_limit INTEGER DEFAULT 20`.
+- **Graph settings UI (`client/src/views/rag/GraphTab.vue`)** — New tab added to RAG Settings (Settings → RAG & Embeddings → Graph 🕸️). Contains: master enable/disable toggle, fusion weight slider (0.05–1.0), candidates limit input, min-matches-to-apply input, and per-dimension enable toggles (collection, director, studio, cast, genre). Includes a fill-rate panel showing what percentage of existing classification rows have each relationship column populated — helps users decide whether to run the backfill before enabling.
+- **Graph fill-rate API endpoint (`GET /api/rag/graph/fill-rate`)** — Returns the percentage of `classification_history` rows with each relationship column populated. Used by the GraphTab UI to surface backfill readiness; also available as a standalone diagnostic.
+- **Backfill script (`server/src/scripts/backfillGraphRelationships.js`)** — Idempotent batch script that iterates all `classification_history` rows with `metadata IS NOT NULL`, calls `ragGraphExtractor.extract()`, and writes the five relationship columns (skipping rows where the column is already non-NULL). Supports `--pass1` (collection/director/studio only), `--pass2` (cast/genre only), or full run. Prints per-batch progress and final totals. Designed to be run once after upgrading existing installs; new classifications are populated automatically at write time.
+- **Graph config round-trip in settings API (`server/src/routes/settings.js`)** — All eight `rag_graph_*` keys now read and written through the existing RAG settings GET/PATCH endpoints. No new endpoints required.
+
+### Fixed
+
+- **PostgreSQL connection pool default raised 10 → 15 (`server/src/config/database.js`)** — The graph retrieval path added a third concurrent DB query per classification task (on top of the existing vector search transaction and full-text query). Under load with `MAX_CONCURRENT = 5` tasks, plus logger `persistToDb` calls and the worker loop, pool exhaustion (`timeout exceeded when trying to connect`) became possible at burst peaks. Raising the default from 10 to 15 provides headroom. The pool size remains fully tunable via `POSTGRES_POOL_MAX` env var.
+
+### Added
+
+- **`POSTGRES_POOL_MAX`, `POSTGRES_CONN_TIMEOUT_MS`, `POSTGRES_STATEMENT_TIMEOUT_MS` documented in `.env.example`** — All three were already supported env vars but were not listed in the example file. Added with guidance explaining when to tune each (pool exhaustion under heavy classification load, connection fanout from concurrent vector/graph queries).
+
+### Tests
+
+- **`server/src/__tests__/ragGraphExtractor.test.js`** — 25 tests, 100%/100%/100%/100% statement/branch/function/line coverage for `ragGraphExtractor.extract()`.
+- **`server/src/__tests__/ragRetriever.graph.test.js`** — 37 tests covering `graphSearch()`, `calculateWeightedRRF()`, and the graph integration paths in `hybridSearch()`.
+- **`server/src/__tests__/ragRetriever.test.js` and `ragRetriever.rrf.test.js`** — Extended with 11 precision math tests verifying: exact `calculateDynamicWeight` threshold boundary behaviour (strict `>` inequalities at 0.90/0.80/0.70/0.60), weight normalization when configured weights sum ≠ 1.0 (e.g. 0.3+0.9 → 0.25/0.75), similarity rounding to 2 decimal places in result mapping, `formatForAIContext` `Math.round` (not floor) behaviour on non-trivial percentages, 3-caps-at-3-matches enforcement, and 3-source weighted RRF accumulated score (`1.0/61 + 1.0/61 + 0.20/61 = 2.20/61`).
+- **Total: 2,002 tests, 106 suites, 0 failures.** `ragRetriever.js` at 100% statement coverage.
+
+---
+
 ## [v0.43.6a-beta] - 2026-03-09
 
 ### Fixed

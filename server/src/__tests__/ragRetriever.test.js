@@ -306,6 +306,57 @@ describe('RAGRetriever', () => {
             const weight = ragRetriever.calculateDynamicWeight([]);
             expect(weight).toBe(0);
         });
+
+        // Exact threshold boundary tests — all conditions use strict >  inequalities
+        it('returns 90 only when topMatch is strictly above 0.90 (3+ unanimous)', () => {
+            const atBoundary = [
+                { similarity: 0.90, libraryId: 1 },
+                { similarity: 0.90, libraryId: 1 },
+                { similarity: 0.90, libraryId: 1 }
+            ];
+            // 0.90 is NOT > 0.90 → falls through to >=2 unanimous && > 0.80 check → returns 80
+            expect(ragRetriever.calculateDynamicWeight(atBoundary)).toBe(80);
+
+            const aboveBoundary = [
+                { similarity: 0.91, libraryId: 1 },
+                { similarity: 0.91, libraryId: 1 },
+                { similarity: 0.91, libraryId: 1 }
+            ];
+            expect(ragRetriever.calculateDynamicWeight(aboveBoundary)).toBe(90);
+        });
+
+        it('returns 80 only when topMatch is strictly above 0.80 (2+ unanimous)', () => {
+            const atBoundary = [
+                { similarity: 0.80, libraryId: 1 },
+                { similarity: 0.80, libraryId: 1 }
+            ];
+            // 0.80 is NOT > 0.80 → falls to >=1 && > 0.70 check → returns 70
+            expect(ragRetriever.calculateDynamicWeight(atBoundary)).toBe(70);
+
+            const aboveBoundary = [
+                { similarity: 0.81, libraryId: 1 },
+                { similarity: 0.81, libraryId: 1 }
+            ];
+            expect(ragRetriever.calculateDynamicWeight(aboveBoundary)).toBe(80);
+        });
+
+        it('returns 70 only when topMatch is strictly above 0.70', () => {
+            const atBoundary = [{ similarity: 0.70, libraryId: 1 }];
+            // 0.70 is NOT > 0.70 → falls to > 0.60 check → returns 60
+            expect(ragRetriever.calculateDynamicWeight(atBoundary)).toBe(60);
+
+            const aboveBoundary = [{ similarity: 0.71, libraryId: 1 }];
+            expect(ragRetriever.calculateDynamicWeight(aboveBoundary)).toBe(70);
+        });
+
+        it('returns 60 only when topMatch is strictly above 0.60', () => {
+            const atBoundary = [{ similarity: 0.60, libraryId: 1 }];
+            // 0.60 is NOT > 0.60 → returns 50
+            expect(ragRetriever.calculateDynamicWeight(atBoundary)).toBe(50);
+
+            const aboveBoundary = [{ similarity: 0.61, libraryId: 1 }];
+            expect(ragRetriever.calculateDynamicWeight(aboveBoundary)).toBe(60);
+        });
     });
 
     describe('getSuggestedLibrary', () => {
@@ -366,6 +417,49 @@ describe('RAGRetriever', () => {
         it('should return empty string for no matches', () => {
             const result = ragRetriever.formatForAIContext([]);
             expect(result).toBe('');
+        });
+
+        it('rounds percentages correctly (Math.round, not Math.floor)', () => {
+            // 0.937 → Math.round(93.7) = 94, not 93
+            // 0.934 → Math.round(93.4) = 93
+            const matches = [
+                { title: 'Film', libraryName: 'Movies', similarity: 0.937, libraryId: 1 },
+                { title: 'Show', libraryName: 'TV',     similarity: 0.934, libraryId: 2 }
+            ];
+            const result = ragRetriever.formatForAIContext(matches);
+            expect(result).toContain('94% similar');
+            expect(result).toContain('93% similar');
+        });
+
+        it('rounds image and text percentages with Math.round (not Math.floor)', () => {
+            // textSimilarity=0.885 → Math.round(88.5) = 89; imageSimilarity=0.934 → 93
+            const matches = [
+                {
+                    title: 'Film',
+                    libraryName: 'Movies',
+                    similarity: 0.91,
+                    textSimilarity: 0.885,
+                    imageSimilarity: 0.934,
+                    libraryId: 1
+                }
+            ];
+            const result = ragRetriever.formatForAIContext(matches);
+            expect(result).toContain('text 89%');
+            expect(result).toContain('image 93%');
+        });
+
+        it('caps output at 3 matches regardless of input size', () => {
+            const matches = Array.from({ length: 5 }, (_, i) => ({
+                title: `Movie ${i + 1}`,
+                libraryName: 'Movies',
+                similarity: 0.9 - i * 0.01,
+                libraryId: 1
+            }));
+            const result = ragRetriever.formatForAIContext(matches);
+            expect(result).toContain('Movie 1');
+            expect(result).toContain('Movie 3');
+            expect(result).not.toContain('Movie 4');
+            expect(result).not.toContain('Movie 5');
         });
     });
 
@@ -780,6 +874,386 @@ describe('RAGRetriever', () => {
             );
             expect(setLocalCall).toBeDefined();
             expect(setLocalCall[0]).toContain('SET LOCAL hnsw.ef_search = 120');
+        });
+    });
+
+    describe('buildRetrievalText — evidence_tokens branches', () => {
+        it('appends Evidence Genres when evidence_tokens.genres is non-empty', () => {
+            embeddingService.formatForEmbedding.mockReturnValue('base text');
+            const metadata = {
+                title: 'Test Movie',
+                genres: ['Action', 'Thriller']
+            };
+            const result = ragRetriever.buildRetrievalText(metadata, { useExpandedQuery: true });
+            expect(result).toContain('Evidence Genres:');
+            expect(result).toContain('action');
+        });
+
+        it('appends Evidence Studios when evidence_tokens.studios is non-empty', () => {
+            embeddingService.formatForEmbedding.mockReturnValue('base text');
+            const metadata = {
+                title: 'Test Movie',
+                production_companies: ['Warner Bros']
+            };
+            const result = ragRetriever.buildRetrievalText(metadata, { useExpandedQuery: true });
+            expect(result).toContain('Evidence Studios:');
+            expect(result).toContain('warner bros');
+        });
+
+        it('appends Evidence Cast when evidence_tokens.cast is non-empty', () => {
+            embeddingService.formatForEmbedding.mockReturnValue('base text');
+            const metadata = {
+                title: 'Test Movie',
+                cast: ['Tom Hanks', 'Meryl Streep']
+            };
+            const result = ragRetriever.buildRetrievalText(metadata, { useExpandedQuery: true });
+            expect(result).toContain('Evidence Cast:');
+            expect(result).toContain('tom hanks');
+        });
+
+        it('appends Evidence Collection when evidence_tokens.collection is set', () => {
+            embeddingService.formatForEmbedding.mockReturnValue('base text');
+            const metadata = {
+                title: 'Test Movie',
+                belongs_to_collection: 'Marvel Cinematic Universe'
+            };
+            const result = ragRetriever.buildRetrievalText(metadata, { useExpandedQuery: true });
+            expect(result).toContain('Evidence Collection:');
+            expect(result).toContain('marvel cinematic universe');
+        });
+
+        it('returns baseText unchanged when useExpandedQuery=true but no extra terms or aliases', () => {
+            embeddingService.formatForEmbedding.mockReturnValue('base text');
+            // No title aliases (aliasEnabled: false) and no evidence → extraTerms stays empty
+            const result = ragRetriever.buildRetrievalText(
+                { title: 'X' },
+                { useExpandedQuery: true, aliasEnabled: false }
+            );
+            expect(result).toBe('base text');
+        });
+    });
+
+    describe('semanticSearch — skip/early-return branches', () => {
+        it('returns [] and logs when RAG is disabled (isEnabled=false)', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(false);
+
+            const result = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            expect(result).toEqual([]);
+            expect(embeddingRouter.embed).not.toHaveBeenCalled();
+        });
+
+        it('returns [] when not enough embeddings (hasMinimum=false)', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(false);
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            const result = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            expect(result).toEqual([]);
+            expect(embeddingRouter.embed).not.toHaveBeenCalled();
+        });
+
+        it('normalizes to text-only when both configured weights sum to zero', async () => {
+            // rag_text_weight=0 + image disabled → weightSum===0 → else branch → textWeight=1
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 0,
+                rag_image_weight: 0
+            });
+            // image is disabled (default beforeEach), so imageWeight stays 0
+            // weightSum = 0 → else branch executes (textWeight=1, imageWeight=0)
+
+            const result = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            // Should complete without error and return [] (pool returns empty rows)
+            expect(result).toEqual([]);
+        });
+
+        it('normalizes image+text weights so they sum to 1 when config provides unbalanced values', async () => {
+            // config: textWeight=0.3, imageWeight=0.9 → sum=1.2 → normalized: text=0.25, image=0.75
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.1,
+                rag_text_weight: 0.3,
+                rag_image_weight: 0.9
+            });
+            // Enable image embedding so imageWeight is NOT zeroed out
+            imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'clip' });
+            imageEmbeddingProvider.isConfigured.mockReturnValue(true);
+            imageEmbeddingProvider.embedImageFromUrl.mockResolvedValue({ embedding: [0.5, 0.6] });
+            embeddingService.resolvePosterUrl.mockReturnValue('https://example.com/poster.jpg');
+
+            mockPoolClient.query
+                .mockResolvedValueOnce({}) // BEGIN
+                .mockResolvedValueOnce({}) // SET LOCAL hnsw.ef_search
+                .mockResolvedValueOnce({
+                    rows: [{
+                        classification_id: 1,
+                        combined_similarity: 0.88,
+                        text_similarity: 0.85,
+                        image_similarity: 0.92,
+                        title: 'Test',
+                        media_type: 'movie',
+                        created_at: new Date()
+                    }]
+                })
+                .mockResolvedValueOnce({}); // COMMIT
+
+            const results = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            // 0.3 + 0.9 = 1.2 → textWeight = 0.3/1.2 = 0.25, imageWeight = 0.9/1.2 = 0.75
+            // normalizedTextWeight = Math.round(0.25 * 100) / 100 = 0.25
+            // normalizedImageWeight = Math.round(0.75 * 100) / 100 = 0.75
+            expect(results).toHaveLength(1);
+            expect(results[0].textWeight).toBe(0.25);
+            expect(results[0].imageWeight).toBe(0.75);
+        });
+
+        it('rounds similarity values to 2 decimal places in result mapping', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.1,
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            mockPoolClient.query
+                .mockResolvedValueOnce({}) // BEGIN
+                .mockResolvedValueOnce({}) // SET LOCAL
+                .mockResolvedValueOnce({
+                    rows: [{
+                        classification_id: 1,
+                        combined_similarity: 0.87654,  // rounds to 0.88
+                        text_similarity: 0.91234,      // rounds to 0.91
+                        image_similarity: null,
+                        title: 'Test',
+                        media_type: 'movie',
+                        created_at: new Date()
+                    }]
+                })
+                .mockResolvedValueOnce({});
+
+            const results = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            expect(results[0].similarity).toBe(0.88);       // Math.round(0.87654 * 100) / 100
+            expect(results[0].textSimilarity).toBe(0.91);   // Math.round(0.91234 * 100) / 100
+            expect(results[0].imageSimilarity).toBeNull();  // null passthrough
+        });
+
+        it('returns [] and logs "below threshold" when applyThreshold=true and all results are sub-threshold', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.9, // high threshold
+                rag_text_weight: 1,
+                rag_image_weight: 0
+            });
+
+            // CTE returns rows but combined_similarity < threshold → matches filtered to []
+            mockPoolClient.query
+                .mockResolvedValueOnce({}) // BEGIN
+                .mockResolvedValueOnce({}) // SET LOCAL hnsw.ef_search
+                .mockResolvedValueOnce({
+                    rows: [
+                        {
+                            classification_id: 1,
+                            combined_similarity: 0.65, // below 0.9 threshold
+                            text_similarity: 0.65,
+                            image_similarity: null,
+                            title: 'Low Similarity',
+                            media_type: 'movie',
+                            created_at: new Date()
+                        }
+                    ]
+                })
+                .mockResolvedValueOnce({}); // COMMIT
+
+            const result = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            expect(result).toEqual([]);
+        });
+
+        it('continues (swallows) image embedding error and uses text-only vector', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_similarity_threshold: 0.7,
+                rag_text_weight: 0.7,
+                rag_image_weight: 0.3
+            });
+            // Enable image embedding so the posterUrl path is entered
+            embeddingService.resolvePosterUrl.mockReturnValue('https://example.com/poster.jpg');
+            imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'clip' });
+            imageEmbeddingProvider.isConfigured.mockReturnValue(true);
+            // Make the image embedding throw — should be caught and logged as debug
+            imageEmbeddingProvider.embedImageFromUrl.mockRejectedValue(new Error('image service unavailable'));
+
+            const result = await ragRetriever.semanticSearch({ title: 'Query' });
+
+            // Should not propagate — returns [] (empty pool rows)
+            expect(result).toEqual([]);
+            expect(imageEmbeddingProvider.embedImageFromUrl).toHaveBeenCalled();
+        });
+    });
+
+    describe('hybridSearch — legacy mode and error handling', () => {
+        beforeEach(() => {
+            jest.restoreAllMocks();
+            jest.clearAllMocks();
+            ragLogger.logOperation.mockResolvedValue(undefined);
+            ragLogger.logError.mockResolvedValue(undefined);
+        });
+
+        it('uses legacyHybridCombine when fusionMethod is not "rrf"', async () => {
+            embeddingRouter.getConfig.mockResolvedValue({
+                rag_fusion_method: 'weighted',
+                rag_rrf_k: 60,
+                rag_graph_enabled: false
+            });
+            jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([
+                { classificationId: 1, similarity: 0.9 }
+            ]);
+            jest.spyOn(ragRetriever, 'fullTextSearch').mockResolvedValue({
+                matches: [{ classificationId: 1, textScore: 0.7 }],
+                expansionTermCount: 0
+            });
+            const legacySpy = jest.spyOn(ragRetriever, 'legacyHybridCombine');
+
+            const results = await ragRetriever.hybridSearch({ title: 'Test' }, 5);
+
+            expect(legacySpy).toHaveBeenCalled();
+            expect(Array.isArray(results)).toBe(true);
+        });
+
+        it('returns [] on general error without re-throwing (throwOnError not set)', async () => {
+            embeddingRouter.getConfig.mockRejectedValue(new Error('config fetch failed'));
+
+            const result = await ragRetriever.hybridSearch({ title: 'Test' });
+
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('fullTextSearch — error handling', () => {
+        it('returns empty matches when DB throws', async () => {
+            db.query.mockRejectedValue(new Error('DB unavailable'));
+
+            const result = await ragRetriever.fullTextSearch({ title: 'Test' }, 5, {});
+
+            expect(result).toEqual({ matches: [], expansionTermCount: 0 });
+        });
+    });
+
+    describe('calculateDynamicWeight — return value branches', () => {
+        it('returns 90 for 3+ unanimous matches with topMatch > 0.90', () => {
+            const matches = [
+                { similarity: 0.95, libraryId: 1 },
+                { similarity: 0.93, libraryId: 1 },
+                { similarity: 0.92, libraryId: 1 }
+            ];
+            expect(ragRetriever.calculateDynamicWeight(matches)).toBe(90);
+        });
+
+        it('returns 70 for a single match with topMatch > 0.70 (not meeting 80 criteria)', () => {
+            const matches = [
+                { similarity: 0.75, libraryId: 1 }
+            ];
+            expect(ragRetriever.calculateDynamicWeight(matches)).toBe(70);
+        });
+
+        it('returns 60 for a single match with topMatch between 0.60 and 0.70', () => {
+            const matches = [
+                { similarity: 0.65, libraryId: 1 }
+            ];
+            expect(ragRetriever.calculateDynamicWeight(matches)).toBe(60);
+        });
+    });
+
+    describe('findSimilarItems', () => {
+        it('returns [] when RAG is disabled', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(false);
+
+            const result = await ragRetriever.findSimilarItems('Test Movie', 1);
+
+            expect(result).toEqual([]);
+            expect(embeddingRouter.embed).not.toHaveBeenCalled();
+        });
+
+        it('returns [] when not enough embeddings', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(false);
+
+            const result = await ragRetriever.findSimilarItems('Test Movie', 1);
+
+            expect(result).toEqual([]);
+            expect(embeddingRouter.embed).not.toHaveBeenCalled();
+        });
+
+        it('returns mapped array of similar items on success', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingService.formatForEmbedding.mockReturnValue('Test Movie');
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2, 0.3] });
+            db.query.mockResolvedValueOnce({
+                rows: [
+                    { title: 'Similar Movie', media_type: 'movie', similarity: 0.857 },
+                    { title: 'Another Film', media_type: 'movie', similarity: 0.72 }
+                ]
+            });
+
+            const result = await ragRetriever.findSimilarItems('Test Movie', 42);
+
+            expect(result).toHaveLength(2);
+            expect(result[0]).toEqual({ title: 'Similar Movie', mediaType: 'movie', similarity: 0.86 });
+            expect(result[1]).toEqual({ title: 'Another Film', mediaType: 'movie', similarity: 0.72 });
+        });
+
+        it('returns [] when DB returns no rows', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2] });
+            db.query.mockResolvedValueOnce({ rows: [] });
+
+            const result = await ragRetriever.findSimilarItems('Unknown', 1);
+
+            expect(result).toEqual([]);
+        });
+
+        it('respects custom limit parameter in DB query', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2] });
+            db.query.mockResolvedValueOnce({ rows: [] });
+
+            await ragRetriever.findSimilarItems('Test', 7, 10);
+
+            const [, params] = db.query.mock.calls[0];
+            expect(params).toContain(10); // custom limit
+        });
+
+        it('returns [] and swallows error on DB failure', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2] });
+            db.query.mockRejectedValueOnce(new Error('DB error'));
+
+            const result = await ragRetriever.findSimilarItems('Test', 1);
+
+            expect(result).toEqual([]);
         });
     });
 

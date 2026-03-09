@@ -406,6 +406,15 @@ class ClassificationService {
 
       const certification = await tmdbService.getCertification(tmdbId, mediaType);
 
+      // director_name: resolved at enrichment time so it is stored in metadata and
+      // available to ragGraphExtractor without a second TMDB fetch.
+      // Movie: Director from credits.crew. TV: created_by[0].name (showrunner/creator).
+      // credits.crew on TV series lists episode-level crew; there is typically no
+      // job === 'Director' at the series level — use created_by instead.
+      const director_name = mediaType === 'movie'
+        ? (details.credits?.crew?.find(c => c.job === 'Director')?.name || null)
+        : (details.created_by?.[0]?.name || null);
+
       return {
         tmdb_id: tmdbId,
         media_type: mediaType,
@@ -424,6 +433,7 @@ class ClassificationService {
         belongs_to_collection: details.belongs_to_collection || null,
         production_companies: Array.isArray(details.production_companies) ? details.production_companies : [],
         cast: Array.isArray(details.credits?.cast) ? details.credits.cast.slice(0, 10) : [],
+        director_name,
       };
     } catch (error) {
       throw new Error(`Failed to enrich metadata: ${error.message}`);
@@ -3238,10 +3248,13 @@ Think step by step, then respond with ONLY one of the formats above.`;
       }
     }
 
+    const ragGraphExtractor = require('./ragGraphExtractor');
+    const graphRel = ragGraphExtractor.extract(enrichedMetadata);
+
     const insertResult = await db.query(
       `INSERT INTO classification_history 
-       (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question, profile_snapshot, retry_after, retry_count, max_retries)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+       (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question, profile_snapshot, retry_after, retry_count, max_retries, director_name, primary_studio_name, genre_names, cast_ids, cast_names)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
        RETURNING id`,
       [
         enrichedMetadata.tmdb_id,
@@ -3262,7 +3275,12 @@ Think step by step, then respond with ONLY one of the formats above.`;
         profileSnapshot,
         result.retry_after || null,
         result.retry_count || 0,
-        result.max_retries || 3
+        result.max_retries || 3,
+        graphRel.director_name,
+        graphRel.primary_studio_name,
+        graphRel.genre_names,
+        graphRel.cast_ids,
+        graphRel.cast_names
       ]
     );
 

@@ -102,7 +102,16 @@ class EmbeddingRouter {
                     image_embedding_concurrency,
                     image_embedding_batch_size,
                     image_embedding_cache_ttl_hours,
-                    image_embedding_cache_max_mb
+                    image_embedding_cache_max_mb,
+                    rag_graph_enabled,
+                    rag_graph_weight,
+                    rag_graph_collection_enabled,
+                    rag_graph_director_enabled,
+                    rag_graph_studio_enabled,
+                    rag_graph_cast_enabled,
+                    rag_graph_genre_enabled,
+                    rag_graph_min_matches_to_apply,
+                    rag_graph_candidates_limit
                 FROM ai_provider_config 
                 WHERE id = 1
             `);
