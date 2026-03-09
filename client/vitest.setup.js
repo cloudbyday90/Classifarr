@@ -1,16 +1,18 @@
-const setGlobalStorage = (key, value) => {
-  try {
-    Object.defineProperty(globalThis, key, {
-      value,
-      configurable: true,
-      writable: true,
-    })
-  } catch {
-    /* ignore setup errors */
-  }
+class MemoryStorage {
+  constructor() { this._store = Object.create(null) }
+  get length() { return Object.keys(this._store).length }
+  key(index) { return Object.keys(this._store)[index] ?? null }
+  getItem(key) { return key in this._store ? this._store[key] : null }
+  setItem(key, value) { this._store[String(key)] = String(value) }
+  removeItem(key) { delete this._store[key] }
+  clear() { this._store = Object.create(null) }
 }
 
-if (typeof window !== 'undefined') {
-  setGlobalStorage('localStorage', window.localStorage)
-  setGlobalStorage('sessionStorage', window.sessionStorage)
+const defineStorage = (name, impl) => {
+  try {
+    Object.defineProperty(globalThis, name, { value: impl, configurable: true, writable: true })
+  } catch { /* ignore */ }
 }
+
+defineStorage('localStorage', new MemoryStorage())
+defineStorage('sessionStorage', new MemoryStorage())
