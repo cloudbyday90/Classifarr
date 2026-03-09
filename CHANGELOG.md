@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **CodeQL SAST workflow (`.github/workflows/codeql.yml`)** — New workflow providing static application security testing for CIS compliance. Scans `javascript-typescript` and `actions` languages using the `security-extended` query suite (OWASP Top 10 + additional CWEs). Uploads results to the GitHub Security tab via SARIF. Triggers: push/PR to `main`, weekly Monday 02:00 UTC. PR trigger ignores doc/logo changes. Inline config excludes `node_modules`, test files, coverage dirs, `client/dist`, and `.tmp`. `timeout-minutes: 30`.
+
+### Changed
+
+- **Trivy Security Scan (`.github/workflows/trivy.yml`)** — Replaced manual `apt-get` install with official `aquasecurity/trivy-action@0.35.0`. Restructured into two jobs: `trivy-fs` (dual-pass filesystem scan: SARIF upload for Security tab + table gate that fails the workflow on HIGH/CRITICAL vulns or secrets; scanners: `vuln,secret`; `limit-severities-for-sarif: true`) and `trivy-config` (IaC misconfiguration scan of Dockerfile and docker-compose files against the CIS Docker Benchmark, SARIF upload). Added weekly schedule (Tuesdays 02:00 UTC), PR `paths-ignore` for docs, and `timeout-minutes` per job. Both jobs use least-privilege permissions (`contents: read`, `security-events: write`, `actions: read`).
+- **Gitleaks Secret Scan (`.github/workflows/gitleaks.yml`)** — Pinned from floating `@v2` to `gitleaks/gitleaks-action@v2.3.9` (latest stable). Added missing `pull-requests: write` permission (was silently failing PR comments). Added `workflow_dispatch` for manual incident-response triggering, weekly schedule (Wednesdays 02:00 UTC), `timeout-minutes: 10`, and PR `paths-ignore`. Enabled `GITLEAKS_ENABLE_COMMENTS`, `GITLEAKS_ENABLE_SUMMARY`, and `GITLEAKS_ENABLE_UPLOAD_ARTIFACT`. SARIF upload to the Security tab intentionally omitted per maintainer guidance: removing a secret in a later commit falsely marks the Security alert as "resolved" even though the secret remains in git history.
+- **OSV Dependency Scan (`.github/workflows/osv-scanner.yml`)** — Added `push: branches: [main]` trigger so every commit landing on `main` (hotfixes, bot merges) receives a full OSV scan, not only tagged releases. Added weekly schedule (Thursdays 02:00 UTC, staggered with other tools). Added dedicated `merge-group-scan` job using the PR-diff reusable workflow for merge queue support. Added `workflow_dispatch`. Renamed `release-scan` to `full-scan` to reflect its expanded scope (push to main + tags + schedule + manual). Added PR `paths-ignore` for doc-only changes. Moved permissions to a top-level block per official template. Version remains `v2.3.3` (already latest).
+- **Copyright Compliance (`.github/workflows/copyright-compliance.yml`)** — Added `permissions: contents: read` (least-privilege; no write access needed). Added `paths-ignore` on both PR and push triggers to skip doc/markdown-only changes. Added `workflow_dispatch` for manual runs. Added `timeout-minutes: 10`. Added explicit `branches: [main]` scope to the PR trigger (was unscoped — previously ran on PRs targeting any branch). Added named steps for clearer job logs.
+
 ## [v0.43.5a-beta] - 2026-03-06
 
 ### Security
