@@ -1,6 +1,36 @@
 # Classifarr Release Notes
 
-## [Unreleased]
+## v0.43.6a-beta
+**Title: Query planner fix — automatic VACUUM ANALYZE after queue cleanup**
+
+### 🎉 What You'll Notice
+- Classifarr now automatically runs a database statistics refresh after purging old queue records — meaning queries stay fast right after upgrade, not just after the next scheduled maintenance window.
+- No action required. This is a silent reliability fix that applies to all upgrade paths.
+
+### 📊 Quick Visual
+```text
+v0.43.6a-beta Post-Cleanup Health
+─────────────────────────────────────────
+Query planner stats   [██████████] Refreshed immediately after purge
+Disk space reuse      [██████████] Dead pages marked reusable
+Upgrade experience    [██████████] Fast from first restart
+─────────────────────────────────────────
+```
+
+### ✨ Highlights
+- **Query planner statistics refreshed automatically** — After v0.43.6-beta purges the stale queue backlog, PostgreSQL's query planner still "remembers" the old large table size until a background maintenance pass runs. This patch adds `VACUUM ANALYZE` immediately after both the startup drain and the daily cleanup — so the planner uses accurate statistics from the moment the rows are gone.
+
+### 🔧 Reliability Improvements
+- `VACUUM ANALYZE task_queue` now runs automatically after the startup background drain (for upgrading users with existing backlogs).
+- `VACUUM ANALYZE task_queue` now runs after every daily scheduled cleanup when rows were deleted — keeping planner stats current long-term.
+- Both calls are wrapped in error handling — a VACUUM failure is logged as a warning and never causes a crash or restart.
+
+### 👥 Who This Helps
+- **All users upgrading from any version with a bloated `task_queue`** — The v0.43.6-beta migration deleted the rows but left the query planner with stale statistics. This patch closes that gap for every upgrading install, not just the instance where it was first diagnosed.
+- **Operators/admins:** No manual `VACUUM` commands needed after upgrade.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for the specific methods changed and the PostgreSQL documentation reference.
 
 ---
 

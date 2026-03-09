@@ -2268,6 +2268,18 @@ class QueueService {
         } while (batchDeleted === BATCH);
 
         this.logger.info('Background task_queue drain complete', { deleted: totalDeleted, retentionDays });
+
+        // Refresh query planner statistics after bulk delete so subsequent queries don't
+        // plan against a stale row-count estimate.  VACUUM ANALYZE runs outside any
+        // transaction (pool autocommit), so it is safe to call here.
+        try {
+            await this.db.query('VACUUM ANALYZE task_queue');
+            this.logger.info('task_queue VACUUM ANALYZE complete after background drain');
+        } catch (vacuumErr) {
+            this.logger.warn('task_queue VACUUM ANALYZE failed after background drain (non-fatal)', {
+                error: vacuumErr.message
+            });
+        }
     }
 
     async refillQueue() {

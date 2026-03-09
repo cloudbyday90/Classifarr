@@ -239,6 +239,16 @@ class SchedulerService {
 
             if (totalDeleted > 0) {
                 logger.info('Task queue cleanup complete', { deleted: totalDeleted, retentionDays });
+                // Refresh query planner statistics after bulk delete.  VACUUM ANALYZE is safe
+                // here because db.query() uses pool autocommit (not inside a transaction block).
+                try {
+                    await db.query('VACUUM ANALYZE task_queue');
+                    logger.info('task_queue VACUUM ANALYZE complete after scheduled cleanup');
+                } catch (vacuumErr) {
+                    logger.warn('task_queue VACUUM ANALYZE failed after scheduled cleanup (non-fatal)', {
+                        error: vacuumErr.message
+                    });
+                }
             } else {
                 logger.debug('Task queue cleanup: no old rows to delete', { retentionDays });
             }

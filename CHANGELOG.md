@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [v0.43.6a-beta] - 2026-03-09
+
+### Fixed
+
+- **`VACUUM ANALYZE task_queue` after bulk cleanup (`QueueService._backgroundDrainIfBloated()`)** — After the startup drain loop deletes stale rows, the method now issues `VACUUM ANALYZE task_queue` via pool-level `db.query()` (autocommit, outside any transaction). This refreshes the query-planner statistics immediately after a mass delete so subsequent queries do not generate plans sized for the old (bloated) row count. Failure is caught and logged at `WARN` level — a VACUUM error never surfaces as a user-visible crash. Without this, upgrading users whose backlog was purged by the migration still faced stale planner estimates until autovacuum eventually fired (potentially many minutes later on a busy instance).
+- **`VACUUM ANALYZE task_queue` after scheduled cleanup (`scheduler.runTaskQueueCleanup()`)** — Same fix applied to the daily cleanup job: when `totalDeleted > 0`, the scheduler issues `VACUUM ANALYZE task_queue` after the batch-delete loop completes. Keeps planner statistics current across every subsequent daily run, not just at upgrade time. Failure is caught and logged at `WARN` level (non-fatal). This is consistent with the official PostgreSQL recommendation in §14.4.8 "Run ANALYZE Afterwards": *"Whenever you have significantly altered the distribution of data within a table, running ANALYZE is strongly recommended."*
+
+---
+
+## [v0.43.6-beta] - 2026-03-09
+
 ### Fixed
 
 - **OOM crash: `task_queue` unbounded growth caused Node.js heap exhaustion** — Root cause: `task_queue` accumulated >300 000 completed rows (416 MB) with no TTL policy. Every 5-minute gap-analysis cycle ran a `NOT EXISTS` subquery across the full bloated table, while `getStats()` ran an unconstrained `COUNT(*) FROM task_queue`. Under sustained GC pressure the process heap reached Node's ~4 GB auto-cap and was killed with no error-log entry (the process died before it could write). Five-layer fix:
