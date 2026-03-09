@@ -87,6 +87,14 @@ class SchedulerService {
         // Daily cleanup of stale awaiting_decision rows (4 AM)
         // Re-queues items stuck waiting for Discord responses for more than 7 days
         this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions(), DB_ADVISORY_LOCKS.STALE_CLEANUP);
+
+        // Daily cleanup of old completed/failed task_queue rows (3:15 AM)
+        // Prevents unbounded table growth that can cause OOM crashes
+        // No advisory lock: idempotent batch DELETE, safe to run twice
+        this.schedule('task-queue-cleanup', '15 3 * * *', () => this.runTaskQueueCleanup());
+
+        // Run initial task_queue cleanup after startup (5 min delay) to catch any backlog
+        setTimeout(() => this.runTaskQueueCleanup(), 300000);
     }
 
     /**
@@ -196,6 +204,46 @@ class SchedulerService {
             logger.info('API key audit prune complete', { deleted: result.rowCount, retentionDays });
         } catch (error) {
             logger.error('API key audit prune failed', { error: error.message });
+        }
+    }
+
+    /**
+     * Daily cleanup of old completed and failed task_queue rows.
+     * Prevents unbounded table growth that can cause OOM crashes.
+     * Batch-deletes up to 5000 rows per run.
+     * Controlled by TASK_QUEUE_RETENTION_DAYS env var (default: 7).
+     */
+    async runTaskQueueCleanup() {
+        const parsed = parseInt(process.env.TASK_QUEUE_RETENTION_DAYS, 10);
+        const retentionDays = Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
+        const BATCH = 5000;
+        let totalDeleted = 0;
+        let batchDeleted;
+        try {
+            // Loop until all stale rows have been removed so a single scheduler
+            // run fully clears any backlog rather than making partial progress.
+            do {
+                const result = await db.query(
+                    `DELETE FROM task_queue
+                     WHERE id IN (
+                         SELECT id FROM task_queue
+                         WHERE status IN ('completed', 'failed', 'cancelled')
+                           AND created_at < NOW() - ($1 || ' days')::INTERVAL
+                         LIMIT $2
+                     )`,
+                    [retentionDays, BATCH]
+                );
+                batchDeleted = result.rowCount;
+                totalDeleted += batchDeleted;
+            } while (batchDeleted === BATCH);
+
+            if (totalDeleted > 0) {
+                logger.info('Task queue cleanup complete', { deleted: totalDeleted, retentionDays });
+            } else {
+                logger.debug('Task queue cleanup: no old rows to delete', { retentionDays });
+            }
+        } catch (error) {
+            logger.error('Task queue cleanup failed', { error: error.message });
         }
     }
 

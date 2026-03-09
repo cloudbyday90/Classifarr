@@ -101,6 +101,28 @@ router.get('/health/ready', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/system/health/memory:
+ *   get:
+ *     summary: Node.js heap and host OS memory pressure probe
+ *     description: >
+ *       Lightweight no-auth endpoint reporting Node.js heap usage and host
+ *       OS RAM. Returns HTTP 200 when status is "ok" or "warning", HTTP 503
+ *       when status is "critical" (heap ≥ 90% of cap or OS RAM ≥ 95% used).
+ *       Suitable for Uptime Kuma, Prometheus scraping, or any monitoring tool.
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Memory pressure is ok or warning
+ *       503:
+ *         description: Memory pressure is critical
+ */
+router.get('/health/memory', (req, res) => {
+  const memory = healthCheckService.checkProcessMemory();
+  res.status(memory.status === 'critical' ? 503 : 200).json(memory);
+});
+
 // Apply authentication to remaining routes
 router.use(authenticateToken);
 

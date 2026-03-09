@@ -4,6 +4,52 @@
 
 ---
 
+## v0.43.6-beta
+**Title: No more silent crashes — memory management, self-healing queues, and health visibility**
+
+> [!IMPORTANT]
+> **Existing installs:** This release includes a database migration that purges accumulated stale queue rows on first boot (in batches — safe for large installs). No manual action is required. Container restart is all that's needed.
+
+### 🎉 What You'll Notice
+- Classifarr no longer crashes silently under sustained load — the root cause of OOM kills has been fixed at every layer.
+- Old completed queue tasks are now automatically cleaned up daily, keeping the database small and queries fast.
+- A new memory health endpoint lets external monitoring tools (Uptime Kuma, Grafana, etc.) track memory pressure in real time.
+- If the container is running without a memory limit, Classifarr now warns you at startup — in plain language — and explains how to fix it.
+
+### 📊 Quick Visual
+```text
+v0.43.6-beta Memory & Reliability Summary
+─────────────────────────────────────────────────
+OOM crash risk      [██████████] Eliminated at 4 layers
+Queue bloat         [██████████] Auto-purged on deploy + daily
+Heap auto-config    [██████████] Derived from container limits
+Memory visibility   [██████████] Real-time /health/memory probe
+Operator alerting   [██████████] Startup WARN if no cap set
+─────────────────────────────────────────────────
+```
+
+### ✨ Highlights
+- **Silent OOM crash eliminated** — Classifarr was accumulating hundreds of thousands of completed queue records with no cleanup policy. On long-running instances this bloated the database to 400 MB+, slowed every 5-minute background scan, and eventually pushed the Node.js process past its memory limit — killing it with no error log. The fix runs at the database, queue worker, scheduler, and container configuration levels so the problem cannot recur.
+- **Automatic queue cleanup** — Completed, failed, and cancelled queue tasks are now purged daily (kept for 7 days by default, configurable via `TASK_QUEUE_RETENTION_DAYS`). On first boot after upgrade, a one-time migration clears any existing backlog.
+- **Container-aware heap cap** — The container entrypoint now reads the Docker/Kubernetes memory limit and automatically sets the Node.js heap cap to 75% of it. No manual configuration needed — works for Unraid templates, bare `docker run`, and Kubernetes alike.
+
+### 🔧 Reliability Improvements
+- **Database migration** cleanly purges stale queue rows in safe batches and adds an efficient index so future cleanups run in milliseconds instead of seconds.
+- **Startup drain** — if a large backlog is detected on boot, it is drained in the background while the server starts normally (no delay to users).
+- **Startup memory warning** — if no heap cap is configured, a `[WARN]` is logged immediately at startup with the current heap limit, free RAM, and remediation steps.
+- **`GET /api/system/health/memory`** — new no-authentication probe endpoint returns Node.js heap usage %, OS RAM %, and a `ok / warning / critical` status. Returns HTTP 503 when critical so monitoring tools can alert automatically.
+- The existing health services response now also includes live memory stats under the `memory` field.
+
+### 👥 Who This Helps
+- **Self-hosters on Unraid / low-RAM hardware:** This release directly targets the silent OOM crash that affected long-running instances. No more unexpected container restarts.
+- **Operators/admins:** Memory pressure is now visible via API and external monitoring tools can be pointed at `/api/system/health/memory` for proactive alerting before a crash occurs.
+- **New installs:** The fix is baked in from day one — no configuration changes needed.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details including migration SQL, scheduler internals, and cgroup detection logic.
+
+---
+
 ## v0.43.5a-beta
 **Title: Keeping the foundation secure — dependency hardening patch**
 

@@ -14,6 +14,12 @@ services:
       TZ: ${TZ:-America/New_York}
       FORCE_SECURE_COOKIES: ${FORCE_SECURE_COOKIES:-false}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
+      # Cap Node.js heap to 1536 MB — leaves headroom within the 2 GB container
+      # memory limit. Without this Node v18+ auto-sizes to ~4 GB and an OOM
+      # kill produces no error log. Tune TASK_QUEUE_RETENTION_DAYS (default 7)
+      # to control how long completed tasks are retained before auto-cleanup.
+      NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=1536}
+      TASK_QUEUE_RETENTION_DAYS: ${TASK_QUEUE_RETENTION_DAYS:-7}
     volumes:
       - ./data:/app/data
       # Required for re-classification moves: replace host path with your media root

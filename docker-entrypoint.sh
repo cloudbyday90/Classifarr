@@ -297,6 +297,56 @@ fi
 
 echo "$APP_VERSION" > "$VERSION_FILE" 2>/dev/null || true
 
+# -----------------------------------------------------------------------
+# Auto-configure Node.js heap cap from the container's cgroup memory limit.
+# Only activates when --max-old-space-size is NOT already present in
+# NODE_OPTIONS (e.g. set via docker-compose environment or the host).
+#
+# Strategy: set the heap cap to 75% of the container memory limit so that
+# Node's GC can work before the kernel OOM-killer fires.
+# Minimum useful cap is 256 MB; values below that are silently ignored.
+#
+# Supports cgroup v2  (/sys/fs/cgroup/memory.max)
+#     and cgroup v1  (/sys/fs/cgroup/memory/memory.limit_in_bytes).
+# -----------------------------------------------------------------------
+if ! echo "${NODE_OPTIONS:-}" | grep -q 'max-old-space-size'; then
+    CGROUP_LIMIT_BYTES=""
+
+    # cgroup v2 – "max" means no limit; only use a numeric value
+    if [ -r /sys/fs/cgroup/memory.max ]; then
+        _RAW=$(cat /sys/fs/cgroup/memory.max 2>/dev/null || true)
+        case "$_RAW" in
+            ''|max|unlimited) ;;
+            *) CGROUP_LIMIT_BYTES="$_RAW" ;;
+        esac
+    fi
+
+    # cgroup v1 – kernel reports INT64_MAX (~9.2e18) when unconstrained;
+    # reject any value at or above that sentinel.
+    if [ -z "$CGROUP_LIMIT_BYTES" ] && [ -r /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
+        _RAW=$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || true)
+        if [ -n "$_RAW" ] && awk -v val="$_RAW" 'BEGIN { exit !(val < 9223372036854775807) }' 2>/dev/null; then
+            CGROUP_LIMIT_BYTES="$_RAW"
+        fi
+    fi
+
+    if [ -n "$CGROUP_LIMIT_BYTES" ]; then
+        # Use awk to avoid sh integer overflow on large cgroup byte counts.
+        HEAP_MB=$(awk "BEGIN { v = int($CGROUP_LIMIT_BYTES / 1048576 * 0.75); print (v < 256 ? 0 : v) }" 2>/dev/null || echo 0)
+        LIMIT_MB=$(awk "BEGIN { print int($CGROUP_LIMIT_BYTES / 1048576) }" 2>/dev/null || echo 0)
+        if [ "$HEAP_MB" -gt 0 ] 2>/dev/null; then
+            echo "Auto-configuring Node.js heap cap: ${HEAP_MB}MB (75% of ${LIMIT_MB}MB container memory limit)"
+            export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=${HEAP_MB}"
+        fi
+    else
+        echo "WARN: No container memory limit detected and --max-old-space-size is not set."
+        echo "WARN: Node.js will auto-size its heap (typically up to ~4 GB), which may exhaust host RAM on"
+        echo "WARN: systems with limited memory. Set 'deploy.resources.limits.memory' in docker-compose"
+        echo "WARN: or pass NODE_OPTIONS=--max-old-space-size=<MB> to cap the heap explicitly."
+    fi
+fi
+echo "Node.js heap options: ${NODE_OPTIONS:-(none set)}"
+
 if [ "$IS_ROOT" = "true" ]; then
     echo "Starting Classifarr server as user classifarr (UID: $PUID, GID: $PGID)..."
     exec su-exec classifarr node src/index.js

@@ -1110,8 +1110,17 @@ class QueueService {
             return;
         }
 
-        // Solution A: Reset any zombie tasks from previous crashes
+        // Reset any zombie tasks from previous crashes
         await this.resetStaleProcessingTasks();
+
+        // If the task_queue has accumulated excessive completed/failed rows
+        // (e.g. after the daily cleanup job was missing or the instance was
+        // running for a long time without a purge), drain them now in the
+        // background so they don't inflate query costs during this session.
+        // Non-blocking: the worker loop starts immediately.
+        this._backgroundDrainIfBloated().catch(err => {
+            this.logger.warn('Background task_queue drain failed', { error: err.message });
+        });
 
         this.running = true;
         this.logger.info('Queue worker started');
@@ -1425,7 +1434,7 @@ class QueueService {
     async clearCompletedTasks() {
         try {
             const result = await this.db.query(
-                `DELETE FROM task_queue WHERE status = 'completed' RETURNING id`
+                `DELETE FROM task_queue WHERE status = 'completed'`
             );
             this.logger.info('Cleared completed tasks', { count: result.rowCount });
             return result.rowCount;
@@ -1441,7 +1450,7 @@ class QueueService {
     async clearFailedTasks() {
         try {
             const result = await this.db.query(
-                `DELETE FROM task_queue WHERE status = 'failed' RETURNING id`
+                `DELETE FROM task_queue WHERE status = 'failed'`
             );
             this.logger.info('Cleared failed tasks', { count: result.rowCount });
             return result.rowCount;
@@ -2208,6 +2217,59 @@ class QueueService {
      * Finds items that need analysis and adds them to the queue
      * This is used by the scheduler (gap analysis) and manual ingestion triggers
      */
+    /**
+     * Drain old completed/failed/cancelled task_queue rows in the background.
+     * Called once at worker startup. Loops in batches of 5 000 until no more
+     * rows older than TASK_QUEUE_RETENTION_DAYS remain.
+     *
+     * The drain only fires when the stale row count exceeds BLOAT_THRESHOLD
+     * (1 000) to avoid unnecessary DB round-trips on healthy instances.
+     */
+    async _backgroundDrainIfBloated() {
+        const BLOAT_THRESHOLD = 1000;
+        const BATCH = 5000;
+
+        const parsed = parseInt(process.env.TASK_QUEUE_RETENTION_DAYS, 10);
+        const retentionDays = Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
+
+        // Quick count check — uses idx_task_queue_cleanup (partial index)
+        const countResult = await this.db.query(
+            `SELECT COUNT(*) AS n FROM task_queue
+             WHERE status IN ('completed', 'failed', 'cancelled')
+               AND created_at < NOW() - ($1 || ' days')::INTERVAL`,
+            [retentionDays]
+        );
+        const staleCount = parseInt(countResult.rows[0].n) || 0;
+
+        if (staleCount <= BLOAT_THRESHOLD) return;
+
+        this.logger.warn('task_queue bloat detected at startup; running background drain', {
+            staleRows: staleCount,
+            retentionDays
+        });
+
+        let totalDeleted = 0;
+        let batchDeleted;
+        do {
+            const result = await this.db.query(
+                `DELETE FROM task_queue
+                 WHERE id IN (
+                     SELECT id FROM task_queue
+                     WHERE status IN ('completed', 'failed', 'cancelled')
+                       AND created_at < NOW() - ($1 || ' days')::INTERVAL
+                     LIMIT $2
+                 )`,
+                [retentionDays, BATCH]
+            );
+            batchDeleted = result.rowCount;
+            totalDeleted += batchDeleted;
+            // Yield between batches so the drain doesn't starve the event loop
+            await new Promise(resolve => setTimeout(resolve, 50));
+        } while (batchDeleted === BATCH);
+
+        this.logger.info('Background task_queue drain complete', { deleted: totalDeleted, retentionDays });
+    }
+
     async refillQueue() {
         try {
             // Find items that have NO content analysis AND are not already queued

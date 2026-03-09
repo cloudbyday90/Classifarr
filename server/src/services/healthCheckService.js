@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+const os = require('os');
 const db = require('../config/database');
 const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
@@ -910,6 +911,66 @@ function isHeartbeatRunning() {
 }
 
 /**
+ * Check process and OS memory.
+ * Reports Node.js heap (used/total) and host free/total RAM so operators can
+ * spot memory pressure before it triggers an OOM kill.
+ */
+function checkProcessMemory() {
+    const mem = process.memoryUsage();
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+
+    // Derive the effective Node.js heap cap:
+    //   1. Respect NODE_OPTIONS --max-old-space-size if set.
+    //   2. Fall back to v8.getHeapStatistics().heap_size_limit (runtime cap).
+    let heapCapMb = null;
+    try {
+        const v8 = require('v8');
+        heapCapMb = Math.round(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
+    } catch (_) {
+        // v8 module unavailable in some environments
+    }
+
+    const heapUsedMb  = Math.round(mem.heapUsed  / 1024 / 1024);
+    const heapTotalMb = Math.round(mem.heapTotal / 1024 / 1024);
+    const rssMb       = Math.round(mem.rss       / 1024 / 1024);
+    const totalMemMb  = Math.round(totalMem / 1024 / 1024);
+    const freeMemMb   = Math.round(freeMem  / 1024 / 1024);
+    const usedMemMb   = Math.round(usedMem  / 1024 / 1024);
+
+    const heapUsedPct = heapCapMb ? Math.round((heapUsedMb / heapCapMb) * 100) : null;
+    const osUsedPct   = totalMemMb ? Math.round((usedMemMb  / totalMemMb) * 100) : null;
+
+    // Derive a simple status:
+    //   warning  → heap > 75% of cap OR OS used > 85%
+    //   critical → heap > 90% of cap OR OS used > 95%
+    let status = 'ok';
+    if (heapCapMb && heapUsedPct >= 90) status = 'critical';
+    else if (osUsedPct !== null && osUsedPct >= 95) status = 'critical';
+    else if (heapCapMb && heapUsedPct >= 75) status = 'warning';
+    else if (osUsedPct !== null && osUsedPct >= 85) status = 'warning';
+
+    return {
+        status,
+        process: {
+            heapUsedMb,
+            heapTotalMb,
+            heapCapMb,
+            heapUsedPct,
+            rssMb
+        },
+        os: {
+            totalMemMb,
+            freeMemMb,
+            usedMemMb,
+            usedPct: osUsedPct
+        },
+        timestamp: new Date().toISOString()
+    };
+}
+
+/**
  * Check Queue Worker status
  */
 async function checkQueueWorker() {
@@ -1002,6 +1063,7 @@ async function getAllServicesHealth() {
         aiProvider,
         imageEmbeddings,
         queueWorker,
+        memory: checkProcessMemory(),
         timestamp: new Date().toISOString()
     };
 
@@ -1025,6 +1087,7 @@ module.exports = {
     checkTavily,
     checkQueueWorker,
     checkImageEmbeddings,
+    checkProcessMemory,
     runAllHealthChecks,
     getAllServicesHealth,
     getHealthCache,

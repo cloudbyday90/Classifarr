@@ -437,6 +437,22 @@ async function startServer() {
       console.log(`Classifarr server running on port ${PORT}`);
       console.log(`API Documentation: http://localhost:${PORT}/api/docs`);
       console.log(`Health Check: http://localhost:${PORT}/health`);
+
+      // Warn if no explicit heap cap is set so operators can spot the risk early.
+      const hasExplicitCap = (process.env.NODE_OPTIONS || '').includes('max-old-space-size');
+      if (!hasExplicitCap) {
+        const os = require('os');
+        const v8 = require('v8');
+        const heapLimitMb = Math.round(v8.getHeapStatistics().heap_size_limit / 1024 / 1024);
+        const freeMemMb   = Math.round(os.freemem()  / 1024 / 1024);
+        const totalMemMb  = Math.round(os.totalmem() / 1024 / 1024);
+        console.warn(
+          `[WARN] --max-old-space-size not set. Node.js heap auto-capped at ~${heapLimitMb} MB. ` +
+          `Free RAM: ${freeMemMb} MB / ${totalMemMb} MB. ` +
+          `On low-memory hosts this can cause OOM crashes. ` +
+          `Set memory limits in docker-compose or pass NODE_OPTIONS=--max-old-space-size=<MB>.`
+        );
+      }
     });
   } catch (error) {
     console.error('Failed to start server:', error);
