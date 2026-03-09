@@ -257,6 +257,16 @@ async function initializeServices() {
     console.warn('Backfill orchestrator initialization failed:', error.message);
   }
 
+  // Auto-backfill graph relationship columns for rows written before v0.43.7 (non-blocking)
+  try {
+    const graphRelationshipBackfillService = require('./services/graphRelationshipBackfillService');
+    graphRelationshipBackfillService.checkAndBackfill().catch(error => {
+      console.warn('Graph relationship backfill check failed:', error.message);
+    });
+  } catch (error) {
+    console.warn('Graph relationship backfill service not available:', error.message);
+  }
+
   // Generate library profiles for all libraries with items (async, don't wait)
   try {
     const libraryProfileService = require('./services/libraryProfileService');

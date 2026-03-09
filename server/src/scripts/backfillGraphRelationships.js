@@ -330,4 +330,10 @@ async function main() {
     }
 }
 
-main();
+// Allow this script to be imported as a module (e.g. by graphRelationshipBackfillService)
+// without auto-executing. When run directly via `node ...`, main() still fires.
+if (require.main === module) {
+    main();
+}
+
+module.exports = { runPass1, runPass2 };
