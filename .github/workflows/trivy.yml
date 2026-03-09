@@ -3,49 +3,94 @@ name: Trivy Security Scan
 on:
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - 'docs/**'
+      - 'logo/**'
   push:
     branches: [ main ]
     tags:
       - "v*"
+  schedule:
+    # Weekly scan on Tuesday at 02:00 UTC (staggered from CodeQL on Monday)
+    - cron: '0 2 * * 2'
 
 jobs:
   trivy-fs:
-    name: Filesystem Vulnerability Scan
+    name: Filesystem Vulnerability & Secret Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
+      security-events: write  # Required to upload SARIF to GitHub Security tab
+      actions: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Install Trivy
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget gnupg
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install -y trivy
-          trivy --version
+      # SARIF pass: upload all HIGH/CRITICAL findings to the Security tab
+      - name: Run Trivy (SARIF upload)
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-fs-results.sarif
+          limit-severities-for-sarif: true
+          skip-dirs: .git,node_modules,server/node_modules,client/node_modules,client/dist,client/coverage,server/coverage,data,.tmp
 
-      - name: Run Trivy (filesystem)
-        shell: bash
-        run: |
-          trivy fs \
-            --scanners vuln \
-            --severity HIGH,CRITICAL \
-            --ignore-unfixed \
-            --exit-code 1 \
-            --format table \
-            --skip-dirs .git \
-            --skip-dirs node_modules \
-            --skip-dirs server/node_modules \
-            --skip-dirs client/node_modules \
-            --skip-dirs client/dist \
-            --skip-dirs client/coverage \
-            --skip-dirs server/coverage \
-            --skip-dirs data \
-            --skip-dirs .tmp \
-            .
+      - name: Upload Trivy FS results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs-results.sarif
+          category: trivy-fs
+
+      # Table pass: gate the PR/push on exit code (fail on HIGH/CRITICAL)
+      - name: Run Trivy (PR gate)
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+          skip-dirs: .git,node_modules,server/node_modules,client/node_modules,client/dist,client/coverage,server/coverage,data,.tmp
+          skip-setup-trivy: true  # Trivy already installed by the previous step
+
+  trivy-config:
+    name: Dockerfile & Docker Compose Misconfig Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # Scans Dockerfile and docker-compose*.yml against CIS Docker Benchmark
+      - name: Run Trivy (IaC misconfig)
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy-config-results.sarif
+
+      - name: Upload Trivy config results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-config-results.sarif
+          category: trivy-config
