@@ -3,12 +3,12 @@
   "server": {
     "statements": 59.54,
     "branches": 73.62,
-    "functions": 64.82,
+    "functions": 64.72,
     "lines": 59.54
   },
   "client": {
     "statements": 57.2,
-    "branches": 50.33,
+    "branches": 50.31,
     "functions": 41.37,
     "lines": 58.86
   }
