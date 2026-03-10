@@ -710,6 +710,85 @@ describe('QueueService', () => {
             expect(stopSpy).toHaveBeenCalled();
             expect(startSpy).toHaveBeenCalled();
         });
+
+        it('should wait for in-flight tasks to drain before clearing the database', async () => {
+            // Simulate a running worker with 2 in-flight tasks.
+            queueService.running = true;
+            queueService.processing = 2;
+
+            db.query.mockImplementation((query) => {
+                if (query.includes('DELETE FROM')) {
+                    return Promise.resolve({ rows: [{ id: 1 }], rowCount: 1 });
+                }
+                return Promise.resolve({ rows: [], rowCount: 0 });
+            });
+
+            // After stopWorker() is called, simulate tasks completing after a short delay.
+            jest.spyOn(queueService, 'stopWorker').mockImplementation(() => {
+                queueService.running = false;
+                setTimeout(() => { queueService.processing = 0; }, 150);
+            });
+
+            jest.spyOn(queueService, 'startWorker').mockResolvedValue();
+
+            const performCleanupSpy = jest.spyOn(queueService, 'performClearAndResyncCleanup');
+
+            await queueService.clearAndResync();
+
+            // performClearAndResyncCleanup must not have been called while tasks were still running.
+            // If it were called immediately (no drain), processing would still have been 2 at that
+            // point. The drain loop waits until processing reaches 0, so by the time cleanup runs,
+            // the in-flight count must already be 0.
+            expect(performCleanupSpy).toHaveBeenCalled();
+            expect(queueService.processing).toBe(0);
+        });
+
+        it('should proceed with a warning if in-flight tasks do not drain within the timeout', async () => {
+            jest.useFakeTimers();
+
+            queueService.running = true;
+            queueService.processing = 3; // tasks that never finish
+
+            db.query.mockImplementation((query) => {
+                if (query.includes('DELETE FROM')) {
+                    return Promise.resolve({ rows: [{ id: 1 }], rowCount: 1 });
+                }
+                return Promise.resolve({ rows: [], rowCount: 0 });
+            });
+
+            jest.spyOn(queueService, 'stopWorker').mockImplementation(() => {
+                queueService.running = false;
+                // processing intentionally left > 0 to simulate stuck tasks
+            });
+
+            jest.spyOn(queueService, 'startWorker').mockResolvedValue();
+
+            const warnSpy = queueService.logger
+                ? jest.spyOn(queueService.logger, 'warn')
+                : null;
+
+            // Run clearAndResync and advance fake timers past the drain timeout.
+            const promise = queueService.clearAndResync();
+            // Advance past DRAIN_TIMEOUT_MS (15 000 ms) in steps matching DRAIN_POLL_MS (100 ms).
+            for (let i = 0; i < 160; i++) {
+                jest.advanceTimersByTime(100);
+                await Promise.resolve();
+            }
+            await jest.runAllTimersAsync();
+            await promise;
+
+            // CARSA must have proceeded (promise resolved) even though tasks are still in-flight.
+            expect(queueService.processing).toBe(3);
+
+            if (warnSpy) {
+                expect(warnSpy).toHaveBeenCalledWith(
+                    expect.stringContaining('in-flight tasks still active after drain timeout'),
+                    expect.objectContaining({ inFlight: 3 })
+                );
+            }
+
+            jest.useRealTimers();
+        });
     });
 
     describe('Library Mapping Preservation', () => {

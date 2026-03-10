@@ -60,7 +60,8 @@ const authLimiter = rateLimit({
 
 router.post('/login', loginLimiter, async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, password, rememberMe } = req.body;
+    const sanitizedRememberMe = rememberMe === true;
 
     if (!identifier || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
@@ -71,14 +72,16 @@ router.post('/login', loginLimiter, async (req, res) => {
     const refreshToken = await authService.generateRefreshToken(
       user.id,
       req.get('User-Agent'),
-      { ip: req.ip }
+      { ip: req.ip },
+      sanitizedRememberMe
     );
 
     const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
-    res.cookie('access_token', accessToken, authService.getCookieOptions(secureCookies));
+    res.cookie('access_token', accessToken, authService.getCookieOptions(secureCookies, sanitizedRememberMe));
+    res.cookie('refresh_token', refreshToken, authService.getRefreshTokenCookieOptions(secureCookies, sanitizedRememberMe));
     issueCsrfToken(res, req);
 
-    await authService.auditLog(user.id, 'login_success', req.ip, req.get('User-Agent'));
+    await authService.auditLog(user.id, 'login_success', req.ip, req.get('User-Agent'), { rememberMe: sanitizedRememberMe });
 
     res.json({
       success: true,
@@ -86,8 +89,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         id: user.id,
         username: user.username,
         role: user.role
-      },
-      refreshToken
+      }
     });
   } catch (error) {
     await authService.auditLog(null, 'login_failed', req.ip, req.get('User-Agent'), {
@@ -100,7 +102,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 router.post('/refresh', refreshLimiter, async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {
     return res.status(400).json({ error: 'Refresh token is required' });
@@ -109,6 +111,22 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
     const tokenData = await authService.validateRefreshToken(refreshToken);
     if (!tokenData) {
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    // Replay attack: a known-revoked token was presented — likely token theft.
+    // Revoke every active session for this user immediately.
+    if (tokenData.compromised) {
+      await authService.revokeAllUserTokens(tokenData.user_id);
+      await authService.auditLog(
+        tokenData.user_id,
+        'token_replay_detected',
+        req.ip,
+        req.get('User-Agent'),
+        { warning: 'All sessions revoked due to token replay' }
+      );
+      res.clearCookie('access_token', { path: '/' });
+      res.clearCookie('refresh_token', { path: '/api/auth' });
+      return res.status(401).json({ error: 'Session invalidated. Please log in again.' });
     }
 
     const userResult = await db.query(
@@ -121,6 +139,7 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
     }
 
     const user = userResult.rows[0];
+    const rememberMe = tokenData.remember_me || false;
 
     await authService.revokeRefreshToken(refreshToken, req.ip);
 
@@ -128,11 +147,16 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
     const newRefreshToken = await authService.generateRefreshToken(
       user.id,
       req.get('User-Agent'),
-      { ip: req.ip }
+      { ip: req.ip },
+      rememberMe,
+      // Sliding expiry: pass existing expiry so the 30-day window extends from
+      // whichever is later — the old expiry or now — rather than always from now.
+      rememberMe ? tokenData.expires_at : null
     );
 
     const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
-    res.cookie('access_token', newAccessToken, authService.getCookieOptions(secureCookies));
+    res.cookie('access_token', newAccessToken, authService.getCookieOptions(secureCookies, rememberMe));
+    res.cookie('refresh_token', newRefreshToken, authService.getRefreshTokenCookieOptions(secureCookies, rememberMe));
     issueCsrfToken(res, req);
 
     await authService.auditLog(user.id, 'token_refresh', req.ip, req.get('User-Agent'));
@@ -143,8 +167,7 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
         id: user.id,
         username: user.username,
         role: user.role
-      },
-      refreshToken: newRefreshToken
+      }
     });
   } catch (error) {
     res.status(401).json({ error: error.message || 'Token refresh failed' });
@@ -153,7 +176,7 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
 
 router.post('/logout', authenticateToken, authLimiter, async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refresh_token;
 
     if (refreshToken) {
       await authService.revokeRefreshToken(refreshToken, req.ip);
@@ -163,8 +186,14 @@ router.post('/logout', authenticateToken, authLimiter, async (req, res) => {
     res.clearCookie('access_token', {
       httpOnly: true,
       secure: secureCookies,
-      sameSite: 'strict',
+      sameSite: 'lax',
       path: '/'
+    });
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: secureCookies,
+      sameSite: 'lax',
+      path: '/api/auth'
     });
     clearCsrfToken(res, req);
 
@@ -184,8 +213,14 @@ router.post('/logout-all', authenticateToken, authLimiter, async (req, res) => {
     res.clearCookie('access_token', {
       httpOnly: true,
       secure: secureCookies,
-      sameSite: 'strict',
+      sameSite: 'lax',
       path: '/'
+    });
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: secureCookies,
+      sameSite: 'lax',
+      path: '/api/auth'
     });
     clearCsrfToken(res, req);
 
@@ -249,7 +284,18 @@ router.post('/change-password', authenticateToken, passwordChangeLimiter, async 
       [newHash, req.user.id]
     );
 
-    await authService.auditLog(req.user.id, 'password_changed', req.ip, req.get('User-Agent'));
+    // Revoke all other active sessions. If the user has a refresh token in this
+    // request we keep it alive so they aren't immediately logged out; all other
+    // devices are signed out immediately.
+    const currentRefreshToken = req.cookies?.refresh_token;
+    const currentTokenHash = currentRefreshToken
+      ? await authService.hashToken(currentRefreshToken)
+      : null;
+    const revokedCount = await authService.revokeAllUserTokens(req.user.id, currentTokenHash);
+
+    await authService.auditLog(req.user.id, 'password_changed', req.ip, req.get('User-Agent'), {
+      otherSessionsRevoked: revokedCount
+    });
 
     res.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {

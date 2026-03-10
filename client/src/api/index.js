@@ -18,7 +18,6 @@
 
 import axios from 'axios'
 
-const REFRESH_TOKEN_KEY = 'classifarr_refresh_token'
 const CSRF_COOKIE_NAME = 'classifarr_csrf_token'
 
 let refreshInProgress = null
@@ -45,19 +44,6 @@ function getCsrfToken() {
   return getCookieValue(CSRF_COOKIE_NAME)
 }
 
-function getRefreshToken() {
-  const stored = sessionStorage.getItem(REFRESH_TOKEN_KEY)
-  return stored || null
-}
-
-function setRefreshToken(token) {
-  if (token) {
-    sessionStorage.setItem(REFRESH_TOKEN_KEY, token)
-  } else {
-    sessionStorage.removeItem(REFRESH_TOKEN_KEY)
-  }
-}
-
 const apiClient = axios.create({
   baseURL: '/api',
   headers: {
@@ -67,12 +53,6 @@ const apiClient = axios.create({
 })
 
 async function refreshAccessToken() {
-  const refreshToken = getRefreshToken()
-  
-  if (!refreshToken) {
-    throw new Error('No refresh token available')
-  }
-
   if (refreshInProgress) {
     return refreshInProgress
   }
@@ -80,20 +60,13 @@ async function refreshAccessToken() {
   refreshInProgress = (async () => {
     try {
       const csrfToken = getCsrfToken()
-      const response = await axios.post('/api/auth/refresh', {
-        refreshToken
-      }, {
+      // Refresh token is sent automatically as an httpOnly cookie
+      const response = await axios.post('/api/auth/refresh', {}, {
         withCredentials: true,
         headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
       })
-
-      if (response.data.refreshToken) {
-        setRefreshToken(response.data.refreshToken)
-      }
-
       return response
     } catch (error) {
-      setRefreshToken(null)
       throw error
     } finally {
       refreshInProgress = null
@@ -135,8 +108,6 @@ apiClient.interceptors.response.use(
       await refreshAccessToken()
       return apiClient(originalRequest)
     } catch (refreshError) {
-      setRefreshToken(null)
-      
       if (window.location.pathname !== '/login') {
         window.location.href = '/login?expired=true'
       }
@@ -146,8 +117,6 @@ apiClient.interceptors.response.use(
   }
 
   if (error.response?.status === 401) {
-    setRefreshToken(null)
-    
     if (window.location.pathname !== '/login') {
       window.location.href = '/login?expired=true'
     }
@@ -158,23 +127,16 @@ apiClient.interceptors.response.use(
 )
 
 export default {
-  login(identifier, password) {
-    return apiClient.post('/auth/login', { identifier, password }).then(response => {
-      if (response.data.refreshToken) {
-        setRefreshToken(response.data.refreshToken)
-      }
-      return response
-    })
+  login(identifier, password, rememberMe = false) {
+    return apiClient.post('/auth/login', { identifier, password, rememberMe })
   },
 
   logout() {
-    const refreshToken = getRefreshToken()
-    setRefreshToken(null)
-    return apiClient.post('/auth/logout', { refreshToken })
+    // Refresh token is cleared server-side; cookie cleared via Set-Cookie response header
+    return apiClient.post('/auth/logout', {})
   },
 
   logoutAll() {
-    setRefreshToken(null)
     return apiClient.post('/auth/logout-all')
   },
 
@@ -199,7 +161,7 @@ export default {
   },
 
   clearAuth() {
-    setRefreshToken(null)
+    // Session state is managed server-side via httpOnly cookies — no client-side cleanup needed
   },
 
   get(url, config) {

@@ -23,7 +23,15 @@ const db = require('../config/database');
 
 const SALT_ROUNDS = 12;
 const ACCESS_TOKEN_EXPIRY = '15m';
-const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+const SESSION_EXPIRY_HOURS = 48;
+const REMEMBER_ME_EXPIRY_DAYS = 30;
+const MAX_FAILED_LOGINS = 10;
+const LOCKOUT_DURATION_MINUTES = 15;
+
+// Pre-computed at startup so authenticate() always spends ~the same time in
+// bcrypt.compare regardless of whether the username exists. This prevents
+// username enumeration via response-time differences.
+const DUMMY_HASH = bcrypt.hashSync('dummy-timing-placeholder', SALT_ROUNDS);
 
 async function hashPassword(password) {
   return bcrypt.hash(password, SALT_ROUNDS);
@@ -104,17 +112,25 @@ async function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-async function generateRefreshToken(userId, userAgent = null, deviceInfo = null) {
+async function generateRefreshToken(userId, userAgent = null, deviceInfo = null, rememberMe = false, slideFromDate = null) {
   const tokenString = generateRefreshTokenString();
   const tokenHash = await hashToken(tokenString);
   
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+  if (rememberMe) {
+    // Sliding expiry: extend from the previous token's expiry if provided (keeps active
+    // users from being logged out), otherwise start fresh from now.
+    const base = slideFromDate ? new Date(Math.max(slideFromDate, Date.now())) : expiresAt;
+    expiresAt.setTime(base.getTime());
+    expiresAt.setDate(expiresAt.getDate() + REMEMBER_ME_EXPIRY_DAYS);
+  } else {
+    expiresAt.setHours(expiresAt.getHours() + SESSION_EXPIRY_HOURS);
+  }
 
   await db.query(
-    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, device_info)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [userId, tokenHash, expiresAt, userAgent, deviceInfo ? JSON.stringify(deviceInfo) : null]
+    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, device_info, remember_me)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [userId, tokenHash, expiresAt, userAgent, deviceInfo ? JSON.stringify(deviceInfo) : null, rememberMe]
   );
 
   return tokenString;
@@ -122,20 +138,40 @@ async function generateRefreshToken(userId, userAgent = null, deviceInfo = null)
 
 async function validateRefreshToken(tokenString, userId = null) {
   const tokenHash = await hashToken(tokenString);
-  
-  let query = `SELECT id, user_id, expires_at, revoked_at 
-          FROM refresh_tokens 
-          WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > NOW()`;
-  const params = [tokenHash];
-  
+
+  // Phase 1: look up the token regardless of revocation status so we can
+  // distinguish a replay attack (known-revoked token) from a completely unknown token.
+  let lookupQuery = `SELECT id, user_id, expires_at, revoked_at, remember_me
+          FROM refresh_tokens
+          WHERE token_hash = $1`;
+  const lookupParams = [tokenHash];
+
   if (userId) {
-    query += ' AND user_id = $2';
-    params.push(userId);
+    lookupQuery += ' AND user_id = $2';
+    lookupParams.push(userId);
   }
 
-  const result = await db.query(query, params);
+  const lookupResult = await db.query(lookupQuery, lookupParams);
 
-  return result.rows.length > 0 ? result.rows[0] : null;
+  if (lookupResult.rows.length === 0) {
+    // Completely unknown token — not in the DB at all.
+    return null;
+  }
+
+  const row = lookupResult.rows[0];
+
+  if (row.revoked_at !== null) {
+    // A known-revoked token was presented — almost certainly a replay attack.
+    // Signal the caller to nuke all sessions for this user.
+    return { compromised: true, user_id: row.user_id };
+  }
+
+  if (new Date(row.expires_at) <= new Date()) {
+    // Token exists but has expired — treat as invalid (not a replay).
+    return null;
+  }
+
+  return row;
 }
 
 async function revokeRefreshToken(tokenString, revokedByIp = null) {
@@ -202,23 +238,54 @@ async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
 }
 
 async function authenticate(identifier, password) {
-  const query = 'SELECT * FROM users WHERE username = $1 AND is_active = true';
-
-  const result = await db.query(query, [identifier]);
+  const result = await db.query(
+    'SELECT * FROM users WHERE username = $1 AND is_active = true',
+    [identifier]
+  );
 
   if (result.rows.length === 0) {
+    // Always run bcrypt.compare even when the user doesn't exist so that
+    // response time is identical to a wrong-password attempt, preventing
+    // username enumeration via timing.
+    await bcrypt.compare(password, DUMMY_HASH);
     throw new Error('Invalid credentials');
   }
 
   const user = result.rows[0];
 
+  // Per-account lockout check — must come before the bcrypt work so a locked
+  // account gets a clear message rather than a generic 'Invalid credentials'.
+  if (user.locked_until && new Date(user.locked_until) > new Date()) {
+    const remainingMs = new Date(user.locked_until) - Date.now();
+    const remainingMin = Math.ceil(remainingMs / 60000);
+    throw new Error(
+      `Account temporarily locked due to too many failed login attempts. ` +
+      `Try again in ${remainingMin} minute${remainingMin !== 1 ? 's' : ''}.`
+    );
+  }
+
   const valid = await verifyPassword(password, user.password_hash);
   if (!valid) {
+    // Atomically increment the counter and set locked_until once the threshold
+    // is reached. The CASE keeps locked_until at its current value (NULL or an
+    // already-expired timestamp) until the 10th failure.
+    await db.query(
+      `UPDATE users
+       SET failed_login_count = failed_login_count + 1,
+           locked_until = CASE
+             WHEN failed_login_count + 1 >= $2
+               THEN NOW() + ($3 || ' minutes')::INTERVAL
+             ELSE locked_until
+           END
+       WHERE id = $1`,
+      [user.id, MAX_FAILED_LOGINS, LOCKOUT_DURATION_MINUTES]
+    );
     throw new Error('Invalid credentials');
   }
 
+  // Successful login — reset lockout state and record last_login in one query.
   await db.query(
-    'UPDATE users SET last_login = NOW() WHERE id = $1',
+    'UPDATE users SET last_login = NOW(), failed_login_count = 0, locked_until = NULL WHERE id = $1',
     [user.id]
   );
 
@@ -227,18 +294,42 @@ async function authenticate(identifier, password) {
   return user;
 }
 
-function getCookieOptions(isSecure = false) {
+function getCookieOptions(isSecure = false, rememberMe = false) {
+  const maxAge = rememberMe
+    ? REMEMBER_ME_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+    : SESSION_EXPIRY_HOURS * 60 * 60 * 1000;
   return {
     httpOnly: true,
     secure: isSecure,
     sameSite: 'lax',
-    maxAge: 15 * 60 * 1000,
-    path: '/'
+    path: '/',
+    maxAge,
   };
+}
+
+function getRefreshTokenCookieOptions(isSecure = false, rememberMe = false) {
+  const maxAge = rememberMe
+    ? REMEMBER_ME_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+    : SESSION_EXPIRY_HOURS * 60 * 60 * 1000;
+  return {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: 'lax',
+    path: '/api/auth', // Scoped to auth routes only
+    maxAge,
+  };
+}
+
+async function revokeAllRefreshTokensOnStartup() {
+  const result = await db.query(
+    `UPDATE refresh_tokens SET revoked_at = NOW() WHERE revoked_at IS NULL`
+  );
+  return result.rowCount;
 }
 
 module.exports = {
   hashPassword,
+  hashToken,
   verifyPassword,
   validatePasswordStrength,
   generateAccessToken,
@@ -246,12 +337,17 @@ module.exports = {
   validateRefreshToken,
   revokeRefreshToken,
   revokeAllUserTokens,
+  revokeAllRefreshTokensOnStartup,
   cleanupExpiredTokens,
   verifyToken,
   auditLog,
   authenticate,
   getJWTSecret,
   getCookieOptions,
+  getRefreshTokenCookieOptions,
   ACCESS_TOKEN_EXPIRY,
-  REFRESH_TOKEN_EXPIRY_DAYS,
+  SESSION_EXPIRY_HOURS,
+  REMEMBER_ME_EXPIRY_DAYS,
+  MAX_FAILED_LOGINS,
+  LOCKOUT_DURATION_MINUTES,
 };

@@ -15,13 +15,13 @@
 
     <!-- Tab Navigation -->
     <div class="border-b border-gray-700">
-      <nav class="-mb-px flex space-x-8">
+      <nav class="-mb-px flex overflow-x-auto space-x-4 sm:space-x-8 scrollbar-none">
         <button
           v-for="tab in tabs"
           :key="tab.id"
           @click="activeTab = tab.id"
           :class="[
-            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm',
+            'whitespace-nowrap flex-shrink-0 py-4 px-1 border-b-2 font-medium text-sm',
             activeTab === tab.id
               ? 'border-blue-500 text-blue-400'
               : 'border-transparent text-gray-400 hover:text-gray-300'

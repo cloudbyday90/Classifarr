@@ -48,6 +48,18 @@
             </div>
           </div>
 
+          <div class="flex items-center gap-2">
+            <input
+              id="rememberMe"
+              v-model="form.rememberMe"
+              type="checkbox"
+              class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            />
+            <label for="rememberMe" class="text-sm text-gray-300 cursor-pointer select-none">
+              Remember me for 30 days
+            </label>
+          </div>
+
           <div v-if="error" class="p-3 bg-red-900/30 text-red-400 rounded-lg text-sm">
             {{ error }}
           </div>
@@ -77,7 +89,8 @@ const toast = useToast()
 
 const form = ref({
   identifier: '',
-  password: ''
+  password: '',
+  rememberMe: false
 })
 
 const showPassword = ref(false)
@@ -102,7 +115,7 @@ const login = async () => {
   error.value = ''
 
   try {
-    const response = await api.login(form.value.identifier, form.value.password)
+    const response = await api.login(form.value.identifier, form.value.password, form.value.rememberMe)
 
     if (response.data.success) {
       const redirectTo = route.query.redirect || '/'

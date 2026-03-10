@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.43.8-beta] — 2026-03-10
+
+### Security
+
+- **Token reuse / replay detection** — `validateRefreshToken` now uses a two-phase query: the `AND revoked_at IS NULL` filter is removed so that revoked tokens are returned rather than `null`. A revoked token triggers a `{ compromised: true, user_id }` sentinel, causing the `/refresh` route to call `revokeAllUserTokens` for the entire account and return `HTTP 401 "Session invalidated. Please log in again."` A previously indistinguishable reply attack now immediately invalidates all sessions for that user. (`auth.js` service + route)
+- **Sliding expiry for Remember Me sessions** — `generateRefreshToken` gains a `slideFromDate` parameter. When a Remember Me refresh token is consumed, the new token's expiry is extended from `max(existingExpiry, now) + 30 days` rather than always from `now`. Sessions that are actively used keep sliding forward indefinitely; idle sessions still expire naturally. (`auth.js` service + `/refresh` route)
+- **Password change revokes other sessions, keeps current** — `/change-password` now hashes the caller's current `refresh_token` cookie and passes it as `exceptTokenHash` to `revokeAllUserTokens`. All other sessions are revoked; the current browser session survives. The audit log entry includes `{ otherSessionsRevoked: N }`. (`auth.js` route)
+- **Timing attack fix for username enumeration** — A `DUMMY_HASH` constant (`bcrypt.hashSync('dummy-timing-placeholder', 12)`) is pre-computed at module load. When `authenticate()` cannot find the given username it always runs `bcrypt.compare(password, DUMMY_HASH)` before throwing, producing the same ~100 ms response time as a wrong-password attempt against a real account. (`auth.js` service)
+- **Per-account login lockout** — `authenticate()` checks `locked_until > now` before verifying the password; if locked, throws a human-readable countdown message (`"Account temporarily locked … Try again in N minute(s)."`). On each wrong-password attempt the `failed_login_count` column is incremented atomically; when it reaches `MAX_FAILED_LOGINS (10)` the `locked_until` column is set to `NOW() + 15 minutes` via a single SQL `CASE` expression. On successful login both columns are reset to `0 / NULL` in a single query. Lockout is time-based and self-expiring — no admin action required. Constants `MAX_FAILED_LOGINS = 10` and `LOCKOUT_DURATION_MINUTES = 15` are exported. (`auth.js` service)
+
+### Fixed
+
+- **`clearAndResync` drain race condition** — The previous implementation called `stopWorker()` then waited a hard-coded 1-second sleep before truncating database tables. `stopWorker()` only flips `this.running = false`, which causes the worker loop to exit on its *next iteration*, but any `processTask()` calls already dispatched continue running asynchronously. Under real load (e.g. 5 concurrent tasks each making DB writes), this 1-second window was not sufficient — in-flight tasks would attempt writes against rows that no longer existed after the truncation, producing spurious `WARN` log entries. The fix replaces the sleep with a proper drain loop: polls `this.processing` every 100 ms until it reaches zero or a 15-second deadline, whichever comes first. If the deadline is exceeded, a `WARN` is emitted and the cleanup proceeds. (`queueService.js`)
+
+### Added
+
+- **DB migration `20260310_110000_add_login_lockout_to_users.sql`** — Adds `failed_login_count INTEGER NOT NULL DEFAULT 0` and `locked_until TIMESTAMPTZ` to the `users` table with `IF NOT EXISTS` guards (safe for both fresh installs and upgrades). Includes a partial index `idx_users_locked_until ON users (locked_until) WHERE locked_until IS NOT NULL` for efficient expiry queries.
+
+### Tests
+
+- **`auth.service.test.js`** — 6 new service tests: `hashToken` SHA-256 hex digest, `generateRefreshToken` sliding expiry (future `slideFromDate`, past fallback), `validateRefreshToken` two-phase (revoked → `{ compromised: true }`, expired → `null`, valid → row), `authenticate` lockout (locked throws countdown, counter increments on wrong password, resets on success, `bcrypt.compare` always called on unknown user).
+- **`queueService.test.js`** — 2 new drain-related tests: (1) verifies `performClearAndResyncCleanup` is only called after `this.processing` reaches zero when tasks are in-flight; (2) verifies that when in-flight tasks do not drain within the 15-second timeout the service emits a warning and proceeds rather than hanging forever.
+- **`auth-routes.test.js`** — 3 new route tests: `/refresh` replay detection triggers `revokeAllUserTokens` + 401, sliding expiry passes `slideFromDate` to `generateRefreshToken`, `/change-password` revokes other sessions while keeping current; lockout message pass-through (verbatim `error.message` → `res.body.error`); `rememberMe` string coercion (`'yes'` → `false`). 35 tests total.
+- **`Login.test.js`** (client) — 1 new test: lockout message display in UI (renders "temporarily locked" + minute countdown). 17 tests total.
+- **Total: 2,025 server tests (106 suites), 406 client tests (39 files) — all passing.**
+
+---
+
 ## [0.43.7a-beta] — 2026-03-09
 
 ### Fixed

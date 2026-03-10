@@ -14,19 +14,19 @@
 
     <!-- Tab Navigation -->
     <div class="border-b border-gray-700">
-      <nav class="-mb-px flex space-x-8">
+      <nav class="-mb-px flex overflow-x-auto space-x-4 sm:space-x-8 scrollbar-none">
         <button
           v-for="tab in tabs"
           :key="tab.id"
           @click="setActiveTab(tab.id)"
           :class="[
-            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors',
+            'whitespace-nowrap flex-shrink-0 py-4 px-1 border-b-2 font-medium text-sm transition-colors',
             activeTab === tab.id
               ? 'border-blue-500 text-blue-400'
               : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
           ]"
         >
-          <span class="mr-2">{{ tab.icon }}</span>
+          <span class="mr-1">{{ tab.icon }}</span>
           {{ tab.label }}
         </button>
       </nav>
@@ -34,12 +34,13 @@
 
     <!-- Status Bar -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3">
-      <div class="space-y-2 text-sm">
-        <div class="flex flex-wrap items-center gap-6">
+      <div class="space-y-3 text-sm">
+        <!-- Text Embeddings row -->
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span class="inline-flex items-center px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/40 text-xs uppercase tracking-wide">
+            Text Embeddings
+          </span>
           <div class="flex items-center gap-2">
-            <span class="inline-flex items-center px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/40 text-xs uppercase tracking-wide">
-              Text Embeddings
-            </span>
             <span :class="['w-2 h-2 rounded-full', statusBar.textOnline ? 'bg-green-500' : 'bg-red-500']"></span>
             <span class="text-gray-400">Status:</span>
             <span :class="statusBar.textOnline ? 'text-green-400' : 'text-red-400'">
@@ -63,11 +64,12 @@
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-6">
+        <!-- Image Embeddings row -->
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span class="inline-flex items-center px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/40 text-xs uppercase tracking-wide">
+            Image Embeddings
+          </span>
           <div class="flex items-center gap-2">
-            <span class="inline-flex items-center px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/40 text-xs uppercase tracking-wide">
-              Image Embeddings
-            </span>
             <span :class="['w-2 h-2 rounded-full', statusBar.imageOnline ? 'bg-green-500' : 'bg-red-500']"></span>
             <span class="text-gray-400">Status:</span>
             <span :class="statusBar.imageOnline ? 'text-green-400' : 'text-red-400'">

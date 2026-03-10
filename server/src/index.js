@@ -181,6 +181,17 @@ async function initializeServices() {
     console.error('Runtime wiring validation bootstrap failed:', error.message);
   }
 
+  // Revoke all active refresh tokens on startup so every restart requires re-login.
+  // This matches Radarr/SABnzbd behavior and ensures Remember Me sessions cannot
+  // survive a container restart.
+  try {
+    const authService = require('./services/auth');
+    const revoked = await authService.revokeAllRefreshTokensOnStartup();
+    console.log(`Sessions cleared on startup (${revoked} token(s) revoked — re-login required)`);
+  } catch (error) {
+    console.warn('Startup session invalidation failed:', error.message);
+  }
+
   try {
     console.log('Initializing Discord bot...');
     await discordBot.initialize();

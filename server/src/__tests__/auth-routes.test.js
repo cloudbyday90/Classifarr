@@ -8,6 +8,7 @@
 
 const request = require('supertest');
 const express = require('express');
+const cookieParser = require('cookie-parser');
 
 jest.mock('express-rate-limit', () => {
   return jest.fn(() => (req, res, next) => next());
@@ -33,12 +34,14 @@ jest.mock('../services/auth', () => ({
   validateRefreshToken: jest.fn(),
   revokeRefreshToken: jest.fn(),
   revokeAllUserTokens: jest.fn(),
+  hashToken: jest.fn(),
   auditLog: jest.fn(),
   verifyPassword: jest.fn(),
   hashPassword: jest.fn(),
   validatePasswordStrength: jest.fn(),
   verifyToken: jest.fn(),
-  getCookieOptions: jest.fn(() => ({ httpOnly: true, secure: false, sameSite: 'strict', path: '/' }))
+  getCookieOptions: jest.fn(() => ({ httpOnly: true, secure: false, sameSite: 'lax', path: '/' })),
+  getRefreshTokenCookieOptions: jest.fn(() => ({ httpOnly: true, secure: false, sameSite: 'lax', path: '/api/auth' }))
 }));
 
 const db = require('../config/database');
@@ -52,6 +55,7 @@ describe('Auth Routes', () => {
     jest.clearAllMocks();
     app = express();
     app.use(express.json());
+    app.use(cookieParser());
     app.use('/auth', authRouter);
   });
 
@@ -85,7 +89,34 @@ describe('Auth Routes', () => {
       expect(res.body.error).toBe('Invalid credentials');
     });
 
-    it('should return success with tokens on valid login', async () => {
+    it('should pass the lockout error message through to the response verbatim', async () => {
+      const lockoutMsg = 'Account temporarily locked due to too many failed login attempts. Try again in 15 minutes.';
+      authService.authenticate.mockRejectedValueOnce(new Error(lockoutMsg));
+
+      const res = await request(app)
+        .post('/auth/login')
+        .send({ identifier: 'lockeduser', password: 'any' });
+
+      expect(res.status).toBe(401);
+      // Must surface the full message so the client can display the countdown
+      expect(res.body.error).toBe(lockoutMsg);
+    });
+
+    it('should sanitize rememberMe to false when a non-boolean truthy value is sent', async () => {
+      const mockUser = { id: 1, username: 'testuser', role: 'admin' };
+      authService.authenticate.mockResolvedValueOnce(mockUser);
+      authService.generateAccessToken.mockResolvedValueOnce('access-token');
+      authService.generateRefreshToken.mockResolvedValueOnce('refresh-token');
+
+      await request(app)
+        .post('/auth/login')
+        .send({ identifier: 'testuser', password: 'pass', rememberMe: 'yes' });
+
+      // 'yes' is not strictly true, so the route must coerce it to false
+      expect(authService.generateRefreshToken.mock.calls[0][3]).toBe(false);
+    });
+
+    it('should return success and set refresh_token cookie on valid login', async () => {
       const mockUser = { id: 1, username: 'testuser', role: 'admin' };
       authService.authenticate.mockResolvedValueOnce(mockUser);
       authService.generateAccessToken.mockResolvedValueOnce('access-token');
@@ -98,12 +129,27 @@ describe('Auth Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.user.id).toBe(1);
-      expect(res.body.refreshToken).toBe('refresh-token');
+      // Refresh token must NOT be in the response body (it is set as httpOnly cookie)
+      expect(res.body.refreshToken).toBeUndefined();
+    });
+
+    it('should pass rememberMe=true to generateRefreshToken when provided', async () => {
+      const mockUser = { id: 1, username: 'testuser', role: 'admin' };
+      authService.authenticate.mockResolvedValueOnce(mockUser);
+      authService.generateAccessToken.mockResolvedValueOnce('access-token');
+      authService.generateRefreshToken.mockResolvedValueOnce('refresh-token');
+      
+      await request(app)
+        .post('/auth/login')
+        .send({ identifier: 'testuser', password: 'validpass', rememberMe: true });
+      
+      // Verify the 4th argument (rememberMe) was passed as true
+      expect(authService.generateRefreshToken.mock.calls[0][3]).toBe(true);
     });
   });
 
   describe('POST /auth/refresh', () => {
-    it('should return 400 when refresh token is missing', async () => {
+    it('should return 400 when refresh token cookie is missing', async () => {
       const res = await request(app)
         .post('/auth/refresh')
         .send({});
@@ -117,7 +163,8 @@ describe('Auth Routes', () => {
       
       const res = await request(app)
         .post('/auth/refresh')
-        .send({ refreshToken: 'invalid-token' });
+        .set('Cookie', 'refresh_token=invalid-token')
+        .send({});
       
       expect(res.status).toBe(401);
       expect(res.body.error).toBe('Invalid or expired refresh token');
@@ -129,15 +176,16 @@ describe('Auth Routes', () => {
       
       const res = await request(app)
         .post('/auth/refresh')
-        .send({ refreshToken: 'valid-token' });
+        .set('Cookie', 'refresh_token=valid-token')
+        .send({});
       
       expect(res.status).toBe(401);
       expect(res.body.error).toBe('User not found or inactive');
     });
 
-    it('should return new tokens on valid refresh', async () => {
+    it('should return new access token and set refresh_token cookie on valid refresh', async () => {
       const mockUser = { id: 1, username: 'testuser', role: 'admin' };
-      authService.validateRefreshToken.mockResolvedValueOnce({ user_id: 1 });
+      authService.validateRefreshToken.mockResolvedValueOnce({ user_id: 1, remember_me: false });
       db.query.mockResolvedValueOnce({ rows: [mockUser] });
       authService.revokeRefreshToken.mockResolvedValueOnce();
       authService.generateAccessToken.mockResolvedValueOnce('new-access-token');
@@ -145,11 +193,62 @@ describe('Auth Routes', () => {
       
       const res = await request(app)
         .post('/auth/refresh')
-        .send({ refreshToken: 'valid-token' });
+        .set('Cookie', 'refresh_token=valid-token')
+        .send({});
       
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.refreshToken).toBe('new-refresh-token');
+      // Refresh token must NOT be in the response body
+      expect(res.body.refreshToken).toBeUndefined();
+    });
+
+    it('should revoke all user sessions and return 401 when a replayed (compromised) token is presented', async () => {
+      authService.validateRefreshToken.mockResolvedValueOnce({ compromised: true, user_id: 7 });
+      authService.revokeAllUserTokens.mockResolvedValueOnce(3);
+      authService.auditLog.mockResolvedValueOnce();
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', 'refresh_token=stolen-token')
+        .set('User-Agent', 'test-agent')
+        .send({});
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toMatch(/session invalidated/i);
+      expect(authService.revokeAllUserTokens).toHaveBeenCalledWith(7);
+      // Audit log must record replay detection
+      expect(authService.auditLog).toHaveBeenCalledWith(
+        7,
+        'token_replay_detected',
+        expect.anything(),
+        expect.any(String),
+        expect.objectContaining({ warning: expect.stringMatching(/replay/i) })
+      );
+    });
+
+    it('should pass slideFromDate (existing expires_at) to generateRefreshToken for remember_me sessions', async () => {
+      const existingExpiry = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+      const mockUser = { id: 2, username: 'memuser', role: 'admin' };
+      authService.validateRefreshToken.mockResolvedValueOnce({
+        user_id: 2,
+        remember_me: true,
+        expires_at: existingExpiry
+      });
+      db.query.mockResolvedValueOnce({ rows: [mockUser] });
+      authService.revokeRefreshToken.mockResolvedValueOnce();
+      authService.generateAccessToken.mockResolvedValueOnce('new-access-token');
+      authService.generateRefreshToken.mockResolvedValueOnce('new-refresh-token');
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', 'refresh_token=remember-me-token')
+        .send({});
+
+      expect(res.status).toBe(200);
+      // 5th argument (index 4) to generateRefreshToken must be the existing expiry for sliding window
+      const callArgs = authService.generateRefreshToken.mock.calls[0];
+      expect(callArgs[3]).toBe(true);        // rememberMe
+      expect(callArgs[4]).toEqual(existingExpiry); // slideFromDate
     });
   });
 
@@ -170,7 +269,8 @@ describe('Auth Routes', () => {
       const res = await request(app)
         .post('/auth/logout')
         .set('Authorization', 'Bearer valid-token')
-        .send({ refreshToken: 'refresh-token' });
+        .set('Cookie', 'refresh_token=refresh-token')
+        .send({});
       
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -305,15 +405,50 @@ describe('Auth Routes', () => {
       authService.verifyPassword.mockResolvedValueOnce(true);
       authService.hashPassword.mockResolvedValueOnce('newhash');
       db.query.mockResolvedValueOnce({});
+      authService.hashToken.mockResolvedValueOnce('current-token-hash');
+      authService.revokeAllUserTokens.mockResolvedValueOnce(2);
       authService.auditLog.mockResolvedValueOnce();
-      
+
       const res = await request(app)
         .post('/auth/change-password')
         .set('Authorization', 'Bearer valid-token')
+        .set('Cookie', 'refresh_token=current-refresh-token')
+        .set('User-Agent', 'test-agent')
         .send({ currentPassword: 'OldPass123!', newPassword: 'NewPass123!', confirmPassword: 'NewPass123!' });
-      
+
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
+      // Must revoke other sessions, keeping the current one alive
+      expect(authService.hashToken).toHaveBeenCalledWith('current-refresh-token');
+      expect(authService.revokeAllUserTokens).toHaveBeenCalledWith(1, 'current-token-hash');
+      // Audit log must include revocation count
+      expect(authService.auditLog).toHaveBeenCalledWith(
+        1, 'password_changed', expect.anything(), expect.any(String),
+        { otherSessionsRevoked: 2 }
+      );
+    });
+
+    it('should revoke all sessions when no refresh token cookie is present during password change', async () => {
+      authService.verifyToken.mockResolvedValueOnce({ id: 1, username: 'testuser', role: 'admin' });
+      authService.validatePasswordStrength.mockReturnValueOnce({ valid: true });
+      db.query.mockResolvedValueOnce({ rows: [{ password_hash: 'oldhash' }] });
+      authService.verifyPassword.mockResolvedValueOnce(true);
+      authService.hashPassword.mockResolvedValueOnce('newhash');
+      db.query.mockResolvedValueOnce({});
+      authService.revokeAllUserTokens.mockResolvedValueOnce(3);
+      authService.auditLog.mockResolvedValueOnce();
+
+      const res = await request(app)
+        .post('/auth/change-password')
+        .set('Authorization', 'Bearer valid-token')
+        // No refresh_token cookie
+        .send({ currentPassword: 'OldPass123!', newPassword: 'NewPass123!', confirmPassword: 'NewPass123!' });
+
+      expect(res.status).toBe(200);
+      // hashToken should not be called (no cookie present)
+      expect(authService.hashToken).not.toHaveBeenCalled();
+      // revokeAllUserTokens called with null to revoke everything
+      expect(authService.revokeAllUserTokens).toHaveBeenCalledWith(1, null);
     });
   });
 

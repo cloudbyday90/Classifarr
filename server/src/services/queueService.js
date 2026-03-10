@@ -2076,11 +2076,27 @@ class QueueService {
                 mappings: oldLibrarySnapshot.mappings.length
             });
 
-            // 2. Stop worker to prevent race conditions with active tasks
+            // 2. Stop worker and drain in-flight tasks before clearing data.
+            // stopWorker() flips this.running = false so the loop exits on its
+            // next iteration, but processTask() calls already dispatched continue
+            // running asynchronously.  We must wait for this.processing to reach
+            // zero before truncating tables, otherwise those tasks will attempt
+            // writes against rows (e.g. libraries) that no longer exist and emit
+            // spurious WARN logs for a race that CARSA itself created.
             if (wasRunning) {
                 this.stopWorker();
-                // Give it a moment to finish current iteration
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                const DRAIN_POLL_MS = 100;
+                const DRAIN_TIMEOUT_MS = 15_000;
+                const drainDeadline = Date.now() + DRAIN_TIMEOUT_MS;
+                while (this.processing > 0 && Date.now() < drainDeadline) {
+                    await new Promise(resolve => setTimeout(resolve, DRAIN_POLL_MS));
+                }
+                if (this.processing > 0) {
+                    this.logger.warn('CARSA proceeding with in-flight tasks still active after drain timeout', {
+                        inFlight: this.processing,
+                        drainTimeoutMs: DRAIN_TIMEOUT_MS,
+                    });
+                }
             }
 
             this.syncStatus.updateProgress(10, 'Stopping worker...');

@@ -1,5 +1,43 @@
 # Classifarr Release Notes
 
+## v0.43.8-beta
+**Title: Security hardening — account protection & session integrity**
+
+### 🎉 What You'll Notice
+- Your account is now protected against brute-force login attacks — too many wrong passwords temporarily locks it for 15 minutes, with a clear countdown message.
+- If someone steals and replays an old session token, Classifarr detects it and immediately signs out **all** active sessions for your account to limit damage.
+- Changing your password now signs out every other browser or device automatically — your current session stays active.
+- Login response times are consistent regardless of whether your username exists, making it harder for attackers to probe for valid accounts.
+
+### 📊 Quick Visual
+```text
+Auth Security Improvements
+  Brute-force protection   [████████████] Account lockout after 10 attempts
+  Replay attack defence    [████████████] Stolen token → all sessions wiped
+  Password change hygiene  [████████████] Other sessions revoked instantly
+  Timing attack mitigation [████████████] Constant-time response always
+```
+
+### ✨ Highlights
+- **Account lockout** — 10 failed login attempts triggers a 15-minute temporary lock. Self-expiring, no admin action required.
+- **Token replay detection** — reusing a consumed refresh token is treated as a compromise signal: all sessions for the account are immediately invalidated.
+- **Sliding Remember Me expiry** — active "Remember Me" sessions now extend their 30-day window each time you use the app, so you're not logged out mid-project.
+- **Password change signs out other devices** — your current session is preserved; all others are revoked.
+
+### 🔧 Reliability Improvements
+- Login response time is now constant whether or not the username exists, removing a subtle information leak.
+- A new database migration adds the lockout tracking columns automatically on upgrade — no manual steps required.
+- **Clear & Resync All is now safer under load** — the operation now waits for any in-progress classification tasks to finish before clearing the database, eliminating a race condition that could produce harmless but confusing warning log entries when tasks were active at the moment the button was pressed.
+
+### 👥 Who This Helps
+- **End users:** Clearer, actionable error messages when locked out; seamless Remember Me sessions that don't expire during active use.
+- **Operators/admins:** Automated account protection with no configuration required; lockouts self-expire so no admin intervention is needed.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details including migration names, test counts, and implementation specifics.
+
+---
+
 ## v0.43.7a-beta
 **Title: Patch — automatic relationship backfill & Clear-All-Resync fix**
 

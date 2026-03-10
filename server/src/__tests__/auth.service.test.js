@@ -103,6 +103,11 @@ describe('Auth Service - token and persistence flows', () => {
     expect(errorSpy.spy).toHaveBeenCalled();
   });
 
+  test('hashToken returns the SHA-256 hex digest of the input string', async () => {
+    const result = await authService.hashToken('some-token-string');
+    expect(result).toBe(sha256('some-token-string'));
+  });
+
   test('generateAccessToken signs expected payload and metadata', async () => {
     const signSpy = jest.spyOn(jwt, 'sign').mockReturnValue('access-token');
     db.query.mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
@@ -134,12 +139,27 @@ describe('Auth Service - token and persistence flows', () => {
     expect(dbArgs[2]).toBeInstanceOf(Date);
     expect(dbArgs[3]).toBe('UnitTestAgent');
     expect(dbArgs[4]).toBe(JSON.stringify({ platform: 'linux' }));
+    expect(dbArgs[5]).toBe(false); // rememberMe defaults to false
 
-    const min = Date.now() + 6 * 24 * 60 * 60 * 1000;
-    const max = Date.now() + 8 * 24 * 60 * 60 * 1000;
+    const min = Date.now() + 47 * 60 * 60 * 1000;
+    const max = Date.now() + 49 * 60 * 60 * 1000;
     expect(dbArgs[2].getTime()).toBeGreaterThan(min);
     expect(dbArgs[2].getTime()).toBeLessThan(max);
     expect(randomBytesSpy).toHaveBeenCalledWith(48);
+  });
+
+  test('generateRefreshToken uses 30-day expiry and stores remember_me=true when rememberMe is true', async () => {
+    jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('d'.repeat(48)));
+    db.query.mockResolvedValueOnce({ rows: [] });
+
+    await authService.generateRefreshToken(42, 'Agent', { platform: 'linux' }, true);
+    const dbArgs = db.query.mock.calls[0][1];
+
+    expect(dbArgs[5]).toBe(true);
+    const min = Date.now() + 29 * 24 * 60 * 60 * 1000;
+    const max = Date.now() + 31 * 24 * 60 * 60 * 1000;
+    expect(dbArgs[2].getTime()).toBeGreaterThan(min);
+    expect(dbArgs[2].getTime()).toBeLessThan(max);
   });
 
   test('generateRefreshToken stores null device_info when omitted', async () => {
@@ -150,19 +170,55 @@ describe('Auth Service - token and persistence flows', () => {
     expect(db.query.mock.calls[0][1][4]).toBeNull();
   });
 
+  test('generateRefreshToken sliding expiry: extends 30 days from slideFromDate when it is in the future', async () => {
+    jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('e'.repeat(48)));
+    db.query.mockResolvedValueOnce({ rows: [] });
+
+    // Simulate an existing token that still has 20 days remaining.
+    const slideFromDate = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+    await authService.generateRefreshToken(42, 'Agent', null, true, slideFromDate);
+    const expiresAt = db.query.mock.calls[0][1][2];
+
+    // New expiry should be ~30 days from slideFromDate, not from now.
+    const expectedMin = slideFromDate.getTime() + 29 * 24 * 60 * 60 * 1000;
+    const expectedMax = slideFromDate.getTime() + 31 * 24 * 60 * 60 * 1000;
+    expect(expiresAt.getTime()).toBeGreaterThan(expectedMin);
+    expect(expiresAt.getTime()).toBeLessThan(expectedMax);
+  });
+
+  test('generateRefreshToken sliding expiry: falls back to now when slideFromDate is in the past', async () => {
+    jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('f'.repeat(48)));
+    db.query.mockResolvedValueOnce({ rows: [] });
+
+    const slideFromDate = new Date(Date.now() - 1000); // 1 s in the past
+    await authService.generateRefreshToken(42, 'Agent', null, true, slideFromDate);
+    const expiresAt = db.query.mock.calls[0][1][2];
+
+    // Should be ~30 days from now, not 30 days from a past date.
+    const expectedMin = Date.now() + 29 * 24 * 60 * 60 * 1000;
+    const expectedMax = Date.now() + 31 * 24 * 60 * 60 * 1000;
+    expect(expiresAt.getTime()).toBeGreaterThan(expectedMin);
+    expect(expiresAt.getTime()).toBeLessThan(expectedMax);
+  });
+
   test('validateRefreshToken queries by hash only when userId is absent', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ id: 1, user_id: 99 }] });
+    const future = new Date(Date.now() + 1000 * 60 * 60);
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, user_id: 99, revoked_at: null, expires_at: future }] });
 
     const result = await authService.validateRefreshToken('token-value');
     const [query, params] = db.query.mock.calls[0];
 
     expect(query).not.toContain('AND user_id = $2');
+    // New query must NOT filter on revoked_at or expires_at in SQL
+    expect(query).not.toContain('revoked_at IS NULL');
+    expect(query).not.toContain('expires_at > NOW()');
     expect(params).toEqual([sha256('token-value')]);
-    expect(result).toEqual({ id: 1, user_id: 99 });
+    expect(result).toEqual({ id: 1, user_id: 99, revoked_at: null, expires_at: future });
   });
 
   test('validateRefreshToken adds userId filter when provided', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ id: 1, user_id: 42 }] });
+    const future = new Date(Date.now() + 1000 * 60 * 60);
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, user_id: 42, revoked_at: null, expires_at: future }] });
 
     await authService.validateRefreshToken('token-value', 42);
     const [query, params] = db.query.mock.calls[0];
@@ -174,6 +230,21 @@ describe('Auth Service - token and persistence flows', () => {
   test('validateRefreshToken returns null when token is not found', async () => {
     db.query.mockResolvedValueOnce({ rows: [] });
     await expect(authService.validateRefreshToken('missing')).resolves.toBeNull();
+  });
+
+  test('validateRefreshToken returns null when token is found but expired', async () => {
+    const past = new Date(Date.now() - 1000);
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, user_id: 5, revoked_at: null, expires_at: past }] });
+    await expect(authService.validateRefreshToken('expired-token')).resolves.toBeNull();
+  });
+
+  test('validateRefreshToken returns compromised sentinel when token is revoked', async () => {
+    const future = new Date(Date.now() + 1000 * 60 * 60);
+    db.query.mockResolvedValueOnce({
+      rows: [{ id: 7, user_id: 55, revoked_at: new Date(), expires_at: future }]
+    });
+    const result = await authService.validateRefreshToken('stolen-token');
+    expect(result).toMatchObject({ compromised: true, user_id: 55 });
   });
 
   test('revokeRefreshToken returns true when a token is revoked', async () => {
@@ -193,9 +264,23 @@ describe('Auth Service - token and persistence flows', () => {
     expect(db.query.mock.calls[0][1]).toEqual([5, 'keep-this-hash']);
   });
 
+  test('revokeAllUserTokens without exceptTokenHash revokes all tokens for user', async () => {
+    db.query.mockResolvedValueOnce({ rowCount: 5 });
+    await expect(authService.revokeAllUserTokens(7)).resolves.toBe(5);
+    expect(db.query.mock.calls[0][0]).not.toContain('AND token_hash != $2');
+    expect(db.query.mock.calls[0][1]).toEqual([7]);
+  });
+
   test('cleanupExpiredTokens returns number of deleted rows', async () => {
     db.query.mockResolvedValueOnce({ rowCount: 4 });
     await expect(authService.cleanupExpiredTokens()).resolves.toBe(4);
+  });
+
+  test('revokeAllRefreshTokensOnStartup revokes all active tokens and returns count', async () => {
+    db.query.mockResolvedValueOnce({ rowCount: 7 });
+    await expect(authService.revokeAllRefreshTokensOnStartup()).resolves.toBe(7);
+    expect(db.query.mock.calls[0][0]).toContain('UPDATE refresh_tokens SET revoked_at = NOW()');
+    expect(db.query.mock.calls[0][0]).toContain('WHERE revoked_at IS NULL');
   });
 
   test('verifyToken returns decoded payload when jwt.verify succeeds', async () => {
@@ -238,54 +323,149 @@ describe('Auth Service - token and persistence flows', () => {
   });
 
   test('authenticate throws when user is not found', async () => {
+    const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(false);
     db.query.mockResolvedValueOnce({ rows: [] });
+
     await expect(authService.authenticate('missing', 'password')).rejects.toThrow('Invalid credentials');
+
+    // Must still call bcrypt.compare to prevent username enumeration via timing.
+    expect(compareSpy).toHaveBeenCalledTimes(1);
+    // The second argument must be a non-empty bcrypt hash (the DUMMY_HASH), not the
+    // supplied password and not an empty/undefined value.
+    const [, hashArg] = compareSpy.mock.calls[0];
+    expect(typeof hashArg).toBe('string');
+    expect(hashArg).toMatch(/^\$2[aby]\$/);
   });
 
-  test('authenticate throws when password does not match', async () => {
+  test('authenticate throws when password does not match and increments failed_login_count', async () => {
     const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(false);
-    db.query.mockResolvedValueOnce({
-      rows: [{ id: 1, username: 'user', password_hash: 'stored-hash', is_active: true }],
-    });
+    db.query
+      .mockResolvedValueOnce({
+        rows: [{ id: 1, username: 'user', password_hash: 'stored-hash', is_active: true, locked_until: null, failed_login_count: 0 }],
+      })
+      .mockResolvedValueOnce({ rowCount: 1 }); // increment UPDATE
 
     await expect(authService.authenticate('user', 'bad-password')).rejects.toThrow('Invalid credentials');
     expect(compareSpy).toHaveBeenCalledWith('bad-password', 'stored-hash');
-    expect(db.query).toHaveBeenCalledTimes(1);
+    // Second query must be the increment UPDATE
+    const [incrementSql, incrementParams] = db.query.mock.calls[1];
+    expect(incrementSql).toMatch(/failed_login_count = failed_login_count \+ 1/i);
+    expect(incrementParams[0]).toBe(1); // user.id
   });
 
-  test('authenticate updates last_login and strips password hash on success', async () => {
+  test('authenticate updates last_login, resets lockout state, and strips password hash on success', async () => {
     const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(true);
     db.query
       .mockResolvedValueOnce({
-        rows: [{ id: 2, username: 'admin', role: 'admin', password_hash: 'stored-hash', is_active: true }],
+        rows: [{ id: 2, username: 'admin', role: 'admin', password_hash: 'stored-hash', is_active: true, locked_until: null, failed_login_count: 0 }],
       })
       .mockResolvedValueOnce({ rowCount: 1, rows: [] });
 
     const user = await authService.authenticate('admin', 'Password123!');
 
     expect(compareSpy).toHaveBeenCalledWith('Password123!', 'stored-hash');
-    expect(db.query).toHaveBeenNthCalledWith(
-      2,
-      'UPDATE users SET last_login = NOW() WHERE id = $1',
-      [2]
-    );
+    // Reset query must clear both failed_login_count and locked_until
+    const [resetSql, resetParams] = db.query.mock.calls[1];
+    expect(resetSql).toMatch(/failed_login_count = 0/i);
+    expect(resetSql).toMatch(/locked_until = NULL/i);
+    expect(resetSql).toMatch(/last_login = NOW/i);
+    expect(resetParams).toEqual([2]);
     expect(user).toEqual(expect.objectContaining({ id: 2, username: 'admin', role: 'admin', is_active: true }));
     expect(user.password_hash).toBeUndefined();
   });
 
-  test('getCookieOptions returns secure and default variants', () => {
-    expect(authService.getCookieOptions()).toEqual({
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 15 * 60 * 1000,
-      path: '/',
+  test('authenticate throws lockout error when locked_until is in the future', async () => {
+    const lockedUntil = new Date(Date.now() + 10 * 60 * 1000); // 10 min from now
+    db.query.mockResolvedValueOnce({
+      rows: [{ id: 3, username: 'locked', password_hash: 'hash', is_active: true, locked_until: lockedUntil, failed_login_count: 10 }],
     });
 
-    expect(authService.getCookieOptions(true)).toEqual(
-      expect.objectContaining({
-        secure: true,
+    await expect(authService.authenticate('locked', 'any-password'))
+      .rejects.toThrow(/temporarily locked/i);
+    // Must not call bcrypt.compare or any further DB queries for a locked account
+    expect(db.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('authenticate includes remaining minutes in lockout error message', async () => {
+    const lockedUntil = new Date(Date.now() + 7 * 60 * 1000 + 30000); // ~7.5 min → rounds up to 8
+    db.query.mockResolvedValueOnce({
+      rows: [{ id: 4, username: 'locked2', password_hash: 'hash', is_active: true, locked_until: lockedUntil, failed_login_count: 10 }],
+    });
+
+    await expect(authService.authenticate('locked2', 'any-password'))
+      .rejects.toThrow(/8 minute/);
+  });
+
+  test('authenticate uses singular "minute" when exactly 1 minute remains in lockout', async () => {
+    const lockedUntil = new Date(Date.now() + 30 * 1000); // 30s → Math.ceil(0.5) = 1
+    db.query.mockResolvedValueOnce({
+      rows: [{ id: 8, username: 'locked3', password_hash: 'hash', is_active: true, locked_until: lockedUntil, failed_login_count: 10 }],
+    });
+
+    await expect(authService.authenticate('locked3', 'any-password'))
+      .rejects.toThrow(/Try again in 1 minute\./);
+  });
+
+  test('authenticate proceeds normally when locked_until is in the past (expired)', async () => {
+    const expiredLock = new Date(Date.now() - 1000); // already expired
+    const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(true);
+    db.query
+      .mockResolvedValueOnce({
+        rows: [{ id: 5, username: 'prevlocked', password_hash: 'hash', is_active: true, locked_until: expiredLock, failed_login_count: 10 }],
       })
-    );
+      .mockResolvedValueOnce({ rowCount: 1 });
+
+    const user = await authService.authenticate('prevlocked', 'correct-password');
+    expect(compareSpy).toHaveBeenCalledTimes(1);
+    expect(user.username).toBe('prevlocked');
+  });
+
+  test('authenticate sets locked_until after MAX_FAILED_LOGINS consecutive failures', async () => {
+    // Simulate the 10th failure (failed_login_count is already 9 before this attempt)
+    const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValueOnce(false);
+    db.query
+      .mockResolvedValueOnce({
+        rows: [{ id: 6, username: 'almostlocked', password_hash: 'hash', is_active: true, locked_until: null, failed_login_count: 9 }],
+      })
+      .mockResolvedValueOnce({ rowCount: 1 });
+
+    await expect(authService.authenticate('almostlocked', 'wrong'))
+      .rejects.toThrow('Invalid credentials');
+
+    // The UPDATE query must use LOCKOUT_DURATION_MINUTES
+    const [, incrementParams] = db.query.mock.calls[1];
+    expect(incrementParams[1]).toBe(authService.MAX_FAILED_LOGINS);
+    expect(incrementParams[2]).toBe(authService.LOCKOUT_DURATION_MINUTES);
+    expect(compareSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('getCookieOptions returns 48-hour persistent cookie by default (non-rememberMe)', () => {
+    const opts = authService.getCookieOptions();
+    expect(opts.httpOnly).toBe(true);
+    expect(opts.secure).toBe(false);
+    expect(opts.sameSite).toBe('lax');
+    expect(opts.path).toBe('/');
+    expect(opts.maxAge).toBe(authService.SESSION_EXPIRY_HOURS * 60 * 60 * 1000);
+  });
+
+  test('getCookieOptions returns 30-day maxAge when rememberMe is true', () => {
+    const opts = authService.getCookieOptions(false, true);
+    expect(opts.maxAge).toBe(authService.REMEMBER_ME_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+  });
+
+  test('getCookieOptions respects secure flag', () => {
+    expect(authService.getCookieOptions(true).secure).toBe(true);
+  });
+
+  test('getRefreshTokenCookieOptions scopes cookie to /api/auth with 48-hour maxAge by default', () => {
+    const opts = authService.getRefreshTokenCookieOptions(false, false);
+    expect(opts.httpOnly).toBe(true);
+    expect(opts.path).toBe('/api/auth');
+    expect(opts.maxAge).toBe(authService.SESSION_EXPIRY_HOURS * 60 * 60 * 1000);
+  });
+
+  test('getRefreshTokenCookieOptions returns 30-day maxAge for rememberMe', () => {
+    const opts = authService.getRefreshTokenCookieOptions(false, true);
+    expect(opts.maxAge).toBe(authService.REMEMBER_ME_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
   });
 });

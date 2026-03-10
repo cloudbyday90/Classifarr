@@ -9,13 +9,13 @@
 <template>
   <div>
     <div class="border-b border-gray-700">
-      <nav class="-mb-px flex space-x-8">
+      <nav class="-mb-px flex overflow-x-auto space-x-4 sm:space-x-8 scrollbar-none">
         <button
           v-for="tab in tabs"
           :key="tab.id"
           @click="$emit('update:modelValue', tab.id)"
           :class="[
-            'py-4 px-1 border-b-2 font-medium text-sm transition-colors',
+            'whitespace-nowrap flex-shrink-0 py-4 px-1 border-b-2 font-medium text-sm transition-colors',
             modelValue === tab.id
               ? 'border-primary text-primary'
               : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-500'
