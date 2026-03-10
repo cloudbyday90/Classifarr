@@ -1959,7 +1959,15 @@ class QueueService {
     }
 
     async performClearAndResyncCleanup() {
-        return this.withOptionalTransaction(async (dbClient) => {
+        // LOCK TABLE requires an explicit transaction block. Use db.withTransaction
+        // (available on the real database module) to guarantee one. Falls back to
+        // withOptionalTransaction for test environments where withTransaction is not
+        // a real implementation.
+        const transact = typeof this.db.withTransaction === 'function'
+            ? (fn) => this.db.withTransaction(fn)
+            : (fn) => this.withOptionalTransaction(fn, 'clear_and_resync');
+
+        return transact(async (dbClient) => {
             // Prevent concurrent writes that can recreate FK dependencies mid-CARSA.
             await dbClient.query('LOCK TABLE libraries, media_server_sync_status IN SHARE ROW EXCLUSIVE MODE');
 
@@ -2042,7 +2050,7 @@ class QueueService {
                 librariesResult,
                 feedbackLibraryRefsCleared
             };
-        }, 'clear_and_resync');
+        });
     }
 
     async clearAndResync() {

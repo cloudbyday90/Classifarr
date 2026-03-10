@@ -535,6 +535,13 @@ describe('QueueService', () => {
     });
 
     describe('clearAndResync', () => {
+        beforeEach(() => {
+            // performClearAndResyncCleanup uses db.withTransaction when available (production
+            // path). In tests, make withTransaction execute the work function with db as the
+            // client so all db.query mocks are exercised as in the original no-transaction path.
+            db.withTransaction.mockImplementation(fn => fn(db));
+        });
+
         it('should delete all required tables in correct order', async () => {
             // Mock all DELETE queries to return rowCount
             db.query.mockImplementation((query) => {
@@ -1172,6 +1179,10 @@ describe('QueueService', () => {
         });
 
         describe('clearAndResync with mapping preservation', () => {
+            beforeEach(() => {
+                db.withTransaction.mockImplementation(fn => fn(db));
+            });
+
             it('should preserve library mappings during CARSA', async () => {
                 // Mock library snapshot
                 db.query.mockImplementationOnce(() =>
