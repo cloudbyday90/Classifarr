@@ -244,12 +244,16 @@
 
       <!-- Backfill reminder -->
       <div class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 text-sm text-blue-300">
-        <div class="font-semibold mb-1">⚡ Backfill recommended before enabling</div>
+        <div class="font-semibold mb-1">✅ Backfill runs automatically at startup</div>
         <p>
-          Run <code class="text-blue-200">node server/src/scripts/backfillGraphRelationships.js</code> to populate
-          relationship columns for existing classification history rows. Pass 1 (cast/studio/genre) is fast and
-          requires no API calls. Pass 2 (director) makes TMDB API calls at ≤20 req/s.
-          Collection signal works immediately from the existing <code class="text-blue-200">collection_id</code> column.
+          Classifarr populates relationship columns for existing history rows in the background each time it starts,
+          so no manual step is required. Check the Data Readiness panel below to see current fill rates.
+          Collection signal is available immediately from the existing
+          <code class="text-blue-200">collection_id</code> column.
+        </p>
+        <p class="mt-2 text-blue-400/70 text-xs">
+          Advanced: to run the backfill manually (e.g. after a large import), use
+          <code class="text-blue-300">docker exec classifarr node server/src/scripts/backfillGraphRelationships.js</code>.
         </p>
       </div>
 
@@ -262,7 +266,7 @@
           <h3 class="text-lg font-semibold text-white">Data Readiness</h3>
           <p class="text-sm text-gray-400 mt-1">
             Fill-rate for graph relationship columns in <code class="text-gray-300">classification_history</code>.
-            Run the backfill script to reach ≥80% before enabling graph retrieval.
+            Classifarr backfills these automatically at startup. Aim for ≥80% before enabling graph retrieval.
           </p>
         </div>
         <button

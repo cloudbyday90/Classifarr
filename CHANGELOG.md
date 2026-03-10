@@ -9,6 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.43.7a-beta] — 2026-03-09
+
+### Fixed
+- **`clearAndResync` (Clear & Resync All) was broken** — `LOCK TABLE` statement inside
+  `performClearAndResyncCleanup` failed with `LOCK TABLE can only be used in transaction
+  blocks` because `withOptionalTransaction` fell through to the no-transaction path.
+  Root cause: the production `db` object (`database.js`) exports `{ query, pool,
+  withTransaction, ... }` without a top-level `connect()` method, which the guard
+  `typeof this.db.connect !== 'function'` mistook for "no connection available".
+  Fix: `performClearAndResyncCleanup` now calls `db.withTransaction()` directly.
+  (`queueService.js`, `database.js`)
+- **Graph relationship backfill UI text** — `GraphTab.vue` still told users to run the
+  backfill script manually even though v0.43.7a now runs it automatically at startup.
+  Updated messaging to reflect the automatic behaviour; CLI fallback info moved to a
+  collapsed note.
+
+### Added
+- **Auto-backfill graph relationship columns at startup** — new
+  `graphRelationshipBackfillService` counts rows with null `cast_ids`,
+  `primary_studio_name`, `genre_names` (Pass 1) and null `director_name` + non-null
+  `tmdb_id` (Pass 2) and fires the relevant backfill passes as non-blocking background
+  jobs. Pass 1 requires no API calls; Pass 2 only runs when `TMDB_API_KEY` is set.
+  Both passes are idempotent — safe to restart mid-run. After the first post-upgrade boot
+  the service finds nothing to do and exits instantly. (`graphRelationshipBackfillService.js`,
+  `backfillGraphRelationships.js`, `index.js`)
+  
+### Changed
+- **`backfillGraphRelationships.js`** — added `require.main === module` guard and
+  `module.exports = { runPass1, runPass2 }` so the script is importable as a module
+  without auto-executing; CLI behaviour unchanged.
+- **Coverage ratchet baseline updated** — bumped to reflect improvements from GraphTab
+  and `graphRelationshipBackfillService` tests added in this cycle (client +0.85%
+  statements, +1.59% branches; server baseline already above threshold).
+
+### Tests
+- `queueService.test.js` — added `db.withTransaction` mock in `clearAndResync` and
+  `clearAndResync with mapping preservation` describe blocks to exercise the production
+  transaction path.
+
+---
+
 ## [v0.43.7-beta] - 2026-03-09
 
 ### Added

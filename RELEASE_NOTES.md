@@ -1,5 +1,43 @@
 # Classifarr Release Notes
 
+## v0.43.7a-beta
+**Title: Patch — automatic relationship backfill & Clear-All-Resync fix**
+
+> [!NOTE]
+> **Upgrading from v0.43.7-beta?** The manual backfill step is no longer needed.
+> Classifarr now runs it automatically on startup.
+
+### 🎉 What You'll Notice
+- **Clear & Resync All works again** — the button was broken with a database error since v0.43.7-beta; now fixed.
+- **No manual backfill step required** — after upgrading, graph relationship data fills in automatically in the background while you use the app normally.
+- The Graph tab UI now accurately reflects that backfill is automatic.
+
+### 📊 Quick Visual
+```text
+Startup Backfill (new in v0.43.7a)
+  Pass 1 — cast/studio/genre   ████████████ fast, no API calls
+  Pass 2 — director (TMDB)     ████████░░░░ rate-limited, runs if TMDB key set
+  Already up to date?          ░░░░░░░░░░░░ exits instantly, no work done
+```
+
+### ✨ Highlights
+- Relationship columns for existing history rows now populate automatically on first boot after upgrade — no docker exec command needed.
+- Clear & Resync All button fully operational again.
+
+### 🔧 Reliability Improvements
+- Fixed: `LOCK TABLE can only be used in transaction blocks` error during Clear & Resync, caused by the cleanup routine not opening a proper database transaction in production.
+- Startup backfill is idempotent — restarting mid-run or running again is safe.
+
+### 👥 Who This Helps
+- **All users:** Clear & Resync All works correctly again.
+- **New installs on v0.43.7-beta:** No action needed — graph signals will populate automatically.
+- **Existing installs skipping v0.43.7-beta:** Upgrade directly; backfill happens on boot.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.43.7-beta
 **Title: Graph Retrieval — smarter library matching for sequels, spin-offs, and franchises**
 

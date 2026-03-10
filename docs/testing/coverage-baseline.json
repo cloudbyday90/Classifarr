@@ -1,15 +1,15 @@
 {
-  "updated_at": "2026-02-23T20:00:33.932Z",
+  "updated_at": "2026-03-10T00:09:02.864Z",
   "server": {
-    "statements": 48.28,
-    "branches": 71.86,
-    "functions": 62.17,
-    "lines": 48.28
+    "statements": 59.54,
+    "branches": 73.62,
+    "functions": 64.82,
+    "lines": 59.54
   },
   "client": {
-    "statements": 56.35,
-    "branches": 48.74,
-    "functions": 39.54,
-    "lines": 58.02
+    "statements": 57.2,
+    "branches": 50.33,
+    "functions": 41.37,
+    "lines": 58.86
   }
 }
