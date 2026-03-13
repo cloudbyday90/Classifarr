@@ -1728,6 +1728,67 @@ describe('AI availability fallback handling', () => {
     expect(result.retry_reason_code).toBe('ai_stream_incomplete');
   });
 
+  describe('checkLearnedPatterns', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    test('returns null when metadata has no genres', async () => {
+      const result = await classificationService.checkLearnedPatterns({ title: 'Test', media_type: 'movie' });
+      expect(result).toBeNull();
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
+    test('returns null when genres array is empty', async () => {
+      const result = await classificationService.checkLearnedPatterns({ genres: [], media_type: 'movie' });
+      expect(result).toBeNull();
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
+    test('returns null when no matching genre_pattern rows exist', async () => {
+      db.query.mockResolvedValueOnce({ rows: [] });
+
+      const result = await classificationService.checkLearnedPatterns({
+        genres: ['Documentary'],
+        media_type: 'movie'
+      });
+
+      expect(result).toBeNull();
+    });
+
+    test('returns library match when genre_pattern row exists with success_rate >= 70', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ library_id: 10, confidence: 85, usage_count: 3 }]
+      });
+
+      const result = await classificationService.checkLearnedPatterns({
+        genres: ['Documentary'],
+        media_type: 'movie'
+      });
+
+      expect(result).not.toBeNull();
+      expect(result.library_id).toBe(10);
+      expect(result.confidence).toBe(85);
+    });
+
+    test('query passes genres and media_type as parameters', async () => {
+      db.query.mockResolvedValueOnce({ rows: [] });
+
+      await classificationService.checkLearnedPatterns({
+        genres: ['Horror', 'Thriller'],
+        media_type: 'movie'
+      });
+
+      expect(db.query).toHaveBeenCalledTimes(1);
+      const [sql, params] = db.query.mock.calls[0];
+      expect(sql).toContain('genre_pattern');
+      // genres array passed as first param
+      expect(params[0]).toEqual(['Horror', 'Thriller']);
+      // media_type passed as second param
+      expect(params[1]).toBe('movie');
+    });
+  });
+
   test('keeps non-transient AI failures on signal-calculation fallback path', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'prompt_confirm',

@@ -157,5 +157,38 @@ describe('AIResponseParser', () => {
                 value: expect.any(String),
             });
         });
+
+        // Quote-stripping — LLMs sometimes wrap option values in "quotes"
+        it('matches library when option is wrapped in double quotes', () => {
+            // Reproduces bug: AI returns "Documentaries" but the library is "Movies"
+            // The exact bug report used '"Documentaries"' against a list that included "Movies",
+            // but here we verify that when the library name IS in the list the quote wrapping
+            // does not prevent matching.
+            const result = parser.mapOptionsToLibraries(['"Movies"'], libraries);
+            expect(result).toHaveLength(1);
+            expect(result[0].library_name).toBe('Movies');
+        });
+
+        it('matches library when option is wrapped in single quotes', () => {
+            const result = parser.mapOptionsToLibraries(["'Family'"], libraries);
+            expect(result).toHaveLength(1);
+            expect(result[0].library_name).toBe('Family');
+        });
+
+        it('matches library when option has prefix AND surrounding quotes combined', () => {
+            const result = parser.mapOptionsToLibraries(['1. "Movies"'], libraries);
+            expect(result).toHaveLength(1);
+            expect(result[0].library_name).toBe('Movies');
+        });
+
+        it('drops quoted option when stripped name still has no match', () => {
+            // '"Documentaries"' → 'documentaries' — not in the library list
+            const result = parser.mapOptionsToLibraries(['"Documentaries"'], libraries);
+            expect(result).toHaveLength(0);
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('does not match any known library'),
+                expect.objectContaining({ suggested: '"Documentaries"' })
+            );
+        });
     });
 });

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-03-05T19:34:44.171Z
--- Latest Migration: 20260307_000000_add_rag_log_cleanup_and_indexes.sql
+-- Generated: 2026-03-13T15:13:57.057Z
+-- Latest Migration: 20260313_120000_task_queue_insert_autovacuum.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 17.8
--- Dumped by pg_dump version 17.8
+-- Dumped from database version 17.9
+-- Dumped by pg_dump version 17.9
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -26,6 +26,20 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: intarray; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS intarray WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION intarray; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION intarray IS 'functions, operators, and index support for 1-D arrays of integers';
+
 
 --
 -- Name: pg_prewarm; Type: EXTENSION; Schema: -; Owner: -
@@ -338,6 +352,15 @@ CREATE TABLE public.ai_provider_config (
     rag_loop_auto_recover_last_attempt_at timestamp without time zone,
     policy_recheck_skip_when_ai_confident_enabled boolean DEFAULT true,
     policy_recheck_confidence_gain_multiplier numeric(5,2) DEFAULT 2,
+    rag_graph_enabled boolean DEFAULT false,
+    rag_graph_weight numeric(4,2) DEFAULT 0.20,
+    rag_graph_collection_enabled boolean DEFAULT true,
+    rag_graph_director_enabled boolean DEFAULT true,
+    rag_graph_studio_enabled boolean DEFAULT false,
+    rag_graph_cast_enabled boolean DEFAULT false,
+    rag_graph_genre_enabled boolean DEFAULT false,
+    rag_graph_min_matches_to_apply integer DEFAULT 1,
+    rag_graph_candidates_limit integer DEFAULT 20,
     CONSTRAINT ai_cfg_alias_max_terms_chk CHECK (((rag_alias_max_terms >= 1) AND (rag_alias_max_terms <= 20))),
     CONSTRAINT ai_cfg_alias_min_token_len_chk CHECK (((rag_alias_min_token_length >= 1) AND (rag_alias_min_token_length <= 10))),
     CONSTRAINT ai_cfg_alias_source_policy_chk CHECK (((rag_alias_source_policy)::text = 'authoritative_only'::text)),
@@ -1689,6 +1712,11 @@ CREATE TABLE public.classification_history (
     retry_after timestamp without time zone,
     retry_count integer DEFAULT 0,
     max_retries integer DEFAULT 3,
+    director_name character varying(255),
+    primary_studio_name character varying(255),
+    genre_names text[],
+    cast_ids integer[],
+    cast_names text[],
     CONSTRAINT chk_classification_completed_has_library CHECK ((((status)::text IS DISTINCT FROM 'completed'::text) OR (library_id IS NOT NULL))),
     CONSTRAINT chk_classification_confidence_range CHECK (((confidence IS NULL) OR ((confidence >= (0)::numeric) AND (confidence <= (100)::numeric)))),
     CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
@@ -3977,7 +4005,8 @@ CREATE TABLE public.refresh_tokens (
     revoked_at timestamp without time zone,
     revoked_by_ip inet,
     user_agent text,
-    device_info jsonb
+    device_info jsonb,
+    remember_me boolean DEFAULT false NOT NULL
 );
 
 
@@ -4014,6 +4043,13 @@ COMMENT ON COLUMN public.refresh_tokens.revoked_at IS 'When token was revoked (n
 --
 
 COMMENT ON COLUMN public.refresh_tokens.device_info IS 'Optional device metadata for user session management';
+
+
+--
+-- Name: COLUMN refresh_tokens.remember_me; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.refresh_tokens.remember_me IS 'Whether this session was created with Remember Me enabled (30-day cookie lifetime)';
 
 
 --
@@ -4110,6 +4146,19 @@ ALTER SEQUENCE public.scheduled_tasks_id_seq OWNED BY public.scheduled_tasks.id;
 --
 
 CREATE SEQUENCE public.schema_migrations_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: schema_migrations_id_seq1; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.schema_migrations_id_seq1
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -4317,7 +4366,7 @@ CREATE TABLE public.task_queue (
     visible_at timestamp with time zone,
     CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
 )
-WITH (fillfactor='75', autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_threshold='50', autovacuum_analyze_scale_factor='0.05', autovacuum_vacuum_cost_delay='2');
+WITH (fillfactor='75', autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_threshold='50', autovacuum_analyze_scale_factor='0.05', autovacuum_vacuum_cost_delay='2', autovacuum_vacuum_insert_scale_factor='0.02', autovacuum_vacuum_insert_threshold='500');
 
 
 --
@@ -4452,8 +4501,24 @@ CREATE TABLE public.users (
     last_login timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
+    failed_login_count integer DEFAULT 0 NOT NULL,
+    locked_until timestamp with time zone,
     CONSTRAINT users_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('user'::character varying)::text])))
 );
+
+
+--
+-- Name: COLUMN users.failed_login_count; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.users.failed_login_count IS 'Consecutive failed login attempts since last successful login; reset to 0 on success';
+
+
+--
+-- Name: COLUMN users.locked_until; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.users.locked_until IS 'Account locked until this timestamp due to too many failed login attempts; NULL means not locked';
 
 
 --
@@ -6218,6 +6283,13 @@ CREATE INDEX idx_classification_corrections_classification ON public.classificat
 
 
 --
+-- Name: idx_classification_history_cast_ids; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_history_cast_ids ON public.classification_history USING gin (cast_ids public.gin__int_ops);
+
+
+--
 -- Name: idx_classification_history_clarified; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6236,6 +6308,20 @@ CREATE INDEX idx_classification_history_collection_id ON public.classification_h
 --
 
 CREATE INDEX idx_classification_history_created_at_desc ON public.classification_history USING btree (created_at DESC);
+
+
+--
+-- Name: idx_classification_history_director_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_history_director_name ON public.classification_history USING btree (director_name) WHERE (director_name IS NOT NULL);
+
+
+--
+-- Name: idx_classification_history_genre_names; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_history_genre_names ON public.classification_history USING gin (genre_names);
 
 
 --
@@ -6264,6 +6350,13 @@ CREATE INDEX idx_classification_history_null_tmdb ON public.classification_histo
 --
 
 CREATE INDEX idx_classification_history_pending ON public.classification_history USING btree (status) WHERE ((status)::text = 'pending'::text);
+
+
+--
+-- Name: idx_classification_history_primary_studio_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_history_primary_studio_name ON public.classification_history USING btree (primary_studio_name) WHERE (primary_studio_name IS NOT NULL);
 
 
 --
@@ -7124,7 +7217,7 @@ CREATE INDEX idx_sync_status_status ON public.media_server_sync_status USING btr
 -- Name: idx_task_queue_active_item_dedup; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_task_queue_active_item_dedup ON public.task_queue USING btree (task_type, ((payload ->> 'media_item_id'::text))) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying])::text[]));
+CREATE UNIQUE INDEX idx_task_queue_active_item_dedup ON public.task_queue USING btree (task_type, ((payload ->> 'media_item_id'::text))) WHERE ((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text]));
 
 
 --
@@ -7132,6 +7225,13 @@ CREATE UNIQUE INDEX idx_task_queue_active_item_dedup ON public.task_queue USING 
 --
 
 CREATE INDEX idx_task_queue_active_phase ON public.task_queue USING btree (current_phase) WHERE (((status)::text = 'processing'::text) AND (current_phase IS NOT NULL));
+
+
+--
+-- Name: idx_task_queue_cleanup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_queue_cleanup ON public.task_queue USING btree (created_at) WHERE ((status)::text = ANY ((ARRAY['completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[]));
 
 
 --
@@ -7202,6 +7302,13 @@ CREATE INDEX idx_tuning_suggestions_status ON public.policy_tuning_suggestions U
 --
 
 CREATE INDEX idx_tuning_suggestions_type ON public.policy_tuning_suggestions USING btree (suggestion_type);
+
+
+--
+-- Name: idx_users_locked_until; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_users_locked_until ON public.users USING btree (locked_until) WHERE (locked_until IS NOT NULL);
 
 
 --
@@ -9191,6 +9298,12 @@ FROM unnest(ARRAY[
     '20260305_200700_bigint_classification_history_pk.sql',
     '20260305_200800_bigint_error_log_classification_id.sql',
     '20260306_000000_add_task_queue_visible_at.sql',
-    '20260307_000000_add_rag_log_cleanup_and_indexes.sql'
+    '20260307_000000_add_rag_log_cleanup_and_indexes.sql',
+    '20260309_120000_add_rag_graph_relationship_columns.sql',
+    '20260309_120100_add_rag_graph_config_columns.sql',
+    '20260309_140000_task_queue_retention.sql',
+    '20260310_100000_add_remember_me_to_refresh_tokens.sql',
+    '20260310_110000_add_login_lockout_to_users.sql',
+    '20260313_120000_task_queue_insert_autovacuum.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

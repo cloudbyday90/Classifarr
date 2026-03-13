@@ -307,27 +307,30 @@ class AIResponseParser {
     mapOptionsToLibraries(optionTexts, libraries) {
         return optionTexts.map(opt => {
             const optLower = opt.toLowerCase();
-            // Strip common LLM list-prefix artifacts before matching:
-            //   numeric: "1. ", "2. "
-            //   alpha:   "a. ", "B. "
-            //   bracketed: "(1) ", "[A] "
-            //   bullets: "- ", "• ", "* ", "· "
+            // Strip common LLM artefacts before matching:
+            //   surrounding quotes: "Documentaries" → documentaries
+            //   numeric prefixes:   "1. ", "2. "
+            //   alpha prefixes:     "a. ", "B. "
+            //   bracketed:          "(1) ", "[A] "
+            //   bullets:            "- ", "• ", "* ", "· "
+            //   filler words:       "library", "content", "media"
             const optClean = optLower
+                .replace(/^["'`]+|["'`]+$/g, '')
                 .replace(/^(\d+\.|[a-z]\.|[([]\d+[)\]]|[([][a-z][)\]]|[-•*·])\s+/i, '')
                 .replace(/\s*(library|content|media)\s*/gi, '')
                 .trim();
 
-            // First pass: try to find an exact match
+            // First pass: exact match on either the raw-lowercased or cleaned string.
             let matchedLibrary = libraries.find(lib => {
                 const libLower = lib.name.toLowerCase();
                 return libLower === optLower || libLower === optClean;
             });
 
-            // Second pass: fall back to contains/partial matching
+            // Second pass: fall back to contains/partial matching using the cleaned value.
             if (!matchedLibrary) {
                 matchedLibrary = libraries.find(lib => {
                     const libLower = lib.name.toLowerCase();
-                    return optLower.includes(libLower) || libLower.includes(optClean);
+                    return optClean.includes(libLower) || libLower.includes(optClean);
                 });
             }
 

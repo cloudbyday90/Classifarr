@@ -2696,13 +2696,24 @@ ${response}
     return result.rows[0] || null;
   }
 
-  async checkLearnedPatterns(_metadata) {
-    // Check for similar patterns based on genres, keywords, etc.
-    // This is a simplified version - could be enhanced with more sophisticated ML
+  async checkLearnedPatterns(metadata) {
+    // Check for genre-level patterns learned from user clarification responses.
+    // Returns null immediately when the item has no genres to avoid a pointless query.
+    const genres = metadata.genres || [];
+    if (genres.length === 0) return null;
+
+    const mediaType = metadata.media_type || metadata.mediaType || null;
+
     const result = await db.query(
-      `SELECT library_id, confidence FROM learning_patterns 
-       WHERE pattern_type = 'genre_pattern' AND success_rate >= 70
-       ORDER BY confidence DESC, usage_count DESC LIMIT 1`
+      `SELECT library_id, confidence, usage_count
+       FROM learning_patterns
+       WHERE pattern_type = 'genre_pattern'
+         AND success_rate >= 70
+         AND ($1::text[] IS NULL OR (pattern_data->>'genre') = ANY($1::text[]))
+         AND ($2::text IS NULL OR media_type = $2)
+       ORDER BY usage_count DESC, confidence DESC
+       LIMIT 1`,
+      [genres, mediaType]
     );
     return result.rows[0] || null;
   }

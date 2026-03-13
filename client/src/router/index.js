@@ -18,6 +18,7 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/components/layout/MainLayout.vue'
+import api from '@/api'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -209,20 +210,17 @@ router.beforeEach(async (to, from, next) => {
       return
     }
 
-    // Check for valid authentication using cookie-based auth
+    // Check for valid authentication using cookie-based auth.
+    // api.getMe() goes through the Axios interceptor: if the access token has
+    // expired (e.g. 48 hours elapsed) the interceptor automatically calls
+    // /auth/refresh using the httpOnly refresh-token cookie and retries.
+    // This ensures Remember Me sessions (30-day refresh token) survive access
+    // token expiry without being kicked to /login.
     if (!setupData.setupRequired) {
       try {
-        const authResponse = await fetch('/api/auth/me', {
-          credentials: 'include'
-        })
-
-        if (!authResponse.ok) {
-          sessionStorage.removeItem('classifarr_refresh_token')
-          next({ name: 'Login', query: { redirect: to.fullPath } })
-          return
-        }
-      } catch (authError) {
-        sessionStorage.removeItem('classifarr_refresh_token')
+        await api.getMe()
+      } catch (_authError) {
+        // Both the access token and the refresh attempt failed — require login.
         next({ name: 'Login', query: { redirect: to.fullPath } })
         return
       }

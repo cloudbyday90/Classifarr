@@ -842,9 +842,6 @@ const testServerConnection = async (server) => {
 }
 
 const selectPlexServer = (server) => {
-  console.log('selectPlexServer called with:', server)
-  console.log('Server connections:', server?.connections)
-  console.log('Server connections length:', server?.connections?.length)
   selectedServer.value = server
   // Reset connection selection when switching servers
   selectedConnection.value = null

@@ -208,16 +208,28 @@ class SchedulerService {
     /**
      * Daily cleanup of old completed and failed task_queue rows.
      * Prevents unbounded table growth that can cause OOM crashes.
-     * Batch-deletes up to 5000 rows per run.
-     * Controlled by TASK_QUEUE_RETENTION_DAYS env var (default: 7).
+     *
+     * Two complementary deletion strategies run in sequence:
+     *   1. Age-based  — delete rows older than TASK_QUEUE_RETENTION_DAYS (default 7).
+     *      Uses idx_task_queue_cleanup for O(log n) access.
+     *   2. Count-based — if total completed/failed/cancelled rows still exceed
+     *      TASK_QUEUE_MAX_TOTAL_ROWS (default 50 000) after the age pass, trim
+     *      the oldest rows down to that cap. Prevents slow INSERT/index-maintenance
+     *      on high-volume instances where all rows fall within the retention window.
+     *
+     * Controlled by:
+     *   TASK_QUEUE_RETENTION_DAYS  (default 7)
+     *   TASK_QUEUE_MAX_TOTAL_ROWS  (default 50 000)
      */
     async runTaskQueueCleanup() {
         const parsed = parseInt(process.env.TASK_QUEUE_RETENTION_DAYS, 10);
         const retentionDays = Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
+        const MAX_TOTAL_ROWS = parseInt(process.env.TASK_QUEUE_MAX_TOTAL_ROWS, 10) || 50000;
         const BATCH = 5000;
         let totalDeleted = 0;
         let batchDeleted;
         try {
+            // ── 1. Age-based drain ───────────────────────────────────────────────
             // Loop until all stale rows have been removed so a single scheduler
             // run fully clears any backlog rather than making partial progress.
             do {
@@ -235,6 +247,40 @@ class SchedulerService {
                 totalDeleted += batchDeleted;
             } while (batchDeleted === BATCH);
 
+            // ── 2. Count-based cap ──────────────────────────────────────────────
+            // Check total after the age pass; trim oldest rows if still over cap.
+            const countResult = await db.query(
+                `SELECT COUNT(*) AS n FROM task_queue
+                 WHERE status IN ('completed', 'failed', 'cancelled')`
+            );
+            const remaining = parseInt(countResult.rows[0].n) || 0;
+            if (remaining > MAX_TOTAL_ROWS) {
+                const excess = remaining - MAX_TOTAL_ROWS;
+                logger.warn('task_queue count cap exceeded during scheduled cleanup; trimming oldest rows', {
+                    remaining,
+                    maxTotalRows: MAX_TOTAL_ROWS,
+                    toDelete: excess
+                });
+                let countDeleted = 0;
+                do {
+                    const batchSize = Math.min(BATCH, excess - countDeleted);
+                    if (batchSize <= 0) break;
+                    const result = await db.query(
+                        `DELETE FROM task_queue
+                         WHERE id IN (
+                             SELECT id FROM task_queue
+                             WHERE status IN ('completed', 'failed', 'cancelled')
+                             ORDER BY created_at ASC
+                             LIMIT $1
+                         )`,
+                        [batchSize]
+                    );
+                    batchDeleted = result.rowCount;
+                    countDeleted += batchDeleted;
+                    totalDeleted += batchDeleted;
+                } while (batchDeleted > 0 && countDeleted < excess);
+            }
+
             if (totalDeleted > 0) {
                 logger.info('Task queue cleanup complete', { deleted: totalDeleted, retentionDays });
                 // Refresh query planner statistics after bulk delete.  VACUUM ANALYZE is safe
@@ -248,7 +294,7 @@ class SchedulerService {
                     });
                 }
             } else {
-                logger.debug('Task queue cleanup: no old rows to delete', { retentionDays });
+                logger.debug('Task queue cleanup: no rows to delete', { retentionDays, maxTotalRows: MAX_TOTAL_ROWS });
             }
         } catch (error) {
             logger.error('Task queue cleanup failed', { error: error.message });

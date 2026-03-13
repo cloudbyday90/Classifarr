@@ -466,7 +466,7 @@ class EmbeddingService {
                         await client.query('DROP INDEX IF EXISTS idx_embeddings_image_present');
                         await client.query('DROP INDEX IF EXISTS idx_embeddings_image_hash');
                         await client.query('ALTER TABLE classification_embeddings DROP COLUMN image_embedding');
-                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN image_embedding vector(${targetDims})`);
+                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN image_embedding vector(${targetDims})`); // sql-interpolation: DDL - dimension is a validated internal integer, $N params are not supported in DDL
                         // Index creation is deferred — see rebuild_hnsw_index task enqueued below.
                     });
 
@@ -578,7 +578,7 @@ class EmbeddingService {
                     await db.withTransaction(async (client) => {
                         await client.query('TRUNCATE TABLE classification_embeddings');
                         await client.query('ALTER TABLE classification_embeddings DROP COLUMN embedding');
-                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`);
+                        await client.query(`ALTER TABLE classification_embeddings ADD COLUMN embedding vector(${targetDims})`); // sql-interpolation: DDL - dimension is a validated internal integer, $N params are not supported in DDL
                         // Dropping the column removes dependent indexes; the migration runner
                         // recreates them. Safe to skip here since the table was truncated anyway.
                     });

@@ -445,9 +445,7 @@ onMounted(async () => {
 
 async function loadSettings() {
   try {
-    console.log('Loading confidence settings...')
     const response = await api.get('/api/settings/confidence')
-    console.log('Settings loaded:', response.data)
     const data = response.data
     
     // Parse and populate settings with fallbacks
@@ -500,7 +498,6 @@ async function loadSettings() {
       discordSettings.showSimilarItems = data.discord_show_similar_items.value === 'true'
     }
     
-    console.log('Parsed settings:', { policySettings, discordSettings, learningSettings })
   } catch (error) {
     console.error('Failed to load confidence settings:', error)
     toast.error('Failed to load settings: ' + (error.message || 'Unknown error'))
@@ -606,8 +603,6 @@ function openFallbackIssue() {
 async function saveAllSettings() {
   isSaving.value = true
   try {
-    console.log('Saving confidence settings...', { policySettings, discordSettings, learningSettings })
-    
     const payload = {
       policy_auto_classify_threshold: policySettings.autoClassifyThreshold,
       policy_prompt_threshold: policySettings.promptThreshold,
@@ -624,14 +619,11 @@ async function saveAllSettings() {
       _reason: 'Manual update from settings UI'
     }
     
-    console.log('Sending payload:', payload)
     const response = await api.put('/api/settings/confidence', payload)
     await api.put('/api/settings/ai', {
       rag_loop_auto_fallback_enabled: ragLoopSettings.autoFallbackEnabled,
       rag_loop_auto_recover_enabled: ragLoopSettings.autoRecoverEnabled
     })
-    console.log('Settings saved successfully:', response.data)
-    
     toast.success('Settings saved successfully')
     await loadAuditHistory()
     await loadFallbackIncident()

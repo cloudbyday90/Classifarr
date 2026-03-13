@@ -1466,6 +1466,85 @@ describe('QueueService', () => {
         });
     });
 
+    describe('_backgroundDrainIfBloated', () => {
+        function mockCounts({ stale = 0, total = 0 } = {}) {
+            // First call: the combined count query
+            db.query.mockResolvedValueOnce({ rows: [{ stale_count: String(stale), total_count: String(total) }] });
+        }
+
+        it('returns early when neither age nor count threshold is exceeded', async () => {
+            mockCounts({ stale: 0, total: 500 });
+            await queueService._backgroundDrainIfBloated();
+            // Only the count query should have fired; no DELETE, no VACUUM
+            expect(db.query).toHaveBeenCalledTimes(1);
+        });
+
+        it('age-based drain: deletes rows older than retention window and runs VACUUM ANALYZE', async () => {
+            mockCounts({ stale: 3000, total: 3000 });
+            // One DELETE batch (returns fewer than BATCH → loop ends), then VACUUM
+            db.query
+                .mockResolvedValueOnce({ rowCount: 3000 }) // DELETE batch
+                .mockResolvedValueOnce({});                  // VACUUM ANALYZE
+
+            await queueService._backgroundDrainIfBloated();
+
+            const calls = db.query.mock.calls.map(([sql]) => (typeof sql === 'string' ? sql : ''));
+            expect(calls.some(s => s.includes('DELETE') && s.includes('created_at <'))).toBe(true);
+            expect(calls.some(s => s.includes('VACUUM ANALYZE task_queue'))).toBe(true);
+            expect(queueService.logger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('bloat detected'),
+                expect.objectContaining({ trigger: 'age' })
+            );
+        });
+
+        it('count-based drain: deletes oldest rows when total exceeds MAX_TOTAL_ROWS', async () => {
+            // No age-stale rows, but 80 000 total (well over default 50 000 cap)
+            mockCounts({ stale: 0, total: 80000 });
+            // COUNT-based DELETE batch + VACUUM
+            db.query
+                .mockResolvedValueOnce({ rowCount: 30000 }) // count-based DELETE
+                .mockResolvedValueOnce({});                  // VACUUM ANALYZE
+
+            await queueService._backgroundDrainIfBloated();
+
+            const calls = db.query.mock.calls.map(([sql]) => (typeof sql === 'string' ? sql : ''));
+            expect(calls.some(s => s.includes('DELETE') && s.includes('ORDER BY created_at ASC'))).toBe(true);
+            expect(calls.some(s => s.includes('VACUUM ANALYZE task_queue'))).toBe(true);
+            expect(queueService.logger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('count cap exceeded'),
+                expect.objectContaining({ remaining: 80000, maxTotalRows: 50000 })
+            );
+        });
+
+        it('logs trigger as "age+count" when both thresholds are exceeded', async () => {
+            mockCounts({ stale: 5000, total: 60000 });
+            db.query
+                .mockResolvedValueOnce({ rowCount: 5000 }) // age DELETE
+                .mockResolvedValueOnce({ rowCount: 5000 }) // count DELETE
+                .mockResolvedValueOnce({});                 // VACUUM ANALYZE
+
+            await queueService._backgroundDrainIfBloated();
+
+            expect(queueService.logger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('bloat detected'),
+                expect.objectContaining({ trigger: 'age+count' })
+            );
+        });
+
+        it('continues and logs warning when VACUUM ANALYZE fails', async () => {
+            mockCounts({ stale: 2000, total: 2000 });
+            db.query
+                .mockResolvedValueOnce({ rowCount: 2000 })
+                .mockRejectedValueOnce(new Error('vacuum failed'));
+
+            await expect(queueService._backgroundDrainIfBloated()).resolves.toBeUndefined();
+            expect(queueService.logger.warn).toHaveBeenCalledWith(
+                expect.stringContaining('VACUUM ANALYZE failed'),
+                expect.objectContaining({ error: 'vacuum failed' })
+            );
+        });
+    });
+
     describe('gracefulShutdown', () => {
         it('sets error_message to diagnostic note instead of NULL on in-flight tasks', async () => {
             db.query.mockResolvedValue({ rowCount: 2, rows: [{ id: 10 }, { id: 11 }] });

@@ -503,7 +503,6 @@ onMounted(async () => {
   socket = io({ path: '/ws' });
   
   socket.on('connect', () => {
-    console.log('Connected to WebSocket');
     // Subscribe to activity feed for classification updates
     socket.emit('subscribe:activity');
   });

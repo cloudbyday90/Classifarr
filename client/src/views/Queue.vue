@@ -363,7 +363,6 @@ async function loadLibraries() {
     // Handle different response structures
     const libData = response.data || response
     libraries.value = Array.isArray(libData) ? libData.filter(lib => lib.is_active) : []
-    console.log('Loaded libraries:', libraries.value.length)
   } catch (error) {
     console.error('Failed to load libraries:', error)
   }

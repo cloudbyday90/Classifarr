@@ -212,7 +212,7 @@ class RAGRetriever {
             let result;
             try {
                 await client.query('BEGIN');
-                await client.query(`SET LOCAL hnsw.ef_search = ${efSearch}`);
+                await client.query(`SET LOCAL hnsw.ef_search = ${efSearch}`); // sql-interpolation: SET LOCAL param cannot use $N placeholders; efSearch is a validated positive integer from config
                 result = await client.query(`
                 WITH candidates AS (
                     SELECT
