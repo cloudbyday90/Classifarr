@@ -232,20 +232,24 @@ class AIResponseParser {
         const problemSummary = match[1].trim();
         const whyUncertain = match[2].trim();
         const question = match[3].trim();
-        const optionTexts = [match[4].trim(), match[5].trim()];
+        const optionTokens = [match[4].trim(), match[5].trim()];
         if (match[6]) {
-            optionTexts.push(match[6].trim());
+            optionTokens.push(match[6].trim());
         }
 
-        // Map option texts to library objects; unmatched names are filtered out
-        const options = this.mapOptionsToLibraries(optionTexts, libraries);
+        // Resolve options to library objects.
+        // New format: the AI emits 1-based library indices (e.g. "2|4") — same convention
+        // as CONFIDENT/CONFIRM. This eliminates hallucinated library names.
+        // Legacy fallback: if a token is not a bare integer, fall back to text matching so
+        // responses generated before the prompt update are still handled gracefully.
+        const options = this._resolveOptionsFromTokens(optionTokens, libraries);
 
         // Require at least 2 valid options — if the AI suggested non-existent libraries
         // we cannot present a meaningful clarification question.
         if (options.length < 2) {
             logger.warn('parseClarifyFormat: fewer than 2 valid library options after mapping — falling through', {
                 title: context.metadata?.title,
-                requestedOptions: optionTexts,
+                requestedOptions: optionTokens,
                 matchedCount: options.length,
             });
             return null;
@@ -296,6 +300,47 @@ class AIResponseParser {
             libraries: libraries,
             format: 'clarify'
         };
+    }
+
+    /**
+     * Resolve CLARIFY option tokens to library objects.
+     * Tries 1-based numeric index first (new format); falls back to text matching
+     * via mapOptionsToLibraries for responses generated before the prompt update.
+     * Deduplicates by library_id and filters out unresolved tokens.
+     *
+     * @param {Array<string>} tokens - Raw option tokens from the AI response
+     * @param {Array<object>} libraries - Available libraries
+     * @returns {Array<object>} Resolved options with library_id, library_name, label, value
+     */
+    _resolveOptionsFromTokens(tokens, libraries) {
+        const resolved = tokens.map(token => {
+            // Try index-based resolution first (new prompt format)
+            if (/^\d+$/.test(token)) {
+                const idx = parseInt(token, 10) - 1;
+                const lib = libraries[idx];
+                if (lib) {
+                    return {
+                        label: lib.name,
+                        value: lib.name.toLowerCase().replace(/\s+/g, '_').substring(0, 30),
+                        library_id: lib.id,
+                        library_name: lib.name,
+                    };
+                }
+                logger.warn('CLARIFY option index out of range — option dropped', {
+                    index: parseInt(token, 10),
+                    libraryCount: libraries.length,
+                });
+                return null;
+            }
+
+            // Legacy text-based resolution (pre-prompt-update responses)
+            const textMatches = this.mapOptionsToLibraries([token], libraries);
+            return textMatches[0] || null;
+        });
+
+        return resolved
+            .filter(Boolean)
+            .filter((opt, idx, arr) => arr.findIndex(o => o.library_id === opt.library_id) === idx);
     }
 
     /**

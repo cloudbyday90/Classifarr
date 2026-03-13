@@ -896,11 +896,11 @@ class ClassificationService {
     const allowedFormats = mode === 'verify'
       ? [
           'CONFIRM|<library_number>|<brief_verification_reason>',
-          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<exact_library_name_1>|<exact_library_name_2>|<exact_library_name_3_optional>'
+          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>'
         ]
       : [
           'CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>',
-          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<exact_library_name_1>|<exact_library_name_2>|<exact_library_name_3_optional>'
+          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>'
         ];
 
     const librariesList = libraries

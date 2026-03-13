@@ -2009,7 +2009,7 @@ describe('Phase 1 AI contract and stream guard', () => {
     expect(result504.code).toBe('ai_gateway_error');
   });
 
-  test('buildAiRepairPrompt uses exact_library_name placeholders in CLARIFY format', () => {
+  test('buildAiRepairPrompt uses library_number placeholders in CLARIFY format', () => {
     const libraries = [
       { id: 1, name: 'Movies', media_type: 'movie' },
       { id: 2, name: 'TV Shows', media_type: 'show' },
@@ -2035,11 +2035,15 @@ describe('Phase 1 AI contract and stream guard', () => {
     expect(verifyPrompt).not.toContain('<option1>');
     expect(verifyPrompt).not.toContain('<option2>');
 
-    // Must use the explicit library-name placeholders that prevent genre invention
-    expect(classifyPrompt).toContain('<exact_library_name_1>');
-    expect(classifyPrompt).toContain('<exact_library_name_2>');
-    expect(verifyPrompt).toContain('<exact_library_name_1>');
-    expect(verifyPrompt).toContain('<exact_library_name_2>');
+    // Must NOT use the old name-based placeholders (which allowed hallucinated genre names)
+    expect(classifyPrompt).not.toContain('<exact_library_name_1>');
+    expect(verifyPrompt).not.toContain('<exact_library_name_1>');
+
+    // Must use numeric placeholders — consistent with CONFIDENT/CONFIRM, eliminates name hallucination
+    expect(classifyPrompt).toContain('<library_number_1>');
+    expect(classifyPrompt).toContain('<library_number_2>');
+    expect(verifyPrompt).toContain('<library_number_1>');
+    expect(verifyPrompt).toContain('<library_number_2>');
   });
 
   test('aiClassify end-to-end: LLM returns CLARIFY with numbered prefixes and library IDs are resolved', async () => {

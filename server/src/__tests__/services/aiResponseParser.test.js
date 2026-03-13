@@ -306,6 +306,41 @@ describe('AIResponseParser', () => {
             expect(result.format).not.toBe('clarify');
         });
 
+        it('should parse CLARIFY format with numeric library indices (new prompt format)', () => {
+            // Regression test: the new prompt format emits "CLARIFY|...|1|3" using library
+            // numbers instead of free-text names. _resolveOptionsFromTokens must resolve them
+            // to real library objects without going through text matching.
+            const response = 'CLARIFY|Genre ambiguity|Could be action or family|Is this action or family content?|1|4';
+            const context = {
+                libraries: mockLibraries, // id:1 = Action Movies, id:4 = Family Movies
+                metadata: mockMetadata
+            };
+
+            const result = aiResponseParser.parse(response, context);
+
+            expect(result.format).toBe('clarify');
+            expect(result.clarification.options).toHaveLength(2);
+            expect(result.clarification.options[0].library_id).toBe(1);
+            expect(result.clarification.options[0].library_name).toBe('Action Movies');
+            expect(result.clarification.options[0].label).toBe('Action Movies');
+            expect(result.clarification.options[1].library_id).toBe(4);
+            expect(result.clarification.options[1].library_name).toBe('Family Movies');
+        });
+
+        it('should drop out-of-range numeric index and fall through when < 2 options remain', () => {
+            // AI returns index 99 (doesn't exist) + index 1 → only 1 valid option → fall through
+            const response = 'CLARIFY|Uncertain|Mixed signals|Which library?|1|99';
+            const context = {
+                libraries: mockLibraries,
+                signalContext: mockSignalContext,
+                metadata: mockMetadata
+            };
+
+            const result = aiResponseParser.parse(response, context);
+
+            expect(result.format).not.toBe('clarify');
+        });
+
         it('should fall through to narrative_clarify when CLARIFY options are all unrecognized and signalContext has suggestedLibrary', () => {
             // Bug 4 scenario: AI invents genre names as options. After mapOptionsToLibraries
             // drops all of them, parseClarifyFormat returns null and parse() continues to
