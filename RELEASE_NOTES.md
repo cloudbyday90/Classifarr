@@ -1,6 +1,6 @@
 # Classifarr Release Notes
 
-## v0.44.0a-beta
+## v0.44.0-a.beta
 **Title: Crash-free Discord, sessions that stick, and AI questions that always show up**
 
 ### 🎉 What You'll Notice
@@ -11,7 +11,7 @@
 
 ### 📊 Quick Visual
 ```text
-v0.44.0a-beta Patch Snapshot
+v0.44.0-a.beta Patch Snapshot
 Discord bot stability      [██████████] crash vectors closed
 Session persistence        [██████████] 401 fix — silent refresh now triggers
 AI question delivery       [██████████] numeric indices, no hallucination drops
@@ -3316,3 +3316,4 @@ For optimal performance with multiple models (e.g., classification + embedding),
 
 > [!NOTE]
 > Older release notes have been moved to [RELEASE_NOTES_backup.md](RELEASE_NOTES_backup.md) to keep this file concise.
+

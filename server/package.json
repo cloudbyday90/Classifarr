@@ -1,6 +1,6 @@
 {
   "name": "classifarr-server",
-  "version": "0.44.0a-beta",
+  "version": "0.44.0-a.beta",
   "license": "GPL-3.0-or-later",
   "engines": {
     "node": ">=24.11.0",
@@ -60,3 +60,4 @@
     "immutable": ">=4.3.8"
   }
 }
+
