@@ -42,7 +42,17 @@ async function authenticateToken(req, res, next) {
     const user = await authService.verifyToken(token);
     req.user = user;
     next();
-  } catch (_error) {
+  } catch (error) {
+    // A TokenExpiredError means the token was once valid but has passed its
+    // 15-minute lifetime. Return 401 so the Axios interceptor on the client
+    // silently calls /auth/refresh and retries — this is what makes Remember
+    // Me sessions work after the short-lived access token expires.
+    //
+    // Any other error (JsonWebTokenError, wrong secret, malformed) returns 403
+    // to signal a genuinely bad token that is not worth retrying.
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
 }

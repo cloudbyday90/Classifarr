@@ -294,14 +294,25 @@ describe('Auth Service - token and persistence flows', () => {
     expect(verifySpy).toHaveBeenCalledWith('token-value', 'jwt-secret');
   });
 
-  test('verifyToken throws normalized error when jwt.verify fails', async () => {
+  test('verifyToken propagates the original JWT error so callers can inspect error.name', async () => {
+    const malformedErr = new Error('jwt malformed');
+    malformedErr.name = 'JsonWebTokenError';
     const verifySpy = jest.spyOn(jwt, 'verify').mockImplementation(() => {
-      throw new Error('jwt malformed');
+      throw malformedErr;
     });
     db.query.mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
 
-    await expect(authService.verifyToken('bad-token')).rejects.toThrow('Invalid or expired token');
+    await expect(authService.verifyToken('bad-token')).rejects.toHaveProperty('name', 'JsonWebTokenError');
     expect(verifySpy).toHaveBeenCalled();
+  });
+
+  test('verifyToken propagates TokenExpiredError so middleware can return 401', async () => {
+    const expiredErr = new Error('jwt expired');
+    expiredErr.name = 'TokenExpiredError';
+    jest.spyOn(jwt, 'verify').mockImplementation(() => { throw expiredErr; });
+    db.query.mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
+
+    await expect(authService.verifyToken('expired-token')).rejects.toHaveProperty('name', 'TokenExpiredError');
   });
 
   test('auditLog writes JSON metadata', async () => {

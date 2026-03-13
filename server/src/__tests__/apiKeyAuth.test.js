@@ -220,14 +220,29 @@ describe('API Key Authentication Middleware', () => {
       expect(next).not.toHaveBeenCalled();
     });
 
-    test('should reject invalid JWT token', async () => {
+    test('should reject invalid JWT token with 403', async () => {
       req.headers['authorization'] = 'Bearer invalidtoken';
-      authService.verifyToken.mockRejectedValue(new Error('Invalid token'));
+      const err = new Error('jwt malformed');
+      err.name = 'JsonWebTokenError';
+      authService.verifyToken.mockRejectedValue(err);
 
       await authenticateTokenOrApiKey(req, res, next);
 
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith({ error: 'Invalid or expired token' });
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    test('should return 401 for expired JWT token so the client interceptor can refresh', async () => {
+      req.headers['authorization'] = 'Bearer expiredtoken';
+      const err = new Error('jwt expired');
+      err.name = 'TokenExpiredError';
+      authService.verifyToken.mockRejectedValue(err);
+
+      await authenticateTokenOrApiKey(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Token expired' });
       expect(next).not.toHaveBeenCalled();
     });
 

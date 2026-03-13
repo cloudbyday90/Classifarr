@@ -254,6 +254,24 @@ describe('Auth Routes Integration Tests', () => {
                 .set('Authorization', 'Bearer not.a.valid.jwt')
                 .expect(403);
         });
+
+        test('should return 401 (not 403) for an expired access token so the client interceptor can refresh', async () => {
+            // Generate a real JWT that is already expired (expiresIn=-1s)
+            const jwt = require('jsonwebtoken');
+            const secret = await authService.getJWTSecret();
+            const expiredToken = jwt.sign(
+                { id: testUserId, username: 'authtest_user', role: 'admin', type: 'access' },
+                secret,
+                { expiresIn: -1, issuer: 'classifarr' }
+            );
+
+            const response = await request(app)
+                .get('/api/auth/me')
+                .set('Authorization', `Bearer ${expiredToken}`)
+                .expect(401);
+
+            expect(response.body.error).toMatch(/expired/i);
+        });
     });
 
     // ============================================================
@@ -575,6 +593,182 @@ describe('Auth Routes Integration Tests', () => {
                     newPassword: 'NewPass123!',
                     confirmPassword: 'NewPass123!'
                 })
+                .expect(401);
+        });
+    });
+
+    // ============================================================
+    // Remember-Me feature
+    // ============================================================
+    describe('Remember-Me feature', () => {
+        /**
+         * Parse a single named attribute out of a Set-Cookie header entry.
+         * Returns the attribute value string, null if the cookie was found but the
+         * attribute was absent, or undefined if the cookie itself was not found.
+         */
+        function extractCookieAttrib(headers, cookieName, attrib) {
+            const cookies = [].concat(headers['set-cookie'] || []);
+            for (const c of cookies) {
+                const parts = c.split(';').map(p => p.trim());
+                const [kv] = parts;
+                const eq = kv.indexOf('=');
+                if (eq === -1) continue;
+                if (kv.slice(0, eq).trim() !== cookieName) continue;
+                for (let i = 1; i < parts.length; i++) {
+                    const eq2 = parts[i].indexOf('=');
+                    if (eq2 === -1) continue;
+                    const k = parts[i].slice(0, eq2).trim().toLowerCase();
+                    if (k === attrib.toLowerCase()) return parts[i].slice(eq2 + 1).trim();
+                }
+                return null; // cookie present but attribute absent
+            }
+            return undefined; // cookie not set at all
+        }
+
+        // 30 × 24 × 60 × 60  expressed in seconds (the Max-Age cookie attribute unit)
+        const REMEMBER_ME_MAX_AGE_S = 30 * 24 * 60 * 60;
+        // 48 × 60 × 60  (SESSION_EXPIRY_HOURS)
+        const SESSION_MAX_AGE_S = 48 * 60 * 60;
+
+        test('login with rememberMe=true sets 30-day Max-Age on access_token cookie', async () => {
+            const response = await request(app)
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: true })
+                .expect(200);
+
+            const maxAge = parseInt(extractCookieAttrib(response.headers, 'access_token', 'max-age'), 10);
+            expect(maxAge).toBe(REMEMBER_ME_MAX_AGE_S);
+        });
+
+        test('login with rememberMe=true sets 30-day Max-Age on refresh_token cookie', async () => {
+            const response = await request(app)
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: true })
+                .expect(200);
+
+            const maxAge = parseInt(extractCookieAttrib(response.headers, 'refresh_token', 'max-age'), 10);
+            expect(maxAge).toBe(REMEMBER_ME_MAX_AGE_S);
+        });
+
+        test('login with rememberMe=false sets 48-hour Max-Age on access_token cookie', async () => {
+            const response = await request(app)
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: false })
+                .expect(200);
+
+            const maxAge = parseInt(extractCookieAttrib(response.headers, 'access_token', 'max-age'), 10);
+            expect(maxAge).toBe(SESSION_MAX_AGE_S);
+        });
+
+        test('login with rememberMe=true stores remember_me=true in refresh_tokens table', async () => {
+            await request(app)
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: true })
+                .expect(200);
+
+            const row = await db.query(
+                'SELECT remember_me FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1',
+                [testUserId]
+            );
+            expect(row.rows[0].remember_me).toBe(true);
+        });
+
+        test('login with rememberMe=false stores remember_me=false in refresh_tokens table', async () => {
+            await request(app)
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: false })
+                .expect(200);
+
+            const row = await db.query(
+                'SELECT remember_me FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1',
+                [testUserId]
+            );
+            expect(row.rows[0].remember_me).toBe(false);
+        });
+
+        test('revokeAllRefreshTokensOnStartup preserves remember-me tokens', async () => {
+            await request(app)
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: true })
+                .expect(200);
+
+            // Simulate server restart
+            await authService.revokeAllRefreshTokensOnStartup();
+
+            const active = await db.query(
+                'SELECT remember_me FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL',
+                [testUserId]
+            );
+            expect(active.rows.length).toBe(1);
+            expect(active.rows[0].remember_me).toBe(true);
+        });
+
+        test('revokeAllRefreshTokensOnStartup revokes non-remember-me tokens', async () => {
+            await request(app)
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: false })
+                .expect(200);
+
+            const revoked = await authService.revokeAllRefreshTokensOnStartup();
+            expect(revoked).toBeGreaterThanOrEqual(1);
+
+            const active = await db.query(
+                'SELECT id FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL',
+                [testUserId]
+            );
+            expect(active.rows.length).toBe(0);
+        });
+
+        test('remember-me session can refresh after simulated server restart', async () => {
+            const agent = request.agent(app);
+
+            await agent
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: true })
+                .expect(200);
+
+            // Simulate server restart (revokes only non-remember-me tokens)
+            await authService.revokeAllRefreshTokensOnStartup();
+
+            // The remember-me refresh token should still be valid
+            const refreshResp = await agent
+                .post('/api/auth/refresh')
+                .expect(200);
+
+            expect(refreshResp.body.success).toBe(true);
+            expect(refreshResp.body.user.username).toBe('authtest_user');
+        });
+
+        test('refresh after remember-me login issues new tokens with 30-day Max-Age', async () => {
+            const agent = request.agent(app);
+
+            await agent
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: true })
+                .expect(200);
+
+            const refreshResp = await agent
+                .post('/api/auth/refresh')
+                .expect(200);
+
+            const maxAge = parseInt(extractCookieAttrib(refreshResp.headers, 'refresh_token', 'max-age'), 10);
+            expect(maxAge).toBe(REMEMBER_ME_MAX_AGE_S);
+        });
+
+        test('non-remember-me session does NOT survive simulated server restart', async () => {
+            const agent = request.agent(app);
+
+            await agent
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword, rememberMe: false })
+                .expect(200);
+
+            // Simulate server restart — non-remember-me tokens are revoked
+            await authService.revokeAllRefreshTokensOnStartup();
+
+            // Refresh should now fail (token was revoked)
+            await agent
+                .post('/api/auth/refresh')
                 .expect(401);
         });
     });

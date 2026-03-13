@@ -214,12 +214,10 @@ async function cleanupExpiredTokens() {
 
 async function verifyToken(token) {
   const secret = await getJWTSecret();
-
-  try {
-    return jwt.verify(token, secret);
-  } catch (_error) {
-    throw new Error('Invalid or expired token');
-  }
+  // Let the original JsonWebTokenError / TokenExpiredError propagate so callers
+  // can distinguish an expired-but-valid token (retriable with a refresh token)
+  // from a genuinely malformed / wrong-secret token (not retriable).
+  return jwt.verify(token, secret);
 }
 
 async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
