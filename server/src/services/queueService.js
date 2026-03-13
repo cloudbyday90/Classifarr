@@ -841,10 +841,14 @@ class QueueService {
                     if (enrichPayload.itemId) {
                         // Force set content_analysis to mark item as processed
                         // This prevents Gap Analysis from re-queuing it
+                        // NOTE: source: 'metadata_enrichment' MUST be set here — refillQueue
+                        // skips items where this key equals 'metadata_enrichment', so omitting
+                        // it would cause items with no OMDb data to loop forever.
                         enrichmentData.content_analysis = {
                             type: enrichPayload.media?.media_type || 'unknown',
                             confidence: 100,
                             method: 'source_library',
+                            source: 'metadata_enrichment',
                             detected_at: new Date().toISOString()
                         };
 

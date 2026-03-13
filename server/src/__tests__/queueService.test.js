@@ -159,6 +159,48 @@ describe('QueueService', () => {
             );
         });
 
+        it('should include source: metadata_enrichment in content_analysis even when OMDb returns no data', async () => {
+            // Regression test: the second enrichmentData.content_analysis assignment previously
+            // dropped the `source` key, causing refillQueue to re-select items with no OMDb data
+            // indefinitely (content_analysis.source IS DISTINCT FROM 'metadata_enrichment' → true).
+            const task = {
+                id: 99,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify({
+                    title: 'Obscure Film',
+                    year: 2010,
+                    itemId: 42,
+                    source_library_id: 3,
+                    source_library_name: 'Movies',
+                    media: { media_type: 'movie' }
+                })
+            };
+
+            const omdbService = require('../services/omdb');
+            // OMDb returns null → no omdb key written to enrichmentData
+            omdbService.getByTitle.mockResolvedValue(null);
+
+            let capturedMetadata = null;
+            db.query.mockImplementation((query, params) => {
+                if (query.includes('SELECT * FROM omdb_config')) {
+                    return Promise.resolve({ rows: [{ api_key: 'k', is_active: true }] });
+                }
+                if (query.includes('SELECT * FROM tavily_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('UPDATE media_server_items') && params && params[0]) {
+                    capturedMetadata = typeof params[0] === 'string' ? JSON.parse(params[0]) : params[0];
+                }
+                return Promise.resolve({ rows: [], rowCount: 1 });
+            });
+
+            await queueService.processTask(task);
+
+            expect(capturedMetadata).not.toBeNull();
+            expect(capturedMetadata.content_analysis).toBeDefined();
+            expect(capturedMetadata.content_analysis.source).toBe('metadata_enrichment');
+        });
+
         it('should suppress warn spam for OMDb HALF_OPEN throttling and queue for OMDb retry', async () => {
             const task = {
                 id: 3,
