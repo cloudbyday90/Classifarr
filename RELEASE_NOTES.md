@@ -1,5 +1,45 @@
 # Classifarr Release Notes
 
+## v0.44.0a-beta
+**Title: Crash-free Discord, sessions that stick, and AI questions that always show up**
+
+### 🎉 What You'll Notice
+- **Discord buttons no longer leave "This interaction failed"** — slow Radarr/Sonarr responses occasionally pushed past Discord's 3-second deadline, crashing the bot process. All buttons now acknowledge instantly and complete in the background.
+- **Logged-in sessions stay logged in** — expired access tokens were silently returning a hard-rejection code instead of triggering a silent refresh, so even a valid 30-day "Remember Me" session could drop unexpectedly after 15 minutes of inactivity.
+- **AI clarification questions always appear** — the CLARIFY format now uses numbered options (same as all other AI response types), closing the loophole where hallucinated library names silently vanished.
+- **Metadata enrichment no longer spins indefinitely** — a missing field caused every item without OMDb data to be re-queued on every cycle; fixed.
+
+### 📊 Quick Visual
+```text
+v0.44.0a-beta Patch Snapshot
+Discord bot stability      [██████████] crash vectors closed
+Session persistence        [██████████] 401 fix — silent refresh now triggers
+AI question delivery       [██████████] numeric indices, no hallucination drops
+Metadata enrichment loop   [██████████] infinite re-queue eliminated
+```
+
+### ✨ Highlights
+- **Discord interaction crash fully resolved** — all five bot interaction handlers (verification, correction, clarification, library selection, question response) now defer immediately; duplicate button clicks are safely idempotent.
+- **"Remember Me" sessions reliably persist** — the root issue was a wrong HTTP status code (403 instead of 401) on normal token expiry. The client's silent-refresh interceptor only acts on 401, so it was never firing. Fixed at the server — sessions now refresh transparently as they should.
+- **AI CLARIFY uses numeric indices** — consistent with how CONFIDENT and CONFIRM have always worked. The LLM can no longer hallucinate library names that slip through undetected.
+
+### 🔧 Reliability Improvements
+- Bot process no longer crashes on "interaction already replied" or "unknown interaction" Discord errors from slow API calls or double-clicks.
+- All bot catch blocks are now individually guarded so a failure reporting an error cannot itself cause an unhandled rejection.
+- `metadata_enrichment` task now correctly stamps `source` on both `content_analysis` writes, preventing the infinite re-queue loop that could keep the worker permanently busy.
+- **Security patch:** `undici` updated to 7.24.1 to resolve 6 high-severity CVEs (WebSocket overflow, HTTP smuggling, memory exhaustion, CRLF injection). Transitive dependency; no user action needed.
+
+### 👥 Who This Helps
+- **Discord users:** buttons work even when Arr routing takes more than 3 seconds; double-clicks on verification/clarification buttons no longer crash the bot.
+- **All users:** no surprise logouts after short idle periods, even without "Remember Me".
+- **Users with "Remember Me" / long sessions:** access-token refresh finally triggers as intended — 30-day sessions hold for 30 days.
+- **High-volume instances:** `metadata_enrichment` loop fix prevents the worker from being monopolised by endlessly re-queued items.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.44.0-beta
 **Title: AI learns from you — smarter clarifications, faster builds, zero security holes**
 

@@ -9,6 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.44.0a-beta] — 2026-03-13
+
+### Security
+
+- **`undici` < 7.24.0 — high severity (multiple CVEs)** — WebSocket 64-bit length overflow ([GHSA-f269-vfmq-vjvj](https://github.com/advisories/GHSA-f269-vfmq-vjvj)), HTTP request/response smuggling ([GHSA-2mjp-6q6p-2qxm](https://github.com/advisories/GHSA-2mjp-6q6p-2qxm)), unbounded memory consumption in WebSocket permessage-deflate decompression ([GHSA-vrm6-8vpv-qv8q](https://github.com/advisories/GHSA-vrm6-8vpv-qv8q)), unhandled exception via invalid `server_max_window_bits` ([GHSA-v9p9-hfj2-hcw8](https://github.com/advisories/GHSA-v9p9-hfj2-hcw8)), CRLF injection via `upgrade` option ([GHSA-4992-7rv2-5pvq](https://github.com/advisories/GHSA-4992-7rv2-5pvq)), unbounded memory via response buffering in `DeduplicationHandler` ([GHSA-phc3-fgpg-7m6h](https://github.com/advisories/GHSA-phc3-fgpg-7m6h)). Updated `undici` 7.0.0–7.23.x → 7.24.1 in both `server/` and `client/` via `npm audit fix`. Transitive dependency (surfaced through Node.js http tooling). Zero test regressions.
+
+### Dependencies
+
+- **Server + Client:** `undici` → 7.24.1 (patch — security only).
+
+### Fixed
+
+- **Discord interaction handlers crashed the process when responses arrived after the 3-second token deadline** — All five interaction handlers (`processVerification`, `processCorrection`, `processClarificationResponse`, `showLibrarySelection`, `processQuestionResponse`) now call `deferUpdate()` immediately at entry, extending Discord's response window from 3 seconds to 15 minutes. Subsequent response calls use `editReply()` for success embeds and `followUp()` for early-exit messages (calling `reply()` or `update()` after `deferUpdate()` always throws `InteractionAlreadyReplied`). All catch-block replies are wrapped in `try/catch` so that an expired token on an error message does not produce an unhandled rejection. `processVerification` also gains an idempotency guard: duplicate button clicks for items already at `verified` or `routed` status return a friendly ephemeral message instead of re-routing.
+  (`server/src/services/discordBot.js`)
+
+- **`verifyToken()` swallowed `TokenExpiredError`, causing expired access tokens to return HTTP 403 instead of 401** — `verifyToken()` previously caught all JWT errors and re-threw a generic `Error`, discarding the original `error.name`. The `authenticateToken` and `authenticateTokenOrApiKey` middleware then returned `403` for every JWT failure — including routine expiry. Because the Axios response interceptor only retries on `401`, silently refreshing an expired access token never triggered; "Remember Me" sessions appeared broken even though the refresh token was valid. Fix: `verifyToken()` now lets the original `JsonWebTokenError`/`TokenExpiredError` propagate. Both middleware functions now return `401` for `TokenExpiredError` (triggering client-side silent refresh) and `403` for all other JWT failures.
+  (`server/src/services/auth.js`, `server/src/middleware/auth.js`, `server/src/middleware/apiKeyAuth.js`)
+
+- **CLARIFY AI responses used free-text library names as option tokens, allowing hallucinated names to silently drop options** — `CONFIDENT` and `CONFIRM` have always used numeric library indices (e.g. `CLARIFY|...|1|2`), but `CLARIFY` used free-text names (`CLARIFY|...|Documentaries|Movies`). The LLM frequently hallucinated names that did not match any library, causing `mapOptionsToLibraries()` to drop them silently. The user never saw a clarification question. Fix: both `aiPromptBuilder.js` and the inline CLARIFY prompt in `classification.js` now use `<library_number_1>|<library_number_2>|<library_number_3_optional>`. A new `_resolveOptionsFromTokens()` helper resolves bare integers to libraries by index; non-integer tokens fall back to the existing text-matching path for backward compatibility with in-flight responses.
+  (`server/src/services/aiPromptBuilder.js`, `server/src/services/classification.js`, `server/src/services/aiResponseParser.js`)
+
+- **`metadata_enrichment` task re-queued every item on every cycle (infinite loop)** — `refillQueue()` selects items where `metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'`. A second `content_analysis` assignment inside the enrichment task handler overwrote the original object (which carried `source: 'metadata_enrichment'`) with one that lacked the key. Every item without OMDb data was consequently re-selected on the next cycle. Fix: add `source: 'metadata_enrichment'` to the reassigned `content_analysis` object.
+  (`server/src/services/queueService.js`)
+
+### Tests
+
+- **Discord interaction handlers** — New test file `discordBot.interactions.test.js` with 32 tests covering all five handlers: `deferUpdate` called before any async/DB work; `editReply` used (not `update`/`reply`) for success paths; `followUp` used (not `reply`) for early exits; catch blocks call `followUp` (not `reply`); no process crash when both `deferUpdate` and `followUp` throw; `processVerification` idempotency guard for `verified`/`routed` statuses.
+- **`verifyToken` error propagation** — Updated `auth.service.test.js`: replaced the old test that expected a normalised string message with two new tests that assert the original error's `.name` is preserved (`JsonWebTokenError` / `TokenExpiredError`).
+- **401 / 403 split in middleware** — Updated `apiKeyAuth.test.js`: malformed-JWT test now correctly models a `JsonWebTokenError`; added `TokenExpiredError → 401` test. Added integration test in `auth-routes.test.js` that generates a real expired JWT (`expiresIn: -1`) and expects `401` with a message matching `/expired/i`.
+- **`_resolveOptionsFromTokens` numeric index resolution** — Added 4 tests: numeric CLARIFY tokens resolve to correct libraries; out-of-range index is silently dropped; mixed integer/text tokens fall back to text matching; forward-compat path preserved for pre-prompt-change responses. (`aiResponseParser.test.js`)
+- **`metadata_enrichment` source key regression** — Added regression test: enriched item carries `source: 'metadata_enrichment'` after the second `content_analysis` assignment so `refillQueue()` does not re-select it. (`queueService.test.js`)
+
+---
+
 ## [0.44.0-beta] — 2026-03-13
 
 ### Security
