@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 
 - **Server:** `pg` 8.19.0 → 8.20.0 (+ `pg-pool`, `pg-protocol`, `pg-connection-string` sub-packages); `express-rate-limit` 8.2.1 → 8.3.1; `axios` 1.13.5 → 1.13.6; `eslint` 10.0.2 → 10.0.3; `jest` 30.2.0 → 30.3.0. All patch/minor — zero test regressions (3 476/3 476 passing).
-- **Client:** `vue` 3.5.29 → 3.5.30; `axios` 1.13.5 → 1.13.6; `postcss` 8.5.6 → 8.5.8; `@vitejs/plugin-vue` 6.0.4 → 6.0.5; `vitest` + `@vitest/coverage-v8` 4.0.18 → 4.1.0. All patch/minor — zero test regressions (1 257/1 257 passing). `vite` held at 7.3.1 (8.0.0 is a major bump requiring separate migration review).
+- **Client:** `vue` 3.5.29 → 3.5.30; `axios` 1.13.5 → 1.13.6; `postcss` 8.5.6 → 8.5.8; `@vitejs/plugin-vue` 6.0.4 → 6.0.5; `vitest` + `@vitest/coverage-v8` 4.0.18 → 4.1.0. All patch/minor — zero test regressions (1 257/1 257 passing). `vite` 7.3.1 → 8.0.0 (major — Rolldown bundler replaces esbuild + Rollup; zero config-breaking changes for this project; `build.target` pinned to `baseline-widely-available`; vendor chunk splitting via `build.rolldownOptions.output.manualChunks` function — Vue ecosystem separated into cacheable `vue-vendor` chunk).
 
 ### Fixed
 

@@ -18,4 +18,21 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    target: 'baseline-widely-available',
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/node_modules/')) {
+            if (['vue', 'vue-router', 'pinia', '@vueuse/core'].some(pkg => id.includes(`/node_modules/${pkg}/`))) {
+              return 'vue-vendor'
+            }
+            if (id.includes('/node_modules/socket.io-client/') || id.includes('/node_modules/engine.io-client/')) {
+              return 'socket'
+            }
+          }
+        },
+      },
+    },
+  },
 })
