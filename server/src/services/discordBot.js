@@ -1202,10 +1202,14 @@ class DiscordBotService {
     } catch (error) {
       logger.error("Error handling Discord interaction:", error);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({
-          content: "An error occurred",
-          ephemeral: true,
-        });
+        try {
+          await interaction.reply({
+            content: "An error occurred",
+            ephemeral: true,
+          });
+        } catch (_replyErr) {
+          logger.debug("[Discord] Could not send top-level error reply", { error: _replyErr.message });
+        }
       }
     }
   }
@@ -1226,7 +1230,7 @@ class DiscordBotService {
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({
+        await interaction.followUp({
           content: "Classification not found",
           ephemeral: true,
         });
@@ -1243,7 +1247,7 @@ class DiscordBotService {
       );
 
       if (libResult.rows.length === 0) {
-        await interaction.reply({
+        await interaction.followUp({
           content: "Library not found",
           ephemeral: true,
         });
@@ -1426,7 +1430,7 @@ class DiscordBotService {
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({
+        await interaction.followUp({
           content: "Classification not found",
           ephemeral: true,
         });
@@ -1755,13 +1759,16 @@ class DiscordBotService {
    */
   async showLibrarySelection(classificationId, interaction) {
     try {
+      // Defer first — two DB queries run before we respond; enough to hit the 3s limit.
+      await interaction.deferUpdate();
+
       const classResult = await db.query(
         "SELECT media_type FROM classification_history WHERE id = $1",
         [classificationId],
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({
+        await interaction.followUp({
           content: "Classification not found",
           ephemeral: true,
         });
@@ -1777,7 +1784,7 @@ class DiscordBotService {
       );
 
       if (libResult.rows.length === 0) {
-        await interaction.reply({
+        await interaction.followUp({
           content: "No libraries available",
           ephemeral: true,
         });
@@ -1790,8 +1797,8 @@ class DiscordBotService {
         description: `${lib.media_type} library`,
       }));
 
-      // Replace buttons with dropdown
-      await interaction.update({
+      // Replace buttons with dropdown (editReply because we called deferUpdate)
+      await interaction.editReply({
         components: [
           new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
@@ -1803,10 +1810,14 @@ class DiscordBotService {
       });
     } catch (error) {
       logger.error("Error showing library selection:", error);
-      await interaction.reply({
-        content: "Failed to show options",
-        ephemeral: true,
-      });
+      try {
+        await interaction.followUp({
+          content: "Failed to show options",
+          ephemeral: true,
+        });
+      } catch (_replyErr) {
+        logger.debug("[Discord] Could not send error reply for library selection", { error: _replyErr.message });
+      }
     }
   }
 
@@ -1820,6 +1831,10 @@ class DiscordBotService {
     interaction,
   ) {
     try {
+      // Defer first — clarificationService.recordResponse() involves DB writes before we
+      // can update the message. Without this we risk a 3s timeout if the DB is slow.
+      await interaction.deferUpdate();
+
       // Get classification
       const classResult = await db.query(
         "SELECT * FROM classification_history WHERE id = $1",
@@ -1827,7 +1842,7 @@ class DiscordBotService {
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({
+        await interaction.followUp({
           content: "Classification not found",
           ephemeral: true,
         });
@@ -1845,8 +1860,8 @@ class DiscordBotService {
         classification.confidence,
       );
 
-      // Update message
-      await interaction.update({
+      // Update message (editReply because we called deferUpdate)
+      await interaction.editReply({
         components: [],
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
@@ -1856,10 +1871,14 @@ class DiscordBotService {
       });
     } catch (error) {
       logger.error("Error processing question response:", error);
-      await interaction.reply({
-        content: "Failed to process response",
-        ephemeral: true,
-      });
+      try {
+        await interaction.followUp({
+          content: "Failed to process response",
+          ephemeral: true,
+        });
+      } catch (_replyErr) {
+        logger.debug("[Discord] Could not send error reply for question response", { error: _replyErr.message });
+      }
     }
   }
 
