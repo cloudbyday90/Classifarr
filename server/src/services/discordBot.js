@@ -1212,6 +1212,11 @@ class DiscordBotService {
 
   async processCorrection(classificationId, newLibraryId, interaction) {
     try {
+      // Defer immediately — routing can take several seconds. Without this, Discord
+      // times out at 3s, shows "This interaction failed", and the user may re-click,
+      // causing a duplicate request that crashes the process.
+      await interaction.deferUpdate();
+
       let routingOutcome = { routed: false, reason: null, error: null };
 
       // Get original classification
@@ -1333,8 +1338,8 @@ class DiscordBotService {
         ? `✅ Routed to ${newLibraryName}`
         : `⚠️ Not routed (${routingOutcome.reason || "routing_skipped"})`;
 
-      // Update message
-      await interaction.update({
+      // Update message (editReply because we called deferUpdate at the start)
+      await interaction.editReply({
         components: [],
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
@@ -1364,10 +1369,15 @@ class DiscordBotService {
       }
     } catch (error) {
       logger.error("Error processing correction:", error);
-      await interaction.reply({
-        content: "Failed to process correction",
-        ephemeral: true,
-      });
+      try {
+        await interaction.followUp({
+          content: "Failed to process correction",
+          ephemeral: true,
+        });
+      } catch (_replyErr) {
+        // Interaction token may have expired — log and move on; do NOT re-throw
+        logger.debug("[Discord] Could not send error reply for correction", { error: _replyErr.message });
+      }
     }
   }
 
@@ -1404,6 +1414,11 @@ class DiscordBotService {
     interaction,
   ) {
     try {
+      // Defer immediately — clarification resolution + Radarr/Sonarr routing can take
+      // several seconds. Without this, Discord times out at 3s and shows
+      // "This interaction failed", which causes duplicate clicks.
+      await interaction.deferUpdate();
+
       // Get classification details
       const classResult = await db.query(
         "SELECT *, policy_question FROM classification_history WHERE id = $1",
@@ -1554,8 +1569,8 @@ class DiscordBotService {
         ? `✅ Routed to ${libraryName}`
         : `⚠️ Not routed (${routingOutcome.reason || "routing_skipped"})`;
 
-      // Update Discord message
-      await interaction.update({
+      // Update Discord message (editReply because we called deferUpdate at the start)
+      await interaction.editReply({
         components: [],
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
@@ -1579,10 +1594,14 @@ class DiscordBotService {
       }
     } catch (error) {
       logger.error("Error processing clarification response:", error);
-      await interaction.reply({
-        content: "Failed to process response",
-        ephemeral: true,
-      });
+      try {
+        await interaction.followUp({
+          content: "Failed to process response",
+          ephemeral: true,
+        });
+      } catch (_replyErr) {
+        logger.debug("[Discord] Could not send error reply for clarification", { error: _replyErr.message });
+      }
     }
   }
 
@@ -1591,13 +1610,18 @@ class DiscordBotService {
    */
   async processVerification(classificationId, isCorrect, interaction) {
     try {
+      // Defer immediately — Radarr/Sonarr routing can take several seconds. Without
+      // deferring, Discord's 3-second token expires, shows "This interaction failed",
+      // the user re-clicks, and the second invocation races the first one.
+      await interaction.deferUpdate();
+
       const classResult = await db.query(
         "SELECT * FROM classification_history WHERE id = $1",
         [classificationId],
       );
 
       if (classResult.rows.length === 0) {
-        await interaction.reply({
+        await interaction.followUp({
           content: "Classification not found",
           ephemeral: true,
         });
@@ -1613,6 +1637,17 @@ class DiscordBotService {
         library_id: classification.library_id,
         status: classification.status,
       });
+
+      // Idempotency guard: if this was already verified/routed by a concurrent or
+      // duplicate interaction (e.g. user double-clicked, or Discord retried), bail out
+      // gracefully so we don't re-learn, re-route, or crash on a second interaction.update().
+      if (classification.status === 'verified' || classification.status === 'routed') {
+        await interaction.followUp({
+          content: '✅ Already processed — no changes made.',
+          ephemeral: true,
+        });
+        return;
+      }
 
       // Update status
       await db.query(
@@ -1684,7 +1719,7 @@ class DiscordBotService {
       }
 
       // Update message
-      await interaction.update({
+      await interaction.editReply({
         components: [],
         embeds: [
           EmbedBuilder.from(interaction.message.embeds[0])
@@ -1702,12 +1737,16 @@ class DiscordBotService {
       });
     } catch (error) {
       logger.error("Error processing verification:", error);
-      // Return specific error message to user for debugging
-      const errorMessage = error.message || "Unknown error";
-      await interaction.reply({
-        content: `Failed to process verification: ${errorMessage}\nClassification ID: ${classificationId}`,
-        ephemeral: true,
-      });
+      try {
+        await interaction.followUp({
+          content: `Failed to process verification: ${error.message || "Unknown error"}\nClassification ID: ${classificationId}`,
+          ephemeral: true,
+        });
+      } catch (_replyErr) {
+        // Interaction token expired or already handled — do NOT re-throw; that would
+        // produce an unhandled rejection which crashes the Node.js process.
+        logger.debug("[Discord] Could not send error reply for verification", { error: _replyErr.message });
+      }
     }
   }
 
