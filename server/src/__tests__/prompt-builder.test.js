@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const promptBuilder = require('../../services/promptBuilder');
+const promptBuilder = require('../services/promptBuilder');
 
 describe('PromptBuilder Integration Tests', () => {
     describe('determinePromptType', () => {

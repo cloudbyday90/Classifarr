@@ -30,7 +30,9 @@ function getCsrfCookieOptions(req) {
     httpOnly: false,
     secure: resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies')),
     sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    // Match the maximum remember-me window (30 days). The CSRF token is not secret
+    // (it is readable by JS by design), so a longer lifetime does not weaken security.
+    maxAge: 30 * 24 * 60 * 60 * 1000,
     path: '/'
   };
 }
@@ -61,9 +63,15 @@ function ensureCsrfCookie(req, res, next) {
   return next();
 }
 
-// Paths always exempt from CSRF (pre-authentication endpoints).
+// Paths always exempt from CSRF (pre-authentication endpoints or self-protecting endpoints).
 // This middleware is mounted at /api so req.path is relative — use paths without /api prefix.
-const CSRF_EXEMPT_PREFIXES = ['/setup'];
+//
+// /auth/refresh is exempt because:
+//   - the refresh token cookie is httpOnly + SameSite=lax, so browsers will not include
+//     it in cross-site POST requests — CSRF is already impossible at the browser level
+//   - requiring a CSRF cookie to refresh creates a chicken-and-egg problem when the
+//     CSRF cookie has expired but the refresh token is still valid (remember-me sessions)
+const CSRF_EXEMPT_PREFIXES = ['/setup', '/auth/refresh'];
 
 function csrfProtection(req, res, next) {
   const csrfEnabled = runtimeSettings.getValue('csrf_protection');

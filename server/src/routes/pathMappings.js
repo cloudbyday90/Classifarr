@@ -5,6 +5,7 @@
  * Path Mappings API Routes
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename */
 const express = require('express');
 const router = express.Router();
 const fs = require('fs').promises;

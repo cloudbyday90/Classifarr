@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename */
 const db = require('../config/database');
 const fs = require('fs').promises;
 const path = require('path');

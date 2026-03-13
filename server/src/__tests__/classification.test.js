@@ -469,7 +469,7 @@ describe('Phase Tracking in classify()', () => {
     classificationPhaseService.completeTracking.mockResolvedValue(true);
 
     // Mock libraries
-    db.query.mockImplementation((text, params) => {
+    db.query.mockImplementation((text, _params) => {
       const query = typeof text === 'string' ? text : '';
       if (query.includes('FROM libraries')) {
         return { rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] };
@@ -1898,6 +1898,18 @@ describe('Phase 1 AI contract and stream guard', () => {
     expect(classificationService.isAiTransientAvailabilityError(http504Error)).toBe(true);
   });
 
+  test('treats 429 rate-limit as transient — via response.status (no message pattern)', () => {
+    // Cloud LLM providers (Anthropic, OpenAI) set error.response.status without
+    // putting the numeric code in error.message; ensure we check the status field.
+    const rateLimitViaSatus = { response: { status: 429 }, message: 'Too Many Requests', code: undefined };
+    const rateLimitViaMessage = new Error('Request failed with status code 429');
+    const rateLimitViaMessageAlt = new Error('rate limit exceeded, please retry');
+
+    expect(classificationService.isAiTransientAvailabilityError(rateLimitViaSatus)).toBe(true);
+    expect(classificationService.isAiTransientAvailabilityError(rateLimitViaMessage)).toBe(true);
+    expect(classificationService.isAiTransientAvailabilityError(rateLimitViaMessageAlt)).toBe(true);
+  });
+
   test('resolves specific retry reason for HTTP 500 errors', () => {
     const http500Error = new Error('Failed to generate: Request failed with status code 500');
     const http503Error = new Error('Request failed with status code 503');
@@ -1909,5 +1921,88 @@ describe('Phase 1 AI contract and stream guard', () => {
     expect(result500.reason).toContain('500');
     expect(result503.code).toBe('ai_unavailable');
     expect(result503.reason).toContain('503');
+  });
+
+  test('resolves 429 rate-limit retry reason — via message and via response.status', () => {
+    const via429Message = new Error('Request failed with status code 429');
+    const via429Status = { response: { status: 429 }, message: 'Too Many Requests', code: undefined };
+
+    const resultMsg = classificationService.resolveRetryReason(via429Message);
+    const resultStatus = classificationService.resolveRetryReason(via429Status);
+
+    expect(resultMsg.code).toBe('ai_rate_limited');
+    expect(resultMsg.reason).toContain('429');
+    expect(resultStatus.code).toBe('ai_rate_limited');
+    expect(resultStatus.reason).toContain('429');
+  });
+
+  test('resolves 502/504 gateway errors via response.status when message is generic', () => {
+    // Providers like OpenAI return a generic "Bad Gateway" message without the numeric code.
+    const via502Status = { response: { status: 502 }, message: 'Bad Gateway', code: undefined };
+    const via504Status = { response: { status: 504 }, message: 'Gateway Timeout', code: undefined };
+
+    const result502 = classificationService.resolveRetryReason(via502Status);
+    const result504 = classificationService.resolveRetryReason(via504Status);
+
+    expect(result502.code).toBe('ai_gateway_error');
+    expect(result504.code).toBe('ai_gateway_error');
+  });
+
+  test('buildAiRepairPrompt uses exact_library_name placeholders in CLARIFY format', () => {
+    const libraries = [
+      { id: 1, name: 'Movies', media_type: 'movie' },
+      { id: 2, name: 'TV Shows', media_type: 'show' },
+    ];
+    const signalContext = { confidence: 60, suggestedLibrary: libraries[0] };
+
+    const classifyPrompt = classificationService.buildAiRepairPrompt({
+      response: 'some raw AI text',
+      libraries,
+      signalContext,
+      mode: 'classify'
+    });
+    const verifyPrompt = classificationService.buildAiRepairPrompt({
+      response: 'some raw AI text',
+      libraries,
+      signalContext,
+      mode: 'verify'
+    });
+
+    // Must NOT use the old generic placeholders
+    expect(classifyPrompt).not.toContain('<option1>');
+    expect(classifyPrompt).not.toContain('<option2>');
+    expect(verifyPrompt).not.toContain('<option1>');
+    expect(verifyPrompt).not.toContain('<option2>');
+
+    // Must use the explicit library-name placeholders that prevent genre invention
+    expect(classifyPrompt).toContain('<exact_library_name_1>');
+    expect(classifyPrompt).toContain('<exact_library_name_2>');
+    expect(verifyPrompt).toContain('<exact_library_name_1>');
+    expect(verifyPrompt).toContain('<exact_library_name_2>');
+  });
+
+  test('aiClassify end-to-end: LLM returns CLARIFY with numbered prefixes and library IDs are resolved', async () => {
+    // Reproduces the full Bug 3/4 pipeline: LLM returns "1. Movies|2. Family" in a
+    // CLARIFY response. Verifies that aiClassify correctly strips the prefixes via
+    // parseClarifyFormat → mapOptionsToLibraries and returns a clarify result with
+    // real library_id values — not null or unmatched options.
+    jest.spyOn(ollamaService, 'generateWithProgress').mockResolvedValue(
+      'CLARIFY|Genre ambiguity|Content has both Animation and Family signals|Is this for the main Movies library or the Family library?|1. Movies|2. Family'
+    );
+    jest.spyOn(ollamaService, 'generate').mockResolvedValue('');
+
+    const result = await classificationService.aiClassify(metadata, libraries, signalContext, {
+      mode: 'classify'
+    });
+
+    expect(result.format).toBe('clarify');
+    expect(result.needs_clarification).toBe(true);
+    expect(result.clarification.options).toHaveLength(2);
+
+    const optionIds = result.clarification.options.map(o => o.library_id);
+    // Both library IDs must resolve — not null/undefined
+    expect(optionIds).toContain(1); // Movies
+    expect(optionIds).toContain(2); // Family
+    expect(optionIds.every(id => id != null)).toBe(true);
   });
 });

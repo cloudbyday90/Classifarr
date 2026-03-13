@@ -10,7 +10,6 @@ const db = require('../config/database');
 const embeddingService = require('./embeddingService');
 const embeddingRouter = require('./embeddingRouter');
 const { createLogger } = require('../utils/logger');
-const ragLogger = require('../utils/ragLogger');
 
 const logger = createLogger('EmbeddingMigration');
 

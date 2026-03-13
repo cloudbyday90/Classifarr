@@ -6,6 +6,10 @@
  * See LICENSE file for details.
  */
 
+const { createLogger } = require('./logger');
+
+const logger = createLogger('cookieSecurity');
+
 let warnedInsecureFallback = false;
 
 function isHttpsRequest(req) {
@@ -50,7 +54,7 @@ function resolveSecureCookieFlag(req, forceSecureConfigured) {
 
   if (!warnedInsecureFallback) {
     warnedInsecureFallback = true;
-    console.warn(
+    logger.warn(
       'FORCE_SECURE_COOKIES is enabled but request is not HTTPS; using non-secure cookies for compatibility.'
     );
   }

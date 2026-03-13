@@ -1,5 +1,46 @@
 # Classifarr Release Notes
 
+## v0.43.9-beta
+**Title: Remember Me fixed for real — plus AI classification resilience & clean logs**
+
+### 🎉 What You'll Notice
+- **Remember Me actually sticks now** — two independent bugs were causing authenticated sessions to silently expire; both are fully resolved.
+- **AI classification questions are more reliable** — clarification prompts no longer silently disappear when the AI uses numbered/bulleted options, invents genre names, or disagrees in verify mode.
+- **Fewer classification failures from transient AI/OMDb errors** — rate limits and temporary HTTP errors are now correctly retried instead of treated as permanent failures.
+- Error and application logs are automatically cleared on first startup after upgrading — fresh log baseline, no manual cleanup needed.
+
+### 📊 Quick Visual
+```text
+Reliability Improvements
+  Remember Me across restarts   [████████████] No longer wiped on container update
+  Full 30-day session window    [████████████] Was cut short at ~7 days (now fixed)
+  AI clarification delivery     [████████████] Questions no longer silently dropped
+  Rate-limit retry (AI + OMDb)  [████████████] Transient errors queued for retry
+  Log fresh start on upgrade    [████████████] Auto-cleared — clean slate every release
+```
+
+### ✨ Highlights
+- **Remember Me across restarts** — upgrading or restarting your container no longer silently signs out users who checked "Remember Me". Regular (non-remember-me) sessions are still cleared on restart as before.
+- **Full 30-day session window** — sessions were expiring after ~7 days despite "Remember Me" being checked. A mismatch between the CSRF cookie lifetime (7 days) and the refresh token lifetime (30 days) caused silent authentication failures. Both are now aligned.
+- **AI classification questions are more reliable** — clarification prompts no longer silently disappear when the AI returns numbered/bulleted option lists, uses variant names for the same library, or disagrees in verify mode. Questions now always reach you so you can confirm the right library.
+- **AI is instructed to use exact library names** — the prompt now explicitly forbids the AI from inventing genre labels ("Documentary", "Biography") as options; it must use names copied from your actual library list.
+
+### 🔧 Reliability Improvements
+- Error and application logs are automatically wiped on the first boot after this upgrade, giving a clean starting point for monitoring.
+- The CSRF token refresh path (`/auth/refresh`) is now correctly exempted from CSRF checks — the underlying httpOnly cookie already prevents cross-site abuse on that endpoint.
+- AI provider rate-limit errors (HTTP 429) are now correctly detected as temporary and queued for retry, rather than treated as permanent classification failures.
+- OMDb / enrichment lookups now correctly retry on HTTP 429, 408, 502–504, and Cloudflare edge errors (52x/530) regardless of how the HTTP client surfaces the error.
+- Queue worker stalls under database lock contention produce diagnostic log entries every 30 seconds, making slow-DB scenarios visible without requiring a restart.
+
+### 👥 Who This Helps
+- **End users:** "Remember Me" works as expected; fewer items get stuck unclassified due to AI rate limits or network blips; classification questions reliably appear when the AI is uncertain.
+- **Operators/admins:** Clean log state after upgrade; structured log output from Discord, health checks, and API key routes makes filtering easier.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.43.8-beta
 **Title: Security hardening — account protection & session integrity**
 

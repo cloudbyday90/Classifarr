@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename */
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const fs = require('fs').promises;
@@ -61,6 +62,13 @@ const POST_UPGRADE_TASKS = {
             id: 'clear_logs_0431b',
             action: 'clear_logs',
             description: 'Clear logs for fresh start in v0.43.1b-alpha'
+        }
+    ],
+    '0.43.9': [
+        {
+            id: 'clear_logs_0439',
+            action: 'clear_logs',
+            description: 'Clear logs for fresh start in v0.43.9-beta'
         }
     ]
 };

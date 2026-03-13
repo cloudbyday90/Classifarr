@@ -18,6 +18,9 @@
 
 const apiKeyService = require('../services/apiKeyService');
 const authService = require('../services/auth');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('apiKeyAuth');
 
 const WEBHOOK_ENDPOINTS = [
   '/api/webhook',
@@ -46,7 +49,7 @@ async function authenticateApiKey(req, res, next) {
     const userAgent = req.headers['user-agent'];
     
     apiKeyService.updateLastUsed(validKey.id, ip).catch(err => {
-      console.error('Error updating API key last used for key %s: %s', validKey.id, err.message);
+      logger.error('Error updating API key last used for key %s: %s', validKey.id, err.message);
     });
     
     apiKeyService.logAudit(validKey.id, 'used', {
@@ -54,14 +57,14 @@ async function authenticateApiKey(req, res, next) {
       ipAddress: ip,
       userAgent
     }).catch(err => {
-      console.error('Error logging API key audit:', err.message);
+      logger.error('Error logging API key audit:', err.message);
     });
     
     req.apiKey = validKey;
     
     next();
   } catch (error) {
-    console.error('API key authentication error:', error);
+    logger.error('API key authentication error:', { error: error.message });
     return res.status(500).json({ error: 'Authentication error' });
   }
 }
@@ -90,7 +93,7 @@ async function authenticateTokenOrApiKey(req, res, next) {
     const user = await authService.verifyToken(token);
     req.user = user;
     next();
-  } catch (error) {
+  } catch (_error) {
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
 }

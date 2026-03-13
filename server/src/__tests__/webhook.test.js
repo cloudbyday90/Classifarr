@@ -134,7 +134,7 @@ describe('WebhookService - parsePayload', () => {
       expect(result.tmdb_id).toBe(1396);
       expect(result.tvdb_id).toBe(81189);
       expect(result.request_id).toBe(789);
-      expect(result.requested_seasons).toBe(JSON.stringify([1, 2, 3, 4, 5]));
+      expect(JSON.parse(result.requested_seasons)).toEqual([1, 2, 3, 4, 5]);
       expect(result.year).toBe(2008);
     });
 
@@ -299,7 +299,7 @@ describe('WebhookService - parsePayload', () => {
       });
       const result = webhookService.parsePayload(sanitized);
 
-      expect(result.requested_seasons).toBe(JSON.stringify([1, 2]));
+      expect(JSON.parse(result.requested_seasons)).toEqual([1, 2]);
       expect(sanitized.extra).toHaveLength(1);
       expect(sanitized.extra[0].seasonNumber).toBe(1);
       expect(specialsExcluded).toBe(2);

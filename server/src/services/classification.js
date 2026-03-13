@@ -33,7 +33,6 @@ const { SignalCollector, SIGNAL_TYPES } = require('./signalCollector');
 const confidenceCalculator = require('./confidenceCalculator');
 const ragRetriever = require('./ragRetriever');
 const embeddingService = require('./embeddingService');
-const contextManager = require('./contextManager');
 const patternReinforcementService = require('./patternReinforcementService');
 const policyEngine = require('./policyEngine');
 const policyQuestionBuilder = require('./policyQuestionBuilder');
@@ -362,7 +361,7 @@ class ClassificationService {
     if (typeof requestedSeasons === 'string') {
       try {
         requestedSeasons = JSON.parse(requestedSeasons);
-      } catch (error) {
+      } catch (_error) {
         requestedSeasons = null;
       }
     }
@@ -451,7 +450,7 @@ class ClassificationService {
         'SELECT realtime_embedding_enabled FROM ai_provider_config WHERE id = 1'
       );
       return result.rows.length > 0 ? result.rows[0].realtime_embedding_enabled : true;
-    } catch (error) {
+    } catch (_error) {
       // Default to true if column doesn't exist yet (migration not run)
       return true;
     }
@@ -530,7 +529,7 @@ class ClassificationService {
         topReasonCodes,
         recentCorrelationIds: correlationIds.slice(0, 10)
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         topReasonCodes: [],
         recentCorrelationIds: []
@@ -828,6 +827,13 @@ class ClassificationService {
   isAiTransientAvailabilityError(error) {
     const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
     const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
+    const status = error?.response?.status;
+
+    // Check HTTP status directly — error.message may not contain the code
+    // for providers that only set error.response.status (e.g., Anthropic 429).
+    if (status === 429 || status === 500 || status === 502 || status === 503 || status === 504) {
+      return true;
+    }
 
     if ([
       'ECONNREFUSED',
@@ -861,6 +867,9 @@ class ClassificationService {
       'aborted',
       'incomplete stream',
       'generation ended before completion signal',
+      'rate limit',
+      'too many requests',
+      'status code 429',
       'status code 500',
       'status code 502',
       'status code 503',
@@ -887,11 +896,11 @@ class ClassificationService {
     const allowedFormats = mode === 'verify'
       ? [
           'CONFIRM|<library_number>|<brief_verification_reason>',
-          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<option1>|<option2>|<option3_optional>'
+          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<exact_library_name_1>|<exact_library_name_2>|<exact_library_name_3_optional>'
         ]
       : [
           'CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>',
-          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<option1>|<option2>|<option3_optional>'
+          'CLARIFY|<problem_summary>|<why_uncertain>|<question>|<exact_library_name_1>|<exact_library_name_2>|<exact_library_name_3_optional>'
         ];
 
     const librariesList = libraries
@@ -1019,21 +1028,28 @@ ${response}
       };
     }
 
-    if (message.includes('status code 500')) {
+    if (message.includes('status code 429') || error?.response?.status === 429) {
+      return {
+        code: 'ai_rate_limited',
+        reason: 'AI service rate limited (429) - queued for retry'
+      };
+    }
+
+    if (message.includes('status code 500') || error?.response?.status === 500) {
       return {
         code: 'ai_server_error',
         reason: 'AI service returned server error (500) - queued for retry'
       };
     }
 
-    if (message.includes('status code 502') || message.includes('status code 504')) {
+    if (message.includes('status code 502') || message.includes('status code 504') || error?.response?.status === 502 || error?.response?.status === 504) {
       return {
         code: 'ai_gateway_error',
         reason: 'AI service gateway error - queued for retry'
       };
     }
 
-    if (message.includes('status code 503')) {
+    if (message.includes('status code 503') || error?.response?.status === 503) {
       return {
         code: 'ai_unavailable',
         reason: 'AI service temporarily unavailable (503) - queued for retry'
@@ -1692,7 +1708,7 @@ ${response}
             {
               maxAttempts: 2,
               baseDelayMs: 75,
-              onRetry: ({ attempt, maxAttempts, delayMs, reasonCode, sqlState }) => {
+              onRetry: ({ attempt, maxAttempts, delayMs: _delayMs, reasonCode, sqlState }) => {
                 addEvent({
                   stage: 'policy_recheck',
                   outcome: 'retry',
@@ -2680,7 +2696,7 @@ ${response}
     return result.rows[0] || null;
   }
 
-  async checkLearnedPatterns(metadata) {
+  async checkLearnedPatterns(_metadata) {
     // Check for similar patterns based on genres, keywords, etc.
     // This is a simplified version - could be enhanced with more sophisticated ML
     const result = await db.query(
@@ -2902,7 +2918,7 @@ ${response}
     const webSearchResults = await this.enrichWithWebSearch(metadata);
 
     // Helper function to find a sensible default library
-    const getDefaultLibrary = (libraries, mediaType) => {
+    const _getDefaultLibrary = (libraries, mediaType) => {
       // Look for a general-purpose library matching the media type
       const generalNames = mediaType === 'movie'
         ? ['movies', 'films', 'general movies']
@@ -3336,7 +3352,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
               ...enrichedMetadata,
               library_name: libraryName
             });
-          } catch (embedError) {
+          } catch (_embedError) {
             logger.debug('Embedding generation deferred', { id: classificationId });
           }
         });
@@ -3617,8 +3633,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
         const addResult = await radarrService.addMovie(baseUrl, config.api_key, movieData);
         if (addResult?.alreadyExists) {
-          // 400 safety net — reached only under a race condition
-          logger.info(`Movie already in Radarr library (post-add 400): ${metadata.title}`);
+          // 400/409 safety net — reached only under a race condition
+          logger.info(`Movie already in Radarr library (post-add 400/409): ${metadata.title}`);
           routingResult.routed = true;
           routingResult.reason = 'already_in_arr';
         } else {
@@ -3803,8 +3819,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
         try {
           const addResult = await sonarrService.addSeries(baseUrl, config.api_key, seriesData);
           if (addResult?.alreadyExists) {
-            // 400 safety net — reached only under a race condition
-            logger.info(`Series already in Sonarr library (post-add 400): ${metadata.title}`);
+            // 400/409 safety net — reached only under a race condition
+            logger.info(`Series already in Sonarr library (post-add 400/409): ${metadata.title}`);
             routingResult.routed = true;
             routingResult.reason = 'already_in_arr';
           } else {
@@ -3849,7 +3865,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
       try {
         const parsed = JSON.parse(settings);
         return parsed && typeof parsed === 'object' ? parsed : {};
-      } catch (error) {
+      } catch (_error) {
         return {};
       }
     }
@@ -3872,7 +3888,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
       try {
         const parsed = JSON.parse(trimmed);
         return JSON.stringify(parsed);
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }

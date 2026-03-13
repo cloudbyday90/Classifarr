@@ -649,7 +649,7 @@ class PolicyEngine {
             }
 
             return 0;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }
@@ -703,7 +703,7 @@ class PolicyEngine {
             }
 
             return score;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }
@@ -717,7 +717,7 @@ class PolicyEngine {
             if (typeof item.keywords === 'string') {
                 try {
                     keywordsArray = JSON.parse(item.keywords);
-                } catch (e) {
+                } catch (_e) {
                     keywordsArray = [];
                 }
             } else {
@@ -760,7 +760,7 @@ class PolicyEngine {
             }
 
             return score;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }
@@ -811,7 +811,7 @@ class PolicyEngine {
             }
 
             return score;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }
@@ -840,7 +840,7 @@ class PolicyEngine {
             }
 
             return 50;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }
@@ -867,7 +867,7 @@ class PolicyEngine {
             }
 
             return 50;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }
@@ -893,7 +893,7 @@ class PolicyEngine {
             }
 
             return 50;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }
@@ -936,7 +936,7 @@ class PolicyEngine {
             }
 
             return score;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }
@@ -951,7 +951,7 @@ class PolicyEngine {
 
             const included = (config.include || []).map(t => t.toLowerCase());
             return included.includes(mediaType) ? 100 : 0;
-        } catch (error) {
+        } catch (_error) {
             return 0;
         }
     }

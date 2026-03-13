@@ -294,7 +294,7 @@ class OMDbService {
      * @param {string} type - 'movie', 'series', or 'episode'
      * @param {string} apiKey - OMDb API key
      */
-    async getByTitle(title, year, type = 'movie', apiKey) {
+    async getByTitle(title, year, type = 'movie', _apiKey) {
         let configId = null;
         const omdbRuntime = runtimeSettings.getOmdbRuntimeConfig();
         const maxRetries = omdbRuntime.maxRetries;
@@ -344,7 +344,8 @@ class OMDbService {
                     error.code === 'ENOTFOUND' ||
                     error.code === 'ECONNREFUSED' ||
                     msg.includes('socket hang up');
-                const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
+                const isCloudflareError = status === 429 || status === 502 || status === 503 || status === 504 ||
+                    (status >= 520 && status <= 527) || status === 530; // full Cloudflare CDN range
 
                 // Retry on transient network errors or Cloudflare errors
                 if ((isTransientNetworkError || isCloudflareError) && attempt < maxRetries - 1) {
@@ -418,7 +419,7 @@ class OMDbService {
      * @param {string} imdbId - IMDB ID (e.g., 'tt0133093')
      * @param {string} apiKey - OMDb API key
      */
-    async getByIMDBId(imdbId, apiKey) {
+    async getByIMDBId(imdbId, _apiKey) {
         let configId = null;
         const omdbRuntime = runtimeSettings.getOmdbRuntimeConfig();
         const maxRetries = omdbRuntime.maxRetries;
@@ -459,7 +460,8 @@ class OMDbService {
                     error.code === 'ENOTFOUND' ||
                     error.code === 'ECONNREFUSED' ||
                     msg.includes('socket hang up');
-                const isCloudflareError = status === 522 || status === 524 || status === 502 || status === 503 || status === 520 || status === 521 || status === 523;
+                const isCloudflareError = status === 429 || status === 502 || status === 503 || status === 504 ||
+                    (status >= 520 && status <= 527) || status === 530; // full Cloudflare CDN range
 
                 // Retry once on transient network errors or Cloudflare errors
                 if ((isTransientNetworkError || isCloudflareError) && attempt < maxRetries - 1) {
@@ -534,7 +536,7 @@ class OMDbService {
      * @param {string} type - 'movie', 'series', or 'episode'
      * @param {string} apiKey - OMDb API key
      */
-    async search(query, type, apiKey) {
+    async search(query, type, _apiKey) {
         let configId = null;
         try {
             await enforceRateLimit();

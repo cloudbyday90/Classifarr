@@ -20,6 +20,9 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const db = require('../config/database');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('auth');
 
 const SALT_ROUNDS = 12;
 const ACCESS_TOKEN_EXPIRY = '15m';
@@ -83,7 +86,7 @@ async function getJWTSecret() {
 
     return secret;
   } catch (error) {
-    console.error('Error getting JWT secret:', error);
+    logger.error('Error getting JWT secret:', { error: error.message });
     return process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
   }
 }
@@ -214,7 +217,7 @@ async function verifyToken(token) {
 
   try {
     return jwt.verify(token, secret);
-  } catch (error) {
+  } catch (_error) {
     throw new Error('Invalid or expired token');
   }
 }
@@ -227,7 +230,7 @@ async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
       [userId, action, ipAddress, userAgent, JSON.stringify(metadata)]
     );
   } catch (error) {
-    console.error('AUDIT LOG FAILURE:', {
+    logger.error('AUDIT LOG FAILURE:', {
       userId,
       action,
       ipAddress,
@@ -322,7 +325,7 @@ function getRefreshTokenCookieOptions(isSecure = false, rememberMe = false) {
 
 async function revokeAllRefreshTokensOnStartup() {
   const result = await db.query(
-    `UPDATE refresh_tokens SET revoked_at = NOW() WHERE revoked_at IS NULL`
+    `UPDATE refresh_tokens SET revoked_at = NOW() WHERE revoked_at IS NULL AND remember_me = false`
   );
   return result.rowCount;
 }

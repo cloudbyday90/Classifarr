@@ -47,7 +47,7 @@ class AIRouterService {
             this.configCache = result.rows[0];
             this.configCacheTime = Date.now();
             return this.configCache;
-        } catch (error) {
+        } catch (_error) {
             // Table might not exist yet
             logger.debug('AI config table not found, using defaults');
             return {

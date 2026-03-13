@@ -28,7 +28,7 @@ class TavilyService {
    */
   async testConnection(apiKey) {
     try {
-      const response = await axios.post(`${this.baseUrl}/search`, {
+      const _response = await axios.post(`${this.baseUrl}/search`, {
         api_key: apiKey,
         query: 'test',
         max_results: 1
@@ -55,7 +55,7 @@ class TavilyService {
         };
       }
 
-      const response = await axios.post(`${this.baseUrl}/search`, {
+      const _response = await axios.post(`${this.baseUrl}/search`, {
         api_key: apiKey,
         query: 'health check',
         max_results: 1

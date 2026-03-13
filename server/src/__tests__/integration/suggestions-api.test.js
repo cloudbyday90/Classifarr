@@ -20,7 +20,7 @@ const request = require('supertest');
 const express = require('express');
 const db = require('../../config/database');
 const suggestionsRouter = require('../../routes/suggestions');
-const feedbackAnalysis = require('../../services/feedbackAnalysis');
+
 
 // Create a simple express app for testing
 const app = express();

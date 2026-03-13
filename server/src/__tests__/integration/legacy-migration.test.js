@@ -267,7 +267,7 @@ describe('Legacy Migration Integration Tests', () => {
 
             const ruleId = ruleResult.rows[0].id;
 
-            await withConsoleSpy('error', async ({ getMessages }) => {
+            await withConsoleSpy('error', async ({ getMessages: _getMessages }) => {
                 const migrationChoice = {
                     type: 'preset',
                     preset_id: 9999 // Non-existent preset

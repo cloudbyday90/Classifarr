@@ -13,13 +13,11 @@ const embeddingService = require('../services/embeddingService');
 const embeddingRouter = require('../services/embeddingRouter');
 const embeddingProvider = require('../services/embeddingProvider');
 const imageEmbeddingProvider = require('../services/imageEmbeddingProvider');
-const ragRetriever = require('../services/ragRetriever');
 const embeddingMigrationService = require('../services/embeddingMigrationService');
 const patternMiningService = require('../services/patternMiningService');
 const ragLoopMetricsCollector = require('../services/ragLoopMetricsCollector');
 const ragLogger = require('../utils/ragLogger');
 const { createLogger } = require('../utils/logger');
-const ollamaService = require('../services/ollama');
 const { isMaskedToken } = require('../utils/tokenMasking');
 const { getRagLoopDefaultConfig, validateAndNormalizeRagLoopConfig } = require('../utils/ragLoopConfig');
 
@@ -82,7 +80,7 @@ const resolveImageModelsCache = (config) => {
  */
 router.post('/test-connection', async (req, res) => {
     try {
-        const { mode, host, port, model } = req.body;
+        const { mode: _mode, host: _host, port: _port, model: _model } = req.body;
         const start = Date.now();
 
         // Actually test embedding generation to get dimensions
@@ -134,7 +132,7 @@ router.get('/status', async (req, res) => {
                 if (row.key === 'avx_guard_cpu_avx') cpuAvx = row.value;
                 if (row.key === 'avx_guard_cpu_avx2') cpuAvx2 = row.value;
             }
-        } catch (settingsError) {
+        } catch (_settingsError) {
             // settings table might not exist yet
         }
 
@@ -455,7 +453,7 @@ router.post('/backfill/start', async (req, res) => {
                     });
                 }
                 processed++;
-            } catch (error) {
+            } catch (_error) {
                 failed++;
             }
         }

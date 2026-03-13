@@ -653,8 +653,24 @@ class EnrichmentRetryService {
     isTransientOmdbTransportError(error) {
         const code = String(error?.code || '').toUpperCase();
         const normalized = String(error?.message || '').toLowerCase();
+        const status = error?.response?.status;
 
-        return code === 'ECONNABORTED' ||
+        // HTTP-level transient codes — checked first because Axios HTTP errors carry
+        // a response.status but their message is just "Request failed with status code N",
+        // which will never match string-based checks like .includes('cloudflare').
+        // Cloudflare 52x/530 codes indicate infrastructure timeouts on their CDN layer
+        // and are inherently transient from the caller's perspective.
+        const isTransientHttpStatus =
+            status === 408 ||                        // Request Timeout
+            status === 429 ||                        // Too Many Requests
+            status === 502 ||                        // Bad Gateway
+            status === 503 ||                        // Service Unavailable
+            status === 504 ||                        // Gateway Timeout
+            (status >= 520 && status <= 527) ||      // Cloudflare: origin/connection errors
+            status === 530;                          // Cloudflare: origin DNS error
+
+        return isTransientHttpStatus ||
+            code === 'ECONNABORTED' ||
             code === 'ETIMEDOUT' ||
             code === 'ECONNRESET' ||
             code === 'ENOTFOUND' ||
@@ -777,7 +793,7 @@ class EnrichmentRetryService {
      * @param {Array} results - Tavily search results
      * @param {string} title - Expected title for matching
      */
-    extractImdbData(results, title) {
+    extractImdbData(results, _title) {
         for (const result of results) {
             const content = result.content || result.snippet || '';
             const url = result.url || '';

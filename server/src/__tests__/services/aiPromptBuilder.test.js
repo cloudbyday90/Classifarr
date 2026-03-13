@@ -363,7 +363,8 @@ describe('AIPromptBuilder', () => {
             expect(result).toContain('FORMAT 1 - If you are confident:');
             expect(result).toContain('CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>');
             expect(result).toContain('FORMAT 2 - If you need clarification:');
-            expect(result).toContain('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<option1>|<option2>|<option3_optional>');
+            expect(result).toContain('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<exact_library_name_1>|<exact_library_name_2>|<exact_library_name_3_optional>');
+            expect(result).toContain('option names MUST be copied exactly from the AVAILABLE LIBRARIES list below');
             expect(result).toContain('--- AVAILABLE LIBRARIES ---');
             expect(result).toContain('1. "Action Movies" (movie)');
             expect(result).toContain('2. "Drama Movies" (movie)');
@@ -390,7 +391,8 @@ describe('AIPromptBuilder', () => {
             expect(result).toContain('FORMAT 1 - CONFIRM the suggested library (if signals align):');
             expect(result).toContain('CONFIRM|<library_number>|<brief_verification_reason>');
             expect(result).toContain('FORMAT 2 - REQUEST CLARIFICATION (if signals conflict):');
-            expect(result).toContain('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<option1>|<option2>|<option3_optional>');
+            expect(result).toContain('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<exact_library_name_1>|<exact_library_name_2>|<exact_library_name_3_optional>');
+            expect(result).toContain('option names MUST be copied exactly from the AVAILABLE LIBRARIES list below');
         });
 
         it('should default to classify mode when mode not specified', () => {

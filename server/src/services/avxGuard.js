@@ -16,7 +16,7 @@ function detectCpuFlags() {
     let cpuinfo = '';
     try {
         cpuinfo = fs.readFileSync('/proc/cpuinfo', 'utf8');
-    } catch (error) {
+    } catch (_error) {
         return {
             hasAvx: null,
             hasAvx2: null,

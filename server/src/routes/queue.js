@@ -132,7 +132,7 @@ router.get('/live-stats', async (req, res) => {
         try {
             const enrichmentRetryService = require('../services/enrichmentRetryService');
             retryQueueStats = await enrichmentRetryService.getStats();
-        } catch (e) {
+        } catch (_e) {
             // Retry queue table may not exist yet
         }
 

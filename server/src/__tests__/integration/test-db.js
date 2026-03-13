@@ -29,7 +29,7 @@ db.public.registerFunction({
         try {
             db.public.getTable(name);
             return name;
-        } catch (e) {
+        } catch (_e) {
             return null;
         }
     }

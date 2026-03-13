@@ -16,8 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const sonarrService = require('../../services/sonarr');
-const webhookService = require('../../services/webhook');
+const sonarrService = require('../services/sonarr');
+const webhookService = require('../services/webhook');
 const axios = require('axios');
 
 // Mock axios for Sonarr API calls
@@ -149,7 +149,7 @@ describe('Sonarr Season Mapping Integration', () => {
       expect(parsed).toBeDefined();
       expect(parsed.tvdb_id).toBe(81189);
       expect(parsed.title).toBe('Breaking Bad');
-      expect(parsed.requested_seasons).toBe(JSON.stringify([1, 2, 3]));
+      expect(JSON.parse(parsed.requested_seasons)).toEqual([1, 2, 3]);
     });
     
     it('should parse Overseerr payload with array season format', () => {
@@ -170,7 +170,7 @@ describe('Sonarr Season Mapping Integration', () => {
       expect(parsed).toBeDefined();
       expect(parsed.tvdb_id).toBe(81189);
       expect(parsed.title).toBe('Breaking Bad');
-      expect(parsed.requested_seasons).toBe(JSON.stringify([1, 2, 3]));
+      expect(JSON.parse(parsed.requested_seasons)).toEqual([1, 2, 3]);
     });
     
     it('should sanitize payload and exclude specials when includeSpecials is false', () => {

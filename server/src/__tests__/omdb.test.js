@@ -98,15 +98,8 @@ describe('OMDbService', () => {
             const incrementSpy = jest.spyOn(omdbService, 'incrementUsageCounter');
 
             // Should now throw instead of returning null to trigger Tavily fallback
-            try {
-                const result = await omdbService.getByTitle('The Goldbergs', 2013, 'series');
-                // If we get here, test fails
-                fail(`Expected error to be thrown, but got result: ${JSON.stringify(result)}`);
-            } catch (error) {
-                // Error was thrown as expected
-                expect(error).toBeDefined();
-            }
-            
+            await expect(omdbService.getByTitle('The Goldbergs', 2013, 'series')).rejects.toBeDefined();
+
             // Should retry once before throwing
             expect(mockAxios.get).toHaveBeenCalledTimes(2);
             expect(incrementSpy).not.toHaveBeenCalled();
@@ -138,15 +131,8 @@ describe('OMDbService', () => {
                 const incrementSpy = jest.spyOn(omdbService, 'incrementUsageCounter');
 
                 // Should now throw instead of returning null to trigger Tavily fallback
-                try {
-                    const result = await omdbService.getByTitle('Test Movie', 2020, 'movie');
-                    // If we get here, test fails
-                    fail(`Expected error to be thrown for status ${statusCode}, but got result: ${JSON.stringify(result)}`);
-                } catch (error) {
-                    // Error was thrown as expected
-                    expect(error).toBeDefined();
-                }
-                
+                await expect(omdbService.getByTitle('Test Movie', 2020, 'movie')).rejects.toBeDefined();
+
                 // Should retry once before throwing
                 expect(mockAxios.get).toHaveBeenCalledTimes(2);
                 expect(incrementSpy).not.toHaveBeenCalled();
@@ -173,6 +159,61 @@ describe('OMDbService', () => {
 
             await expect(
                 omdbService.getByTitle('Test Movie 522', 2020, 'movie')
+            ).rejects.toBeDefined();
+
+            expect(mockAxios.get).toHaveBeenCalledTimes(2);
+        });
+
+        it.each([504, 525, 526, 527, 530])(
+            'should retry and throw on Cloudflare/gateway status %i',
+            async (statusCode) => {
+                const today = new Date().toISOString().split('T')[0];
+                jest.clearAllMocks();
+                db.query.mockResolvedValue({
+                    rows: [{
+                        id: 1,
+                        api_key: 'test-key',
+                        last_reset_date: today,
+                        requests_today: 0,
+                        daily_limit: 1000
+                    }]
+                });
+
+                mockAxios.get.mockRejectedValue({
+                    response: { status: statusCode },
+                    message: `Request failed with status code ${statusCode}`,
+                    code: undefined
+                });
+
+                await expect(
+                    omdbService.getByTitle('Test Movie', 2020, 'movie')
+                ).rejects.toBeDefined();
+
+                // Should retry before throwing
+                expect(mockAxios.get).toHaveBeenCalledTimes(2);
+            }
+        );
+
+        it('should retry and throw on 429 rate-limit response', async () => {
+            const today = new Date().toISOString().split('T')[0];
+            db.query.mockResolvedValue({
+                rows: [{
+                    id: 1,
+                    api_key: 'test-key',
+                    last_reset_date: today,
+                    requests_today: 0,
+                    daily_limit: 1000
+                }]
+            });
+
+            mockAxios.get.mockRejectedValue({
+                response: { status: 429 },
+                message: 'Request failed with status code 429',
+                code: undefined
+            });
+
+            await expect(
+                omdbService.getByTitle('Test Movie', 2020, 'movie')
             ).rejects.toBeDefined();
 
             expect(mockAxios.get).toHaveBeenCalledTimes(2);

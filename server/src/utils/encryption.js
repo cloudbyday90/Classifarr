@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename */
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -38,11 +39,13 @@ function tryReadKeyFromFile(filePath) {
     }
     const fileValue = fs.readFileSync(filePath, 'utf8').trim();
     if (!isValidHexKey(fileValue)) {
+      // eslint-disable-next-line no-console
       console.warn('WARNING: API encryption key file exists but is invalid. Ignoring file value.');
       return null;
     }
     return fileValue;
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn(`WARNING: Failed to read API encryption key file (${filePath}): ${error.message}`);
     return null;
   }
@@ -57,6 +60,7 @@ function tryPersistKeyToFile(filePath, key) {
     }
     return true;
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.warn(`WARNING: Failed to persist API encryption key file (${filePath}): ${error.message}`);
     return false;
   }
@@ -69,11 +73,15 @@ if (!ENCRYPTION_KEY) {
   } else {
     const generatedKey = crypto.randomBytes(32).toString('hex');
     const persisted = tryPersistKeyToFile(ENCRYPTION_KEY_FILE, generatedKey);
+    // eslint-disable-next-line no-console
     console.warn('WARNING: API_KEY_ENCRYPTION_KEY not set in environment!');
     if (persisted) {
+      // eslint-disable-next-line no-console
       console.warn(`Persisted generated encryption key to ${ENCRYPTION_KEY_FILE}.`);
+      // eslint-disable-next-line no-console
       console.warn('For explicit control, set API_KEY_ENCRYPTION_KEY to this value in your environment.');
     } else {
+      // eslint-disable-next-line no-console
       console.warn('Using a temporary in-memory key - encrypted values may become invalid on restart.');
     }
     ENCRYPTION_KEY_BYTES = Buffer.from(generatedKey, 'hex');
@@ -84,12 +92,15 @@ if (!ENCRYPTION_KEY) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error(msg);
     } else {
+      // eslint-disable-next-line no-console
       console.warn(`WARNING: ${msg}`);
       const fallbackKey = crypto.randomBytes(32).toString('hex');
       const persisted = tryPersistKeyToFile(ENCRYPTION_KEY_FILE, fallbackKey);
       if (persisted) {
+        // eslint-disable-next-line no-console
         console.warn(`Persisted generated fallback encryption key to ${ENCRYPTION_KEY_FILE}.`);
       } else {
+        // eslint-disable-next-line no-console
         console.warn('Falling back to a temporary in-memory key - encrypted values may become invalid on restart.');
       }
       ENCRYPTION_KEY_BYTES = Buffer.from(fallbackKey, 'hex');

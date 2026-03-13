@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename */
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
@@ -114,6 +115,7 @@ class FileLogger {
       }
       this.initialized = true;
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to initialize file logging:', err.message);
     }
   }
@@ -123,7 +125,7 @@ class FileLogger {
       if (!fs.existsSync(logPath)) return false;
       const stats = fs.statSync(logPath);
       return stats.size >= LOG_CONFIG.maxFileSize;
-    } catch (err) {
+    } catch (_err) {
       return false;
     }
   }
@@ -155,17 +157,20 @@ class FileLogger {
           try {
             fs.unlinkSync(rotatedPath);
           } catch (unlinkErr) {
+            // eslint-disable-next-line no-console
             console.error('Failed to delete uncompressed log file:', unlinkErr.message);
           }
           this.rotating = false;
         });
 
         output.on('error', (err) => {
+          // eslint-disable-next-line no-console
           console.error('Failed to compress log file:', err.message);
           this.rotating = false;
         });
 
         input.on('error', (err) => {
+          // eslint-disable-next-line no-console
           console.error('Failed to read log file for compression:', err.message);
           this.rotating = false;
         });
@@ -176,6 +181,7 @@ class FileLogger {
       // Clean up old rotated files
       this.cleanupRotatedFiles(logPath);
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to rotate log file:', err.message);
       this.rotating = false;
     }
@@ -204,6 +210,7 @@ class FileLogger {
         });
       }
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to cleanup rotated files:', err.message);
     }
   }
@@ -220,6 +227,7 @@ class FileLogger {
       // Append log message
       fs.appendFileSync(logPath, message + '\n', 'utf8');
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to write to log file:', err.message);
     }
   }
@@ -263,6 +271,7 @@ function cleanupOldLogs() {
       // Delete files older than maxAge
       if (now - stats.mtime.getTime() > maxAge) {
         fs.unlinkSync(filePath);
+        // eslint-disable-next-line no-console
         console.log(`Deleted old log file: ${file}`);
       } else {
         totalSize += stats.size;
@@ -279,12 +288,15 @@ function cleanupOldLogs() {
 
         fs.unlinkSync(file.path);
         totalSize -= file.size;
+        // eslint-disable-next-line no-console
         console.log(`Deleted old log file to free space: ${path.basename(file.path)}`);
       }
     }
 
+    // eslint-disable-next-line no-console
     console.log(`Log cleanup complete. Total size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
   } catch (err) {
+    // eslint-disable-next-line no-console
     console.error('Failed to cleanup old logs:', err.message);
   }
 }
@@ -361,6 +373,7 @@ class Logger {
       return result.rows[0].error_id;
     } catch (err) {
       // Don't fail if logging to DB fails
+      // eslint-disable-next-line no-console
       console.error('Failed to persist log to database:', err.message);
       return null;
     }
@@ -370,6 +383,7 @@ class Logger {
     if (this.level >= LOG_LEVELS.ERROR) {
       const formattedMsg = this.formatMessage('ERROR', message, data);
       // Synchronous logging - always succeeds
+      // eslint-disable-next-line no-console
       console.error(formattedMsg);
       fileLogger.writeMainLog(formattedMsg);
       fileLogger.writeErrorLog(formattedMsg);
@@ -382,7 +396,7 @@ class Logger {
       try {
         const errorId = await this.persistToDb('ERROR', message, data, options);
         return errorId;
-      } catch (dbErr) {
+      } catch (_dbErr) {
         // Silently ignore DB errors - we already logged to console/file
         return null;
       }
@@ -394,6 +408,7 @@ class Logger {
     if (this.level >= LOG_LEVELS.WARN) {
       const formattedMsg = this.formatMessage('WARN', message, data);
       // Synchronous logging - always succeeds
+      // eslint-disable-next-line no-console
       console.warn(formattedMsg);
       fileLogger.writeMainLog(formattedMsg);
       fileLogger.writeErrorLog(formattedMsg);
@@ -406,7 +421,7 @@ class Logger {
       try {
         const errorId = await this.persistToDb('WARN', message, data, options);
         return errorId;
-      } catch (dbErr) {
+      } catch (_dbErr) {
         // Silently ignore DB errors - we already logged to console/file
         return null;
       }
@@ -417,6 +432,7 @@ class Logger {
   info(message, data) {
     if (this.level >= LOG_LEVELS.INFO) {
       const formattedMsg = this.formatMessage('INFO', message, data);
+      // eslint-disable-next-line no-console
       console.log(formattedMsg);
       fileLogger.writeMainLog(formattedMsg);
     }
@@ -425,6 +441,7 @@ class Logger {
   debug(message, data) {
     if (this.level >= LOG_LEVELS.DEBUG) {
       const formattedMsg = this.formatMessage('DEBUG', message, data);
+      // eslint-disable-next-line no-console
       console.log(formattedMsg);
       fileLogger.writeMainLog(formattedMsg);
     }

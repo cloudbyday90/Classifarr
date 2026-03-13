@@ -18,8 +18,6 @@
 
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const crypto = require('crypto');
-const fs = require('fs').promises;
 const tls = require('tls');
 const axios = require('axios');
 const db = require('../config/database');
@@ -1281,9 +1279,9 @@ router.put('/omdb', async (req, res) => {
     // Check if activated and run in background
     if (is_active !== false) {
       const schedulerService = require('../services/scheduler');
-      console.log('OMDb settings saved - Triggering immediate gap analysis...');
+      logger.info('OMDb settings saved - Triggering immediate gap analysis...');
       schedulerService.runGapAnalysis().catch(err => {
-        console.error('Failed to trigger manual gap analysis:', err);
+        logger.error('Failed to trigger manual gap analysis:', { error: err.message });
       });
     }
 
@@ -1524,7 +1522,7 @@ router.put('/notifications', async (req, res) => {
       try {
         await discordBotService.reinitialize();
       } catch (error) {
-        console.warn('Failed to reinitialize Discord bot:', error.message);
+        logger.warn('Failed to reinitialize Discord bot:', { error: error.message });
       }
     }
 
@@ -1536,7 +1534,7 @@ router.put('/notifications', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Failed to save Discord notification config:', error.message);
+    logger.error('Failed to save Discord notification config:', { error: error.message });
     res.status(500).json({ error: error.message });
   } finally {
     client.release();
@@ -1638,7 +1636,7 @@ router.get('/discord/channel/:channelId', async (req, res) => {
     const details = await discordBotService.getChannelDetails(channelId);
     res.json(details);
   } catch (error) {
-    console.error('Error fetching Discord channel details:', error.message);
+    logger.error('Error fetching Discord channel details:', { error: error.message });
 
     // Return 200 with fallback data so frontend doesn't show "Connection Failed"
     // The "partial" flag indicates this is incomplete data
@@ -2023,7 +2021,7 @@ router.get('/setup-status', async (req, res) => {
     try {
       const usersResult = await db.query('SELECT COUNT(*) FROM users');
       usersExist = parseInt(usersResult.rows[0].count) > 0;
-    } catch (error) {
+    } catch (_error) {
       // Table might not exist yet
       usersExist = false;
     }
@@ -2163,7 +2161,7 @@ router.post('/ssl/test', sslTestLimiter, async (req, res) => {
       try {
         await fs.access(cert_path);
         results.cert_exists = true;
-      } catch (e) {
+      } catch (_e) {
         return res.json({ ...results, error: 'Certificate file not found' });
       }
     } else {
@@ -2175,7 +2173,7 @@ router.post('/ssl/test', sslTestLimiter, async (req, res) => {
       try {
         await fs.access(key_path);
         results.key_exists = true;
-      } catch (e) {
+      } catch (_e) {
         return res.json({ ...results, error: 'Private key file not found' });
       }
     } else {
@@ -2187,7 +2185,7 @@ router.post('/ssl/test', sslTestLimiter, async (req, res) => {
       try {
         await fs.access(ca_path);
         results.ca_exists = true;
-      } catch (e) {
+      } catch (_e) {
         results.ca_exists = false;
         return res.json({ ...results, error: 'CA certificate file not found' });
       }
@@ -2195,11 +2193,13 @@ router.post('/ssl/test', sslTestLimiter, async (req, res) => {
 
     // Try to load the certificate files
     try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       const certData = await fs.readFile(cert_path, 'utf8');
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       const keyData = await fs.readFile(key_path, 'utf8');
 
       // Create secure context to validate cert and key match
-      const context = tls.createSecureContext({
+      const _context = tls.createSecureContext({
         cert: certData,
         key: keyData
       });
@@ -2818,7 +2818,7 @@ router.put('/ai', async (req, res) => {
           `, [nextCache]);
         config.image_embedding_models_cache = nextCache;
         config.image_embedding_models_cache_updated_at = new Date().toISOString();
-      } catch (cacheError) {
+      } catch (_cacheError) {
         // Best-effort cache reset; do not fail request
       }
     }
@@ -2865,7 +2865,7 @@ router.put('/ai', async (req, res) => {
  */
 router.post('/ai/test', async (req, res) => {
   try {
-    const { primary_provider, api_endpoint, api_key, model } = req.body;
+    const { primary_provider, api_endpoint, api_key, model: _model } = req.body;
 
     // Handle masked API key
     let testApiKey = api_key;

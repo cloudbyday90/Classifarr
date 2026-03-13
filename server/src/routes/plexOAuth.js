@@ -20,6 +20,9 @@ const express = require('express');
 const plexOAuth = require('../services/plexOAuth');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('plexOAuth');
 
 const router = express.Router();
 
@@ -326,7 +329,7 @@ router.post('/save-server', async (req, res) => {
         });
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Failed to save Plex server:', error.message);
+        logger.error('Failed to save Plex server:', { error: error.message });
         res.status(500).json({ error: error.message });
     } finally {
         client.release();

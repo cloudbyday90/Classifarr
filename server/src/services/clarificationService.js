@@ -175,6 +175,7 @@ class ClarificationService {
       const keywords = (metadata.keywords || []).map(k => k.toLowerCase());
       const genres = (metadata.genres || []).map(g => g.toLowerCase());
       const originalLanguage = metadata.original_language || '';
+      void originalLanguage; // assigned but scoring below uses keywords/genres directly
 
       // Score each question
       const scoredQuestions = questions.map(question => {

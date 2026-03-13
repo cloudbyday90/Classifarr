@@ -551,13 +551,10 @@ describe('EmbeddingProvider', () => {
 
                 db.query.mockResolvedValue({ rows: [mockConfig] });
 
-                try {
-                    await embeddingProvider.getEmbedding('test text');
-                    fail('Should have thrown');
-                } catch (error) {
-                    expect(error.isConfigurationError).toBe(true);
-                    expect(error.name).toBe('ConfigurationError');
-                }
+                await expect(embeddingProvider.getEmbedding('test text')).rejects.toMatchObject({
+                    isConfigurationError: true,
+                    name: 'ConfigurationError'
+                });
             });
         });
 
@@ -574,7 +571,7 @@ describe('EmbeddingProvider', () => {
                 for (let i = 0; i < 10; i++) {
                     try {
                         await embeddingProvider.getEmbedding('test text');
-                    } catch (error) {
+                    } catch (_error) {
                         // Expected to throw
                     }
                 }

@@ -27,8 +27,7 @@ jest.mock('../utils/logger', () => ({
     })
 }));
 
-const db = require('../config/database');
-const embeddingService = require('../services/embeddingService');
+
 
 describe('SchedulerService (schedulerService.js)', () => {
     let schedulerService;
@@ -205,7 +204,7 @@ describe('SchedulerService (schedulerService.js)', () => {
             const dbModule = require('../config/database');
             const embeddingModule = require('../services/embeddingService');
 
-            const pendingItems = [
+            const _pendingItems = [
                 { id: 1, title: 'Movie A', media_type: 'movie', library_name: 'Movies', metadata: {}, needsText: true, needsImage: false }
             ];
 
@@ -241,9 +240,7 @@ describe('SchedulerService (schedulerService.js)', () => {
             embeddingModule.getPendingEmbeddings.mockResolvedValue(pendingItems);
             embeddingModule.generateAndStore.mockResolvedValue();
 
-            let callCount = 0;
             dbModule.query.mockImplementation((sql) => {
-                callCount++;
                 if (sql.includes('INSERT INTO backfill_runs')) {
                     return Promise.resolve({ rows: [{ id: 77 }] });
                 }

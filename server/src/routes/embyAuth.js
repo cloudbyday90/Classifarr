@@ -20,6 +20,9 @@ const express = require('express');
 const embyAuth = require('../services/embyAuth');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('embyAuth');
 
 const router = express.Router();
 
@@ -136,7 +139,7 @@ router.post('/save', async (req, res) => {
         });
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Failed to save Emby server:', error.message);
+        logger.error('Failed to save Emby server:', { error: error.message });
         res.status(500).json({ error: error.message });
     } finally {
         client.release();

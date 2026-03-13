@@ -22,7 +22,7 @@ function normalizeSignalConfig(value) {
     try {
       const parsed = JSON.parse(value);
       return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

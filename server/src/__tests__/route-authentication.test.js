@@ -30,7 +30,6 @@ jest.mock('../services/auth', () => ({
   verifyPassword: jest.fn()
 }));
 
-const db = require('../config/database');
 const authService = require('../services/auth');
 const apiRouter = require('../routes/api');
 const { ensureCsrfCookie, csrfProtection, CSRF_COOKIE_NAME } = require('../middleware/csrf');

@@ -51,7 +51,15 @@ module.exports = [
       'security/detect-child-process': 'warn',
       'security/detect-bidi-characters': 'error',
       // Common false-positive in normal property access patterns.
-      'security/detect-object-injection': 'off'
+      'security/detect-object-injection': 'off',
+      // Additional security rules for dynamic constructs.
+      'security/detect-non-literal-regexp': 'warn',
+      'security/detect-non-literal-fs-filename': 'warn',
+      // Code quality: catch dead code and coercion bugs.
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+      // Enforce logger usage over console in production code.
+      'no-console': ['warn']
     }
   },
   {
@@ -68,8 +76,23 @@ module.exports = [
         {
           selector: "CallExpression[callee.object.name='jest'][callee.property.name='spyOn'][arguments.0.name='console']",
           message: 'Use consoleHelpers (createConsoleSpy/withConsoleSpy) instead of jest.spyOn(console, ...).'
+        },
+        // Prevent .only() variants from being committed — they silently skip all other tests in CI.
+        {
+          selector: "CallExpression[callee.object.name='describe'][callee.property.name='only']",
+          message: 'describe.only() must not be committed — it silently skips all other tests in CI.'
+        },
+        {
+          selector: "CallExpression[callee.object.name='it'][callee.property.name='only']",
+          message: 'it.only() must not be committed — it silently skips all other tests in CI.'
+        },
+        {
+          selector: "CallExpression[callee.object.name='test'][callee.property.name='only']",
+          message: 'test.only() must not be committed — it silently skips all other tests in CI.'
         }
-      ]
+      ],
+      // Catch dead test variables (warn to avoid breaking in-progress work).
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }]
     }
   }
 ];

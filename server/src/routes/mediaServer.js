@@ -22,6 +22,9 @@ const plexService = require('../services/plex');
 const embyService = require('../services/emby');
 const jellyfinService = require('../services/jellyfin');
 const { maskToken, isMaskedToken } = require('../utils/tokenMasking');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('mediaServer');
 
 const router = express.Router();
 
@@ -126,7 +129,7 @@ router.post('/', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     // Don't log the error object directly if it contains sensitive data
-    console.error('Failed to save media server config:', error.message);
+    logger.error('Failed to save media server config:', { error: error.message });
     res.status(500).json({ error: error.message });
   } finally {
     client.release();
@@ -270,7 +273,7 @@ router.post('/sync', async (req, res) => {
     const idsToDelete = librariesToDelete.map(l => l.id);
 
     if (idsToDelete.length > 0) {
-      console.log(`Deleting ${idsToDelete.length} libraries that are no longer on the media server`);
+      logger.info(`Deleting ${idsToDelete.length} libraries that are no longer on the media server`);
       
       // Cascade delete logic (mirroring previous logic but scoped to specific IDs)
       await client.query(
@@ -350,10 +353,10 @@ router.post('/sync', async (req, res) => {
       // Run sync in background (don't await)
       mediaSyncService.syncLibrary(library.id, { incremental: false, batchSize: 100 })
         .then(result => {
-          console.log(`Auto-sync completed for library ${library.name}: ${result.itemsImported || 0} items`);
+          logger.info(`Auto-sync completed for library ${library.name}: ${result.itemsImported || 0} items`);
         })
         .catch(err => {
-          console.error(`Auto-sync failed for library ${library.name}:`, err.message);
+          logger.error(`Auto-sync failed for library ${library.name}:`, { error: err.message });
         });
     }
 
@@ -389,7 +392,7 @@ router.post('/ingest', async (req, res) => {
       message: `Ingestion triggered. Added ${result?.queued || 0} items to queue.`
     });
   } catch (error) {
-    console.error('Failed to trigger ingestion:', error);
+    logger.error('Failed to trigger ingestion:', { error: error.message });
     res.status(500).json({ error: error.message });
   }
 });

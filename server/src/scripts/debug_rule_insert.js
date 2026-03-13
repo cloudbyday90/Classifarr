@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+/* eslint-disable no-console */
 const db = require('../config/database');
 
 async function test() {

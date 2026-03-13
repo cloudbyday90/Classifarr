@@ -248,7 +248,7 @@ describe('graphSearch', () => {
             }]
         });
 
-        const result = await ragRetriever.graphSearch(metadata, config);
+        const _result = await ragRetriever.graphSearch(metadata, config);
 
         expect(db.query).toHaveBeenCalledTimes(1);
         const [sql, params] = db.query.mock.calls[0];

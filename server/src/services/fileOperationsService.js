@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename */
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
@@ -188,7 +189,7 @@ class FileOperationsService {
             // Preserve ownership (requires root)
             try {
                 await fs.chown(dest, srcStats.uid, srcStats.gid);
-            } catch (chownError) {
+            } catch (_chownError) {
                 // Non-fatal - often requires root
                 logger.debug('Could not preserve ownership (may require root)', { dest });
             }

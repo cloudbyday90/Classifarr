@@ -27,6 +27,24 @@ jest.mock('express-rate-limit', () => () => (req, res, next) => next());
 const authRouter = require('../../routes/auth');
 const authService = require('../../services/auth');
 
+/**
+ * Parse a named cookie value out of a supertest response's Set-Cookie header.
+ * The route uses HttpOnly cookies for token transport; this helper lets tests
+ * inspect the raw token value without relying on response body fields.
+ */
+function extractCookie(headers, name) {
+    const cookies = [].concat(headers['set-cookie'] || []);
+    for (const cookie of cookies) {
+        const [kv] = cookie.split(';');
+        const eqIdx = kv.indexOf('=');
+        if (eqIdx === -1) continue;
+        const k = kv.slice(0, eqIdx).trim();
+        const v = kv.slice(eqIdx + 1);
+        if (k === name) return v;
+    }
+    return null;
+}
+
 // Build test app - matches production setup for auth routes
 const app = express();
 app.use(express.json());
@@ -81,9 +99,11 @@ describe('Auth Routes Integration Tests', () => {
             expect(response.body.user.username).toBe('authtest_user');
             expect(response.body.user.role).toBe('admin');
             expect(response.body.user).not.toHaveProperty('password_hash');
-            expect(response.body.refreshToken).toBeDefined();
-            // Should set access_token cookie
-            expect(response.headers['set-cookie']).toBeDefined();
+            // Tokens are delivered as HttpOnly cookies, not in the JSON body
+            const setCookies = response.headers['set-cookie'];
+            expect(setCookies).toBeDefined();
+            expect(extractCookie(response.headers, 'refresh_token')).toBeTruthy();
+            expect(extractCookie(response.headers, 'access_token')).toBeTruthy();
         });
 
         test('should return 401 for wrong password', async () => {
@@ -141,29 +161,35 @@ describe('Auth Routes Integration Tests', () => {
     // ============================================================
     describe('POST /api/auth/refresh', () => {
         test('should issue new access + refresh tokens with valid refresh token', async () => {
-            // Get a real refresh token by logging in
-            const loginResp = await request(app)
+            // Use a cookie-aware agent so the refresh_token cookie set by /login
+            // is automatically forwarded to /refresh (which reads req.cookies).
+            const agent = request.agent(app);
+
+            const loginResp = await agent
                 .post('/api/auth/login')
                 .send({ identifier: 'authtest_user', password: testPassword })
                 .expect(200);
 
-            const { refreshToken } = loginResp.body;
+            const firstRefreshToken = extractCookie(loginResp.headers, 'refresh_token');
+            expect(firstRefreshToken).toBeTruthy();
 
-            const response = await request(app)
+            const response = await agent
                 .post('/api/auth/refresh')
-                .send({ refreshToken })
                 .expect(200);
 
             expect(response.body.success).toBe(true);
-            expect(response.body.refreshToken).toBeDefined();
-            expect(response.body.refreshToken).not.toBe(refreshToken);
             expect(response.body.user.username).toBe('authtest_user');
+            // A new refresh_token cookie should be set and differ from the original
+            const newRefreshToken = extractCookie(response.headers, 'refresh_token');
+            expect(newRefreshToken).toBeTruthy();
+            expect(newRefreshToken).not.toBe(firstRefreshToken);
         });
 
         test('should return 401 for invalid refresh token string', async () => {
+            // Send a garbage value via the refresh_token cookie
             await request(app)
                 .post('/api/auth/refresh')
-                .send({ refreshToken: 'this_is_not_a_valid_token' })
+                .set('Cookie', 'refresh_token=this_is_not_a_valid_token')
                 .expect(401);
         });
 
@@ -177,23 +203,25 @@ describe('Auth Routes Integration Tests', () => {
         });
 
         test('should reject an already-used refresh token (token rotation)', async () => {
-            const loginResp = await request(app)
+            const agent = request.agent(app);
+
+            const loginResp = await agent
                 .post('/api/auth/login')
                 .send({ identifier: 'authtest_user', password: testPassword })
                 .expect(200);
 
-            const { refreshToken } = loginResp.body;
+            const originalToken = extractCookie(loginResp.headers, 'refresh_token');
+            expect(originalToken).toBeTruthy();
 
-            // First use - succeeds
-            await request(app)
+            // First use via agent (cookies carry through) - succeeds, rotates token
+            await agent
                 .post('/api/auth/refresh')
-                .send({ refreshToken })
                 .expect(200);
 
-            // Second use - should be rejected (token revoked on first use)
+            // Second use of the original token (now revoked) — must be 401
             await request(app)
                 .post('/api/auth/refresh')
-                .send({ refreshToken })
+                .set('Cookie', `refresh_token=${originalToken}`)
                 .expect(401);
         });
     });
@@ -354,24 +382,38 @@ describe('Auth Routes Integration Tests', () => {
     // ============================================================
     describe('POST /api/auth/logout', () => {
         test('should logout and revoke refresh token', async () => {
-            const loginResp = await request(app)
+            const agent = request.agent(app);
+
+            const loginResp = await agent
                 .post('/api/auth/login')
                 .send({ identifier: 'authtest_user', password: testPassword })
                 .expect(200);
 
-            const { refreshToken } = loginResp.body;
+            // Capture the raw token value so we can independently verify it was revoked
+            const refreshToken = extractCookie(loginResp.headers, 'refresh_token');
+            expect(refreshToken).toBeTruthy();
 
-            const response = await request(app)
+            // Decode the stored token hash by looking it up directly
+            const tokenRows = await db.query(
+                'SELECT token_hash FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1',
+                [testUserId]
+            );
+            expect(tokenRows.rows.length).toBeGreaterThan(0);
+
+            // Logout via the agent (carries the refresh_token cookie automatically)
+            const response = await agent
                 .post('/api/auth/logout')
                 .set('Authorization', `Bearer ${testToken}`)
-                .send({ refreshToken })
                 .expect(200);
 
             expect(response.body.success).toBe(true);
 
-            // Verify token was revoked
-            const tokenData = await authService.validateRefreshToken(refreshToken);
-            expect(tokenData).toBeNull();
+            // Verify token was revoked — the row should now have revoked_at set
+            const afterRows = await db.query(
+                'SELECT revoked_at FROM refresh_tokens WHERE token_hash = $1',
+                [tokenRows.rows[0].token_hash]
+            );
+            expect(afterRows.rows[0].revoked_at).not.toBeNull();
         });
 
         test('should logout without a refresh token (cookie-only logout)', async () => {

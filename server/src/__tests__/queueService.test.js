@@ -1367,6 +1367,20 @@ describe('QueueService', () => {
             expect(sql).toMatch(/visible_at\s*=\s*NULL/);
         });
 
+        it('decrements this.processing by the number of recovered rows', async () => {
+            queueService.processing = 5;
+            db.query.mockResolvedValue({ rowCount: 3, rows: [{ id: 1 }, { id: 2 }, { id: 3 }] });
+            await queueService.recoverExpiredVisibilityTasks();
+            expect(queueService.processing).toBe(2);
+        });
+
+        it('does not decrement this.processing below zero', async () => {
+            queueService.processing = 1;
+            db.query.mockResolvedValue({ rowCount: 5, rows: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }] });
+            await queueService.recoverExpiredVisibilityTasks();
+            expect(queueService.processing).toBe(0);
+        });
+
         it('returns 0 and logs error when query fails', async () => {
             db.query.mockRejectedValue(new Error('connection lost'));
             const count = await queueService.recoverExpiredVisibilityTasks();
@@ -1388,7 +1402,7 @@ describe('QueueService', () => {
     describe('resetStaleProcessingTasks', () => {
         function makeClient(acquiredValue, rowCount = 0, rows = []) {
             return {
-                query: jest.fn().mockImplementation((sql, params) => {
+                query: jest.fn().mockImplementation((sql, _params) => {
                     if (sql && sql.includes('pg_try_advisory_xact_lock')) {
                         return Promise.resolve({ rows: [{ acquired: acquiredValue }] });
                     }

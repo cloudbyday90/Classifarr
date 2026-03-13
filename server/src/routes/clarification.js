@@ -54,7 +54,7 @@ router.get('/:classificationId', async (req, res) => {
       }
       try {
         return JSON.parse(trimmed);
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     };
@@ -82,7 +82,7 @@ router.get('/:classificationId', async (req, res) => {
  */
 router.post('/:id/respond', async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id: _id } = req.params;
     const { classificationId, questionId, responseValue, discordUserId, confidenceBefore } = req.body;
 
     if (!classificationId || !questionId || !responseValue) {

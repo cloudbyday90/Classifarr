@@ -510,7 +510,7 @@ describe('FormulaEngine', () => {
             });
 
             // Mock profile scoring (simulating pattern weight use)
-            libraryProfileService.getProfileScore.mockImplementation(async (libId, meta) => {
+            libraryProfileService.getProfileScore.mockImplementation(async (libId, _meta) => {
                 if (libId === 1) return 90; // High match for Movies (score ~80%)
                 return 50; // Neutral
             });

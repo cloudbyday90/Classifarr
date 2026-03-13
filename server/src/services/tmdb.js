@@ -19,6 +19,9 @@
 const axios = require('axios');
 const db = require('../config/database');
 const { rateLimiters } = require('../utils/rateLimiter');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('tmdb');
 
 class TMDBService {
   constructor() {
@@ -178,7 +181,7 @@ class TMDBService {
 
       return response.data;
     } catch (error) {
-      console.error(`TMDB find by external ID failed: ${error.message}`);
+      logger.error(`TMDB find by external ID failed: ${error.message}`);
       return { movie_results: [], tv_results: [] };
     }
   }
@@ -239,7 +242,7 @@ class TMDBService {
       );
       return response.data;
     } catch (error) {
-      console.error(`TMDB external IDs fetch failed: ${error.message}`);
+      logger.error(`TMDB external IDs fetch failed: ${error.message}`);
       return {};
     }
   }
@@ -286,7 +289,7 @@ class TMDBService {
         return usRating?.rating || 'NR';
       }
     } catch (error) {
-      console.error('Failed to fetch certification:', error.message);
+      logger.error('Failed to fetch certification:', { error: error.message });
       return 'NR';
     }
   }

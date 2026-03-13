@@ -17,11 +17,8 @@
  */
 
 const classificationService = require('../services/classification');
-const ragLoopHelpers = require('../utils/ragLoopHelpers');
 const db = require('../config/database');
-const tmdbService = require('../services/tmdb');
 const policyEngine = require('../services/policyEngine');
-const confidenceCalculator = require('../services/confidenceCalculator');
 const ragRetriever = require('../services/ragRetriever');
 const ragLoopResilienceManager = require('../services/ragLoopResilienceManager');
 const providerLock = require('../services/providerLock');

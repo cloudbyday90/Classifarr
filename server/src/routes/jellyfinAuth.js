@@ -20,6 +20,9 @@ const express = require('express');
 const jellyfinAuth = require('../services/jellyfinAuth');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('jellyfinAuth');
 
 const router = express.Router();
 
@@ -202,7 +205,7 @@ router.post('/save', async (req, res) => {
         });
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Failed to save Jellyfin server:', error.message);
+        logger.error('Failed to save Jellyfin server:', { error: error.message });
         res.status(500).json({ error: error.message });
     } finally {
         client.release();

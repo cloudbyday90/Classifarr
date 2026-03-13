@@ -20,9 +20,9 @@ const {
     OperationController, 
     createController,
     DEFAULT_TIMEOUT_MS,
-    DEFAULT_INITIAL_TIMEOUT_MS,
-    DEFAULT_HEARTBEAT_TIMEOUT_MS,
-    DEFAULT_HARD_TIMEOUT_MS
+    _DEFAULT_INITIAL_TIMEOUT_MS,
+    _DEFAULT_HEARTBEAT_TIMEOUT_MS,
+    _DEFAULT_HARD_TIMEOUT_MS
 } = require('../utils/operationController');
 
 describe('OperationController', () => {
@@ -108,7 +108,7 @@ describe('OperationController', () => {
             const controller = new OperationController({ timeout: 5000 });
             
             const result = await controller.run(
-                async (signal) => 'success',
+                async (_signal) => 'success',
                 'test-operation'
             );
             
@@ -131,7 +131,7 @@ describe('OperationController', () => {
             const controller = new OperationController();
             let receivedController = null;
             
-            await controller.run(async (signal, ctrl) => {
+            await controller.run(async (_signal, ctrl) => {
                 receivedController = ctrl;
             }, 'test');
             
@@ -144,7 +144,7 @@ describe('OperationController', () => {
             let caughtError = null;
             
             controller.run(
-                async (signal) => {
+                async (_signal) => {
                     await new Promise(resolve => setTimeout(resolve, 5000));
                     return 'should not reach';
                 },
@@ -309,7 +309,7 @@ describe('OperationController', () => {
             
             let caughtError = null;
             
-            controller.runStreaming(async (signal, ctrl) => {
+            controller.runStreaming(async (_signal, _ctrl) => {
                 await new Promise(resolve => setTimeout(resolve, 10000));
             }, 'no-activity').catch(err => {
                 caughtError = err;
@@ -331,7 +331,7 @@ describe('OperationController', () => {
             
             let caughtError = null;
             
-            controller.runStreaming(async (signal, ctrl) => {
+            controller.runStreaming(async (_signal, ctrl) => {
                 ctrl.recordActivity();
                 await new Promise(resolve => setTimeout(resolve, 10000));
             }, 'stall-after-start').catch(err => {
@@ -379,7 +379,7 @@ describe('OperationController', () => {
         test('can be aborted externally', async () => {
             const controller = new OperationController({ timeout: 10000 });
             
-            const promise = controller.run(async (signal) => {
+            const promise = controller.run(async (_signal) => {
                 await new Promise(resolve => setTimeout(resolve, 50000));
             }, 'abortable-operation');
             

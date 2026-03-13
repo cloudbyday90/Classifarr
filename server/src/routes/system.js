@@ -18,9 +18,11 @@
 
 const express = require('express');
 const db = require('../config/database');
-const discordBot = require('../services/discordBot');
 const healthCheckService = require('../services/healthCheckService');
 const { authenticateToken } = require('../middleware/auth');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('system');
 
 const router = express.Router();
 
@@ -200,7 +202,7 @@ router.get('/health', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Health check error:', error);
+    logger.error('Health check error:', { error: error.message });
     res.status(503).json({
       status: 'unhealthy',
       error: error.message,
@@ -331,7 +333,7 @@ router.get('/health/services', async (req, res) => {
       timestamp: services.timestamp
     });
   } catch (error) {
-    console.error('Service health check error:', error);
+    logger.error('Service health check error:', { error: error.message });
     res.status(500).json({
       error: 'Failed to check service health',
       message: error.message
@@ -351,7 +353,7 @@ router.post('/health/refresh', async (req, res) => {
     const health = await healthCheckService.runAllHealthChecks();
     res.json({ success: true, health });
   } catch (error) {
-    console.error('Health refresh error:', error);
+    logger.error('Health refresh error:', { error: error.message });
     res.status(500).json({ error: 'Failed to refresh health checks' });
   }
 });
@@ -433,7 +435,7 @@ router.get('/status', async (req, res) => {
         cpuAvx2: entries.avx_guard_cpu_avx2 || null,
         lastChecked: entries.avx_guard_last_run || null
       };
-    } catch (error) {
+    } catch (_error) {
       // settings table may not exist yet; omit pgvector info
       pgvector = null;
     }
@@ -449,7 +451,7 @@ router.get('/status', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Status check error:', error);
+    logger.error('Status check error:', { error: error.message });
     res.status(500).json({ error: 'Failed to get system status' });
   }
 });
@@ -504,7 +506,7 @@ router.get('/logs', async (req, res) => {
       total: logs.length
     });
   } catch (error) {
-    console.error('Logs fetch error:', error);
+    logger.error('Logs fetch error:', { error: error.message });
     res.status(500).json({ error: 'Failed to fetch logs' });
   }
 });
@@ -539,12 +541,14 @@ router.get('/browse-folders', async (req, res) => {
     }
 
     // Check if path exists and is a directory
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     const stats = await fs.stat(normalizedPath);
     if (!stats.isDirectory()) {
       return res.status(400).json({ error: 'Path is not a directory' });
     }
 
     // Read directory contents
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     const entries = await fs.readdir(normalizedPath, { withFileTypes: true });
 
     // Filter to directories only and sort
@@ -568,7 +572,7 @@ router.get('/browse-folders', async (req, res) => {
     if (error.code === 'EACCES') {
       return res.status(403).json({ error: 'Permission denied' });
     }
-    console.error('Browse folders error:', error);
+    logger.error('Browse folders error:', { error: error.message });
     res.status(500).json({ error: 'Failed to browse folders' });
   }
 });

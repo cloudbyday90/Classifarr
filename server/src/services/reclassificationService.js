@@ -181,7 +181,7 @@ class ReclassificationService {
      * @param {Object} params - Move parameters
      * @param {boolean} params.dryRun - If true, only test if move would succeed
      */
-    async moveMovie({ tmdbId, targetMapping, originalMapping, title, dryRun = false }) {
+    async moveMovie({ tmdbId, targetMapping, originalMapping: _originalMapping, title, dryRun = false }) {
         try {
             const { arr_config_id, arr_root_folder_path, quality_profile_id } = targetMapping;
 
@@ -299,7 +299,7 @@ class ReclassificationService {
      * @param {Object} params - Move parameters
      * @param {boolean} params.dryRun - If true, only test if move would succeed
      */
-    async moveSeries({ tvdbId, targetMapping, originalMapping, title, dryRun = false }) {
+    async moveSeries({ tvdbId, targetMapping, originalMapping: _originalMapping, title, dryRun = false }) {
         try {
             const { arr_config_id, arr_root_folder_path, quality_profile_id } = targetMapping;
 

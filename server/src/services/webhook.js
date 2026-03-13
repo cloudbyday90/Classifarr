@@ -260,7 +260,7 @@ class WebhookService {
     let payload;
     try {
       payload = JSON.parse(JSON.stringify(body));
-    } catch (error) {
+    } catch (_error) {
       payload = { ...body };
     }
 
@@ -714,8 +714,8 @@ class WebhookService {
         ['overseerr', encryptedSecret]
       );
       
-      console.log('✓ Auto-generated webhook secret key');
-      console.log('  You can view this key in Settings → Webhooks');
+      logger.info('✓ Auto-generated webhook secret key');
+      logger.info('  You can view this key in Settings → Webhooks');
       return newSecret;
     }
     
@@ -729,8 +729,8 @@ class WebhookService {
         [encryptedSecret, existing.id]
       );
       
-      console.log('✓ Auto-generated webhook secret key');
-      console.log('  You can view this key in Settings → Webhooks');
+      logger.info('✓ Auto-generated webhook secret key');
+      logger.info('  You can view this key in Settings → Webhooks');
       return newSecret;
     }
 

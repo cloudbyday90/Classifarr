@@ -18,6 +18,9 @@
 
 const axios = require('axios');
 const crypto = require('crypto');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('plexOAuth');
 
 const PLEX_TV_API = 'https://plex.tv/api/v2';
 const PLEX_AUTH_URL = 'https://app.plex.tv/auth';
@@ -89,7 +92,7 @@ class PlexOAuthService {
                 authUrl,
             };
         } catch (error) {
-            console.error('Failed to create Plex PIN:', error.message);
+            logger.error('Failed to create Plex PIN:', { error: error.message });
             throw new Error(`Failed to create Plex PIN: ${error.message}`);
         }
     }
@@ -120,7 +123,7 @@ class PlexOAuthService {
                 authToken: authToken || null,
             };
         } catch (error) {
-            console.error('Failed to check Plex PIN:', error.message);
+            logger.error('Failed to check Plex PIN:', { error: error.message });
             throw new Error(`Failed to check Plex PIN: ${error.message}`);
         }
     }
@@ -154,7 +157,7 @@ class PlexOAuthService {
                 title: response.data.title,
             };
         } catch (error) {
-            console.error('Failed to get Plex user:', error.message);
+            logger.error('Failed to get Plex user:', { error: error.message });
             throw new Error(`Failed to get Plex user: ${error.message}`);
         }
     }
@@ -205,7 +208,7 @@ class PlexOAuthService {
 
             return servers;
         } catch (error) {
-            console.error('Failed to get Plex servers:', error.message);
+            logger.error('Failed to get Plex servers:', { error: error.message });
             throw new Error(`Failed to get Plex servers: ${error.message}`);
         }
     }

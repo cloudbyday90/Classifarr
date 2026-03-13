@@ -6,7 +6,6 @@
  * Ensures policies can store and retrieve per-preset signal customizations
  */
 
-const request = require('supertest');
 const db = require('../../config/database');
 
 // Mock database for isolated testing

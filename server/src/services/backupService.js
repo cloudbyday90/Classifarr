@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename */
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const path = require('path');
@@ -413,7 +414,7 @@ class BackupService {
       // Restore Radarr/Sonarr configs with explicit column whitelisting for security
       if (backupData.data.radarrConfigs) {
         for (const config of backupData.data.radarrConfigs) {
-          const { id, created_at, updated_at, last_sync, ...data } = config;
+          const { id: _id, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = config;
           
           // Filter to only allowed columns
           const keys = Object.keys(data).filter(key => RADARR_ALLOWED_COLUMNS.includes(key));
@@ -434,7 +435,7 @@ class BackupService {
 
       if (backupData.data.sonarrConfigs) {
         for (const config of backupData.data.sonarrConfigs) {
-          const { id, created_at, updated_at, last_sync, ...data } = config;
+          const { id: _id, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = config;
           
           // Filter to only allowed columns
           const keys = Object.keys(data).filter(key => SONARR_ALLOWED_COLUMNS.includes(key));
@@ -457,7 +458,7 @@ class BackupService {
       const libraryIdMap = new Map(); // old ID -> new ID
       if (backupData.data.libraries) {
         for (const library of backupData.data.libraries) {
-          const { id: oldId, created_at, updated_at, last_sync, ...data } = library;
+          const { id: oldId, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = library;
           
           // Filter to only allowed columns
           const keys = Object.keys(data).filter(key => LIBRARY_ALLOWED_COLUMNS.includes(key));
@@ -485,7 +486,7 @@ class BackupService {
           const newLibraryId = libraryIdMap.get(policy.library_id);
           if (!newLibraryId) continue;
           
-          const { id, library_id, created_at, updated_at, ...data } = policy;
+          const { id: _id, library_id: _library_id, created_at: _created_at, updated_at: _updated_at, ...data } = policy;
           await client.query(
             `INSERT INTO library_policies (library_id, policy_type, policy_data, is_active) 
              VALUES ($1, $2, $3, $4)
@@ -518,7 +519,7 @@ class BackupService {
       // Restore label presets
       if (backupData.data.labelPresets) {
         for (const preset of backupData.data.labelPresets) {
-          const { id, created_at, ...data } = preset;
+          const { id: _id, created_at: _created_at, ...data } = preset;
           await client.query(
             `INSERT INTO label_presets (name, labels) VALUES ($1, $2)
              ON CONFLICT (name) DO UPDATE SET
@@ -617,7 +618,7 @@ class BackupService {
       // Restore path mappings
       if (backupData.data.pathMappings) {
         for (const mapping of backupData.data.pathMappings) {
-          const { id, created_at, ...data } = mapping;
+          const { id: _id, created_at: _created_at, ...data } = mapping;
           await client.query(
             `INSERT INTO path_mappings (source_path, target_path, is_active) 
              VALUES ($1, $2, $3)

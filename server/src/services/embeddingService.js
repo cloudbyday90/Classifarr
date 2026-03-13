@@ -896,7 +896,7 @@ class EmbeddingService {
             );
 
             return parseInt(result.rows[0].count) >= minCount;
-        } catch (error) {
+        } catch (_error) {
             return false;
         }
     }

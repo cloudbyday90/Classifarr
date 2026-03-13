@@ -25,7 +25,7 @@ const CONTEXT_PRIORITY = {
 /**
  * Estimated token counts for different context sections
  */
-const TOKEN_ESTIMATES = {
+const _TOKEN_ESTIMATES = {
     TITLE_METADATA: 100,      // Title, year, genres, rating
     OVERVIEW: 150,            // Media overview/description
     KEYWORDS: 50,             // Keywords list

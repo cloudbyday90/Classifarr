@@ -175,7 +175,6 @@ class ClassificationRetryService {
     const client = await this.db.pool.connect();
     try {
       for (const classificationId of ids) {
-        // eslint-disable-next-line no-await-in-loop
         const itemResult = await this.retrySingle(client, { classificationId, actor, purgeLearning, correlationId });
         results.push(itemResult);
       }

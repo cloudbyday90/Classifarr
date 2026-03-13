@@ -9,7 +9,6 @@
 const db = require('../config/database');
 const tmdbService = require('./tmdb');
 const { createLogger } = require('../utils/logger');
-const patternSignalCollector = require('./patternSignalCollector');
 const libraryProfileService = require('./libraryProfileService');
 
 const logger = createLogger('SignalCollector');

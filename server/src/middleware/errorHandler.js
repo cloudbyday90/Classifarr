@@ -39,7 +39,7 @@ function isMalformedJsonError(err, statusCode) {
  * Global error handler middleware for Express
  * Catches all unhandled errors and persists them with full context
  */
-async function errorHandler(err, req, res, next) {
+async function errorHandler(err, req, res, _next) {
   const statusCode = getStatusCode(err);
   const malformedJson = isMalformedJsonError(err, statusCode);
 

@@ -138,7 +138,7 @@ describe('Auth Service - token and persistence flows', () => {
     expect(dbArgs[1]).toBe(sha256(token));
     expect(dbArgs[2]).toBeInstanceOf(Date);
     expect(dbArgs[3]).toBe('UnitTestAgent');
-    expect(dbArgs[4]).toBe(JSON.stringify({ platform: 'linux' }));
+    expect(JSON.parse(dbArgs[4])).toEqual({ platform: 'linux' });
     expect(dbArgs[5]).toBe(false); // rememberMe defaults to false
 
     const min = Date.now() + 47 * 60 * 60 * 1000;
@@ -276,11 +276,14 @@ describe('Auth Service - token and persistence flows', () => {
     await expect(authService.cleanupExpiredTokens()).resolves.toBe(4);
   });
 
-  test('revokeAllRefreshTokensOnStartup revokes all active tokens and returns count', async () => {
+  test('revokeAllRefreshTokensOnStartup revokes only non-remember-me tokens and returns count', async () => {
     db.query.mockResolvedValueOnce({ rowCount: 7 });
     await expect(authService.revokeAllRefreshTokensOnStartup()).resolves.toBe(7);
-    expect(db.query.mock.calls[0][0]).toContain('UPDATE refresh_tokens SET revoked_at = NOW()');
-    expect(db.query.mock.calls[0][0]).toContain('WHERE revoked_at IS NULL');
+    const sql = db.query.mock.calls[0][0];
+    expect(sql).toContain('UPDATE refresh_tokens SET revoked_at = NOW()');
+    expect(sql).toContain('WHERE revoked_at IS NULL');
+    // Must NOT revoke remember_me sessions — those should survive server restarts.
+    expect(sql).toContain('remember_me = false');
   });
 
   test('verifyToken returns decoded payload when jwt.verify succeeds', async () => {

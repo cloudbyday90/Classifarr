@@ -258,7 +258,7 @@ class ContentTypeAnalyzer {
    * @param {object} metadata - Original metadata
    * @returns {boolean} Should override
    */
-  shouldOverrideGenre(detection, metadata) {
+  shouldOverrideGenre(detection, _metadata) {
     // Override if confidence is high and it's a specific content type
     const overrideTypes = ['standup', 'concert', 'anime', 'kdrama'];
     return overrideTypes.includes(detection.type) && detection.confidence >= 80;

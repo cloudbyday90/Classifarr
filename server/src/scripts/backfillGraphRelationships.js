@@ -69,7 +69,7 @@ const logger = createLogger('BackfillGraphRelationships');
 
 const BATCH_SIZE = 500;
 const PASS2_MAX_RPS = 20;          // max TMDB requests per second
-const PASS2_BATCH_SLEEP_MS = Math.ceil(1000 / PASS2_MAX_RPS) * BATCH_SIZE; // throttle across batch
+const _PASS2_BATCH_SLEEP_MS = Math.ceil(1000 / PASS2_MAX_RPS) * BATCH_SIZE; // throttle across batch
 const PASS2_MAX_RETRIES = 3;
 const INTER_BATCH_SLEEP_MS = 50;   // brief pause between Pass 1 batches to avoid starving other queries
 

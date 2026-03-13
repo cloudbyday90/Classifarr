@@ -26,7 +26,7 @@ class PatternMiningService {
             const config = await embeddingRouter.getConfig();
             // Pattern mining is enabled by default (as of v0.37.0)
             return config?.pattern_mining_enabled === true;
-        } catch (error) {
+        } catch (_error) {
             return false;
         }
     }

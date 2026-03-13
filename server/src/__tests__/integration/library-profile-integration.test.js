@@ -25,7 +25,6 @@ jest.mock('../../middleware/apiKeyAuth', () => ({
     requireReadWrite: (req, res, next) => next()
 }));
 
-const db = require('../../config/database');
 const libraryProfileService = require('../../services/libraryProfileService');
 
 // Create minimal express app for testing

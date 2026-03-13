@@ -23,7 +23,6 @@ const classificationRetryService = require('../services/classificationRetryServi
 const reclassificationService = require('../services/reclassificationService');
 const clarificationService = require('../services/clarificationService');
 const patternReinforcementService = require('../services/patternReinforcementService');
-const libraryProfileService = require('../services/libraryProfileService');
 const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector');
 const { createLogger } = require('../utils/logger');
 const { requireReadWrite } = require('../middleware/apiKeyAuth');
@@ -55,7 +54,7 @@ function safeParseJsonObject(value, fallback = {}) {
   try {
     const parsed = JSON.parse(trimmed);
     return parsed && typeof parsed === 'object' ? parsed : fallback;
-  } catch (error) {
+  } catch (_error) {
     return fallback;
   }
 }
@@ -207,7 +206,7 @@ router.get('/history', async (req, res) => {
 
     res.json({
       data: result.rows.map(row => {
-        const { total_count, ...rest } = row;
+        const { total_count: _total_count, ...rest } = row;
         return rest;
       }),
       pagination: {
@@ -535,7 +534,7 @@ router.get('/pending', async (req, res) => {
       }
       try {
         return JSON.parse(trimmed);
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     };

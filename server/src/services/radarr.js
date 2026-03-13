@@ -52,7 +52,7 @@ class RadarrService {
         timeout = (config.timeout || 30) * 1000;
       }
 
-      const response = await axios.get(`${url}/api/v3/system/status`, {
+      const _response = await axios.get(`${url}/api/v3/system/status`, {
         headers: {
           'X-Api-Key': apiKey,
         },
@@ -210,7 +210,11 @@ class RadarrService {
       });
       return response.data;
     } catch (error) {
-      // Radarr returns 400 when the movie already exists in the library
+      // Radarr v3 returns 400 (with MovieExistsValidator body) or 409 (Conflict)
+      // when the movie already exists in the library, depending on version.
+      if (error.response?.status === 409) {
+        return { alreadyExists: true };
+      }
       if (error.response?.status === 400) {
         const body = error.response.data;
         const msgs = Array.isArray(body)
@@ -302,7 +306,7 @@ class RadarrService {
       // Extract root folder from new path
       // If newPath is "/movies/4k/The Matrix (1999)", root is "/movies/4k"
       const pathParts = newPath.replace(/\/$/, '').split('/');
-      const titleFolder = pathParts.pop();
+      const _titleFolder = pathParts.pop();
       const newRootFolderPath = pathParts.join('/');
 
       // Update the movie with new path

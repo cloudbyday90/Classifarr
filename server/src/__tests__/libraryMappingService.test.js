@@ -108,7 +108,7 @@ describe('LibraryMappingService - Auto-Detect Exact Match', () => {
                 radarr: [{ id: 1, name: 'Radarr' }],
                 sonarr: [{ id: 2, name: 'Sonarr' }]
             });
-            libraryMappingService.getArrRootFolders.mockImplementation((type, configId) => {
+            libraryMappingService.getArrRootFolders.mockImplementation((type, _configId) => {
                 if (type === 'radarr') {
                     return Promise.resolve([{ id: 10, path: '/movies/Anime' }]);
                 }

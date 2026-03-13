@@ -69,7 +69,7 @@ function parseRetryAfter(header) {
             // Return null for past dates to fall back to exponential backoff
             return delay > 0 ? delay : null;
         }
-    } catch (error) {
+    } catch (_error) {
         // Invalid date format
     }
 

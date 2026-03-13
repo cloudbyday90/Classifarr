@@ -18,6 +18,9 @@
 
 const pg = require('pg');
 const { Pool } = pg;
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('database');
 
 // ─── Global int8 (bigint) type parser ─────────────────────────────────────────
 // PostgreSQL's pg driver returns BIGINT (OID 20 / int8) columns as JavaScript
@@ -73,7 +76,7 @@ const pool = new Pool({
 pool.on('error', (err) => {
   // Log the error but don't crash - the pool will recover
   // Transient connection errors are common and shouldn't kill the process
-  console.error('Unexpected error on idle client', err);
+  logger.error('Unexpected error on idle client', { error: err.message });
 });
 
 /**
@@ -113,7 +116,7 @@ async function timedQuery(text, params) {
     const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
     if (durationMs > SLOW_QUERY_THRESHOLD_MS) {
       const truncated = typeof text === 'string' ? text.slice(0, 120).replace(/\s+/g, ' ').trim() : '[non-string]';
-      console.warn(`[SLOW QUERY] ${durationMs.toFixed(2)}ms — ${truncated}`);
+      logger.warn(`[SLOW QUERY] ${durationMs.toFixed(2)}ms — ${truncated}`);
     }
   }
 }
@@ -137,9 +140,9 @@ async function withTransaction(fn) {
       await client.query('ROLLBACK');
     } catch (rollbackErr) {
       // Log rollback failure but still throw original error
-      console.error('Failed to rollback transaction', {
-        rollbackError: rollbackErr,
-        originalError: error,
+      logger.error('Failed to rollback transaction', {
+        rollbackError: rollbackErr.message,
+        originalError: error.message,
       });
     }
     throw error;

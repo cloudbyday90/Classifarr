@@ -32,8 +32,8 @@ describe('Database Resilience', () => {
             // Verify the pool.on('error') handler exists
             expect(content).toMatch(/pool\.on\(['"]error['"]/);
 
-            // Verify console.error is called for logging
-            expect(content).toMatch(/console\.error.*[Uu]nexpected error/);
+            // Verify logger.error is called for logging
+            expect(content).toMatch(/logger\.error.*[Uu]nexpected error/);
         });
     });
 
@@ -70,7 +70,7 @@ describe('Database Resilience', () => {
 
         it('should not call process.exit when pool emits an error event', () => {
             // Directly test pool error handling without requiring DB
-            const { Pool } = require('pg');
+            const { Pool: _Pool } = require('pg');
             const EventEmitter = require('events');
 
             // Create a mock pool that extends EventEmitter
@@ -606,8 +606,17 @@ describe('Database Resilience', () => {
     });
 
     describe('withTransaction() rollback error logging', () => {
-        it('logs rollback errors to console.error', async () => {
+        it('logs rollback errors to logger.error', async () => {
             jest.resetModules();
+            const mockLoggerError = jest.fn();
+            jest.mock('../utils/logger', () => ({
+                createLogger: jest.fn(() => ({
+                    info: jest.fn(),
+                    warn: jest.fn(),
+                    error: mockLoggerError,
+                    debug: jest.fn(),
+                }))
+            }));
             const mockClient = {
                 query: jest.fn()
                     .mockResolvedValueOnce({}) // BEGIN
@@ -622,15 +631,14 @@ describe('Database Resilience', () => {
                 }))
             }));
             const db = require('../config/database');
-            const errSpy = createConsoleSpy('error', { suppress: true });
             try {
                 await expect(db.withTransaction(jest.fn().mockRejectedValue(new Error('fn failed')))).rejects.toThrow('fn failed');
-                expect(errSpy.spy).toHaveBeenCalledWith(
+                expect(mockLoggerError).toHaveBeenCalledWith(
                     'Failed to rollback transaction',
-                    expect.objectContaining({ rollbackError: expect.any(Error) })
+                    expect.objectContaining({ rollbackError: expect.any(String) })
                 );
             } finally {
-                errSpy.restore();
+                // no spy to restore
             }
         });
     });

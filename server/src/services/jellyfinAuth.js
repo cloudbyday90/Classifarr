@@ -18,6 +18,9 @@
 
 const axios = require('axios');
 const crypto = require('crypto');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('jellyfinAuth');
 
 // Classifarr identification headers for Jellyfin API
 const getJellyfinHeaders = (token = null) => {
@@ -85,7 +88,7 @@ class JellyfinAuthService {
 
             return response.data === true;
         } catch (error) {
-            console.error('Failed to check Quick Connect status:', error.message);
+            logger.error('Failed to check Quick Connect status:', { error: error.message });
             return false;
         }
     }
@@ -114,7 +117,7 @@ class JellyfinAuthService {
                 secret: response.data.Secret,
             };
         } catch (error) {
-            console.error('Failed to initiate Quick Connect:', error.message);
+            logger.error('Failed to initiate Quick Connect:', { error: error.message });
             return {
                 success: false,
                 error: error.response?.data?.Message || error.message,
@@ -178,7 +181,7 @@ class JellyfinAuthService {
                 serverId: response.data.ServerId,
             };
         } catch (error) {
-            console.error('Failed to authenticate with Quick Connect:', error.message);
+            logger.error('Failed to authenticate with Quick Connect:', { error: error.message });
             return {
                 success: false,
                 error: error.response?.data?.Message || error.message,
@@ -217,7 +220,7 @@ class JellyfinAuthService {
                 isAdmin: response.data.User?.Policy?.IsAdministrator,
             };
         } catch (error) {
-            console.error('Failed to authenticate with password:', error.message);
+            logger.error('Failed to authenticate with password:', { error: error.message });
             return {
                 success: false,
                 error: error.response?.data?.Message || error.message || 'Authentication failed',

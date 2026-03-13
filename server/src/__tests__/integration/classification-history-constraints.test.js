@@ -120,3 +120,115 @@ describe('Migration: classification_history CHECK constraints', () => {
         });
     });
 });
+
+/**
+ * Integration tests for CLARIFY result storage in classification_history.
+ *
+ * Covers the end-to-end persistence path for the CLARIFY format:
+ *   AI response → parseClarifyFormat() → mapOptionsToLibraries() → logClassification() → DB
+ *
+ * Specifically validates that when a CLARIFY policy_question with resolved library_id
+ * values is stored in the policy_question JSONB column, those values survive the
+ * round-trip and can be retrieved intact for the decision UI and Discord bot.
+ */
+describe('CLARIFY result storage: policy_question round-trip', () => {
+    let libraryId;
+
+    beforeAll(async () => {
+        // Use an existing active library, or insert a throwaway one for isolation
+        const existingLib = await db.query(
+            'SELECT id, name FROM libraries WHERE is_active = true LIMIT 1'
+        );
+        if (existingLib.rows.length > 0) {
+            libraryId = existingLib.rows[0].id;
+        } else {
+            // Insert a minimal test library so the FK is satisfied
+            const ins = await db.query(
+                `INSERT INTO libraries (name, external_id, media_type, is_active)
+                 VALUES ('CLARIFY Test Library', 'test-clarify-library', 'movie', true)
+                 RETURNING id`
+            );
+            libraryId = ins.rows[0].id;
+        }
+    });
+
+    it('stores and retrieves CLARIFY options with library_id intact', async () => {
+        if (!libraryId) {
+            return; // skip if DB has no libraries
+        }
+
+        // Simulate what parseClarifyFormat() + mapOptionsToLibraries() produces
+        // after the numbered-prefix fix is applied (library_id is now populated).
+        const policyQuestion = {
+            problem_summary: 'Could be either a drama or a documentary',
+            why_uncertain: 'Genre signals conflict',
+            question: 'Which library should this title go to?',
+            options: [
+                { label: 'Drama Movies', library_id: libraryId, library_name: 'Drama Movies' },
+                { label: 'Documentaries', library_id: null, library_name: null }
+            ],
+            generated_at: new Date().toISOString(),
+            signal_breakdown: [],
+            calculated_confidence: 55
+        };
+
+        // normalizePolicyQuestion() in classification.js JSON.stringifies the object
+        const policyQuestionStr = JSON.stringify(policyQuestion);
+
+        // INSERT simulating what logClassification() writes for an awaiting_decision row
+        const insertResult = await db.query(
+            `INSERT INTO classification_history
+                (title, media_type, method, status, confidence, policy_question)
+             VALUES
+                ($1, 'movie', 'ai_analysis', 'awaiting_decision', 55, $2::jsonb)
+             RETURNING id`,
+            ['CLARIFY Storage Test', policyQuestionStr]
+        );
+        const rowId = insertResult.rows[0].id;
+
+        try {
+            // Read back and verify round-trip
+            const readResult = await db.query(
+                'SELECT policy_question FROM classification_history WHERE id = $1',
+                [rowId]
+            );
+            const stored = readResult.rows[0].policy_question;
+
+            expect(stored).not.toBeNull();
+            expect(stored.options).toHaveLength(2);
+
+            // First option's library_id should survive the JSONB round-trip
+            expect(stored.options[0].library_id).toBe(libraryId);
+            expect(stored.options[0].library_name).toBe('Drama Movies');
+            expect(stored.options[0].label).toBe('Drama Movies');
+
+            // Second option had no resolved library — library_id stays null
+            expect(stored.options[1].library_id).toBeNull();
+        } finally {
+            await db.query('DELETE FROM classification_history WHERE id = $1', [rowId]);
+        }
+    });
+
+    it('stores awaiting_decision status when needs_clarification is true', async () => {
+        if (!libraryId) {
+            return; // skip if DB has no libraries
+        }
+
+        // When logClassification() receives a CLARIFY result, status is 'awaiting_decision'
+        // and library_id is NULL (no premature assignment). Verify this constraint allows
+        // awaiting_decision + NULL library_id.
+        const insertResult = await db.query(
+            `INSERT INTO classification_history
+                (title, media_type, method, status, confidence, library_id)
+             VALUES
+                ($1, 'movie', 'ai_analysis', 'awaiting_decision', 55, NULL)
+             RETURNING id`,
+            ['CLARIFY Awaiting Decision Test']
+        );
+        const rowId = insertResult.rows[0].id;
+        await db.query('DELETE FROM classification_history WHERE id = $1', [rowId]);
+
+        // If we got here without a constraint error, the status+NULL library_id combo is valid
+        expect(rowId).toBeTruthy();
+    });
+});

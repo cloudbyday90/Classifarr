@@ -8,29 +8,27 @@
  * 3. Tavily result parsing fix (results array extraction)
  */
 
-const path = require('path');
-
 describe('v0.37.1 Regression Tests', () => {
     describe('Scheduler Module Imports', () => {
         test('scheduler.js exports runGapAnalysis method', () => {
-            const scheduler = require('../../services/scheduler');
+            const scheduler = require('../services/scheduler');
             expect(typeof scheduler.runGapAnalysis).toBe('function');
         });
 
         test('schedulerService.js does NOT export runPatternAnalysis (deprecated v0.37.5)', () => {
-            const schedulerService = require('../../services/schedulerService');
+            const schedulerService = require('../services/schedulerService');
             // runPatternAnalysis was deprecated in v0.37.5-alpha as part of Library Profile redesign
             expect(schedulerService.runPatternAnalysis).toBeUndefined();
         });
 
         test('scheduler.js does NOT have runPatternAnalysis', () => {
-            const scheduler = require('../../services/scheduler');
+            const scheduler = require('../services/scheduler');
             // This should be undefined since runPatternAnalysis is on schedulerService
             expect(scheduler.runPatternAnalysis).toBeUndefined();
         });
 
         test('schedulerService.js does NOT have runGapAnalysis', () => {
-            const schedulerService = require('../../services/schedulerService');
+            const schedulerService = require('../services/schedulerService');
             // This should be undefined since runGapAnalysis is on scheduler
             expect(schedulerService.runGapAnalysis).toBeUndefined();
         });
@@ -40,7 +38,7 @@ describe('v0.37.1 Regression Tests', () => {
         let enrichmentRetryService;
 
         beforeAll(() => {
-            enrichmentRetryService = require('../../services/enrichmentRetryService');
+            enrichmentRetryService = require('../services/enrichmentRetryService');
         });
 
         test('extractImdbData correctly processes array of results', () => {
@@ -101,12 +99,12 @@ describe('v0.37.1 Regression Tests', () => {
 
     describe('MediaSync Library Existence Check', () => {
         test('mediaSync service has upsertMediaItem method', () => {
-            const mediaSync = require('../../services/mediaSync');
+            const mediaSync = require('../services/mediaSync');
             expect(typeof mediaSync.upsertMediaItem).toBe('function');
         });
 
         test('mediaSync service has upsertCollection method', () => {
-            const mediaSync = require('../../services/mediaSync');
+            const mediaSync = require('../services/mediaSync');
             expect(typeof mediaSync.upsertCollection).toBe('function');
         });
     });

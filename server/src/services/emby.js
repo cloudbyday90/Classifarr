@@ -123,12 +123,12 @@ class EmbyService {
         name: item.Name,
         item_count: item.ChildCount || 0,
       }));
-    } catch (error) {
+    } catch (_error) {
       return [];
     }
   }
 
-  async searchByProviderIds(url, apiKey, tmdbId, mediaType) {
+  async searchByProviderIds(url, apiKey, tmdbId, _mediaType) {
     try {
       const response = await axios.get(`${url}/Items`, {
         headers: {
@@ -142,7 +142,7 @@ class EmbyService {
 
       const items = response.data.Items || [];
       return items.length > 0 ? items[0] : null;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

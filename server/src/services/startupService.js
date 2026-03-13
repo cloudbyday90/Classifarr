@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+/* eslint-disable security/detect-non-literal-fs-filename */
 const fs = require('fs');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');

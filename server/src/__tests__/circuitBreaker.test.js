@@ -90,10 +90,15 @@ describe('CircuitBreaker', () => {
 
     describe('OPEN state', () => {
         beforeEach(() => {
+            jest.useFakeTimers();
             // Trigger OPEN state
             circuitBreaker.recordFailure(new Error('test'));
             circuitBreaker.recordFailure(new Error('test'));
             circuitBreaker.recordFailure(new Error('test'));
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
         });
 
         it('should reject requests', () => {
@@ -101,12 +106,10 @@ describe('CircuitBreaker', () => {
             expect(circuitBreaker.metrics.rejectedRequests).toBe(1);
         });
 
-        it('should transition to HALF_OPEN after recovery timeout', (done) => {
-            setTimeout(() => {
-                expect(circuitBreaker.isAllowed()).toBe(true);
-                expect(circuitBreaker.state).toBe(STATES.HALF_OPEN);
-                done();
-            }, 1100);
+        it('should transition to HALF_OPEN after recovery timeout', () => {
+            jest.advanceTimersByTime(1100);
+            expect(circuitBreaker.isAllowed()).toBe(true);
+            expect(circuitBreaker.state).toBe(STATES.HALF_OPEN);
         });
 
         it('should track rejected requests', () => {
@@ -119,17 +122,20 @@ describe('CircuitBreaker', () => {
     });
 
     describe('HALF_OPEN state', () => {
-        beforeEach((done) => {
+        beforeEach(() => {
+            jest.useFakeTimers();
             // Trigger OPEN state
             circuitBreaker.recordFailure(new Error('test'));
             circuitBreaker.recordFailure(new Error('test'));
             circuitBreaker.recordFailure(new Error('test'));
 
-            // Wait for transition to HALF_OPEN
-            setTimeout(() => {
-                circuitBreaker.isAllowed(); // Trigger transition
-                done();
-            }, 1100);
+            // Advance past recovery timeout and trigger HALF_OPEN transition
+            jest.advanceTimersByTime(1100);
+            circuitBreaker.isAllowed(); // Trigger transition
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
         });
 
         it('should allow limited requests', () => {

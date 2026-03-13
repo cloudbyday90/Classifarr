@@ -196,8 +196,7 @@ describe('EmbeddingService', () => {
             const vector = [0.1, 0.2, 0.3];
             db.query.mockResolvedValue({ rowCount: 1, rows: [{ id: 100 }] });
 
-            // Pass object as 2nd arg
-            const result = await embeddingService.storeEmbedding(123, {
+            const _result = await embeddingService.storeEmbedding(123, {
                 embedding: vector,
                 dims: 3,
                 provider: 'ollama',
@@ -397,7 +396,7 @@ describe('EmbeddingService', () => {
     describe('storeImageEmbedding', () => {
         it('auto-heals image vector schema on dimension mismatch using pinned transaction', async () => {
             let callCount = 0;
-            db.query.mockImplementation(async (sql) => {
+            db.query.mockImplementation(async (_sql) => {
                 callCount += 1;
                 if (callCount === 1) {
                     throw new Error('expected 2000 dimensions, not 768');

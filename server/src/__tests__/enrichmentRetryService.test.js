@@ -1066,4 +1066,68 @@ describe('EnrichmentRetryService', () => {
             expect(result.queued).toBe(0);
         });
     });
+
+    describe('isTransientOmdbTransportError', () => {
+        const httpError = (status) => {
+            const err = new Error(`Request failed with status code ${status}`);
+            err.response = { status };
+            return err;
+        };
+
+        const nodeError = (code, message = 'network error') => {
+            const err = new Error(message);
+            err.code = code;
+            return err;
+        };
+
+        // Cloudflare 52x range — the exact class of error that triggered this bug
+        it.each([520, 521, 522, 523, 524, 525, 526, 527, 530])(
+            'should return true for Cloudflare HTTP %i',
+            (status) => {
+                expect(service.isTransientOmdbTransportError(httpError(status))).toBe(true);
+            }
+        );
+
+        it.each([408, 429, 502, 503, 504])(
+            'should return true for standard transient HTTP %i',
+            (status) => {
+                expect(service.isTransientOmdbTransportError(httpError(status))).toBe(true);
+            }
+        );
+
+        it.each([400, 401, 403, 404, 422])(
+            'should return false for non-transient HTTP %i',
+            (status) => {
+                expect(service.isTransientOmdbTransportError(httpError(status))).toBe(false);
+            }
+        );
+
+        it.each(['ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN'])(
+            'should return true for Node.js code %s',
+            (code) => {
+                expect(service.isTransientOmdbTransportError(nodeError(code))).toBe(true);
+            }
+        );
+
+        it('should return true when message contains "timeout"', () => {
+            expect(service.isTransientOmdbTransportError(new Error('OMDb API timeout'))).toBe(true);
+        });
+
+        it('should return true when message contains "cloudflare"', () => {
+            expect(service.isTransientOmdbTransportError(new Error('cloudflare error'))).toBe(true);
+        });
+
+        it('should return true when message contains "socket hang up"', () => {
+            expect(service.isTransientOmdbTransportError(new Error('socket hang up'))).toBe(true);
+        });
+
+        it('should return false for a plain non-transient error', () => {
+            expect(service.isTransientOmdbTransportError(new Error('OMDb not found'))).toBe(false);
+        });
+
+        it('should return false for null/undefined', () => {
+            expect(service.isTransientOmdbTransportError(null)).toBe(false);
+            expect(service.isTransientOmdbTransportError(undefined)).toBe(false);
+        });
+    });
 });

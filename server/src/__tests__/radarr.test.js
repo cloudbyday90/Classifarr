@@ -285,6 +285,15 @@ describe('RadarrService', () => {
             expect(result).toEqual({ alreadyExists: true });
         });
 
+        it('should return alreadyExists:true when Radarr returns 409 Conflict', async () => {
+            const err = new Error('Request failed with status code 409');
+            err.response = { status: 409, data: {} };
+            mockAxios.post.mockRejectedValue(err);
+
+            const result = await service.addMovie('http://localhost:7878', 'test-key', { tmdbId: 603 });
+            expect(result).toEqual({ alreadyExists: true });
+        });
+
         it('should throw on non-exists 400 errors', async () => {
             const err = new Error('Request failed with status code 400');
             err.response = {

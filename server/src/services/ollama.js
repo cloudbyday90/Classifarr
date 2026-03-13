@@ -685,7 +685,7 @@ class OllamaService {
       const modelExists = models.some(m => m.name === model || m.name.startsWith(model));
 
       if (!modelExists) {
-        console.log(`[Ollama] Embedding model ${model} not found, attempting to pull...`);
+        logger.info(`[Ollama] Embedding model ${model} not found, attempting to pull...`);
         await this.pullModel(model, signal);
       }
 
@@ -714,9 +714,9 @@ class OllamaService {
   async pullModel(model, signal = null) {
     try {
       const config = await this.getConfig();
-      console.log(`[Ollama] Pulling model: ${model}`);
+      logger.info(`[Ollama] Pulling model: ${model}`);
 
-      const response = await axios.post(`${config.baseUrl}/api/pull`, {
+      const _response = await axios.post(`${config.baseUrl}/api/pull`, {
         name: model,
         stream: false,
       }, {
@@ -724,13 +724,13 @@ class OllamaService {
         signal: signal
       });
 
-      console.log(`[Ollama] Model ${model} pulled successfully`);
+      logger.info(`[Ollama] Model ${model} pulled successfully`);
       return true;
     } catch (error) {
       if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
         throw error;
       }
-      console.error(`[Ollama] Failed to pull model ${model}: ${error.message}`);
+      logger.error(`[Ollama] Failed to pull model ${model}: ${error.message}`);
       throw new Error(`Failed to pull model ${model}: ${error.message}`);
     }
   }

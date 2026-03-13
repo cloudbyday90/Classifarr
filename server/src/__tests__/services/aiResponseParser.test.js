@@ -262,6 +262,69 @@ describe('AIResponseParser', () => {
             const result = aiResponseParser.parseClarifyFormat(response, context);
             expect(result).toBeNull();
         });
+
+        // ── Pipeline tests: prefix-stripping + dedup through the full parse() chain ──
+
+        it('should parse CLARIFY options with LLM-style numbered prefixes and populate library_id', () => {
+            // Reproduces the Bug 3 scenario: LLM returns "1. Action Movies" instead of
+            // "Action Movies". Verifies the prefix-strip fix is wired all the way through
+            // parseClarifyFormat → mapOptionsToLibraries → library lookup.
+            const response = 'CLARIFY|Genre ambiguity|Signals conflict between action and drama|Which library is correct?|1. Action Movies|2. Drama Movies';
+            const context = {
+                libraries: mockLibraries,
+                metadata: mockMetadata
+            };
+
+            const result = aiResponseParser.parse(response, context);
+
+            expect(result.format).toBe('clarify');
+            expect(result.needs_clarification).toBe(true);
+            expect(result.clarification.options).toHaveLength(2);
+            // Options must resolve to real library IDs — not null
+            expect(result.clarification.options[0].library_id).toBe(1);
+            expect(result.clarification.options[0].library_name).toBe('Action Movies');
+            expect(result.clarification.options[1].library_id).toBe(2);
+            expect(result.clarification.options[1].library_name).toBe('Drama Movies');
+        });
+
+        it('should deduplicate options that resolve to the same library through the parse() pipeline', () => {
+            // LLM offers "Action Movies" and "action movies" — both strip/match to id:1.
+            // After dedup, only one option should survive; parseClarifyFormat requires ≥2
+            // distinct libraries, so the result must fall through rather than present a
+            // single-choice clarification that the user cannot meaningfully act on.
+            const response = 'CLARIFY|Ambiguous|Both options are the same library|Which do you prefer?|Action Movies|action movies';
+            const context = {
+                libraries: mockLibraries,
+                signalContext: mockSignalContext,
+                metadata: mockMetadata
+            };
+
+            const result = aiResponseParser.parse(response, context);
+
+            // Only 1 distinct library after dedup → parseClarifyFormat returns null
+            // → falls through to narrative salvage (signalContext present) or fallback
+            expect(result.format).not.toBe('clarify');
+        });
+
+        it('should fall through to narrative_clarify when CLARIFY options are all unrecognized and signalContext has suggestedLibrary', () => {
+            // Bug 4 scenario: AI invents genre names as options. After mapOptionsToLibraries
+            // drops all of them, parseClarifyFormat returns null and parse() continues to
+            // parseNarrativeSuggestion. With suggestedLibrary present, the salvage path
+            // should produce narrative_clarify so the user gets to decide — not a silent fallback.
+            const response = 'CLARIFY|Genre unclear|Could be documentary or biography|What genre is this?|Documentary|Biography|Nature';
+            const context = {
+                libraries: mockLibraries, // none of those genre names exist
+                signalContext: mockSignalContext, // has suggestedLibrary
+                metadata: mockMetadata
+            };
+
+            const result = aiResponseParser.parse(response, context);
+
+            expect(result.format).toBe('narrative_clarify');
+            expect(result.needs_clarification).toBe(true);
+            // The salvage path surfaces the pre-calculated suggested library
+            expect(result.library.name).toBe('Action Movies');
+        });
     });
 
     describe('parse (main method)', () => {
@@ -302,8 +365,13 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context, { mode: 'verify' });
 
-            expect(result.format).toBe('fallback');
-            expect(result.parse_failure_reason).toBe('no_format_matched');
+            // CONFIDENT is not a valid verify-mode format.
+            // Because signalContext.suggestedLibrary is present, the narrative
+            // salvage path fires and produces a clarification (narrative_clarify)
+            // rather than a raw fallback — the user still gets to decide.
+            expect(result.format).toBe('narrative_clarify');
+            expect(result.needs_clarification).toBe(true);
+            expect(result.library.name).toBe('Action Movies');
         });
 
         it('should fall back to CLARIFY when others are not present', () => {
@@ -400,6 +468,53 @@ describe('AIResponseParser', () => {
             expect(result.library).toEqual(libraries[0]);
             expect(result.confidence).toBe(62);
             expect(result.policy_question.question).toContain('TV Shows');
+        });
+
+        it('should salvage narrative disagreement in verify mode using signalContext.suggestedLibrary', () => {
+            const libraries = [
+                { id: 1, name: 'Comedy and Standup', media_type: 'tv' },
+                { id: 2, name: 'Documentary', media_type: 'tv' },
+                { id: 3, name: 'Family', media_type: 'tv' },
+            ];
+            // AI response names the suggested library while objecting to it —
+            // the salvage path should NOT use this name as the target library
+            const response = 'The media item is a nature documentary about Costa Rica. The suggested library is "Comedy and Standup." The confidence score is very low (6%). The library profile shows a strong preference for comedy,';
+            const context = {
+                libraries,
+                metadata: { title: 'World Natural Heritage Costa Rica: Guanacaste National Park', media_type: 'tv' },
+                signalContext: {
+                    confidence: 6,
+                    suggestedLibrary: { id: 1, name: 'Comedy and Standup' },
+                    breakdown: []
+                }
+            };
+
+            const result = aiResponseParser.parse(response, context, { mode: 'verify' });
+
+            expect(result.format).toBe('narrative_clarify');
+            expect(result.needs_clarification).toBe(true);
+            // Contested library is surfaced as first option so user can confirm or override
+            expect(result.library.name).toBe('Comedy and Standup');
+            expect(result.policy_question.question).toContain('Comedy and Standup');
+            expect(result.policy_question.question).toContain('disagreed');
+            // Alternatives from library list are included
+            const optionNames = result.policy_question.options.map(o => o.library_name);
+            expect(optionNames).toContain('Comedy and Standup');
+            expect(optionNames.length).toBeGreaterThanOrEqual(2);
+        });
+
+        it('should return fallback in verify mode when narrative response lacks signalContext.suggestedLibrary', () => {
+            const libraries = [{ id: 1, name: 'Movies', media_type: 'movie' }];
+            const response = 'This is some narrative response without useful content.';
+            const context = {
+                libraries,
+                metadata: { title: 'Some Movie' },
+                signalContext: { confidence: 50 }  // no suggestedLibrary
+            };
+
+            const result = aiResponseParser.parse(response, context, { mode: 'verify' });
+
+            expect(result.format).toBe('fallback');
         });
     });
 

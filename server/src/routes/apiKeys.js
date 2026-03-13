@@ -20,6 +20,9 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const apiKeyService = require('../services/apiKeyService');
 const { authenticateToken } = require('../middleware/auth');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('apiKeys');
 
 const router = express.Router();
 
@@ -70,11 +73,11 @@ router.post('/', authenticateToken, apiKeyLimiter, async (req, res) => {
     );
     
     // Log key creation (prefix only)
-    console.log(`API key created: ${apiKey.key_prefix}... by user ${req.user.username}`);
+    logger.info(`API key created: ${apiKey.key_prefix}... by user ${req.user.username}`);
     
     res.json(apiKey);
   } catch (error) {
-    console.error('Error creating API key:', error);
+    logger.error('Error creating API key:', { error: error.message });
     res.status(500).json({ error: 'Failed to create API key' });
   }
 });
@@ -91,7 +94,7 @@ router.get('/', authenticateToken, apiKeyLimiter, async (req, res) => {
     const keys = await apiKeyService.listApiKeys();
     res.json(keys);
   } catch (error) {
-    console.error('Error listing API keys:', error);
+    logger.error('Error listing API keys:', { error: error.message });
     res.status(500).json({ error: 'Failed to list API keys' });
   }
 });
@@ -123,7 +126,7 @@ router.get('/:id/reveal', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to retrieve API key' });
     }
     
-    console.log(`API key revealed: ${apiKey.key_prefix}... by user ${req.user.username}`);
+    logger.info(`API key revealed: ${apiKey.key_prefix}... by user ${req.user.username}`);
     
     res.json({ 
       id: apiKey.id,
@@ -133,7 +136,7 @@ router.get('/:id/reveal', authenticateToken, async (req, res) => {
       permissions: apiKey.permissions,
     });
   } catch (error) {
-    console.error('Error revealing API key:', error);
+    logger.error('Error revealing API key:', { error: error.message });
     res.status(500).json({ error: 'Failed to reveal API key' });
   }
 });
@@ -164,11 +167,11 @@ router.patch('/:id', authenticateToken, apiKeyLimiter, async (req, res) => {
       return res.status(404).json({ error: 'API key not found' });
     }
     
-    console.log(`API key updated: ${apiKey.key_prefix}... by user ${req.user.username}`);
+    logger.info(`API key updated: ${apiKey.key_prefix}... by user ${req.user.username}`);
     
     res.json(apiKey);
   } catch (error) {
-    console.error('Error updating API key:', error);
+    logger.error('Error updating API key:', { error: error.message });
     res.status(500).json({ error: 'Failed to update API key' });
   }
 });
@@ -194,11 +197,11 @@ router.delete('/:id', authenticateToken, apiKeyLimiter, async (req, res) => {
       return res.status(404).json({ error: 'API key not found' });
     }
     
-    console.log(`API key revoked: ${apiKey.key_prefix}... by user ${req.user.username}`);
+    logger.info(`API key revoked: ${apiKey.key_prefix}... by user ${req.user.username}`);
     
     res.json({ message: 'API key revoked successfully' });
   } catch (error) {
-    console.error('Error deleting API key:', error);
+    logger.error('Error deleting API key:', { error: error.message });
     res.status(500).json({ error: 'Failed to revoke API key' });
   }
 });

@@ -375,7 +375,8 @@ class AIPromptBuilder {
             lines.push('CONFIRM|<library_number>|<brief_verification_reason>');
             lines.push('');
             lines.push('FORMAT 2 - REQUEST CLARIFICATION (if signals conflict):');
-            lines.push('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<option1>|<option2>|<option3_optional>');
+            lines.push('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<exact_library_name_1>|<exact_library_name_2>|<exact_library_name_3_optional>');
+            lines.push('  ⚠ option names MUST be copied exactly from the AVAILABLE LIBRARIES list below — do not invent genre names.');
         } else {
             // Classification mode - AI determines the library
             lines.push('CLASSIFICATION MODE: Classify this item into the most appropriate library.');
@@ -386,7 +387,8 @@ class AIPromptBuilder {
             lines.push('CONFIDENT|<library_number>|<confidence_0_to_100>|<brief_reason>');
             lines.push('');
             lines.push('FORMAT 2 - If you need clarification:');
-            lines.push('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<option1>|<option2>|<option3_optional>');
+            lines.push('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<exact_library_name_1>|<exact_library_name_2>|<exact_library_name_3_optional>');
+            lines.push('  ⚠ option names MUST be copied exactly from the AVAILABLE LIBRARIES list below — do not invent genre names.');
         }
 
         // Add available libraries
@@ -417,7 +419,7 @@ class AIPromptBuilder {
             try {
                 const parsed = JSON.parse(value);
                 return Array.isArray(parsed) ? parsed : null;
-            } catch (e) {
+            } catch (_e) {
                 // Not JSON, maybe comma-separated?
                 return value.split(',').map(v => v.trim()).filter(v => v);
             }

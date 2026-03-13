@@ -515,7 +515,7 @@ describe('RAG API Integration Tests', () => {
                 RETURNING id
             `, [mediaServer.rows[0].id]);
 
-            const classificationOne = await pool.query(`
+            const _classificationOne = await pool.query(`
                 INSERT INTO classification_history (tmdb_id, media_type, title, library_id)
                 VALUES (100, 'movie', 'Pending Text', $1)
                 RETURNING id

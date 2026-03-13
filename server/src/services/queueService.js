@@ -104,6 +104,8 @@ class QueueService {
         this.lastOmdbSslProbeAt = 0;
         // Tracks when visibility-timeout recovery last ran in the worker loop
         this.lastRecoveryCheck = 0;
+        // Tracks when the worker first reached MAX_CONCURRENT (for stall detection)
+        this.fullConcurrencyStartedAt = 0;
     }
 
     async isOmdbSslBlocked(omdbApiKey, title) {
@@ -327,61 +329,81 @@ class QueueService {
         const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
         const { media_item_id } = payload;
 
+        let skipped = false;
+        let originalRating, normalizedRating;
+
+        // Use a dedicated connection so SET LOCAL statement_timeout is scoped to this
+        // transaction only and does not bleed into other queries sharing the pool.
+        const client = await this.db.pool.connect();
         try {
-            const result = await this.db.query(`
+            await client.query('BEGIN');
+            // Cap the UPDATE at 30 s so a concurrent Plex-sync row lock cannot hold this
+            // worker slot indefinitely. On timeout the task is retried via failTask/backoff.
+            await client.query("SET LOCAL statement_timeout = '30000'");
+
+            const result = await client.query(`
                 SELECT id, content_rating, metadata, media_type
                 FROM media_server_items WHERE id = $1
             `, [media_item_id]);
 
             if (result.rows.length === 0) {
-                await this.completeTask(task.id, { skipped: true, reason: 'Item not found' });
-                return;
-            }
-
-            const item = result.rows[0];
-            const originalRating = item.content_rating;
-            const normalizedRating = ratingNormalizer.getPriorityRating(item);
-
-            // Always set original_rating on first normalization, even if rating doesn't change
-            // This marks the item as processed and prevents re-queuing
-            await this.db.query(`
-                UPDATE media_server_items
-                SET original_rating = COALESCE(original_rating, $2), 
-                    content_rating = $3, 
-                    last_synced = NOW()
-                WHERE id = $1
-            `, [media_item_id, originalRating, normalizedRating]);
-
-            if (normalizedRating !== originalRating) {
-                this.logger.info('Rating normalized', {
-                    itemId: media_item_id,
-                    original: originalRating,
-                    normalized: normalizedRating
-                });
-
-                await this.completeTask(task.id, {
-                    normalized: true,
-                    original: originalRating,
-                    new: normalizedRating
-                });
+                skipped = true;
             } else {
-                this.logger.debug('Rating already standard', {
-                    itemId: media_item_id,
-                    rating: originalRating
-                });
+                const item = result.rows[0];
+                originalRating = item.content_rating;
+                normalizedRating = ratingNormalizer.getPriorityRating(item);
 
-                await this.completeTask(task.id, {
-                    normalized: false,
-                    reason: 'Rating already standard',
-                    rating: originalRating
-                });
+                // Always set original_rating on first normalization, even if rating doesn't change.
+                // This marks the item as processed and prevents re-queuing.
+                await client.query(`
+                    UPDATE media_server_items
+                    SET original_rating = COALESCE(original_rating, $2), 
+                        content_rating = $3, 
+                        last_synced = NOW()
+                    WHERE id = $1
+                `, [media_item_id, originalRating, normalizedRating]);
             }
+
+            await client.query('COMMIT');
         } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
             this.logger.error('Rating normalization failed', {
                 itemId: media_item_id,
                 error: error.message
             });
             throw error;
+        } finally {
+            client.release();
+        }
+
+        if (skipped) {
+            await this.completeTask(task.id, { skipped: true, reason: 'Item not found' });
+            return;
+        }
+
+        if (normalizedRating !== originalRating) {
+            this.logger.info('Rating normalized', {
+                itemId: media_item_id,
+                original: originalRating,
+                normalized: normalizedRating
+            });
+
+            await this.completeTask(task.id, {
+                normalized: true,
+                original: originalRating,
+                new: normalizedRating
+            });
+        } else {
+            this.logger.debug('Rating already standard', {
+                itemId: media_item_id,
+                rating: originalRating
+            });
+
+            await this.completeTask(task.id, {
+                normalized: false,
+                reason: 'Rating already standard',
+                rating: originalRating
+            });
         }
     }
 
@@ -410,7 +432,7 @@ class QueueService {
 
                         // We need to fetch the current metadata first to merge, or use jsonb_set
                         // Using a simple merge query here
-                        await this.db.query(
+                        await this._queryWithTimeout(
                             `UPDATE media_server_items 
                              SET metadata = metadata || $1::jsonb
                              WHERE id = $2`,
@@ -574,7 +596,7 @@ class QueueService {
                                                 if (currentItem.rows.length > 0) {
                                                     const currentRating = currentItem.rows[0].content_rating;
 
-                                                    await this.db.query(
+                                                    await this._queryWithTimeout(
                                                         `UPDATE media_server_items
                                                          SET original_rating = COALESCE(original_rating, $2), content_rating = $3
                                                          WHERE id = $1`,
@@ -903,7 +925,7 @@ class QueueService {
 
                             // If we discovered TMDB ID, backfill it to media_server_items
                             if (enrichTmdbId && enrichPayload.itemId) {
-                                await this.db.query(
+                                await this._queryWithTimeout(
                                     'UPDATE media_server_items SET tmdb_id = $1 WHERE id = $2 AND tmdb_id IS NULL',
                                     [enrichTmdbId, enrichPayload.itemId]
                                 );
@@ -915,7 +937,7 @@ class QueueService {
                         }
 
 
-                        await this.db.query(
+                        await this._queryWithTimeout(
                             `UPDATE media_server_items 
                              SET metadata = metadata || $1::jsonb
                              WHERE id = $2`,
@@ -1145,6 +1167,24 @@ class QueueService {
                 });
             }
 
+            // Stall detection: warn if all worker slots stay occupied for >30 s.
+            // This surfaces row-lock contention (e.g. concurrent Plex sync) in the logs
+            // so the issue can be diagnosed without needing to restart the service.
+            if (this.processing >= MAX_CONCURRENT) {
+                if (this.fullConcurrencyStartedAt === 0) {
+                    this.fullConcurrencyStartedAt = now;
+                } else if (now - this.fullConcurrencyStartedAt >= 30_000) {
+                    this.logger.warn('Worker at max concurrency for >30 s — possible row-lock stall; tasks will self-recover via statement timeout or visibility window', {
+                        processing: this.processing,
+                        maxConcurrent: MAX_CONCURRENT,
+                        durationMs: now - this.fullConcurrencyStartedAt,
+                    });
+                    this.fullConcurrencyStartedAt = now; // Reset so it re-warns every 30 s, not every tick
+                }
+            } else {
+                this.fullConcurrencyStartedAt = 0;
+            }
+
             try {
                 if (this.processing < MAX_CONCURRENT) {
                     const task = await this.dequeue();
@@ -1219,9 +1259,14 @@ class QueueService {
                  RETURNING id`
             );
             if (result.rowCount > 0) {
-                this.logger.warn('Recovered tasks with expired visibility timeout', {
+                // Compensate the in-memory counter so dequeue() can resume immediately.
+                // Without this, this.processing stays at MAX_CONCURRENT even though the
+                // DB rows have been reset to 'pending', and no new tasks are ever dequeued.
+                this.processing = Math.max(0, this.processing - result.rowCount);
+                this.logger.warn('Recovered tasks with expired visibility timeout; decremented processing counter', {
                     count: result.rowCount,
                     taskIds: result.rows.map(r => r.id),
+                    processingAfter: this.processing,
                 });
             }
             return result.rowCount;
@@ -1896,6 +1941,46 @@ class QueueService {
      * @param {string} [context='transaction'] - label used in rollback warning logs
      * @returns {Promise<*>} result of work
      */
+    /**
+     * Run a single write query with a per-statement timeout on a dedicated pool client.
+     * Prevents a blocked UPDATE (e.g. due to a concurrent Plex sync row lock) from
+     * occupying a worker slot indefinitely.  Falls back to the regular db.query() when
+     * db.pool is unavailable (test environments that only mock db.query).
+     *
+     * @param {string} sql    Parameterised SQL string
+     * @param {Array}  params Bind parameters
+     * @param {number} [timeoutMs=30000]  Statement timeout in milliseconds
+     */
+    async _queryWithTimeout(sql, params, timeoutMs = 30_000) {
+        let client;
+        try {
+            if (this.db.pool && typeof this.db.pool.connect === 'function') {
+                client = await this.db.pool.connect();
+            }
+        } catch (_) {
+            // Pool unavailable — fall through to regular query
+        }
+
+        // If we didn't get a real client (e.g. test auto-mock returns undefined),
+        // fall back to the standard db.query so tests don't need db.pool set up.
+        if (!client || typeof client.query !== 'function') {
+            return this.db.query(sql, params);
+        }
+
+        try {
+            await client.query('BEGIN');
+            await client.query(`SET LOCAL statement_timeout = '${timeoutMs}'`);
+            const result = await client.query(sql, params);
+            await client.query('COMMIT');
+            return result;
+        } catch (err) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
     async withOptionalTransaction(work, context = 'transaction') {
         if (typeof this.db.connect !== 'function') {
             return work(this.db);

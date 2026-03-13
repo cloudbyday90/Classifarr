@@ -18,6 +18,9 @@
 
 const axios = require('axios');
 const crypto = require('crypto');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('embyAuth');
 
 // Device ID for Emby authorization
 let deviceId = null;
@@ -101,7 +104,7 @@ class EmbyAuthService {
                 isAdmin: response.data.User?.Policy?.IsAdministrator,
             };
         } catch (error) {
-            console.error('Failed to authenticate with Emby:', error.message);
+            logger.error('Failed to authenticate with Emby:', { error: error.message });
 
             // Parse error message
             let errorMessage = 'Authentication failed';

@@ -23,7 +23,6 @@
  */
 
 const db = require('../config/database');
-const patternSignalCollector = require('./patternSignalCollector');
 const libraryProfileService = require('./libraryProfileService');
 const ragRetriever = require('./ragRetriever');
 const { createLogger } = require('../utils/logger');
@@ -335,7 +334,7 @@ class FormulaEngine {
      * Returns sorted array of libraries with scores and breakdowns
      * CRITICAL: All scores capped at 95%
      */
-    async calculateLibraryScores(metadata, options = {}) {
+    async calculateLibraryScores(metadata, _options = {}) {
         try {
             const weights = await this.getWeights();
             const libraries = await this.getActiveLibraries();

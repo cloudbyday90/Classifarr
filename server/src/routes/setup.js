@@ -24,6 +24,9 @@ const authService = require('../services/auth');
 const runtimeSettings = require('../config/runtimeSettings');
 const { issueCsrfToken } = require('../middleware/csrf');
 const { resolveSecureCookieFlag } = require('../utils/cookieSecurity');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('setup');
 
 const setupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -41,7 +44,7 @@ router.get('/status', async (req, res) => {
       setupRequired: userCount === 0,
       setupComplete: userCount > 0
     });
-  } catch (error) {
+  } catch (_error) {
     res.json({ setupRequired: true, setupComplete: false });
   }
 });
@@ -98,7 +101,7 @@ router.post('/create-admin', setupLimiter, async (req, res) => {
       refreshToken
     });
   } catch (error) {
-    console.error('Setup error:', error);
+    logger.error('Setup error', { error: error.message, code: error.code });
     if (error.code === '23505') {
       return res.status(400).json({ error: 'Username already exists' });
     }

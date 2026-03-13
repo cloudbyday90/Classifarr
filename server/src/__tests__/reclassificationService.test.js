@@ -30,7 +30,6 @@ const fileOperationsService = require('../services/fileOperationsService');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
 const libraryMappingService = require('../services/libraryMappingService');
-const plexService = require('../services/plex');
 const db = require('../config/database');
 const { createConsoleSpy } = require('./setup/consoleHelpers');
 

@@ -52,7 +52,7 @@ class SonarrService {
         timeout = (config.timeout || 30) * 1000;
       }
 
-      const response = await axios.get(`${url}/api/v3/system/status`, {
+      const _response = await axios.get(`${url}/api/v3/system/status`, {
         headers: {
           'X-Api-Key': apiKey,
         },
@@ -212,7 +212,11 @@ class SonarrService {
       });
       return response.data;
     } catch (error) {
-      // Sonarr returns 400 when the series already exists in the library
+      // Sonarr v3 returns 400 (with SeriesExistsValidator body) or 409 (Conflict)
+      // when the series already exists in the library, depending on version.
+      if (error.response?.status === 409) {
+        return { alreadyExists: true };
+      }
       if (error.response?.status === 400) {
         const body = error.response.data;
         const msgs = Array.isArray(body)
@@ -304,7 +308,7 @@ class SonarrService {
       // Extract root folder from new path
       // If newPath is "/tv/anime/Naruto", root is "/tv/anime"
       const pathParts = newPath.replace(/\/$/, '').split('/');
-      const titleFolder = pathParts.pop();
+      const _titleFolder = pathParts.pop();
       const newRootFolderPath = pathParts.join('/');
 
       // Update the series with new path

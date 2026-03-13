@@ -33,9 +33,7 @@ jest.mock('../utils/logger', () => ({
   })),
 }));
 
-const classificationService = require('../services/classification');
 const clarificationService = require('../services/clarificationService');
-const db = require('../config/database');
 
 describe('Classification with require_all_confirmations', () => {
   beforeEach(() => {

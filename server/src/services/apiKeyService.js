@@ -16,7 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const crypto = require('crypto');
 const db = require('../config/database');
 const { 
   encryptValue, 
@@ -26,6 +25,9 @@ const {
   generateRandomKey,
   constantTimeCompare 
 } = require('../utils/encryption');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('apiKeyService');
 
 const VALID_PERMISSIONS = ['read_only', 'read_write', 'webhook_only', 'admin'];
 
@@ -88,7 +90,7 @@ async function validateApiKey(key) {
         return apiKey;
       }
     } catch (error) {
-      console.warn(
+      logger.warn(
         'WARNING: Failed to decrypt stored API key with id %s. ' +
         'This may indicate an invalid API_KEY_ENCRYPTION_KEY or data corruption: %s',
         row.id,
@@ -147,7 +149,7 @@ async function getApiKeyFull(id) {
     const { encrypted, iv, authTag } = parseEncryptedValue(result.rows[0].key_hash);
     return decryptValue(encrypted, iv, authTag);
   } catch (error) {
-    console.error('Failed to decrypt API key:', error);
+    logger.error('Failed to decrypt API key:', { error: error.message });
     return null;
   }
 }
@@ -207,8 +209,8 @@ async function ensureDefaultApiKey() {
   if (!exists) {
     await createApiKey('Default API Key', 'read_write');
     
-    console.log('✓ Auto-generated default API key');
-    console.log('  View in Settings → Security after logging in');
+    logger.info('✓ Auto-generated default API key');
+    logger.info('  View in Settings → Security after logging in');
     
     return null;
   }
@@ -226,7 +228,7 @@ async function logAudit(apiKeyId, action, options = {}) {
       [apiKeyId, action, endpoint || null, ipAddress || null, userAgent || null]
     );
   } catch (error) {
-    console.error('Failed to log API key audit:', error);
+    logger.error('Failed to log API key audit:', { error: error.message });
   }
 }
 

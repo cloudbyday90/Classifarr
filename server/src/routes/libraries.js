@@ -21,7 +21,6 @@ const db = require('../config/database');
 const radarrService = require('../services/radarr');
 const sonarrService = require('../services/sonarr');
 const mediaSyncService = require('../services/mediaSync');
-const classificationService = require('../services/classification');
 const ollamaService = require('../services/ollama');
 const mediaPatternAnalyzer = require('../services/mediaPatternAnalyzer');
 const libraryProfileService = require('../services/libraryProfileService');

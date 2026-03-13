@@ -27,6 +27,9 @@ const {
   StringSelectMenuBuilder,
 } = require("discord.js");
 const db = require("../config/database");
+const { createLogger } = require("../utils/logger");
+
+const logger = createLogger("discordBot");
 const clarificationService = require("./clarificationService");
 const autoLearningService = require("./autoLearningService");
 
@@ -105,7 +108,7 @@ class DiscordBotService {
             try {
               await guild.members.fetch(testClient.user.id);
             } catch (fetchError) {
-              console.warn(
+              logger.warn(
                 "Could not fetch bot member for permission check:",
                 fetchError.message,
               );
@@ -370,7 +373,7 @@ class DiscordBotService {
 
   async getChannelDetails(channelId, botToken = null) {
     try {
-      console.log(
+      logger.info(
         `[Discord] Fetching channel details for channel ID: ${channelId}`,
       );
 
@@ -383,7 +386,7 @@ class DiscordBotService {
         throw new Error("No bot token configured");
       }
 
-      console.log(
+      logger.info(
         `[Discord] Using ${storedConfig?.bot_token ? "stored" : "provided"} bot token`,
       );
 
@@ -435,7 +438,7 @@ class DiscordBotService {
           guildName: guildName,
         };
 
-        console.log(
+        logger.info(
           `[Discord] Successfully fetched channel: ${channel.name} in guild: ${channel.guild?.name || "Unknown"}`,
         );
 
@@ -445,7 +448,7 @@ class DiscordBotService {
       }
     } catch (error) {
       // Log the error with context, then re-throw for route handler
-      console.error(
+      logger.error(
         `Failed to fetch channel details for ${channelId}:`,
         error.message,
       );
@@ -486,7 +489,7 @@ class DiscordBotService {
 
   async sendClassificationNotification(metadata, result) {
     if (!this.isInitialized || !this.client) {
-      console.warn("Discord bot not initialized");
+      logger.warn("Discord bot not initialized");
       return;
     }
 
@@ -500,7 +503,7 @@ class DiscordBotService {
 
       const channel = await this.client.channels.fetch(this.channelId);
       if (!channel) {
-        console.error("Discord channel not found");
+        logger.error("Discord channel not found");
         return;
       }
 
@@ -591,15 +594,15 @@ class DiscordBotService {
         ],
       );
     } catch (error) {
-      console.error("Failed to send Discord notification:", error);
+      logger.error("Failed to send Discord notification:", error);
     }
   }
 
   async sendConfidenceBasedNotification(metadata, result) {
     // Enhanced logging for debugging notification issues (v0.38.4-alpha)
-    // These console.log statements are intentional and help diagnose
+    // These logger.info statements are intentional and help diagnose
     // why notifications may not appear on Discord (e.g., tier lookup failures)
-    console.log("[Discord] Notification attempt", {
+    logger.info("[Discord] Notification attempt", {
       title: metadata.title,
       confidence: result.confidence,
       initialized: this.isInitialized,
@@ -608,7 +611,7 @@ class DiscordBotService {
     });
 
     if (!this.isInitialized || !this.client) {
-      console.warn("[Discord] Bot not initialized - notification skipped", {
+      logger.warn("[Discord] Bot not initialized - notification skipped", {
         isInitialized: this.isInitialized,
         hasClient: !!this.client,
       });
@@ -619,7 +622,7 @@ class DiscordBotService {
       const config = await this.loadConfig();
 
       // Log enabled flag value (Bug #11 logging)
-      console.log("[Discord] Config check", {
+      logger.info("[Discord] Config check", {
         enabled: config.enabled,
         notify_on_classification: config.notify_on_classification,
         bot_token_present: !!config.bot_token,
@@ -627,7 +630,7 @@ class DiscordBotService {
       });
 
       if (!config.enabled) {
-        console.log(
+        logger.info(
           "[Discord] Notifications disabled via enabled flag - skipping",
           {
             enabled: config.enabled,
@@ -637,7 +640,7 @@ class DiscordBotService {
       }
 
       if (!config.notify_on_classification) {
-        console.log("[Discord] Notifications disabled in config - skipping");
+        logger.info("[Discord] Notifications disabled in config - skipping");
         return;
       }
 
@@ -671,7 +674,7 @@ class DiscordBotService {
           requireAllConfirmations,
         ) || (await clarificationService.getTierForConfidence(result.confidence));
 
-      console.log("[Discord] Tier lookup result", {
+      logger.info("[Discord] Tier lookup result", {
         confidence: result.confidence,
         tier: tier ? tier.tier : "null",
         action: tier ? tier.action : "null",
@@ -679,7 +682,7 @@ class DiscordBotService {
       });
 
       if (!tier) {
-        console.warn(
+        logger.warn(
           "[Discord] No tier found, falling back to standard notification",
           {
             confidence: result.confidence,
@@ -691,7 +694,7 @@ class DiscordBotService {
 
       const channel = await this.client.channels.fetch(this.channelId);
       if (!channel) {
-        console.error("[Discord] Channel not found", {
+        logger.error("[Discord] Channel not found", {
           channelId: this.channelId,
         });
         return;
@@ -701,7 +704,7 @@ class DiscordBotService {
       const hasClarification =
         result.needs_clarification && result.clarification;
 
-      console.log("[Discord] Creating notification", {
+      logger.info("[Discord] Creating notification", {
         tier: tier.tier,
         hasClarification,
         requireAllConfirmations,
@@ -732,7 +735,7 @@ class DiscordBotService {
         components: components,
       });
 
-      console.log("[Discord] Notification sent successfully", {
+      logger.info("[Discord] Notification sent successfully", {
         messageId: message.id,
         tier: tier.tier,
         confidence: result.confidence,
@@ -745,7 +748,7 @@ class DiscordBotService {
         [message.id, status, result.classification_id],
       );
     } catch (error) {
-      console.error("[Discord] Failed to send confidence-based notification:", {
+      logger.error("[Discord] Failed to send confidence-based notification:", {
         error: error.message,
         stack: error.stack,
         title: metadata.title,
@@ -917,7 +920,7 @@ class DiscordBotService {
       }
     } catch (ragError) {
       // RAG is optional, don't fail if not available
-      console.log('[Discord] RAG similar items not available:', ragError.message);
+      logger.info('[Discord] RAG similar items not available:', ragError.message);
     }
 
     // Add content analysis if available
@@ -1127,7 +1130,7 @@ class DiscordBotService {
         const action = parts[0];
 
         if (action === "correct") {
-          const classificationId = parts[1];
+          const _classificationId = parts[1];
           await interaction.update({
             components: [],
             embeds: [
@@ -1166,7 +1169,7 @@ class DiscordBotService {
             await this.showLibrarySelection(classificationId, interaction);
           }
         } else if (action === "acknowledge") {
-          const classificationId = parts[1];
+          const _classificationId = parts[1];
           await interaction.update({
             components: [],
             embeds: [
@@ -1197,7 +1200,7 @@ class DiscordBotService {
         );
       }
     } catch (error) {
-      console.error("Error handling Discord interaction:", error);
+      logger.error("Error handling Discord interaction:", error);
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
           content: "An error occurred",
@@ -1294,7 +1297,7 @@ class DiscordBotService {
           userId: interaction.user.id
         });
 
-        console.log("[Discord] Auto-learning from correction", {
+        logger.info("[Discord] Auto-learning from correction", {
           classificationId,
           originalLibrary: originalLibraryId,
           newLibrary: newLibraryId,
@@ -1302,7 +1305,7 @@ class DiscordBotService {
           preferences: learningResult.preferences
         });
       } catch (learningError) {
-        console.error("[Discord] Auto-learning from correction failed:", learningError);
+        logger.error("[Discord] Auto-learning from correction failed:", learningError);
         // Don't fail correction if learning fails
       }
 
@@ -1310,7 +1313,7 @@ class DiscordBotService {
       try {
         await this.extractLearningPatterns(classificationId, newLibraryId);
       } catch (patternError) {
-        console.error('Error extracting patterns during correction:', patternError);
+        logger.error('Error extracting patterns during correction:', patternError);
         // Continue - don't fail user interaction
       }
 
@@ -1323,7 +1326,7 @@ class DiscordBotService {
           reason: "exception",
           error: routeError.message,
         };
-        console.error("Error routing after correction:", routeError);
+        logger.error("Error routing after correction:", routeError);
       }
 
       const routingStatusText = routingOutcome.routed
@@ -1360,7 +1363,7 @@ class DiscordBotService {
         });
       }
     } catch (error) {
-      console.error("Error processing correction:", error);
+      logger.error("Error processing correction:", error);
       await interaction.reply({
         content: "Failed to process correction",
         ephemeral: true,
@@ -1387,7 +1390,7 @@ class DiscordBotService {
         );
       }
     } catch (error) {
-      console.error("Error extracting learning patterns:", error);
+      logger.error("Error extracting learning patterns:", error);
     }
   }
 
@@ -1460,7 +1463,7 @@ class DiscordBotService {
           routingOutcome = await this.routeAfterClarification(classificationId);
         }
       } catch (resolveError) {
-        console.error(
+        logger.error(
           "resolvePolicyQuestion failed, falling back to legacy handling:",
           resolveError,
         );
@@ -1575,7 +1578,7 @@ class DiscordBotService {
         });
       }
     } catch (error) {
-      console.error("Error processing clarification response:", error);
+      logger.error("Error processing clarification response:", error);
       await interaction.reply({
         content: "Failed to process response",
         ephemeral: true,
@@ -1604,7 +1607,7 @@ class DiscordBotService {
       const classification = classResult.rows[0];
 
       // Debug log
-      console.log("[Discord] Processing verification", {
+      logger.info("[Discord] Processing verification", {
         id: classificationId,
         isCorrect,
         library_id: classification.library_id,
@@ -1633,13 +1636,13 @@ class DiscordBotService {
           userId: interaction.user.id
         });
 
-        console.log("[Discord] Auto-learning result", {
+        logger.info("[Discord] Auto-learning result", {
           classificationId,
           learned: learningResult.learned,
           preferences: learningResult.preferences
         });
       } catch (learningError) {
-        console.error("[Discord] Auto-learning failed:", learningError);
+        logger.error("[Discord] Auto-learning failed:", learningError);
         // Don't fail verification if learning fails
       }
 
@@ -1656,7 +1659,7 @@ class DiscordBotService {
       try {
         await this.routeAfterClarification(classificationId);
       } catch (routeError) {
-        console.error("Error routing after verification:", routeError);
+        logger.error("Error routing after verification:", routeError);
         // Continue - don't fail the user interaction if just routing failed
       }
 
@@ -1676,7 +1679,7 @@ class DiscordBotService {
         if (learnedItems.length > 0) {
           feedbackMessage += `\n\n_System is learning these preferences for this library:_\n${learnedItems.join('\n')}`;
         }
-      } catch (error) {
+      } catch (_error) {
         // Ignore errors in building feedback message
       }
 
@@ -1698,7 +1701,7 @@ class DiscordBotService {
         ephemeral: true
       });
     } catch (error) {
-      console.error("Error processing verification:", error);
+      logger.error("Error processing verification:", error);
       // Return specific error message to user for debugging
       const errorMessage = error.message || "Unknown error";
       await interaction.reply({
@@ -1760,7 +1763,7 @@ class DiscordBotService {
         ],
       });
     } catch (error) {
-      console.error("Error showing library selection:", error);
+      logger.error("Error showing library selection:", error);
       await interaction.reply({
         content: "Failed to show options",
         ephemeral: true,
@@ -1813,7 +1816,7 @@ class DiscordBotService {
         ],
       });
     } catch (error) {
-      console.error("Error processing question response:", error);
+      logger.error("Error processing question response:", error);
       await interaction.reply({
         content: "Failed to process response",
         ephemeral: true,
@@ -1854,12 +1857,12 @@ class DiscordBotService {
           ],
         );
 
-        console.log(
+        logger.info(
           `Learned: ${title} (TMDB: ${tmdb_id}) -> Library ${libraryId} via clarification`,
         );
       }
     } catch (error) {
-      console.error("Error extracting clarification patterns:", error);
+      logger.error("Error extracting clarification patterns:", error);
     }
   }
 
@@ -1898,7 +1901,7 @@ class DiscordBotService {
       }
 
       if (!metadata || typeof metadata !== "object") {
-        console.warn("Skipping *arr routing due to invalid metadata", {
+        logger.warn("Skipping *arr routing due to invalid metadata", {
           classificationId,
           metadataType: typeof classification.metadata,
         });
@@ -1931,7 +1934,7 @@ class DiscordBotService {
       if (!routeResult?.routed) {
         outcome.reason = routeResult?.reason || "route_skipped";
         outcome.error = routeResult?.error || null;
-        console.warn("Routing after clarification skipped", {
+        logger.warn("Routing after clarification skipped", {
           classificationId,
           reason: outcome.reason,
           error: outcome.error,
@@ -1945,14 +1948,14 @@ class DiscordBotService {
         ["routed", classificationId],
       );
 
-      console.log(
+      logger.info(
         `Routed after clarification: ${metadata.title} -> ${classification.library_name}`,
       );
       outcome.routed = true;
       outcome.reason = "routed";
       return outcome;
     } catch (error) {
-      console.error("Error routing after clarification:", error);
+      logger.error("Error routing after clarification:", error);
       outcome.reason = "exception";
       outcome.error = error.message;
       return outcome;
@@ -1984,7 +1987,7 @@ class DiscordBotService {
     }
     try {
       return JSON.parse(trimmed);
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

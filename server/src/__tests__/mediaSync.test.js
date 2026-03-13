@@ -43,7 +43,7 @@ jest.mock('../utils/logger', () => ({
     createLogger: jest.fn(() => mockLogger)
 }));
 
-const { LibraryNotFoundError } = require('../utils/errors');
+
 
 describe('MediaSyncService', () => {
     let service;

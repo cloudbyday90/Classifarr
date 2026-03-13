@@ -12,8 +12,6 @@ const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/databa
 const { createLogger } = require('../utils/logger');
 const queueService = require('./queueService');
 const mediaSyncService = require('./mediaSync');
-const discordBot = require('./discordBot');
-const ollamaService = require('./ollama');
 const classificationService = require('./classification');
 
 const logger = createLogger('SchedulerService');

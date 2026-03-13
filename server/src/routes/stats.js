@@ -706,7 +706,7 @@ async function getQueueHealth() {
     `);
 
     return result.rows[0] || { pending: 0, processing: 0, completed_today: 0, failed: 0, total: 0, success_rate: 100 };
-  } catch (error) {
+  } catch (_error) {
     // Table might not exist
     return { pending: 0, processing: 0, completed_today: 0, failed: 0, total: 0, success_rate: 100 };
   }

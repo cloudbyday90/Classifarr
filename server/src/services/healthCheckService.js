@@ -12,9 +12,11 @@ const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const ollamaService = require('./ollama');
 const tmdbService = require('./tmdb');
-const tavilyService = require('./tavily');
 const omdbService = require('./omdb');
 const discordBotService = require('./discordBot');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('healthCheck');
 
 
 // Cache for health status
@@ -174,7 +176,7 @@ async function checkDiscordBot() {
         try {
             const config = await db.query('SELECT bot_token FROM discord_config LIMIT 1');
             isConfigured = config.rows.length > 0 && config.rows[0].bot_token;
-        } catch (dbError) {
+        } catch (_dbError) {
             // Table doesn't exist or query failed - treat as not configured
             isConfigured = false;
         }
@@ -189,7 +191,7 @@ async function checkDiscordBot() {
             previousStatus: previous.status,
             previousResponseTime: previous.responseTime
         };
-    } catch (error) {
+    } catch (_error) {
         // Unexpected error - treat as not configured rather than error
         healthCache.discordBot = {
             status: 'not configured',
@@ -215,7 +217,7 @@ async function checkOllama() {
         let aiConfig;
         try {
             aiConfig = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
-        } catch (dbError) {
+        } catch (_dbError) {
             // Table doesn't exist or query failed - treat as not configured
             healthCache.ollama = {
                 status: 'not configured',
@@ -271,7 +273,7 @@ async function checkOllama() {
             previousResponseTime: previous.responseTime,
             error: result.error
         };
-    } catch (error) {
+    } catch (_error) {
         // Unexpected error - treat as not configured rather than error
         healthCache.ollama = {
             status: 'not configured',
@@ -296,7 +298,7 @@ async function checkRadarr() {
         let configs;
         try {
             configs = await db.query('SELECT * FROM radarr_config WHERE is_active = true');
-        } catch (dbError) {
+        } catch (_dbError) {
             // Table doesn't exist - not configured
             healthCache.radarr = {
                 status: 'not configured',
@@ -358,7 +360,7 @@ async function checkRadarr() {
             previousStatus: previous.status,
             previousResponseTime: previous.responseTime
         };
-    } catch (error) {
+    } catch (_error) {
         // Treat unexpected errors as not configured
         healthCache.radarr = {
             status: 'not configured',
@@ -383,7 +385,7 @@ async function checkSonarr() {
         let configs;
         try {
             configs = await db.query('SELECT * FROM sonarr_config WHERE is_active = true');
-        } catch (dbError) {
+        } catch (_dbError) {
             // Table doesn't exist - not configured
             healthCache.sonarr = {
                 status: 'not configured',
@@ -445,7 +447,7 @@ async function checkSonarr() {
             previousStatus: previous.status,
             previousResponseTime: previous.responseTime
         };
-    } catch (error) {
+    } catch (_error) {
         // Treat unexpected errors as not configured
         healthCache.sonarr = {
             status: 'not configured',
@@ -694,7 +696,7 @@ async function checkRAG() {
         try {
             await db.query("SELECT 'test'::vector(3)");
             pgvectorAvailable = true;
-        } catch (pgError) {
+        } catch (_pgError) {
             // pgvector not installed
         }
 
@@ -706,7 +708,7 @@ async function checkRAG() {
             const staleResult = await db.query('SELECT COUNT(*) FROM classification_embeddings WHERE is_stale = true');
             embeddingCount = parseInt(countResult.rows[0].count) || 0;
             staleCount = parseInt(staleResult.rows[0].count) || 0;
-        } catch (e) {
+        } catch (_e) {
             // Table may not exist yet
         }
 
@@ -844,7 +846,7 @@ async function checkImageEmbeddings() {
  * Run all health checks
  */
 async function runAllHealthChecks() {
-    console.log('[HealthCheck] Running all health checks...');
+    logger.info('[HealthCheck] Running all health checks...');
     const startTime = Date.now();
 
     // Run checks in parallel for speed
@@ -862,7 +864,7 @@ async function runAllHealthChecks() {
         checkTavily()
     ]);
 
-    console.log(`[HealthCheck] All checks completed in ${Date.now() - startTime}ms`);
+    logger.info(`[HealthCheck] All checks completed in ${Date.now() - startTime}ms`);
     return getHealthCache();
 }
 
@@ -881,7 +883,7 @@ function startHeartbeat(intervalMs = DEFAULT_HEARTBEAT_MS) {
         clearInterval(heartbeatInterval);
     }
 
-    console.log(`[HealthCheck] Starting heartbeat scheduler (interval: ${intervalMs / 1000}s)`);
+    logger.info(`[HealthCheck] Starting heartbeat scheduler (interval: ${intervalMs / 1000}s)`);
 
     // Run initial check
     runAllHealthChecks();
@@ -899,7 +901,7 @@ function stopHeartbeat() {
     if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
         heartbeatInterval = null;
-        console.log('[HealthCheck] Heartbeat scheduler stopped');
+        logger.info('[HealthCheck] Heartbeat scheduler stopped');
     }
 }
 

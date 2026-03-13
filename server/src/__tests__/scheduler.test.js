@@ -56,8 +56,6 @@ jest.mock('../utils/logger', () => ({
     })
 }));
 
-const db = require('../config/database');
-
 describe('SchedulerService', () => {
     let scheduler;
     let logger;
@@ -300,7 +298,7 @@ describe('SchedulerService', () => {
             const dbModule = require('../config/database');
             let callIndex = 0;
 
-            dbModule.query.mockImplementation((sql) => {
+            dbModule.query.mockImplementation((_sql) => {
                 callIndex++;
                 // First call: find libraries needing rule learning
                 if (callIndex === 1) {

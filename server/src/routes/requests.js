@@ -9,7 +9,6 @@ const express = require('express');
 const router = express.Router();
 const tmdbService = require('../services/tmdb');
 const queueService = require('../services/queueService');
-const classificationService = require('../services/classification');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 

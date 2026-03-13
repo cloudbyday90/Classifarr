@@ -136,4 +136,38 @@ describe('CSRF Middleware', () => {
       expect(res.body.error).toBe('CSRF validation failed');
     });
   });
+
+  describe('/auth/refresh exemption', () => {
+    beforeEach(() => {
+      app = express();
+      app.use(cookieParser());
+      app.use(express.json());
+      app.use('/api', ensureCsrfCookie);
+      app.use('/api', csrfProtection);
+      app.post('/api/auth/refresh', (req, res) => res.json({ success: true }));
+      app.post('/api/auth/login', (req, res) => res.json({ success: true }));
+    });
+
+    test('allows POST to /api/auth/refresh with access_token cookie but no CSRF header', async () => {
+      // Refresh is protected by the httpOnly SameSite=lax refresh_token cookie —
+      // CSRF attacks cannot include that cookie on cross-site POSTs.
+      // Requiring CSRF creates a chicken-and-egg problem when the CSRF cookie has
+      // expired but the remember-me refresh token is still valid.
+      const res = await request(app)
+        .post('/api/auth/refresh')
+        .set('Cookie', ['access_token=expired-but-present']);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    test('still requires CSRF for other /api/auth/* endpoints', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .set('Cookie', ['access_token=token123']);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error).toBe('CSRF validation failed');
+    });
+  });
 });

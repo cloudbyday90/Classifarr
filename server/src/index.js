@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+/* eslint-disable no-console */
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -181,13 +182,13 @@ async function initializeServices() {
     console.error('Runtime wiring validation bootstrap failed:', error.message);
   }
 
-  // Revoke all active refresh tokens on startup so every restart requires re-login.
-  // This matches Radarr/SABnzbd behavior and ensures Remember Me sessions cannot
-  // survive a container restart.
+  // Revoke non-remember-me refresh tokens on startup so regular sessions require
+  // re-login after a restart. Remember Me sessions (remember_me = true) are preserved
+  // so users who checked that option are not logged out by a server restart or update.
   try {
     const authService = require('./services/auth');
     const revoked = await authService.revokeAllRefreshTokensOnStartup();
-    console.log(`Sessions cleared on startup (${revoked} token(s) revoked — re-login required)`);
+    console.log(`Sessions cleared on startup (${revoked} non-persistent token(s) revoked)`);
   } catch (error) {
     console.warn('Startup session invalidation failed:', error.message);
   }
@@ -337,13 +338,18 @@ async function initializeServices() {
 
       await db.query(`
         INSERT INTO task_queue (task_type, priority, payload, status)
-        SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', id), 'pending'
-        FROM media_server_items
-        WHERE original_rating IS NULL
-          AND content_rating IS NOT NULL
+        SELECT 'rating_normalization', 5, jsonb_build_object('media_item_id', msi.id), 'pending'
+        FROM media_server_items msi
+        WHERE msi.original_rating IS NULL
+          AND msi.content_rating IS NOT NULL
           AND ${needsSQL}
+          AND NOT EXISTS (
+            SELECT 1 FROM task_queue tq
+            WHERE tq.task_type = 'rating_normalization'
+              AND tq.status IN ('pending', 'processing')
+              AND (tq.payload->>'media_item_id')::bigint = msi.id
+          )
         LIMIT 1000
-        ON CONFLICT DO NOTHING
       `);
     }
   } catch (error) {

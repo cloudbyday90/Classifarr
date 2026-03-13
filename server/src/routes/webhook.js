@@ -18,7 +18,6 @@
 
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const classificationService = require('../services/classification');
 const webhookService = require('../services/webhook');
 const queueService = require('../services/queueService');
 const { createLogger } = require('../utils/logger');

@@ -116,7 +116,7 @@ describe('AutoLearningService Integration Tests', () => {
             // Create feedback entries simulating confirmations
             for (let i = 0; i < 3; i++) {
                 // Create classification history entry
-                const classRes = await db.query(`
+                const _classRes = await db.query(`
                     INSERT INTO classification_history (
                         tmdb_id, title, media_type, library_id, status, confidence, method
                     )

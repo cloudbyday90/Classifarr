@@ -17,6 +17,9 @@
  */
 
 const axios = require('axios');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('plex');
 
 class PlexService {
   buildPosterUrl(baseUrl, apiKey, path) {
@@ -125,13 +128,13 @@ class PlexService {
         name: item.title,
         item_count: item.childCount || 0,
       }));
-    } catch (error) {
+    } catch (_error) {
       // Collections may not exist, return empty array
       return [];
     }
   }
 
-  async searchByProviderIds(url, apiKey, tmdbId, mediaType) {
+  async searchByProviderIds(url, apiKey, tmdbId, _mediaType) {
     try {
       const guid = `tmdb://${tmdbId}`;
 
@@ -147,7 +150,7 @@ class PlexService {
 
       const items = response.data.MediaContainer.Metadata || [];
       return items.length > 0 ? items[0] : null;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -216,7 +219,7 @@ class PlexService {
     for (const path of paths) {
       try {
         // URL-encode the path for the API call
-        const encodedPath = encodeURIComponent(path);
+        const _encodedPath = encodeURIComponent(path);
 
         await axios.get(`${url}/library/sections/${libraryKey}/refresh`, {
           headers: {
@@ -266,7 +269,7 @@ class PlexService {
       }
 
       // Partial scan failed, try full scan as fallback
-      console.warn(`Partial scan failed for library ${libraryKey}, falling back to full scan`);
+      logger.warn(`Partial scan failed for library ${libraryKey}, falling back to full scan`);
     }
 
     // Full library scan

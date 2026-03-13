@@ -532,7 +532,7 @@ class PromptBuilder {
      * @param {object} evaluation - Evaluation result
      * @returns {Array} Array of reason options
      */
-    buildReasonOptions(item, evaluation) {
+    buildReasonOptions(item, _evaluation) {
         const options = [];
         
         // Genre-based reasons
@@ -606,7 +606,7 @@ class PromptBuilder {
      * @param {object} evaluation - Evaluation result
      * @returns {Array} Array of pattern learning options
      */
-    buildPatternOptions(item, evaluation) {
+    buildPatternOptions(item, _evaluation) {
         const options = [];
         
         // Studio pattern
@@ -714,7 +714,7 @@ class PromptBuilder {
      * @param {object} item - Media item
      * @returns {Array} Key differentiating factors
      */
-    identifyKeyDifferences(topCandidates, item) {
+    identifyKeyDifferences(topCandidates, _item) {
         const differences = [];
         
         if (topCandidates.length < 2) return differences;

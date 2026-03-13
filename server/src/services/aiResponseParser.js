@@ -307,7 +307,15 @@ class AIResponseParser {
     mapOptionsToLibraries(optionTexts, libraries) {
         return optionTexts.map(opt => {
             const optLower = opt.toLowerCase();
-            const optClean = optLower.replace(/\s*(library|content|media)\s*/gi, '').trim();
+            // Strip common LLM list-prefix artifacts before matching:
+            //   numeric: "1. ", "2. "
+            //   alpha:   "a. ", "B. "
+            //   bracketed: "(1) ", "[A] "
+            //   bullets: "- ", "• ", "* ", "· "
+            const optClean = optLower
+                .replace(/^(\d+\.|[a-z]\.|[([]\d+[)\]]|[([][a-z][)\]]|[-•*·])\s+/i, '')
+                .replace(/\s*(library|content|media)\s*/gi, '')
+                .trim();
 
             // First pass: try to find an exact match
             let matchedLibrary = libraries.find(lib => {
@@ -339,19 +347,78 @@ class AIResponseParser {
                 library_id: matchedLibrary.id,
                 library_name: matchedLibrary.name,
             };
-        }).filter(Boolean);
+        }).filter(Boolean)
+          // Deduplicate: if the AI used two variant names for the same library,
+          // keep only the first occurrence so the user isn't shown identical options.
+          .filter((opt, idx, arr) => arr.findIndex(o => o.library_id === opt.library_id) === idx);
     }
 
     parseNarrativeSuggestion(response, context, mode = 'classify') {
-        if (mode !== 'classify') {
-            return null;
-        }
-
         const { libraries, signalContext, metadata } = context;
+
         if (!Array.isArray(libraries) || libraries.length === 0) {
             return null;
         }
 
+        // Verify mode: the AI returning narrative text means it's expressing
+        // uncertainty or disagreement with the suggested library — it's likely
+        // naming that library in the text while objecting to it.  Extracting the
+        // library name from the response here would surface the wrong question
+        // ("should it go to X?" when the AI just said it shouldn't).
+        // Instead, use signalContext.suggestedLibrary as the contested pick and
+        // let the user confirm or override.
+        if (mode === 'verify') {
+            const suggestedLibrary = signalContext?.suggestedLibrary;
+            if (!suggestedLibrary) {
+                return null;
+            }
+
+            const title = metadata?.title || 'this item';
+            const alternatives = libraries
+                .filter(lib => lib.id !== suggestedLibrary.id)
+                .slice(0, 3);
+            const options = [
+                {
+                    label: suggestedLibrary.name,
+                    value: `library_${suggestedLibrary.id}`,
+                    library_id: suggestedLibrary.id,
+                    library_name: suggestedLibrary.name,
+                },
+                ...alternatives.map(lib => ({
+                    label: lib.name,
+                    value: `library_${lib.id}`,
+                    library_id: lib.id,
+                    library_name: lib.name,
+                }))
+            ].slice(0, 4);
+
+            const question = `The AI disagreed with classifying "${title}" as "${suggestedLibrary.name}". Please confirm or choose an alternative.`;
+            const policyQuestion = {
+                problem_summary: 'AI disagreed with suggested classification',
+                why_uncertain: 'The AI returned a narrative response instead of a structured format, indicating uncertainty about the suggested library.',
+                question,
+                options,
+                generated_at: new Date().toISOString(),
+                signal_breakdown: signalContext?.breakdown || [],
+                calculated_confidence: signalContext?.confidence || null,
+            };
+
+            return {
+                library: suggestedLibrary,
+                confidence: Number.isFinite(Number(signalContext?.confidence))
+                    ? Number(signalContext.confidence)
+                    : 50,
+                reason: `Needs clarification: AI returned narrative disagreement in verify mode`,
+                needs_clarification: true,
+                clarification: policyQuestion,
+                pending_reason: 'AI returned narrative disagreement in verify mode',
+                policy_question: policyQuestion,
+                libraries,
+                format: 'narrative_clarify',
+            };
+        }
+
+        // Classify mode: extract the library the AI suggested from the narrative.
         const suggestedName = this.extractSuggestedLibraryName(response);
         if (!suggestedName) {
             return null;

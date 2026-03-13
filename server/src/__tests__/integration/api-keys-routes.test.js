@@ -21,7 +21,7 @@ const request = require('supertest');
 const express = require('express');
 const apiKeysRouter = require('../../routes/apiKeys');
 const librariesRouter = require('../../routes/libraries');
-const { authenticateTokenOrApiKey, requireReadWrite } = require('../../middleware/apiKeyAuth');
+const { authenticateTokenOrApiKey } = require('../../middleware/apiKeyAuth');
 const authService = require('../../services/auth');
 const { withConsoleSpy } = require('../setup/consoleHelpers');
 
@@ -334,7 +334,7 @@ describe('API Keys Integration Tests', () => {
 
     describe('API Key Authentication', () => {
         let testMediaServerId;
-        let testLibraryId;
+        let _testLibraryId;
 
         beforeAll(async () => {
             // Create test media server and library for authentication tests
@@ -350,7 +350,7 @@ describe('API Keys Integration Tests', () => {
                 VALUES ($1, 'test-lib-1', 'Test Library', 'movie', true, 5)
                 RETURNING id
             `, [testMediaServerId]);
-            testLibraryId = libraryResult.rows[0].id;
+            _testLibraryId = libraryResult.rows[0].id;
         });
 
         afterAll(async () => {

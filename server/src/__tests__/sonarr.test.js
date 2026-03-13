@@ -290,6 +290,15 @@ describe('SonarrService', () => {
             expect(result).toEqual({ alreadyExists: true });
         });
 
+        it('should return alreadyExists:true when Sonarr returns 409 Conflict', async () => {
+            const err = new Error('Request failed with status code 409');
+            err.response = { status: 409, data: {} };
+            mockAxios.post.mockRejectedValue(err);
+
+            const result = await service.addSeries('http://localhost:8989', 'test-key', { tvdbId: 81189 });
+            expect(result).toEqual({ alreadyExists: true });
+        });
+
         it('should throw on non-exists 400 errors', async () => {
             const err = new Error('Request failed with status code 400');
             err.response = {
