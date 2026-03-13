@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.44.0-beta] — 2026-03-13
+
 ### Security
 
 - **`flatted` < 3.4.0 — high severity DoS** ([GHSA-25h7-pfq9-p65f](https://github.com/advisories/GHSA-25h7-pfq9-p65f)) — unbounded recursion in `flatted.parse()` could be triggered by a crafted circular-reference payload, causing a stack overflow. Transitive dependency via `eslint → file-entry-cache → flat-cache`. Updated `flat-cache` which pulled `flatted` from 3.3.3 → 3.4.1. (`server/`)
@@ -46,8 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Schema
 
 - **`database/schema/current.sql` regenerated** — Snapshot now includes all migrations through `20260313_120000_task_queue_insert_autovacuum.sql`: RAG graph relationship columns (`director_name`, `primary_studio_name`, `genre_names`, `cast_ids`, `cast_names`) and GIN/B-tree indexes on `classification_history`; RAG graph config columns on `ai_provider_config`; `task_queue` retention index (`idx_task_queue_cleanup`) and updated storage parameters; `remember_me` column on `refresh_tokens`; `failed_login_count` / `locked_until` columns and `idx_users_locked_until` index on `users`.
-
----
 
 ## [0.43.9-beta] — 2026-03-13
 

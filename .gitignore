@@ -26,3 +26,6 @@ opencode.jsonc
 debug_*.js
 diagnostic_*.js
 check_*.js
+
+test-output.txt
+server/test-output.txt

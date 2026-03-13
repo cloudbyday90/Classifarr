@@ -1,5 +1,48 @@
 # Classifarr Release Notes
 
+## v0.44.0-beta
+**Title: AI learns from you — smarter clarifications, faster builds, zero security holes**
+
+### 🎉 What You'll Notice
+- **AI clarification questions actually work now** — genre learning from past decisions was silently broken; now every confirmed library choice genuinely teaches the system, so it asks fewer questions over time.
+- **Classification questions no longer disappear** — AI-generated options that use quotes, numbered lists, or invented genre names are correctly mapped to your real library names instead of silently dropped.
+- **Transient errors (rate limits, brief outages) are retried automatically** — AI 429s and OMDb/TMDB HTTP errors are no longer treated as permanent failures; classification just retries on its own.
+- **Large libraries stay fast** — uncapped task queues could let the `task_queue` table balloon to 250 000+ rows, causing slow classification on high-volume instances. A row-count cap is now enforced nightly and on startup.
+- **Security hardened** — a dependency-level DoS vulnerability patched; `test-output.txt` debug artifact removed from the repository.
+
+### 📊 Quick Visual
+```text
+v0.44.0-beta Snapshot
+AI Clarification Reliability  [██████████] fixed (was silently broken)
+Transient Error Retry         [██████████] HTTP 429/5xx now retried
+Genre Learning                [██████████] fixed (metadata param bug)
+Task Queue Growth (large lib) [████████░░] capped at 50 000 rows
+Build Speed (Vite 8 Rolldown) [█████████░] ~909ms production build
+```
+
+### ✨ Highlights
+- **Genre learning fixed** — the AI now genuinely gets smarter after each clarification you answer; the bug causing it to always return `null` regardless of your past decisions is resolved.
+- **AI clarification pipeline overhauled** — options with list prefixes, surrounding quotes, duplicate entries, and invented genre names are all handled correctly; `verify` mode no longer silently drops clarification prompts.
+- **Vite 8 (Rolldown)** — the front-end build now uses Rust-based Rolldown instead of esbuild + Rollup, with a cacheable vendor chunk split for faster repeat page loads after deploys.
+- **DoS patch** — `flatted` CVE (high severity) resolved via transitive dependency update.
+
+### 🔧 Reliability Improvements
+- AI and OMDb/TMDB transient HTTP errors (429, 500, 502, 503, 504) are now retried instead of failing permanently.
+- `task_queue` row-count cap prevents slow INSERT performance on high-volume instances (was unbounded; now capped at 50 000 rows with nightly and startup cleanup).
+- PostgreSQL autovacuum tuning for `task_queue` ensures the query planner keeps accurate row estimates on heavily-written tables.
+- Integration tests now double-check the complete `npm test` run by default — no need to separately invoke `npm run test:integration`.
+
+### 👥 Who This Helps
+- **All users:** AI classification is more reliable and gets smarter faster; fewer manual re-classifications needed.
+- **Users with "Remember Me":** sessions now survive properly — no unexpected logouts mid-session.
+- **High-volume instances (1 000+ items/day):** task queue size is now bounded, preventing INSERT slowdowns at scale.
+- **Operators/admins:** security patch applied; debug artifact removed from git history going forward.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details including migration notes, test matrices, and service-level changes.
+
+---
+
 ## v0.43.9-beta
 **Title: Remember Me fixed for real — plus AI classification resilience & clean logs**
 
