@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.44.0-a.beta] — 2026-03-13
+## [0.44.1-beta] — 2026-03-13
 
 ### Security
 
@@ -2210,4 +2210,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > [!NOTE]
 > Older changelog entries have been moved to [CHANGELOG_backup.md](CHANGELOG_backup.md) to keep this file concise.
+
 

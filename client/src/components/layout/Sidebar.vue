@@ -68,7 +68,7 @@
     </div>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.44.0-a.beta</div>
+      <div>v0.44.1-beta</div>
     </div>
   </aside>
 </template>
@@ -179,4 +179,5 @@ const isActive = (path, aliases = []) => {
   border-radius: 0 2px 2px 0;
 }
 </style>
+
 
