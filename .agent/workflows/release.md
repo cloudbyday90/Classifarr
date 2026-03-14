@@ -15,21 +15,21 @@ git tag --sort=-v:refname | head -5
 
 - **Alpha releases**: Increment from current alpha (e.g., `v0.22.0-alpha` → `v0.23.0-alpha`)
 - **Stable releases**: Follow semver (e.g., `v1.1.1` → `v1.2.0`)
-- **Custom public tags are allowed**: Git tags and release titles may use a friendlier/custom format such as `v0.44.1a.beta`, as long as package versions remain semver-safe.
+- **Use the standard release tag pattern**: prefer hyphenated prerelease labels such as `v0.44.1a-beta` and avoid dotted custom variants like `v0.44.1a.beta` unless there is a one-off exception.
 
 ## 2. Update Version Numbers (ALL locations)
 
 Important distinction:
 - `client/package.json` and `server/package.json` must remain valid semver for npm tooling, CI, and repo health checks.
-- Public-facing release labels and Git tags may use a friendlier/custom format such as `v0.44.1a.beta`.
-- When using a custom public label, keep the package versions semver-safe (for example `0.44.1-a.beta`) and update the UI/release-note display label separately.
+- Public-facing release labels and Git tags should normally match the standard release tag pattern, such as `v0.44.1a-beta`.
+- When a package version needs a semver-safe variant, keep it close to the release tag (for example release tag `v0.44.1a-beta`, package version `0.44.1-a.beta`) and update the UI/release-note display label separately only when necessary.
 
 | File | Field | Example |
 |------|-------|---------|
 | `client/package.json` | `"version"` (semver-safe) | `"0.23.0-alpha"` |
 | `server/package.json` | `"version"` (semver-safe) | `"0.23.0-alpha"` |
-| `client/src/constants/appVersion.js` | `APP_DISPLAY_VERSION` (public label) | `"v0.23.0a.beta"` |
-| `CHANGELOG.md` / `RELEASE_NOTES.md` | release heading (public label) | `"v0.23.0a.beta"` |
+| `client/src/constants/appVersion.js` | `APP_DISPLAY_VERSION` (public label, only if needed) | `"v0.23.0a-beta"` |
+| `CHANGELOG.md` / `RELEASE_NOTES.md` | release heading (public label) | `"v0.23.0a-beta"` |
 
 ## 3. Update RELEASE_NOTES.md
 
@@ -159,7 +159,7 @@ The sign-off block from `SECURITY_CHECKLIST.md` should be included in the releas
 // turbo
 ```bash
 git add -A
-git commit -m "vX.X.X-custom: Title
+git commit -m "vX.X.Xa-beta: Title
 
 Brief description of changes
 
@@ -175,7 +175,7 @@ Fixes:
 
 // turbo
 ```bash
-git tag -a vX.X.X-custom -m "vX.X.X-custom: Title - ADDITIONAL NOTES"
+git tag -a vX.X.Xa-beta -m "vX.X.Xa-beta: Title - ADDITIONAL NOTES"
 ```
 
 ## 7. Push to Remote
@@ -201,13 +201,13 @@ If a tag run fails:
 ```bash
 # 1) Fix code on main and push
 # 2) Delete broken release/tag
-gh release delete vX.X.X-custom --yes
-git tag -d vX.X.X-custom
-git push origin :refs/tags/vX.X.X-custom
+gh release delete vX.X.Xa-beta --yes
+git tag -d vX.X.Xa-beta
+git push origin :refs/tags/vX.X.Xa-beta
 
 # 3) Recreate tag from the fixed commit and push
-git tag -a vX.X.X-custom -m "vX.X.X-custom: re-release after CI fix"
-git push origin vX.X.X-custom
+git tag -a vX.X.Xa-beta -m "vX.X.Xa-beta: re-release after CI fix"
+git push origin vX.X.Xa-beta
 ```
 
 ## 9. Create GitHub Release
@@ -218,7 +218,7 @@ Create an actual release on GitHub (tags alone don't appear as releases).
 
 // turbo
 ```bash
-gh release create vX.X.X-custom --title "vX.X.X-custom: Title" --notes-file RELEASE_NOTES.md --latest
+gh release create vX.X.Xa-beta --title "vX.X.Xa-beta: Title" --notes-file RELEASE_NOTES.md --latest
 ```
 
 > **Note:** Prefer curated notes from `RELEASE_NOTES.md`. Do not rely on `--generate-notes` for public releases.
@@ -227,7 +227,7 @@ gh release create vX.X.X-custom --title "vX.X.X-custom: Title" --notes-file RELE
 
 1. Go to: https://github.com/cloudbyday90/Classifarr/releases/new
 2. Select the tag you just created
-3. Set release title: `vX.X.X-custom: Title`
+3. Set release title: `vX.X.Xa-beta: Title`
 4. Copy the release notes from `RELEASE_NOTES.md` into the description
 5. Ensure "Set as the latest release" is checked
 6. Click "Publish release"
