@@ -567,18 +567,45 @@ class ClarificationService {
 
       // Get the classification details
       const classResult = await client.query(
-        `SELECT ch.*, l.name as library_name, l.arr_type 
+        `SELECT ch.*, l.name as selected_library_name, l.arr_type as selected_arr_type
          FROM classification_history ch
-         LEFT JOIN libraries l ON l.id = $2
-         WHERE ch.id = $1`,
+         JOIN libraries l ON l.id = $2
+         WHERE ch.id = $1
+           AND ch.status = 'awaiting_decision'
+         FOR UPDATE`,
         [classificationId, selectedLibraryId]
       );
 
       if (classResult.rows.length === 0) {
-        throw new Error('Classification not found');
+        const libraryCheck = await client.query(
+          'SELECT id FROM libraries WHERE id = $1',
+          [selectedLibraryId]
+        );
+
+        if (libraryCheck.rows.length === 0) {
+          const invalidLibraryError = new Error('Invalid library_id');
+          invalidLibraryError.statusCode = 400;
+          throw invalidLibraryError;
+        }
+
+        const existenceCheck = await client.query(
+          'SELECT status FROM classification_history WHERE id = $1',
+          [classificationId]
+        );
+
+        if (existenceCheck.rows.length === 0) {
+          const notFoundError = new Error('Classification not found');
+          notFoundError.statusCode = 404;
+          throw notFoundError;
+        }
+
+        const staleResolutionError = new Error('Classification is no longer awaiting decision');
+        staleResolutionError.statusCode = 409;
+        throw staleResolutionError;
       }
 
       const classification = classResult.rows[0];
+      const selectedLibraryName = classification.selected_library_name || classification.library_name;
       const metadata = typeof classification.metadata === 'string'
         ? (this.safeParseJson(classification.metadata) || {})
         : (classification.metadata || {});
@@ -598,7 +625,7 @@ class ClarificationService {
         [
           classificationId,
           selectedLibraryId,
-          classification.library_name,
+          selectedLibraryName,
           `Resolved by ${resolvedBy}: ${selectedOption}`
         ]
       );
@@ -650,21 +677,40 @@ class ClarificationService {
         if (itemGenres.length > 0) {
           for (const genre of itemGenres) {
             const genreLower = genre.toLowerCase();
+            const genrePatternParams = [
+              classification.media_type,
+              selectedLibraryId,
+              genreLower,
+              resolvedBy
+            ];
             await client.query(
-              `INSERT INTO learning_patterns
-                 (tmdb_id, media_type, library_id, pattern_type, pattern_data,
-                  confidence, usage_count, success_rate, created_by)
-               VALUES (NULL, $1, $2, 'genre_pattern',
-                       jsonb_build_object('genre', $3::text),
-                       85, 1, 100.00, $4)
-               ON CONFLICT ((pattern_data->>'genre'), media_type, library_id)
-                 WHERE pattern_type = 'genre_pattern'
-               DO UPDATE SET
-                 usage_count  = learning_patterns.usage_count + 1,
-                 confidence   = LEAST(learning_patterns.confidence + 2, 95),
-                 updated_at   = NOW()`,
-              [classification.media_type, selectedLibraryId, genreLower, resolvedBy]
+              'SELECT pg_advisory_xact_lock(hashtext($1::text), $2)',
+              [`genre_pattern:${classification.media_type}:${genreLower}`, selectedLibraryId]
             );
+            const genrePatternUpdate = await client.query(
+              `UPDATE learning_patterns
+                  SET usage_count = learning_patterns.usage_count + 1,
+                      confidence = LEAST(learning_patterns.confidence + 2, 95),
+                      updated_at = NOW()
+                WHERE pattern_type = 'genre_pattern'
+                  AND media_type = $1
+                  AND library_id = $2
+                  AND pattern_data->>'genre' = $3::text
+                RETURNING id`,
+              genrePatternParams
+            );
+
+            if ((genrePatternUpdate.rowCount || 0) === 0) {
+              await client.query(
+                `INSERT INTO learning_patterns
+                   (tmdb_id, media_type, library_id, pattern_type, pattern_data,
+                    confidence, usage_count, success_rate, created_by)
+                 VALUES (NULL, $1, $2, 'genre_pattern',
+                         jsonb_build_object('genre', $3::text),
+                         85, 1, 100.00, $4)`,
+                genrePatternParams
+              );
+            }
           }
           logger.info('Wrote genre patterns from policy resolution', {
             genres: itemGenres,
@@ -688,7 +734,7 @@ class ClarificationService {
         success: true,
         classificationId,
         libraryId: selectedLibraryId,
-        libraryName: classification.library_name,
+        libraryName: selectedLibraryName,
         generatedPattern: learnedPattern,
         shouldRoute: true, // Signal that this should be routed to Radarr/Sonarr
       };

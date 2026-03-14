@@ -1,5 +1,41 @@
 # Classifarr Release Notes
 
+## v0.44.2a-beta
+**Title: Safer manual fixes and a queue that stays fast under load**
+
+### 🎉 What You'll Notice
+- **Manual classification fixes are more reliable** — choosing the right library from a pending question now avoids a wider set of stale-row, duplicate-learning, and invalid-selection failures.
+- **Queue stats stay faster as enrichment volume grows** — Classifarr no longer has to scan a mountain of finished enrichment tasks just to count live classification work.
+- **Restarts recover more cleanly on busy servers** — finished queue history is trimmed more aggressively by default so high-volume installs do not keep drifting back to an oversized queue table.
+
+### 📊 Quick Visual
+```text
+v0.44.2a-beta Snapshot
+Manual resolution safety    [██████████] stale/invalid/conflicting paths hardened
+Queue stats responsiveness  [█████████░] live stats query optimized + indexed
+Restart cleanup behavior    [█████████░] finished-row cap reduced automatically
+Upgrade effort              [██████████] safe for existing and fresh installs
+```
+
+### ✨ Highlights
+- **Pending resolutions now fail safe instead of failing late** — stale questions, invalid library picks, and malformed `generate_rule` payloads are rejected cleanly before they can turn into deeper database errors.
+- **Concurrent confirmations are handled more safely** — genre-learning writes now serialize per library/media/genre so two confirmations cannot race into duplicate learning rows.
+- **Queue history is kept under tighter control by default** — the built-in finished-row cap drops from 50,000 to 10,000, which is a better fit for installs dominated by `metadata_enrichment` traffic.
+
+### 🔧 Reliability Improvements
+- Added an automatic `task_queue (task_type, status)` index for the live dashboard stats path.
+- Reworked queue stats to use a filtered aggregate instead of grouping and sorting all classification rows.
+- Kept the queue fix upgrade-safe: no manual SQL required for existing users.
+
+### 👥 Who This Helps
+- **End users:** fewer failures when resolving pending classification questions by hand.
+- **Operators/admins:** less queue-table drift, fewer restart surprises, and more predictable dashboard performance on busy systems.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.44.2-beta
 **Title: More trustworthy classifications, even when metadata arrives messy**
 

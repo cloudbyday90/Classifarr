@@ -51,6 +51,7 @@ const POLL_INTERVAL_MS = 1000;  // Check queue every 1 second when idle
 const MAX_CONCURRENT = 5;       // Process up to 5 tasks concurrently
 const RETRY_DELAYS = [30, 60, 120, 300, 600]; // Seconds: 30s, 1m, 2m, 5m, 10m
 const OMDB_CIRCUIT_WARN_THROTTLE_MS = 60000;
+const DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS = 10000;
 
 function parseEnvMs(envValue, defaultValue) {
     const parsed = Number.parseInt(envValue || '', 10);
@@ -1310,26 +1311,24 @@ class QueueService {
             // Only count classification tasks - metadata_enrichment is tracked separately
             // in Library Enrichment Progress on the dashboard
             const result = await this.db.query(`
-        SELECT 
-          status,
-          COUNT(*) as count
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'pending') AS pending,
+          COUNT(*) FILTER (WHERE status = 'processing') AS processing,
+          COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+          COUNT(*) FILTER (WHERE status = 'failed') AS failed
         FROM task_queue
         WHERE task_type = 'classification'
-        GROUP BY status
       `);
 
             const stats = {
-                pending: 0,
-                processing: 0,
-                completed: 0,
-                failed: 0,
+                pending: parseInt(result.rows[0]?.pending, 10) || 0,
+                processing: parseInt(result.rows[0]?.processing, 10) || 0,
+                completed: parseInt(result.rows[0]?.completed, 10) || 0,
+                failed: parseInt(result.rows[0]?.failed, 10) || 0,
                 total: 0
             };
 
-            for (const row of result.rows) {
-                stats[row.status] = parseInt(row.count);
-                stats.total += parseInt(row.count);
-            }
+            stats.total = stats.pending + stats.processing + stats.completed + stats.failed;
 
             stats.aiAvailable = this.aiAvailable;
             stats.workerRunning = this.running;
@@ -2360,7 +2359,7 @@ class QueueService {
         // Hard cap on total completed/failed/cancelled rows regardless of age.
         // Prevents slow INSERT/index-maintenance on high-throughput instances
         // where every row is still within the retention window.
-        const MAX_TOTAL_ROWS = parseInt(process.env.TASK_QUEUE_MAX_TOTAL_ROWS, 10) || 50000;
+        const MAX_TOTAL_ROWS = parseInt(process.env.TASK_QUEUE_MAX_TOTAL_ROWS, 10) || DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS;
         const BATCH = 5000;
 
         const parsed = parseInt(process.env.TASK_QUEUE_RETENTION_DAYS, 10);

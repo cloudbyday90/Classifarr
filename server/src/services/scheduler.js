@@ -16,6 +16,7 @@ const mediaSyncService = require('./mediaSync');
 const classificationService = require('./classification');
 
 const logger = createLogger('SchedulerService');
+const DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS = 10000;
 
 // Number of days after which an awaiting_decision row is considered stale.
 // Matches the filter applied in GET /api/classification/pending/count.
@@ -220,12 +221,12 @@ class SchedulerService {
      *
      * Controlled by:
      *   TASK_QUEUE_RETENTION_DAYS  (default 7)
-     *   TASK_QUEUE_MAX_TOTAL_ROWS  (default 50 000)
+     *   TASK_QUEUE_MAX_TOTAL_ROWS  (default 10 000)
      */
     async runTaskQueueCleanup() {
         const parsed = parseInt(process.env.TASK_QUEUE_RETENTION_DAYS, 10);
         const retentionDays = Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
-        const MAX_TOTAL_ROWS = parseInt(process.env.TASK_QUEUE_MAX_TOTAL_ROWS, 10) || 50000;
+        const MAX_TOTAL_ROWS = parseInt(process.env.TASK_QUEUE_MAX_TOTAL_ROWS, 10) || DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS;
         const BATCH = 5000;
         let totalDeleted = 0;
         let batchDeleted;

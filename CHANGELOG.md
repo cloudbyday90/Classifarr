@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.44.2a-beta] — 2026-03-14
+
+Package version: `0.44.2-a.beta`
+
+### Fixed
+
+- **Resolving policy questions no longer depends on a missing `learning_patterns` conflict constraint** — the clarification flow now updates an existing `genre_pattern` row first and only inserts when no matching row exists, avoiding the unsupported expression-based `ON CONFLICT` target that triggered `there is no unique or exclusion constraint matching the ON CONFLICT specification` during manual selections such as routing an item to `Movies`. (`server/src/services/clarificationService.js`)
+
+- **Pending resolution now rejects stale rows, invalid direct-library selections, and malformed `generate_rule` payloads before they turn into deeper service or database failures** — the resolve route now validates `generate_rule` as a real boolean value and verifies that `library_id` exists, while `resolvePolicyQuestion()` itself now locks only `awaiting_decision` rows and returns explicit `404`/`409`/`400` errors for missing classifications, already-resolved items, and invalid library IDs. This hardens both the API route and direct callers such as Discord confirmations. (`server/src/routes/classification.js`, `server/src/services/clarificationService.js`)
+
+- **`genre_pattern` learning writes are now serialized per library/media/genre without requiring a new schema constraint** — the clarification transaction takes a transaction-scoped advisory lock before the update-or-insert genre learning step, preventing concurrent confirmations from creating duplicate learning rows on existing installs that do not have a uniqueness key for those records. (`server/src/services/clarificationService.js`)
+
+- **`task_queue` dashboard stats and restart cleanup are now safer on high-throughput installs** — the live classification queue stats query now uses a filtered aggregate instead of a grouped status scan, a new automatic migration adds `task_queue (task_type, status)` for that hot read path, and the built-in finished-row cap is reduced from 50,000 to 10,000 so completed `metadata_enrichment` rows do not dominate the table by default. Existing installs pick up the index automatically on upgrade and are trimmed down by the normal startup/scheduled cleanup paths without manual intervention. (`server/src/services/queueService.js`, `server/src/services/scheduler.js`, `database/migrations/20260314_213000_add_task_queue_task_type_status_index.sql`, `.env.example`)
+
+### Tests
+
+- Added and expanded regression coverage for:
+  - stale and invalid pending-resolution paths (`clarification.test.js`, `classification-routes.test.js`)
+  - queue stats query shape and lower built-in finished-row cap (`queueService.test.js`, `scheduler.test.js`)
+  - concurrent-safe `genre_pattern` writes without schema changes (`clarification.test.js`)
+
+---
+
 ## [v0.44.2-beta] — 2026-03-14
 
 Package version: `0.44.2-beta`

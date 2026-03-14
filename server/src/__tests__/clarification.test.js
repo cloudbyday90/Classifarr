@@ -834,7 +834,7 @@ describe('ClarificationService', () => {
   });
 
   describe('resolvePolicyQuestion - genre_pattern writing', () => {
-    test('writes one genre_pattern INSERT per genre when metadata has genres', async () => {
+    test('updates then inserts one genre_pattern per new genre when metadata has genres', async () => {
       const mockClassification = {
         id: 1,
         title: 'Planet Earth',
@@ -856,7 +856,11 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 99999, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
           }) // INSERT exact_match pattern
+          .mockResolvedValueOnce({ rows: [] }) // advisory lock: documentary
+          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern: documentary
           .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern: documentary
+          .mockResolvedValueOnce({ rows: [] }) // advisory lock: family
+          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern: family
           .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern: family
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
@@ -868,14 +872,21 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      const genrePatternCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].includes('genre_pattern')
+      const genrePatternUpdateCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].startsWith('UPDATE learning_patterns')
       );
-      // One INSERT per genre
-      expect(genrePatternCalls).toHaveLength(2);
+      const genrePatternInsertCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].startsWith('INSERT INTO learning_patterns') && call[0].includes("'genre_pattern'")
+      );
+      const advisoryLockCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].includes('pg_advisory_xact_lock')
+      );
+      expect(advisoryLockCalls).toHaveLength(2);
+      expect(genrePatternUpdateCalls).toHaveLength(2);
+      expect(genrePatternInsertCalls).toHaveLength(2);
     });
 
-    test('stores genre lowercase in genre_pattern insert', async () => {
+    test('stores genre lowercase in genre_pattern update and insert params', async () => {
       const mockClassification = {
         id: 1,
         title: 'Nature Film',
@@ -897,6 +908,8 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
           }) // INSERT exact_match
+          .mockResolvedValueOnce({ rows: [] }) // advisory lock
+          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern
           .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
@@ -906,13 +919,18 @@ describe('ClarificationService', () => {
 
       await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
 
-      const genreCall = mockClient.query.mock.calls.find(call =>
-        call[0] && call[0].includes('genre_pattern')
+      const genreUpdateCall = mockClient.query.mock.calls.find(call =>
+        call[0] && call[0].startsWith('UPDATE learning_patterns')
       );
-      expect(genreCall).toBeDefined();
-      expect(genreCall[0]).toContain("jsonb_build_object('genre', $3::text)");
+      const genreInsertCall = mockClient.query.mock.calls.find(call =>
+        call[0] && call[0].startsWith('INSERT INTO learning_patterns') && call[0].includes("'genre_pattern'")
+      );
+      expect(genreUpdateCall).toBeDefined();
+      expect(genreInsertCall).toBeDefined();
+      expect(genreInsertCall[0]).toContain("jsonb_build_object('genre', $3::text)");
       // Genre value (3rd param, index 2) should be lowercase
-      expect(genreCall[1][2]).toBe('documentary');
+      expect(genreUpdateCall[1][2]).toBe('documentary');
+      expect(genreInsertCall[1][2]).toBe('documentary');
     });
 
     test('handles object-shaped metadata genres when writing genre_pattern rows', async () => {
@@ -937,7 +955,11 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
           }) // INSERT exact_match
+          .mockResolvedValueOnce({ rows: [] }) // advisory lock
+          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern
           .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern
+          .mockResolvedValueOnce({ rows: [] }) // advisory lock
+          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern
           .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
@@ -949,12 +971,56 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      const genrePatternCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].includes('genre_pattern')
+      const genrePatternInsertCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].startsWith('INSERT INTO learning_patterns') && call[0].includes("'genre_pattern'")
       );
-      expect(genrePatternCalls).toHaveLength(2);
-      expect(genrePatternCalls[0][1][2]).toBe('documentary');
-      expect(genrePatternCalls[1][1][2]).toBe('family');
+      expect(genrePatternInsertCalls).toHaveLength(2);
+      expect(genrePatternInsertCalls[0][1][2]).toBe('documentary');
+      expect(genrePatternInsertCalls[1][1][2]).toBe('family');
+    });
+
+    test('updates an existing genre_pattern without inserting a duplicate row', async () => {
+      const mockClassification = {
+        id: 1,
+        title: 'Nature Film',
+        media_type: 'movie',
+        library_name: 'Movies',
+        policy_question: null,
+        metadata: JSON.stringify({
+          tmdb_id: 88888,
+          title: 'Nature Film',
+          genres: ['Documentary']
+        })
+      };
+
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
+          .mockResolvedValueOnce({
+            rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
+          }) // INSERT exact_match
+          .mockResolvedValueOnce({ rows: [] }) // advisory lock
+          .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 77 }] }) // UPDATE genre_pattern
+          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
+
+      expect(result.success).toBe(true);
+
+      const genrePatternUpdateCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].startsWith('UPDATE learning_patterns')
+      );
+      const genrePatternInsertCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].startsWith('INSERT INTO learning_patterns') && call[0].includes("'genre_pattern'")
+      );
+      expect(genrePatternUpdateCalls).toHaveLength(1);
+      expect(genrePatternInsertCalls).toHaveLength(0);
     });
 
     test('skips genre_pattern INSERTs when metadata has no genres', async () => {
@@ -989,6 +1055,47 @@ describe('ClarificationService', () => {
         call[0] && call[0].includes('genre_pattern')
       );
       expect(genrePatternCalls).toHaveLength(0);
+    });
+
+    test('rejects classifications that are no longer awaiting decision', async () => {
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [] }) // locked pending lookup
+          .mockResolvedValueOnce({ rows: [{ id: 5 }] }) // library check
+          .mockResolvedValueOnce({ rows: [{ status: 'completed' }] }) // existence/status check
+          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      await expect(
+        clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true)
+      ).rejects.toMatchObject({
+        message: 'Classification is no longer awaiting decision',
+        statusCode: 409
+      });
+    });
+
+    test('rejects invalid selected libraries for direct service callers', async () => {
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [] }) // locked pending lookup
+          .mockResolvedValueOnce({ rows: [] }) // library check
+          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      await expect(
+        clarificationService.resolvePolicyQuestion(1, 999, 'Movies', 'discord-user', true)
+      ).rejects.toMatchObject({
+        message: 'Invalid library_id',
+        statusCode: 400
+      });
     });
   });
 });

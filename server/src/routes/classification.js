@@ -59,6 +59,37 @@ function safeParseJsonObject(value, fallback = {}) {
   }
 }
 
+function parseOptionalBoolean(value, defaultValue = true) {
+  if (value === undefined) {
+    return { valid: true, value: defaultValue };
+  }
+
+  if (typeof value === 'boolean') {
+    return { valid: true, value };
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') {
+      return { valid: true, value: true };
+    }
+    if (normalized === 'false') {
+      return { valid: true, value: false };
+    }
+  }
+
+  if (typeof value === 'number') {
+    if (value === 1) {
+      return { valid: true, value: true };
+    }
+    if (value === 0) {
+      return { valid: true, value: false };
+    }
+  }
+
+  return { valid: false, value: defaultValue };
+}
+
 /**
  * @swagger
  * /api/classification/classify:
@@ -583,12 +614,26 @@ router.post('/pending/:id/resolve', async (req, res) => {
       return res.status(400).json({ error: 'Invalid library_id' });
     }
 
+    const parsedGenerateRule = parseOptionalBoolean(generate_rule, true);
+    if (!parsedGenerateRule.valid) {
+      return res.status(400).json({ error: 'Invalid generate_rule' });
+    }
+
+    const libraryExists = await db.query(
+      'SELECT id FROM libraries WHERE id = $1 LIMIT 1',
+      [libraryId]
+    );
+
+    if (libraryExists.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid library_id' });
+    }
+
     const result = await clarificationService.resolvePolicyQuestion(
       classificationId,
       libraryId,
       selected_option || 'Manual selection',
       resolved_by,
-      generate_rule
+      parsedGenerateRule.value
     );
 
     // Route to Radarr/Sonarr if resolution indicates we should
@@ -671,6 +716,9 @@ router.post('/pending/:id/resolve', async (req, res) => {
       routingReason
     });
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     res.status(500).json({ error: error.message });
   }
 });

@@ -543,8 +543,8 @@ describe('SchedulerService', () => {
             // Age DELETE: 0 stale rows
             dbModule.query
                 .mockResolvedValueOnce({ rowCount: 0 })
-                // COUNT: 55 000 rows (over 50 000 default cap)
-                .mockResolvedValueOnce({ rows: [{ n: '55000' }] })
+                // COUNT: 15 000 rows (over 10 000 default cap)
+                .mockResolvedValueOnce({ rows: [{ n: '15000' }] })
                 // Count-based DELETE: removes exactly `excess` rows → loop exits
                 .mockResolvedValueOnce({ rowCount: excess })
                 // VACUUM ANALYZE
@@ -554,7 +554,7 @@ describe('SchedulerService', () => {
 
             expect(logger.warn).toHaveBeenCalledWith(
                 'task_queue count cap exceeded during scheduled cleanup; trimming oldest rows',
-                expect.objectContaining({ remaining: 55000, toDelete: excess })
+                expect.objectContaining({ remaining: 15000, toDelete: excess })
             );
 
             const countDel = dbModule.query.mock.calls.find(
@@ -575,8 +575,8 @@ describe('SchedulerService', () => {
             // Age DELETE: 500 stale rows → exits (< BATCH)
             dbModule.query
                 .mockResolvedValueOnce({ rowCount: 500 })
-                // COUNT: still 55 000 over cap after age pass
-                .mockResolvedValueOnce({ rows: [{ n: '55000' }] })
+                // COUNT: still 15 000 over cap after age pass
+                .mockResolvedValueOnce({ rows: [{ n: '15000' }] })
                 // Count-based DELETE: removes 5000
                 .mockResolvedValueOnce({ rowCount: 5000 })
                 // VACUUM ANALYZE

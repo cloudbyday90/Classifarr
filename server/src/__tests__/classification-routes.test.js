@@ -87,7 +87,12 @@ describe('Classification Routes - Pending Resolution', () => {
     jest.clearAllMocks();
     
     // Reset default mock implementations
-    db.query.mockResolvedValue({ rows: [] });
+    db.query.mockImplementation(async (sql) => {
+      if (typeof sql === 'string' && sql.includes('SELECT id FROM libraries')) {
+        return { rows: [{ id: 1 }] };
+      }
+      return { rows: [] };
+    });
     
     app = express();
     app.use(express.json());
@@ -109,6 +114,35 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
     });
 
+    test('should reject numeric library_id that does not exist', async () => {
+      db.query.mockImplementationOnce(async () => ({ rows: [] }));
+
+      const response = await request(app)
+        .post('/api/classification/pending/1/resolve')
+        .send({
+          library_id: 9999,
+          selected_option: 'Movies',
+          resolved_by: 'test-user'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Invalid library_id');
+      expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+    });
+
+    test('should reject invalid generate_rule values', async () => {
+      const response = await request(app)
+        .post('/api/classification/pending/1/resolve')
+        .send({
+          library_id: 10,
+          generate_rule: 'maybe'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Invalid generate_rule');
+      expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+    });
+
     test('should resolve and route to Radarr when library has arr mapping', async () => {
       // Mock resolvePolicyQuestion response
       clarificationService.resolvePolicyQuestion.mockResolvedValue({
@@ -121,6 +155,7 @@ describe('Classification Routes - Pending Resolution', () => {
 
       // Mock classification query with library data
       db.query
+        .mockResolvedValueOnce({ rows: [{ id: 10 }] })
         .mockResolvedValueOnce({
           // First call - get classification with library
           rows: [{
@@ -185,6 +220,7 @@ describe('Classification Routes - Pending Resolution', () => {
       });
 
       db.query
+        .mockResolvedValueOnce({ rows: [{ id: 20 }] })
         .mockResolvedValueOnce({
           rows: [{
             id: 2,
@@ -224,7 +260,9 @@ describe('Classification Routes - Pending Resolution', () => {
         shouldRoute: true,
       });
 
-      db.query.mockResolvedValueOnce({
+      db.query
+        .mockResolvedValueOnce({ rows: [{ id: 30 }] })
+        .mockResolvedValueOnce({
           rows: [{
             id: 3,
             library_id: 30,
@@ -235,7 +273,7 @@ describe('Classification Routes - Pending Resolution', () => {
             sonarr_settings: null,
             library_name: 'No Arr Library'
           }]
-      });
+        });
 
       const response = await request(app)
         .post('/api/classification/pending/3/resolve')
@@ -259,6 +297,7 @@ describe('Classification Routes - Pending Resolution', () => {
       });
 
       db.query
+        .mockResolvedValueOnce({ rows: [{ id: 60 }] })
         .mockResolvedValueOnce({
           rows: [{
             id: 6,
@@ -295,7 +334,9 @@ describe('Classification Routes - Pending Resolution', () => {
         shouldRoute: true,
       });
 
-      db.query.mockResolvedValueOnce({
+      db.query
+        .mockResolvedValueOnce({ rows: [{ id: 40 }] })
+        .mockResolvedValueOnce({
           rows: [{
             id: 4,
             library_id: 40,
@@ -306,7 +347,7 @@ describe('Classification Routes - Pending Resolution', () => {
             sonarr_settings: null,
             library_name: 'Movies'
           }]
-      });
+        });
 
       // Mock routing failure
       const routingError = new Error('Radarr API connection failed');
@@ -334,7 +375,9 @@ describe('Classification Routes - Pending Resolution', () => {
         shouldRoute: true,
       });
 
-      db.query.mockResolvedValueOnce({
+      db.query
+        .mockResolvedValueOnce({ rows: [{ id: 40 }] })
+        .mockResolvedValueOnce({
           rows: [{
             id: 44,
             library_id: 40,
@@ -345,7 +388,7 @@ describe('Classification Routes - Pending Resolution', () => {
             sonarr_settings: { quality_profile_id: 4, root_folder_path: '/tv' },
             library_name: 'TV Shows'
           }]
-      });
+        });
 
       classificationService.routeToArr.mockResolvedValue({
         routed: false,
@@ -376,6 +419,7 @@ describe('Classification Routes - Pending Resolution', () => {
       });
 
       db.query
+        .mockResolvedValueOnce({ rows: [{ id: 50 }] })
         .mockResolvedValueOnce({
           rows: [{
             id: 5,
@@ -436,6 +480,47 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(response.status).toBe(200);
       expect(response.body.routed).toBe(false);
       expect(classificationService.routeToArr).not.toHaveBeenCalled();
+    });
+
+    test('should normalize generate_rule false string before calling clarificationService', async () => {
+      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+        success: true,
+        classificationId: 6,
+        libraryId: 60,
+        libraryName: 'Movies',
+        shouldRoute: false,
+      });
+
+      const response = await request(app)
+        .post('/api/classification/pending/6/resolve')
+        .send({
+          library_id: 60,
+          generate_rule: 'false'
+        });
+
+      expect(response.status).toBe(200);
+      expect(clarificationService.resolvePolicyQuestion).toHaveBeenCalledWith(
+        6,
+        60,
+        'Manual selection',
+        'admin',
+        false
+      );
+    });
+
+    test('should return service status codes for stale pending resolutions', async () => {
+      clarificationService.resolvePolicyQuestion.mockRejectedValue(
+        Object.assign(new Error('Classification is no longer awaiting decision'), { statusCode: 409 })
+      );
+
+      const response = await request(app)
+        .post('/api/classification/pending/6/resolve')
+        .send({
+          library_id: 60
+        });
+
+      expect(response.status).toBe(409);
+      expect(response.body.error).toBe('Classification is no longer awaiting decision');
     });
   });
 

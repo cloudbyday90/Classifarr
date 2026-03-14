@@ -543,14 +543,14 @@ describe('QueueService', () => {
 
     describe('getStats', () => {
         it('should return queue statistics', async () => {
-            // getStats runs a GROUP BY query and builds stats object
+            // getStats runs a filtered aggregate query and builds stats object
             db.query.mockResolvedValueOnce({
-                rows: [
-                    { status: 'pending', count: '5' },
-                    { status: 'processing', count: '2' },
-                    { status: 'completed', count: '100' },
-                    { status: 'failed', count: '3' }
-                ]
+                rows: [{
+                    pending: '5',
+                    processing: '2',
+                    completed: '100',
+                    failed: '3'
+                }]
             });
 
             const stats = await queueService.getStats();
@@ -1612,11 +1612,13 @@ describe('QueueService', () => {
         });
 
         it('count-based drain: deletes oldest rows when total exceeds MAX_TOTAL_ROWS', async () => {
-            // No age-stale rows, but 80 000 total (well over default 50 000 cap)
-            mockCounts({ stale: 0, total: 80000 });
+            // No age-stale rows, but 20 000 total (well over default 10 000 cap)
+            mockCounts({ stale: 0, total: 20000 });
             // COUNT-based DELETE batch + VACUUM
             db.query
-                .mockResolvedValueOnce({ rowCount: 30000 }) // count-based DELETE
+                .mockResolvedValueOnce({ rowCount: 5000 }) // count-based DELETE batch 1
+                .mockResolvedValueOnce({ rowCount: 5000 }) // count-based DELETE batch 2
+                .mockResolvedValueOnce({ rowCount: 0 }) // count-based DELETE batch 3
                 .mockResolvedValueOnce({});                  // VACUUM ANALYZE
 
             await queueService._backgroundDrainIfBloated();
@@ -1626,15 +1628,16 @@ describe('QueueService', () => {
             expect(calls.some(s => s.includes('VACUUM ANALYZE task_queue'))).toBe(true);
             expect(queueService.logger.warn).toHaveBeenCalledWith(
                 expect.stringContaining('count cap exceeded'),
-                expect.objectContaining({ remaining: 80000, maxTotalRows: 50000 })
+                expect.objectContaining({ remaining: 20000, maxTotalRows: 10000 })
             );
         });
 
         it('logs trigger as "age+count" when both thresholds are exceeded', async () => {
-            mockCounts({ stale: 5000, total: 60000 });
+            mockCounts({ stale: 5000, total: 20000 });
             db.query
                 .mockResolvedValueOnce({ rowCount: 5000 }) // age DELETE
-                .mockResolvedValueOnce({ rowCount: 5000 }) // count DELETE
+                .mockResolvedValueOnce({ rowCount: 5000 }) // count DELETE batch 1
+                .mockResolvedValueOnce({ rowCount: 0 }) // count DELETE batch 2
                 .mockResolvedValueOnce({});                 // VACUUM ANALYZE
 
             await queueService._backgroundDrainIfBloated();
