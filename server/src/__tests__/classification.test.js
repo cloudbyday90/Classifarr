@@ -1866,7 +1866,7 @@ describe('Phase 1 AI contract and stream guard', () => {
     jest.restoreAllMocks();
   });
 
-  test('repairs incident-style malformed prose into valid classify contract response', async () => {
+  test('converts incident-style malformed prose into deterministic contract violation without repair', async () => {
     const malformed = 'The media item is an animated family comedy with science fiction elements. The profile shows a strong presence of Animation and Family genres. The RAG data suggests similar movies have been classified';
     jest.spyOn(ollamaService, 'generateWithProgress').mockResolvedValue(malformed);
     jest.spyOn(ollamaService, 'generate').mockResolvedValue(
@@ -1877,18 +1877,24 @@ describe('Phase 1 AI contract and stream guard', () => {
       mode: 'classify'
     });
 
-    expect(result.format).toBe('confident');
-    expect(result.library).toEqual(libraries[1]);
+    expect(result.format).toBe('contract_violation');
+    expect(result.needs_clarification).toBe(true);
+    expect(result.library).toEqual(libraries[0]);
+    expect(result.policy_question).toEqual(expect.objectContaining({
+      problem_summary: 'AI response contract violation',
+      why_uncertain: expect.stringContaining('required response contract format'),
+      question: expect.stringContaining('Movies')
+    }));
     expect(result.parse_diagnostics).toEqual(expect.objectContaining({
       contract_version: 'phase1_v1',
       mode: 'classify',
-      attempt_count: 2,
-      repaired: true,
-      repair_attempted: true,
-      repair_succeeded: true
+      attempt_count: 1,
+      repaired: false,
+      repair_attempted: false,
+      repair_succeeded: false
     }));
 
-    expect(ollamaService.generate).toHaveBeenCalledTimes(1);
+    expect(ollamaService.generate).not.toHaveBeenCalled();
   });
 
   test('enforces completion-only stream parse options in classify mode', async () => {

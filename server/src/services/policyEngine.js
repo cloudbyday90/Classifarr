@@ -136,14 +136,10 @@ class PolicyEngine {
                 }
             }
 
-            // 4. Evaluate each policy; simultaneously detect language conflict candidates.
-            // A language conflict arises when a policy's preset requires a language the
-            // item doesn't have (e.g., requiring 'ja' but item is 'zh'). The preset
-            // hard-block (evaluatePresetSignals → 0) fires correctly, but profile/RAG/
-            // history can still produce a positive overall evaluatePolicy score. We must
-            // therefore detect conflicts for ALL policies — not just those that scored 0 —
-            // and exclude conflicting policies from evaluations so a Chinese film can
-            // never auto-route to a Japanese-only library via non-preset signal drift.
+            // 4. Evaluate each policy; simultaneously detect strict language conflict
+            // candidates. Advisory presets should influence score, not disqualify the
+            // policy. Only explicitly strict language requirements are allowed to block
+            // a policy from the ranked results.
             const evaluations = [];
             const languageConflicts = [];
             const languageConflictPolicyIds = new Set();
@@ -157,15 +153,16 @@ class PolicyEngine {
                 if (itemLanguage && itemLanguage !== 'en') {
                     for (const preset of (policy.presets || [])) {
                         const signals = preset.signals || {};
-                        const requiredLangs = (signals.language?.require_any || []).map(l => l.toLowerCase());
-                        if (requiredLangs.length > 0 && !requiredLangs.includes(itemLanguage)) {
+                        const languageConflict = this.getStrictLanguageConflict(signals.language, itemLanguage);
+                        if (languageConflict) {
                             languageConflicts.push({
                                 policy_id: policy.id,
                                 policy_name: policy.name,
                                 library_id: policy.library_id,
                                 library_name: policy.library_name,
                                 score: 0,
-                                required_languages: requiredLangs,
+                                required_languages: languageConflict.requiredLanguages,
+                                excluded_languages: languageConflict.excludedLanguages,
                                 item_language: itemLanguage,
                             });
                             languageConflictPolicyIds.add(policy.id);
@@ -174,10 +171,9 @@ class PolicyEngine {
                     }
                 }
 
-                // Only include in ranked evaluations when score > 0 AND no language
-                // conflict. Language conflicts are fundamental disqualifiers that prevent
-                // auto-classification into the wrong library even when other signals boost
-                // the score above zero.
+                // Only include in ranked evaluations when score > 0 AND no strict language
+                // conflict. Advisory language presets remain score-only and must not
+                // exclude otherwise-valid candidates.
                 if (evaluation.score > 0 && !languageConflictPolicyIds.has(policy.id)) {
                     evaluations.push(evaluation);
                 }
@@ -586,11 +582,9 @@ class PolicyEngine {
 
             if (signals.language) {
                 const score = this.scoreLanguage(signals.language, item);
-                // If language has explicit requirements (require_any) and the item doesn't match,
-                // hard-block the entire preset — same behavior as media_type.
-                // A Chinese animated film failing a 'require_any: [ja]' language preset should
-                // score 0 for the preset, not a blended average with a passing genre score.
-                if (score === 0 && signals.language.require_any && signals.language.require_any.length > 0) {
+                // Language is advisory by default. Only explicitly strict constraints
+                // are allowed to hard-block the preset.
+                if (score === 0 && this.hasStrictSignalConstraint(signals.language)) {
                     return 0;
                 }
                 const weight = signals.language.weight ?? 1.0;
@@ -618,6 +612,48 @@ class PolicyEngine {
             logger.error('Failed to evaluate preset signals', { error: error.message });
             return 0;
         }
+    }
+
+    hasStrictSignalConstraint(config) {
+        if (!config || config.strict !== true) {
+            return false;
+        }
+
+        const hasRequireAny = Array.isArray(config.require_any) && config.require_any.length > 0;
+        const hasExclude = Array.isArray(config.exclude) && config.exclude.length > 0;
+        return hasRequireAny || hasExclude;
+    }
+
+    getStrictLanguageConflict(config, itemLanguage) {
+        if (!itemLanguage || !this.hasStrictSignalConstraint(config)) {
+            return null;
+        }
+
+        const normalizedLanguage = String(itemLanguage).toLowerCase();
+        const requiredLanguages = Array.isArray(config?.require_any)
+            ? config.require_any.map(lang => String(lang).toLowerCase())
+            : [];
+        const excludedLanguages = Array.isArray(config?.exclude)
+            ? config.exclude.map(lang => String(lang).toLowerCase())
+            : [];
+
+        if (requiredLanguages.length > 0 && !requiredLanguages.includes(normalizedLanguage)) {
+            return {
+                type: 'require_any_mismatch',
+                requiredLanguages,
+                excludedLanguages
+            };
+        }
+
+        if (excludedLanguages.includes(normalizedLanguage)) {
+            return {
+                type: 'excluded_language',
+                requiredLanguages,
+                excludedLanguages
+            };
+        }
+
+        return null;
     }
 
     /**

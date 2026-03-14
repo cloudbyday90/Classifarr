@@ -68,15 +68,19 @@ describe('PresetSelectionModal.vue', () => {
       id: 1,
       name: 'Sci-Fi',
       icon: '🚀',
+      suggestion_score: 90,
+      suggestion_reasons: ['Library name token match'],
       match_score: 90,
-      match_reasons: ['Library name match']
+      match_reasons: ['Library name token match']
     },
     {
       id: 2,
       name: 'Space Opera',
       icon: '🌌',
+      suggestion_score: 75,
+      suggestion_reasons: ['Related genre token match'],
       match_score: 75,
-      match_reasons: ['Related genre']
+      match_reasons: ['Related genre token match']
     }
   ];
 
@@ -172,7 +176,7 @@ describe('PresetSelectionModal.vue', () => {
       await flushPromises();
       
       expect(wrapper.vm.suggestedPresets.length).toBe(2);
-      expect(wrapper.vm.suggestedPresets[0].match_score).toBe(90);
+      expect(wrapper.vm.suggestedPresets[0].suggestion_score).toBe(90);
     });
 
     it('does not load suggestions when library is null', async () => {

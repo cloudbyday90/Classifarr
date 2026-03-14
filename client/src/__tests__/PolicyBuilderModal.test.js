@@ -57,12 +57,15 @@ describe('PolicyBuilderModal.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
+    document.body.innerHTML = '';
   });
 
   it('shows usage count labels in available preset cards', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
       return Promise.resolve({ data: { suggestions: [] } });
     });
 
@@ -89,6 +92,7 @@ describe('PolicyBuilderModal.vue', () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
       if (url === '/policies/presets/suggest/1') {
         return Promise.resolve({
           data: {
@@ -97,6 +101,7 @@ describe('PolicyBuilderModal.vue', () => {
                 id: 1,
                 name: 'Sci-Fi',
                 icon: '🚀',
+                suggestion_score: 95,
                 match_score: 95
               }
             ]
@@ -125,5 +130,185 @@ describe('PolicyBuilderModal.vue', () => {
 
     expect(document.body.textContent).toContain('Used in 4 policies');
     expect(api.get).toHaveBeenCalledWith('/policies/presets/suggest/1');
+  });
+
+  it('lets users mark language presets as strict and emits strict customSignals on save', async () => {
+    const languagePreset = {
+      id: 3,
+      name: 'Scandinavian',
+      icon: '🇸🇪',
+      category: 'regional',
+      description: 'Nordic language content',
+      usage_count: 2,
+      source: 'builtin',
+      suggestion_warnings: ['runtime_semantics_review_recommended'],
+      signals: {
+        language: {
+          require_any: ['sv', 'no', 'da', 'fi']
+        }
+      }
+    };
+
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: [languagePreset] });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      if (url === '/policies/presets/suggest/1') {
+        return Promise.resolve({
+          data: {
+            suggestions: [
+              {
+                ...languagePreset,
+                suggestion_score: 78
+              }
+            ]
+          }
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: []
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Review runtime behavior');
+
+    wrapper.vm.togglePresetSelection(languagePreset);
+    await flushPromises();
+    wrapper.vm.togglePresetCustomize(3);
+    await flushPromises();
+    wrapper.vm.setPresetSignalStrict(wrapper.vm.selectedPresets[0], 'language', true);
+    await flushPromises();
+    await wrapper.vm.save();
+
+    const emittedSave = wrapper.emitted('save');
+    expect(emittedSave).toBeTruthy();
+    expect(emittedSave[0][0].presets[0]).toMatchObject({
+      preset_id: 3,
+      customSignals: {
+        language: {
+          strict: true
+        }
+      }
+    });
+  });
+
+  it('shows preset migration notice when auto-drop report exists', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') {
+        return Promise.resolve({
+          data: {
+            preset_semantics_v2_auto_drop_report: JSON.stringify({
+              dropped_count: 2,
+              affected_policy_count: 1,
+              executed_at: '2026-03-13T23:30:00Z',
+              dropped_attachments: [
+                { preset_name: 'Scandinavian' },
+                { preset_name: 'Korean' }
+              ]
+            })
+          }
+        });
+      }
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: []
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Legacy preset attachments were auto-dropped after upgrade');
+    expect(document.body.textContent).toContain('2 incompatible preset attachments were removed automatically across 1 policy.');
+    expect(document.body.textContent).toContain('Recently removed: Scandinavian, Korean');
+  });
+
+  it('lets users dismiss the preset migration notice and keeps it hidden for the same report', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') {
+        return Promise.resolve({
+          data: {
+            preset_semantics_v2_auto_drop_report: JSON.stringify({
+              dropped_count: 1,
+              affected_policy_count: 1,
+              executed_at: '2026-03-13T23:45:00Z',
+              dropped_attachments: [
+                { preset_name: 'Scandinavian' }
+              ]
+            })
+          }
+        });
+      }
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: []
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Legacy preset attachments were auto-dropped after upgrade');
+
+    expect(typeof wrapper.vm.dismissPresetMigrationNotice).toBe('function');
+    wrapper.vm.dismissPresetMigrationNotice();
+    await flushPromises();
+
+    expect(document.body.textContent).not.toContain('Legacy preset attachments were auto-dropped after upgrade');
+    expect(window.localStorage.getItem('classifarr.presetMigrationNotice.dismissed')).toBe('2026-03-13T23:45:00Z');
+
+    wrapper.unmount();
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: []
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).not.toContain('Legacy preset attachments were auto-dropped after upgrade');
   });
 });

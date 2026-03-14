@@ -364,7 +364,8 @@ describe('Policies API Integration Tests', () => {
             // Should suggest anime preset with high score
             const animeSuggestion = response.body.suggestions.find(s => s.key === 'anime');
             expect(animeSuggestion).toBeDefined();
-            expect(animeSuggestion.match_score).toBeGreaterThan(0);
+            expect(animeSuggestion.suggestion_score).toBeGreaterThan(0);
+            expect(animeSuggestion.match_score).toBe(animeSuggestion.suggestion_score);
         });
 
         test('should return suggestions for comedy library', async () => {
@@ -385,17 +386,30 @@ describe('Policies API Integration Tests', () => {
                 .expect(404);
         });
 
-        test('suggestions should have match_score and match_reasons', async () => {
+        test('suggestions should expose suggestion fields and compatibility aliases', async () => {
             const response = await request(app)
                 .get(`/api/policies/presets/suggest/${animeLibraryId}`)
                 .expect(200);
 
             response.body.suggestions.forEach(suggestion => {
+                expect(suggestion).toHaveProperty('suggestion_score');
+                expect(suggestion).toHaveProperty('suggestion_reasons');
+                expect(suggestion.suggestion_score).toBeGreaterThan(0);
+                expect(Array.isArray(suggestion.suggestion_reasons)).toBe(true);
                 expect(suggestion).toHaveProperty('match_score');
                 expect(suggestion).toHaveProperty('match_reasons');
-                expect(suggestion.match_score).toBeGreaterThan(0);
+                expect(suggestion.match_score).toBe(suggestion.suggestion_score);
                 expect(Array.isArray(suggestion.match_reasons)).toBe(true);
             });
+        });
+
+        test('should not falsely suggest scandinavian for comedy and standup from stopword overlap', async () => {
+            const response = await request(app)
+                .get(`/api/policies/presets/suggest/${comedyLibraryId}`)
+                .expect(200);
+
+            const scandinavianSuggestion = response.body.suggestions.find(s => s.key === 'scandinavian');
+            expect(scandinavianSuggestion).toBeUndefined();
         });
     });
 

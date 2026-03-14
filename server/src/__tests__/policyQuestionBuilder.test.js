@@ -212,8 +212,15 @@ describe('PolicyQuestionBuilder', () => {
     expect(result.question).toContain('Chinese');
     expect(result.question).toContain('Anime Movies');
     expect(result.question).toContain('Japanese');
+    expect(result.question).toContain('Family');
     // Anime Movies should be one of the presented options
     expect(result.options.some(o => o.library_name === 'Anime Movies')).toBe(true);
+    // Ranked candidate order must be preserved in options and metadata
+    expect(result.options[0].library_name).toBe('Family');
+    expect(result.meta.candidates[0].library_name).toBe('Family');
+    expect(result.meta.primary_candidate_library_name).toBe('Family');
+    expect(result.meta.question_anchor_library_name).toBe('Family');
+    expect(result.meta.question_anchor_reason).toBe('primary_candidate');
     // All options must have real library_id values (no nulls)
     expect(result.options.every(o => o.library_id != null)).toBe(true);
   });
@@ -270,12 +277,64 @@ describe('PolicyQuestionBuilder', () => {
     // Multi-conflict path: question should mention both conflicting library names
     expect(result.question).toContain('Anime Movies');
     expect(result.question).toContain('Anime Classics');
+    expect(result.question).toContain('Movies');
     // All options must have real library_id values
     expect(result.options.every(o => o.library_id != null)).toBe(true);
     // Both conflict libraries should appear in options
     const optionIds = result.options.map(o => o.library_id);
     expect(optionIds).toContain(11);
     expect(optionIds).toContain(12);
+    expect(result.options[0].library_name).toBe('Movies');
+    expect(result.meta.primary_candidate_library_name).toBe('Movies');
+    expect(result.meta.question_anchor_library_name).toBe('Movies');
+  });
+
+  test('should preserve ranked candidate as option 1 for lower-ranked multi-language conflicts', async () => {
+    const libraries = [
+      { id: 56, name: 'Comedy and Standup', media_type: 'movie' },
+      { id: 57, name: 'Family', media_type: 'movie' },
+      { id: 58, name: 'Movies', media_type: 'movie' },
+    ];
+
+    const policyResult = {
+      ranked: [
+        { library_id: 58, library_name: 'Movies', score: 11.06, policy_id: 29, policy_name: 'Movies Policy', scores: {}, weights: {} },
+        { library_id: 57, library_name: 'Family', score: 8, policy_id: 28, policy_name: 'Family Policy', scores: {}, weights: {} },
+      ],
+      languageConflicts: [
+        {
+          policy_id: 27,
+          policy_name: 'Comedy and Standup Policy',
+          library_id: 56,
+          library_name: 'Comedy and Standup',
+          score: 0,
+          required_languages: ['sv', 'no', 'da', 'fi'],
+          item_language: 'ka',
+        }
+      ]
+    };
+
+    const result = await policyQuestionBuilder.build({
+      metadata: {
+        title: 'Taming the Garden',
+        media_type: 'movie',
+        original_language: 'ka',
+        genres: ['Documentary'],
+      },
+      policyResult,
+      libraries,
+    });
+
+    expect(result).toBeDefined();
+    expect(result.problem_summary).toBe('Language conflict');
+    expect(result.options[0].library_name).toBe('Movies');
+    expect(result.meta.candidates[0].library_name).toBe('Movies');
+    expect(result.meta.primary_candidate_library_name).toBe('Movies');
+    expect(result.meta.question_anchor_library_name).toBe('Movies');
+    expect(result.meta.question_anchor_reason).toBe('primary_candidate');
+    expect(result.question).toContain('Movies');
+    expect(result.question).toContain('Swedish/Norwegian/Danish/Finnish');
+    expect(result.why_uncertain).toContain('Swedish/Norwegian/Danish/Finnish');
   });
 
   test('should generate a language mismatch question when known language conflicts with active candidate presets', async () => {

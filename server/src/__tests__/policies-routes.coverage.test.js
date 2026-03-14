@@ -148,8 +148,192 @@ describe('Policies routes coverage', () => {
 
       expect(res.body.library_name).toBe('Anime Family Movies');
       expect(Array.isArray(res.body.suggestions)).toBe(true);
-      expect(res.body.suggestions[0].match_score).toBeGreaterThan(0);
+      expect(res.body.suggestions[0].suggestion_score).toBeGreaterThan(0);
+      expect(Array.isArray(res.body.suggestions[0].suggestion_reasons)).toBe(true);
+      expect(res.body.suggestions[0].match_score).toBe(res.body.suggestions[0].suggestion_score);
       expect(Array.isArray(res.body.suggestions[0].match_reasons)).toBe(true);
+    });
+
+    test('does not produce substring false positives from stopwords', async () => {
+      db.query
+        .mockResolvedValueOnce({
+          rows: [{ id: 8, name: 'Comedy and Standup', media_type: 'movie' }]
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 12,
+              key: 'scandinavian',
+              name: 'Scandinavian',
+              description: 'Scandinavian films and series.',
+              icon: 'flag',
+              category: 'regional',
+              signals: { language: { require_any: ['sv', 'no', 'da', 'fi'] } },
+              is_system: true,
+              display_order: 1
+            },
+            {
+              id: 13,
+              key: 'comedy',
+              name: 'Comedy',
+              description: 'Funny comedy content.',
+              icon: 'laugh',
+              category: 'genre',
+              signals: { genres: { require_any: ['Comedy'] } },
+              is_system: true,
+              display_order: 2
+            }
+          ]
+        });
+
+      const res = await request(app)
+        .get('/api/policies/presets/suggest/8')
+        .expect(200);
+
+      expect(res.body.suggestions.some((suggestion) => suggestion.key === 'scandinavian')).toBe(false);
+      expect(res.body.suggestions.some((suggestion) => suggestion.key === 'comedy')).toBe(true);
+    });
+  });
+
+  describe('preset migration admin routes', () => {
+    test('GET /api/policies/presets/migration/incompatible validates policy_id', async () => {
+      await request(app)
+        .get('/api/policies/presets/migration/incompatible?policy_id=0')
+        .expect(400);
+    });
+
+    test('GET /api/policies/presets/migration/incompatible returns only legacy-incompatible attachments', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [
+          {
+            policy_id: 27,
+            policy_name: 'Comedy and Standup Policy',
+            library_id: 56,
+            library_name: 'Comedy and Standup',
+            id: 11,
+            key: 'scandinavian',
+            name: 'Scandinavian',
+            signals: { language: { require_any: ['sv', 'no'] } },
+            custom_signals: null,
+            weight: 1
+          },
+          {
+            policy_id: 27,
+            policy_name: 'Comedy and Standup Policy',
+            library_id: 56,
+            library_name: 'Comedy and Standup',
+            id: 12,
+            key: 'comedy',
+            name: 'Comedy',
+            signals: { genres: { require_any: ['Comedy'] } },
+            custom_signals: null,
+            weight: 1
+          },
+          {
+            policy_id: 29,
+            policy_name: 'Movies Policy',
+            library_id: 58,
+            library_name: 'Movies',
+            id: 13,
+            key: 'korean',
+            name: 'Korean',
+            signals: { language: { require_any: ['ko'], strict: true } },
+            custom_signals: null,
+            weight: 1
+          }
+        ]
+      });
+
+      const res = await request(app)
+        .get('/api/policies/presets/migration/incompatible?policy_id=27')
+        .expect(200);
+
+      expect(db.query).toHaveBeenCalledTimes(1);
+      expect(db.query.mock.calls[0][0]).toContain('WHERE pp.policy_id = $1');
+      expect(db.query.mock.calls[0][1]).toEqual([27]);
+      expect(res.body.count).toBe(1);
+      expect(res.body.attachments).toHaveLength(1);
+      expect(res.body.attachments[0]).toEqual(expect.objectContaining({
+        key: 'scandinavian',
+        runtime_semantics: expect.objectContaining({
+          migration_state: 'advisory_defaulted',
+          review_recommended: true
+        })
+      }));
+    });
+
+    test('POST /api/policies/presets/migration/drop-incompatible validates policy_id', async () => {
+      await request(app)
+        .post('/api/policies/presets/migration/drop-incompatible')
+        .send({ policy_id: -1 })
+        .expect(400);
+    });
+
+    test('POST /api/policies/presets/migration/drop-incompatible deletes only incompatible attachments', async () => {
+      db.query
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              policy_id: 27,
+              policy_name: 'Comedy and Standup Policy',
+              library_id: 56,
+              library_name: 'Comedy and Standup',
+              id: 11,
+              key: 'scandinavian',
+              name: 'Scandinavian',
+              signals: { language: { require_any: ['sv', 'no'] } },
+              custom_signals: null,
+              weight: 1
+            },
+            {
+              policy_id: 27,
+              policy_name: 'Comedy and Standup Policy',
+              library_id: 56,
+              library_name: 'Comedy and Standup',
+              id: 12,
+              key: 'comedy',
+              name: 'Comedy',
+              signals: { genres: { require_any: ['Comedy'] } },
+              custom_signals: null,
+              weight: 1
+            },
+            {
+              policy_id: 27,
+              policy_name: 'Comedy and Standup Policy',
+              library_id: 56,
+              library_name: 'Comedy and Standup',
+              id: 13,
+              key: 'korean',
+              name: 'Korean',
+              signals: { language: { require_any: ['ko'] } },
+              custom_signals: { language: { strict: true } },
+              weight: 1
+            }
+          ]
+        })
+        .mockResolvedValueOnce({ rowCount: 1 });
+
+      const res = await request(app)
+        .post('/api/policies/presets/migration/drop-incompatible')
+        .send({ policy_id: 27 })
+        .expect(200);
+
+      expect(db.withTransaction).toHaveBeenCalled();
+      expect(db.query.mock.calls[0][0]).toContain('WHERE pp.policy_id = $1');
+      expect(db.query.mock.calls[0][1]).toEqual([27]);
+      expect(db.query).toHaveBeenCalledTimes(2);
+      expect(db.query.mock.calls[1]).toEqual([
+        'DELETE FROM policy_presets WHERE policy_id = $1 AND preset_id = $2',
+        [27, 11]
+      ]);
+      expect(res.body.dropped_count).toBe(1);
+      expect(res.body.dropped).toHaveLength(1);
+      expect(res.body.dropped[0]).toEqual(expect.objectContaining({
+        key: 'scandinavian',
+        runtime_semantics: expect.objectContaining({
+          migration_state: 'advisory_defaulted'
+        })
+      }));
     });
   });
 
@@ -180,7 +364,12 @@ describe('Policies routes coverage', () => {
           rows: [{ id: 5, name: 'Policy', library_name: 'Movies' }]
         })
         .mockResolvedValueOnce({
-          rows: [{ id: 11, weight: 1.2 }]
+          rows: [{
+            id: 11,
+            weight: 1.2,
+            signals: { language: { require_any: ['sv', 'no'] } },
+            custom_signals: null
+          }]
         });
 
       const res = await request(app)
@@ -189,6 +378,11 @@ describe('Policies routes coverage', () => {
 
       expect(res.body.id).toBe(5);
       expect(res.body.presets).toHaveLength(1);
+      expect(res.body.presets[0].runtime_semantics).toEqual(expect.objectContaining({
+        migration_state: 'advisory_defaulted',
+        review_recommended: true,
+        badge_label: 'Review runtime'
+      }));
     });
   });
 
@@ -364,7 +558,13 @@ describe('Policies routes coverage', () => {
 
   test('GET /api/policies/:id/presets returns attached presets', async () => {
     db.query.mockResolvedValueOnce({
-      rows: [{ id: 5, key: 'family', weight: 1.0 }]
+      rows: [{
+        id: 5,
+        key: 'family',
+        weight: 1.0,
+        signals: { language: { require_any: ['ja'], strict: true } },
+        custom_signals: null
+      }]
     });
 
     const res = await request(app)
@@ -372,6 +572,10 @@ describe('Policies routes coverage', () => {
       .expect(200);
 
     expect(res.body).toHaveLength(1);
+    expect(res.body[0].runtime_semantics).toEqual(expect.objectContaining({
+      migration_state: 'strict_inherited',
+      badge_label: 'Strict runtime'
+    }));
   });
 
   describe('POST /api/policies/:id/presets', () => {
@@ -400,11 +604,44 @@ describe('Policies routes coverage', () => {
 
       const res = await request(app)
         .post('/api/policies/22/presets')
-        .send({ preset_id: 8, weight: 1.2, customSignals: { ratings: ['PG'] } })
+        .send({
+          preset_id: 8,
+          weight: 1.2,
+          customSignals: {
+            ratings: ['PG'],
+            language: { require_any: ['sv'], strict: true }
+          }
+        })
         .expect(201);
 
       expect(res.body.policy_id).toBe(22);
       expect(res.body.preset_id).toBe(8);
+      expect(db.query.mock.calls[1][1][3]).toEqual({
+        ratings: ['PG'],
+        language: { require_any: ['sv'], strict: true }
+      });
+    });
+
+    test('coerces non-boolean strict custom signal values to false', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ policy_id: 22, preset_id: 8, weight: 1.0 }]
+        });
+
+      await request(app)
+        .post('/api/policies/22/presets')
+        .send({
+          preset_id: 8,
+          customSignals: {
+            language: { require_any: ['sv'], strict: 'yes' }
+          }
+        })
+        .expect(201);
+
+      expect(db.query.mock.calls[1][1][3]).toEqual({
+        language: { require_any: ['sv'], strict: false }
+      });
     });
   });
 
@@ -428,4 +665,3 @@ describe('Policies routes coverage', () => {
     });
   });
 });
-

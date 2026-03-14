@@ -20,8 +20,103 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { describePresetRuntimeSemantics, normalizeSignalConfig } = require('../utils/policySignals');
 
 const logger = createLogger('PoliciesRoute');
+const SUGGESTION_STOPWORDS = new Set([
+    'a', 'an', 'and', 'for', 'in', 'of', 'on', 'the', 'to', 'with',
+    'library', 'libraries', 'media', 'content'
+]);
+
+function tokenizeSuggestionText(value) {
+    return Array.from(new Set(
+        String(value || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .split(/\s+/)
+            .filter(token => token.length >= 2)
+            .filter(token => !SUGGESTION_STOPWORDS.has(token))
+    ));
+}
+
+function compactSuggestionText(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '');
+}
+
+function countTokenOverlap(leftTokens, rightTokens) {
+    const right = new Set(rightTokens);
+    return leftTokens.filter(token => right.has(token)).length;
+}
+
+function sanitizeCustomSignals(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return null;
+    }
+
+    const cloned = JSON.parse(JSON.stringify(value));
+
+    for (const [signalType, config] of Object.entries(cloned)) {
+        if (!config || typeof config !== 'object' || Array.isArray(config)) {
+            continue;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(config, 'strict')) {
+            config.strict = config.strict === true;
+        }
+
+        cloned[signalType] = config;
+    }
+
+    return cloned;
+}
+
+function annotatePresetAttachment(preset) {
+    const baseSignals = normalizeSignalConfig(preset?.signals) || {};
+    const customSignals = sanitizeCustomSignals(preset?.custom_signals ?? preset?.customSignals) || null;
+
+    return {
+        ...preset,
+        custom_signals: customSignals,
+        customSignals: customSignals,
+        runtime_semantics: describePresetRuntimeSemantics(baseSignals, customSignals)
+    };
+}
+
+function isLegacyIncompatibleAttachment(preset) {
+    return preset?.runtime_semantics?.migration_state === 'advisory_defaulted'
+        && preset?.runtime_semantics?.review_recommended === true;
+}
+
+async function fetchPolicyPresetAttachments(policyId = null) {
+    const params = [];
+    let whereClause = '';
+
+    if (policyId) {
+        params.push(policyId);
+        whereClause = 'WHERE pp.policy_id = $1';
+    }
+
+    const result = await db.query(`
+        SELECT 
+            lp.id as policy_id,
+            lp.name as policy_name,
+            l.id as library_id,
+            l.name as library_name,
+            cp.*,
+            pp.weight,
+            pp.custom_signals
+        FROM policy_presets pp
+        JOIN library_policies lp ON pp.policy_id = lp.id
+        JOIN libraries l ON lp.library_id = l.id
+        JOIN content_presets cp ON pp.preset_id = cp.id
+        ${whereClause}
+        ORDER BY l.name, lp.name, cp.name
+    `, params);
+
+    return result.rows.map(annotatePresetAttachment);
+}
 
 /**
  * @swagger
@@ -161,11 +256,10 @@ router.get('/presets/suggest/:libraryId', async (req, res) => {
         const library = libraryResult.rows[0];
         const libraryName = library.name.toLowerCase();
 
-        // Tokenize library name into words for matching
-        const tokens = libraryName
-            .replace(/[^a-z0-9\s]/g, ' ')  // Replace special chars with space
-            .split(/\s+/)                   // Split by whitespace
-            .filter(t => t.length > 2);     // Only tokens 3+ chars
+        // Tokenize library name into normalized words for matching.
+        // Keep this lexical scorer honest: whole-token overlap only, no substring tricks.
+        const tokens = tokenizeSuggestionText(libraryName);
+        const compactLibraryName = compactSuggestionText(libraryName);
 
         logger.debug('Library name tokens for matching', { libraryId, libraryName, tokens });
 
@@ -182,71 +276,90 @@ router.get('/presets/suggest/:libraryId', async (req, res) => {
         // Calculate match score for each preset
         const suggestions = presetsResult.rows.map(preset => {
             let score = 0;
-            const matchReasons = [];
+            const suggestionReasons = [];
 
             const presetKey = preset.key.toLowerCase();
             const presetName = preset.name.toLowerCase();
             const presetDesc = (preset.description || '').toLowerCase();
+            const presetCategory = (preset.category || '').toLowerCase();
+            const presetKeyTokens = tokenizeSuggestionText(presetKey);
+            const presetNameTokens = tokenizeSuggestionText(presetName);
+            const presetDescTokens = tokenizeSuggestionText(presetDesc);
+            const presetCategoryTokens = tokenizeSuggestionText(presetCategory);
+            const compactPresetKey = compactSuggestionText(presetKey);
+            const compactPresetName = compactSuggestionText(presetName);
 
-            // 1. Exact key match (highest score)
-            if (tokens.some(t => presetKey.includes(t) || t.includes(presetKey))) {
-                score += 50;
-                matchReasons.push('key_match');
+            // 1. Exact key token overlap
+            const keyMatchCount = countTokenOverlap(tokens, presetKeyTokens);
+            if (keyMatchCount > 0) {
+                score += Math.min(40, keyMatchCount * 40);
+                suggestionReasons.push('key_token_match');
             }
 
-            // 2. Name contains token (high score)
-            const nameMatchCount = tokens.filter(t => presetName.includes(t)).length;
+            // 2. Name token overlap
+            const nameMatchCount = countTokenOverlap(tokens, presetNameTokens);
             if (nameMatchCount > 0) {
-                score += nameMatchCount * 30;
-                matchReasons.push('name_match');
+                score += Math.min(30, nameMatchCount * 15);
+                suggestionReasons.push('name_token_match');
             }
 
-            // 3. Library name contains preset name/key
-            if (libraryName.includes(presetKey) || libraryName.includes(presetName.replace(/[^a-z0-9]/g, ''))) {
-                score += 40;
-                matchReasons.push('library_contains_preset');
+            // 3. Whole-phrase compact containment for cases like "stand-up" vs "standup".
+            if (
+                (compactPresetKey.length >= 4 && compactLibraryName.includes(compactPresetKey)) ||
+                (compactPresetName.length >= 4 && compactLibraryName.includes(compactPresetName))
+            ) {
+                score += 25;
+                suggestionReasons.push('phrase_match');
             }
 
-            // 4. Genre signal matching
+            // 4. Genre signal token overlap
             const signals = preset.signals || {};
             const genreSignals = signals.genres || {};
             const requireGenres = genreSignals.require_any || [];
             const preferGenres = genreSignals.prefer || [];
 
-            const allGenres = [...requireGenres, ...preferGenres].map(g => g.toLowerCase());
-            const genreMatchCount = tokens.filter(t =>
-                allGenres.some(g => g.includes(t) || t.includes(g))
-            ).length;
+            const allGenres = [...requireGenres, ...preferGenres]
+                .flatMap(genre => tokenizeSuggestionText(genre));
+            const genreMatchCount = countTokenOverlap(tokens, allGenres);
             if (genreMatchCount > 0) {
-                score += genreMatchCount * 20;
-                matchReasons.push('genre_match');
+                score += Math.min(20, genreMatchCount * 10);
+                suggestionReasons.push('genre_token_match');
             }
 
-            // 5. Description contains token (lower score)
-            const descMatchCount = tokens.filter(t => presetDesc.includes(t)).length;
+            // 5. Description token overlap (low-confidence hint only)
+            const descMatchCount = countTokenOverlap(tokens, presetDescTokens);
             if (descMatchCount > 0) {
-                score += descMatchCount * 10;
-                matchReasons.push('description_match');
+                score += Math.min(10, descMatchCount * 5);
+                suggestionReasons.push('description_token_match');
             }
 
-            // 6. Category keyword bonus
-            const categoryMatch = tokens.some(t => (preset.category || '').toLowerCase().includes(t));
-            if (categoryMatch) {
-                score += 15;
-                matchReasons.push('category_match');
+            // 6. Category token overlap
+            const categoryMatchCount = countTokenOverlap(tokens, presetCategoryTokens);
+            if (categoryMatchCount > 0) {
+                score += 10;
+                suggestionReasons.push('category_token_match');
+            }
+
+            const suggestionWarnings = [];
+            if (signals.language?.require_any?.length > 0 || signals.media_type?.include?.length > 0) {
+                suggestionWarnings.push('runtime_semantics_review_recommended');
             }
 
             return {
                 ...preset,
+                suggestion_score: score,
+                suggestion_reasons: suggestionReasons,
+                suggestion_warnings: suggestionWarnings,
+                // Compatibility aliases for existing callers.
                 match_score: score,
-                match_reasons: matchReasons
+                match_reasons: suggestionReasons
             };
         });
 
         // Filter to only suggestions with score > 0, sort by score desc, top 8
         const topSuggestions = suggestions
-            .filter(s => s.match_score > 0)
-            .sort((a, b) => b.match_score - a.match_score)
+            .filter(s => s.suggestion_score > 0)
+            .sort((a, b) => b.suggestion_score - a.suggestion_score)
             .slice(0, 8);
 
         logger.info('Preset suggestions generated', {
@@ -263,6 +376,83 @@ router.get('/presets/suggest/:libraryId', async (req, res) => {
         });
     } catch (error) {
         logger.error('Failed to get preset suggestions', { error: error.message, libraryId: req.params.libraryId });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/presets/migration/incompatible', async (req, res) => {
+    try {
+        const policyId = req.query.policy_id ? Number.parseInt(req.query.policy_id, 10) : null;
+        if (req.query.policy_id && (!Number.isInteger(policyId) || policyId < 1)) {
+            return res.status(400).json({ error: 'policy_id must be a positive integer' });
+        }
+
+        const attachments = await fetchPolicyPresetAttachments(policyId);
+        const incompatible = attachments.filter(isLegacyIncompatibleAttachment);
+
+        res.json({
+            count: incompatible.length,
+            attachments: incompatible
+        });
+    } catch (error) {
+        logger.error('Failed to list incompatible preset attachments', { error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/presets/migration/drop-incompatible', async (req, res) => {
+    try {
+        const policyId = req.body?.policy_id ? Number.parseInt(req.body.policy_id, 10) : null;
+        if (req.body?.policy_id && (!Number.isInteger(policyId) || policyId < 1)) {
+            return res.status(400).json({ error: 'policy_id must be a positive integer' });
+        }
+
+        const dropped = await db.withTransaction(async (client) => {
+            const params = [];
+            let whereClause = '';
+
+            if (policyId) {
+                params.push(policyId);
+                whereClause = 'WHERE pp.policy_id = $1';
+            }
+
+            const attachmentsResult = await client.query(`
+                SELECT 
+                    lp.id as policy_id,
+                    lp.name as policy_name,
+                    l.id as library_id,
+                    l.name as library_name,
+                    cp.*,
+                    pp.weight,
+                    pp.custom_signals
+                FROM policy_presets pp
+                JOIN library_policies lp ON pp.policy_id = lp.id
+                JOIN libraries l ON lp.library_id = l.id
+                JOIN content_presets cp ON pp.preset_id = cp.id
+                ${whereClause}
+                ORDER BY l.name, lp.name, cp.name
+            `, params);
+
+            const incompatible = attachmentsResult.rows
+                .map(annotatePresetAttachment)
+                .filter(isLegacyIncompatibleAttachment);
+
+            for (const attachment of incompatible) {
+                await client.query(
+                    'DELETE FROM policy_presets WHERE policy_id = $1 AND preset_id = $2',
+                    [attachment.policy_id, attachment.id]
+                );
+            }
+
+            return incompatible;
+        });
+
+        res.json({
+            dropped_count: dropped.length,
+            dropped
+        });
+    } catch (error) {
+        logger.error('Failed to drop incompatible preset attachments', { error: error.message });
         res.status(500).json({ error: error.message });
     }
 });
@@ -332,7 +522,7 @@ router.get('/:id', async (req, res) => {
             ORDER BY pp.sort_order, cp.display_order, cp.name
         `, [id]);
 
-        policy.presets = presetsResult.rows;
+        policy.presets = presetsResult.rows.map(annotatePresetAttachment);
 
         res.json(policy);
     } catch (error) {
@@ -431,7 +621,7 @@ router.post('/', async (req, res) => {
                     await client.query(`
                         INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
                         VALUES ($1, $2, $3, $4)
-                    `, [p.id, preset.preset_id, preset.weight || 1.0, preset.customSignals || null]);
+                    `, [p.id, preset.preset_id, preset.weight || 1.0, sanitizeCustomSignals(preset.customSignals)]);
                 }
             }
 
@@ -460,7 +650,7 @@ router.post('/', async (req, res) => {
         `, [policy.id]);
 
         const result = completePolicy.rows[0];
-        result.presets = presetsResult.rows;
+        result.presets = presetsResult.rows.map(annotatePresetAttachment);
 
         res.status(201).json(result);
     } catch (error) {
@@ -572,7 +762,7 @@ router.put('/:id', async (req, res) => {
                         await client.query(`
                             INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
                             VALUES ($1, $2, $3, $4)
-                        `, [id, preset.preset_id, preset.weight || 1.0, preset.customSignals || null]);
+                        `, [id, preset.preset_id, preset.weight || 1.0, sanitizeCustomSignals(preset.customSignals)]);
                     }
                 }
             }
@@ -604,7 +794,7 @@ router.put('/:id', async (req, res) => {
         `, [id]);
 
         const policy = policyResult.rows[0];
-        policy.presets = presetsResult.rows;
+        policy.presets = presetsResult.rows.map(annotatePresetAttachment);
 
         res.json(policy);
     } catch (error) {
@@ -690,7 +880,7 @@ router.get('/:id/presets', async (req, res) => {
             ORDER BY pp.sort_order, cp.display_order, cp.name
         `, [id]);
 
-        res.json(result.rows);
+        res.json(result.rows.map(annotatePresetAttachment));
     } catch (error) {
         logger.error('Failed to get policy presets', { error: error.message, id: req.params.id });
         res.status(500).json({ error: error.message });
@@ -722,14 +912,14 @@ router.post('/:id/presets', async (req, res) => {
             return res.status(400).json({ error: 'Preset already attached to this policy' });
         }
 
-        const customSignals = req.body.customSignals || null;
+        const customSignals = sanitizeCustomSignals(req.body.customSignals);
         const result = await db.query(`
             INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
             VALUES ($1, $2, $3, $4)
             RETURNING *
         `, [id, preset_id, weight, customSignals]);
 
-        res.status(201).json(result.rows[0]);
+        res.status(201).json(annotatePresetAttachment(result.rows[0]));
     } catch (error) {
         logger.error('Failed to attach preset', { error: error.message, id: req.params.id });
         res.status(500).json({ error: error.message });

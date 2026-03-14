@@ -54,6 +54,7 @@ const LANGUAGE_LABELS = {
   pl: 'Polish',
   sv: 'Swedish',
   da: 'Danish',
+  no: 'Norwegian',
   nb: 'Norwegian',
   fi: 'Finnish',
   cs: 'Czech',
@@ -143,14 +144,21 @@ class PolicyQuestionBuilder {
     if (!originalLanguage) return null;
 
     const itemLangLabel = this.formatLanguage(originalLanguage);
-
-    // All conflicting libraries go first in the options list (deduped against regular candidates)
+    const topCandidate = candidates[0] || null;
+    const rankedLibraries = candidates.map(c => c.library).filter(Boolean);
     const conflictLibraries = languageConflicts.map(c => ({ id: c.library_id, name: c.library_name }));
-    const regularLibraries = candidates.map(c => c.library).filter(Boolean);
-    const conflictLibraryIds = new Set(conflictLibraries.map(l => l.id));
-    const additionalLibraries = regularLibraries.filter(l => !conflictLibraryIds.has(l.id));
-    const allLibraries = [...conflictLibraries, ...additionalLibraries];
-    const options = allLibraries.slice(0, 3).map(lib => this.toOption(lib.name, lib));
+    const orderedLibraries = [];
+    const seenLibraryIds = new Set();
+
+    [...rankedLibraries, ...conflictLibraries].forEach((library) => {
+      if (!library?.id || seenLibraryIds.has(library.id)) {
+        return;
+      }
+      seenLibraryIds.add(library.id);
+      orderedLibraries.push(library);
+    });
+
+    const options = orderedLibraries.slice(0, 3).map(lib => this.toOption(lib.name, lib));
 
     if (options.length < 2) return null;
 
@@ -158,13 +166,25 @@ class PolicyQuestionBuilder {
     let question, whyUncertain;
     if (languageConflicts.length === 1) {
       const conflict = languageConflicts[0];
-      const conflictLangLabel = this.formatLanguage(conflict.required_languages[0]);
-      question = `This is ${itemLangLabel} content. "${conflict.library_name}" normally requires ${conflictLangLabel} titles — should it still go there, or to a different library?`;
-      whyUncertain = `Content is in ${itemLangLabel}, but "${conflict.library_name}" is configured for ${conflictLangLabel} content only.`;
+      const conflictLangLabel = this.formatLanguageList(conflict.required_languages || []);
+      if (topCandidate?.library?.name) {
+        question = `Top match is "${topCandidate.library.name}" for this ${itemLangLabel} content, but "${conflict.library_name}" has a ${conflictLangLabel} language preference. Which library should this go to?`;
+      } else {
+        question = `This is ${itemLangLabel} content. "${conflict.library_name}" has a ${conflictLangLabel} language preference. Which library should this go to?`;
+      }
+      whyUncertain = `Content is in ${itemLangLabel}, but "${conflict.library_name}" is configured for ${conflictLangLabel} content.`;
     } else {
       const conflictNames = languageConflicts.map(c => `"${c.library_name}"`).join(' and ');
-      question = `This is ${itemLangLabel} content, but ${conflictNames} normally require different language content. Should it go to one of them anyway, or to a different library?`;
-      whyUncertain = `Content is in ${itemLangLabel}, but the top candidate libraries are configured for other languages.`;
+      const combinedLanguages = Array.from(new Set(
+        languageConflicts.flatMap(conflict => conflict.required_languages || [])
+      ));
+      const conflictLangLabel = this.formatLanguageList(combinedLanguages);
+      if (topCandidate?.library?.name) {
+        question = `Top match is "${topCandidate.library.name}" for this ${itemLangLabel} content, but ${conflictNames} have a ${conflictLangLabel} language preference. Which library should this go to?`;
+      } else {
+        question = `This is ${itemLangLabel} content, but ${conflictNames} have a ${conflictLangLabel} language preference. Which library should this go to?`;
+      }
+      whyUncertain = `Content is in ${itemLangLabel}, but conflicting libraries are configured for ${conflictLangLabel} content.`;
     }
 
     const conflictCandidateMeta = languageConflicts.map(c => ({
@@ -182,7 +202,11 @@ class PolicyQuestionBuilder {
       question,
       options,
       candidates: [...candidates, ...conflictCandidateMeta],
-      extras,
+      extras: {
+        ...extras,
+        question_anchor_library: topCandidate?.library || null,
+        question_anchor_reason: topCandidate?.library ? 'primary_candidate' : 'manual_review_required',
+      },
     });
   }
 
@@ -373,7 +397,13 @@ class PolicyQuestionBuilder {
         this.toOption(`No → ${fallbackCandidate.library.name}`, fallbackCandidate.library)
       ],
       candidates,
-      extras
+      extras: {
+        ...extras,
+        question_anchor_library: resolvedTargetCandidate.library,
+        question_anchor_reason: resolvedTargetCandidate.library_id === candidates?.[0]?.library_id
+          ? 'primary_candidate'
+          : 'binary_verify_flow',
+      }
     });
   }
 
@@ -430,6 +460,13 @@ class PolicyQuestionBuilder {
 
   buildQuestionPayload(metadata, { problem_summary, why_uncertain, question, options, candidates, extras = {} }) {
     const topCandidate = (candidates || [])[0];
+    const primaryCandidateLibraryId = topCandidate?.library_id ?? topCandidate?.library?.id ?? options?.[0]?.library_id ?? null;
+    const primaryCandidateLibraryName = topCandidate?.library_name ?? topCandidate?.library?.name ?? options?.[0]?.library_name ?? null;
+    const questionAnchorLibrary = extras.question_anchor_library
+      || topCandidate?.library
+      || (primaryCandidateLibraryId ? { id: primaryCandidateLibraryId, name: primaryCandidateLibraryName } : null);
+    const questionAnchorReason = extras.question_anchor_reason
+      || (questionAnchorLibrary?.id === primaryCandidateLibraryId ? 'primary_candidate' : 'manual_review_required');
     const policyScores = topCandidate?.scores || null;
     const policyWeights = topCandidate?.weights || null;
     const ragSummary = extras.ragContext?.similarItems
@@ -444,6 +481,21 @@ class PolicyQuestionBuilder {
       genres: metadata.genres || [],
       keywords: (metadata.keywords || []).slice(0, 10)
     };
+
+    if (
+      primaryCandidateLibraryId != null &&
+      options?.[0]?.library_id != null &&
+      primaryCandidateLibraryId !== options[0].library_id &&
+      questionAnchorReason === 'primary_candidate'
+    ) {
+      logger.warn('Policy question option order diverges from primary candidate', {
+        title: metadata?.title,
+        primaryCandidateLibraryId,
+        primaryCandidateLibraryName,
+        firstOptionLibraryId: options[0].library_id,
+        firstOptionLibraryName: options[0].library_name
+      });
+    }
 
     return {
       type: 'policy',
@@ -463,6 +515,11 @@ class PolicyQuestionBuilder {
         policy_weights: policyWeights,
         rag_summary: ragSummary,
         ai_rationale: aiRationale,
+        primary_candidate_library_id: primaryCandidateLibraryId,
+        primary_candidate_library_name: primaryCandidateLibraryName,
+        question_anchor_library_id: questionAnchorLibrary?.id ?? null,
+        question_anchor_library_name: questionAnchorLibrary?.name ?? null,
+        question_anchor_reason: questionAnchorReason,
         tags
       },
       generated_at: new Date().toISOString()
@@ -516,6 +573,17 @@ class PolicyQuestionBuilder {
   formatLanguage(code) {
     if (!code) return 'non-English';
     return LANGUAGE_LABELS[code.toLowerCase()] || code.toUpperCase();
+  }
+
+  formatLanguageList(codes) {
+    const uniqueCodes = Array.from(new Set((codes || []).filter(Boolean).map(code => code.toLowerCase())));
+    if (uniqueCodes.length === 0) {
+      return 'non-English';
+    }
+    if (uniqueCodes.length === 1) {
+      return this.formatLanguage(uniqueCodes[0]);
+    }
+    return uniqueCodes.map(code => this.formatLanguage(code)).join('/');
   }
 }
 

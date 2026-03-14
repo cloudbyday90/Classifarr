@@ -68,7 +68,7 @@
     </div>
 
     <div class="p-4 border-t border-gray-800 text-sm text-gray-400">
-      <div>v0.44.1-beta</div>
+      <div>{{ APP_DISPLAY_VERSION }}</div>
     </div>
   </aside>
 </template>
@@ -77,6 +77,7 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 import { useOnline } from "@vueuse/core";
+import { APP_DISPLAY_VERSION } from "@/constants/appVersion";
 import {
   Squares2X2Icon,
   FolderIcon,

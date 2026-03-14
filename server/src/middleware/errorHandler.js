@@ -42,6 +42,8 @@ function isMalformedJsonError(err, statusCode) {
 async function errorHandler(err, req, res, _next) {
   const statusCode = getStatusCode(err);
   const malformedJson = isMalformedJsonError(err, statusCode);
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isProduction = process.env.NODE_ENV === 'production';
 
   if (malformedJson) {
     logger.info('Rejected malformed JSON payload', {
@@ -73,11 +75,16 @@ async function errorHandler(err, req, res, _next) {
     }
   );
 
+  const publicError = statusCode === 500 ? 'Internal Server Error' : err.message;
+  const publicMessage = (statusCode >= 500 && isProduction)
+    ? 'Internal Server Error'
+    : err.message;
+
   return res.status(statusCode).json({
-    error: statusCode === 500 ? 'Internal Server Error' : err.message,
-    message: err.message,
+    error: publicError,
+    message: publicMessage,
     ...(statusCode >= 500 && errorId ? { errorId } : {}),
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(isDevelopment && { stack: err.stack })
   });
 }
 

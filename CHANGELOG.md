@@ -9,6 +9,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.44.1a.beta] — 2026-03-13
+
+Package version: `0.44.1-a.beta`
+
+### Changed
+
+- **Preset suggestions now return honest lexical `suggestion_score` metadata instead of misleading `% match` semantics** — the scorer in `server/src/routes/policies.js` now uses normalized whole-token overlap and compact phrase checks, removing substring false positives like `Comedy and Standup` suggesting `Scandinavian` because both contain `and`. The API now emits `suggestion_score`, `suggestion_reasons`, and `suggestion_warnings`, while preserving `match_score` / `match_reasons` as compatibility aliases for existing callers. The client preset picker UI now labels this field as `Suggestion score` instead of `% match`. (`server/src/routes/policies.js`, `client/src/components/policies/PolicyBuilderModal.vue`, `client/src/components/policies/PresetSelectionModal.vue`)
+
+- **Language/regional preset semantics are advisory by default unless explicitly marked `strict: true`** — runtime evaluation in `policyEngine.js` now treats `language.require_any` / `language.exclude` as score-shaping signals by default rather than hidden hard gates. Only explicit `strict: true` preserves blocking behavior and language-conflict exclusion from ranked results. The policy builder and preset attachment API now preserve explicit strictness decisions via `customSignals`, and attached presets are annotated with `runtime_semantics` metadata such as `advisory_defaulted`, `strict_override`, and `strict_inherited`. (`server/src/services/policyEngine.js`, `server/src/routes/policies.js`, `server/src/utils/policySignals.js`, `client/src/components/policies/PolicyBuilderModal.vue`)
+
+- **Automatic targeted preset cleanup is now the default upgrade behavior for legacy-incompatible attachments** — one-time migration `20260313_233000_auto_drop_legacy_incompatible_policy_presets.sql` removes only attached presets that still carry legacy language constraints but do not have an explicit strict decision under the new runtime model. The migration writes `settings.key = 'preset_semantics_v2_auto_drop_report'` only when something was actually removed, so fresh installs and untouched configs remain silent. The Policies UI reads that audit row and shows a dismissible upgrade notice; users can reapply corrected presets manually. (`database/migrations/20260313_233000_auto_drop_legacy_incompatible_policy_presets.sql`, `client/src/components/policies/PolicyBuilderModal.vue`)
+
+### Fixed
+
+- **Language-conflict clarification questions could center the wrong library even when ranking was correct** — the clarification builder previously let a conflicting lower-ranked library become option 1 and the text anchor in `policy_question`, producing prompts like “Comedy and Standup normally requires Swedish titles” even when `Movies` was the top candidate. The builder now preserves ranked candidate order, anchors wording on the top-ranked library, and renders multi-language conflicts honestly. Additional metadata is stored in the policy question payload to make the anchor and ranking explicit. (`server/src/services/policyQuestionBuilder.js`)
+
+- **Malformed classify-mode AI prose could still influence user-facing routing prompts after breaking the response contract** — `aiResponseParser.js` no longer extracts a lead library from malformed narrative classify responses. Instead, classify mode now returns deterministic `contract_violation` clarification anchored to the suggested/default library. Verify mode keeps disagreement salvage behavior. This hardens the parser against the production incidents that emitted free-text responses like “The media is a documentary about nature in Costa Rica…” and failed with `parseFailureReason: no_format_matched`. (`server/src/services/aiResponseParser.js`)
+
+### Tests
+
+- Added and updated regression coverage for:
+  - preset suggestion substring false-positive removal and compatibility aliases (`policies-routes.coverage.test.js`)
+  - advisory vs strict language preset runtime behavior (`policyEngine.presetSemantics.test.js`)
+  - truthful candidate ordering and conflict wording (`policyQuestionBuilder.test.js`)
+  - classify-mode malformed AI contract fallback behavior (`aiResponseParser.test.js`)
+  - dismissible preset-migration banner behavior in the policy builder (`PolicyBuilderModal.test.js`)
+
+- Local production-like verification completed:
+  - rebuilt `docker compose` without cache
+  - recreated the `classifarr` container
+  - confirmed migration `20260313_233000_auto_drop_legacy_incompatible_policy_presets.sql` applied successfully
+  - confirmed fresh/no-policy local instance wrote no `preset_semantics_v2_auto_drop_report` row
+  - confirmed manually attached presets persist and are not auto-removed on post-upgrade runtime paths
+
+---
+
 ## [0.44.1-beta] — 2026-03-13
 
 ### Security

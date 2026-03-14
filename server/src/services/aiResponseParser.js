@@ -94,13 +94,16 @@ class AIResponseParser {
             }
         }
 
-        // Heuristic salvage for narrative responses that still provide a suggested library.
-        // This keeps behavior safe by producing a clarification flow instead of auto-routing.
+        // Deterministic salvage for malformed responses. Verify mode keeps the existing
+        // disagreement clarification path; classify mode now returns an explicit
+        // contract violation clarification anchored to deterministic candidates rather
+        // than trusting prose-extracted library names.
         const narrativeResult = this.parseNarrativeSuggestion(response, context, mode);
         if (narrativeResult) {
-            logger.info('Salvaged narrative AI response into structured clarification', {
+            logger.info('Salvaged malformed AI response into structured clarification', {
                 title: metadata?.title,
-                library: narrativeResult.library?.name || null
+                library: narrativeResult.library?.name || null,
+                format: narrativeResult.format
             });
             return narrativeResult;
         }
@@ -466,95 +469,7 @@ class AIResponseParser {
             };
         }
 
-        // Classify mode: extract the library the AI suggested from the narrative.
-        const suggestedName = this.extractSuggestedLibraryName(response);
-        if (!suggestedName) {
-            return null;
-        }
-
-        const matchedLibrary = this.findLibraryByName(suggestedName, libraries);
-        if (!matchedLibrary) {
-            return null;
-        }
-
-        const defaultConfidence = Number.isFinite(Number(signalContext?.confidence))
-            ? Number(signalContext.confidence)
-            : 55;
-        const confidence = Math.min(95, Math.max(50, defaultConfidence));
-        const title = metadata?.title || 'this item';
-
-        const options = libraries.slice(0, 4).map((lib) => ({
-            label: lib.name,
-            value: `library_${lib.id}`,
-            library_id: lib.id,
-            library_name: lib.name
-        }));
-
-        return {
-            library: matchedLibrary,
-            confidence,
-            reason: `Needs clarification: AI returned narrative output with suggested library "${matchedLibrary.name}"`,
-            needs_clarification: true,
-            clarification: {
-                problem_summary: 'AI response needs confirmation',
-                why_uncertain: 'AI returned narrative text instead of the required response contract format.',
-                question: `Should "${title}" go to "${matchedLibrary.name}"?`,
-                options
-            },
-            pending_reason: 'AI response needs confirmation',
-            policy_question: {
-                problem_summary: 'AI response needs confirmation',
-                why_uncertain: 'AI returned narrative text instead of the required response contract format.',
-                question: `Should "${title}" go to "${matchedLibrary.name}"?`,
-                options,
-                generated_at: new Date().toISOString(),
-                signal_breakdown: signalContext?.breakdown || [],
-                calculated_confidence: signalContext?.confidence || null
-            },
-            libraries,
-            format: 'narrative_clarify'
-        };
-    }
-
-    extractSuggestedLibraryName(response) {
-        if (!response || typeof response !== 'string') {
-            return null;
-        }
-
-        const patterns = [
-            /suggested\s+library\s+is\s+["']?([^"'.\n]+)["']?/i,
-            /suggested\s+library\s*:\s*["']?([^"'.\n]+)["']?/i
-        ];
-
-        for (const pattern of patterns) {
-            const match = response.match(pattern);
-            if (match && match[1]) {
-                return match[1].trim();
-            }
-        }
-
-        return null;
-    }
-
-    findLibraryByName(name, libraries) {
-        const target = String(name || '').trim().toLowerCase();
-        if (!target) {
-            return null;
-        }
-
-        // Exact match first
-        let match = libraries.find((lib) => String(lib?.name || '').trim().toLowerCase() === target);
-        if (match) {
-            return match;
-        }
-
-        // Then contains/partial
-        match = libraries.find((lib) => {
-            const libName = String(lib?.name || '').trim().toLowerCase();
-            return libName.includes(target) || target.includes(libName);
-        });
-
-        return match || null;
+        return this.createContractViolationResult(context);
     }
 
     /**
@@ -586,6 +501,73 @@ class AIResponseParser {
             },
             libraries: libraries,
             format: 'fallback'
+        };
+    }
+
+    createContractViolationResult(context) {
+        const { libraries, metadata, signalContext } = context;
+        if (!Array.isArray(libraries) || libraries.length === 0) {
+            return null;
+        }
+
+        const suggestedLibrary = signalContext?.suggestedLibrary || this.getDefaultLibrary(libraries, metadata?.media_type);
+        const orderedLibraries = [];
+
+        if (suggestedLibrary && libraries.some(lib => lib.id === suggestedLibrary.id)) {
+            orderedLibraries.push(suggestedLibrary);
+        }
+
+        for (const library of libraries) {
+            if (!orderedLibraries.some(candidate => candidate.id === library.id)) {
+                orderedLibraries.push(library);
+            }
+        }
+
+        const options = orderedLibraries.slice(0, 4).map(lib => ({
+            label: lib.name,
+            value: `library_${lib.id}`,
+            library_id: lib.id,
+            library_name: lib.name
+        }));
+
+        const title = metadata?.title || 'this item';
+        const targetLibrary = suggestedLibrary || orderedLibraries[0] || null;
+        const confidence = Number.isFinite(Number(signalContext?.confidence))
+            ? Math.min(95, Math.max(50, Number(signalContext.confidence)))
+            : 50;
+        const whyUncertain = targetLibrary
+            ? `The AI returned narrative text instead of the required response contract format. Deterministic scoring currently favors "${targetLibrary.name}", but the malformed AI output cannot be trusted as-is.`
+            : 'The AI returned narrative text instead of the required response contract format.';
+        const question = targetLibrary
+            ? `The AI returned an invalid classification response. Should "${title}" go to "${targetLibrary.name}", or to a different library?`
+            : `The AI returned an invalid classification response. Which library should "${title}" be added to?`;
+
+        const policyQuestion = {
+            problem_summary: 'AI response contract violation',
+            why_uncertain: whyUncertain,
+            question,
+            options,
+            generated_at: new Date().toISOString(),
+            signal_breakdown: signalContext?.breakdown || [],
+            calculated_confidence: signalContext?.confidence || null,
+            meta: {
+                suggested_library_id: targetLibrary?.id || null,
+                suggested_library_name: targetLibrary?.name || null,
+                parser_mode: 'classify',
+                violation_reason: 'no_format_matched'
+            }
+        };
+
+        return {
+            library: targetLibrary,
+            confidence,
+            reason: 'Needs clarification: AI response contract violation',
+            needs_clarification: true,
+            clarification: policyQuestion,
+            pending_reason: 'AI response contract violation',
+            policy_question: policyQuestion,
+            libraries,
+            format: 'contract_violation'
         };
     }
 

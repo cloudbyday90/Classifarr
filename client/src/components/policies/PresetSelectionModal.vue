@@ -52,7 +52,13 @@
             <div class="flex-1 min-w-0">
               <div class="font-medium truncate">{{ preset.name }}</div>
               <div class="text-xs text-gray-400">
-                {{ preset.match_score }}% match
+                Suggestion score: {{ preset.suggestion_score ?? preset.match_score ?? 0 }}
+              </div>
+              <div
+                v-if="Array.isArray(preset.suggestion_warnings) && preset.suggestion_warnings.includes('runtime_semantics_review_recommended')"
+                class="text-[11px] text-amber-400"
+              >
+                Review runtime behavior
               </div>
             </div>
           </div>

@@ -33,8 +33,15 @@ jest.mock('../utils/logger', () => ({
 const errorHandler = require('../middleware/errorHandler');
 
 describe('errorHandler middleware', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
     beforeEach(() => {
         jest.clearAllMocks();
+        process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    afterAll(() => {
+        process.env.NODE_ENV = originalNodeEnv;
     });
 
     test('returns clean 400 for malformed JSON payloads without errorId', async () => {
@@ -76,6 +83,24 @@ describe('errorHandler middleware', () => {
         expect(mockLogger.warn).not.toHaveBeenCalled();
     });
 
+    test('sanitizes 500 messages in production', async () => {
+        process.env.NODE_ENV = 'production';
+
+        const app = express();
+        app.get('/boom', (req, res, next) => {
+            next(new Error('kaboom'));
+        });
+        app.use(errorHandler);
+
+        const response = await request(app).get('/boom');
+
+        expect(response.status).toBe(500);
+        expect(response.body.error).toBe('Internal Server Error');
+        expect(response.body.message).toBe('Internal Server Error');
+        expect(response.body.errorId).toBe('error-id-123');
+        expect(response.body.stack).toBeUndefined();
+    });
+
     test('uses warn path for non-500 errors and omits errorId', async () => {
         const app = express();
         app.get('/bad', (req, res, next) => {
@@ -95,4 +120,3 @@ describe('errorHandler middleware', () => {
         expect(mockLogger.error).not.toHaveBeenCalled();
     });
 });
-

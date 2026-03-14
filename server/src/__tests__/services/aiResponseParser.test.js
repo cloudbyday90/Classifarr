@@ -110,7 +110,7 @@ describe('AIResponseParser', () => {
                 metadata: mockMetadata
             };
 
-            const result = aiResponseParser.parse(response, context);
+            const result = aiResponseParser.parse(response, context, { mode: 'classify' });
 
             expect(result.library).toEqual(mockLibraries[1]);
             expect(result.confidence).toBe(88);
@@ -167,7 +167,7 @@ describe('AIResponseParser', () => {
                 metadata: mockMetadata
             };
 
-            const result = aiResponseParser.parse(response, context);
+            const result = aiResponseParser.parse(response, context, { mode: 'classify' });
 
             expect(result.needs_clarification).toBe(true);
             expect(result.clarification.problem_summary).toBe('Genre ambiguity');
@@ -341,11 +341,12 @@ describe('AIResponseParser', () => {
             expect(result.format).not.toBe('clarify');
         });
 
-        it('should fall through to narrative_clarify when CLARIFY options are all unrecognized and signalContext has suggestedLibrary', () => {
+        it('should fall through to contract_violation when CLARIFY options are all unrecognized in classify mode', () => {
             // Bug 4 scenario: AI invents genre names as options. After mapOptionsToLibraries
             // drops all of them, parseClarifyFormat returns null and parse() continues to
-            // parseNarrativeSuggestion. With suggestedLibrary present, the salvage path
-            // should produce narrative_clarify so the user gets to decide — not a silent fallback.
+            // malformed-response handling. In classify mode this must now produce a
+            // deterministic contract_violation clarification anchored to pre-calculated
+            // candidates rather than trusting narrative prose.
             const response = 'CLARIFY|Genre unclear|Could be documentary or biography|What genre is this?|Documentary|Biography|Nature';
             const context = {
                 libraries: mockLibraries, // none of those genre names exist
@@ -353,12 +354,12 @@ describe('AIResponseParser', () => {
                 metadata: mockMetadata
             };
 
-            const result = aiResponseParser.parse(response, context);
+            const result = aiResponseParser.parse(response, context, { mode: 'classify' });
 
-            expect(result.format).toBe('narrative_clarify');
+            expect(result.format).toBe('contract_violation');
             expect(result.needs_clarification).toBe(true);
-            // The salvage path surfaces the pre-calculated suggested library
             expect(result.library.name).toBe('Action Movies');
+            expect(result.policy_question.problem_summary).toBe('AI response contract violation');
         });
     });
 
@@ -422,7 +423,7 @@ describe('AIResponseParser', () => {
             expect(result.needs_clarification).toBe(true);
         });
 
-        it('should return fallback for invalid response', () => {
+        it('should return contract_violation for malformed classify response', () => {
             const response = 'This is not a valid format';
             const context = {
                 libraries: mockLibraries,
@@ -431,12 +432,11 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context);
 
-            expect(result.format).toBe('fallback');
-            expect(result.parse_failure_reason).toBe('no_format_matched');
+            expect(result.format).toBe('contract_violation');
             expect(result.needs_clarification).toBe(true);
             expect(result.confidence).toBe(50);
-            expect(result.clarification.problem_summary).toBe('Unable to auto-classify');
-            expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('malformed'), expect.any(Object));
+            expect(result.clarification.problem_summary).toBe('AI response contract violation');
+            expect(mockLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('malformed'), expect.any(Object));
         });
 
         it('should handle null response', () => {
@@ -476,12 +476,11 @@ describe('AIResponseParser', () => {
                 logInvalid: false
             });
 
-            expect(result.format).toBe('fallback');
-            expect(result.parse_failure_reason).toBe('no_format_matched');
+            expect(result.format).toBe('contract_violation');
             expect(mockLogger.warn).not.toHaveBeenCalled();
         });
 
-        it('should salvage narrative response with suggested library into clarification', () => {
+        it('should convert malformed classify prose into contract_violation using deterministic candidates', () => {
             const libraries = [
                 { id: 11, name: 'TV Shows', media_type: 'tv' },
                 { id: 12, name: 'Movies', media_type: 'movie' },
@@ -492,17 +491,63 @@ describe('AIResponseParser', () => {
                 metadata: { title: 'DTF St. Louis', media_type: 'tv' },
                 signalContext: {
                     confidence: 62,
+                    suggestedLibrary: { id: 12, name: 'Movies' },
                     breakdown: [{ type: 'genre_match', score: 62, weight: 10 }]
                 }
             };
 
             const result = aiResponseParser.parse(response, context, { mode: 'classify' });
 
-            expect(result.format).toBe('narrative_clarify');
+            expect(result.format).toBe('contract_violation');
             expect(result.needs_clarification).toBe(true);
-            expect(result.library).toEqual(libraries[0]);
+            expect(result.library).toEqual(expect.objectContaining({ id: 12, name: 'Movies' }));
             expect(result.confidence).toBe(62);
-            expect(result.policy_question.question).toContain('TV Shows');
+            expect(result.policy_question.question).toContain('Movies');
+            expect(result.policy_question.meta.suggested_library_name).toBe('Movies');
+        });
+
+        it('should not extract a lead library from malformed classify prose when no deterministic suggestion exists', () => {
+            const libraries = [
+                { id: 11, name: 'TV Shows', media_type: 'tv' },
+                { id: 12, name: 'Movies', media_type: 'movie' },
+            ];
+            const response = 'The item is a TV show. The suggested library is "TV Shows".';
+            const context = {
+                libraries,
+                metadata: { title: 'DTF St. Louis', media_type: 'movie' }
+            };
+
+            const result = aiResponseParser.parse(response, context, { mode: 'classify' });
+
+            expect(result.format).toBe('contract_violation');
+            expect(result.library).toEqual(expect.objectContaining({ id: 12, name: 'Movies' }));
+            expect(result.policy_question.question).toContain('Movies');
+            expect(result.policy_question.question).not.toContain('TV Shows');
+        });
+
+        it('should handle malformed classify prose from production incident without inventing a lead library', () => {
+            const libraries = [
+                { id: 56, name: 'Comedy and Standup', media_type: 'movie' },
+                { id: 57, name: 'Family', media_type: 'movie' },
+                { id: 58, name: 'Movies', media_type: 'movie' }
+            ];
+            const response = `The item is a documentary movie. The library profile doesn't strongly align with documentaries, but the calculated confidence is low, indicating a possible fit for the general "Movies" library. The "p`;
+            const context = {
+                libraries,
+                metadata: { title: 'Taming the Garden', media_type: 'movie' },
+                signalContext: {
+                    confidence: 60,
+                    suggestedLibrary: { id: 58, name: 'Movies' },
+                    breakdown: []
+                }
+            };
+
+            const result = aiResponseParser.parse(response, context, { mode: 'classify' });
+
+            expect(result.format).toBe('contract_violation');
+            expect(result.library.name).toBe('Movies');
+            expect(result.policy_question.problem_summary).toBe('AI response contract violation');
+            expect(result.pending_reason).toBe('AI response contract violation');
         });
 
         it('should salvage narrative disagreement in verify mode using signalContext.suggestedLibrary', () => {

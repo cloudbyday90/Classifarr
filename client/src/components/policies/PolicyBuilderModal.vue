@@ -18,6 +18,38 @@
         </div>
       </div>
 
+      <div
+        v-if="presetMigrationNotice"
+        class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-2"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-start gap-3">
+            <span class="text-xl leading-none">⚠️</span>
+            <div class="space-y-2">
+              <div class="font-medium text-amber-200">
+                Legacy preset attachments were auto-dropped after upgrade
+              </div>
+              <p class="text-sm text-amber-100/90">
+                {{ presetMigrationNotice.summary }}
+              </p>
+              <p
+                v-if="presetMigrationNotice.preview"
+                class="text-xs text-amber-100/80"
+              >
+                {{ presetMigrationNotice.preview }}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 text-xs px-2 py-1 rounded-sm border border-amber-400/40 text-amber-200 hover:bg-amber-500/10"
+            @click="dismissPresetMigrationNotice"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+
       <!-- Suggested Presets Section -->
       <div v-if="suggestedPresets.length > 0" class="space-y-3">
         <div class="flex items-center justify-between">
@@ -51,7 +83,13 @@
             <div class="flex-1 min-w-0">
               <div class="font-medium truncate">{{ preset.name }}</div>
               <div class="text-xs text-gray-400">
-                {{ preset.match_score }}% match
+                Suggestion score: {{ preset.suggestion_score ?? preset.match_score ?? 0 }}
+              </div>
+              <div
+                v-if="hasRuntimeSemanticsWarning(preset)"
+                class="text-[11px] text-amber-400"
+              >
+                Review runtime behavior
               </div>
               <div class="text-[11px] text-gray-500 truncate">
                 {{ formatUsageLabel(getPresetUsageCount(preset)) }}
@@ -146,6 +184,13 @@
               <div class="flex items-center gap-3 text-sm p-3">
                 <span class="text-lg">{{ sp.icon || '📦' }}</span>
                 <span class="flex-1 font-medium">{{ sp.name }}</span>
+                <span
+                  v-if="getPresetRuntimeBadge(sp)"
+                  class="text-[11px] px-2 py-0.5 rounded-full"
+                  :class="getPresetRuntimeBadge(sp).className"
+                >
+                  {{ getPresetRuntimeBadge(sp).label }}
+                </span>
                 <button 
                   @click="togglePresetCustomize(sp.id)"
                   class="text-xs px-2 py-1 border rounded-sm hover:bg-gray-700"
@@ -282,6 +327,65 @@
                       placeholder="+ keyword (Enter)"
                       class="w-32 px-2 py-0.5 bg-background border border-gray-700 rounded-sm"
                     />
+                  </div>
+                </div>
+
+                <div v-if="hasPresetLanguageSignals(sp)">
+                  <label class="font-medium text-gray-300 block mb-1">Language / Regional:</label>
+                  <div class="space-y-2">
+                    <div class="flex flex-wrap gap-1">
+                      <span 
+                        v-for="lang in getPresetBaseSignals(sp, 'language', 'require_any')" 
+                        :key="'base-lang-req-' + lang"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900/30 text-blue-400 rounded-sm"
+                      >
+                        {{ formatLanguageCode(lang) }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
+                      </span>
+                      <span 
+                        v-for="lang in getPresetBaseSignals(sp, 'language', 'exclude')" 
+                        :key="'base-lang-exc-' + lang"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm"
+                      >
+                        ✕ {{ formatLanguageCode(lang) }} <span class="text-gray-500 text-xs">({{ sp.name }})</span>
+                      </span>
+                      <span 
+                        v-for="lang in getCustomSignalList(sp, 'language', 'require_any')" 
+                        :key="'cust-lang-req-' + lang"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 rounded-sm"
+                      >
+                        + {{ formatLanguageCode(lang) }}
+                        <button @click="removeCustomSignal(sp, 'language', 'require_any', lang)" class="hover:text-red-400">×</button>
+                      </span>
+                      <span 
+                        v-for="lang in getCustomSignalList(sp, 'language', 'exclude')" 
+                        :key="'cust-lang-exc-' + lang"
+                        class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/30 text-red-400 rounded-sm"
+                      >
+                        + exclude {{ formatLanguageCode(lang) }}
+                        <button @click="removeCustomSignal(sp, 'language', 'exclude', lang)" class="hover:text-white">×</button>
+                      </span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-400">Runtime mode:</span>
+                      <button
+                        @click="setPresetSignalStrict(sp, 'language', false)"
+                        class="px-2 py-1 rounded-sm border transition-colors"
+                        :class="getPresetSignalStrict(sp, 'language') ? 'border-gray-600 text-gray-400 hover:bg-gray-700' : 'border-primary text-primary bg-primary/10'"
+                      >
+                        Advisory
+                      </button>
+                      <button
+                        @click="setPresetSignalStrict(sp, 'language', true)"
+                        class="px-2 py-1 rounded-sm border transition-colors"
+                        :class="getPresetSignalStrict(sp, 'language') ? 'border-amber-400 text-amber-300 bg-amber-500/10' : 'border-gray-600 text-gray-400 hover:bg-gray-700'"
+                      >
+                        Strict
+                      </button>
+                    </div>
+                    <p class="text-[11px] text-gray-500">
+                      {{ getPresetRuntimeSummary(sp) }}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -647,6 +751,8 @@ const showAdvanced = ref(false)
 const suggestedPresets = ref([])
 const searchQuery = ref('')
 const selectedCategory = ref('all')
+const presetMigrationNotice = ref(null)
+const PRESET_MIGRATION_NOTICE_DISMISS_KEY = 'classifarr.presetMigrationNotice.dismissed'
 
 // Available options for signal customization
 const availableRatings = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR']
@@ -831,6 +937,119 @@ const formatUsageLabel = (usageCount) => {
   return `Used in ${count} ${count === 1 ? 'policy' : 'policies'}`;
 };
 
+const languageLabels = {
+  da: 'Danish',
+  de: 'German',
+  en: 'English',
+  es: 'Spanish',
+  fi: 'Finnish',
+  fr: 'French',
+  it: 'Italian',
+  ja: 'Japanese',
+  ka: 'Georgian',
+  ko: 'Korean',
+  no: 'Norwegian',
+  pt: 'Portuguese',
+  sv: 'Swedish',
+  zh: 'Chinese'
+}
+
+const formatLanguageCode = (value) => {
+  const code = String(value || '').toLowerCase()
+  return languageLabels[code] || String(value || '').toUpperCase()
+}
+
+const hasRuntimeSemanticsWarning = (preset) => {
+  return Array.isArray(preset?.suggestion_warnings) &&
+    preset.suggestion_warnings.includes('runtime_semantics_review_recommended')
+}
+
+const getPresetRuntimeSemantics = (preset) => {
+  return preset?.runtimeSemantics || preset?.runtime_semantics || null
+}
+
+const getPresetRuntimeBadge = (preset) => {
+  const semantics = getPresetRuntimeSemantics(preset)
+  if (semantics?.badge_label) {
+    const toneClasses = {
+      info: 'bg-primary/10 text-primary',
+      warning: 'bg-amber-500/10 text-amber-300',
+      review: 'bg-amber-500/10 text-amber-300'
+    }
+
+    return {
+      label: semantics.badge_label,
+      className: toneClasses[semantics.badge_tone] || 'bg-gray-700 text-gray-300'
+    }
+  }
+
+  if (hasPresetLanguageSignals(preset)) {
+    return {
+      label: 'Advisory by default',
+      className: 'bg-amber-500/10 text-amber-300'
+    }
+  }
+
+  return null
+}
+
+const getPresetRuntimeSummary = (preset) => {
+  const semantics = getPresetRuntimeSemantics(preset)
+  if (semantics?.summary) {
+    return semantics.summary
+  }
+
+  return 'Advisory presets only influence score. Strict presets can block mismatched languages from ranking.'
+}
+
+const parsePresetMigrationReport = (rawValue) => {
+  if (!rawValue) {
+    return null
+  }
+
+  try {
+    const report = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue
+    const droppedCount = Number.parseInt(report?.dropped_count, 10)
+
+    if (!Number.isFinite(droppedCount) || droppedCount <= 0) {
+      return null
+    }
+
+    const affectedPolicies = Number.parseInt(report?.affected_policy_count, 10)
+    const droppedAttachments = Array.isArray(report?.dropped_attachments) ? report.dropped_attachments : []
+    const previewNames = droppedAttachments
+      .slice(0, 3)
+      .map(attachment => attachment?.preset_name || attachment?.preset_key)
+      .filter(Boolean)
+    const reportVersion = String(
+      report?.executed_at ||
+      report?.migration ||
+      `${droppedCount}:${affectedPolicies || 0}`
+    )
+
+    if (typeof window !== 'undefined' && window.localStorage?.getItem(PRESET_MIGRATION_NOTICE_DISMISS_KEY) === reportVersion) {
+      return null
+    }
+
+    const summaryParts = [
+      `${droppedCount} incompatible preset ${droppedCount === 1 ? 'attachment was' : 'attachments were'} removed automatically`,
+      Number.isFinite(affectedPolicies) && affectedPolicies > 0
+        ? `across ${affectedPolicies} ${affectedPolicies === 1 ? 'policy' : 'policies'}`
+        : null
+    ].filter(Boolean)
+
+    return {
+      version: reportVersion,
+      summary: `${summaryParts.join(' ')}. Reapply corrected presets where needed.`,
+      preview: previewNames.length > 0
+        ? `Recently removed: ${previewNames.join(', ')}${droppedAttachments.length > previewNames.length ? ', …' : ''}`
+        : ''
+    }
+  } catch (_error) {
+    return null
+  }
+}
+
 // Filtered available presets (not yet selected)
 const filteredAvailablePresets = computed(() => {
   let presets = allPresets.value;
@@ -897,7 +1116,8 @@ watch(() => props.policy, (newPolicy) => {
         name: p.name,
         icon: p.icon,
         weight: p.weight || 1.0,
-        customSignals: p.customSignals || null,
+        customSignals: p.customSignals || p.custom_signals || null,
+        runtimeSemantics: p.runtimeSemantics || p.runtime_semantics || null,
       }))
     }
   } else {
@@ -914,7 +1134,8 @@ watch(() => props.libraryId, (newLibraryId) => {
 onMounted(async () => {
   await Promise.all([
     fetchLibraries(),
-    fetchPresets()
+    fetchPresets(),
+    fetchPresetMigrationNotice()
   ])
 })
 
@@ -934,6 +1155,29 @@ const fetchPresets = async () => {
   } catch (error) {
     console.error('Failed to fetch presets:', error)
   }
+}
+
+const fetchPresetMigrationNotice = async () => {
+  try {
+    const response = await api.get('/settings')
+    presetMigrationNotice.value = parsePresetMigrationReport(
+      response?.data?.preset_semantics_v2_auto_drop_report
+    )
+  } catch (error) {
+    console.error('Failed to fetch preset migration report:', error)
+    presetMigrationNotice.value = null
+  }
+}
+
+const dismissPresetMigrationNotice = () => {
+  if (typeof window !== 'undefined' && presetMigrationNotice.value?.version) {
+    window.localStorage?.setItem(
+      PRESET_MIGRATION_NOTICE_DISMISS_KEY,
+      presetMigrationNotice.value.version
+    )
+  }
+
+  presetMigrationNotice.value = null
 }
 
 // Load suggestions when library changes
@@ -1047,6 +1291,7 @@ const addCustomSignal = (preset, signalType, event) => {
   if (!preset.customSignals[signalType][action].includes(item)) {
     preset.customSignals[signalType][action].push(item)
   }
+  cleanupCustomSignals(preset)
 }
 
 // Remove a custom signal item
@@ -1054,6 +1299,7 @@ const removeCustomSignal = (preset, signalType, key, item) => {
   if (preset.customSignals?.[signalType]?.[key]) {
     preset.customSignals[signalType][key] = preset.customSignals[signalType][key].filter(i => i !== item)
   }
+  cleanupCustomSignals(preset)
 }
 
 // Get base signals from the preset's original signals definition
@@ -1062,6 +1308,66 @@ const getPresetBaseSignals = (selectedPreset, signalType, key) => {
   const fullPreset = allPresets.value.find(p => p.id === selectedPreset.id || p.id === selectedPreset.preset_id)
   if (!fullPreset?.signals?.[signalType]?.[key]) return []
   return fullPreset.signals[signalType][key] || []
+}
+
+const getPresetBaseSignalConfig = (selectedPreset, signalType) => {
+  const fullPreset = allPresets.value.find(p => p.id === selectedPreset.id || p.id === selectedPreset.preset_id)
+  return fullPreset?.signals?.[signalType] || null
+}
+
+const hasPresetLanguageSignals = (preset) => {
+  const baseConfig = getPresetBaseSignalConfig(preset, 'language')
+  const customConfig = preset.customSignals?.language
+  return Boolean(
+    baseConfig?.require_any?.length ||
+    baseConfig?.exclude?.length ||
+    customConfig?.require_any?.length ||
+    customConfig?.exclude?.length
+  )
+}
+
+const cleanupCustomSignals = (preset) => {
+  if (!preset?.customSignals || typeof preset.customSignals !== 'object') return
+
+  for (const [signalType, config] of Object.entries(preset.customSignals)) {
+    if (!config || typeof config !== 'object' || Array.isArray(config)) continue
+
+    for (const [key, value] of Object.entries(config)) {
+      if (Array.isArray(value) && value.length === 0) {
+        delete config[key]
+      }
+    }
+
+    if (Object.keys(config).length === 0) {
+      delete preset.customSignals[signalType]
+    }
+  }
+
+  if (Object.keys(preset.customSignals).length === 0) {
+    preset.customSignals = null
+  }
+}
+
+const getPresetSignalStrict = (preset, signalType) => {
+  if (typeof preset?.customSignals?.[signalType]?.strict === 'boolean') {
+    return preset.customSignals[signalType].strict
+  }
+
+  return getPresetBaseSignalConfig(preset, signalType)?.strict === true
+}
+
+const setPresetSignalStrict = (preset, signalType, strict) => {
+  if (!preset.customSignals) preset.customSignals = {}
+  if (!preset.customSignals[signalType]) preset.customSignals[signalType] = {}
+
+  const baseStrict = getPresetBaseSignalConfig(preset, signalType)?.strict === true
+  if (strict === baseStrict) {
+    delete preset.customSignals[signalType].strict
+  } else {
+    preset.customSignals[signalType].strict = strict
+  }
+
+  cleanupCustomSignals(preset)
 }
 
 // Check if a base signal has been marked as removed
@@ -1079,6 +1385,7 @@ const markSignalRemoved = (preset, signalType, key, item) => {
   if (!preset.customSignals.removed[signalType][key].includes(item)) {
     preset.customSignals.removed[signalType][key].push(item)
   }
+  cleanupCustomSignals(preset)
 }
 
 // Restore a previously removed base signal
@@ -1087,6 +1394,7 @@ const unmarkSignalRemoved = (preset, signalType, key, item) => {
     preset.customSignals.removed[signalType][key] = 
       preset.customSignals.removed[signalType][key].filter(i => i !== item)
   }
+  cleanupCustomSignals(preset)
 }
 
 // Add keyword to preset
@@ -1104,6 +1412,7 @@ const addKeywordToPreset = (preset) => {
   if (!preset.customSignals.keywords.require_any.includes(keyword)) {
     preset.customSignals.keywords.require_any.push(keyword)
   }
+  cleanupCustomSignals(preset)
 }
 
 const resetForm = () => {

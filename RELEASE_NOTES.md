@@ -1,5 +1,45 @@
 # Classifarr Release Notes
 
+## v0.44.1a.beta
+**Title: Honest preset suggestions, safer upgrades, and clearer policy questions**
+
+> [!IMPORTANT]
+> If you are upgrading an older install, Classifarr may automatically remove only legacy-incompatible preset attachments and ask you to reapply corrected presets. Fresh installs or servers with no affected presets will not see any banner or cleanup notice.
+
+### 🎉 What You'll Notice
+- **Preset suggestions are more trustworthy** — suggested presets no longer get inflated scores from meaningless word matches like `and` matching `Scandinavian`.
+- **Policy questions are more honest** — when Classifarr is unsure, it now keeps the top-ranked library as the lead choice instead of centering the prompt on a lower-ranked conflict.
+- **Upgrades are safer for existing policies** — only the narrow bucket of legacy-incompatible language/regional attachments is auto-removed, and only when they would be misleading under the new runtime model.
+
+### 📊 Quick Visual
+```text
+v0.44.1a.beta Impact Snapshot
+Preset suggestion honesty   [██████████] misleading substring scores removed
+Prompt truthfulness         [██████████] top-ranked option stays first
+Upgrade safety              [█████████░] targeted auto-drop, not a blanket reset
+Fresh install cleanliness   [██████████] no banner or audit row when nothing changed
+```
+
+### ✨ Highlights
+- **Language and regional presets are advisory by default** — they can influence score, but they no longer act like hidden routing rules unless you explicitly set them to `Strict`.
+- **Malformed AI prose fails safe** — if the model ignores the response contract, Classifarr now falls back to deterministic clarification instead of inventing a confident destination from narrative text.
+- **The policy builder explains what changed after upgrade** — if a legacy-incompatible preset was auto-dropped, the Policies UI shows a dismissible banner so operators know to reapply corrected presets.
+
+### 🔧 Reliability Improvements
+- Clarification options now preserve actual candidate ranking order.
+- Multi-language conflicts are rendered honestly instead of collapsing to a single language label.
+- Automatic preset cleanup is one-time, logged, and silent on fresh installs or untouched configs.
+- Local production-like verification confirmed the migration applies once, writes no audit row when nothing is dropped, and leaves new installations clean.
+
+### 👥 Who This Helps
+- **End users:** fewer nonsense classification questions and more understandable prompts when the AI is uncertain.
+- **Operators/admins:** safer preset semantics, explicit strict/advisory controls, and a cleaner upgrade path for older policy setups.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` and `docs/implementation_plan_preset_semantics_and_suggestion_scoring.md`.
+
+---
+
 ## v0.44.1-beta
 **Title: Crash-free Discord, sessions that stick, and AI questions that always show up**
 

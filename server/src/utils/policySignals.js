@@ -64,7 +64,74 @@ function mergePresetSignals(baseSignals, customSignals) {
   return merged;
 }
 
+function getSignalConstraintSummary(config) {
+  const normalized = normalizeSignalConfig(config) || {};
+  return {
+    requireAny: Array.isArray(normalized.require_any) ? normalized.require_any : [],
+    exclude: Array.isArray(normalized.exclude) ? normalized.exclude : [],
+    strict: normalized.strict === true
+  };
+}
+
+function describePresetRuntimeSemantics(baseSignals, customSignals) {
+  const base = normalizeSignalConfig(baseSignals) || {};
+  const custom = normalizeSignalConfig(customSignals) || {};
+  const merged = mergePresetSignals(base, custom);
+
+  const language = getSignalConstraintSummary(merged.language);
+  const customLanguage = getSignalConstraintSummary(custom.language);
+  const baseLanguage = getSignalConstraintSummary(base.language);
+
+  const hasLanguageConstraint = language.requireAny.length > 0 || language.exclude.length > 0;
+  if (!hasLanguageConstraint) {
+    return {
+      migration_state: 'not_applicable',
+      review_recommended: false,
+      badge_label: null,
+      badge_tone: null,
+      summary: null
+    };
+  }
+
+  const hasExplicitStrictOverride = Object.prototype.hasOwnProperty.call(custom.language || {}, 'strict');
+
+  if (language.strict === true) {
+    return {
+      migration_state: hasExplicitStrictOverride ? 'strict_override' : 'strict_inherited',
+      review_recommended: false,
+      badge_label: 'Strict runtime',
+      badge_tone: 'warning',
+      summary: 'This preset uses strict language semantics and can block mismatched languages from ranking.',
+      required_languages: language.requireAny,
+      excluded_languages: language.exclude
+    };
+  }
+
+  if (hasExplicitStrictOverride && customLanguage.strict === false) {
+    return {
+      migration_state: 'advisory_override',
+      review_recommended: false,
+      badge_label: 'Advisory runtime',
+      badge_tone: 'info',
+      summary: 'This preset was explicitly set to advisory runtime behavior and only influences score.',
+      required_languages: language.requireAny,
+      excluded_languages: language.exclude
+    };
+  }
+
+  return {
+    migration_state: baseLanguage.strict === true ? 'advisory_override' : 'advisory_defaulted',
+    review_recommended: true,
+    badge_label: 'Review runtime',
+    badge_tone: 'review',
+    summary: 'This preset has language constraints but now defaults to advisory runtime behavior unless strict is explicitly enabled.',
+    required_languages: language.requireAny,
+    excluded_languages: language.exclude
+  };
+}
+
 module.exports = {
   normalizeSignalConfig,
   mergePresetSignals,
+  describePresetRuntimeSemantics,
 };

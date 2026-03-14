@@ -1,3 +1,9 @@
+# Legacy Migrations
+
+These legacy migration filenames are retained here as reference for historical
+schema evolution and migration troubleshooting.
+
+```text
 001_add_arr_settings.sql
 002_add_arr_connection_fields.sql
 003_media_server_content_confidence.sql
@@ -74,3 +80,4 @@
 074_expand_confidence_settings.sql
 075_add_backup_tables.sql
 076_remove_duplicate_discord_thresholds.sql
+```
