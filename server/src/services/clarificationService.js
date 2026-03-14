@@ -677,7 +677,12 @@ class ClarificationService {
         if (itemGenres.length > 0) {
           for (const genre of itemGenres) {
             const genreLower = genre.toLowerCase();
-            const genrePatternParams = [
+            const genrePatternUpdateParams = [
+              classification.media_type,
+              selectedLibraryId,
+              genreLower
+            ];
+            const genrePatternInsertParams = [
               classification.media_type,
               selectedLibraryId,
               genreLower,
@@ -697,7 +702,7 @@ class ClarificationService {
                   AND library_id = $2
                   AND pattern_data->>'genre' = $3::text
                 RETURNING id`,
-              genrePatternParams
+              genrePatternUpdateParams
             );
 
             if ((genrePatternUpdate.rowCount || 0) === 0) {
@@ -708,7 +713,7 @@ class ClarificationService {
                  VALUES (NULL, $1, $2, 'genre_pattern',
                          jsonb_build_object('genre', $3::text),
                          85, 1, 100.00, $4)`,
-                genrePatternParams
+                genrePatternInsertParams
               );
             }
           }

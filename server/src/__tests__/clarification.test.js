@@ -38,6 +38,32 @@ jest.mock('../utils/logger', () => ({
 
 const db = require('../config/database');
 
+function getRequiredBindCount(sql) {
+  if (typeof sql !== 'string') return 0;
+  const matches = [...sql.matchAll(/\$(\d+)/g)];
+  if (matches.length === 0) return 0;
+  return Math.max(...matches.map(match => Number.parseInt(match[1], 10)));
+}
+
+function createStrictQueryMock(responses) {
+  const queue = [...responses];
+  return jest.fn(async (sql, params = []) => {
+    const requiredBindCount = getRequiredBindCount(sql);
+    const actualBindCount = Array.isArray(params) ? params.length : 0;
+    if (requiredBindCount !== actualBindCount) {
+      throw new Error(
+        `Test query bind mismatch: expected ${requiredBindCount} params but received ${actualBindCount} for SQL: ${sql}`
+      );
+    }
+
+    if (queue.length === 0) {
+      throw new Error(`Unexpected query executed in test: ${sql}`);
+    }
+
+    return queue.shift();
+  });
+}
+
 describe('ClarificationService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -834,6 +860,45 @@ describe('ClarificationService', () => {
   });
 
   describe('resolvePolicyQuestion - genre_pattern writing', () => {
+    test('validates SQL bind counts across the full successful resolution path', async () => {
+      const mockClassification = {
+        id: 1,
+        title: 'Planet Earth',
+        media_type: 'movie',
+        library_name: 'Movies',
+        policy_question: null,
+        metadata: JSON.stringify({
+          tmdb_id: 99999,
+          title: 'Planet Earth',
+          genres: ['Documentary', 'Family']
+        })
+      };
+
+      const mockClient = {
+        query: createStrictQueryMock([
+          { rows: [] }, // BEGIN
+          { rows: [mockClassification] }, // Get classification
+          { rows: [] }, // UPDATE classification_history
+          { rows: [{ id: 1, tmdb_id: 99999, library_id: 5, pattern_type: 'exact_match', confidence: 100 }] }, // INSERT exact_match
+          { rows: [] }, // advisory lock: documentary
+          { rowCount: 0, rows: [] }, // UPDATE genre_pattern: documentary
+          { rows: [] }, // INSERT genre_pattern: documentary
+          { rows: [] }, // advisory lock: family
+          { rowCount: 0, rows: [] }, // UPDATE genre_pattern: family
+          { rows: [] }, // INSERT genre_pattern: family
+          { rows: [] }, // COMMIT
+        ]),
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
+
+      expect(result.success).toBe(true);
+      expect(mockClient.query).toHaveBeenCalled();
+    });
+
     test('updates then inserts one genre_pattern per new genre when metadata has genres', async () => {
       const mockClassification = {
         id: 1,
@@ -929,7 +994,9 @@ describe('ClarificationService', () => {
       expect(genreInsertCall).toBeDefined();
       expect(genreInsertCall[0]).toContain("jsonb_build_object('genre', $3::text)");
       // Genre value (3rd param, index 2) should be lowercase
+      expect(genreUpdateCall[1]).toHaveLength(3);
       expect(genreUpdateCall[1][2]).toBe('documentary');
+      expect(genreInsertCall[1]).toHaveLength(4);
       expect(genreInsertCall[1][2]).toBe('documentary');
     });
 

@@ -1,5 +1,39 @@
 # Classifarr Release Notes
 
+## v0.44.2b-beta
+**Title: Manual resolution fixes that actually complete cleanly**
+
+### 🎉 What You'll Notice
+- **Pending-question fixes are safer again** — choosing a library from a policy question now avoids a post-release database bind mismatch that could stop the confirmation from completing.
+- **Manual corrections are more predictable** — the same clarification flow now has tighter test coverage around the exact SQL path used in production.
+- **Regression risk is lower for this path** — the test suite now checks the full successful resolution flow instead of only mocked happy-path outcomes.
+
+### 📊 Quick Visual
+```text
+v0.44.2b-beta Snapshot
+Manual resolution stability  [██████████] bind mismatch removed
+SQL path coverage            [█████████░] full resolve flow validated
+Upgrade effort               [██████████] drop-in fix for existing installs
+```
+
+### ✨ Highlights
+- **The `genre_pattern` learning step now uses the right bind lists for both update and insert queries** — this fixes the production-only failure that appeared when a real PostgreSQL connection enforced placeholder counts.
+- **Clarification tests are stricter than before** — the suite now validates query placeholder counts during a full successful resolution transaction so similar mistakes are caught before release.
+
+### 🔧 Reliability Improvements
+- No schema migration required.
+- Safe for both new installs and upgraded installs.
+- Targets the exact production path that failed without broad behavior changes.
+
+### 👥 Who This Helps
+- **End users:** fewer failed manual resolutions when correcting a pending classification.
+- **Operators/admins:** less risk of a release passing mocks but failing against real PostgreSQL.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.44.2a-beta
 **Title: Safer manual fixes and a queue that stays fast under load**
 

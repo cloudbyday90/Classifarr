@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.44.2b-beta] — 2026-03-14
+
+Package version: `0.44.2-b.beta`
+
+### Fixed
+
+- **Resolving pending policy questions no longer fails on a bind-count mismatch in the `genre_pattern` learning path** — the clarification flow now uses separate bind arrays for the 3-parameter `UPDATE learning_patterns` query and the 4-parameter `INSERT INTO learning_patterns` query, fixing the post-release regression that surfaced as `bind message supplies 4 parameters, but prepared statement "" requires 3`. (`server/src/services/clarificationService.js`)
+
+### Tests
+
+- Added stricter clarification regression coverage that validates SQL placeholder counts across the full successful `resolvePolicyQuestion()` path, so bind-array shape mistakes in this flow fail in tests instead of only appearing against real PostgreSQL. (`server/src/__tests__/clarification.test.js`)
+
+---
+
 ## [v0.44.2a-beta] — 2026-03-14
 
 Package version: `0.44.2-a.beta`
