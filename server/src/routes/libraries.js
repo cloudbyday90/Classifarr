@@ -25,6 +25,7 @@ const ollamaService = require('../services/ollama');
 const mediaPatternAnalyzer = require('../services/mediaPatternAnalyzer');
 const libraryProfileService = require('../services/libraryProfileService');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
 const { authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
 const { LibraryNotFoundError } = require('../utils/errors');
 
@@ -969,11 +970,10 @@ router.get('/:id/rules/suggest', async (req, res) => {
     const libraryName = libraryResult.rows[0]?.name?.toLowerCase() || '';
 
     // Check if genres include Animation or Anime
-    const hasAnimeGenre = data.genres && (
-      data.genres.includes('Animation') ||
-      data.genres.includes('Anime') ||
-      data.genres.some(g => g && g.toLowerCase().includes('anime'))
-    );
+    const normalizedGenres = normalizeMetadataListLower(data.genres);
+    const hasAnimeGenre = normalizedGenres.includes('animation') ||
+      normalizedGenres.includes('anime') ||
+      normalizedGenres.some(g => g.includes('anime'));
 
     // Detect anime if: (Animation genre AND Japanese language) OR library name contains 'anime'
     const isJapanese = data.languages && data.languages.includes('ja');
@@ -1328,11 +1328,12 @@ Valid operators: equals, contains, includes`;
     const libraryLower = stats.libraryName.toLowerCase();
     const hasAnimeInName = libraryLower.includes('anime');
     const hasJapanese = stats.languages.some(l => l.language === 'ja');
-    const hasAnimation = stats.genres.some(g => g.genre === 'Animation' || g.genre.toLowerCase().includes('anime'));
+    const normalizedGenres = stats.genres.map(g => String(g.genre || '').toLowerCase());
+    const hasAnimation = normalizedGenres.includes('animation') || normalizedGenres.some(g => g.includes('anime'));
 
     if (hasAnimeInName || (hasJapanese && hasAnimation)) {
       const japaneseCount = stats.languages.find(l => l.language === 'ja')?.count || 0;
-      const animationCount = stats.genres.find(g => g.genre === 'Animation')?.count || 0;
+      const animationCount = stats.genres.find(g => String(g.genre || '').toLowerCase() === 'animation')?.count || 0;
       const combinedConfidence = Math.round(Math.max(
         (japaneseCount / stats.totalItems) * 100,
         (animationCount / stats.totalItems) * 100,

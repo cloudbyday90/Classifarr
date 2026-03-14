@@ -28,6 +28,7 @@ const {
 } = require("discord.js");
 const db = require("../config/database");
 const { createLogger } = require("../utils/logger");
+const { normalizeMetadataList } = require("../utils/metadataNormalization");
 
 const logger = createLogger("discordBot");
 const clarificationService = require("./clarificationService");
@@ -886,8 +887,9 @@ class DiscordBotService {
     }
 
     // Enhanced context: Add matched genres/keywords if available
-    if (metadata.genres && metadata.genres.length > 0) {
-      const genreList = metadata.genres.slice(0, 5).join(', ');
+    const normalizedGenres = normalizeMetadataList(metadata.genres);
+    if (normalizedGenres.length > 0) {
+      const genreList = normalizedGenres.slice(0, 5).join(', ');
       fields.push({
         name: "🎭 Genres",
         value: genreList,
@@ -1299,8 +1301,8 @@ class DiscordBotService {
         const learningResult = await autoLearningService.learnFromFeedback({
           tmdbId: classification.tmdb_id,
           libraryId: newLibraryId, // Learn for the NEW library
-          genres: metadata.genres || [],
-          keywords: metadata.keywords || [],
+          genres: normalizeMetadataList(metadata.genres),
+          keywords: normalizeMetadataList(metadata.keywords),
           studio: metadata.studio,
           wasCorrection: true,
           userId: interaction.user.id
@@ -1668,8 +1670,8 @@ class DiscordBotService {
         const learningResult = await autoLearningService.learnFromFeedback({
           tmdbId: classification.tmdb_id,
           libraryId: classification.library_id,
-          genres: metadata.genres || [],
-          keywords: metadata.keywords || [],
+          genres: normalizeMetadataList(metadata.genres),
+          keywords: normalizeMetadataList(metadata.keywords),
           studio: metadata.studio,
           wasCorrection: false,
           userId: interaction.user.id
@@ -1709,11 +1711,13 @@ class DiscordBotService {
       // Add details about what was learned
       try {
         const learnedItems = [];
-        if (metadata.genres && metadata.genres.length > 0) {
-          learnedItems.push(`Genres: ${metadata.genres.slice(0, 3).join(', ')}`);
+        const learnedGenres = normalizeMetadataList(metadata.genres);
+        const learnedKeywords = normalizeMetadataList(metadata.keywords);
+        if (learnedGenres.length > 0) {
+          learnedItems.push(`Genres: ${learnedGenres.slice(0, 3).join(', ')}`);
         }
-        if (metadata.keywords && metadata.keywords.length > 0) {
-          learnedItems.push(`Keywords: ${metadata.keywords.slice(0, 3).join(', ')}`);
+        if (learnedKeywords.length > 0) {
+          learnedItems.push(`Keywords: ${learnedKeywords.slice(0, 3).join(', ')}`);
         }
         if (learnedItems.length > 0) {
           feedbackMessage += `\n\n_System is learning these preferences for this library:_\n${learnedItems.join('\n')}`;

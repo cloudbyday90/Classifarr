@@ -26,12 +26,26 @@ const db = require('../config/database');
 const libraryProfileService = require('./libraryProfileService');
 const ragRetriever = require('./ragRetriever');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('FormulaEngine');
 
 const FORMULA_CONFIDENCE_CAP = 95;
 
 class FormulaEngine {
+    normalizeRuleFieldValue(fieldValue) {
+        if (Array.isArray(fieldValue)) {
+            const normalized = normalizeMetadataList(fieldValue);
+            if (normalized.length > 0) {
+                return normalized;
+            }
+
+            return fieldValue.map((value) => String(value));
+        }
+
+        return fieldValue;
+    }
+
     /**
      * Get formula weights from config
      * Reads from ai_provider_config table
@@ -186,7 +200,7 @@ class FormulaEngine {
                 return false;
             }
 
-            const fieldValue = metadata[field];
+            const fieldValue = this.normalizeRuleFieldValue(metadata[field]);
 
             if (fieldValue === undefined || fieldValue === null) {
                 return false;

@@ -16,6 +16,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
+
 /**
  * RAG Graph Extractor
  *
@@ -87,9 +89,7 @@ function extract(metadata) {
 
     // genre_names: metadata.genres is already a string[] from enrichWithTMDB().
     // Phase 0 Finding 1 confirmed: enrichment stores ['Action', 'Comedy'], not objects.
-    const genre_names = Array.isArray(metadata.genres)
-        ? metadata.genres.slice(0, 10).filter(g => g && typeof g === 'string')
-        : [];
+    const genre_names = normalizeMetadataList(metadata.genres).slice(0, 10);
 
     // cast_ids: top-5 TMDB person IDs (integers).
     // CRITICAL: filter out nulls — gin__int_ops throws at query time on NULL array elements.

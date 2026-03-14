@@ -18,6 +18,7 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('LegacyMigration');
 
@@ -29,6 +30,19 @@ const createMigrationError = (message, code, status) => {
 };
 
 class LegacyMigration {
+    normalizeRuleItems(values) {
+        if (Array.isArray(values)) {
+            const normalized = normalizeMetadataList(values);
+            return normalized.length > 0 ? normalized : values.map(value => String(value));
+        }
+
+        const normalized = normalizeMetadataList([values]);
+        if (normalized.length > 0) {
+            return normalized;
+        }
+
+        return values === undefined || values === null ? [] : [String(values)];
+    }
     
     /**
      * Get all libraries with legacy rules
@@ -65,8 +79,8 @@ class LegacyMigration {
      * Check if rule items match preset items (case-insensitive exact match)
      */
     matchItems(ruleItems, presetItems) {
-        const ruleItemsLower = ruleItems.map(item => item.toLowerCase());
-        const presetItemsLower = presetItems.map(item => item.toLowerCase());
+        const ruleItemsLower = this.normalizeRuleItems(ruleItems).map(item => item.toLowerCase());
+        const presetItemsLower = this.normalizeRuleItems(presetItems).map(item => item.toLowerCase());
         return ruleItemsLower.filter(item => presetItemsLower.includes(item)).length;
     }
     
@@ -83,7 +97,7 @@ class LegacyMigration {
         if (conditions.genres || conditions.value) {
             const genreValue = conditions.genres || (conditions.field === 'genres' ? conditions.value : null);
             if (genreValue) {
-                const genres = Array.isArray(genreValue) ? genreValue : [genreValue];
+                const genres = this.normalizeRuleItems(genreValue);
                 
                 const matchingPresets = await db.query(`
                     SELECT id, key, name, signals
@@ -118,7 +132,7 @@ class LegacyMigration {
         // Check for certification-based rules
         if (conditions.certification || (conditions.field === 'certification' && conditions.value)) {
             const certValue = conditions.certification || conditions.value;
-            const certifications = Array.isArray(certValue) ? certValue : [certValue];
+            const certifications = this.normalizeRuleItems(certValue);
             
             const matchingPresets = await db.query(`
                 SELECT id, key, name, signals
@@ -147,7 +161,7 @@ class LegacyMigration {
         // Check for keyword-based rules
         if (conditions.keywords || (conditions.field === 'keywords' && conditions.value)) {
             const keywordValue = conditions.keywords || conditions.value;
-            const keywords = Array.isArray(keywordValue) ? keywordValue : [keywordValue];
+            const keywords = this.normalizeRuleItems(keywordValue);
             
             const matchingPresets = await db.query(`
                 SELECT id, key, name, signals
@@ -210,7 +224,7 @@ class LegacyMigration {
         // Check genre match
         const genreValue = conditions.genres || (conditions.field === 'genres' ? conditions.value : null);
         if (genreValue && signals.genres) {
-            const ruleGenres = Array.isArray(genreValue) ? genreValue : [genreValue];
+            const ruleGenres = this.normalizeRuleItems(genreValue);
             if (ruleGenres.length > 0) {
                 totalConditions++;
                 const presetGenres = [
@@ -227,7 +241,7 @@ class LegacyMigration {
         // Check certification match
         const certValue = conditions.certification || (conditions.field === 'certification' ? conditions.value : null);
         if (certValue && signals.certifications) {
-            const ruleCerts = Array.isArray(certValue) ? certValue : [certValue];
+            const ruleCerts = this.normalizeRuleItems(certValue);
             if (ruleCerts.length > 0) {
                 totalConditions++;
                 const presetCerts = signals.certifications.include || [];
@@ -240,7 +254,7 @@ class LegacyMigration {
         // Check keyword match
         const keywordValue = conditions.keywords || (conditions.field === 'keywords' && conditions.value);
         if (keywordValue && signals.keywords) {
-            const ruleKeywords = Array.isArray(keywordValue) ? keywordValue : [keywordValue];
+            const ruleKeywords = this.normalizeRuleItems(keywordValue);
             if (ruleKeywords.length > 0) {
                 totalConditions++;
                 const presetKeywords = [

@@ -88,6 +88,23 @@ Classifarr is a full operations platform for classification, routing, review, an
 - Migration dashboard and migration APIs for legacy rule movement.
 - Scheduler for recurring sync, queue, enrichment, and maintenance tasks.
 
+## Engineering Guardrail: Metadata Lists
+
+Provider and persisted metadata for list-like fields such as `genres`, `keywords`, `tags`, and `collections` is not shape-stable. It may arrive as:
+
+- `['Documentary']`
+- `[{ name: 'Documentary' }]`
+- `[{ tag: 'Documentary' }]`
+- JSON-stringified arrays
+
+When working in `server/src`, do not parse or lowercase these fields ad hoc. Route them through [`server/src/utils/metadataNormalization.js`](server/src/utils/metadataNormalization.js):
+
+- `normalizeMetadataList(...)`
+- `normalizeMetadataListLower(...)`
+- `coerceMetadataArray(...)`
+
+This avoids silent false negatives in classification, prompt building, learning, migration, and pattern discovery paths. The server code-health suite now fails new raw `JSON.parse(...genres|keywords|tags|collections...)` and direct `metadata.<field>.map(...toLowerCase())` patterns so regressions are caught in CI.
+
 ## Classification Flow
 
 <p align="center">

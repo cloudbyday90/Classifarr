@@ -10,6 +10,7 @@ const cron = require('node-cron');
 const db = require('../config/database');
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
 const queueService = require('./queueService');
 const mediaSyncService = require('./mediaSync');
 const classificationService = require('./classification');
@@ -549,11 +550,10 @@ class SchedulerService {
 
                     // Anime detection
                     const libraryName = library.name.toLowerCase();
-                    const hasAnimeGenre = data.genres && (
-                        data.genres.includes('Animation') ||
-                        data.genres.includes('Anime') ||
-                        data.genres.some(g => g && g.toLowerCase().includes('anime'))
-                    );
+                    const normalizedGenres = normalizeMetadataListLower(data.genres);
+                    const hasAnimeGenre = normalizedGenres.includes('animation') ||
+                        normalizedGenres.includes('anime') ||
+                        normalizedGenres.some(g => g.includes('anime'));
                     const isJapanese = data.languages && data.languages.includes('ja');
                     const libraryIsAnime = libraryName.includes('anime');
 

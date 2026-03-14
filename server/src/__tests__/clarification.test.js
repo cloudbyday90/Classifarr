@@ -910,8 +910,51 @@ describe('ClarificationService', () => {
         call[0] && call[0].includes('genre_pattern')
       );
       expect(genreCall).toBeDefined();
+      expect(genreCall[0]).toContain("jsonb_build_object('genre', $3::text)");
       // Genre value (3rd param, index 2) should be lowercase
       expect(genreCall[1][2]).toBe('documentary');
+    });
+
+    test('handles object-shaped metadata genres when writing genre_pattern rows', async () => {
+      const mockClassification = {
+        id: 1,
+        title: 'Nature Film',
+        media_type: 'movie',
+        library_name: 'Movies',
+        policy_question: null,
+        metadata: JSON.stringify({
+          tmdb_id: 88888,
+          title: 'Nature Film',
+          genres: [{ id: 99, name: 'Documentary' }, { id: 10751, name: 'Family' }]
+        })
+      };
+
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
+          .mockResolvedValueOnce({
+            rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
+          }) // INSERT exact_match
+          .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern
+          .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern
+          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
+
+      expect(result.success).toBe(true);
+
+      const genrePatternCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].includes('genre_pattern')
+      );
+      expect(genrePatternCalls).toHaveLength(2);
+      expect(genrePatternCalls[0][1][2]).toBe('documentary');
+      expect(genrePatternCalls[1][1][2]).toBe('family');
     });
 
     test('skips genre_pattern INSERTs when metadata has no genres', async () => {

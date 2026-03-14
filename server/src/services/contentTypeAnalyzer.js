@@ -18,6 +18,7 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
 
 const logger = createLogger('contentTypeAnalyzer');
 
@@ -131,9 +132,8 @@ class ContentTypeAnalyzer {
       const detections = [];
       const overview = (metadata.overview || '').toLowerCase();
       const title = (metadata.title || '').toLowerCase();
-      // Handle both array of strings and array of objects for genres
-      const genres = (metadata.genres || []).map(g => (typeof g === 'string' ? g : g.name).toLowerCase());
-      const keywords = (metadata.keywords || []).map(k => (typeof k === 'string' ? k : k.name).toLowerCase());
+      const genres = normalizeMetadataListLower(metadata.genres);
+      const keywords = normalizeMetadataListLower(metadata.keywords);
       const certification = (metadata.certification || metadata.content_rating || '').toUpperCase();
       const originalLanguage = metadata.original_language || '';
 
@@ -156,7 +156,12 @@ class ContentTypeAnalyzer {
 
       // Log analysis if classification ID provided
       if (classificationId && bestMatch) {
-        await this.logAnalysis(classificationId, metadata.tmdb_id, bestMatch, metadata.genres);
+        await this.logAnalysis(
+          classificationId,
+          metadata.tmdb_id,
+          bestMatch,
+          normalizeMetadataList(metadata.genres)
+        );
       }
 
       return {

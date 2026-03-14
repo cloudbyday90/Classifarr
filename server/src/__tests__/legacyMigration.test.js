@@ -157,4 +157,40 @@ describe('LegacyMigrationService (legacyMigration.js)', () => {
             expect(insertPolicyCall).toBeDefined();
         });
     });
+
+    describe('metadata normalization helpers', () => {
+        it('matches object-shaped rule items and preset items case-insensitively', () => {
+            expect(legacyMigration.matchItems(
+                [{ name: 'Documentary' }, { tag: 'Family' }],
+                [{ title: 'documentary' }, 'family']
+            )).toBe(2);
+        });
+
+        it('normalizes object-shaped genres when analyzing a legacy rule', async () => {
+            const dbModule = require('../config/database');
+            dbModule.query.mockResolvedValue({
+                rows: [{
+                    id: 7,
+                    key: 'documentary',
+                    name: 'Documentary',
+                    signals: {
+                        genres: {
+                            require_any: ['Documentary']
+                        }
+                    }
+                }]
+            });
+
+            const analysis = await legacyMigration.analyzeRule({
+                id: 10,
+                name: 'Doc Rule',
+                rule_json: {
+                    field: 'genres',
+                    value: [{ name: 'Documentary' }]
+                }
+            });
+
+            expect(analysis.suggestions.some(suggestion => suggestion.type === 'preset')).toBe(true);
+        });
+    });
 });

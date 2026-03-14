@@ -7,9 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [v0.44.2-beta] — 2026-03-14
+
+Package version: `0.44.2-beta`
+
 ### Changed
 
-- **Standardize future prerelease naming and finish release-automation alignment work** — the next release should return to the standard `v0.44.1a-beta`-style public tag pattern and complete any remaining CI/release automation follow-up uncovered during `v0.44.1a.beta` validation, including release-time test/automation expectations that still assume older preset semantics.
+- **List-style metadata is now normalized consistently across the runtime stack instead of being parsed ad hoc per service** — introduced `server/src/utils/metadataNormalization.js` and routed ingest, classification, prompt building, policy scoring, retry payloads, clarification, queue refill, profiles, embeddings, RAG extraction, pattern discovery, feedback analysis, formula evaluation, and migration helpers through shared normalization for `genres`, `keywords`, `tags`, and `collections`. This removes a broad class of silent false negatives caused by mixed provider shapes like `['Documentary']`, `[{ name: 'Documentary' }]`, `[{ tag: 'Documentary' }]`, and JSON-stringified arrays. (`server/src/utils/metadataNormalization.js`, `server/src/services/*.js`, `server/src/routes/*.js`)
+
+- **Repo guardrails now block reintroducing ad hoc metadata parsing in new server code** — `README.md` now documents the required normalization helpers, and `server/src/__tests__/codeHealth.test.js` rejects new raw `JSON.parse(...genres|keywords|tags|collections...)` and direct `metadata.<field>.map(...toLowerCase())` handling. This turns the metadata-shape hardening into an enforced engineering rule rather than a one-off cleanup. (`README.md`, `server/src/__tests__/codeHealth.test.js`)
+
+- **Release version surfaces are back in sync with the standard hyphenated prerelease naming used by the workflow** — root, client, and server package versions now align on `0.44.2-beta`, and the public UI label is `v0.44.2-beta`, removing the stale root `0.42.0-alpha` output and the earlier dotted prerelease variant mismatch. (`package.json`, `package-lock.json`, `client/package.json`, `client/package-lock.json`, `server/package.json`, `server/package-lock.json`, `client/src/constants/appVersion.js`)
+
+### Fixed
+
+- **Resolving policy questions could fail at runtime with `could not determine data type of parameter $3`** — the clarification flow now casts the `genre_pattern` JSON placeholder explicitly when writing learned genre patterns, preventing PostgreSQL from rejecting manual selections such as routing a pending item to `Movies`. Adjacent JSON-builder queries in mapping code were hardened with explicit casts as well. (`server/src/services/clarificationService.js`, `server/src/services/libraryMappingService.js`)
+
+- **Pending-question resolution accepted malformed IDs deep into the service layer instead of rejecting them cleanly** — the resolve route now validates both `classificationId` and `library_id` as positive integers and returns `400` for invalid payloads before touching the database. (`server/src/routes/classification.js`)
+
+- **Metadata-shape mismatches caused both noisy UI text and weakened learning/pattern support in edge cases** — clarification matching, context rendering, Discord feedback learning, queue refill, media pattern analysis, pattern mining, scheduler anime detection, and other secondary paths now use the same normalized list handling as the main classifier, eliminating hidden inconsistencies where discovery and matching logic previously disagreed. (`server/src/services/contextManager.js`, `server/src/services/discordBot.js`, `server/src/services/mediaPatternAnalyzer.js`, `server/src/services/patternMiningService.js`, `server/src/services/scheduler.js`)
+
+### Tests
+
+- Added and expanded regression coverage for:
+  - metadata normalization helpers and mixed-shape arrays (`metadataNormalization.test.js`)
+  - clarification resolution typing, invalid ID handling, and mixed-shape metadata (`clarification.test.js`, `classification-routes.test.js`)
+  - prompt building, policy scoring, embeddings, content analysis, queue refill, profile generation, feedback analysis, media sync, pattern mining, and legacy migration mixed-shape handling
+  - repo-level code-health enforcement for new raw metadata parsing patterns
+
+- Release gate verification completed:
+  - `npm --prefix server run lint:security`
+  - `npm --prefix server run lint:tests`
+  - `npm run lint:docs`
+  - `npm run test:ci`
+  - `npm --prefix server run test:integration`
 
 ---
 
@@ -2250,5 +2283,3 @@ Package version: `0.44.1-a.beta`
 
 > [!NOTE]
 > Older changelog entries have been moved to [CHANGELOG_backup.md](CHANGELOG_backup.md) to keep this file concise.
-
-

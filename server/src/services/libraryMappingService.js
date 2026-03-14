@@ -182,8 +182,8 @@ class LibraryMappingService {
                  radarr_settings = CASE
                    WHEN $2 = 'radarr' AND (radarr_settings IS NULL OR radarr_settings = '{}'::jsonb)
                    THEN jsonb_build_object(
-                     'root_folder_path', $4,
-                     'quality_profile_id', $5,
+                     'root_folder_path', $4::text,
+                     'quality_profile_id', $5::integer,
                      'monitor', true,
                      'search_on_add', true
                    )
@@ -192,8 +192,8 @@ class LibraryMappingService {
                  sonarr_settings = CASE
                    WHEN $2 = 'sonarr' AND (sonarr_settings IS NULL OR sonarr_settings = '{}'::jsonb)
                    THEN jsonb_build_object(
-                     'root_folder_path', $4,
-                     'quality_profile_id', $5,
+                     'root_folder_path', $4::text,
+                     'quality_profile_id', $5::integer,
                      'monitor', true,
                      'search_on_add', true,
                      'series_type', 'standard',

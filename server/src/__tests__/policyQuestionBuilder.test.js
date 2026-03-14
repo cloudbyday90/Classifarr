@@ -5,13 +5,23 @@
  * Tests for policy-driven clarification question builder.
  */
 
-const policyQuestionBuilder = require('../services/policyQuestionBuilder');
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+};
 
 jest.mock('../config/database', () => ({
   query: jest.fn(),
 }));
 
+jest.mock('../utils/logger', () => ({
+  createLogger: () => mockLogger,
+}));
+
 const db = require('../config/database');
+const policyQuestionBuilder = require('../services/policyQuestionBuilder');
 
 describe('PolicyQuestionBuilder', () => {
   beforeEach(() => {
@@ -166,6 +176,48 @@ describe('PolicyQuestionBuilder', () => {
       policy_id: 11,
       policy_name: 'Movies Policy'
     }));
+  });
+
+  test('should normalize object-shaped tags in policy question payload metadata', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        policy_id: 11,
+        preset_id: 201,
+        preset_name: 'Action',
+        signals: { genres: { require_any: ['action'] } },
+        custom_signals: null,
+      }]
+    });
+
+    const libraries = [
+      { id: 1, name: 'Movies', media_type: 'movie' },
+      { id: 2, name: 'Family', media_type: 'movie' },
+    ];
+
+    const result = await policyQuestionBuilder.build({
+      metadata: {
+        title: 'Test Movie',
+        media_type: 'movie',
+        genres: [{ id: 1, name: 'Action' }],
+        keywords: [{ id: 2, name: 'Hero' }, { id: 3, name: 'Villain' }]
+      },
+      policyResult: {
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 45,
+          policy_id: 11,
+          policy_name: 'Movies Policy',
+          scores: {},
+          weights: {}
+        }]
+      },
+      libraries
+    });
+
+    expect(result).toBeDefined();
+    expect(result.meta.tags.genres).toEqual(['Action']);
+    expect(result.meta.tags.keywords).toEqual(['Hero', 'Villain']);
   });
 
   test('should generate a language conflict question when policyResult has languageConflicts', async () => {
@@ -404,5 +456,244 @@ describe('PolicyQuestionBuilder', () => {
     expect(policyQuestionBuilder.formatLanguage('xx')).toBe('XX');
     // Null / undefined should return the default label
     expect(policyQuestionBuilder.formatLanguage(null)).toBe('non-English');
+  });
+
+  test('buildLanguageConflictQuestion returns null when original language is missing', () => {
+    const result = policyQuestionBuilder.buildLanguageConflictQuestion(
+      { title: 'Unknown Language', original_language: null },
+      [],
+      [{ library_id: 1, library_name: 'Anime Movies', required_languages: ['ja'] }]
+    );
+
+    expect(result).toBeNull();
+  });
+
+  test('buildLanguageConflictQuestion returns null when fewer than two options are available', () => {
+    const result = policyQuestionBuilder.buildLanguageConflictQuestion(
+      { title: 'Single Conflict', original_language: 'zh' },
+      [],
+      [{ library_id: 11, library_name: 'Anime Movies', required_languages: ['ja'] }]
+    );
+
+    expect(result).toBeNull();
+  });
+
+  test('buildLanguageConflictQuestion handles conflicts without a ranked top candidate', () => {
+    const result = policyQuestionBuilder.buildLanguageConflictQuestion(
+      { title: 'Manual Review', original_language: 'zh' },
+      [],
+      [
+        { library_id: 11, library_name: 'Anime Movies', required_languages: ['ja'] },
+        { library_id: 15, library_name: 'Movies', required_languages: ['en'] },
+      ]
+    );
+
+    expect(result).toBeDefined();
+    expect(result.question).toContain('This is Chinese content');
+    expect(result.question).not.toContain('Top match is');
+    expect(result.meta.question_anchor_reason).toBe('manual_review_required');
+  });
+
+  test('buildLanguageQuestion returns binary confirmation when language matches a candidate preset', () => {
+    const candidates = [
+      { library_id: 11, library_name: 'Anime Movies', library: { id: 11, name: 'Anime Movies' }, policy_id: 1 },
+      { library_id: 15, library_name: 'Movies', library: { id: 15, name: 'Movies' }, policy_id: 2 },
+    ];
+
+    const result = policyQuestionBuilder.buildLanguageQuestion(
+      { title: 'Japanese Film', original_language: 'ja' },
+      candidates,
+      {
+        1: [{ signals: { language: { require_any: ['ja'] } } }],
+        2: [{ signals: { language: { require_any: ['en'] } } }],
+      }
+    );
+
+    expect(result).toBeDefined();
+    expect(result.problem_summary).toBe('Language clarification');
+    expect(result.question).toBe('Is this primarily Japanese language content?');
+    expect(result.options[0].label).toContain('Anime Movies');
+    expect(result.options[1].label).toContain('Movies');
+    expect(result.meta.question_anchor_reason).toBe('primary_candidate');
+  });
+
+  test('buildLanguageQuestion falls back to manual selection when there is no alternative candidate', () => {
+    const candidates = [
+      { library_id: 11, library_name: 'Anime Movies', library: { id: 11, name: 'Anime Movies' }, policy_id: 1 },
+    ];
+
+    const result = policyQuestionBuilder.buildLanguageQuestion(
+      { title: 'Japanese Film', original_language: 'ja' },
+      candidates,
+      {
+        1: [{ signals: { language: { require_any: ['ja'] } } }],
+      }
+    );
+
+    expect(result).toBeDefined();
+    expect(result.problem_summary).toBe('Manual selection needed');
+    expect(result.why_uncertain).toContain('no alternative library found');
+  });
+
+  test('buildCandidates falls back to suggested library and pads with remaining libraries', () => {
+    const libraries = [
+      { id: 1, name: 'Movies', media_type: 'movie' },
+      { id: 2, name: 'Family', media_type: 'movie' },
+      { id: 3, name: 'Anime Movies', media_type: 'movie' },
+    ];
+
+    const result = policyQuestionBuilder.buildCandidates(
+      { ranked: [] },
+      libraries,
+      { id: 2, name: 'Family', media_type: 'movie' },
+      3
+    );
+
+    expect(result).toHaveLength(3);
+    expect(result[0]).toEqual(expect.objectContaining({
+      library_id: 2,
+      library_name: 'Family',
+      score: null
+    }));
+    expect(result.map(candidate => candidate.library_id)).toEqual([2, 1, 3]);
+  });
+
+  test('getPresetsByPolicy returns an empty object when preset lookup fails', async () => {
+    db.query.mockRejectedValueOnce(new Error('db offline'));
+
+    await expect(policyQuestionBuilder.getPresetsByPolicy([1, 2])).resolves.toEqual({});
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Failed to load policy presets for clarification',
+      expect.objectContaining({ error: 'db offline' })
+    );
+  });
+
+  test('buildQuestionPayload does not warn when first option differs under a non-primary anchor reason', () => {
+    const payload = policyQuestionBuilder.buildQuestionPayload(
+      { title: 'Manual Override' },
+      {
+        problem_summary: 'Manual review',
+        why_uncertain: 'Needs review',
+        question: 'Pick a library',
+        options: [
+          { label: 'Family', value: 'family', library_id: 2, library_name: 'Family' },
+          { label: 'Movies', value: 'movies', library_id: 1, library_name: 'Movies' },
+        ],
+        candidates: [
+          {
+            library_id: 1,
+            library_name: 'Movies',
+            library: { id: 1, name: 'Movies' },
+            score: 50,
+            policy_id: 11,
+            policy_name: 'Movies Policy',
+          }
+        ],
+        extras: {
+          question_anchor_library: { id: 2, name: 'Family' },
+          question_anchor_reason: 'manual_review_required',
+        },
+      }
+    );
+
+    expect(payload.meta.question_anchor_reason).toBe('manual_review_required');
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+  });
+
+  test('buildQuestionPayload warns when primary candidate diverges from the first option', () => {
+    policyQuestionBuilder.buildQuestionPayload(
+      { title: 'Divergent Options' },
+      {
+        problem_summary: 'Review',
+        why_uncertain: 'Conflict',
+        question: 'Pick one',
+        options: [
+          { label: 'Family', value: 'family', library_id: 2, library_name: 'Family' },
+          { label: 'Movies', value: 'movies', library_id: 1, library_name: 'Movies' },
+        ],
+        candidates: [
+          {
+            library_id: 1,
+            library_name: 'Movies',
+            library: { id: 1, name: 'Movies' },
+            score: 90,
+            policy_id: 11,
+            policy_name: 'Movies Policy',
+          }
+        ],
+      }
+    );
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Policy question option order diverges from primary candidate',
+      expect.objectContaining({
+        title: 'Divergent Options',
+        primaryCandidateLibraryId: 1,
+        firstOptionLibraryId: 2,
+      })
+    );
+  });
+
+  test('buildLibrarySelectionQuestion returns null when there are no libraries to offer', () => {
+    const result = policyQuestionBuilder.buildLibrarySelectionQuestion(
+      { title: 'No Libraries' },
+      [],
+      { reason: 'Nothing available' }
+    );
+
+    expect(result).toBeNull();
+  });
+
+  test('getLanguagesForPolicy merges require, prefer, and exclude values as lowercase unique codes', () => {
+    const languages = policyQuestionBuilder.getLanguagesForPolicy([
+      { signals: { language: { require_any: ['JA'], prefer: ['en'], exclude: ['FR'] } } },
+      { signals: { language: { require_any: ['ja', 'DE'] } } },
+    ]);
+
+    expect(languages.sort()).toEqual(['de', 'en', 'fr', 'ja']);
+  });
+
+  test('collectSignalTypes ignores media_type and empty signal configs', () => {
+    const types = policyQuestionBuilder.collectSignalTypes(
+      {
+        1: [
+          {
+            signals: {
+              media_type: { require_any: ['movie'] },
+              genres: { require_any: ['Comedy'] },
+              keywords: {},
+            }
+          }
+        ]
+      },
+      [{ policy_id: 1 }]
+    );
+
+    expect(types).toEqual(['genres']);
+  });
+
+  test('formatLanguageList handles empty, single, and duplicate language codes', () => {
+    expect(policyQuestionBuilder.formatLanguageList([])).toBe('non-English');
+    expect(policyQuestionBuilder.formatLanguageList(['ja'])).toBe('Japanese');
+    expect(policyQuestionBuilder.formatLanguageList(['ja', 'JA', 'en'])).toBe('Japanese/English');
+  });
+
+  test('toOption supplies safe defaults when label or library are missing', () => {
+    expect(policyQuestionBuilder.toOption(null, null)).toEqual({
+      label: 'Option',
+      value: 'option',
+      library_id: null,
+      library_name: null
+    });
+  });
+
+  test('filterLibrariesByMediaType returns all libraries when media type is missing', () => {
+    const libraries = [
+      { id: 1, name: 'Movies', media_type: 'movie' },
+      { id: 2, name: 'TV', media_type: 'tv' },
+    ];
+
+    expect(policyQuestionBuilder.filterLibrariesByMediaType(libraries, null)).toEqual(libraries);
+    expect(policyQuestionBuilder.filterLibrariesByMediaType(libraries, 'movie')).toEqual([libraries[0]]);
   });
 });

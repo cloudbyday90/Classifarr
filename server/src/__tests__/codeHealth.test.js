@@ -475,3 +475,61 @@ describe('Code Health — no string-interpolated SQL queries', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// 11. Metadata normalization guardrails
+// ---------------------------------------------------------------------------
+
+describe('Code Health — metadata normalization guardrails', () => {
+  /**
+   * List-like metadata fields such as genres/keywords/tags/collections arrive in
+   * mixed shapes across providers and persisted records:
+   *   - ['Documentary']
+   *   - [{ name: 'Documentary' }]
+   *   - JSON-stringified arrays
+   *
+   * New code should route these through metadataNormalization helpers rather than
+   * doing ad hoc JSON.parse() or lowercasing raw entries directly.
+   *
+   * We intentionally only flag the highest-risk patterns here to keep noise low:
+   *   1. Direct JSON.parse(...) of genres/keywords/tags/collections
+   *   2. Direct metadata.<field>.map(...toLowerCase()) on list-like metadata
+   *
+   * Allow same-line opt-out for deliberate exceptions:
+   *   // metadata-normalization: allow
+   */
+  const EXEMPT_FILES = new Set([
+    'utils/metadataNormalization.js'
+  ]);
+
+  const DIRECT_PARSE_RE = /\bJSON\.parse\s*\([^)]*\b(?:genres|keywords|tags|collections)\b[^)]*\)/;
+  const RAW_MAP_LOWER_RE = /\bmetadata\.(?:genres|keywords|tags|collections)\b[^\n]*\.map\s*\([^)]*toLowerCase\s*\(/;
+
+  for (const filePath of SOURCE_FILES) {
+    const relativePath = rel(filePath);
+    if (EXEMPT_FILES.has(relativePath)) continue;
+
+    test(`${relativePath} — no raw list-metadata parsing or lowercasing`, () => {
+      const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+      const hits = [];
+
+      lines.forEach((line, i) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+        if (/\/\/\s*metadata-normalization:\s*allow/i.test(trimmed)) return;
+
+        if (DIRECT_PARSE_RE.test(trimmed) || RAW_MAP_LOWER_RE.test(trimmed)) {
+          hits.push(`  line ${i + 1}: ${trimmed.slice(0, 140)}`);
+        }
+      });
+
+      if (hits.length > 0) {
+        throw new Error(
+          `Found raw list-metadata handling. Use metadataNormalization helpers instead ` +
+          `(normalizeMetadataList / normalizeMetadataListLower / coerceMetadataArray):\n` +
+          hits.join('\n')
+        );
+      }
+    });
+  }
+});

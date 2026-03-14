@@ -8,6 +8,7 @@
 
 const { createLogger } = require('../utils/logger');
 const db = require('../config/database');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('ContextManager');
 
@@ -191,10 +192,11 @@ class ContextManager {
         // Core metadata - CRITICAL
         if (context.metadata) {
             const meta = context.metadata;
+            const normalizedGenres = normalizeMetadataList(meta.genres);
             const content = `--- MEDIA INFORMATION ---
 Title: ${meta.title}
 Year: ${meta.year || 'Unknown'}
-Genres: ${(meta.genres || []).join(', ') || 'None'}
+Genres: ${normalizedGenres.join(', ') || 'None'}
 Certification: ${meta.certification || 'Unknown'}
 Language: ${meta.original_language || 'Unknown'}`;
 
@@ -265,9 +267,10 @@ ${sig.hasConflict ? '⚠️ CONFLICT DETECTED' : ''}`;
         }
 
         // Keywords - LOW
-        if (context.metadata?.keywords?.length > 0) {
-            const keywords = context.metadata.keywords.slice(0, 15).join(', ');
-            const shortKeywords = context.metadata.keywords.slice(0, 5).join(', ');
+        const normalizedKeywords = normalizeMetadataList(context.metadata?.keywords);
+        if (normalizedKeywords.length > 0) {
+            const keywords = normalizedKeywords.slice(0, 15).join(', ');
+            const shortKeywords = normalizedKeywords.slice(0, 5).join(', ');
 
             sections.push({
                 name: 'keywords',

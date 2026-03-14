@@ -182,6 +182,13 @@ describe('ragGraphExtractor.extract()', () => {
         expect(result.genre_names).toEqual(['Action', 'Drama']);
     });
 
+    it('normalizes object-shaped genres to name values', () => {
+        const result = extract({
+            genres: [{ id: 1, name: 'Action' }, { id: 2, name: 'Drama' }, { id: 3 }]
+        });
+        expect(result.genre_names).toEqual(['Action', 'Drama']);
+    });
+
     it('returns empty array when genres is absent', () => {
         const result = extract({ director_name: 'Someone' });
         expect(result.genre_names).toEqual([]);

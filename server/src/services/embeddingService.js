@@ -11,6 +11,7 @@ const db = require('../config/database');
 const embeddingRouter = require('./embeddingRouter');
 const imageEmbeddingProvider = require('./imageEmbeddingProvider');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('EmbeddingService');
 
@@ -185,11 +186,9 @@ class EmbeddingService {
         }
 
         // Genres
-        if (metadata.genres && metadata.genres.length > 0) {
-            const genreNames = this.extractNames(metadata.genres, 5);
-            if (genreNames.length > 0) {
-                parts.push(`Genres: ${genreNames.join(', ')}`);
-            }
+        const genreNames = normalizeMetadataList(metadata.genres).slice(0, 5);
+        if (genreNames.length > 0) {
+            parts.push(`Genres: ${genreNames.join(', ')}`);
         }
 
         // Certification/Rating
@@ -234,11 +233,9 @@ class EmbeddingService {
         }
 
         // Keywords (top 8)
-        if (metadata.keywords && metadata.keywords.length > 0) {
-            const keywordNames = this.extractNames(metadata.keywords, 8);
-            if (keywordNames.length > 0) {
-                parts.push(`Keywords: ${keywordNames.join(', ')}`);
-            }
+        const keywordNames = normalizeMetadataList(metadata.keywords).slice(0, 8);
+        if (keywordNames.length > 0) {
+            parts.push(`Keywords: ${keywordNames.join(', ')}`);
         }
 
         // Vote average/Score

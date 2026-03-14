@@ -18,6 +18,7 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
 
 const logger = createLogger('clarificationService');
 
@@ -172,8 +173,8 @@ class ClarificationService {
       );
 
       const questions = result.rows;
-      const keywords = (metadata.keywords || []).map(k => k.toLowerCase());
-      const genres = (metadata.genres || []).map(g => g.toLowerCase());
+      const keywords = normalizeMetadataListLower(metadata.keywords);
+      const genres = normalizeMetadataListLower(metadata.genres);
       const originalLanguage = metadata.original_language || '';
       void originalLanguage; // assigned but scoring below uses keywords/genres directly
 
@@ -645,7 +646,7 @@ class ClarificationService {
 
         // Write genre-level patterns so future items with the same genre are learned.
         // Each confirmation increments usage_count and slowly raises confidence (capped at 95).
-        const itemGenres = (metadata.genres || []);
+        const itemGenres = normalizeMetadataList(metadata.genres);
         if (itemGenres.length > 0) {
           for (const genre of itemGenres) {
             const genreLower = genre.toLowerCase();
@@ -654,7 +655,7 @@ class ClarificationService {
                  (tmdb_id, media_type, library_id, pattern_type, pattern_data,
                   confidence, usage_count, success_rate, created_by)
                VALUES (NULL, $1, $2, 'genre_pattern',
-                       jsonb_build_object('genre', $3),
+                       jsonb_build_object('genre', $3::text),
                        85, 1, 100.00, $4)
                ON CONFLICT ((pattern_data->>'genre'), media_type, library_id)
                  WHERE pattern_type = 'genre_pattern'

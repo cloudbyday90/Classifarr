@@ -11,6 +11,7 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('LibraryProfileService');
 
@@ -200,8 +201,8 @@ class LibraryProfileService {
 
         let score = 0;
         const rating = itemMetadata.certification || itemMetadata.content_rating;
-        const itemGenres = itemMetadata.genres || [];
-        const itemKeywords = itemMetadata.keywords || [];
+        const itemGenres = normalizeMetadataList(itemMetadata.genres);
+        const itemKeywords = normalizeMetadataList(itemMetadata.keywords);
 
         // POSITIVE: Rating match
         const ratingDist = profile.rating_distribution || {};
@@ -271,15 +272,10 @@ class LibraryProfileService {
                 if (rating) values = [rating];
             } else if (field === 'genres') {
                 // Get genres from column or metadata
-                let genres = item.genres;
-                if (typeof genres === 'string') {
-                    try {
-                        genres = JSON.parse(genres);
-                    } catch {
-                        genres = genres.split(',').map(g => g.trim());
-                    }
-                }
-                values = genres || item.metadata?.tmdb?.genres?.map(g => g.name) || [];
+                const genres = normalizeMetadataList(item.genres);
+                values = genres.length > 0
+                    ? genres
+                    : normalizeMetadataList(item.metadata?.tmdb?.genres);
             } else if (field === 'studio') {
                 // Get studio from column or metadata
                 const studio = item.studio ||
@@ -287,7 +283,7 @@ class LibraryProfileService {
                 if (studio) values = [studio];
             } else if (field === 'keywords') {
                 // Get keywords from TMDb metadata
-                values = item.metadata?.tmdb?.keywords?.map(k => k.name) || [];
+                values = normalizeMetadataList(item.metadata?.tmdb?.keywords);
             }
 
             for (const val of values.filter(Boolean)) {

@@ -95,6 +95,20 @@ describe('Classification Routes - Pending Resolution', () => {
   });
 
   describe('POST /pending/:id/resolve', () => {
+    test('should reject non-numeric library_id', async () => {
+      const response = await request(app)
+        .post('/api/classification/pending/1/resolve')
+        .send({
+          library_id: 'movies',
+          selected_option: 'Movies',
+          resolved_by: 'test-user'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Invalid library_id');
+      expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+    });
+
     test('should resolve and route to Radarr when library has arr mapping', async () => {
       // Mock resolvePolicyQuestion response
       clarificationService.resolvePolicyQuestion.mockResolvedValue({

@@ -28,6 +28,8 @@ const logger = createLogger('AIPromptBuilder');
  * 
  * @see https://github.com/cloudbyday90/Classifarr/issues/212
  */
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
+
 class AIPromptBuilder {
     constructor() {
         this.signalFormatters = new Map();
@@ -412,13 +414,13 @@ class AIPromptBuilder {
      */
     parseArray(value) {
         if (!value) return null;
-        if (Array.isArray(value)) return value;
+        if (Array.isArray(value)) return normalizeMetadataList(value);
         
         // Try to parse JSON string
         if (typeof value === 'string') {
             try {
                 const parsed = JSON.parse(value);
-                return Array.isArray(parsed) ? parsed : null;
+                return Array.isArray(parsed) ? normalizeMetadataList(parsed) : null;
             } catch (_e) {
                 // Not JSON, maybe comma-separated?
                 return value.split(',').map(v => v.trim()).filter(v => v);

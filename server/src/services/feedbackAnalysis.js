@@ -18,6 +18,7 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('FeedbackAnalysis');
 
@@ -38,6 +39,51 @@ const TUNING_CONSTANTS = {
  * recurring patterns, and generates actionable tuning recommendations.
  */
 class FeedbackAnalysis {
+    normalizeGroupingValues(field, values) {
+        if (field === 'genres' || field === 'keywords' || field === 'production_companies') {
+            return normalizeMetadataList(values);
+        }
+
+        if (field === 'belongs_to_collection') {
+            if (!values) {
+                return [];
+            }
+
+            if (typeof values === 'string') {
+                try {
+                    const parsed = JSON.parse(values);
+                    if (parsed && typeof parsed === 'object') {
+                        return normalizeMetadataList([parsed]);
+                    }
+                    return values.trim() ? [values] : [];
+                } catch {
+                    return values.trim() ? [values] : [];
+                }
+            }
+
+            return normalizeMetadataList([values]);
+        }
+
+        if (typeof values === 'string') {
+            try {
+                values = JSON.parse(values);
+            } catch {
+                values = [values];
+            }
+        }
+
+        if (!Array.isArray(values)) {
+            values = [values];
+        }
+
+        return values.map(v => {
+            if (typeof v === 'object' && v !== null) {
+                return v.name || v.title || JSON.stringify(v);
+            }
+            return v;
+        }).filter(Boolean);
+    }
+
     /**
      * Record a feedback event when user makes a classification decision
      * @param {object} feedbackData - Feedback data including item metadata, scores, and decision
@@ -1189,31 +1235,10 @@ class FeedbackAnalysis {
         for (const f of feedback) {
             try {
                 const metadata = f.item_metadata || {};
-                let values = metadata[field];
+                const values = this.normalizeGroupingValues(field, metadata[field]);
 
                 if (!values) continue;
-
-                // Parse if string
-                if (typeof values === 'string') {
-                    try {
-                        values = JSON.parse(values);
-                    } catch {
-                        values = [values];
-                    }
-                }
-
-                // Ensure array
-                if (!Array.isArray(values)) {
-                    values = [values];
-                }
-
-                // Extract names from objects
-                values = values.map(v => {
-                    if (typeof v === 'object' && v !== null) {
-                        return v.name || v.title || JSON.stringify(v);
-                    }
-                    return v;
-                }).filter(Boolean);
+                if (values.length === 0) continue;
 
                 // Count occurrences
                 for (const value of values) {

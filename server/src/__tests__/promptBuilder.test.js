@@ -74,6 +74,19 @@ describe('PromptBuilder', () => {
             expect(formatted).toContain('Genres: Drama, Thriller');
         });
 
+        it('should format object-shaped genres and keywords using their names', () => {
+            const item = {
+                title: 'Test Movie',
+                genres: [{ id: 1, name: 'Drama' }, { id: 2, name: 'Thriller' }],
+                keywords: [{ id: 3, name: 'character study' }, { id: 4, name: 'slow burn' }]
+            };
+
+            const formatted = promptBuilder.formatItemForPrompt(item);
+
+            expect(formatted).toContain('Genres: Drama, Thriller');
+            expect(formatted).toContain('Keywords: character study, slow burn');
+        });
+
         it('should include overview if present', () => {
             const item = {
                 title: 'Test Movie',

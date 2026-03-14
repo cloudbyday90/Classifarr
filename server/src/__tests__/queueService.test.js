@@ -370,6 +370,78 @@ describe('QueueService', () => {
         });
     });
 
+    describe('refillQueue', () => {
+        it('should normalize JSON-string metadata fields without manual parsing', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    id: 42,
+                    title: 'Nature Movie',
+                    metadata: { summary: 'A documentary about wildlife', posterPath: '/poster.jpg' },
+                    genres: '[{"name":"Documentary"},{"name":"Family"}]',
+                    tags: '[{"name":"nature"},{"name":"wildlife"}]',
+                    content_rating: 'PG',
+                    tmdb_id: 123,
+                    tvdb_id: null,
+                    imdb_id: 'tt1234567',
+                    year: 2022,
+                    library_id: 7,
+                    library_name: 'Movies',
+                    media_type: 'movie'
+                }]
+            });
+
+            jest.spyOn(queueService, 'enqueue').mockResolvedValue(1001);
+
+            const result = await queueService.refillQueue();
+
+            expect(result).toEqual({ queued: 1 });
+            expect(queueService.enqueue).toHaveBeenCalledWith(
+                'metadata_enrichment',
+                expect.objectContaining({
+                    genres: ['Documentary', 'Family'],
+                    keywords: ['nature', 'wildlife']
+                }),
+                expect.objectContaining({
+                    source: 'gap_analysis'
+                })
+            );
+        });
+
+        it('should tolerate malformed JSON-like metadata strings', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    id: 43,
+                    title: 'Broken Metadata Movie',
+                    metadata: { summary: 'Bad metadata payload' },
+                    genres: 'not json',
+                    tags: 'still not json',
+                    content_rating: 'PG-13',
+                    tmdb_id: 456,
+                    tvdb_id: null,
+                    imdb_id: 'tt7654321',
+                    year: 2023,
+                    library_id: 8,
+                    library_name: 'Movies',
+                    media_type: 'movie'
+                }]
+            });
+
+            jest.spyOn(queueService, 'enqueue').mockResolvedValue(1002);
+
+            const result = await queueService.refillQueue();
+
+            expect(result).toEqual({ queued: 1 });
+            expect(queueService.enqueue).toHaveBeenCalledWith(
+                'metadata_enrichment',
+                expect.objectContaining({
+                    genres: [],
+                    keywords: []
+                }),
+                expect.any(Object)
+            );
+        });
+    });
+
     describe('startWorker', () => {
         it('should start worker loop', async () => {
             // Mock internal methods to avoid loop and DB calls

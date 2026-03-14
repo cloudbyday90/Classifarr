@@ -174,5 +174,35 @@ describe('LibraryMappingService - Auto-Detect Exact Match', () => {
                 expect.arrayContaining([1, 'radarr', 1, '/movies', 4])
             );
         });
+
+        test('should cast JSON setting placeholders explicitly when syncing libraries table', async () => {
+            db.query
+                .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // library exists
+                .mockResolvedValueOnce({ rows: [{ id: 1, library_id: 1 }] }) // mapping upsert
+                .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // mappings count
+                .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // libraries count
+                .mockResolvedValueOnce({ rows: [] }) // app_settings upsert
+                .mockResolvedValueOnce({ rows: [] }); // libraries update
+
+            await libraryMappingService.saveMapping({
+                library_id: 1,
+                arr_type: 'sonarr',
+                arr_config_id: 2,
+                arr_root_folder_id: 20,
+                arr_root_folder_path: '/tv',
+                quality_profile_id: 7,
+                plex_path_prefix: null,
+                arr_path_prefix: null,
+                classifarr_path_prefix: null
+            });
+
+            const updateCall = db.query.mock.calls.find(call =>
+                typeof call[0] === 'string' && call[0].includes('UPDATE libraries')
+            );
+
+            expect(updateCall).toBeDefined();
+            expect(updateCall[0]).toContain("'root_folder_path', $4::text");
+            expect(updateCall[0]).toContain("'quality_profile_id', $5::integer");
+        });
     });
 });

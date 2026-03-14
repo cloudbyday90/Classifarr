@@ -231,6 +231,21 @@ describe('EmbeddingService', () => {
             expect(result).toContain('hero');
         });
 
+        it('should normalize object-shaped genres and keywords', () => {
+            const metadata = {
+                title: 'Object Metadata Movie',
+                media_type: 'movie',
+                genres: [{ name: 'Action' }, { name: 'Drama' }],
+                keywords: [{ name: 'hero' }, { name: 'adventure' }],
+                overview: 'A great movie about heroes.'
+            };
+
+            const result = embeddingService.formatForEmbedding(metadata);
+
+            expect(result).toContain('Genres: Action, Drama');
+            expect(result).toContain('Keywords: hero, adventure');
+        });
+
         it('should handle missing fields gracefully', () => {
             const metadata = { title: 'Minimal' };
 

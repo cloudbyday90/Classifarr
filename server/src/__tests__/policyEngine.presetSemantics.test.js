@@ -62,6 +62,29 @@ describe('PolicyEngine preset semantics', () => {
             expect(score).toBeGreaterThan(0);
         });
 
+        test('handles object-shaped genres and keywords during preset evaluation', async () => {
+            const signals = {
+                genres: {
+                    require_any: ['Animation'],
+                    weight: 1.0
+                },
+                keywords: {
+                    require_any: ['hero'],
+                    weight: 1.0
+                }
+            };
+
+            const item = {
+                genres: [{ id: 16, name: 'Animation' }, { id: 28, name: 'Action' }],
+                keywords: [{ id: 1, name: 'Hero' }],
+                overview: 'Animated action adventure',
+                title: 'Hero Movie'
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBeGreaterThan(0);
+        });
+
         test('hard-blocks language require_any only when strict is true', async () => {
             const signals = {
                 genres: {

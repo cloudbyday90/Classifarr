@@ -23,6 +23,7 @@ const jellyfinService = require('./jellyfin');
 const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 const { createLogger } = require('../utils/logger');
 const { LibraryNotFoundError } = require('../utils/errors');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('mediaSync');
 
@@ -232,12 +233,17 @@ class MediaSyncService {
         return;
       }
 
+      // Normalize shape once at ingest so downstream profile/scoring code sees strings.
+      const normalizedGenres = normalizeMetadataList(item.genres);
+      const normalizedTags = normalizeMetadataList(item.tags);
+      const normalizedCollections = normalizeMetadataList(item.collections);
+
       // Run content analysis if not already present or force re-analysis
       const analysis = await contentTypeAnalyzer.analyze({
         title: item.title,
         overview: item.metadata?.summary || '',
-        genres: item.genres || [],
-        keywords: item.tags || [], // Use tags/collections as keywords proxy
+        genres: normalizedGenres,
+        keywords: normalizedTags, // Use tags/collections as keywords proxy
         content_rating: item.content_rating,
         original_language: 'en', // Plex doesn't always provide this
         tmdb_id: item.tmdb_id
@@ -288,9 +294,9 @@ class MediaSyncService {
           item.original_title || null,
           item.year || null,
           item.media_type,
-          item.genres || [],
-          item.tags || [],
-          item.collections || [],
+          normalizedGenres,
+          normalizedTags,
+          normalizedCollections,
           item.studio || null,
           item.content_rating || null,
           item.added_at || null,

@@ -44,6 +44,7 @@ const aiResponseParser = require('./aiResponseParser');
 const { createLogger } = require('../utils/logger');
 const ragLogger = require('../utils/ragLogger');
 const { mapSecondPassError } = require('../utils/ragErrorHandler');
+const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
 const ragLoopMetricsCollector = require('./ragLoopMetricsCollector');
 const ragLoopResilienceManager = require('./ragLoopResilienceManager');
 const { validateAndNormalizeRagLoopConfig } = require('../utils/ragLoopConfig');
@@ -2038,11 +2039,13 @@ ${response}
    * Returns array of event type strings that match keywords in metadata
    */
   detectEventTypesFromMetadata(metadata) {
+    const normalizedKeywords = normalizeMetadataList(metadata.keywords);
+    const normalizedGenres = normalizeMetadataList(metadata.genres);
     const textToSearch = [
       metadata.title || '',
       metadata.overview || '',
-      ...(metadata.keywords || []),
-      ...(metadata.genres || [])
+      ...normalizedKeywords,
+      ...normalizedGenres
     ].join(' ').toLowerCase();
 
     const eventKeywords = {
@@ -2086,8 +2089,8 @@ ${response}
     // Prepare metadata for matching
     const itemData = {
       rating: (metadata.certification || '').toUpperCase(),
-      genre: (metadata.genres || []).map(g => g.toLowerCase()),
-      keyword: (metadata.keywords || []).map(k => k.toLowerCase()),
+      genre: normalizeMetadataListLower(metadata.genres),
+      keyword: normalizeMetadataListLower(metadata.keywords),
       language: (metadata.original_language || '').toLowerCase(),
       year: metadata.year ? parseInt(metadata.year) : null,
       title: (metadata.title || '').toLowerCase(),
@@ -2183,8 +2186,8 @@ ${response}
 
   mightBeAnime(metadata) {
     // Check if metadata suggests anime
-    const keywords = (metadata.keywords || []).map(k => k.toLowerCase());
-    const genres = (metadata.genres || []).map(g => g.toLowerCase());
+    const keywords = normalizeMetadataListLower(metadata.keywords);
+    const genres = normalizeMetadataListLower(metadata.genres);
 
     return (
       keywords.includes('anime') ||
@@ -2699,7 +2702,7 @@ ${response}
   async checkLearnedPatterns(metadata) {
     // Check for genre-level patterns learned from user clarification responses.
     // Returns null immediately when the item has no genres to avoid a pointless query.
-    const genres = metadata.genres || [];
+    const genres = normalizeMetadataListLower(metadata.genres);
     if (genres.length === 0) return null;
 
     const mediaType = metadata.media_type || metadata.mediaType || null;
@@ -2836,19 +2839,20 @@ ${response}
 
       case 'genres':
         // Check if any metadata genre matches any of the label values
-        if (!metadata.genres || !Array.isArray(metadata.genres)) {
+        const genres = normalizeMetadataListLower(metadata.genres);
+        if (genres.length === 0) {
           return false;
         }
         return tmdb_match_values.some(value =>
-          metadata.genres.some(g => g.toLowerCase() === value.toLowerCase())
+          genres.some(g => g === value.toLowerCase())
         );
 
       case 'keywords':
         // Check if any metadata keyword matches any of the label values
-        if (!metadata.keywords || !Array.isArray(metadata.keywords)) {
+        const keywords = normalizeMetadataListLower(metadata.keywords);
+        if (keywords.length === 0) {
           return false;
         }
-        const keywords = metadata.keywords.map(k => k.toLowerCase());
         return tmdb_match_values.some(value =>
           keywords.includes(value.toLowerCase())
         );

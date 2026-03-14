@@ -38,6 +38,7 @@
 const defaultDb = require('../config/database');
 const { DB_ADVISORY_LOCKS } = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
 const defaultClassificationService = require('./classification');
 const defaultOllamaService = require('./ollama');
 const defaultAiRouterService = require('./aiRouter');
@@ -807,7 +808,7 @@ class QueueService {
 
                             // If anime is suspected, get anime-specific info
                             const isAnime = enrichPayload.original_language === 'ja' ||
-                                (enrichPayload.genres || []).some(g => g.toLowerCase().includes('anime'));
+                                normalizeMetadataListLower(enrichPayload.genres).some(g => g.includes('anime'));
 
                             if (isAnime) {
                                 try {
@@ -1579,8 +1580,8 @@ class QueueService {
                 await this.enqueue('classification', {
                     title: item.title,
                     overview: metadata.overview || '',
-                    genres: metadata.genres || [],
-                    keywords: metadata.keywords || [],
+                    genres: normalizeMetadataList(metadata.genres),
+                    keywords: normalizeMetadataList(metadata.keywords),
                     content_rating: metadata.certification,
                     original_language: metadata.original_language || 'en',
                     tmdb_id: item.tmdb_id,
@@ -2505,8 +2506,8 @@ class QueueService {
                     title: item.title,
                     year: item.year,
                     overview: item.metadata?.summary || '',
-                    genres: typeof item.genres === 'string' ? JSON.parse(item.genres) : (item.genres || []),
-                    keywords: typeof item.tags === 'string' ? JSON.parse(item.tags) : (item.tags || []),
+                    genres: normalizeMetadataList(item.genres),
+                    keywords: normalizeMetadataList(item.tags),
                     content_rating: item.content_rating,
                     original_language: 'en',
                     tmdb_id: item.tmdb_id,

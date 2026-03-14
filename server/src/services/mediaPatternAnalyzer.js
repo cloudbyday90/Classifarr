@@ -27,10 +27,23 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { coerceMetadataArray } = require('../utils/metadataNormalization');
 
 const logger = createLogger('MediaPatternAnalyzer');
 
 class MediaPatternAnalyzer {
+    getPatternValue(value) {
+        if (typeof value === 'string') {
+            return value;
+        }
+
+        if (value && typeof value === 'object') {
+            return value.name || value.tag || value.title || null;
+        }
+
+        return null;
+    }
+
     /**
      * Analyze ALL items in a library and extract available patterns from media server metadata
      * This is used when creating rules - shows what filter options are available
@@ -273,11 +286,11 @@ class MediaPatternAnalyzer {
         let itemsWithField = 0;
 
         items.forEach(item => {
-            const array = item[field];
-            if (Array.isArray(array) && array.length > 0) {
+            const array = coerceMetadataArray(item[field]);
+            if (array.length > 0) {
                 itemsWithField++;
                 array.forEach(val => {
-                    const value = typeof val === 'string' ? val : val.tag;
+                    const value = this.getPatternValue(val);
                     if (value) {
                         valueCounts[value] = (valueCounts[value] || 0) + 1;
                     }
@@ -336,7 +349,7 @@ class MediaPatternAnalyzer {
                 if (fieldValue.length > 0) {
                     matchCount++;
                     fieldValue.forEach(val => {
-                        const value = typeof val === 'object' ? val.tag : val;
+                        const value = this.getPatternValue(val);
                         if (value) {
                             valueCounts[value] = (valueCounts[value] || 0) + 1;
                         }
@@ -454,14 +467,17 @@ class MediaPatternAnalyzer {
             case 'is_one_of':
                 if (Array.isArray(itemValue)) {
                     return itemValue.some(v =>
-                        values.includes(typeof v === 'object' ? v.tag : v)
+                        values.includes(this.getPatternValue(v))
                     );
                 }
                 return values.includes(itemValue);
             case 'contains':
                 if (Array.isArray(itemValue)) {
                     return itemValue.some(v => {
-                        const val = typeof v === 'object' ? v.tag : v;
+                        const val = this.getPatternValue(v);
+                        if (!val) {
+                            return false;
+                        }
                         return values.some(pattern => val.includes(pattern));
                     });
                 }

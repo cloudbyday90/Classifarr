@@ -572,8 +572,16 @@ router.post('/pending/:id/resolve', async (req, res) => {
       return res.status(400).json({ error: 'library_id is required' });
     }
 
-    const classificationId = parseInt(id);
-    const libraryId = parseInt(library_id);
+    const classificationId = Number.parseInt(id, 10);
+    const libraryId = Number.parseInt(library_id, 10);
+
+    if (!Number.isInteger(classificationId) || classificationId < 1) {
+      return res.status(400).json({ error: 'Invalid classification id' });
+    }
+
+    if (!Number.isInteger(libraryId) || libraryId < 1) {
+      return res.status(400).json({ error: 'Invalid library_id' });
+    }
 
     const result = await clarificationService.resolvePolicyQuestion(
       classificationId,

@@ -22,6 +22,7 @@ const ragRetriever = require('./ragRetriever');
 const libraryProfileService = require('./libraryProfileService');
 const { createLogger } = require('../utils/logger');
 const { mergePresetSignals, normalizeSignalConfig } = require('../utils/policySignals');
+const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
 
 const logger = createLogger('PolicyEngine');
 
@@ -695,10 +696,7 @@ class PolicyEngine {
      */
     scoreGenres(config, item) {
         try {
-            const genresArray = typeof item.genres === 'string'
-                ? JSON.parse(item.genres)
-                : (item.genres || []);
-            const genres = genresArray.map(g => g.toLowerCase());
+            const genres = normalizeMetadataListLower(item.genres);
             if (genres.length === 0) return 0;
 
             let score = 50; // Base score
@@ -749,19 +747,7 @@ class PolicyEngine {
      */
     scoreKeywords(config, item) {
         try {
-            let keywordsArray;
-            if (typeof item.keywords === 'string') {
-                try {
-                    keywordsArray = JSON.parse(item.keywords);
-                } catch (_e) {
-                    keywordsArray = [];
-                }
-            } else {
-                keywordsArray = item.keywords || [];
-            }
-            const keywords = Array.isArray(keywordsArray)
-                ? keywordsArray.map(k => (typeof k === 'string' ? k.toLowerCase() : ''))
-                : [];
+            const keywords = normalizeMetadataListLower(item.keywords);
             const overview = (item.overview || '').toLowerCase();
             const title = (item.title || '').toLowerCase();
             

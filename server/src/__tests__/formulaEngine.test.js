@@ -323,6 +323,31 @@ describe('FormulaEngine', () => {
             expect(formulaEngine.evaluateRule(metadata, rule)).toBe(true);
         });
 
+        it('should evaluate array operators against object-shaped metadata arrays', () => {
+            const objectMetadata = {
+                genres: [{ name: 'Action' }, { tag: 'Drama' }, { title: 'Thriller' }],
+                keywords: [{ name: 'hero' }]
+            };
+
+            expect(formulaEngine.evaluateRule(objectMetadata, {
+                field: 'genres',
+                operator: 'contains',
+                value: 'Action'
+            })).toBe(true);
+
+            expect(formulaEngine.evaluateRule(objectMetadata, {
+                field: 'genres',
+                operator: 'is_one_of',
+                value: ['Drama', 'Comedy']
+            })).toBe(true);
+
+            expect(formulaEngine.evaluateRule(objectMetadata, {
+                field: 'genres',
+                operator: 'not_contains',
+                value: 'Horror'
+            })).toBe(true);
+        });
+
         it('should return false when field does not exist', () => {
             const rule = { field: 'nonexistent', operator: 'contains', value: 'test' };
             expect(formulaEngine.evaluateRule(metadata, rule)).toBe(false);

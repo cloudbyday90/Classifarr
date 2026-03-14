@@ -19,6 +19,7 @@
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const { mergePresetSignals, normalizeSignalConfig } = require('../utils/policySignals');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('policyQuestionBuilder');
 
@@ -478,8 +479,8 @@ class PolicyQuestionBuilder {
       : null;
     const aiRationale = extras.aiResult?.reason || null;
     const tags = {
-      genres: metadata.genres || [],
-      keywords: (metadata.keywords || []).slice(0, 10)
+      genres: normalizeMetadataList(metadata.genres),
+      keywords: normalizeMetadataList(metadata.keywords).slice(0, 10)
     };
 
     if (

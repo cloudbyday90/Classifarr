@@ -1333,6 +1333,29 @@ describe('ContentTypeAnalyzer', () => {
       }
     });
 
+    test('should normalize object-shaped genres and keywords during analysis', async () => {
+      contentTypeAnalyzer.getSettings = jest.fn().mockResolvedValue({
+        enabled: true,
+        minConfidence: 60
+      });
+
+      const metadata = {
+        title: 'Dave Chappelle: Sticks & Stones',
+        overview: 'A stand-up comedy special recorded live',
+        genres: [{ name: 'Documentary' }, { name: 'Comedy' }],
+        keywords: [{ name: 'stand-up comedy' }, { name: 'comedy special' }],
+        certification: 'TV-MA',
+        original_language: 'en',
+      };
+
+      const result = await contentTypeAnalyzer.analyze(metadata);
+
+      expect(result.analyzed).toBe(true);
+      expect(result.bestMatch).toBeDefined();
+      expect(result.bestMatch.type).toBe('standup');
+      expect(result.detections.some(detection => detection.type === 'standup')).toBe(true);
+    });
+
     test('should return analyzed false when disabled', async () => {
       contentTypeAnalyzer.getSettings = jest.fn().mockResolvedValue({
         enabled: false,

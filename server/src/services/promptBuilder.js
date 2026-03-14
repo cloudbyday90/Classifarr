@@ -18,6 +18,7 @@
 
 const { createLogger } = require('../utils/logger');
 const libraryProfileService = require('./libraryProfileService');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('PromptBuilder');
 
@@ -109,7 +110,7 @@ class PromptBuilder {
         
         // Genres
         if (item.genres) {
-            const genres = Array.isArray(item.genres) ? item.genres : safeJSONParse(item.genres, []);
+            const genres = normalizeMetadataList(Array.isArray(item.genres) ? item.genres : safeJSONParse(item.genres, []));
             if (genres.length > 0) {
                 lines.push(`Genres: ${genres.join(', ')}`);
             }
@@ -122,7 +123,7 @@ class PromptBuilder {
         
         // Keywords
         if (item.keywords) {
-            const keywords = Array.isArray(item.keywords) ? item.keywords : safeJSONParse(item.keywords, []);
+            const keywords = normalizeMetadataList(Array.isArray(item.keywords) ? item.keywords : safeJSONParse(item.keywords, []));
             if (keywords.length > 0) {
                 lines.push(`\nKeywords: ${keywords.slice(0, 10).join(', ')}`);
             }
@@ -537,8 +538,8 @@ class PromptBuilder {
         
         // Genre-based reasons
         if (item.genres) {
-            const genres = safeJSONParse(item.genres, []);
-            if (Array.isArray(genres) && genres.length > 0) {
+            const genres = normalizeMetadataList(safeJSONParse(item.genres, []));
+            if (genres.length > 0) {
                 options.push({
                     category: 'genre',
                     label: `Based on genre (${genres.slice(0, 2).join(', ')})`,
@@ -640,8 +641,8 @@ class PromptBuilder {
         
         // Keyword pattern (for prominent keywords)
         if (item.keywords) {
-            const keywords = safeJSONParse(item.keywords, []);
-            if (Array.isArray(keywords) && keywords.length > 0) {
+            const keywords = normalizeMetadataList(safeJSONParse(item.keywords, []));
+            if (keywords.length > 0) {
                 const prominentKeyword = keywords[0];
                 if (prominentKeyword) {
                     options.push({
@@ -678,8 +679,8 @@ class PromptBuilder {
         
         // Analyze genre signals
         if (item.genres) {
-            const genres = safeJSONParse(item.genres, []);
-            if (Array.isArray(genres) && genres.length > 0) {
+            const genres = normalizeMetadataList(safeJSONParse(item.genres, []));
+            if (genres.length > 0) {
                 signals.matching.push(`${genres.slice(0, 2).join(', ')} genre${genres.length > 1 ? 's' : ''}`);
             }
         }
@@ -690,8 +691,8 @@ class PromptBuilder {
         }
         
         // Check for conflicting keywords in overview and keywords field
-        const keywords = safeJSONParse(item.keywords, []);
-        const keywordText = Array.isArray(keywords) ? keywords.join(' ').toLowerCase() : '';
+        const keywords = normalizeMetadataList(safeJSONParse(item.keywords, []));
+        const keywordText = keywords.join(' ').toLowerCase();
         const overviewText = (item.overview || '').toLowerCase();
         const allText = `${keywordText} ${overviewText}`;
         

@@ -1,5 +1,41 @@
 # Classifarr Release Notes
 
+## v0.44.2-beta
+**Title: More trustworthy classifications, even when metadata arrives messy**
+
+### 🎉 What You'll Notice
+- **Manual choices are safer** — selecting the correct library from a classification question no longer trips a database typing error.
+- **Classification stays consistent across more media sources** — mixed metadata formats from providers now resolve the same way instead of confusing different parts of the app.
+- **The release version finally matches everywhere** — the app UI and package versions now agree on `0.44.2-beta`.
+
+### 📊 Quick Visual
+```text
+v0.44.2-beta Snapshot
+Manual-choice reliability   [██████████] pending-question resolution hardened
+Metadata consistency        [██████████] mixed shapes normalized app-wide
+Pattern/learning accuracy   [█████████░] fewer silent false negatives
+Release consistency         [██████████] root/client/server versions aligned
+```
+
+### ✨ Highlights
+- **Metadata is normalized once, then reused everywhere** — Classifarr now treats genres, keywords, tags, and collections consistently whether they arrive as plain strings, named objects, or JSON-style arrays from external providers.
+- **Secondary paths now agree with the classifier** — queue refill, prompts, pattern mining, feedback analysis, profiles, embeddings, and question resolution all use the same normalization rules.
+- **Bad request payloads fail cleanly** — invalid classification IDs or library IDs are now rejected early instead of surfacing as deeper service/database errors.
+
+### 🔧 Reliability Improvements
+- Fixed the PostgreSQL `$3` parameter typing error when confirming a pending classification into another library.
+- Removed a broad class of silent false negatives where pattern discovery, matching, or prompt generation used different metadata parsing logic.
+- Added repo-level guardrails so future server changes cannot casually reintroduce raw metadata parsing patterns.
+
+### 👥 Who This Helps
+- **End users:** fewer confusing failures when answering manual classification questions.
+- **Operators/admins:** more stable behavior across different providers and older records with inconsistent metadata shapes.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.44.1a.beta
 **Title: Honest preset suggestions, safer upgrades, and clearer policy questions**
 
@@ -3356,5 +3392,3 @@ For optimal performance with multiple models (e.g., classification + embedding),
 
 > [!NOTE]
 > Older release notes have been moved to [RELEASE_NOTES_backup.md](RELEASE_NOTES_backup.md) to keep this file concise.
-
-

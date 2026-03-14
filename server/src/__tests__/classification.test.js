@@ -189,6 +189,18 @@ describe('ClassificationService', () => {
         expect(classificationService.metadataMatchesLabel(metadata, label)).toBe(false);
       });
 
+      test('should match when metadata genres are objects with name fields', () => {
+        const metadata = {
+          genres: [{ id: 28, name: 'Action' }, { id: 12, name: 'Adventure' }]
+        };
+        const label = {
+          tmdb_match_field: 'genres',
+          tmdb_match_values: ['action']
+        };
+
+        expect(classificationService.metadataMatchesLabel(metadata, label)).toBe(true);
+      });
+
       test('should return false when metadata genres is null', () => {
         const metadata = {
           genres: null
@@ -311,6 +323,18 @@ describe('ClassificationService', () => {
         };
 
         expect(classificationService.metadataMatchesLabel(metadata, label)).toBe(false);
+      });
+
+      test('should match when metadata keywords are objects with name fields', () => {
+        const metadata = {
+          keywords: [{ id: 1, name: 'SuperHero' }, { id: 2, name: 'Marvel' }]
+        };
+        const label = {
+          tmdb_match_field: 'keywords',
+          tmdb_match_values: ['superhero']
+        };
+
+        expect(classificationService.metadataMatchesLabel(metadata, label)).toBe(true);
       });
 
       test('should return false when keywords is null', () => {
@@ -1783,8 +1807,21 @@ describe('AI availability fallback handling', () => {
       const [sql, params] = db.query.mock.calls[0];
       expect(sql).toContain('genre_pattern');
       // genres array passed as first param
-      expect(params[0]).toEqual(['Horror', 'Thriller']);
+      expect(params[0]).toEqual(['horror', 'thriller']);
       // media_type passed as second param
+      expect(params[1]).toBe('movie');
+    });
+
+    test('query normalizes object-shaped genres to lowercase for learned pattern lookup', async () => {
+      db.query.mockResolvedValueOnce({ rows: [] });
+
+      await classificationService.checkLearnedPatterns({
+        genres: [{ id: 27, name: 'Horror' }, { id: 53, name: 'Thriller' }],
+        media_type: 'movie'
+      });
+
+      const [, params] = db.query.mock.calls[0];
+      expect(params[0]).toEqual(['horror', 'thriller']);
       expect(params[1]).toBe('movie');
     });
   });

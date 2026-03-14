@@ -63,6 +63,19 @@ describe('AIPromptBuilder', () => {
             expect(result).toContain('Genres: Drama, Thriller');
         });
 
+        it('should handle genres and keywords as objects with name fields', () => {
+            const item = {
+                title: 'Test Movie',
+                genres: [{ id: 1, name: 'Drama' }, { id: 2, name: 'Thriller' }],
+                keywords: [{ id: 3, name: 'character study' }, { id: 4, name: 'slow burn' }]
+            };
+
+            const result = aiPromptBuilder.formatMediaItem(item);
+
+            expect(result).toContain('Genres: Drama, Thriller');
+            expect(result).toContain('Keywords: character study, slow burn');
+        });
+
         it('should include overview when present', () => {
             const item = {
                 title: 'Test Movie',

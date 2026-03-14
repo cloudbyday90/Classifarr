@@ -18,6 +18,7 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
 
 const logger = createLogger('AutoLearning');
 
@@ -545,12 +546,12 @@ class AutoLearningService {
                 let hasSignal = false;
                 
                 // Check if this item has the signal we're looking for
-                if (type === 'genre' && metadata.genres && Array.isArray(metadata.genres)) {
-                    hasSignal = metadata.genres.includes(value);
-                } else if (type === 'keyword' && metadata.keywords && Array.isArray(metadata.keywords)) {
-                    hasSignal = metadata.keywords.some(k => 
-                        k.toLowerCase().includes(value.toLowerCase()) || 
-                        value.toLowerCase().includes(k.toLowerCase())
+                if (type === 'genre') {
+                    hasSignal = normalizeMetadataListLower(metadata.genres).includes(value.toLowerCase());
+                } else if (type === 'keyword') {
+                    hasSignal = normalizeMetadataListLower(metadata.keywords).some(k => 
+                        k.includes(value.toLowerCase()) || 
+                        value.toLowerCase().includes(k)
                     );
                 } else if (type === 'studio' && metadata.studio) {
                     hasSignal = metadata.studio.toLowerCase().includes(value.toLowerCase()) ||

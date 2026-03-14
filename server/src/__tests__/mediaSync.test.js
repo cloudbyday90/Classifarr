@@ -385,5 +385,37 @@ describe('MediaSyncService', () => {
                 expect.any(Object)
             );
         });
+
+        it('should normalize object-shaped genres, tags, and collections before analysis and upsert', async () => {
+            mockDb.query
+                .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // library exists
+                .mockResolvedValueOnce({ rows: [] }); // upsert
+
+            mockContentTypeAnalyzer.analyze.mockResolvedValue({
+                analyzed: false
+            });
+
+            const item = {
+                external_id: 'item-2',
+                title: 'Test Movie',
+                media_type: 'movie',
+                genres: [{ id: 1, name: 'Action' }, { id: 2, name: 'Comedy' }],
+                tags: [{ id: 3, name: 'hero' }],
+                collections: [{ id: 4, name: 'Saga' }],
+                metadata: { summary: 'Overview' }
+            };
+
+            await service.upsertMediaItem(1, 10, item);
+
+            expect(mockContentTypeAnalyzer.analyze).toHaveBeenCalledWith(expect.objectContaining({
+                genres: ['Action', 'Comedy'],
+                keywords: ['hero']
+            }), null, true);
+
+            const upsertCall = mockDb.query.mock.calls[1];
+            expect(upsertCall[1][10]).toEqual(['Action', 'Comedy']);
+            expect(upsertCall[1][11]).toEqual(['hero']);
+            expect(upsertCall[1][12]).toEqual(['Saga']);
+        });
     });
 });

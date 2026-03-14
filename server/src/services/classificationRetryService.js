@@ -7,6 +7,7 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('ClassificationRetryService');
 
@@ -59,8 +60,8 @@ function buildRetryPayload(row, metadata, mediaItemId) {
     tmdb_id: tmdbId,
     media_type: mediaType,
     overview: metadata.overview || '',
-    genres: Array.isArray(metadata.genres) ? metadata.genres : [],
-    keywords: Array.isArray(metadata.keywords) ? metadata.keywords : [],
+    genres: normalizeMetadataList(metadata.genres),
+    keywords: normalizeMetadataList(metadata.keywords),
     content_rating: metadata.content_rating || metadata.certification || null,
     original_language: metadata.original_language || 'en',
     requested_seasons: requestedSeasons,
@@ -90,8 +91,8 @@ function buildMetadataEnrichmentPayload(retryPayload, metadata, mediaItemId) {
     title: retryPayload.title,
     year: retryPayload.year || null,
     overview: retryPayload.overview || '',
-    genres: Array.isArray(retryPayload.genres) ? retryPayload.genres : [],
-    keywords: Array.isArray(retryPayload.keywords) ? retryPayload.keywords : [],
+    genres: normalizeMetadataList(retryPayload.genres),
+    keywords: normalizeMetadataList(retryPayload.keywords),
     content_rating: retryPayload.content_rating || null,
     original_language: retryPayload.original_language || 'en',
     tmdb_id: retryPayload.tmdb_id || null,

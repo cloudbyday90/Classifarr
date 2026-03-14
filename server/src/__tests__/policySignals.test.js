@@ -18,6 +18,7 @@ describe('policySignals utilities', () => {
       expect(normalizeSignalConfig('')).toBeNull();
       expect(normalizeSignalConfig('{oops')).toBeNull();
       expect(normalizeSignalConfig('"text"')).toBeNull();
+      expect(normalizeSignalConfig('[1,2,3]')).toEqual([1, 2, 3]);
     });
 
     test('parses JSON objects and preserves object inputs', () => {
@@ -124,6 +125,29 @@ describe('policySignals utilities', () => {
         }
       });
     });
+
+    test('removes values from existing arrays when removed entries target a real key', () => {
+      const merged = mergePresetSignals(
+        {
+          keywords: {
+            prefer: ['funny', 'standup', 'satire']
+          }
+        },
+        {
+          removed: {
+            keywords: {
+              prefer: ['standup']
+            }
+          }
+        }
+      );
+
+      expect(merged).toEqual({
+        keywords: {
+          prefer: ['funny', 'satire']
+        }
+      });
+    });
   });
 
   describe('describePresetRuntimeSemantics', () => {
@@ -188,6 +212,18 @@ describe('policySignals utilities', () => {
       }));
     });
 
+    test('preserves inherited strict presets when custom language changes do not explicitly disable strict mode', () => {
+      expect(describePresetRuntimeSemantics(
+        { language: { require_any: ['sv'], strict: true } },
+        { language: { exclude: ['en'] } }
+      )).toEqual(expect.objectContaining({
+        migration_state: 'strict_inherited',
+        review_recommended: false,
+        required_languages: ['sv'],
+        excluded_languages: ['en']
+      }));
+    });
+
     test('accepts JSON string payloads when describing runtime semantics', () => {
       expect(describePresetRuntimeSemantics(
         '{"language":{"require_any":["ja"]}}',
@@ -196,6 +232,28 @@ describe('policySignals utilities', () => {
         migration_state: 'advisory_defaulted',
         required_languages: ['ja'],
         excluded_languages: ['en']
+      }));
+    });
+
+    test('handles exclude-only strict presets as strict_inherited', () => {
+      expect(describePresetRuntimeSemantics(
+        { language: { exclude: ['en'], strict: true } },
+        null
+      )).toEqual(expect.objectContaining({
+        migration_state: 'strict_inherited',
+        excluded_languages: ['en'],
+        review_recommended: false
+      }));
+    });
+
+    test('marks exclude-only legacy presets as advisory_defaulted', () => {
+      expect(describePresetRuntimeSemantics(
+        { language: { exclude: ['en'] } },
+        null
+      )).toEqual(expect.objectContaining({
+        migration_state: 'advisory_defaulted',
+        excluded_languages: ['en'],
+        review_recommended: true
       }));
     });
   });

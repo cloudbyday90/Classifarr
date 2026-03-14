@@ -9,6 +9,7 @@
 const db = require('../config/database');
 const embeddingRouter = require('./embeddingRouter');
 const { createLogger } = require('../utils/logger');
+const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
 
 const logger = createLogger('PatternSignalCollector');
 
@@ -58,14 +59,15 @@ class PatternSignalCollector {
             }
 
             // Collect franchise patterns (from collections, keywords)
-            if (metadata.collection || (metadata.keywords && metadata.keywords.length > 0)) {
+            if (metadata.collection || normalizeMetadataList(metadata.keywords).length > 0) {
                 const franchiseSignals = await this.collectFranchisePatterns(metadata, minConfidence);
                 signals.push(...franchiseSignals);
             }
 
             // Collect genre combination patterns
-            if (metadata.genres && metadata.genres.length > 0) {
-                const genreSignals = await this.collectGenrePatterns(metadata.genres, minConfidence);
+            const normalizedGenres = normalizeMetadataList(metadata.genres);
+            if (normalizedGenres.length > 0) {
+                const genreSignals = await this.collectGenrePatterns(normalizedGenres, minConfidence);
                 signals.push(...genreSignals);
             }
 
@@ -163,11 +165,12 @@ class PatternSignalCollector {
                 franchiseValues.push(metadata.collection.name);
             }
 
-            if (metadata.keywords && metadata.keywords.length > 0) {
-                const franchiseKeywords = metadata.keywords.filter(k => 
-                    k.toLowerCase().includes('universe') || 
-                    k.toLowerCase().includes('series') ||
-                    k.toLowerCase().includes('franchise')
+            const normalizedKeywords = normalizeMetadataListLower(metadata.keywords);
+            if (normalizedKeywords.length > 0) {
+                const franchiseKeywords = normalizedKeywords.filter(k => 
+                    k.includes('universe') || 
+                    k.includes('series') ||
+                    k.includes('franchise')
                 );
                 franchiseValues.push(...franchiseKeywords);
             }
