@@ -375,12 +375,10 @@ describe('PolicyEngine Integration Tests', () => {
             expect(score).toBe(0);
         });
 
-        test('should hard-block preset when language require_any fails, even if genre matches', async () => {
-            // Regression test: "Anime Movies" preset has require_any: ['ja'].
-            // A Chinese animated film (original_language: 'zh') must score 0 for the
-            // entire preset, not a blended average with the passing genre signal.
-            // Previously, blending genre=80 + language=0 produced ~40, surfacing
-            // "Anime Movies" as the top candidate for non-Japanese animation like Ne Zha 2.
+        test('should treat language require_any as advisory by default when genre matches', async () => {
+            // Under preset semantics v2, language.require_any is advisory unless
+            // strict: true is explicitly attached. A non-matching language should
+            // lower the preset score, not automatically hard-block the preset.
             const signals = {
                 genres: {
                     require_any: ['Animation'],
@@ -394,7 +392,29 @@ describe('PolicyEngine Integration Tests', () => {
 
             const item = {
                 genres: ['Animation', 'Action', 'Fantasy'],
-                original_language: 'zh'  // Chinese — should hard-fail the 'ja' language requirement
+                original_language: 'zh'
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBeGreaterThan(0);
+        });
+
+        test('should hard-block preset when strict language require_any fails, even if genre matches', async () => {
+            const signals = {
+                genres: {
+                    require_any: ['Animation'],
+                    weight: 1.0
+                },
+                language: {
+                    require_any: ['ja'],
+                    weight: 1.0,
+                    strict: true
+                }
+            };
+
+            const item = {
+                genres: ['Animation', 'Action', 'Fantasy'],
+                original_language: 'zh'
             };
 
             const score = await policyEngine.evaluatePresetSignals(signals, item);
