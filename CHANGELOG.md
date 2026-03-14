@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Standardize future prerelease naming and finish release-automation alignment work** — the next release should return to the standard `v0.44.1a-beta`-style public tag pattern and complete any remaining CI/release automation follow-up uncovered during `v0.44.1a.beta` validation, including release-time test/automation expectations that still assume older preset semantics.
+
 ---
 
 ## [v0.44.1a.beta] — 2026-03-13
