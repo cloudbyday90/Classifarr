@@ -10,6 +10,7 @@
  *
  * Migration filename validation:
  * - Legacy numeric migrations are allowed only if listed in LEGACY_MIGRATIONS.txt
+ *   or LEGACY_MIGRATIONS.md
  * - All new migrations must use timestamp format: YYYYMMDD_HHMMSS_description.sql
  */
 
@@ -17,18 +18,31 @@ const fs = require('fs');
 const path = require('path');
 
 const migrationsDir = path.join(__dirname, '../database/migrations');
-const legacyListPath = path.join(migrationsDir, 'LEGACY_MIGRATIONS.txt');
+const legacyListCandidates = [
+  path.join(migrationsDir, 'LEGACY_MIGRATIONS.txt'),
+  path.join(migrationsDir, 'LEGACY_MIGRATIONS.md')
+];
+const legacyListPath = legacyListCandidates.find(candidate => fs.existsSync(candidate));
 
-if (!fs.existsSync(legacyListPath)) {
-  console.error('Missing legacy allowlist:', legacyListPath);
+if (!legacyListPath) {
+  console.error('Missing legacy allowlist. Looked for:');
+  legacyListCandidates.forEach(candidate => console.error(`  - ${candidate}`));
   process.exit(1);
 }
 
+function parseLegacyAllowlist(contents, filename) {
+  const lines = contents.split(/\r?\n/).map(line => line.trim());
+
+  if (filename.endsWith('.md')) {
+    return lines
+      .filter(line => /^\d{3}_.*\.sql$/.test(line));
+  }
+
+  return lines.filter(Boolean);
+}
+
 const legacyAllowlist = new Set(
-  fs.readFileSync(legacyListPath, 'utf8')
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean)
+  parseLegacyAllowlist(fs.readFileSync(legacyListPath, 'utf8'), legacyListPath)
 );
 
 const files = fs.readdirSync(migrationsDir)
