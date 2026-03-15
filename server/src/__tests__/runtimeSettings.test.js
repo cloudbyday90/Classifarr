@@ -28,12 +28,29 @@ describe('runtimeSettings', () => {
   let runtimeSettings;
   let runtimeFile;
   let runtimeDir;
+  let existsSyncSpy;
+  const realExistsSync = fs.existsSync.bind(fs);
   const originalEnv = {
     RUNTIME_SETTINGS_FILE: process.env.RUNTIME_SETTINGS_FILE,
     FORCE_SECURE_COOKIES: process.env.FORCE_SECURE_COOKIES,
     CORS_ORIGIN: process.env.CORS_ORIGIN,
     OMDB_RETRY_TIMEOUT_MULTIPLIER: process.env.OMDB_RETRY_TIMEOUT_MULTIPLIER,
   };
+
+  function loadRuntimeSettings({ appDataExists = false } = {}) {
+    if (existsSyncSpy) {
+      existsSyncSpy.mockRestore();
+    }
+
+    existsSyncSpy = jest.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
+      if (targetPath === '/app/data') {
+        return appDataExists;
+      }
+      return realExistsSync(targetPath);
+    });
+
+    runtimeSettings = require('../config/runtimeSettings');
+  }
 
   beforeEach(() => {
     jest.resetModules();
@@ -47,10 +64,13 @@ describe('runtimeSettings', () => {
     process.env.CORS_ORIGIN = ' https://example.com, https://app.local ';
     process.env.OMDB_RETRY_TIMEOUT_MULTIPLIER = '4.5';
 
-    runtimeSettings = require('../config/runtimeSettings');
+    loadRuntimeSettings({ appDataExists: false });
   });
 
   afterEach(() => {
+    if (existsSyncSpy) {
+      existsSyncSpy.mockRestore();
+    }
     if (runtimeDir && fs.existsSync(runtimeDir)) {
       fs.rmSync(runtimeDir, { recursive: true, force: true });
     }
@@ -64,13 +84,17 @@ describe('runtimeSettings', () => {
   });
 
   test('returns coerced env/default values when no file or database overrides exist', () => {
-    expect(runtimeSettings.getValue('force_secure_cookies')).toBe(false);
-    expect(runtimeSettings.getValue('omdb_retry_timeout_multiplier')).toBe(2);
-    expect(runtimeSettings.getCorsOriginsList()).toEqual([]);
+    expect(runtimeSettings.getValue('force_secure_cookies')).toBe(true);
+    expect(runtimeSettings.getValue('omdb_retry_timeout_multiplier')).toBe(4.5);
+    expect(runtimeSettings.getCorsOriginsList()).toEqual(['https://example.com', 'https://app.local']);
     expect(runtimeSettings.getValue('missing_key')).toBeUndefined();
   });
 
   test('creates runtime settings file with defaults and can rewrite/reload settings', () => {
+    jest.resetModules();
+    db = require('../config/database');
+    db.query.mockReset();
+    loadRuntimeSettings({ appDataExists: true });
     runtimeSettings.ensureRuntimeSettingsFile();
 
     expect(fs.existsSync(runtimeFile)).toBe(true);
@@ -144,7 +168,7 @@ describe('runtimeSettings', () => {
 
     await runtimeSettings.refreshFromDatabase();
 
-    expect(runtimeSettings.getValue('force_secure_cookies')).toBe(false);
+    expect(runtimeSettings.getValue('force_secure_cookies')).toBe(true);
   });
 
   test('coerces numeric booleans and trims string values from runtime file payloads', () => {
