@@ -114,6 +114,7 @@
             <option :value="60">60 seconds</option>
           </select>
         </div>
+
       </div>
     </div>
 

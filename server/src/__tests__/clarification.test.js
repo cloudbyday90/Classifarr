@@ -16,8 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const clarificationService = require('../services/clarificationService');
-
 // Mock database
 jest.mock('../config/database', () => ({
   query: jest.fn(),
@@ -27,16 +25,19 @@ jest.mock('../config/database', () => ({
 }));
 
 // Mock logger
+var mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+};
+
 jest.mock('../utils/logger', () => ({
-  createLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-  }),
+  createLogger: () => mockLogger,
 }));
 
 const db = require('../config/database');
+const clarificationService = require('../services/clarificationService');
 
 function getRequiredBindCount(sql) {
   if (typeof sql !== 'string') return 0;
@@ -67,6 +68,7 @@ function createStrictQueryMock(responses) {
 describe('ClarificationService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.values(mockLogger).forEach(mockFn => mockFn.mockClear());
   });
 
   describe('getTierForConfidence', () => {
@@ -1130,7 +1132,7 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [] }) // locked pending lookup
           .mockResolvedValueOnce({ rows: [{ id: 5 }] }) // library check
-          .mockResolvedValueOnce({ rows: [{ status: 'completed' }] }) // existence/status check
+          .mockResolvedValueOnce({ rows: [{ status: 'completed', library_id: 8, library_name: 'Family' }] }) // existence/status check
           .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
         release: jest.fn()
       };
@@ -1143,6 +1145,45 @@ describe('ClarificationService', () => {
         message: 'Classification is no longer awaiting decision',
         statusCode: 409
       });
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Policy question resolution rejected',
+        expect.objectContaining({
+          classificationId: 1,
+          selectedLibraryId: 5,
+          statusCode: 409,
+          error: 'Classification is no longer awaiting decision'
+        })
+      );
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    test('treats duplicate resolution to the same completed library as idempotent success', async () => {
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [] }) // locked pending lookup
+          .mockResolvedValueOnce({ rows: [{ id: 5 }] }) // library check
+          .mockResolvedValueOnce({ rows: [{ status: 'completed', library_id: 5, library_name: 'Movies' }] }) // existence/status check
+          .mockResolvedValueOnce({ rows: [] }), // COMMIT
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
+
+      expect(result).toEqual(expect.objectContaining({
+        success: true,
+        classificationId: 1,
+        libraryId: 5,
+        libraryName: 'Movies',
+        shouldRoute: false,
+        alreadyResolved: true,
+        generatedPattern: null
+      }));
+      expect(mockClient.query).toHaveBeenCalledTimes(5);
+      expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
     test('rejects invalid selected libraries for direct service callers', async () => {

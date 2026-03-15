@@ -215,6 +215,43 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
       expect(wrapper.text()).toContain('Disabled');
       expect(wrapper.text()).toContain('Image Embedding Summary');
     });
+
+    it('shows not configured when image embeddings are setup-pending', async () => {
+      const mockStatusData = {
+        data: {
+          providerOnline: true,
+          stats: {},
+          recentActivity: [],
+          image: {
+            enabled: true,
+            providerOnline: false,
+            providerConfigured: true,
+            status: 'not_configured',
+            provider: 'local',
+            model: 'ViT-B-16',
+            stats: { total: 0, pending: 6588 }
+          }
+        }
+      };
+      const mockConfigData = {
+        data: {
+          embedding_provider_mode: 'same',
+          image_embedding_provider_mode: 'separate_local'
+        }
+      };
+
+      api.get.mockImplementation((url) => {
+        if (url === '/rag/status') return Promise.resolve(mockStatusData);
+        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
+        if (url === '/rag/backfill/status') return Promise.resolve({ data: {} });
+        return Promise.reject(new Error('Unknown URL'));
+      });
+
+      const wrapper = mountComponent();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('Not configured');
+    });
   });
 
   describe('Issue 3: Data loads on mount (loadStats called)', () => {

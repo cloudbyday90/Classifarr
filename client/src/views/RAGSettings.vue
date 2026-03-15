@@ -70,10 +70,10 @@
             Image Embeddings
           </span>
           <div class="flex items-center gap-2">
-            <span :class="['w-2 h-2 rounded-full', statusBar.imageOnline ? 'bg-green-500' : 'bg-red-500']"></span>
+            <span :class="['w-2 h-2 rounded-full', imageStatusDotClass]"></span>
             <span class="text-gray-400">Status:</span>
-            <span :class="statusBar.imageOnline ? 'text-green-400' : 'text-red-400'">
-              {{ statusBar.imageOnline ? 'Online' : 'Offline' }}
+            <span :class="imageStatusTextClass">
+              {{ imageStatusLabel }}
             </span>
           </div>
           <div class="flex items-center gap-2">
@@ -152,6 +152,7 @@ const currentTabComponent = computed(() => {
 
 const statusBar = ref({
   textOnline: false,
+  imageState: 'disabled',
   imageOnline: false,
   heartbeatActive: false,
   queueText: 0,
@@ -172,9 +173,14 @@ const loadStatusBar = async () => {
     ])
 
     const pendingBreakdown = backfillRes.data.pendingBreakdown || { text: 0, image: 0 }
+    const imageState = statusRes.data.image?.status
+      || (statusRes.data.image?.enabled
+        ? (statusRes.data.image?.providerOnline ? 'online' : 'not_configured')
+        : 'disabled')
 
     statusBar.value = {
       textOnline: statusRes.data.providerOnline === true,
+      imageState,
       imageOnline: statusRes.data.image?.providerOnline === true,
       heartbeatActive: heartbeatRes.data?.active === true,
       queueText: pendingBreakdown.text || 0,
@@ -186,6 +192,49 @@ const loadStatusBar = async () => {
     console.error('Failed to load status bar:', error)
   }
 }
+
+const imageStatusLabel = computed(() => {
+  switch (statusBar.value.imageState) {
+    case 'disabled':
+      return 'Disabled'
+    case 'configured':
+      return 'Configured'
+    case 'not_configured':
+      return 'Not configured'
+    case 'online':
+      return 'Online'
+    default:
+      return 'Offline'
+  }
+})
+
+const imageStatusDotClass = computed(() => {
+  switch (statusBar.value.imageState) {
+    case 'disabled':
+    case 'not_configured':
+      return 'bg-gray-500'
+    case 'configured':
+      return 'bg-yellow-500'
+    case 'online':
+      return 'bg-green-500'
+    default:
+      return 'bg-red-500'
+  }
+})
+
+const imageStatusTextClass = computed(() => {
+  switch (statusBar.value.imageState) {
+    case 'disabled':
+    case 'not_configured':
+      return 'text-gray-400'
+    case 'configured':
+      return 'text-yellow-400'
+    case 'online':
+      return 'text-green-400'
+    default:
+      return 'text-red-400'
+  }
+})
 
 const formatNumber = (num) => {
   if (!num) return '0'
@@ -204,4 +253,3 @@ onUnmounted(() => {
   }
 })
 </script>
-

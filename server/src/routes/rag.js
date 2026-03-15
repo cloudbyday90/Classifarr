@@ -74,6 +74,20 @@ const resolveImageModelsCache = (config) => {
     return null;
 };
 
+const resolveImageStatus = ({ enabled, mode, providerConfigured, stats, config }) => {
+    if (mode === 'disabled' || !enabled) {
+        return 'disabled';
+    }
+
+    if (!providerConfigured) {
+        return 'not_configured';
+    }
+
+    const totalEmbeddings = Number(stats?.total ?? 0);
+    const hasValidatedConfig = !!config?.image_embedding_models_cache_updated_at;
+    return (totalEmbeddings > 0 || hasValidatedConfig) ? 'configured' : 'not_configured';
+};
+
 /**
  * POST /api/rag/test-connection
  * Test connection to embedding provider with supplied config
@@ -165,6 +179,13 @@ router.get('/status', async (req, res) => {
         const imageEnabled = Number.isFinite(imageWeight) && imageWeight > 0;
         const imageModeDisabled = imageProviderMode === 'disabled';
         const imageProviderOnline = !imageModeDisabled && imageEnabled && imageProviderConfigured;
+        const imageStatus = resolveImageStatus({
+            enabled: imageEnabled,
+            mode: imageProviderMode,
+            providerConfigured: imageProviderConfigured,
+            stats: imageStats,
+            config: imageConfig
+        });
         let imageProvider = 'unknown';
         if (imageModeDisabled) {
             imageProvider = 'disabled';
@@ -191,6 +212,7 @@ router.get('/status', async (req, res) => {
                 enabled: imageModeDisabled ? false : imageEnabled,
                 providerOnline: imageProviderOnline,
                 providerConfigured: imageModeDisabled ? false : imageProviderConfigured,
+                status: imageStatus,
                 providerMode: imageProviderMode,
                 provider: imageProvider,
                 model: imageModel,

@@ -748,10 +748,13 @@ async function checkImageEmbeddings() {
     try {
         const result = await db.query(`
             SELECT
+                rag_image_weight,
                 image_embedding_provider_mode,
                 image_embedding_local_host,
                 image_embedding_local_port,
-                image_embedding_cloud_provider
+                image_embedding_cloud_provider,
+                image_embedding_cloud_api_key,
+                image_embedding_models_cache_updated_at
             FROM ai_provider_config
             WHERE id = 1
         `);
@@ -773,9 +776,11 @@ async function checkImageEmbeddings() {
         const mode = rawMode === 'local'
             ? 'separate_local'
             : (['disabled', 'separate_local', 'cloud'].includes(rawMode) ? rawMode : 'disabled');
+        const imageWeight = Number(config.rag_image_weight ?? 0);
+        const imageEnabled = Number.isFinite(imageWeight) && imageWeight > 0;
         let provider = 'unknown';
 
-        if (mode === 'disabled') {
+        if (mode === 'disabled' || !imageEnabled) {
             healthCache.imageEmbeddings = {
                 status: 'disabled',
                 lastCheck: new Date().toISOString(),
@@ -792,6 +797,24 @@ async function checkImageEmbeddings() {
             provider = config.image_embedding_cloud_provider || 'cloud';
         } else if (mode === 'separate_local') {
             provider = 'local';
+        }
+
+        const hasLocalConfig = !!String(config.image_embedding_local_host || '').trim();
+        const hasCloudConfig = !!String(config.image_embedding_cloud_provider || '').trim()
+            && !!String(config.image_embedding_cloud_api_key || '').trim();
+
+        if ((provider === 'local' && !hasLocalConfig) || (provider === 'cloud' && !hasCloudConfig)) {
+            healthCache.imageEmbeddings = {
+                status: 'not configured',
+                lastCheck: new Date().toISOString(),
+                lastSuccessfulCheck: previous.lastSuccessfulCheck,
+                responseTime: null,
+                provider,
+                mode,
+                previousStatus: previous.status,
+                previousResponseTime: previous.responseTime
+            };
+            return healthCache.imageEmbeddings;
         }
 
         let success = false;
@@ -817,8 +840,33 @@ async function checkImageEmbeddings() {
             success = !!config.image_embedding_cloud_provider;
         }
 
+        let hasStoredImageEmbeddings = false;
+        if (!success) {
+            try {
+                const imageResult = await db.query(`
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM classification_embeddings
+                        WHERE image_embedding IS NOT NULL
+                    ) AS has_image_embeddings
+                `);
+                hasStoredImageEmbeddings = imageResult.rows[0]?.has_image_embeddings === true;
+            } catch (_imageError) {
+                hasStoredImageEmbeddings = false;
+            }
+        }
+
+        const status = success
+            ? 'connected'
+            : ((provider === 'unknown'
+                || (!hasStoredImageEmbeddings
+                    && !previous.lastSuccessfulCheck
+                    && !config.image_embedding_models_cache_updated_at))
+                ? 'not configured'
+                : 'disconnected');
+
         healthCache.imageEmbeddings = {
-            status: success ? 'connected' : (provider === 'unknown' ? 'not configured' : 'disconnected'),
+            status,
             lastCheck: new Date().toISOString(),
             lastSuccessfulCheck: success ? new Date().toISOString() : previous.lastSuccessfulCheck,
             responseTime: responseTime || null,

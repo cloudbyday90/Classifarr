@@ -147,6 +147,45 @@ router.put('/', async (req, res) => {
 // CATEGORY-BASED SETTINGS
 // ============================================
 
+function coerceCategorySettingValue(category, key, value) {
+  const queueBooleanKeys = new Set(['workerEnabled']);
+  const queueIntegerKeys = new Set(['concurrentWorkers', 'maxRetryAttempts', 'activityRefreshInterval']);
+  const queueAllowedKeys = new Set([
+    'workerEnabled',
+    'concurrentWorkers',
+    'maxRetryAttempts',
+    'retryStrategy',
+    'autoDeleteCompleted',
+    'autoDeleteFailed',
+    'activityRefreshInterval'
+  ]);
+
+  if (category !== 'queue') {
+    return value;
+  }
+
+  if (!queueAllowedKeys.has(key)) {
+    return undefined;
+  }
+
+  if (queueBooleanKeys.has(key)) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === 'true') return true;
+      if (normalized === 'false') return false;
+    }
+    return Boolean(value);
+  }
+
+  if (queueIntegerKeys.has(key)) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) ? parsed : value;
+  }
+
+  return value;
+}
+
 /**
  * @swagger
  * /api/settings/category/{name}:
@@ -181,7 +220,10 @@ router.get('/category/:name', async (req, res) => {
       const keyWithoutPrefix = row.key.replace(`${category}_`, '');
       // Convert snake_case to camelCase
       const camelKey = keyWithoutPrefix.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      settings[camelKey] = row.value;
+      const coercedValue = coerceCategorySettingValue(category, camelKey, row.value);
+      if (coercedValue !== undefined) {
+        settings[camelKey] = coercedValue;
+      }
     });
 
     // Apply defaults for queue settings if not set
@@ -230,6 +272,18 @@ router.put('/category/:name', async (req, res) => {
 
     // Save each setting with the category prefix
     for (const [key, value] of Object.entries(settings)) {
+      if (category === 'queue' && ![
+        'workerEnabled',
+        'concurrentWorkers',
+        'maxRetryAttempts',
+        'retryStrategy',
+        'autoDeleteCompleted',
+        'autoDeleteFailed',
+        'activityRefreshInterval'
+      ].includes(key)) {
+        continue;
+      }
+
       // Convert camelCase to snake_case for storage
       const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
       const fullKey = `${category}_${snakeKey}`;

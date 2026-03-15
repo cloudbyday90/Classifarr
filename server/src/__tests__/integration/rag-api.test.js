@@ -152,6 +152,44 @@ describe('RAG API Integration Tests', () => {
             expect(response.body.stats).toHaveProperty('total');
         });
 
+        it('returns image.status=not_configured for setup-pending image embeddings', async () => {
+            await pool.query(`
+                UPDATE ai_provider_config
+                SET rag_enabled = true,
+                    rag_image_weight = 0.5,
+                    image_embedding_provider_mode = 'separate_local',
+                    image_embedding_local_host = 'image-embedder',
+                    image_embedding_local_port = 11434,
+                    image_embedding_models_cache_updated_at = NULL
+                WHERE id = 1
+            `);
+
+            const response = await request(app)
+                .get('/api/rag/status')
+                .expect(200);
+
+            expect(response.body.image.status).toBe('not_configured');
+        });
+
+        it('returns image.status=configured after image setup has been validated', async () => {
+            await pool.query(`
+                UPDATE ai_provider_config
+                SET rag_enabled = true,
+                    rag_image_weight = 0.5,
+                    image_embedding_provider_mode = 'separate_local',
+                    image_embedding_local_host = 'image-embedder',
+                    image_embedding_local_port = 11434,
+                    image_embedding_models_cache_updated_at = NOW()
+                WHERE id = 1
+            `);
+
+            const response = await request(app)
+                .get('/api/rag/status')
+                .expect(200);
+
+            expect(response.body.image.status).toBe('configured');
+        });
+
         it('should surface pgvector settings when available', async () => {
             const settings = [
                 ['avx_guard_pgvector_selected', 'avx2'],

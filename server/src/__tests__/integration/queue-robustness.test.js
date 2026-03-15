@@ -32,6 +32,7 @@ const queueService = require('../../services/queueService');
 describe('Queue Robustness Integration Tests', () => {
     beforeEach(async () => {
         await db.query('DELETE FROM task_queue');
+        await db.query('DELETE FROM classification_history');
         // Reset in-memory counter to a known state before each test
         queueService.processing = 0;
     });
@@ -116,6 +117,91 @@ describe('Queue Robustness Integration Tests', () => {
 
             const row = await db.query(`SELECT error_message FROM task_queue LIMIT 1`);
             expect(row.rows[0].error_message).toBe('Recovered: visibility timeout expired');
+        });
+    });
+
+    describe('classification dequeue gating', () => {
+        test('does not let awaiting_decision rows block classification dequeue', async () => {
+            await db.query(`
+                INSERT INTO classification_history (media_type, title, method, status, confidence, metadata)
+                VALUES ('movie', 'Needs Review', 'ai_analysis', 'awaiting_decision', 55, '{}'::jsonb)
+            `);
+
+            await db.query(`
+                INSERT INTO task_queue (task_type, status, payload, priority)
+                VALUES
+                    ('classification', 'pending', '{"title":"Ready Classification"}', 10),
+                    ('metadata_enrichment', 'pending', '{"title":"Still Fine"}', 5)
+            `);
+
+            const blockers = await queueService.hasClassificationDispatchBlocker();
+            const task = await queueService.dequeue({
+                excludeClassification: blockers.lookupFailed || blockers.hasProcessingClassification
+            });
+
+            expect(task).not.toBeNull();
+            expect(blockers.hasProcessingClassification).toBe(false);
+            expect(task.task_type).toBe('classification');
+        });
+
+        test('returns classification work when only classification work is queued and manual review is pending', async () => {
+            await db.query(`
+                INSERT INTO classification_history (media_type, title, method, status, confidence, metadata)
+                VALUES ('movie', 'Needs Review', 'ai_analysis', 'awaiting_decision', 55, '{}'::jsonb)
+            `);
+
+            await db.query(`
+                INSERT INTO task_queue (task_type, status, payload, priority)
+                VALUES ('classification', 'pending', '{"title":"Ready Classification"}', 10)
+            `);
+
+            const blockers = await queueService.hasClassificationDispatchBlocker();
+            const task = await queueService.dequeue({
+                excludeClassification: blockers.lookupFailed || blockers.hasProcessingClassification
+            });
+
+            expect(task).not.toBeNull();
+            expect(task.task_type).toBe('classification');
+        });
+
+        test('does not let a stale awaiting_decision row block classification dequeue', async () => {
+            await db.query(`
+                INSERT INTO classification_history (media_type, title, method, status, confidence, metadata, created_at)
+                VALUES ('movie', 'Stale Review', 'ai_analysis', 'awaiting_decision', 55, '{}'::jsonb, NOW() - INTERVAL '8 days')
+            `);
+
+            await db.query(`
+                INSERT INTO task_queue (task_type, status, payload, priority)
+                VALUES ('classification', 'pending', '{"title":"Ready Classification"}', 10)
+            `);
+
+            const blockers = await queueService.hasClassificationDispatchBlocker();
+            const task = await queueService.dequeue({
+                excludeClassification: blockers.lookupFailed || blockers.hasProcessingClassification
+            });
+
+            expect(blockers.hasProcessingClassification).toBe(false);
+            expect(task).not.toBeNull();
+            expect(task.task_type).toBe('classification');
+        });
+
+        test('blocks additional classification dequeue while a classification task is processing', async () => {
+            await db.query(`
+                INSERT INTO task_queue (task_type, status, payload, priority, visible_at)
+                VALUES
+                    ('classification', 'processing', '{"title":"In Flight"}', 10, NOW() + INTERVAL '5 minutes'),
+                    ('classification', 'pending', '{"title":"Queued Classification"}', 9, NULL),
+                    ('metadata_enrichment', 'pending', '{"title":"Background Enrichment"}', 1, NULL)
+            `);
+
+            const blockers = await queueService.hasClassificationDispatchBlocker();
+            const task = await queueService.dequeue({
+                excludeClassification: blockers.lookupFailed || blockers.hasProcessingClassification
+            });
+
+            expect(blockers.hasProcessingClassification).toBe(true);
+            expect(task).not.toBeNull();
+            expect(task.task_type).toBe('metadata_enrichment');
         });
     });
 

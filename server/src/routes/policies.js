@@ -918,6 +918,7 @@ router.post('/:id/presets', async (req, res) => {
             VALUES ($1, $2, $3, $4)
             RETURNING *
         `, [id, preset_id, weight, customSignals]);
+        await db.query('UPDATE library_policies SET updated_at = NOW() WHERE id = $1', [id]);
 
         res.status(201).json(annotatePresetAttachment(result.rows[0]));
     } catch (error) {
@@ -944,6 +945,8 @@ router.delete('/:id/presets/:presetId', async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Preset not attached to this policy' });
         }
+
+        await db.query('UPDATE library_policies SET updated_at = NOW() WHERE id = $1', [id]);
 
         res.json({ message: 'Preset removed successfully' });
     } catch (error) {

@@ -250,12 +250,18 @@ class AIResponseParser {
         // Require at least 2 valid options — if the AI suggested non-existent libraries
         // we cannot present a meaningful clarification question.
         if (options.length < 2) {
+            const fallbackReason = options.length === 1 ? 'single_valid_option' : 'no_valid_options';
             logger.warn('parseClarifyFormat: fewer than 2 valid library options after mapping — falling through', {
                 title: context.metadata?.title,
                 requestedOptions: optionTokens,
                 matchedCount: options.length,
+                fallbackReason,
             });
-            return null;
+            return this.createContractViolationResult(context, {
+                violationReason: fallbackReason,
+                requestedOptions: optionTokens,
+                matchedOptions: options
+            });
         }
 
         logger.info('AI requests clarification', {
@@ -504,7 +510,7 @@ class AIResponseParser {
         };
     }
 
-    createContractViolationResult(context) {
+    createContractViolationResult(context, details = {}) {
         const { libraries, metadata, signalContext } = context;
         if (!Array.isArray(libraries) || libraries.length === 0) {
             return null;
@@ -512,8 +518,16 @@ class AIResponseParser {
 
         const suggestedLibrary = signalContext?.suggestedLibrary || this.getDefaultLibrary(libraries, metadata?.media_type);
         const orderedLibraries = [];
+        const matchedOptions = Array.isArray(details.matchedOptions) ? details.matchedOptions : [];
 
-        if (suggestedLibrary && libraries.some(lib => lib.id === suggestedLibrary.id)) {
+        for (const option of matchedOptions) {
+            const matchedLibrary = libraries.find(lib => lib.id === option.library_id);
+            if (matchedLibrary && !orderedLibraries.some(candidate => candidate.id === matchedLibrary.id)) {
+                orderedLibraries.push(matchedLibrary);
+            }
+        }
+
+        if (suggestedLibrary && libraries.some(lib => lib.id === suggestedLibrary.id) && !orderedLibraries.some(candidate => candidate.id === suggestedLibrary.id)) {
             orderedLibraries.push(suggestedLibrary);
         }
 
@@ -523,7 +537,7 @@ class AIResponseParser {
             }
         }
 
-        const options = orderedLibraries.slice(0, 4).map(lib => ({
+        const clarificationOptions = orderedLibraries.slice(0, 4).map(lib => ({
             label: lib.name,
             value: `library_${lib.id}`,
             library_id: lib.id,
@@ -546,7 +560,7 @@ class AIResponseParser {
             problem_summary: 'AI response contract violation',
             why_uncertain: whyUncertain,
             question,
-            options,
+            options: clarificationOptions,
             generated_at: new Date().toISOString(),
             signal_breakdown: signalContext?.breakdown || [],
             calculated_confidence: signalContext?.confidence || null,
@@ -554,7 +568,9 @@ class AIResponseParser {
                 suggested_library_id: targetLibrary?.id || null,
                 suggested_library_name: targetLibrary?.name || null,
                 parser_mode: 'classify',
-                violation_reason: 'no_format_matched'
+                violation_reason: details.violationReason || 'no_format_matched',
+                requested_options: Array.isArray(details.requestedOptions) ? details.requestedOptions : [],
+                matched_option_count: matchedOptions.length
             }
         };
 

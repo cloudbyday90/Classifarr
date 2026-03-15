@@ -24,9 +24,9 @@
             <span class="status-dot"></span>
             <span>AI {{ aiOnline ? 'Online' : 'Offline' }}</span>
           </div>
-          <div class="status-indicator" :class="workerOnline ? 'status-online' : 'status-offline'">
+          <div class="status-indicator" :class="workerStatusClass">
             <span class="status-dot"></span>
-            <span>Worker {{ workerOnline ? 'Active' : 'Offline' }}</span>
+            <span>Worker {{ workerStatusLabel }}</span>
           </div>
           <div class="status-stat">
             <span class="status-stat-value">{{ queuePendingCount }}</span>
@@ -229,6 +229,9 @@
                   <div v-if="policyQuestion(item)" class="action-item-question">
                     <p class="question-text">{{ policyQuestion(item).question }}</p>
                     <p v-if="policyQuestion(item).why_uncertain" class="question-why">{{ policyQuestion(item).why_uncertain }}</p>
+                    <p v-if="item.policy_question_stale" class="question-stale">
+                      This question may be outdated because policy or library settings changed after it was generated. Retry Classification to refresh it before confirming.
+                    </p>
 
                     <div v-if="binaryPolicyOptions(item)" class="question-actions">
                       <Button variant="success" size="sm" @click="resolveWithOption(item, binaryPolicyOptions(item).yes, 'Yes')">Yes</Button>
@@ -777,6 +780,18 @@ const todayManualCount = computed(() => {
 })
 const workerOnline = computed(() => Boolean(healthStats.value.worker))
 const aiOnline = computed(() => Boolean(healthStats.value.ai))
+const isClassificationPaused = computed(() => Boolean(queueStats.value.classificationPaused))
+const classificationPauseReason = computed(() => String(queueStats.value.classificationPauseReason || ''))
+const workerStatusLabel = computed(() => {
+  if (!workerOnline.value) return 'Offline'
+  if (isClassificationPaused.value) return 'Paused'
+  return 'Active'
+})
+const workerStatusClass = computed(() => {
+  if (!workerOnline.value) return 'status-offline'
+  if (isClassificationPaused.value) return 'status-warning'
+  return 'status-online'
+})
 const isOperationallyActive = computed(() => (
   Boolean(primaryActiveTask.value)
   || queuePendingCount.value > 0
@@ -916,6 +931,7 @@ const ollamaTelemetryLine = computed(() => {
 const alerts = computed(() => {
   const rows = []
   if (healthStats.value.worker === false) rows.push({ id: 'worker', message: 'Worker is inactive. Queue processing has paused.', actionLabel: 'View System', action: () => router.push('/system') })
+  if (classificationPauseReason.value === 'dispatch_check_failed') rows.push({ id: 'classification-dispatch-check', message: 'Classification dispatch is temporarily paused because the worker could not verify queue state.', actionLabel: 'Retry Queue View', action: () => refreshOperationalData() })
   if (healthStats.value.ai === false) rows.push({ id: 'ai', message: 'AI provider is offline. Automated classifications may be delayed.', actionLabel: 'Open AI Settings', action: () => router.push({ path: '/settings', query: { tab: 'ai' } }) })
   if (aiBudget.value.limit && aiBudget.value.percentUsed >= 90) rows.push({ id: 'budget', message: `AI budget at ${aiBudget.value.percentUsed}% (${formatUsd(aiBudget.value.used)} / ${formatUsd(aiBudget.value.limit)})`, actionLabel: 'View Usage', action: () => router.push({ path: '/settings', query: { tab: 'ai' } }) })
   return rows
@@ -977,6 +993,10 @@ function formatRelativeTime(value) {
 function truncateError(message, maxLength = 120) { if (!message) return 'No error details available.'; return message.length > maxLength ? `${message.slice(0, maxLength)}...` : message }
 function completedPhaseCount(task) { return (Array.isArray(task?.phases) ? task.phases : []).filter(phase => phase.status === 'complete').length }
 function nextPhaseLabel(task) { const next = (Array.isArray(task?.phases) ? task.phases : []).find(phase => phase.status === 'pending'); return next ? (next.label || phaseLabel(next.name)) : 'Complete' }
+function scrollToNeedsAttention() {
+  const target = document.getElementById('needs-attention')
+  target?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+}
 function openProcessingDetails(taskId, event = null) {
   const isClosingCurrentTask = expandedProcessingTaskId.value === taskId
   if (!isClosingCurrentTask && event?.currentTarget) {
@@ -1392,6 +1412,11 @@ onBeforeUnmount(() => {
 
 .status-offline .status-dot {
   background: #ef4444;
+}
+
+.status-warning .status-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
 }
 
 .status-stat {
@@ -1956,6 +1981,16 @@ onBeforeUnmount(() => {
 .question-why {
   font-size: 0.75rem;
   color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+.question-stale {
+  font-size: 0.75rem;
+  color: #fbbf24;
+  background: rgba(146, 64, 14, 0.12);
+  border: 1px solid #92400e;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
   margin-bottom: 0.75rem;
 }
 

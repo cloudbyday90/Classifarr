@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.44.2c-beta] — 2026-03-15
+
+Package version: `0.44.2-c.beta`
+
+### Fixed
+
+- **Resolving a policy question after a duplicate click or stale UI refresh is now handled more cleanly** — when the same classification has already been completed or routed to the same library, the clarification service now treats the follow-up resolve request as an idempotent success instead of surfacing a stale-row conflict. Genuine stale resolutions still return `409`, but expected client-side races and double-submits no longer trigger internal error logging or noisy bug reports. (`server/src/services/clarificationService.js`)
+
+- **Image embeddings no longer show up as a system outage when the feature is only draft-configured or effectively off** — the health check now treats image embeddings as `disabled` when the image weight is off and as `not configured` when a local/cloud target has been saved but the feature has no validated image-embedding usage yet. The RAG status API now exposes an explicit `image.status`, and the RAG status strip, overview, and image settings tab render that state instead of falling back to a misleading `Offline`/`Unhealthy` label for setup-pending installs. (`server/src/services/healthCheckService.js`, `server/src/routes/rag.js`, `client/src/views/RAGSettings.vue`, `client/src/views/rag/ImageEmbeddingsTab.vue`, `client/src/views/rag/OverviewTab.vue`)
+
+- **Queued classification work is now serialized at active processing time without blocking multiple pending policy questions** — the queue worker now skips dequeuing a new `classification` task only while another classification task is already in `processing`. `awaiting_decision` items no longer pause the queue, so users can accumulate multiple policy questions while still preventing overlapping active classification runs from piling on top of each other. (`server/src/services/queueService.js`)
+
+- **Malformed `CLARIFY` responses with only one surviving library option now degrade deterministically instead of silently falling through** — the AI response parser now converts single-option or zero-option `CLARIFY` payloads into an explicit `contract_violation` clarification result with parser metadata, rather than relying on later fallback behavior after deduplication or out-of-range option mapping. (`server/src/services/aiResponseParser.js`)
+
+- **Command Center no longer misreports pending manual decisions as a worker pause condition** — queue stats now reserve `classificationPaused` for actual dispatch-check failures instead of treating `awaiting_decision` items as a queue stop, so the worker stays `Active` while multiple policy questions remain open. (`server/src/services/queueService.js`, `client/src/views/CommandCenter.vue`)
+
+- **Pending policy questions are now flagged when their policy/library context changed after generation** — classification logging stamps each policy question with a lightweight context version derived from the relevant libraries, policies, and attached preset definitions. Pending-item reads compare that version to current policy context and mark questions as stale instead of silently treating old prompts as current. Command Center now warns that a stale question should be retried before confirming. (`server/src/services/classification.js`, `server/src/services/clarificationService.js`, `server/src/utils/policyQuestionContext.js`, `client/src/views/CommandCenter.vue`, `server/src/routes/policies.js`)
+
+### Tests
+
+- Added clarification regression coverage for duplicate-resolution idempotency and for expected `400`/`409` resolve rejections being logged as non-fatal warnings instead of internal errors. (`server/src/__tests__/clarification.test.js`)
+
+- Added image-embedding health/status regressions covering draft local configs, validated-but-unreachable setups, and the new setup-pending UI state in the RAG overview. (`server/src/__tests__/healthCheckService.test.js`, `server/src/__tests__/integration/rag-api.test.js`, `client/src/__tests__/OverviewTab.test.js`)
+
+- Added queue regressions covering classification dequeue serialization while another classification is already processing and ensuring `awaiting_decision` rows do not block fresh classification work. (`server/src/__tests__/queueService.test.js`, `server/src/__tests__/integration/queue-robustness.test.js`)
+
+- Added parser and UI regressions covering single-option `CLARIFY` degradation to `contract_violation`, shared queue dispatch-check pause stats, and Command Center messaging staying truthful while pending manual-review items remain open. (`server/src/__tests__/services/aiResponseParser.test.js`, `server/src/__tests__/queueService.test.js`, `client/src/__tests__/commandCenterActionModules.test.js`)
+
+- Added queue/pending-question regressions covering stale pending-question flags, policy-question context extraction/staleness helpers, and queue settings remaining focused on worker/retry/cleanup behavior instead of pending-decision pausing. (`server/src/__tests__/queueService.test.js`, `server/src/__tests__/classification-routes.test.js`, `server/src/__tests__/policyQuestionContext.test.js`, `client/src/__tests__/settings/QueueCarsa.test.js`, `client/src/__tests__/commandCenterActionModules.test.js`)
+
+---
+
 ## [v0.44.2b-beta] — 2026-03-14
 
 Package version: `0.44.2-b.beta`

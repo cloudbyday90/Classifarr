@@ -45,7 +45,6 @@ const defaultAiRouterService = require('./aiRouter');
 const defaultSyncStatus = require('./syncStatus');
 const defaultTmdbService = require('./tmdb');
 const defaultOmdbService = require('./omdb');
-
 // Configuration
 const POLL_INTERVAL_MS = 1000;  // Check queue every 1 second when idle
 const MAX_CONCURRENT = 5;       // Process up to 5 tasks concurrently
@@ -178,10 +177,41 @@ class QueueService {
         }
     }
 
+    async hasClassificationDispatchBlocker() {
+        try {
+            const result = await this.db.query(
+                `SELECT
+                    EXISTS (
+                        SELECT 1
+                        FROM task_queue
+                        WHERE task_type = 'classification'
+                          AND status = 'processing'
+                    ) AS has_processing_classification`,
+                []
+            );
+
+            const row = result.rows[0] || {};
+
+            return {
+                hasProcessingClassification: row.has_processing_classification === true,
+                lookupFailed: false,
+            };
+        } catch (error) {
+            this.logger.error('Failed to check classification dispatch blockers', { error: error.message });
+            return {
+                hasProcessingClassification: false,
+                lookupFailed: true,
+            };
+        }
+    }
+
     /**
      * Get the next pending task
      */
-    async dequeue() {
+    async dequeue(options = {}) {
+        const { excludeClassification = false } = options;
+        const classificationFilter = excludeClassification ? "AND task_type <> 'classification'" : '';
+
         try {
             const result = await this.db.query(
                 // Picks up either:
@@ -195,10 +225,13 @@ class QueueService {
              visible_at = NOW() + INTERVAL '${VISIBILITY_TIMEOUT_MINUTES} minutes'
          WHERE id = (
            SELECT id FROM task_queue
-           WHERE (status = 'pending' AND next_retry_at <= NOW())
+           WHERE (
+                 (status = 'pending' AND next_retry_at <= NOW())
               OR (status = 'processing'
                   AND visible_at IS NOT NULL
                   AND visible_at <= NOW())
+           )
+             ${classificationFilter}
            ORDER BY priority DESC, created_at ASC
            LIMIT 1
            FOR UPDATE SKIP LOCKED
@@ -1193,7 +1226,10 @@ class QueueService {
 
             try {
                 if (this.processing < MAX_CONCURRENT) {
-                    const task = await this.dequeue();
+                    const blockers = await this.hasClassificationDispatchBlocker();
+                    const task = await this.dequeue({
+                        excludeClassification: blockers.lookupFailed || blockers.hasProcessingClassification
+                    });
 
                     if (task) {
                         // Only check AI availability for classification tasks
@@ -1308,6 +1344,8 @@ class QueueService {
      */
     async getStats() {
         try {
+            const blockers = await this.hasClassificationDispatchBlocker();
+
             // Only count classification tasks - metadata_enrichment is tracked separately
             // in Library Enrichment Progress on the dashboard
             const result = await this.db.query(`
@@ -1332,6 +1370,10 @@ class QueueService {
 
             stats.aiAvailable = this.aiAvailable;
             stats.workerRunning = this.running;
+            stats.classificationPaused = Boolean(blockers.lookupFailed);
+            stats.classificationPauseReason = blockers.lookupFailed
+                ? 'dispatch_check_failed'
+                : null;
 
             return stats;
         } catch (error) {

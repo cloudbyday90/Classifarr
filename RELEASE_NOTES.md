@@ -1,5 +1,41 @@
 # Classifarr Release Notes
 
+## v0.44.2c-beta
+**Title: Smarter classification pacing and clearer setup state**
+
+### 🎉 What You'll Notice
+- **Active classification runs no longer overlap each other** — the queue now waits for the current classification process to finish before starting the next one, which prevents overlapping policy-question generation without blocking multiple pending questions.
+- **Command Center stays truthful about queue state** — pending manual decisions no longer make the worker look paused, so you can have multiple policy questions open without the UI implying the queue is blocked.
+- **Image embeddings no longer look broken when they are just not set up yet** — draft or effectively-disabled image embedding setups are shown as setup-pending instead of surfacing as a red system outage.
+
+### 📊 Quick Visual
+```text
+v0.44.2c-beta Snapshot
+Classification pacing       [██████████] one active classification at a time
+Operator visibility         [█████████░] queue state and stale-question signals stay truthful
+Image setup clarity         [█████████░] draft configs no longer look like outages
+Upgrade effort              [██████████] safe for fresh and existing installs
+```
+
+### ✨ Highlights
+- **Queued classification work now waits only for active classification processing** — the worker serializes active classification execution without treating `awaiting_decision` items as blockers, so multiple policy questions can exist at once.
+- **Stale policy questions are flagged before you confirm them** — when policies, libraries, or preset attachments changed after a question was generated, Command Center now tells you to retry classification first.
+- **Malformed one-option `CLARIFY` payloads fail safe** — the AI parser now converts them into deterministic contract violations instead of letting half-valid option sets drift into unstable behavior.
+
+### 🔧 Reliability Improvements
+- Duplicate/stale resolve clicks are treated as idempotent or explicit `409` paths instead of noisy internal failures.
+- Image embedding health now distinguishes `disabled`, `not configured`, and truly unhealthy states.
+- Queue stats now reserve `classificationPaused` for actual dispatch-check failures instead of normal pending-review state.
+
+### 👥 Who This Helps
+- **End users:** fewer overlapping active classification runs without losing the ability to work through multiple policy questions.
+- **Operators/admins:** more truthful queue/worker visibility and less misleading system-health noise during image-embedding setup.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.44.2b-beta
 **Title: Manual resolution fixes that actually complete cleanly**
 

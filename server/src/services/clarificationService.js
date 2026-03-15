@@ -19,6 +19,12 @@
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
+const {
+  buildQuestionContextCacheKey,
+  extractQuestionContext,
+  getPolicyQuestionContextVersion,
+  isPolicyQuestionStale,
+} = require('../utils/policyQuestionContext');
 
 const logger = createLogger('clarificationService');
 
@@ -589,7 +595,9 @@ class ClarificationService {
         }
 
         const existenceCheck = await client.query(
-          'SELECT status FROM classification_history WHERE id = $1',
+          `SELECT status, library_id, library_name
+           FROM classification_history
+           WHERE id = $1`,
           [classificationId]
         );
 
@@ -597,6 +605,26 @@ class ClarificationService {
           const notFoundError = new Error('Classification not found');
           notFoundError.statusCode = 404;
           throw notFoundError;
+        }
+
+        const existingClassification = existenceCheck.rows[0];
+        const existingLibraryId = Number(existingClassification.library_id);
+        if (
+          existingClassification.status &&
+          ['completed', 'routed'].includes(existingClassification.status) &&
+          Number.isInteger(existingLibraryId) &&
+          existingLibraryId === selectedLibraryId
+        ) {
+          await client.query('COMMIT');
+          return {
+            success: true,
+            classificationId,
+            libraryId: selectedLibraryId,
+            libraryName: existingClassification.library_name || null,
+            generatedPattern: null,
+            shouldRoute: false,
+            alreadyResolved: true,
+          };
         }
 
         const staleResolutionError = new Error('Classification is no longer awaiting decision');
@@ -745,7 +773,16 @@ class ClarificationService {
       };
     } catch (error) {
       await client.query('ROLLBACK');
-      logger.error('Error resolving policy question', { error: error.message }, { error });
+      if (error.statusCode && error.statusCode < 500) {
+        logger.warn('Policy question resolution rejected', {
+          classificationId,
+          selectedLibraryId,
+          statusCode: error.statusCode,
+          error: error.message
+        });
+      } else {
+        logger.error('Error resolving policy question', { error: error.message }, { error });
+      }
       throw error;
     } finally {
       client.release();
@@ -768,7 +805,46 @@ class ClarificationService {
          WHERE ch.status = 'awaiting_decision'
          ORDER BY ch.created_at DESC`
       );
-      return result.rows;
+      const contextVersionCache = new Map();
+
+      const items = await Promise.all(result.rows.map(async (row) => {
+        const parsedQuestion = row.policy_question
+          ? (typeof row.policy_question === 'string'
+              ? this.safeParseJson(row.policy_question)
+              : row.policy_question)
+          : null;
+
+        if (!parsedQuestion) {
+          return {
+            ...row,
+            policy_question: null,
+            policy_question_stale: false,
+            policy_question_current_context_version: null,
+            policy_question_stale_reason: null,
+          };
+        }
+
+        const context = extractQuestionContext(parsedQuestion);
+        const cacheKey = buildQuestionContextCacheKey(context);
+
+        let currentContextVersion = contextVersionCache.get(cacheKey);
+        if (currentContextVersion === undefined) {
+          currentContextVersion = await getPolicyQuestionContextVersion(db, context);
+          contextVersionCache.set(cacheKey, currentContextVersion);
+        }
+
+        const questionStale = isPolicyQuestionStale(parsedQuestion, currentContextVersion);
+
+        return {
+          ...row,
+          policy_question: parsedQuestion,
+          policy_question_stale: questionStale,
+          policy_question_current_context_version: currentContextVersion,
+          policy_question_stale_reason: questionStale ? 'policy_context_changed' : null,
+        };
+      }));
+
+      return items;
     } catch (error) {
       logger.error('Error getting pending classifications', { error: error.message });
       return [];

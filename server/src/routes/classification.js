@@ -26,14 +26,11 @@ const patternReinforcementService = require('../services/patternReinforcementSer
 const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector');
 const { createLogger } = require('../utils/logger');
 const { requireReadWrite } = require('../middleware/apiKeyAuth');
+const { STALE_AWAITING_DECISION_DAYS } = require('../constants/classificationFlow');
 const { randomUUID } = require('crypto');
 
 const router = express.Router();
 const logger = createLogger('classification');
-
-// Number of days after which an awaiting_decision row is considered stale.
-// Matches the threshold used in the daily cleanupStaleAwaitingDecisions scheduler job.
-const STALE_AWAITING_DECISION_DAYS = 7;
 
 function safeParseJsonObject(value, fallback = {}) {
   if (value === null || value === undefined) {

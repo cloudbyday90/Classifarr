@@ -446,6 +446,9 @@ describe('QueueService', () => {
         it('should start worker loop', async () => {
             // Mock internal methods to avoid loop and DB calls
             jest.spyOn(queueService, 'resetStaleProcessingTasks').mockResolvedValue();
+            jest.spyOn(queueService, 'hasClassificationDispatchBlocker').mockResolvedValue({
+                hasProcessingClassification: false
+            });
             jest.spyOn(queueService, 'dequeue').mockResolvedValue(null);
 
             // Mock setTimeout to "fast forward" or just return immediately if needed
@@ -477,6 +480,24 @@ describe('QueueService', () => {
             // Should exit immediately without calling resetStale
             expect(queueService.resetStaleProcessingTasks).not.toHaveBeenCalled();
         });
+
+        it('should skip new classification dequeue while another classification is processing', async () => {
+            jest.spyOn(queueService, 'resetStaleProcessingTasks').mockResolvedValue();
+            jest.spyOn(queueService, 'hasClassificationDispatchBlocker').mockResolvedValue({
+                hasProcessingClassification: true,
+                lookupFailed: false
+            });
+            const dequeueSpy = jest.spyOn(queueService, 'dequeue').mockResolvedValue(null);
+
+            const workerPromise = queueService.startWorker();
+
+            await new Promise(resolve => setImmediate(resolve));
+
+            queueService.stopWorker();
+            await workerPromise;
+
+            expect(dequeueSpy).toHaveBeenCalledWith({ excludeClassification: true });
+        });
     });
 
     describe('dequeue', () => {
@@ -495,12 +516,67 @@ describe('QueueService', () => {
             expect(task).toEqual(mockTask);
         });
 
+        it('should exclude classification tasks when requested', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+
+            await queueService.dequeue({ excludeClassification: true });
+
+            expect(db.query).toHaveBeenCalledWith(
+                expect.stringContaining("AND task_type <> 'classification'"),
+            );
+        });
+
         it('should return null when queue is empty', async () => {
             db.query.mockImplementation(() => Promise.resolve({ rows: [] }));
 
             const task = await queueService.dequeue();
 
             expect(task).toBeNull();
+        });
+    });
+
+    describe('hasClassificationDispatchBlocker', () => {
+        it('should report active classification work', async () => {
+            db.query.mockResolvedValue({
+                rows: [{
+                    has_processing_classification: true
+                }]
+            });
+
+            const result = await queueService.hasClassificationDispatchBlocker();
+
+            expect(result).toEqual(expect.objectContaining({
+                hasProcessingClassification: true,
+                lookupFailed: false
+            }));
+        });
+
+        it('should ignore pending manual decisions when checking blockers', async () => {
+            db.query.mockResolvedValue({
+                rows: [{
+                    has_processing_classification: false
+                }]
+            });
+
+            const result = await queueService.hasClassificationDispatchBlocker();
+
+            expect(result.hasProcessingClassification).toBe(false);
+            expect(result.lookupFailed).toBe(false);
+        });
+
+        it('should fail closed for classification dequeue when blocker lookup errors', async () => {
+            db.query.mockRejectedValue(new Error('lookup failed'));
+
+            const result = await queueService.hasClassificationDispatchBlocker();
+
+            expect(result).toEqual(expect.objectContaining({
+                hasProcessingClassification: false,
+                lookupFailed: true
+            }));
+            expect(queueService.logger.error).toHaveBeenCalledWith(
+                'Failed to check classification dispatch blockers',
+                expect.objectContaining({ error: 'lookup failed' })
+            );
         });
     });
 
@@ -544,6 +620,10 @@ describe('QueueService', () => {
     describe('getStats', () => {
         it('should return queue statistics', async () => {
             // getStats runs a filtered aggregate query and builds stats object
+            jest.spyOn(queueService, 'hasClassificationDispatchBlocker').mockResolvedValue({
+                hasProcessingClassification: false,
+                lookupFailed: false
+            });
             db.query.mockResolvedValueOnce({
                 rows: [{
                     pending: '5',
@@ -562,6 +642,28 @@ describe('QueueService', () => {
             expect(stats.total).toBe(110);
             expect(stats).toHaveProperty('aiAvailable');
             expect(stats).toHaveProperty('workerRunning');
+            expect(stats.classificationPaused).toBe(false);
+            expect(stats.classificationPauseReason).toBeNull();
+        });
+
+        it('should surface dispatch check failures as a paused state', async () => {
+            jest.spyOn(queueService, 'hasClassificationDispatchBlocker').mockResolvedValue({
+                hasProcessingClassification: false,
+                lookupFailed: true
+            });
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    pending: '1',
+                    processing: '0',
+                    completed: '2',
+                    failed: '0'
+                }]
+            });
+
+            const stats = await queueService.getStats();
+
+            expect(stats.classificationPaused).toBe(true);
+            expect(stats.classificationPauseReason).toBe('dispatch_check_failed');
         });
     });
 

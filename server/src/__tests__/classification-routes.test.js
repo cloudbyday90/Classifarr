@@ -85,6 +85,7 @@ describe('Classification Routes - Pending Resolution', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    clarificationService.getPendingClassifications.mockResolvedValue([]);
     
     // Reset default mock implementations
     db.query.mockImplementation(async (sql) => {
@@ -521,6 +522,33 @@ describe('Classification Routes - Pending Resolution', () => {
 
       expect(response.status).toBe(409);
       expect(response.body.error).toBe('Classification is no longer awaiting decision');
+    });
+  });
+
+  describe('GET /pending', () => {
+    test('returns pending items and preserves stale policy-question flags', async () => {
+      clarificationService.getPendingClassifications.mockResolvedValueOnce([{
+        id: 101,
+        title: 'The Lost Forest',
+        status: 'awaiting_decision',
+        policy_question: {
+          question: 'Which library should this go to?',
+          options: [{ label: 'Movies', library_id: 8 }]
+        },
+        policy_question_stale: true,
+        policy_question_stale_reason: 'policy_context_changed',
+        policy_question_current_context_version: '2026-03-15T00:00:00.000Z'
+      }]);
+
+      const response = await request(app)
+        .get('/api/classification/pending');
+
+      expect(response.status).toBe(200);
+      expect(response.body.count).toBe(1);
+      expect(response.body.items[0].policy_question.question).toBe('Which library should this go to?');
+      expect(response.body.items[0].policy_question_stale).toBe(true);
+      expect(response.body.items[0].policy_question_stale_reason).toBe('policy_context_changed');
+      expect(response.body.items[0].policy_question_current_context_version).toBe('2026-03-15T00:00:00.000Z');
     });
   });
 

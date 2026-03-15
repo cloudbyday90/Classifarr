@@ -73,9 +73,9 @@
             <p class="text-sm text-gray-400">Image Provider</p>
             <p :class="[
               'text-2xl font-bold mt-1',
-              !stats.imageEnabled ? 'text-gray-400' : (stats.imageProviderOnline ? 'text-green-400' : 'text-red-400')
+              imageStatusTextClass
             ]">
-              {{ stats.imageEnabled ? (stats.imageProviderOnline ? 'Online' : 'Offline') : 'Disabled' }}
+              {{ imageStatusLabel }}
             </p>
             <p v-if="stats.imageEnabled" class="text-xs text-gray-500 mt-1">
               {{ stats.imageProvider }} {{ stats.imageModel ? `(${stats.imageModel})` : '' }}
@@ -83,9 +83,9 @@
           </div>
           <span :class="[
             'text-sm font-semibold',
-            !stats.imageEnabled ? 'text-gray-400' : (stats.imageProviderOnline ? 'text-green-400' : 'text-red-400')
+            imageStatusFlagClass
           ]">
-            {{ stats.imageEnabled ? (stats.imageProviderOnline ? 'ON' : 'OFF') : 'OFF' }}
+            {{ stats.imageStatus === 'configured' ? 'CFG' : (stats.imageStatus === 'online' ? 'ON' : 'OFF') }}
           </span>
         </div>
       </div>
@@ -273,6 +273,7 @@ const stats = ref({
   failed24h: 0,
   providerOnline: false,
   imageEnabled: false,
+  imageStatus: 'disabled',
   imageProviderOnline: false,
   imageTotalEmbeddings: 0,
   imagePendingCount: 0,
@@ -281,6 +282,55 @@ const stats = ref({
   heartbeatActive: false,
   queueSize: 0,
   lastEmbeddingTime: null
+})
+
+const imageStatusLabel = computed(() => {
+  switch (stats.value.imageStatus) {
+    case 'disabled':
+      return 'Disabled'
+    case 'configured':
+      return 'Configured'
+    case 'not_configured':
+      return 'Not configured'
+    case 'online':
+      return 'Online'
+    default:
+      return stats.value.imageEnabled
+        ? (stats.value.imageProviderOnline ? 'Online' : 'Offline')
+        : 'Disabled'
+  }
+})
+
+const imageStatusTextClass = computed(() => {
+  switch (stats.value.imageStatus) {
+    case 'disabled':
+    case 'not_configured':
+      return 'text-gray-400'
+    case 'configured':
+      return 'text-yellow-400'
+    case 'online':
+      return 'text-green-400'
+    default:
+      return stats.value.imageEnabled
+        ? (stats.value.imageProviderOnline ? 'text-green-400' : 'text-red-400')
+        : 'text-gray-400'
+  }
+})
+
+const imageStatusFlagClass = computed(() => {
+  switch (stats.value.imageStatus) {
+    case 'disabled':
+    case 'not_configured':
+      return 'text-gray-400'
+    case 'configured':
+      return 'text-yellow-400'
+    case 'online':
+      return 'text-green-400'
+    default:
+      return stats.value.imageEnabled
+        ? (stats.value.imageProviderOnline ? 'text-green-400' : 'text-red-400')
+        : 'text-gray-400'
+  }
 })
 const config = ref({
   primary_provider: 'none',
@@ -351,6 +401,7 @@ const loadStats = async () => {
       avgGenerationTime: 0,
       lastEmbeddingTime: null,
       imageEnabled: imageData.enabled ?? false,
+      imageStatus: imageData.status || (imageData.enabled ? (imageData.providerOnline ? 'online' : 'not_configured') : 'disabled'),
       imageProviderOnline: imageData.providerOnline ?? false,
       imageTotalEmbeddings: imageData.stats?.total ?? 0,
       imagePendingCount: imageData.stats?.pending ?? 0,

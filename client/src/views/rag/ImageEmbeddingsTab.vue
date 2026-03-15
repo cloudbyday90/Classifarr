@@ -331,8 +331,10 @@ const config = ref({
 
 const originalConfig = ref({})
 const status = ref({
+  enabled: false,
   providerOnline: false,
   providerConfigured: false,
+  state: 'disabled',
   providerLabel: 'unknown',
   modelLabel: 'unknown',
   mode: 'disabled'
@@ -523,24 +525,46 @@ const imageModelOptions = computed(() => {
 })
 
 const statusLabel = computed(() => {
-  if (imageDisabled.value) return 'Disabled'
-  if (status.value.providerOnline) return 'Online'
-  if (status.value.providerConfigured) return 'Configured'
-  return 'Offline'
+  switch (status.value.state) {
+    case 'disabled':
+      return 'Disabled'
+    case 'configured':
+      return 'Configured'
+    case 'not_configured':
+      return 'Not configured'
+    case 'online':
+      return 'Online'
+    default:
+      return 'Offline'
+  }
 })
 
 const statusDotClass = computed(() => {
-  if (imageDisabled.value) return 'bg-gray-500'
-  if (status.value.providerOnline) return 'bg-green-500'
-  if (status.value.providerConfigured) return 'bg-yellow-500'
-  return 'bg-red-500'
+  switch (status.value.state) {
+    case 'disabled':
+    case 'not_configured':
+      return 'bg-gray-500'
+    case 'configured':
+      return 'bg-yellow-500'
+    case 'online':
+      return 'bg-green-500'
+    default:
+      return 'bg-red-500'
+  }
 })
 
 const statusTextClass = computed(() => {
-  if (imageDisabled.value) return 'text-gray-400'
-  if (status.value.providerOnline) return 'text-green-400'
-  if (status.value.providerConfigured) return 'text-yellow-400'
-  return 'text-red-400'
+  switch (status.value.state) {
+    case 'disabled':
+    case 'not_configured':
+      return 'text-gray-400'
+    case 'configured':
+      return 'text-yellow-400'
+    case 'online':
+      return 'text-green-400'
+    default:
+      return 'text-red-400'
+  }
 })
 
 const imageModelDimsLabel = computed(() => {
@@ -630,10 +654,21 @@ const loadStatus = async () => {
   try {
     const statusRes = await api.get('/rag/status')
     const imageStatus = statusRes.data?.image || {}
+    const enabled = imageStatus.enabled ?? false
+    const derivedState = imageStatus.status
+      || (!enabled
+        ? 'disabled'
+        : imageStatus.providerOnline
+          ? 'online'
+          : imageStatus.providerConfigured
+            ? 'configured'
+            : 'not_configured')
 
     status.value = {
+      enabled,
       providerOnline: imageStatus.providerOnline ?? false,
       providerConfigured: imageStatus.providerConfigured ?? false,
+      state: derivedState,
       providerLabel: imageStatus.provider || 'unknown',
       modelLabel: imageStatus.model || 'unknown',
       mode: config.value.image_mode

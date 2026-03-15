@@ -45,6 +45,11 @@ const { createLogger } = require('../utils/logger');
 const ragLogger = require('../utils/ragLogger');
 const { mapSecondPassError } = require('../utils/ragErrorHandler');
 const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
+const {
+  extractQuestionContext,
+  getPolicyQuestionContextVersion,
+  stampPolicyQuestionContext,
+} = require('../utils/policyQuestionContext');
 const ragLoopMetricsCollector = require('./ragLoopMetricsCollector');
 const ragLoopResilienceManager = require('./ragLoopResilienceManager');
 const { validateAndNormalizeRagLoopConfig } = require('../utils/ragLoopConfig');
@@ -3216,7 +3221,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
     // For pending items (needs clarification)
     const pendingReason = result.pending_reason || (result.needs_clarification ? result.reason : null);
-    const policyQuestion = this.normalizePolicyQuestion(result.policy_question);
+    const policyQuestion = await this.normalizePolicyQuestion(result.policy_question);
 
     // Handle retry status
     let status;
@@ -3893,21 +3898,40 @@ Think step by step, then respond with ONLY one of the formats above.`;
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
-  normalizePolicyQuestion(value) {
+  async normalizePolicyQuestion(value) {
     if (!value) return null;
+    let parsed = null;
+
     if (typeof value === 'string') {
       const trimmed = value.trim();
       if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
         return null;
       }
       try {
-        const parsed = JSON.parse(trimmed);
-        return JSON.stringify(parsed);
+        parsed = JSON.parse(trimmed);
       } catch (_error) {
         return null;
       }
+    } else if (typeof value === 'object') {
+      parsed = value;
     }
-    return JSON.stringify(value);
+
+    if (!parsed || typeof parsed !== 'object') {
+      return null;
+    }
+
+    try {
+      const context = extractQuestionContext(parsed);
+      const contextVersion = await getPolicyQuestionContextVersion(db, context);
+      parsed = stampPolicyQuestionContext(parsed, contextVersion, context);
+    } catch (error) {
+      logger.warn('Failed to stamp policy question context', {
+        title: parsed?.question || null,
+        error: error.message
+      });
+    }
+
+    return JSON.stringify(parsed);
   }
 
   async resolveRoutingConfig(library) {

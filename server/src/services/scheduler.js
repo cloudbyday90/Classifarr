@@ -14,13 +14,10 @@ const { normalizeMetadataListLower } = require('../utils/metadataNormalization')
 const queueService = require('./queueService');
 const mediaSyncService = require('./mediaSync');
 const classificationService = require('./classification');
+const { STALE_AWAITING_DECISION_DAYS } = require('../constants/classificationFlow');
 
 const logger = createLogger('SchedulerService');
 const DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS = 10000;
-
-// Number of days after which an awaiting_decision row is considered stale.
-// Matches the filter applied in GET /api/classification/pending/count.
-const STALE_AWAITING_DECISION_DAYS = 7;
 
 class SchedulerService {
     constructor() {

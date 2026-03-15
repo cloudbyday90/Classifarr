@@ -290,8 +290,8 @@ describe('AIResponseParser', () => {
         it('should deduplicate options that resolve to the same library through the parse() pipeline', () => {
             // LLM offers "Action Movies" and "action movies" — both strip/match to id:1.
             // After dedup, only one option should survive; parseClarifyFormat requires ≥2
-            // distinct libraries, so the result must fall through rather than present a
-            // single-choice clarification that the user cannot meaningfully act on.
+            // distinct libraries, so the result must convert into a deterministic
+            // contract_violation clarification rather than a single-choice clarify prompt.
             const response = 'CLARIFY|Ambiguous|Both options are the same library|Which do you prefer?|Action Movies|action movies';
             const context = {
                 libraries: mockLibraries,
@@ -301,9 +301,9 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context);
 
-            // Only 1 distinct library after dedup → parseClarifyFormat returns null
-            // → falls through to narrative salvage (signalContext present) or fallback
-            expect(result.format).not.toBe('clarify');
+            expect(result.format).toBe('contract_violation');
+            expect(result.policy_question.meta.violation_reason).toBe('single_valid_option');
+            expect(result.policy_question.meta.matched_option_count).toBe(1);
         });
 
         it('should parse CLARIFY format with numeric library indices (new prompt format)', () => {
@@ -338,7 +338,8 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context);
 
-            expect(result.format).not.toBe('clarify');
+            expect(result.format).toBe('contract_violation');
+            expect(result.policy_question.meta.violation_reason).toBe('single_valid_option');
         });
 
         it('should fall through to contract_violation when CLARIFY options are all unrecognized in classify mode', () => {

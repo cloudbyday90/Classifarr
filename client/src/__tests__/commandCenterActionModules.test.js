@@ -62,7 +62,7 @@ const mountCommandCenter = async () => {
 }
 
 const createLiveStats = () => ({
-  queue: { pending: 3, processing: 1, completed: 9, failed: 1 },
+  queue: { pending: 3, processing: 1, completed: 9, failed: 1, classificationPaused: false, classificationPauseReason: null },
   gapAnalysis: { processedCount: 2847, totalCount: 6324, percentComplete: 45 },
   enrichment: {
     totalItems: 6324,
@@ -121,6 +121,7 @@ describe('CommandCenter action modules', () => {
           year: 2026,
           media_type: 'tv',
           confidence: 22.72,
+          policy_question_stale: false,
           policy_question: {
             question: 'Does this belong in TV Shows?',
             why_uncertain: 'Conflicting signals',
@@ -156,6 +157,53 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('Needs Attention')
     expect(wrapper.text()).toContain('Errors')
     expect(wrapper.text()).toContain('AI budget at 92%')
+  })
+
+  it('shows dispatch-check pause messaging without implying manual review is blocking the queue', async () => {
+    apiMock.getLiveStats.mockResolvedValueOnce({
+      data: {
+        ...createLiveStats(),
+        queue: {
+          pending: 4,
+          processing: 0,
+          completed: 9,
+          failed: 1,
+          classificationPaused: true,
+          classificationPauseReason: 'dispatch_check_failed',
+        },
+      },
+    })
+
+    const wrapper = await mountCommandCenter()
+
+    expect(wrapper.text()).toContain('Worker Paused')
+    expect(wrapper.text()).toContain('Classification dispatch is temporarily paused because the worker could not verify queue state.')
+    expect(wrapper.text()).not.toContain('Waiting for your decision')
+  })
+
+  it('flags stale policy questions in needs attention items', async () => {
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      data: {
+        items: [{
+          id: 202,
+          title: 'The Lost Forest',
+          year: 2024,
+          media_type: 'movie',
+          confidence: 18,
+          policy_question_stale: true,
+          policy_question: {
+            question: 'Should this go to Movies?',
+            why_uncertain: 'Conflicting signals',
+            options: [{ label: 'Movies', value: 'movies', library_id: 8 }],
+          },
+        }],
+      },
+    })
+
+    const wrapper = await mountCommandCenter()
+
+    expect(wrapper.text()).toContain('This question may be outdated because policy or library settings changed after it was generated.')
+    expect(wrapper.text()).toContain('Retry Classification to refresh it before confirming.')
   })
 
   it('renders explicit Yes/No controls for binary policy prompts', async () => {
