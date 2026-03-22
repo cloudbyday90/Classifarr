@@ -58,6 +58,10 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
           status: response.data.ollama,
           details: response.data.details?.ollama
         },
+        imageEmbeddings: {
+          status: response.data.imageEmbeddings,
+          details: response.data.details?.imageEmbeddings
+        },
         tmdb: {
           status: response.data.tmdb,
           details: response.data.details?.tmdb

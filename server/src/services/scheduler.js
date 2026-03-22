@@ -11,7 +11,6 @@ const db = require('../config/database');
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
-const queueService = require('./queueService');
 const mediaSyncService = require('./mediaSync');
 const classificationService = require('./classification');
 const { STALE_AWAITING_DECISION_DAYS } = require('../constants/classificationFlow');
@@ -385,6 +384,7 @@ class SchedulerService {
      */
     async runGapAnalysis() {
         try {
+            const queueService = require('./queueService');
             // Delegate to QueueService which now holds the logic
             // This allows triggering from both scheduler and API (manual ingestion)
             await queueService.refillQueue();

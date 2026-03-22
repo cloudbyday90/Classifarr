@@ -26,6 +26,7 @@ const {
     isLearningEligible,
     isMetadataEnrichmentEligible,
     resolvePolicyContextOrFallback,
+    resolveConflictDecision,
     selectRetryStrategy,
     shouldTriggerSecondPass,
     summarizePassDiagnostics
@@ -106,6 +107,42 @@ describe('ragLoopHelpers', () => {
 
             expect(result.run).toBe(true);
             expect(result.trigger).toBe('ai_low_confidence');
+        });
+
+        test('skips the second pass entirely when max passes is limited to one', () => {
+            const result = shouldTriggerSecondPass({
+                config: {
+                    rag_retrieval_loop_enabled: true,
+                    rag_loop_max_passes: 1,
+                    policy_recheck_below_prompt_threshold_enabled: true,
+                    rag_loop_low_confidence_threshold: 70
+                },
+                policyResult: { action: 'prompt_select' },
+                aiResult: { confidence: 40 }
+            });
+
+            expect(result.run).toBe(false);
+            expect(result.trigger).toBe(null);
+            expect(result.reason).toBe('max_passes_reached');
+        });
+
+        test('uses ai trigger when policy result is present but non-actionable', () => {
+            const result = shouldTriggerSecondPass({
+                config: {
+                    rag_retrieval_loop_enabled: true,
+                    policy_recheck_below_prompt_threshold_enabled: true,
+                    rag_loop_low_confidence_threshold: 70
+                },
+                policyResult: {
+                    action: 'manual',
+                    ranked: []
+                },
+                aiResult: { confidence: 65, needs_clarification: false }
+            });
+
+            expect(result.run).toBe(true);
+            expect(result.trigger).toBe('ai_low_confidence');
+            expect(result.reason).toBe('policy_unavailable');
         });
 
         test('uses policy_prompt_confirm trigger when action is prompt_confirm', () => {
@@ -189,6 +226,21 @@ describe('ragLoopHelpers', () => {
             );
 
             expect(strategy.strategy).toBe('hybrid');
+            expect(strategy.reason).toBe('low_signal');
+        });
+
+        test('can disable hybrid fallback for low-signal retries', () => {
+            const strategy = selectRetryStrategy(
+                { matchCount: 1, topSimilarity: 0.40, conflict: { isConflict: false } },
+                { isSparse: false },
+                {
+                    rag_retry_strategy: 'auto',
+                    rag_retry_low_signal_similarity_floor: 0.55,
+                    rag_loop_use_hybrid_on_retry: false
+                }
+            );
+
+            expect(strategy.strategy).toBe('semantic');
             expect(strategy.reason).toBe('low_signal');
         });
 
@@ -360,6 +412,57 @@ describe('ragLoopHelpers', () => {
 
             // Confidence improved (+12), similarity did NOT meet delta — OR gate should still adopt
             expect(compare.adopt).toBe(true);
+        });
+
+        test('comparePassResults blocks adoption when pass2 conflict persists even if policy gate would adopt', () => {
+            const pass1Diagnostics = summarizePassDiagnostics([
+                { libraryId: 1, similarity: 0.60 }
+            ]);
+            const pass2Diagnostics = summarizePassDiagnostics([
+                { libraryId: 2, similarity: 0.76 },
+                { libraryId: 1, similarity: 0.75 }
+            ]);
+
+            const compare = comparePassResults({
+                baselineResult: { confidence: 50 },
+                pass2Result: { confidence: 68 },
+                policyGate: {
+                    shouldAdopt: true,
+                    metrics: { confidenceGain: 18 }
+                },
+                pass1Diagnostics,
+                pass2Diagnostics,
+                pass2Conflict: {
+                    isConflict: true,
+                    reason: 'vote_margin_split'
+                },
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5
+                }
+            });
+
+            expect(compare.adopt).toBe(false);
+            expect(compare.reason).toBe('conflict_persists');
+        });
+
+        test('resolveConflictDecision preserves baseline when pass2 conflict persists even if policy upgraded', () => {
+            const resolution = resolveConflictDecision({
+                baselineResult: { library: { id: 1 }, confidence: 55 },
+                pass2Result: { library: { id: 2 }, confidence: 74 },
+                comparison: { adopt: true, reason: 'policy_gate' },
+                policyBefore: { action: 'prompt_select' },
+                policyAfter: { action: 'prompt_confirm' },
+                pass2Conflict: {
+                    isConflict: true,
+                    reason: 'vote_margin_split'
+                }
+            });
+
+            expect(resolution.source).toBe('baseline');
+            expect(resolution.reason).toBe('conflict_persists');
+            expect(resolution.resolvedResult.library.id).toBe(1);
         });
 
         test('blocks adoption when policyAfter has language conflicts and resolves to auto_classify', () => {
@@ -542,6 +645,23 @@ describe('ragLoopHelpers', () => {
             expect(learning.eligible).toBe(false);
             expect(learning.reason).toBe('manual_confirmation_required');
         });
+
+        test('shadow mode learning can be enabled explicitly', () => {
+            const learning = isLearningEligible({
+                config: {
+                    policy_learning_include_shadow_feedback: true,
+                    policy_learning_second_pass_requires_manual_confirmation: false,
+                    policy_learning_allow_machine_only_second_pass_feedback: true
+                },
+                rolloutMode: 'shadow',
+                secondPassApplied: true,
+                userValidated: false,
+                machineOnly: true
+            });
+
+            expect(learning.eligible).toBe(true);
+            expect(learning.reason).toBe('eligible');
+        });
     });
 
     describe('metadata enrichment gate', () => {
@@ -694,6 +814,19 @@ describe('ragLoopHelpers', () => {
     describe('Phase 4 mapping guards', () => {
         test('resolves missing policy context to deterministic fallback', () => {
             const result = resolvePolicyContextOrFallback({ policyResult: null });
+            expect(result.hasPolicyContext).toBe(false);
+            expect(result.reasonCode).toBe(RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING);
+            expect(result.fallbackAction).toBe(RAG_LOOP_FALLBACK_ACTIONS.GATE_SKIPPED);
+        });
+
+        test('treats non-actionable policy results as missing policy context', () => {
+            const result = resolvePolicyContextOrFallback({
+                policyResult: {
+                    action: 'manual',
+                    ranked: []
+                }
+            });
+
             expect(result.hasPolicyContext).toBe(false);
             expect(result.reasonCode).toBe(RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING);
             expect(result.fallbackAction).toBe(RAG_LOOP_FALLBACK_ACTIONS.GATE_SKIPPED);

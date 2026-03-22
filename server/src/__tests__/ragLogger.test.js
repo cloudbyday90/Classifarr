@@ -177,7 +177,7 @@ describe('ragLogger', () => {
         expect(db.query).not.toHaveBeenCalled();
     });
 
-    test('suppresses informational applied second-pass success events', async () => {
+    test('keeps informational applied second-pass success events console-only but logged', async () => {
         const result = await ragLogger.logStageEvent({
             stage: 'retrieval_pass2',
             outcome: 'applied',
@@ -185,8 +185,15 @@ describe('ragLogger', () => {
             recoverable: true
         });
 
-        expect(result).toEqual({ logged: false, deduped: false, suppressed: true });
+        expect(result).toEqual({ logged: true, deduped: false });
         expect(db.query).not.toHaveBeenCalled();
+        expect(mockModuleLogger.info).toHaveBeenCalledWith(
+            expect.stringContaining('Second-pass stage retrieval_pass2 applied'),
+            expect.objectContaining({
+                stage: 'retrieval_pass2',
+                reasonCode: 'hybrid'
+            })
+        );
     });
 
     test('keeps strategy_selected stage events out of error_log but visible in console logs', async () => {
@@ -208,6 +215,27 @@ describe('ragLogger', () => {
                 stage: 'gate',
                 reasonCode: 'sparse_metadata',
                 classificationId: 321
+            })
+        );
+    });
+
+    test('preserves rag_candidate as a first-class second-pass stage', async () => {
+        const result = await ragLogger.logStageEvent({
+            classification_id: 654,
+            stage: 'rag_candidate',
+            outcome: 'applied',
+            reason_code: 'rag_candidate_built',
+            recoverable: true
+        });
+
+        expect(result).toEqual({ logged: true, deduped: false });
+        expect(db.query).not.toHaveBeenCalled();
+        expect(mockModuleLogger.info).toHaveBeenCalledWith(
+            expect.stringContaining('Second-pass stage rag_candidate applied'),
+            expect.objectContaining({
+                stage: 'rag_candidate',
+                reasonCode: 'rag_candidate_built',
+                classificationId: 654
             })
         );
     });

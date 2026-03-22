@@ -94,3 +94,29 @@ These are candidates for future releases.
 - Reconfirmed expected log output in integration runs: deprecated `detectEventContent`, legacy migration FK errors, and `Library 999999 not found`.
 - Impact: CI output remains noisy even when tests pass.
 - Follow-up: see 2026-01-30 items; no new action beyond existing follow-ups.
+
+## 2026-03-20
+
+### Integration log noise inventory formalized
+- A fresh full server integration run was captured after the run-wide template DB optimization.
+- Current passing-run warning/error inventory:
+  - `mediaSync` warnings from explicit missing-library negative-path coverage
+  - `QueueService` warnings from expired-visibility recovery coverage
+  - `MigrationRoute` errors from invalid/inaccessible preset migration coverage
+- Current highest-volume info modules:
+  - `FeedbackAnalysis`
+  - `PolicyEngine`
+  - `apiKeys`
+  - `QueueService`
+- Impact: the remaining output is mostly purposeful test evidence rather than unexplained noise, but future deltas need a baseline to compare against.
+- Resolution (2026-03-20): added `docs/testing/integration-log-inventory.md` and linked it from `docs/testing/coverage.md` so future runs have an explicit expected-output baseline.
+
+### Expected integration warning/error output is now asserted
+- The passing integration baseline is no longer just observed output for `mediaSync`, `QueueService`, and `MigrationRoute`.
+- Integration suites now explicitly assert the expected warning/error messages for those negative-path cases, making them part of the pass criteria.
+- Impact: if those components stop logging the expected failure-path evidence, the affected tests will fail instead of silently passing with changed behavior.
+
+### Optimized integration harness assumes one run at a time
+- The integration harness now reuses one Docker/Testcontainers Postgres container plus a migrated template database per Jest invocation, then clones isolated suite databases from that template.
+- Impact: full-suite runtime dropped significantly, but separate local `npm --prefix server run test:integration` processes launched in parallel should be treated as a harness edge case until explicitly hardened.
+- Follow-up: if parallel independent integration invocations become a real workflow need, make the runtime handoff fully per-process instead of relying on a shared local handoff convention.

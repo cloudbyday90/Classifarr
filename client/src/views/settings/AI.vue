@@ -613,6 +613,11 @@ const fetchModels = async () => {
       api_endpoint: config.value.api_endpoint,
       api_key: config.value.api_key
     })
+    if (response.data?.success === false) {
+      availableModels.value = []
+      toast.error(response.data.error || 'Failed to fetch models')
+      return
+    }
     availableModels.value = response.data.models || []
     if (availableModels.value.length > 0) {
       toast.success(`Found ${availableModels.value.length} models`)
@@ -620,7 +625,7 @@ const fetchModels = async () => {
       toast.warning('No models found')
     }
   } catch (error) {
-    toast.error('Failed to fetch models')
+    toast.error(error.response?.data?.error || 'Failed to fetch models')
   } finally {
     loadingModels.value = false
   }
@@ -640,9 +645,11 @@ const testConnection = async () => {
       toast.success('Connection successful!')
       // Auto-fetch models on success
       fetchModels()
+    } else if (response.data.error) {
+      toast.error(response.data.error)
     }
   } catch (error) {
-    testResult.value = { success: false, error: error.message }
+    testResult.value = { success: false, error: error.response?.data?.error || error.message }
   } finally {
     testing.value = false
   }
@@ -701,14 +708,20 @@ const fetchOllamaModels = async () => {
 
 const saveConfig = async () => {
   saving.value = true
+  let aiConfigSaved = false
   try {
-    await Promise.all([
-      api.updateAIConfig(config.value),
-      api.updatePatternConfig(patternConfig.value)
-    ])
+    await api.updateAIConfig(config.value)
+    aiConfigSaved = true
+    await api.updatePatternConfig(patternConfig.value)
     toast.success('AI configuration saved!')
   } catch (error) {
-    toast.error('Failed to save configuration')
+    const errorMessage = error.response?.data?.error || error.message || 'Failed to save configuration'
+
+    if (aiConfigSaved) {
+      toast.warning(`AI provider settings were saved, but pattern settings failed: ${errorMessage}`)
+    } else {
+      toast.error(errorMessage)
+    }
   } finally {
     saving.value = false
   }

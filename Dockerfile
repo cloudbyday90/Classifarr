@@ -124,6 +124,12 @@ RUN deluser --remove-home node 2>/dev/null || true && \
     addgroup -g 1000 classifarr && \
     adduser -u 1000 -G classifarr -s /bin/sh -D classifarr
 
+# Allow the non-root classifarr user to overwrite vector.so at runtime so the
+# entrypoint's CPU-aware variant selection works without requiring root.
+RUN PG17_CONFIG="/usr/libexec/postgresql17/pg_config" && \
+    PKGLIBDIR="$(${PG17_CONFIG} --pkglibdir)" && \
+    chown classifarr:classifarr "${PKGLIBDIR}"/vector*.so
+
 WORKDIR /app
 
 # Copy built artifacts from builder stages

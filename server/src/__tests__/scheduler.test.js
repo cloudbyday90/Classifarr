@@ -240,6 +240,29 @@ describe('SchedulerService', () => {
         });
     });
 
+    describe('runGapAnalysis', () => {
+        it('lazily resolves queueService and delegates to refillQueue', async () => {
+            const queueService = require('../services/queueService');
+            queueService.refillQueue.mockResolvedValueOnce({ queued: 3 });
+
+            await expect(scheduler.runGapAnalysis()).resolves.toBeUndefined();
+
+            expect(queueService.refillQueue).toHaveBeenCalledTimes(1);
+        });
+
+        it('logs the refill failure without throwing', async () => {
+            const queueService = require('../services/queueService');
+            queueService.refillQueue.mockRejectedValueOnce(new Error('refill failed'));
+
+            await expect(scheduler.runGapAnalysis()).resolves.toBeUndefined();
+
+            expect(logger.error).toHaveBeenCalledWith(
+                'Error running gap analysis',
+                expect.objectContaining({ error: 'refill failed' })
+            );
+        });
+    });
+
     describe('runLibraryWatchdog', () => {
         it('issues a single query and triggers syncLibrary for empty libraries', async () => {
             const dbModule = require('../config/database');

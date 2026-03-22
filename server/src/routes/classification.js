@@ -20,6 +20,7 @@ const express = require('express');
 const db = require('../config/database');
 const classificationService = require('../services/classification');
 const classificationRetryService = require('../services/classificationRetryService');
+const classificationOutcomeService = require('../services/classificationOutcomeService');
 const reclassificationService = require('../services/reclassificationService');
 const clarificationService = require('../services/clarificationService');
 const patternReinforcementService = require('../services/patternReinforcementService');
@@ -85,6 +86,40 @@ function parseOptionalBoolean(value, defaultValue = true) {
   }
 
   return { valid: false, value: defaultValue };
+}
+
+function parsePositiveIntWithBounds(value, fallback, { min = 1, max = 365 } = {}) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function buildOutcomeRateSet({ total, linkedOutcomes, verified, corrected, resolved, retried }) {
+  const perTotal = {
+    linkedOutcomeRate: total > 0 ? Number((linkedOutcomes / total).toFixed(4)) : 0,
+    correctedRate: total > 0 ? Number((corrected / total).toFixed(4)) : 0,
+    verifiedRate: total > 0 ? Number((verified / total).toFixed(4)) : 0,
+    resolvedRate: total > 0 ? Number((resolved / total).toFixed(4)) : 0,
+    retriedRate: total > 0 ? Number((retried / total).toFixed(4)) : 0
+  };
+
+  const perLinkedOutcome = {
+    correctedRate: linkedOutcomes > 0 ? Number((corrected / linkedOutcomes).toFixed(4)) : 0,
+    verifiedRate: linkedOutcomes > 0 ? Number((verified / linkedOutcomes).toFixed(4)) : 0,
+    resolvedRate: linkedOutcomes > 0 ? Number((resolved / linkedOutcomes).toFixed(4)) : 0,
+    retriedRate: linkedOutcomes > 0 ? Number((retried / linkedOutcomes).toFixed(4)) : 0
+  };
+
+  return { perTotal, perLinkedOutcome };
+}
+
+function createEmptyOutcomeTypeBreakdown() {
+  return {
+    verified: 0,
+    corrected: 0,
+    resolved: 0,
+    retried: 0
+  };
 }
 
 /**
@@ -328,7 +363,6 @@ router.post('/corrections', async (req, res) => {
        WHERE id = $3`,
       [corrected_library_id, 'corrected', classification_id]
     );
-
     // Save correction
     const correctionResult = await db.query(
       `INSERT INTO classification_corrections 
@@ -337,6 +371,17 @@ router.post('/corrections', async (req, res) => {
        RETURNING *`,
       [classification_id, original_library_id, corrected_library_id, corrected_by || 'user']
     );
+    const correctedLibraryLookup = await db.query(
+      'SELECT name FROM libraries WHERE id = $1',
+      [corrected_library_id]
+    );
+    await classificationOutcomeService.recordOutcome(classification_id, {
+      type: 'corrected',
+      source: 'api_correction',
+      actor: corrected_by || 'user',
+      final_library_id: corrected_library_id,
+      final_library_name: correctedLibraryLookup.rows[0]?.name || null
+    });
 
     // Extract learning pattern
     await db.query(
@@ -495,6 +540,256 @@ router.get('/stats', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/classification/second-pass-evaluation:
+ *   get:
+ *     summary: Get outcome cohorts for second-pass evaluation
+ *     description: Compares baseline classifications against second-pass ran/not-adopted and second-pass adopted cohorts, linked to later human or retry outcomes.
+ */
+router.get('/second-pass-evaluation', async (req, res) => {
+  try {
+    const days = parsePositiveIntWithBounds(req.query.days, 30, { min: 1, max: 365 });
+
+    const result = await db.query(
+      `WITH classified AS (
+         SELECT
+           CASE
+             WHEN COALESCE((metadata->'classification_details'->'rag_loop_summary'->>'ran')::boolean, false) = false
+               THEN 'baseline'
+             WHEN COALESCE((metadata->'classification_details'->'rag_loop_summary'->>'adopted')::boolean, false) = true
+               THEN 'pass2_adopted'
+             ELSE 'pass2_not_adopted'
+           END AS cohort,
+           COALESCE(
+             NULLIF(metadata->'classification_details'->'outcome_path'->>'latest_type', ''),
+             NULLIF(metadata->'classification_details'->'outcome_link'->>'type', '')
+           ) AS latest_outcome_type,
+           NULLIF(metadata->'classification_details'->'outcome_path'->>'first_type', '') AS first_outcome_type,
+           COALESCE((metadata->'classification_details'->'outcome_path'->>'has_multi_step')::boolean, false) AS has_multi_step
+         FROM classification_history
+         WHERE method != 'source_library'
+           AND created_at >= NOW() - ($1 || ' days')::INTERVAL
+       )
+       SELECT
+         cohort,
+         COUNT(*)::int AS total,
+         COUNT(*) FILTER (WHERE latest_outcome_type IS NOT NULL)::int AS linked_outcomes,
+         COUNT(*) FILTER (WHERE latest_outcome_type = 'verified')::int AS verified,
+         COUNT(*) FILTER (WHERE latest_outcome_type = 'corrected')::int AS corrected,
+         COUNT(*) FILTER (WHERE latest_outcome_type = 'resolved')::int AS resolved,
+         COUNT(*) FILTER (WHERE latest_outcome_type = 'retried')::int AS retried,
+         COUNT(*) FILTER (WHERE first_outcome_type = 'verified')::int AS first_verified,
+         COUNT(*) FILTER (WHERE first_outcome_type = 'corrected')::int AS first_corrected,
+         COUNT(*) FILTER (WHERE first_outcome_type = 'resolved')::int AS first_resolved,
+         COUNT(*) FILTER (WHERE first_outcome_type = 'retried')::int AS first_retried,
+         COUNT(*) FILTER (WHERE has_multi_step = true)::int AS multi_step_outcomes
+       FROM classified
+       GROUP BY cohort
+       ORDER BY cohort ASC`,
+      [days]
+    );
+
+    const defaultCohorts = {
+      baseline: {
+        cohort: 'baseline',
+        total: 0,
+        linkedOutcomes: 0,
+        verified: 0,
+        corrected: 0,
+        resolved: 0,
+        retried: 0,
+        multiStepOutcomes: 0,
+        firstOutcomeBreakdown: createEmptyOutcomeTypeBreakdown(),
+        latestOutcomeBreakdown: createEmptyOutcomeTypeBreakdown(),
+        perTotal: {
+          linkedOutcomeRate: 0,
+          correctedRate: 0,
+          verifiedRate: 0,
+          resolvedRate: 0,
+          retriedRate: 0
+        },
+        perLinkedOutcome: {
+          correctedRate: 0,
+          verifiedRate: 0,
+          resolvedRate: 0,
+          retriedRate: 0
+        },
+        linkedOutcomeRate: 0,
+        correctedRate: 0,
+        verifiedRate: 0,
+        resolvedRate: 0,
+        retriedRate: 0
+      },
+      pass2_not_adopted: {
+        cohort: 'pass2_not_adopted',
+        total: 0,
+        linkedOutcomes: 0,
+        verified: 0,
+        corrected: 0,
+        resolved: 0,
+        retried: 0,
+        multiStepOutcomes: 0,
+        firstOutcomeBreakdown: createEmptyOutcomeTypeBreakdown(),
+        latestOutcomeBreakdown: createEmptyOutcomeTypeBreakdown(),
+        perTotal: {
+          linkedOutcomeRate: 0,
+          correctedRate: 0,
+          verifiedRate: 0,
+          resolvedRate: 0,
+          retriedRate: 0
+        },
+        perLinkedOutcome: {
+          correctedRate: 0,
+          verifiedRate: 0,
+          resolvedRate: 0,
+          retriedRate: 0
+        },
+        linkedOutcomeRate: 0,
+        correctedRate: 0,
+        verifiedRate: 0,
+        resolvedRate: 0,
+        retriedRate: 0
+      },
+      pass2_adopted: {
+        cohort: 'pass2_adopted',
+        total: 0,
+        linkedOutcomes: 0,
+        verified: 0,
+        corrected: 0,
+        resolved: 0,
+        retried: 0,
+        multiStepOutcomes: 0,
+        firstOutcomeBreakdown: createEmptyOutcomeTypeBreakdown(),
+        latestOutcomeBreakdown: createEmptyOutcomeTypeBreakdown(),
+        perTotal: {
+          linkedOutcomeRate: 0,
+          correctedRate: 0,
+          verifiedRate: 0,
+          resolvedRate: 0,
+          retriedRate: 0
+        },
+        perLinkedOutcome: {
+          correctedRate: 0,
+          verifiedRate: 0,
+          resolvedRate: 0,
+          retriedRate: 0
+        },
+        linkedOutcomeRate: 0,
+        correctedRate: 0,
+        verifiedRate: 0,
+        resolvedRate: 0,
+        retriedRate: 0
+      }
+    };
+
+    for (const row of result.rows) {
+      if (!defaultCohorts[row.cohort]) continue;
+      const total = Number.parseInt(row.total, 10) || 0;
+      const linkedOutcomes = Number.parseInt(row.linked_outcomes, 10) || 0;
+      const corrected = Number.parseInt(row.corrected, 10) || 0;
+      const verified = Number.parseInt(row.verified, 10) || 0;
+      const resolved = Number.parseInt(row.resolved, 10) || 0;
+      const retried = Number.parseInt(row.retried, 10) || 0;
+      const multiStepOutcomes = Number.parseInt(row.multi_step_outcomes, 10) || 0;
+      const firstOutcomeBreakdown = {
+        verified: Number.parseInt(row.first_verified, 10) || 0,
+        corrected: Number.parseInt(row.first_corrected, 10) || 0,
+        resolved: Number.parseInt(row.first_resolved, 10) || 0,
+        retried: Number.parseInt(row.first_retried, 10) || 0
+      };
+      const rateSet = buildOutcomeRateSet({
+        total,
+        linkedOutcomes,
+        verified,
+        corrected,
+        resolved,
+        retried
+      });
+
+      defaultCohorts[row.cohort] = {
+        cohort: row.cohort,
+        total,
+        linkedOutcomes,
+        verified,
+        corrected,
+        resolved,
+        retried,
+        multiStepOutcomes,
+        firstOutcomeBreakdown,
+        latestOutcomeBreakdown: {
+          verified,
+          corrected,
+          resolved,
+          retried
+        },
+        perTotal: rateSet.perTotal,
+        perLinkedOutcome: rateSet.perLinkedOutcome,
+        linkedOutcomeRate: rateSet.perTotal.linkedOutcomeRate,
+        correctedRate: rateSet.perLinkedOutcome.correctedRate,
+        verifiedRate: rateSet.perLinkedOutcome.verifiedRate,
+        resolvedRate: rateSet.perLinkedOutcome.resolvedRate,
+        retriedRate: rateSet.perLinkedOutcome.retriedRate
+      };
+    }
+
+    const cohorts = [
+      defaultCohorts.baseline,
+      defaultCohorts.pass2_not_adopted,
+      defaultCohorts.pass2_adopted
+    ];
+    const totals = cohorts.reduce((acc, cohort) => {
+      acc.total += cohort.total;
+      acc.linkedOutcomes += cohort.linkedOutcomes;
+      acc.verified += cohort.verified;
+      acc.corrected += cohort.corrected;
+      acc.resolved += cohort.resolved;
+      acc.retried += cohort.retried;
+      acc.multiStepOutcomes += cohort.multiStepOutcomes;
+      acc.firstOutcomeBreakdown.verified += cohort.firstOutcomeBreakdown.verified;
+      acc.firstOutcomeBreakdown.corrected += cohort.firstOutcomeBreakdown.corrected;
+      acc.firstOutcomeBreakdown.resolved += cohort.firstOutcomeBreakdown.resolved;
+      acc.firstOutcomeBreakdown.retried += cohort.firstOutcomeBreakdown.retried;
+      return acc;
+    }, {
+      total: 0,
+      linkedOutcomes: 0,
+      verified: 0,
+      corrected: 0,
+      resolved: 0,
+      retried: 0,
+      multiStepOutcomes: 0,
+      firstOutcomeBreakdown: createEmptyOutcomeTypeBreakdown()
+    });
+
+    const totalRateSet = buildOutcomeRateSet(totals);
+
+    res.json({
+      windowDays: days,
+      totals: {
+        ...totals,
+        latestOutcomeBreakdown: {
+          verified: totals.verified,
+          corrected: totals.corrected,
+          resolved: totals.resolved,
+          retried: totals.retried
+        },
+        perTotal: totalRateSet.perTotal,
+        perLinkedOutcome: totalRateSet.perLinkedOutcome,
+        linkedOutcomeRate: totalRateSet.perTotal.linkedOutcomeRate,
+        correctedRate: totalRateSet.perLinkedOutcome.correctedRate,
+        verifiedRate: totalRateSet.perLinkedOutcome.verifiedRate,
+        resolvedRate: totalRateSet.perLinkedOutcome.resolvedRate,
+        retriedRate: totalRateSet.perLinkedOutcome.retriedRate
+      },
+      cohorts
+    });
+  } catch (error) {
+    logger.error('Failed to load second-pass evaluation stats', { error: error.message });
+    res.status(500).json({ error: 'Failed to load second-pass evaluation stats' });
   }
 });
 
@@ -746,7 +1041,7 @@ router.post('/retry', requireReadWrite, async (req, res) => {
 
     const actor = req.user?.username || req.user?.email || req.user?.id || 'admin';
     const correlationId = randomUUID();
-    const purgeLearning = options?.purgeLearning !== false;
+    const purgeLearning = options?.purgeLearning === true;
 
     const result = await classificationRetryService.retryClassifications({
       classificationIds,

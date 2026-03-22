@@ -16,16 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
-const { PostgreSqlContainer } = require('@testcontainers/postgresql');
+const crypto = require('crypto');
 const { Pool, types } = require('pg');
+const { readRuntime } = require('./runtime');
 
-// Register the same int8 type-parser as database.js so the test pool returns
-// bigint PK values as JS numbers (matching production behavior after the
-// 20260305_200500_bigint_primary_keys migration). This must be set before any
-// pool is created since pg.types is a module-level singleton.
 types.setTypeParser(20, (val) => {
     if (val === null) return null;
     const num = parseInt(val, 10);
@@ -33,14 +27,8 @@ types.setTypeParser(20, (val) => {
 });
 
 const verboseLogs = process.env.INTEGRATION_TEST_VERBOSE === 'true';
-const isPrimaryWorker = !process.env.JEST_WORKER_ID || process.env.JEST_WORKER_ID === '1';
 const log = (...args) => {
     if (verboseLogs) {
-        console.log(...args);
-    }
-};
-const summaryLog = (...args) => {
-    if (isPrimaryWorker) {
         console.log(...args);
     }
 };
@@ -49,158 +37,83 @@ if (!process.env.API_KEY_ENCRYPTION_KEY) {
     process.env.API_KEY_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 }
 
-let container;
+let runtime;
+let adminPool;
 let pool;
+let suiteDatabaseName;
 
-// Global setup - start PostgreSQL container
+function quoteIdentifier(value) {
+    return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function buildSuiteDatabaseName() {
+    const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+    return `classifarr_suite_${suffix}`;
+}
+
+async function dropSuiteDatabase() {
+    if (!adminPool || !suiteDatabaseName) {
+        return;
+    }
+
+    await adminPool.query(`
+        SELECT pg_terminate_backend(pid)
+        FROM pg_stat_activity
+        WHERE datname = $1
+          AND pid <> pg_backend_pid()
+    `, [suiteDatabaseName]);
+
+    await adminPool.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(suiteDatabaseName)}`);
+}
+
 beforeAll(async () => {
-    summaryLog('Integration test database setup starting (set INTEGRATION_TEST_VERBOSE=true for details).');
-    log('Starting PostgreSQL container via testcontainers...');
-
-    const dbPath = path.resolve(__dirname, '../../../../database');
-    const initSqlPath = path.join(dbPath, 'init.sql');
-
-    if (!fs.existsSync(initSqlPath)) {
-        throw new Error(`init.sql not found at ${initSqlPath}`);
+    runtime = readRuntime();
+    if (!runtime.runId) {
+        throw new Error('Integration runtime is missing runId');
     }
+    suiteDatabaseName = buildSuiteDatabaseName();
 
-    // Read and preprocess init.sql (skip migrations for fresh install)
-    let initSql = fs.readFileSync(initSqlPath, 'utf8');
+    adminPool = new Pool({
+        host: runtime.host,
+        port: runtime.port,
+        database: runtime.adminDatabase,
+        user: runtime.user,
+        password: runtime.password,
+    });
 
-    // Remove \i migration commands (not needed for fresh database)
-    initSql = initSql.split('\n')
-        .filter(line => !line.trim().startsWith('\\i'))
-        .join('\n');
+    log(`Creating integration suite database ${suiteDatabaseName} from template ${runtime.templateDatabase}`);
 
-    // Write preprocessed SQL to temp file for copying to container
-    // Use os.tmpdir() for cross-platform compatibility (Windows/Linux)
-    const tempSqlFile = path.resolve(os.tmpdir(), `classifarr_schema_${Date.now()}.sql`);
-    fs.writeFileSync(tempSqlFile, initSql, 'utf8');
-    log(`Created temp SQL file at: ${tempSqlFile}`);
+    await adminPool.query(`
+        CREATE DATABASE ${quoteIdentifier(suiteDatabaseName)}
+        TEMPLATE ${quoteIdentifier(runtime.templateDatabase)}
+    `);
 
-    try {
-        // Start PostgreSQL container and copy the SQL file
-        // Use pgvector image to support RAG embeddings
-        container = await new PostgreSqlContainer('pgvector/pgvector:pg15')
-            .withDatabase('classifarr_test')
-            .withUsername('test')
-            .withPassword('test')
-            .withCopyFilesToContainer([
-                {
-                    source: tempSqlFile,
-                    target: '/tmp/schema.sql'
-                }
-            ])
-            .start();
+    pool = new Pool({
+        host: runtime.host,
+        port: runtime.port,
+        database: suiteDatabaseName,
+        user: runtime.user,
+        password: runtime.password,
+    });
+}, 120000);
 
-        log(`PostgreSQL container started on port ${container.getPort()}`);
-
-        // Create connection pool
-        pool = new Pool({
-            host: container.getHost(),
-            port: container.getPort(),
-            database: container.getDatabase(),
-            user: container.getUsername(),
-            password: container.getPassword(),
-        });
-
-        // Apply schema using psql -f inside the container
-        log('Applying schema via psql -f...');
-
-        const { output, exitCode } = await container.exec([
-            'psql', '-U', 'test', '-d', 'classifarr_test', '-f', '/tmp/schema.sql'
-        ]);
-
-        if (exitCode !== 0) {
-            console.error('psql output:', output);
-            throw new Error(`psql failed with exit code ${exitCode}: ${output}`);
-        }
-
-        log('Schema applied successfully via psql.');
-
-        // Apply migrations for testing new schema
-        log('Applying migrations...');
-        const migrationsDir = path.join(dbPath, 'migrations');
-        const migrationFiles = fs.readdirSync(migrationsDir)
-            .filter(f => f.endsWith('.sql') && !f.includes('README') && !f.includes('GUIDE'))
-            .sort();
-
-        const failedMigrations = [];
-        const knownOptionalFailures = [
-            'extension "vector" is not available',      // pgvector not in test container
-            'pg_stat_statements must be loaded via shared_preload_libraries', // requires postgresql.conf config
-            'could not open extension control file',    // extension not in this postgres build
-            'already exists',                           // idempotent re-run of DDL without IF NOT EXISTS
-        ];
-
-        // Ensure migration tracking table exists (align with production migration runner)
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS schema_migrations (
-                id SERIAL PRIMARY KEY,
-                filename VARCHAR(255) UNIQUE NOT NULL,
-                applied_at TIMESTAMP DEFAULT NOW()
-            );
-        `);
-
-        for (const migrationFile of migrationFiles) {
-            log(`  Applying migration: ${migrationFile}`);
-            const migrationPath = path.join(migrationsDir, migrationFile);
-            const migrationSql = fs.readFileSync(migrationPath, 'utf8');
-
-            try {
-                await pool.query(migrationSql);
-                await pool.query(
-                    'INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING',
-                    [migrationFile]
-                );
-            } catch (error) {
-                const isKnownOptional = knownOptionalFailures.some(msg => error.message.includes(msg));
-
-                if (isKnownOptional) {
-                    console.warn(`  Skipping ${migrationFile} (expected): ${error.message}`);
-                } else {
-                    console.error(`  Failed to apply ${migrationFile}:`, error.message);
-                    failedMigrations.push({
-                        file: migrationFile,
-                        message: error.message
-                    });
-                }
-            }
-        }
-
-        if (failedMigrations.length > 0) {
-            console.error('One or more critical migrations failed to apply:', failedMigrations);
-            const details = failedMigrations
-                .map(m => `${m.file}: ${m.message}`)
-                .join('; ');
-            throw new Error(`Failed to apply database migrations: ${details}`);
-        }
-
-        log('Migrations applied.');
-        summaryLog('Integration test database setup complete.');
-    } finally {
-        // Clean up temp file
-        if (fs.existsSync(tempSqlFile)) {
-            fs.unlinkSync(tempSqlFile);
-        }
-    }
-}, 300000); // 5 minute timeout for container startup in CI/slow environments
-
-// Global teardown - stop container
 afterAll(async () => {
-    summaryLog('Integration test database teardown starting.');
-    log('Stopping PostgreSQL container...');
     if (pool) {
         await pool.end();
+        pool = null;
     }
-    if (container) {
-        await container.stop();
-    }
-    log('PostgreSQL container stopped.');
-    summaryLog('Integration test database teardown complete.');
-});
 
-// Mock the database module to use our test pool
+    try {
+        await dropSuiteDatabase();
+    } finally {
+        if (adminPool) {
+            await adminPool.end();
+            adminPool = null;
+        }
+        suiteDatabaseName = null;
+    }
+}, 120000);
+
 jest.mock('../../config/database', () => {
     const getPool = () => require('./setup').getPool();
 
@@ -240,11 +153,16 @@ jest.mock('../../config/database', () => {
             IDLE_BACKFILL: 1001,
             SCHEDULED_BACKFILL: 1002,
             MANUAL_BACKFILL: 1003,
+            BACKFILL_OWNER: 1004,
         },
     };
 });
 
-// Export pool getter for the mock
 module.exports = {
-    getPool: () => pool
+    getPool: () => {
+        if (!pool) {
+            throw new Error('Integration test pool is not initialized yet');
+        }
+        return pool;
+    }
 };

@@ -21,8 +21,10 @@ const router = express.Router();
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const { describePresetRuntimeSemantics, normalizeSignalConfig } = require('../utils/policySignals');
+const { listPresets } = require('../utils/presetCatalog');
 
 const logger = createLogger('PoliciesRoute');
+const VALID_COMBINATION_MODES = new Set(['best_match', 'average', 'weighted_average', 'require_all']);
 const SUGGESTION_STOPWORDS = new Set([
     'a', 'an', 'and', 'for', 'in', 'of', 'on', 'the', 'to', 'with',
     'library', 'libraries', 'media', 'content'
@@ -72,12 +74,90 @@ function sanitizeCustomSignals(value) {
     return cloned;
 }
 
+function normalizePresetAttachmentWeight(value) {
+    if (value === undefined || value === null) {
+        return 1.0;
+    }
+
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : Number.NaN;
+}
+
+function normalizePresetAttachmentInput(preset = {}) {
+    return {
+        preset_id: preset?.preset_id ?? preset?.id ?? null,
+        weight: normalizePresetAttachmentWeight(preset?.weight),
+        customSignals: sanitizeCustomSignals(preset?.customSignals ?? preset?.custom_signals),
+    };
+}
+
+function normalizePresetAttachmentInputs(presets) {
+    return Array.isArray(presets) ? presets.map(normalizePresetAttachmentInput) : [];
+}
+
+function validateWeightRange(value, label) {
+    if (value !== undefined && (value < 0 || value > 1)) {
+        return `${label} must be between 0 and 1`;
+    }
+    return null;
+}
+
+function validatePresetAttachmentWeight(value, label = 'preset weight') {
+    if (!Number.isFinite(value) || value <= 0) {
+        return `${label} must be a positive number`;
+    }
+    return null;
+}
+
+function validatePresetAttachmentWeights(presets, labelPrefix = 'preset') {
+    for (let index = 0; index < presets.length; index += 1) {
+        const preset = presets[index];
+        const error = validatePresetAttachmentWeight(preset.weight, `${labelPrefix}[${index}].weight`);
+        if (error) {
+            return error;
+        }
+    }
+    return null;
+}
+
+function validateCombinationMode(mode) {
+    if (mode !== undefined && !VALID_COMBINATION_MODES.has(mode)) {
+        return `combination_mode must be one of: ${Array.from(VALID_COMBINATION_MODES).join(', ')}`;
+    }
+    return null;
+}
+
+function buildMergedWeightSet(existingPolicy = {}, overrides = {}) {
+    return {
+        preset_weight: overrides.preset_weight ?? existingPolicy.preset_weight,
+        profile_weight: overrides.profile_weight ?? existingPolicy.profile_weight,
+        pattern_weight: overrides.pattern_weight ?? existingPolicy.pattern_weight,
+        rag_weight: overrides.rag_weight ?? existingPolicy.rag_weight,
+        history_weight: overrides.history_weight ?? existingPolicy.history_weight,
+    };
+}
+
+function validateWeightSum(weights) {
+    const totalWeight = Number(weights.preset_weight || 0)
+        + Number(weights.profile_weight || 0)
+        + Number(weights.pattern_weight || 0)
+        + Number(weights.rag_weight || 0)
+        + Number(weights.history_weight || 0);
+
+    if (Math.abs(totalWeight - 1.0) > 0.001) {
+        return `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`;
+    }
+
+    return null;
+}
+
 function annotatePresetAttachment(preset) {
     const baseSignals = normalizeSignalConfig(preset?.signals) || {};
     const customSignals = sanitizeCustomSignals(preset?.custom_signals ?? preset?.customSignals) || null;
 
     return {
         ...preset,
+        source: preset?.source || (preset?.is_system === false ? 'custom' : 'builtin'),
         custom_signals: customSignals,
         customSignals: customSignals,
         runtime_semantics: describePresetRuntimeSemantics(baseSignals, customSignals)
@@ -126,40 +206,15 @@ async function fetchPolicyPresetAttachments(policyId = null) {
  */
 router.get('/presets/all', async (req, res) => {
     try {
-        const { category, search } = req.query;
+        const { category, search, include_custom } = req.query;
+        const presets = await listPresets({
+            category,
+            search,
+            includeCustom: include_custom !== 'false',
+            orderBy: 'policy'
+        });
 
-        let query = `
-            SELECT
-                cp.*,
-                COALESCE(ppu.usage_count, 0)::int AS usage_count
-            FROM content_presets cp
-            LEFT JOIN (
-                SELECT preset_id, COUNT(*)::int AS usage_count
-                FROM policy_presets
-                GROUP BY preset_id
-            ) ppu ON ppu.preset_id = cp.id
-            WHERE 1=1
-        `;
-        const params = [];
-        let paramCount = 1;
-
-        if (category) {
-            query += ` AND cp.category = $${paramCount}`;
-            params.push(category);
-            paramCount++;
-        }
-
-        if (search) {
-            query += ` AND (cp.name ILIKE $${paramCount} OR cp.description ILIKE $${paramCount})`;
-            params.push(`%${search}%`);
-            paramCount++;
-        }
-
-        query += ` ORDER BY cp.category, cp.display_order, cp.name`;
-
-        const result = await db.query(query, params);
-
-        res.json(result.rows);
+        res.json(presets);
     } catch (error) {
         logger.error('Failed to list presets', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -263,18 +318,16 @@ router.get('/presets/suggest/:libraryId', async (req, res) => {
 
         logger.debug('Library name tokens for matching', { libraryId, libraryName, tokens });
 
-        // Get all system presets with their signals
-        const presetsResult = await db.query(`
-            SELECT 
-                id, key, name, description, icon, category, signals,
-                is_system, display_order
-            FROM content_presets
-            WHERE is_system = true
-            ORDER BY display_order, name
-        `);
+        // Score all attachable presets, not just builtins, so custom presets can
+        // participate in the same suggestion flow once they are part of the
+        // unified preset catalog.
+        const presetRows = await listPresets({
+            includeCustom: true,
+            orderBy: 'policy'
+        });
 
         // Calculate match score for each preset
-        const suggestions = presetsResult.rows.map(preset => {
+        const suggestions = presetRows.map(preset => {
             let score = 0;
             const suggestionReasons = [];
 
@@ -552,9 +605,10 @@ router.post('/', async (req, res) => {
             trust_patterns = true,
             trust_rag = true,
             trust_history = true,
-            preset_weight = 0.40,
-            pattern_weight = 0.30,
-            rag_weight = 0.20,
+            preset_weight = 0.35,
+            profile_weight = 0.25,
+            pattern_weight = 0.15,
+            rag_weight = 0.15,
             history_weight = 0.10,
             combination_mode = 'best_match',
             presets = []
@@ -571,10 +625,17 @@ router.post('/', async (req, res) => {
         if (prompt_threshold < 0 || prompt_threshold > 100) {
             return res.status(400).json({ error: 'prompt_threshold must be between 0 and 100' });
         }
+        const combinationModeError = validateCombinationMode(combination_mode);
+        if (combinationModeError) {
+            return res.status(400).json({ error: combinationModeError });
+        }
 
         // Validate weights
         if (preset_weight < 0 || preset_weight > 1) {
             return res.status(400).json({ error: 'preset_weight must be between 0 and 1' });
+        }
+        if (profile_weight < 0 || profile_weight > 1) {
+            return res.status(400).json({ error: 'profile_weight must be between 0 and 1' });
         }
         if (pattern_weight < 0 || pattern_weight > 1) {
             return res.status(400).json({ error: 'pattern_weight must be between 0 and 1' });
@@ -587,11 +648,17 @@ router.post('/', async (req, res) => {
         }
 
         // Validate weights sum to 1.0 (with tolerance for floating-point precision)
-        const totalWeight = preset_weight + pattern_weight + rag_weight + history_weight;
+        const totalWeight = preset_weight + profile_weight + pattern_weight + rag_weight + history_weight;
         if (Math.abs(totalWeight - 1.0) > 0.001) {
             return res.status(400).json({
                 error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`
             });
+        }
+
+        const normalizedPresets = normalizePresetAttachmentInputs(presets);
+        const presetAttachmentWeightError = validatePresetAttachmentWeights(normalizedPresets, 'presets');
+        if (presetAttachmentWeightError) {
+            return res.status(400).json({ error: presetAttachmentWeightError });
         }
 
         const policy = await db.withTransaction(async (client) => {
@@ -601,27 +668,27 @@ router.post('/', async (req, res) => {
                     library_id, name, description, enabled, priority, sort_order,
                     auto_classify_threshold, prompt_threshold, require_ai_validation,
                     trust_patterns, trust_rag, trust_history,
-                    preset_weight, pattern_weight, rag_weight, history_weight,
+                    preset_weight, profile_weight, pattern_weight, rag_weight, history_weight,
                     combination_mode
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
                 RETURNING *
             `, [
                 library_id, name, description, enabled, priority, sort_order,
                 auto_classify_threshold, prompt_threshold, require_ai_validation,
                 trust_patterns, trust_rag, trust_history,
-                preset_weight, pattern_weight, rag_weight, history_weight,
+                preset_weight, profile_weight, pattern_weight, rag_weight, history_weight,
                 combination_mode
             ]);
 
             const p = policyResult.rows[0];
 
             // Attach presets
-            if (presets && presets.length > 0) {
-                for (const preset of presets) {
+            if (normalizedPresets.length > 0) {
+                for (const preset of normalizedPresets) {
                     await client.query(`
                         INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
                         VALUES ($1, $2, $3, $4)
-                    `, [p.id, preset.preset_id, preset.weight || 1.0, sanitizeCustomSignals(preset.customSignals)]);
+                    `, [p.id, preset.preset_id, preset.weight, sanitizeCustomSignals(preset.customSignals)]);
                 }
             }
 
@@ -681,6 +748,7 @@ router.put('/:id', async (req, res) => {
             trust_rag,
             trust_history,
             preset_weight,
+            profile_weight,
             pattern_weight,
             rag_weight,
             history_weight,
@@ -696,29 +764,49 @@ router.put('/:id', async (req, res) => {
             return res.status(400).json({ error: 'prompt_threshold must be between 0 and 100' });
         }
 
-        // Validate weights if provided
-        if (preset_weight !== undefined && (preset_weight < 0 || preset_weight > 1)) {
-            return res.status(400).json({ error: 'preset_weight must be between 0 and 1' });
+        const weightRangeError = [
+            validateWeightRange(preset_weight, 'preset_weight'),
+            validateWeightRange(profile_weight, 'profile_weight'),
+            validateWeightRange(pattern_weight, 'pattern_weight'),
+            validateWeightRange(rag_weight, 'rag_weight'),
+            validateWeightRange(history_weight, 'history_weight'),
+        ].find(Boolean);
+        if (weightRangeError) {
+            return res.status(400).json({ error: weightRangeError });
         }
-        if (pattern_weight !== undefined && (pattern_weight < 0 || pattern_weight > 1)) {
-            return res.status(400).json({ error: 'pattern_weight must be between 0 and 1' });
-        }
-        if (rag_weight !== undefined && (rag_weight < 0 || rag_weight > 1)) {
-            return res.status(400).json({ error: 'rag_weight must be between 0 and 1' });
-        }
-        if (history_weight !== undefined && (history_weight < 0 || history_weight > 1)) {
-            return res.status(400).json({ error: 'history_weight must be between 0 and 1' });
+        const combinationModeError = validateCombinationMode(combination_mode);
+        if (combinationModeError) {
+            return res.status(400).json({ error: combinationModeError });
         }
 
-        // If all weights are provided, validate they sum to 1.0
-        if (preset_weight !== undefined && pattern_weight !== undefined &&
-            rag_weight !== undefined && history_weight !== undefined) {
-            const totalWeight = preset_weight + pattern_weight + rag_weight + history_weight;
-            if (Math.abs(totalWeight - 1.0) > 0.001) {
-                return res.status(400).json({
-                    error: `Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`
-                });
+        const normalizedPresets = presets !== undefined ? normalizePresetAttachmentInputs(presets) : null;
+        if (normalizedPresets) {
+            const presetAttachmentWeightError = validatePresetAttachmentWeights(normalizedPresets, 'presets');
+            if (presetAttachmentWeightError) {
+                return res.status(400).json({ error: presetAttachmentWeightError });
             }
+        }
+
+        const existingPolicyResult = await db.query(`
+            SELECT id, preset_weight, profile_weight, pattern_weight, rag_weight, history_weight
+            FROM library_policies
+            WHERE id = $1
+        `, [id]);
+
+        if (existingPolicyResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Policy not found' });
+        }
+
+        const mergedWeights = buildMergedWeightSet(existingPolicyResult.rows[0], {
+            preset_weight,
+            profile_weight,
+            pattern_weight,
+            rag_weight,
+            history_weight,
+        });
+        const weightSumError = validateWeightSum(mergedWeights);
+        if (weightSumError) {
+            return res.status(400).json({ error: weightSumError });
         }
 
         await db.withTransaction(async (client) => {
@@ -737,17 +825,18 @@ router.put('/:id', async (req, res) => {
                     trust_rag = COALESCE($10, trust_rag),
                     trust_history = COALESCE($11, trust_history),
                     preset_weight = COALESCE($12, preset_weight),
-                    pattern_weight = COALESCE($13, pattern_weight),
-                    rag_weight = COALESCE($14, rag_weight),
-                    history_weight = COALESCE($15, history_weight),
-                    combination_mode = COALESCE($16, combination_mode),
+                    profile_weight = COALESCE($13, profile_weight),
+                    pattern_weight = COALESCE($14, pattern_weight),
+                    rag_weight = COALESCE($15, rag_weight),
+                    history_weight = COALESCE($16, history_weight),
+                    combination_mode = COALESCE($17, combination_mode),
                     updated_at = NOW()
-                WHERE id = $17
+                WHERE id = $18
             `, [
                 name, description, enabled, priority, sort_order,
                 auto_classify_threshold, prompt_threshold, require_ai_validation,
                 trust_patterns, trust_rag, trust_history,
-                preset_weight, pattern_weight, rag_weight, history_weight,
+                preset_weight, profile_weight, pattern_weight, rag_weight, history_weight,
                 combination_mode, id
             ]);
 
@@ -757,12 +846,12 @@ router.put('/:id', async (req, res) => {
                 await client.query('DELETE FROM policy_presets WHERE policy_id = $1', [id]);
 
                 // Add new presets
-                if (presets.length > 0) {
-                    for (const preset of presets) {
+                if (normalizedPresets.length > 0) {
+                    for (const preset of normalizedPresets) {
                         await client.query(`
                             INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
                             VALUES ($1, $2, $3, $4)
-                        `, [id, preset.preset_id, preset.weight || 1.0, sanitizeCustomSignals(preset.customSignals)]);
+                        `, [id, preset.preset_id, preset.weight, sanitizeCustomSignals(preset.customSignals)]);
                     }
                 }
             }
@@ -896,10 +985,15 @@ router.get('/:id/presets', async (req, res) => {
 router.post('/:id/presets', async (req, res) => {
     try {
         const { id } = req.params;
-        const { preset_id, weight = 1.0 } = req.body;
+        const { preset_id } = req.body;
+        const weight = normalizePresetAttachmentWeight(req.body.weight);
 
         if (!preset_id) {
             return res.status(400).json({ error: 'preset_id is required' });
+        }
+        const presetWeightError = validatePresetAttachmentWeight(weight, 'weight');
+        if (presetWeightError) {
+            return res.status(400).json({ error: presetWeightError });
         }
 
         // Check if preset already attached
@@ -912,7 +1006,7 @@ router.post('/:id/presets', async (req, res) => {
             return res.status(400).json({ error: 'Preset already attached to this policy' });
         }
 
-        const customSignals = sanitizeCustomSignals(req.body.customSignals);
+        const customSignals = sanitizeCustomSignals(req.body.customSignals ?? req.body.custom_signals);
         const result = await db.query(`
             INSERT INTO policy_presets (policy_id, preset_id, weight, custom_signals)
             VALUES ($1, $2, $3, $4)

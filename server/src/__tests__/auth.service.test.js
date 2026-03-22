@@ -120,9 +120,31 @@ describe('Auth Service - token and persistence flows', () => {
 
     expect(token).toBe('access-token');
     expect(signSpy).toHaveBeenCalledWith(
-      { id: 7, username: 'admin', role: 'admin', type: 'access' },
+      expect.objectContaining({
+        id: 7,
+        username: 'admin',
+        role: 'admin',
+        type: 'access',
+        persistent_session: false,
+      }),
       'jwt-secret',
       { expiresIn: authService.ACCESS_TOKEN_EXPIRY, issuer: 'classifarr' }
+    );
+    expect(signSpy.mock.calls[0][0].issued_at_ms).toEqual(expect.any(Number));
+  });
+
+  test('generateAccessToken marks remember-me access tokens as persistent', async () => {
+    const signSpy = jest.spyOn(jwt, 'sign').mockReturnValue('persistent-access-token');
+    db.query.mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
+
+    await authService.generateAccessToken({
+      id: 9,
+      username: 'remembered',
+      role: 'admin',
+    }, true);
+
+    expect(signSpy.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ persistent_session: true })
     );
   });
 
@@ -313,6 +335,43 @@ describe('Auth Service - token and persistence flows', () => {
     db.query.mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
 
     await expect(authService.verifyToken('expired-token')).rejects.toHaveProperty('name', 'TokenExpiredError');
+  });
+
+  test('verifyToken rejects non-persistent access tokens issued before startup invalidation', async () => {
+    const issuedAtMs = Date.now() - 5000;
+    jest.spyOn(jwt, 'verify').mockReturnValue({
+      id: 1,
+      type: 'access',
+      persistent_session: false,
+      issued_at_ms: issuedAtMs,
+    });
+    db.query
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
+
+    await authService.revokeAllRefreshTokensOnStartup();
+
+    await expect(authService.verifyToken('stale-non-persistent-token')).rejects.toHaveProperty('name', 'TokenExpiredError');
+    expect(authService.getNonPersistentAccessInvalidBeforeMs()).toBeGreaterThan(issuedAtMs);
+  });
+
+  test('verifyToken preserves remember-me access tokens across startup invalidation', async () => {
+    const issuedAtMs = Date.now() - 5000;
+    jest.spyOn(jwt, 'verify').mockReturnValue({
+      id: 1,
+      type: 'access',
+      persistent_session: true,
+      issued_at_ms: issuedAtMs,
+    });
+    db.query
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
+
+    await authService.revokeAllRefreshTokensOnStartup();
+
+    await expect(authService.verifyToken('persistent-token')).resolves.toEqual(
+      expect.objectContaining({ persistent_session: true, issued_at_ms: issuedAtMs })
+    );
   });
 
   test('auditLog writes JSON metadata', async () => {

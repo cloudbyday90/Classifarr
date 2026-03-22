@@ -3,12 +3,12 @@
 Route every request to the right library with policy-driven decisions you can trust.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.43.5--beta-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.44.2c--beta-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 Classifarr is an AI- and RAG-powered media classification and routing service. It runs as the decision layer between request inputs (Overseerr/Jellyseerr webhooks, manual/API submissions, and media sync) and your automation stack, then uses metadata, policy rules, and AI/RAG signals to auto-route high-confidence matches to the correct Radarr/Sonarr destination while sending low-confidence cases to review.
 
-**v0.43.5-beta** is the first beta release — all originally planned core features are in place. The database foundation has been hardened with 64-bit primary keys across every table, production query profiling, crash-safe queue visibility timeouts, and automatic nightly maintenance (log cleanup, token pruning, audit rotation). This is a stable, production-capable release for self-hosted media library operators.
+**v0.44.2c-beta** is the current public release label in this repo. Package files use the semver-safe form `0.44.2-c.beta`, while the UI, release notes, and Git tags use `v0.44.2c-beta`. This beta line is positioned as stable and production-capable for self-hosted media library operators.
 
 ## Why Classifarr
 
@@ -34,7 +34,7 @@ Classifarr is a full operations platform for classification, routing, review, an
 ### 2. Policy and Preset Management
 
 - Policy Builder workflow for creating and maintaining routing rules.
-- Preset catalog and custom presets with policy-level assignment.
+- Built-in Presets catalog plus My Presets, both available for policy-level assignment.
 - Pattern discovery and pattern approval/rejection workflows.
 - Policy feedback and tuning suggestions with impact views.
 
@@ -120,7 +120,7 @@ Use this baseline compose:
 ```yaml
 services:
   classifarr:
-    image: ghcr.io/cloudbyday90/classifarr:v0.43.5-beta
+    image: ghcr.io/cloudbyday90/classifarr:v0.44.2c-beta
     container_name: classifarr
     user: "1000:1000"
     ports:
@@ -402,8 +402,15 @@ For local/self-hosted image embeddings, use:
 Classifarr-compatible API contract:
 
 - `GET /health`
+- `GET /ready`
 - `GET /models`
 - `POST /embed-image`
+
+Current health behavior:
+
+- `GET /health` confirms the service is reachable.
+- `GET /ready` is used when available to distinguish warmup from full readiness.
+- A reachable sidecar that is still loading its default model is surfaced as `degraded` rather than fully `connected`.
 
 Minimal compose example:
 

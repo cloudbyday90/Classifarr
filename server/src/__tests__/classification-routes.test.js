@@ -56,6 +56,7 @@ jest.mock('../services/providerLock', () => ({
 // 4. Mock other services
 jest.mock('../services/classification');
 jest.mock('../services/clarificationService');
+jest.mock('../services/classificationOutcomeService');
 jest.mock('../services/reclassificationService');
 jest.mock('../services/patternReinforcementService');
 jest.mock('../services/libraryProfileService');
@@ -523,6 +524,42 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(response.status).toBe(409);
       expect(response.body.error).toBe('Classification is no longer awaiting decision');
     });
+
+    test('should return 409 when the policy question is stale', async () => {
+      clarificationService.resolvePolicyQuestion.mockRejectedValue(
+        Object.assign(
+          new Error('Policy question is stale and must be retried'),
+          { statusCode: 409, code: 'policy_question_stale' }
+        )
+      );
+
+      const response = await request(app)
+        .post('/api/classification/pending/6/resolve')
+        .send({
+          library_id: 60
+        });
+
+      expect(response.status).toBe(409);
+      expect(response.body.error).toBe('Policy question is stale and must be retried');
+    });
+
+    test('should return 400 when the selected library is not a current policy option', async () => {
+      clarificationService.resolvePolicyQuestion.mockRejectedValue(
+        Object.assign(
+          new Error('Selected library is no longer valid for this policy question'),
+          { statusCode: 400, code: 'invalid_policy_option' }
+        )
+      );
+
+      const response = await request(app)
+        .post('/api/classification/pending/6/resolve')
+        .send({
+          library_id: 60
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Selected library is no longer valid for this policy question');
+    });
   });
 
   describe('GET /pending', () => {
@@ -620,6 +657,39 @@ describe('Classification Routes - Pending Resolution', () => {
       );
     });
 
+    test('preserves exact-match learning by default for manual retries', async () => {
+      classificationRetryService.retryClassifications.mockResolvedValueOnce({
+        correlationId: 'corr-default-preserve',
+        requested: 1,
+        queued: 1,
+        skipped: 0,
+        failed: 0,
+        results: [
+          { classificationId: 204, queued: true, reasonCode: 'queued', taskId: 9014 }
+        ]
+      });
+
+      const response = await request(app)
+        .post('/api/classification/retry')
+        .send({
+          classificationIds: [204]
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        success: true,
+        requested: 1,
+        queued: 1
+      });
+      expect(classificationRetryService.retryClassifications).toHaveBeenCalledWith(
+        expect.objectContaining({
+          classificationIds: [204],
+          purgeLearning: false,
+          actor: 'admin'
+        })
+      );
+    });
+
     test('blocks read-only API keys via requireReadWrite', async () => {
       const appWithReadOnlyKey = express();
       appWithReadOnlyKey.use(express.json());
@@ -685,6 +755,139 @@ describe('Classification Routes - Pending Resolution', () => {
         .get('/api/classification/pending/count');
 
       expect(response.status).toBe(500);
+    });
+  });
+
+  describe('GET /second-pass-evaluation', () => {
+    test('returns default cohort report with normalized rates', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [
+          {
+            cohort: 'baseline',
+            total: 20,
+            linked_outcomes: 8,
+            verified: 3,
+            corrected: 2,
+            resolved: 1,
+            retried: 2,
+            first_verified: 2,
+            first_corrected: 3,
+            first_resolved: 1,
+            first_retried: 1,
+            multi_step_outcomes: 2
+          },
+          {
+            cohort: 'pass2_adopted',
+            total: 10,
+            linked_outcomes: 6,
+            verified: 4,
+            corrected: 1,
+            resolved: 0,
+            retried: 1,
+            first_verified: 5,
+            first_corrected: 0,
+            first_resolved: 0,
+            first_retried: 1,
+            multi_step_outcomes: 3
+          }
+        ]
+      });
+
+      const response = await request(app)
+        .get('/api/classification/second-pass-evaluation?days=14');
+
+      expect(response.status).toBe(200);
+      expect(db.query).toHaveBeenCalledWith(
+        expect.stringContaining('WITH classified AS'),
+        [14]
+      );
+      expect(response.body.windowDays).toBe(14);
+      expect(response.body.totals).toMatchObject({
+        total: 30,
+        linkedOutcomes: 14,
+        verified: 7,
+        corrected: 3,
+        resolved: 1,
+        retried: 3,
+        multiStepOutcomes: 5,
+        firstOutcomeBreakdown: {
+          verified: 7,
+          corrected: 3,
+          resolved: 1,
+          retried: 2
+        },
+        latestOutcomeBreakdown: {
+          verified: 7,
+          corrected: 3,
+          resolved: 1,
+          retried: 3
+        }
+      });
+      expect(response.body.totals.perTotal.linkedOutcomeRate).toBe(0.4667);
+      expect(response.body.totals.perLinkedOutcome.correctedRate).toBe(0.2143);
+      expect(response.body.totals.correctedRate).toBe(0.2143);
+      expect(response.body.cohorts).toHaveLength(3);
+      expect(response.body.cohorts[0]).toMatchObject({
+        cohort: 'baseline',
+        total: 20,
+        linkedOutcomes: 8,
+        multiStepOutcomes: 2,
+        correctedRate: 0.25,
+        firstOutcomeBreakdown: {
+          verified: 2,
+          corrected: 3,
+          resolved: 1,
+          retried: 1
+        },
+        latestOutcomeBreakdown: {
+          verified: 3,
+          corrected: 2,
+          resolved: 1,
+          retried: 2
+        },
+        perTotal: {
+          linkedOutcomeRate: 0.4
+        },
+        perLinkedOutcome: {
+          correctedRate: 0.25
+        }
+      });
+      expect(response.body.cohorts[1]).toMatchObject({
+        cohort: 'pass2_not_adopted',
+        total: 0,
+        linkedOutcomes: 0,
+        correctedRate: 0
+      });
+      expect(response.body.cohorts[2]).toMatchObject({
+        cohort: 'pass2_adopted',
+        total: 10,
+        linkedOutcomes: 6,
+        multiStepOutcomes: 3,
+        verifiedRate: 0.6667,
+        firstOutcomeBreakdown: {
+          verified: 5,
+          corrected: 0,
+          resolved: 0,
+          retried: 1
+        },
+        perLinkedOutcome: {
+          verifiedRate: 0.6667
+        }
+      });
+    });
+
+    test('clamps invalid days and returns 500 on query failure', async () => {
+      db.query.mockRejectedValueOnce(new Error('db offline'));
+
+      const response = await request(app)
+        .get('/api/classification/second-pass-evaluation?days=bad');
+
+      expect(response.status).toBe(500);
+      expect(db.query).toHaveBeenCalledWith(
+        expect.any(String),
+        [30]
+      );
+      expect(response.body.error).toBe('Failed to load second-pass evaluation stats');
     });
   });
 });

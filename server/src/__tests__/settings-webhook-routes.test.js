@@ -130,4 +130,48 @@ describe('Settings Webhook Routes', () => {
     expect(axios.post).toHaveBeenCalledTimes(1);
     expect(axios.post.mock.calls[0][0]).toContain('/api/webhook/overseerr?key=whsec_testSecret');
   });
+
+  it('does not pass masked secret values through on PUT /settings/webhook/configs/:id', async () => {
+    webhookService.updateConfigById = jest.fn().mockResolvedValue({
+      id: 7,
+      name: 'Jellyseerr',
+      secret_key: '••••••••9876',
+      enabled: true
+    });
+
+    const res = await request(app)
+      .put('/settings/webhook/configs/7')
+      .send({
+        name: 'Jellyseerr',
+        secret_key: '••••••••9876',
+        enabled: true
+      });
+
+    expect(res.status).toBe(200);
+    expect(webhookService.updateConfigById).toHaveBeenCalledWith(7, {
+      name: 'Jellyseerr',
+      enabled: true
+    });
+    expect(res.body.secret_key).toBe('••••••••9876');
+  });
+
+  it('rejects invalid webhook config ids before calling the service', async () => {
+    webhookService.getConfigById = jest.fn();
+
+    const res = await request(app).get('/settings/webhook/configs/not-a-number');
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'Invalid configuration id' });
+    expect(webhookService.getConfigById).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when a webhook config id is well-formed but missing', async () => {
+    webhookService.getConfigById = jest.fn().mockResolvedValue(null);
+
+    const res = await request(app).get('/settings/webhook/configs/99');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: 'Configuration not found' });
+    expect(webhookService.getConfigById).toHaveBeenCalledWith(99);
+  });
 });

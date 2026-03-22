@@ -44,7 +44,7 @@ jest.mock('../config/database', () => {
         pool: {
             connect: jest.fn().mockResolvedValue(mockPoolClient)
         },
-        DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003 },
+        DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003, BACKFILL_OWNER: 1004 },
         _mockPoolClient: mockPoolClient
     };
 });
@@ -62,6 +62,7 @@ describe('ManualBackfillService', () => {
         jest.restoreAllMocks();
         jest.resetAllMocks();
         await manualBackfillService.clear();
+        manualBackfillService._lockClient = null;
         embeddingProvider.circuitBreaker.getStatus.mockReturnValue({ state: 'CLOSED' });
 
         // Default: advisory lock acquired (so existing tests pass)
@@ -77,7 +78,7 @@ describe('ManualBackfillService', () => {
 
         await expect(manualBackfillService.start()).rejects.toThrow('RAG is not enabled');
         expect(db.query).toHaveBeenCalledWith(
-            'SELECT rag_enabled FROM ai_provider_config WHERE id = 1'
+            'SELECT rag_enabled, manual_backfill_batch_size FROM ai_provider_config WHERE id = 1'
         );
     });
 
@@ -94,7 +95,7 @@ describe('ManualBackfillService', () => {
 
     it('starts with includeImage and total from pending count', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [{ rag_enabled: true }] })
+            .mockResolvedValueOnce({ rows: [{ rag_enabled: true, manual_backfill_batch_size: 40 }] })
             .mockResolvedValueOnce({ rows: [{ id: 99 }] });
         embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(true);
         embeddingService.getPendingCount.mockResolvedValue(5);
@@ -106,6 +107,20 @@ describe('ManualBackfillService', () => {
         expect(status.batchSize).toBe(25);
         expect(status.includeImage).toBe(true);
         expect(status.total).toBe(5);
+        expect(runSpy).toHaveBeenCalled();
+    });
+
+    it('uses configured manual_backfill_batch_size when no explicit batch size is provided', async () => {
+        db.query
+            .mockResolvedValueOnce({ rows: [{ rag_enabled: true, manual_backfill_batch_size: 37 }] })
+            .mockResolvedValueOnce({ rows: [{ id: 100 }] });
+        embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
+        embeddingService.getPendingCount.mockResolvedValue(2);
+
+        const runSpy = jest.spyOn(manualBackfillService, 'runBackfill').mockResolvedValue();
+        const status = await manualBackfillService.start({});
+
+        expect(status.batchSize).toBe(37);
         expect(runSpy).toHaveBeenCalled();
     });
 
@@ -128,6 +143,10 @@ describe('ManualBackfillService', () => {
 
         expect(status.total).toBe(10);
         expect(status.progress).toBe(30);
+        expect(db.query).toHaveBeenCalledWith(
+            'UPDATE backfill_runs SET total = $1, processed = $2 WHERE id = $3',
+            [10, 3, 1]
+        );
     });
 
     it('passes includeImage through to getPendingCount', async () => {
@@ -160,10 +179,111 @@ describe('ManualBackfillService', () => {
 
         expect(manualBackfillService.state.status).toBe('running');
         expect(runSpy).toHaveBeenCalled();
+        expect(db.pool.connect).toHaveBeenCalledTimes(1);
+        expect(db._mockPoolClient.query).toHaveBeenNthCalledWith(
+            1,
+            'SELECT pg_try_advisory_lock($1) AS acquired',
+            [db.DB_ADVISORY_LOCKS.BACKFILL_OWNER]
+        );
+        expect(db._mockPoolClient.query).toHaveBeenNthCalledWith(
+            2,
+            'SELECT pg_try_advisory_lock($1) AS acquired',
+            [db.DB_ADVISORY_LOCKS.MANUAL_BACKFILL]
+        );
         expect(db.query).toHaveBeenCalledWith(
             'UPDATE backfill_runs SET status = $1 WHERE id = $2',
             ['running', 55]
         );
+        expect(manualBackfillService._activeRunPromise).toBeTruthy();
+    });
+
+    it('clear waits for a resumed run to finish before resetting state', async () => {
+        manualBackfillService.state = {
+            status: 'paused',
+            processed: 2,
+            total: 10,
+            startTime: Date.now(),
+            eta: null,
+            batchSize: 10,
+            error: null,
+            runId: 66,
+            includeImage: true
+        };
+
+        db.query.mockResolvedValueOnce({ rows: [] });
+
+        let resolveRun;
+        const runDeferred = new Promise((resolve) => {
+            resolveRun = resolve;
+        });
+        jest.spyOn(manualBackfillService, 'runBackfill').mockReturnValue(runDeferred);
+
+        await manualBackfillService.resume();
+
+        const clearPromise = manualBackfillService.clear();
+        await Promise.resolve();
+
+        expect(manualBackfillService.state.status).toBe('cancelling');
+        expect(manualBackfillService._activeRunPromise).toBeTruthy();
+
+        resolveRun();
+        await clearPromise;
+
+        expect(manualBackfillService.state.status).toBe('idle');
+        expect(manualBackfillService.state.runId).toBeNull();
+        expect(manualBackfillService._activeRunPromise).toBeNull();
+    });
+
+    it('resume rejects when another process holds the advisory lock', async () => {
+        manualBackfillService.state = {
+            status: 'paused',
+            processed: 2,
+            total: 10,
+            startTime: Date.now(),
+            eta: null,
+            batchSize: 10,
+            error: null,
+            runId: 77,
+            includeImage: true
+        };
+
+        db._mockPoolClient.query.mockResolvedValueOnce({ rows: [{ acquired: false }] });
+        const runSpy = jest.spyOn(manualBackfillService, 'runBackfill').mockResolvedValue();
+
+        await expect(manualBackfillService.resume()).rejects.toThrow('Another backfill mode is already running');
+
+        expect(manualBackfillService.state.status).toBe('paused');
+        expect(runSpy).not.toHaveBeenCalled();
+        expect(db.query).not.toHaveBeenCalledWith(
+            'UPDATE backfill_runs SET status = $1 WHERE id = $2',
+            ['running', 77]
+        );
+        expect(db._mockPoolClient.release).toHaveBeenCalledTimes(1);
+    });
+
+    it('clear cancels paused backfill state safely before resetting', async () => {
+        manualBackfillService.state = {
+            status: 'paused',
+            processed: 4,
+            total: 10,
+            startTime: Date.now(),
+            eta: null,
+            batchSize: 10,
+            error: 'paused by operator',
+            runId: 88,
+            includeImage: true
+        };
+
+        db.query.mockResolvedValueOnce({ rows: [] });
+
+        await manualBackfillService.clear();
+
+        expect(db.query).toHaveBeenCalledWith(
+            expect.stringContaining("SET status = 'cancelled'"),
+            [4, 'paused by operator', 88]
+        );
+        expect(manualBackfillService.state.status).toBe('idle');
+        expect(manualBackfillService.state.runId).toBeNull();
     });
 
     it('runBackfill processes text and image items', async () => {
@@ -239,6 +359,45 @@ describe('ManualBackfillService', () => {
 
         expect(manualBackfillService.state.status).toBe('completed');
         expect(manualBackfillService.state.processed).toBe(0);
+    });
+
+    it('runBackfill persists expanded totals when new pending work appears mid-run', async () => {
+        manualBackfillService.state = {
+            status: 'running',
+            processed: 0,
+            total: 1,
+            startTime: Date.now(),
+            eta: null,
+            batchSize: 10,
+            error: null,
+            runId: 14,
+            includeImage: true
+        };
+
+        embeddingService.getPendingCount
+            .mockResolvedValueOnce(3)
+            .mockResolvedValueOnce(0);
+        embeddingService.getPendingEmbeddings
+            .mockResolvedValueOnce([
+                { id: 1, needsText: true, needsImage: false, metadata: {}, title: 'One', media_type: 'movie', library_name: 'Movies' },
+                { id: 2, needsText: true, needsImage: false, metadata: {}, title: 'Two', media_type: 'movie', library_name: 'Movies' },
+                { id: 3, needsText: true, needsImage: false, metadata: {}, title: 'Three', media_type: 'movie', library_name: 'Movies' }
+            ])
+            .mockResolvedValueOnce([]);
+        embeddingService.generateAndStore.mockResolvedValue({});
+        db.query.mockResolvedValue({ rows: [] });
+
+        await manualBackfillService.runBackfill();
+
+        expect(manualBackfillService.state.total).toBe(3);
+        expect(db.query).toHaveBeenCalledWith(
+            'UPDATE backfill_runs SET total = $1, processed = $2 WHERE id = $3',
+            [3, 0, 14]
+        );
+        expect(db.query).toHaveBeenCalledWith(
+            expect.stringContaining("SET status = 'completed'"),
+            [3, 3, 14]
+        );
     });
 
     it('runBackfill records errors without incrementing processed', async () => {

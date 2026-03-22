@@ -25,6 +25,7 @@ const ollamaService = require('../services/ollama');
 const mediaPatternAnalyzer = require('../services/mediaPatternAnalyzer');
 const libraryProfileService = require('../services/libraryProfileService');
 const { createLogger } = require('../utils/logger');
+const { TAVILY_METADATA_KEYS, buildJsonbPresenceOr } = require('../utils/metadataEnrichment');
 const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
 const { authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
 const { LibraryNotFoundError } = require('../utils/errors');
@@ -1083,11 +1084,13 @@ router.get('/:id/rules/smart-suggest', async (req, res) => {
     `, [id]);
 
     // 6. Get total items and analyzed/enriched counts
+    const tavilyEnrichmentSql = buildJsonbPresenceOr('metadata', TAVILY_METADATA_KEYS);
+
     const countResult = await db.query(`
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE metadata->'content_analysis' IS NOT NULL) as analyzed,
-        COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched,
+        COUNT(*) FILTER (WHERE ${tavilyEnrichmentSql}) as tavily_enriched,
         MAX(added_at) as last_item_added
       FROM media_server_items
       WHERE library_id = $1
@@ -1106,16 +1109,17 @@ router.get('/:id/rules/smart-suggest', async (req, res) => {
       SELECT 
         metadata->'tavily_advisory'->>'answer' as advisory_insight,
         metadata->'tavily_imdb'->>'answer' as imdb_insight,
+        metadata->'tavily_holiday'->>'answer' as holiday_insight,
         metadata->'tavily_anime'->>'answer' as anime_insight
       FROM media_server_items
       WHERE library_id = $1 
-        AND (metadata->'tavily_advisory' IS NOT NULL OR metadata->'tavily_imdb' IS NOT NULL)
+        AND (${tavilyEnrichmentSql})
       LIMIT 5
     `, [id]);
 
     // Collect unique insights from Tavily enrichment
     const tavilyInsights = tavilyInsightsResult.rows
-      .flatMap(r => [r.advisory_insight, r.imdb_insight, r.anime_insight])
+      .flatMap(r => [r.advisory_insight, r.imdb_insight, r.holiday_insight, r.anime_insight])
       .filter(Boolean)
       .slice(0, 3);
 

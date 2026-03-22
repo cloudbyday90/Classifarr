@@ -31,11 +31,11 @@ describe('Custom Presets API Integration Tests', () => {
 
     // Clean up any test presets before and after tests
     beforeAll(async () => {
-        await db.query("DELETE FROM custom_presets WHERE name LIKE 'Test%'");
+        await db.query("DELETE FROM content_presets WHERE is_system = false AND name LIKE 'Test%'");
     });
 
     afterAll(async () => {
-        await db.query("DELETE FROM custom_presets WHERE name LIKE 'Test%'");
+        await db.query("DELETE FROM content_presets WHERE is_system = false AND name LIKE 'Test%'");
     });
 
     describe('GET /api/presets/custom', () => {
@@ -76,8 +76,18 @@ describe('Custom Presets API Integration Tests', () => {
             expect(response.body.icon).toBe('👨‍👩‍👧');
             expect(response.body.signals).toHaveProperty('genres');
             expect(response.body.signals.genres.prefer).toContain('Family');
+            expect(response.body.source).toBe('custom');
 
             testPresetId = response.body.id;
+
+            const persistedPreset = await db.query(`
+                SELECT id, key, is_system
+                FROM content_presets
+                WHERE id = $1
+            `, [testPresetId]);
+
+            expect(persistedPreset.rows[0].is_system).toBe(false);
+            expect(persistedPreset.rows[0].key).toContain(`custom_${testPresetId}_`);
         });
 
         test('should fail without name', async () => {
@@ -98,6 +108,16 @@ describe('Custom Presets API Integration Tests', () => {
             await request(app)
                 .post('/api/presets/custom')
                 .send({ name: 'A'.repeat(101) })
+                .expect(400);
+        });
+
+        test('should fail with null signals', async () => {
+            await request(app)
+                .post('/api/presets/custom')
+                .send({
+                    name: 'Test Invalid Signals Preset',
+                    signals: null
+                })
                 .expect(400);
         });
     });
@@ -155,6 +175,13 @@ describe('Custom Presets API Integration Tests', () => {
                 .send({ name: '' })
                 .expect(400);
         });
+
+        test('should fail with array signals', async () => {
+            await request(app)
+                .put(`/api/presets/custom/${testPresetId}`)
+                .send({ signals: ['bad'] })
+                .expect(400);
+        });
     });
 
     describe('GET /api/presets/all', () => {
@@ -193,6 +220,7 @@ describe('Custom Presets API Integration Tests', () => {
             // Should find our test preset
             const found = response.body.find(p => p.name.includes('Updated'));
             expect(found).toBeDefined();
+            expect(found.source).toBe('custom');
         });
     });
 

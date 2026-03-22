@@ -94,7 +94,7 @@ class PolicyQuestionBuilder {
     // This must happen before the hasPresets guard, since the conflicting library
     // was excluded from ranked (and therefore has no presets loaded here).
     const originalLanguage = (metadata.original_language || '').toLowerCase();
-    if (originalLanguage && originalLanguage !== 'en' && languageConflicts.length > 0) {
+    if (originalLanguage && languageConflicts.length > 0) {
       const conflictQuestion = this.buildLanguageConflictQuestion(
         metadata, candidates, languageConflicts, { ragContext, aiResult, policyResult }
       );
@@ -150,8 +150,13 @@ class PolicyQuestionBuilder {
     const conflictLibraries = languageConflicts.map(c => ({ id: c.library_id, name: c.library_name }));
     const orderedLibraries = [];
     const seenLibraryIds = new Set();
+    const prioritizedLibraries = [
+      topCandidate?.library || null,
+      ...conflictLibraries,
+      ...rankedLibraries.filter(library => library?.id !== topCandidate?.library?.id)
+    ];
 
-    [...rankedLibraries, ...conflictLibraries].forEach((library) => {
+    prioritizedLibraries.forEach((library) => {
       if (!library?.id || seenLibraryIds.has(library.id)) {
         return;
       }
@@ -159,7 +164,16 @@ class PolicyQuestionBuilder {
       orderedLibraries.push(library);
     });
 
-    const options = orderedLibraries.slice(0, 3).map(lib => this.toOption(lib.name, lib));
+    const requiredOptionCount = Math.max(
+      3,
+      new Set([
+        topCandidate?.library?.id || null,
+        ...conflictLibraries.map(library => library.id)
+      ].filter(Boolean)).size
+    );
+    const options = orderedLibraries
+      .slice(0, requiredOptionCount)
+      .map(lib => this.toOption(lib.name, lib));
 
     if (options.length < 2) return null;
 

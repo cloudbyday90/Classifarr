@@ -224,6 +224,34 @@ describe('Auth Routes Integration Tests', () => {
                 .set('Cookie', `refresh_token=${originalToken}`)
                 .expect(401);
         });
+
+        test('should leave the original refresh token usable when rotation fails before old-token revocation completes', async () => {
+            const agent = request.agent(app);
+
+            const loginResp = await agent
+                .post('/api/auth/login')
+                .send({ identifier: 'authtest_user', password: testPassword })
+                .expect(200);
+
+            const originalToken = extractCookie(loginResp.headers, 'refresh_token');
+            expect(originalToken).toBeTruthy();
+
+            const revokeSpy = jest.spyOn(authService, 'revokeRefreshToken')
+                .mockRejectedValueOnce(new Error('rotation write failed'));
+
+            const failedRefresh = await request(app)
+                .post('/api/auth/refresh')
+                .set('Cookie', `refresh_token=${originalToken}`);
+
+            expect(failedRefresh.status).toBe(500);
+
+            revokeSpy.mockRestore();
+
+            await request(app)
+                .post('/api/auth/refresh')
+                .set('Cookie', `refresh_token=${originalToken}`)
+                .expect(200);
+        });
     });
 
     // ============================================================
@@ -722,13 +750,20 @@ describe('Auth Routes Integration Tests', () => {
         test('remember-me session can refresh after simulated server restart', async () => {
             const agent = request.agent(app);
 
-            await agent
+            const loginResp = await agent
                 .post('/api/auth/login')
                 .send({ identifier: 'authtest_user', password: testPassword, rememberMe: true })
                 .expect(200);
+            const accessToken = extractCookie(loginResp.headers, 'access_token');
+            expect(accessToken).toBeTruthy();
 
             // Simulate server restart (revokes only non-remember-me tokens)
             await authService.revokeAllRefreshTokensOnStartup();
+
+            await request(app)
+                .get('/api/auth/me')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(200);
 
             // The remember-me refresh token should still be valid
             const refreshResp = await agent
@@ -758,13 +793,20 @@ describe('Auth Routes Integration Tests', () => {
         test('non-remember-me session does NOT survive simulated server restart', async () => {
             const agent = request.agent(app);
 
-            await agent
+            const loginResp = await agent
                 .post('/api/auth/login')
                 .send({ identifier: 'authtest_user', password: testPassword, rememberMe: false })
                 .expect(200);
+            const accessToken = extractCookie(loginResp.headers, 'access_token');
+            expect(accessToken).toBeTruthy();
 
             // Simulate server restart — non-remember-me tokens are revoked
             await authService.revokeAllRefreshTokensOnStartup();
+
+            await request(app)
+                .get('/api/auth/me')
+                .set('Authorization', `Bearer ${accessToken}`)
+                .expect(401);
 
             // Refresh should now fail (token was revoked)
             await agent

@@ -2,7 +2,13 @@
 
 ## Overview
 
-Content presets are pre-built signal definitions that describe specific types of content. Classifarr ships with **168 system presets** covering genres, ratings, themes, studios, eras, languages, and special content types.
+Content presets are pre-built signal definitions that describe specific types of content. Classifarr ships with **168 built-in presets** covering genres, ratings, themes, studios, eras, languages, and special content types.
+
+Current UI terminology:
+
+- **Built-in Presets**: the shipped preset catalog maintained by Classifarr.
+- **My Presets**: user-created presets saved through the UI or API.
+- Both Built-in Presets and My Presets are attachable policy inputs in the Policy Builder.
 
 ---
 
@@ -383,9 +389,11 @@ ISO 639-1 language codes.
 
 ### In Policy Builder
 
-1. Select presets from categorized picker
-2. Adjust per-preset weight (0.0-2.0)
-3. Presets combine based on policy's `combination_mode`
+1. Select attachable presets from the categorized picker.
+2. Built-in Presets and My Presets can both be attached to a policy.
+3. Suggested presets may include either built-in or user-created entries, depending on your libraries and current catalog.
+4. Adjust per-preset weight (0.0-2.0)
+5. Presets combine based on policy's `combination_mode`
 
 ### Combination Modes
 
@@ -396,9 +404,9 @@ ISO 639-1 language codes.
 
 ---
 
-## Creating Custom Presets
+## Creating My Presets
 
-Users can create custom presets via the UI or API:
+Users can create their own presets via the UI or API. In the UI these appear under **My Presets**; in API payloads and older docs they may still be referred to as custom presets.
 
 ```bash
 POST /api/presets

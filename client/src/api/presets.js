@@ -23,12 +23,27 @@ import api from './index'
  */
 export default {
   /**
+   * Get attachable presets for policy builder flows.
+   * This includes builtin and custom presets that can be attached to policies.
+   * @param {Object} params - Query parameters (category, search)
+   * @returns {Promise}
+   */
+  getAttachablePresets(params = {}) {
+    return api.get('/policies/presets/all', { params })
+  },
+
+  /**
    * Get all system presets
    * @param {Object} params - Query parameters (category, search)
    * @returns {Promise}
    */
   getSystemPresets(params = {}) {
-    return api.get('/policies/presets/all', { params })
+    return api.get('/policies/presets/all', {
+      params: {
+        ...params,
+        include_custom: false
+      }
+    })
   },
 
   /**
@@ -82,15 +97,7 @@ export default {
    * @returns {Promise}
    */
   async getAllPresets(params = {}) {
-    const [systemResponse, customResponse] = await Promise.all([
-      this.getSystemPresets(params),
-      this.getCustomPresets()
-    ])
-    
-    return {
-      system: systemResponse.data,
-      custom: customResponse.data
-    }
+    return api.get('/presets/all', { params })
   },
 
   /**

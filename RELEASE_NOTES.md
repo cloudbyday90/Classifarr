@@ -1,5 +1,56 @@
 # Classifarr Release Notes
 
+> Versioning note: these release notes and the UI use public labels such as `v0.45.0-beta`. Package files use semver-safe versions such as `0.45.0-beta`.
+
+## v0.45.0-beta
+**Title: Classification gets smarter, policies get honest, and second-pass finally has a scoreboard**
+
+### 🎉 What You'll Notice
+- **Custom presets are now real policy inputs** — you can attach your own presets to any policy just like built-in ones, and the migration backfills your existing custom presets automatically on upgrade.
+- **Second-pass evaluation is now visible in Statistics** — a new section shows whether second-pass AI re-analysis is actually reducing corrections and retries across 7/30/90-day windows so you can decide whether it is worth running.
+- **History drill-down now shows the full story** — individual classification rows surface whether a second pass ran, what it decided, and any follow-up correction/retry that happened afterward, all in one place.
+- **Classification uses the right AI provider** — cloud providers (OpenAI, Gemini, OpenRouter, LiteLLM) now actually handle classification instead of silently falling back to Ollama.
+- **Policy combination modes now actually work** — `best_match`, `average`, `weighted_average`, and `require_all` are now real runtime behavior, not cosmetic saved fields.
+- **Policy weight editing now matches the runtime again** — the profile score component reappears in the advanced weight editor so the "100%" total is honest.
+- **Sessions die on restart by design** — non-remember-me sessions are now immediately invalidated when the server restarts, as intended.
+- **Bearer tokens win over stale cookies** — API scripts and Swagger tools stop getting blocked by an expired browser cookie when they send a valid `Authorization` header.
+
+### 📊 Quick Visual
+```text
+v0.45.0-beta Snapshot
+Classification reliability  [██████████] retry lineage, provider routing, second-pass
+Policy correctness          [██████████] combination modes, weights, preset inputs
+Operator visibility         [█████████░] second-pass scoreboard, history drill-down
+Security posture            [██████████] auth hardening, session control, CORS
+Upgrade effort              [█████████░] one migration (custom-preset backfill, auto-applied)
+```
+
+### ✨ Highlights
+- **New: Second-Pass Evaluation in Statistics** — cohort cards for baseline vs pass2-ran vs pass2-adopted, with correction/retry rates per cohort and maturity-aware per-linked-outcome breakdowns so newer data does not look misleadingly clean.
+- **New: Custom presets attach to policies** — migration `20260321_134500` backfills your existing custom presets into the shared catalog so the policy builder shows them alongside built-ins. A new "My Presets" label distinguishes them from system content.
+- **Classification retry now carries its history forward** — retry lineage (media requests, webhook audit, source library) is preserved through retry and correction cycles instead of being erased when an item is requeued.
+- **Second-pass conflict detection now actually blocks adoption** — when pass2 retrieval still shows a cross-library conflict, the candidate is rejected rather than logged as advisory metadata while still switching libraries.
+- **Backfill modes now cooperate instead of stepping on each other** — manual, idle, and scheduled backfill coordinate through a shared advisory lock so they do not compete over the same pending embeddings.
+
+### 🔧 Reliability Improvements
+- Full library syncs now prune media/collection rows that disappeared from the remote server so stale cache entries stop appearing in reconciliation.
+- Manual RAG backfill pause/resume now reacquires the advisory lock before processing resumes, and the legacy start route now goes through the same lock-aware lifecycle.
+- Queue bulk actions now surface actual database failures instead of returning a misleading zero-count success.
+- Startup circular dependency between the scheduler and queue service removed — `refillQueue is not a function` on first scheduler run is gone.
+- CORS no longer reflects arbitrary origins when no allowlist is configured.
+- Refresh token rotation no longer strands sessions when persistence fails mid-request.
+- Very low-confidence policy matches now correctly fall back to manual review instead of being surfaced as guided selection.
+- Pending policy questions are flagged as stale when their policy/library context changed after generation (carried forward from v0.44.2c).
+
+### 👥 Who This Helps
+- **End users:** classification is more accurate end-to-end — right AI provider, honest policy weights, working combination modes, and a second-pass that actually blocks bad adoptions.
+- **Operators/admins:** second-pass scoreboard in Statistics, custom presets as real policy attachments, and session/auth behavior that matches the documented intent.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details including all service/file references, test additions, and migration details.
+
+---
+
 ## v0.44.2c-beta
 **Title: Smarter classification pacing and clearer setup state**
 

@@ -6,7 +6,9 @@ Migrations are automatically run on application startup by `server/src/config/mi
 
 ## Quick Reference
 
-**Naming:** `XXX_descriptive_name.sql` (e.g., `019_cleanup_omdb_config.sql`)
+**Naming:**
+- Legacy files: `XXX_descriptive_name.sql`
+- New files: `YYYYMMDD_HHMMSS_descriptive_name.sql` (required for all new migrations)
 
 **Key Requirements:**
 1. ✅ **Idempotent** - Safe to run multiple times
@@ -23,22 +25,34 @@ See `MIGRATION_GUIDE.md` for comprehensive guidelines including:
 - Testing checklist
 - Troubleshooting
 
+Related files:
+- `LEGACY_MIGRATIONS.md` - allowlisted legacy numeric filenames
+- `../../scripts/create-migration.js` - timestamp-based migration generator
+- `../../scripts/check-migrations.js` - filename validation used in CI
+
 ## Automatic Migration System
 
 The migration runner (`server/src/config/migrations.js`) automatically:
 - Tracks applied migrations in `schema_migrations` table
-- Runs pending migrations in numerical order on startup
+- Uses `database/schema/current.sql` for fresh-install bootstrap when available
+- Runs pending migrations in deterministic order on startup
 - Logs all migration activity
 - Stops on first error to prevent partial migrations
+
+Execution order:
+1. Legacy numeric migrations run first in numeric order
+2. Timestamp migrations run next in chronological order
+
+This lets the repo keep historical numeric migrations while requiring timestamp-based names for all new work.
 
 ## Running Migrations
 
 ### Development (Local)
 Migrations run automatically when you start the application:
 ```bash
-npm start
+npm --prefix server run dev
 # or
-docker compose up
+npm --prefix server start
 ```
 
 ### Production
@@ -53,14 +67,24 @@ docker logs classifarr | grep Migration
 docker exec -it classifarr psql -U classifarr_user -d classifarr_db
 
 # Run specific migration
-\i /app/database/migrations/019_cleanup_omdb_config.sql
+\i /app/database/migrations/20260314_213000_add_task_queue_task_type_status_index.sql
 ```
 
 ## Migration Order
 
-Migrations MUST be run in numerical order. The system enforces this automatically.
+Do not create new numeric migrations.
 
-Current migrations: `001` through `019`
+Use:
+```bash
+npm run migration:create "describe the schema change"
+```
+
+Validate naming with:
+```bash
+npm run migration:check
+```
+
+The repo currently contains a mix of legacy numeric migrations and newer timestamp-based migrations. The runner and CI tooling enforce the supported filename patterns automatically.
 
 ## Idempotency Examples
 
@@ -81,4 +105,4 @@ SELECT 1, 'default'
 WHERE NOT EXISTS (SELECT 1 FROM config WHERE id = 1);
 ```
 
-See migration `019_cleanup_omdb_config.sql` for a complete example of data preservation.
+See `MIGRATION_GUIDE.md` and recent timestamped migrations in this directory for complete examples of idempotent, data-preserving patterns.

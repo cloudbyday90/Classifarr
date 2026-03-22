@@ -29,6 +29,8 @@ describe('Settings AI Issue 275 Integration', () => {
     });
 
     beforeEach(async () => {
+        await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
+        await pool.query('TRUNCATE TABLE classification_history RESTART IDENTITY CASCADE');
         await pool.query('TRUNCATE TABLE ai_provider_config RESTART IDENTITY CASCADE');
         await pool.query(`
             INSERT INTO ai_provider_config (id, primary_provider, api_key, embedding_provider_mode)
@@ -186,5 +188,61 @@ describe('Settings AI Issue 275 Integration', () => {
         expect(result.rows[0].primary_provider).toBe('openai');
         expect(result.rows[0].api_key).toBe('secret-live-key');
         expect(result.rows[0].rag_retrieval_loop_enabled).toBe(true);
+    });
+
+    test('PUT /api/settings/ai clears classification embeddings when same-mode auto provider identity changes', async () => {
+        await pool.query(`
+            UPDATE ai_provider_config
+            SET embedding_provider = 'auto',
+                embedding_model = NULL
+            WHERE id = 1
+        `);
+
+        const mediaServer = await pool.query(`
+            INSERT INTO media_server (type, name, url, api_key)
+            VALUES ('plex', 'AI Settings Test Plex', 'http://localhost:32400', 'abc')
+            RETURNING id
+        `);
+        const library = await pool.query(`
+            INSERT INTO libraries (media_server_id, external_id, name, media_type)
+            VALUES ($1, 'ai-settings-lib', 'AI Settings Movies', 'movie')
+            RETURNING id
+        `, [mediaServer.rows[0].id]);
+
+        const classification = await pool.query(`
+            INSERT INTO classification_history (tmdb_id, media_type, title, library_id)
+            VALUES (440001, 'movie', 'Identity Drift', $1)
+            RETURNING id
+        `, [library.rows[0].id]);
+
+        const dimsResult = await pool.query(`
+            SELECT format_type(att.atttypid, att.atttypmod) AS type
+            FROM pg_attribute att
+            WHERE att.attrelid = 'classification_embeddings'::regclass
+              AND att.attname = 'embedding'
+              AND NOT att.attisdropped
+            LIMIT 1
+        `);
+        const typeString = dimsResult.rows[0]?.type || '';
+        const match = typeString.match(/\((\d+)\)/);
+        const dims = match ? Number(match[1]) : 768;
+
+        await pool.query(`
+            INSERT INTO classification_embeddings (classification_id, embedding, embedding_dims, provider, model)
+            VALUES ($1, ARRAY(SELECT 0.0 FROM generate_series(1, $2))::vector, $2, 'openai', 'text-embedding-3-small')
+        `, [classification.rows[0].id, dims]);
+
+        const before = await pool.query('SELECT COUNT(*)::int AS count FROM classification_embeddings');
+        expect(before.rows[0].count).toBe(1);
+
+        await request(app)
+            .put('/api/settings/ai')
+            .send({
+                primary_provider: 'gemini'
+            })
+            .expect(200);
+
+        const after = await pool.query('SELECT COUNT(*)::int AS count FROM classification_embeddings');
+        expect(after.rows[0].count).toBe(0);
     });
 });

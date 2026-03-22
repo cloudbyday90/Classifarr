@@ -29,6 +29,9 @@ const mediaSyncService = require('./mediaSync');
 const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 const clarificationService = require('./clarificationService');
 const classificationPhaseService = require('./classificationPhaseService');
+const classificationRetryService = require('./classificationRetryService');
+const classificationOutcomeService = require('./classificationOutcomeService');
+const aiRouter = require('./aiRouter');
 const { SignalCollector, SIGNAL_TYPES } = require('./signalCollector');
 const confidenceCalculator = require('./confidenceCalculator');
 const ragRetriever = require('./ragRetriever');
@@ -220,6 +223,9 @@ class ClassificationService {
       if (metadata) {
         metadata.requested_seasons = existingMetadata.requested_seasons;
         metadata.include_specials = existingMetadata.include_specials;
+        metadata.retry_count = existingMetadata.retry_count;
+        metadata.max_retries = existingMetadata.max_retries;
+        metadata.retry_lineage = existingMetadata.retry_lineage || null;
       }
 
       // Run decision tree
@@ -227,6 +233,7 @@ class ClassificationService {
 
       // Log to database
       const classificationId = await this.logClassification(metadata, result, startTime);
+      await this.rebindRetryLineage(classificationId, metadata);
       await this.persistRagLoopStageEvents({ classificationId, metadata, result });
 
       // Reinforce patterns (if any were used in classification)
@@ -385,6 +392,9 @@ class ClassificationService {
       keywords: payload.keywords,
       content_rating: payload.content_rating,
       original_language: payload.original_language,
+      retry_count: payload.retry_count,
+      max_retries: payload.max_retries,
+      retry_lineage: payload.retry_lineage,
       itemId: payload.itemId, // Internal ID for updating media_server_items
       source_library_id: payload.source_library_id, // Source Plex library ID
       source_library_name: payload.source_library_name, // Source Plex library name
@@ -984,9 +994,17 @@ ${response}
     confidence = 0,
     libraries = [],
     signalContext = null,
-    transientError = null
+    transientError = null,
+    previousRetryCount = null,
+    maxRetries = null
   }) {
     const retryReason = this.resolveRetryReason(transientError);
+    const normalizedPreviousRetryCount = Number.isInteger(Number(previousRetryCount)) && Number(previousRetryCount) >= 0
+      ? Number(previousRetryCount)
+      : null;
+    const normalizedMaxRetries = Number.isInteger(Number(maxRetries)) && Number(maxRetries) > 0
+      ? Number(maxRetries)
+      : 3;
     return {
       library: null,
       confidence: Number.isFinite(Number(confidence)) ? Number(confidence) : 0,
@@ -994,8 +1012,8 @@ ${response}
       reason: retryReason.reason,
       retry_reason_code: retryReason.code,
       retry_after: new Date(Date.now() + RETRY_DELAY_MS),
-      retry_count: 0,
-      max_retries: 3,
+      retry_count: normalizedPreviousRetryCount === null ? 0 : normalizedPreviousRetryCount + 1,
+      max_retries: normalizedMaxRetries,
       libraries,
       signalContext,
       needs_retry: true
@@ -1074,27 +1092,87 @@ ${response}
     }
 
     const merged = { ...originalMetadata };
-    const copyIfMissing = (key) => {
-      const current = merged[key];
-      const incoming = enrichedMetadata[key];
-      const hasCurrent = Array.isArray(current)
-        ? current.length > 0
-        : !!current;
 
-      if (!hasCurrent && incoming) {
-        merged[key] = incoming;
+    const getTrimmedLength = (value) => (
+      typeof value === 'string' ? value.trim().length : 0
+    );
+
+    const shouldReplaceList = (key) => {
+      const incomingList = normalizeMetadataList(enrichedMetadata[key]);
+      if (incomingList.length === 0) {
+        return false;
       }
+
+      const currentList = normalizeMetadataList(merged[key]);
+      if (currentList.length === 0) {
+        return true;
+      }
+
+      return incomingList.length > currentList.length;
     };
 
-    copyIfMissing('genres');
-    copyIfMissing('keywords');
-    copyIfMissing('belongs_to_collection');
-    copyIfMissing('production_companies');
-    copyIfMissing('cast');
-    copyIfMissing('original_title');
-    copyIfMissing('overview');
+    const shouldReplaceNamedObject = (key) => {
+      const currentLength = getTrimmedLength(merged[key]?.name);
+      const incomingLength = getTrimmedLength(enrichedMetadata[key]?.name);
+      if (incomingLength === 0) {
+        return false;
+      }
+      if (currentLength === 0) {
+        return true;
+      }
+      return incomingLength > currentLength;
+    };
+
+    const shouldReplaceString = (key) => {
+      const currentLength = getTrimmedLength(merged[key]);
+      const incomingLength = getTrimmedLength(enrichedMetadata[key]);
+      if (incomingLength === 0) {
+        return false;
+      }
+      if (currentLength === 0) {
+        return true;
+      }
+
+      if (key === 'overview') {
+        return incomingLength > currentLength && (currentLength < 40 || incomingLength - currentLength >= 20);
+      }
+
+      return incomingLength > currentLength;
+    };
+
+    if (shouldReplaceList('genres')) {
+      merged.genres = enrichedMetadata.genres;
+    }
+    if (shouldReplaceList('keywords')) {
+      merged.keywords = enrichedMetadata.keywords;
+    }
+    if (shouldReplaceNamedObject('belongs_to_collection')) {
+      merged.belongs_to_collection = enrichedMetadata.belongs_to_collection;
+    }
+    if (shouldReplaceList('production_companies')) {
+      merged.production_companies = enrichedMetadata.production_companies;
+    }
+    if (shouldReplaceList('cast')) {
+      merged.cast = enrichedMetadata.cast;
+    }
+    if (shouldReplaceString('original_title')) {
+      merged.original_title = enrichedMetadata.original_title;
+    }
+    if (shouldReplaceString('overview')) {
+      merged.overview = enrichedMetadata.overview;
+    }
 
     return merged;
+  }
+
+  buildFreshSecondPassBaseResult(baselineResult = {}) {
+    return {
+      ...baselineResult,
+      needs_clarification: false,
+      clarification: null,
+      policy_question: null,
+      pending_reason: null
+    };
   }
 
   buildPolicyRecheckCandidate({
@@ -1112,9 +1190,10 @@ ${response}
     const nextLibrary = libraries.find((library) => library.id === preferredLibraryId) || baselineResult.library || null;
     const nextAction = policyResult?.action || null;
     const shouldClarify = nextAction === 'prompt_confirm' || nextAction === 'prompt_select';
+    const nextResult = this.buildFreshSecondPassBaseResult(baselineResult);
 
     return {
-      ...baselineResult,
+      ...nextResult,
       library: nextLibrary,
       confidence: Math.max(
         Number(baselineResult?.confidence || 0),
@@ -1136,14 +1215,81 @@ ${response}
     policyResult,
     ragContext
   }) {
+    const nextResult = this.buildFreshSecondPassBaseResult(baselineResult);
+
     return {
-      ...baselineResult,
+      ...nextResult,
       ...aiRerunMatch,
       method: aiRerunMatch.verified_by_ai ? 'ai_verified' : 'ai_rerun',
       libraries: baselineResult.libraries || libraries,
       signalContext: baselineResult.signalContext || signalContext || null,
       policyResult: policyResult || baselineResult.policyResult || null,
       ragContext: ragContext || baselineResult.ragContext || null
+    };
+  }
+
+  buildRagLoopSummary(result = {}) {
+    const trace = result?.ragLoopTrace || null;
+    const logContext = result?.ragLoopLogContext || null;
+    const events = Array.isArray(logContext?.events)
+      ? logContext.events
+      : (Array.isArray(trace?.events) ? trace.events : []);
+
+    if (!trace && events.length === 0) {
+      return null;
+    }
+
+    const pickStageEvent = (stage) => {
+      const stageEvents = events.filter((event) => event?.stage === stage);
+      if (stageEvents.length === 0) {
+        return null;
+      }
+
+      const preferred = stageEvents
+        .slice()
+        .reverse()
+        .find((event) => event?.outcome !== 'retry' && !(stage === 'gate' && event?.outcome === 'strategy_selected'));
+
+      const selected = preferred || stageEvents[stageEvents.length - 1];
+      return {
+        outcome: selected?.outcome || null,
+        reason_code: selected?.reason_code || selected?.reasonCode || selected?.reason || null
+      };
+    };
+
+    const decisionOutcome = trace?.decision?.outcome || null;
+    const pass1Diagnostics = trace?.diagnostics?.pass1 || {};
+    const pass2Diagnostics = trace?.diagnostics?.pass2 || {};
+
+    return {
+      ran: trace?.ran === true || events.length > 0,
+      mode: trace?.mode || logContext?.mode || null,
+      trigger: trace?.trigger || logContext?.trigger || null,
+      strategy: trace?.strategy || logContext?.strategy || null,
+      decision_outcome: decisionOutcome,
+      decision_reason: trace?.decision?.reason || null,
+      comparator: trace?.decision?.comparator || null,
+      adopted: decisionOutcome === 'pass2' || decisionOutcome === 'policy',
+      had_error: events.some((event) => event?.outcome === 'error'),
+      pass1_match_count: Number.isFinite(Number(pass1Diagnostics.match_count ?? pass1Diagnostics.matchCount))
+        ? Number(pass1Diagnostics.match_count ?? pass1Diagnostics.matchCount)
+        : null,
+      pass1_top_similarity: Number.isFinite(Number(pass1Diagnostics.top_similarity ?? pass1Diagnostics.topSimilarity))
+        ? Number(pass1Diagnostics.top_similarity ?? pass1Diagnostics.topSimilarity)
+        : null,
+      pass2_match_count: Number.isFinite(Number(pass2Diagnostics.match_count ?? pass2Diagnostics.matchCount))
+        ? Number(pass2Diagnostics.match_count ?? pass2Diagnostics.matchCount)
+        : null,
+      pass2_top_similarity: Number.isFinite(Number(pass2Diagnostics.top_similarity ?? pass2Diagnostics.topSimilarity))
+        ? Number(pass2Diagnostics.top_similarity ?? pass2Diagnostics.topSimilarity)
+        : null,
+      stages: {
+        gate: pickStageEvent('gate'),
+        enrichment: pickStageEvent('enrichment'),
+        retrieval_pass2: pickStageEvent('retrieval_pass2'),
+        policy_recheck: pickStageEvent('policy_recheck'),
+        ai_rerun: pickStageEvent('ai_rerun')
+      }
     };
   }
 
@@ -1177,6 +1323,8 @@ ${response}
     const loopStart = Date.now();
     const loopTimeoutMs = this.resolveRagLoopTimeout(config);
     const events = [];
+    let pass1Diagnostics = {};
+    let pass2Diagnostics = {};
     const topN = Math.max(1, Number(config.rag_conflict_top_n || 5));
     const candidateLimit = Math.max(1, Number(config.rag_loop_candidate_limit || 25));
     const expansionOptions = {
@@ -1226,7 +1374,7 @@ ${response}
         recoverable: mapped.recoverable
       };
     };
-    const canRetryRetrievalStage = ({
+    const canRetryStage = ({
       stageError,
       attempt,
       maxAttempts
@@ -1250,13 +1398,55 @@ ${response}
         events: events.map((event) => ({ ...event }))
       }
     });
+    let hadError = false;
+    const buildTraceSafely = ({ ran, strategy = null, comparison = null, resolution = null, learning = null, timing = {} } = {}) => {
+      if (!config.rag_loop_trace_enabled) {
+        return null;
+      }
+
+      try {
+        return buildRagLoopTrace({
+          mode: rolloutMode,
+          ran,
+          trigger: trigger.trigger,
+          strategy,
+          events,
+          pass1Diagnostics,
+          pass2Diagnostics,
+          comparison,
+          resolution,
+          learning,
+          timing,
+          traceConfig
+        });
+      } catch (error) {
+        hadError = true;
+        addEvent({
+          stage: 'trace',
+          outcome: 'error',
+          reason: error.message,
+          reasonCode: 'trace_build_failed',
+          fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED
+        });
+        logger.warn('Failed to build rag loop trace', {
+          correlationId,
+          stage: 'trace',
+          reason_code: 'trace_build_failed',
+          fallback_action: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED,
+          error: error.message
+        });
+        return null;
+      }
+    };
 
     if (!trigger.run) {
       const noRunReasonCode = trigger.reason === 'feature_disabled'
         ? RAG_LOOP_REASON_CODES.FEATURE_DISABLED
+        : (trigger.reason === RAG_LOOP_REASON_CODES.MAX_PASSES_REACHED
+          ? RAG_LOOP_REASON_CODES.MAX_PASSES_REACHED
         : (trigger.reason === RAG_LOOP_REASON_CODES.POLICY_PROMPT_RISK_CLEAR
           ? RAG_LOOP_REASON_CODES.POLICY_PROMPT_RISK_CLEAR
-          : (policyContext.hasPolicyContext ? RAG_LOOP_REASON_CODES.GATE_NOT_MET : RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING));
+          : (policyContext.hasPolicyContext ? RAG_LOOP_REASON_CODES.GATE_NOT_MET : RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING)));
       addEvent({
         stage: 'gate',
         outcome: 'skipped',
@@ -1265,13 +1455,7 @@ ${response}
         fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.GATE_SKIPPED
       });
 
-      const trace = buildRagLoopTrace({
-        mode: rolloutMode,
-        ran: false,
-        trigger: trigger.trigger,
-        events,
-        traceConfig
-      });
+      const trace = buildTraceSafely({ ran: false });
 
       const decision = applyOrShadowDecision({
         baselineResult,
@@ -1291,7 +1475,6 @@ ${response}
 
     const remainingBudget = () => Math.max(0, loopTimeoutMs - (Date.now() - loopStart));
     let aiCallsUsed = 1;
-    let hadError = false;
     const recheckEligibility = getRecheckEligibility(
       {
         trigger: trigger.trigger,
@@ -1312,27 +1495,7 @@ ${response}
         fallbackAction: recheckEligibility.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED
       });
 
-      let trace = null;
-      if (config.rag_loop_trace_enabled) {
-        try {
-          trace = buildRagLoopTrace({
-            mode: rolloutMode,
-            ran: true,
-            trigger: trigger.trigger,
-            events,
-            traceConfig
-          });
-        } catch (error) {
-          logger.warn('Failed to build rag loop trace', {
-            correlationId,
-            stage: 'trace',
-            reason_code: RAG_LOOP_REASON_CODES.DB_UNKNOWN_FAILURE,
-            fallback_action: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED,
-            error: error.message
-          });
-          trace = null;
-        }
-      }
+      const trace = buildTraceSafely({ ran: true });
 
       const decision = applyOrShadowDecision({
         baselineResult,
@@ -1375,7 +1538,7 @@ ${response}
         break;
       } catch (error) {
         const stageError = classifyStageError('gate', error, 'rag_pass1_candidate_failed');
-        if (canRetryRetrievalStage({ stageError, attempt, maxAttempts: pass1MaxAttempts })) {
+        if (canRetryStage({ stageError, attempt, maxAttempts: pass1MaxAttempts })) {
           addEvent({
             stage: 'gate',
             outcome: 'retry',
@@ -1410,7 +1573,7 @@ ${response}
     const pass1Matches = Array.isArray(ragContext?.similarItems) && ragContext.similarItems.length > 0
       ? ragContext.similarItems
       : pass1Candidates.slice(0, topN);
-    const pass1Diagnostics = summarizePassDiagnostics(pass1Matches, pass1Conflict, topN);
+    pass1Diagnostics = summarizePassDiagnostics(pass1Matches, pass1Conflict, topN);
     const metadataCompleteness = getMetadataCompleteness(metadata, config);
     const strategySelection = selectRetryStrategy(pass1Diagnostics, metadataCompleteness, config);
     addEvent({
@@ -1427,12 +1590,13 @@ ${response}
     });
 
     let workingMetadata = { ...metadata };
-    const enrichmentGate = isMetadataEnrichmentEligible({
+    let enrichmentAttempts = 0;
+    let enrichmentGate = isMetadataEnrichmentEligible({
       trigger: trigger.trigger,
       metadata: workingMetadata,
       metadataCompleteness,
       config,
-      attempts: 0
+      attempts: enrichmentAttempts
     });
 
     if (enrichmentGate.eligible && remainingBudget() > 0) {
@@ -1446,17 +1610,59 @@ ${response}
           fallbackAction: resilienceGate.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED
         });
       } else {
-        try {
-          const timeoutMs = Math.min(
-            Number(config.policy_recheck_metadata_timeout_ms || 2000),
-            Math.max(1, remainingBudget())
-          );
-          const enrichedMetadata = await this.withTimeout(
-            this.enrichWithTMDB(workingMetadata.tmdb_id, workingMetadata.media_type),
-            timeoutMs,
-            'metadata_enrichment_timeout'
-          );
-          workingMetadata = this.mergeMetadataForRecheck(workingMetadata, enrichedMetadata);
+        const enrichmentMaxAttempts = Math.max(1, Number(config.policy_recheck_metadata_max_attempts || 1));
+        let enrichmentFinalError = null;
+        let enrichmentFinalStageError = null;
+
+        for (let attempt = 1; attempt <= enrichmentMaxAttempts; attempt += 1) {
+          try {
+            const timeoutMs = Math.min(
+              Number(config.policy_recheck_metadata_timeout_ms || 2000),
+              Math.max(1, remainingBudget())
+            );
+            const enrichedMetadata = await this.withTimeout(
+              this.enrichWithTMDB(workingMetadata.tmdb_id, workingMetadata.media_type),
+              timeoutMs,
+              'metadata_enrichment_timeout'
+            );
+            enrichmentAttempts = attempt;
+            workingMetadata = this.mergeMetadataForRecheck(workingMetadata, enrichedMetadata);
+            enrichmentFinalError = null;
+            enrichmentFinalStageError = null;
+            break;
+          } catch (error) {
+            enrichmentAttempts = attempt;
+            const stageError = classifyStageError('enrichment', error, 'metadata_enrichment_failed');
+            enrichmentFinalError = error;
+            enrichmentFinalStageError = stageError;
+            enrichmentGate = isMetadataEnrichmentEligible({
+              trigger: trigger.trigger,
+              metadata: workingMetadata,
+              metadataCompleteness,
+              config,
+              attempts: enrichmentAttempts
+            });
+
+            if (enrichmentGate.eligible && canRetryStage({ stageError, attempt, maxAttempts: enrichmentMaxAttempts })) {
+              addEvent({
+                stage: 'enrichment',
+                outcome: 'retry',
+                reason: `retry_${attempt}_of_${enrichmentMaxAttempts}`,
+                reasonCode: stageError.reasonCode,
+                fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED,
+                recoverable: stageError.recoverable,
+                sqlState: stageError.sqlState
+              });
+              const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
+              await this.sleep(Math.min(delayMs, remainingBudget()));
+              continue;
+            }
+
+            break;
+          }
+        }
+
+        if (!enrichmentFinalError) {
           ragLoopResilienceManager.recordSuccess('tmdb_enrichment', config);
           addEvent({
             stage: 'enrichment',
@@ -1464,19 +1670,19 @@ ${response}
             reason: 'metadata_updated',
             reasonCode: 'metadata_updated'
           });
-        } catch (error) {
+        } else {
           hadError = true;
-          ragLoopResilienceManager.recordFailure('tmdb_enrichment', error, config);
-      const stageError = classifyStageError('enrichment', error, 'metadata_enrichment_failed');
+          ragLoopResilienceManager.recordFailure('tmdb_enrichment', enrichmentFinalError, config);
+          const stageError = enrichmentFinalStageError || classifyStageError('enrichment', enrichmentFinalError, 'metadata_enrichment_failed');
           addEvent({
             stage: 'enrichment',
             outcome: 'skipped',
-            reason: error.message,
+            reason: enrichmentFinalError.message,
             reasonCode: stageError.reasonCode,
             fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.ENRICHMENT_SKIPPED,
             recoverable: stageError.recoverable,
             sqlState: stageError.sqlState,
-            error
+            error: enrichmentFinalError
           });
         }
       }
@@ -1550,7 +1756,7 @@ ${response}
             pass2FinalError = error;
             pass2FinalStageError = stageError;
 
-            if (canRetryRetrievalStage({ stageError, attempt, maxAttempts: pass2MaxAttempts })) {
+            if (canRetryStage({ stageError, attempt, maxAttempts: pass2MaxAttempts })) {
               addEvent({
                 stage: 'retrieval_pass2',
                 outcome: 'retry',
@@ -1630,7 +1836,7 @@ ${response}
           const stageError = classifyStageError('retrieval_pass2', error, 'rag_pass2_failed');
           pass2CandidateError = error;
           pass2CandidateStageError = stageError;
-          if (canRetryRetrievalStage({
+          if (canRetryStage({
             stageError,
             attempt,
             maxAttempts: pass2CandidateMaxAttempts
@@ -1668,21 +1874,23 @@ ${response}
         });
       }
     }
+    const pass2EvidenceMatches = pass2Candidates.length > 0
+      ? pass2Candidates.slice(0, topN)
+      : (pass2Matches && pass2Matches.length > 0 ? pass2Matches.slice(0, topN) : []);
     const pass2Conflict = config.rag_loop_conflict_detection_enabled
-      ? detectRagConflict(pass2Candidates, config)
+      ? detectRagConflict(pass2EvidenceMatches, config)
       : { isConflict: false, reason: 'conflict_detection_disabled' };
-    
-    // Defensive check added
-    const pass2Diagnostics = summarizePassDiagnostics(
-      pass2Matches && pass2Matches.length > 0 ? pass2Matches : pass2Candidates.slice(0, topN),
+
+    pass2Diagnostics = summarizePassDiagnostics(
+      pass2EvidenceMatches,
       pass2Conflict,
       topN
     );
 
-    const pass2RagContext = pass2Matches && pass2Matches.length > 0
+    const pass2RagContext = pass2EvidenceMatches.length > 0
       ? {
-        similarItems: pass2Matches.slice(0, 3),
-        suggestion: ragRetriever.getSuggestedLibrary(pass2Matches)
+        similarItems: pass2EvidenceMatches.slice(0, 3),
+        suggestion: ragRetriever.getSuggestedLibrary(pass2EvidenceMatches)
       }
       : ragContext;
 
@@ -1698,35 +1906,56 @@ ${response}
 
     if ((trigger.trigger === 'policy_prompt_select' || trigger.trigger === 'policy_prompt_confirm') && remainingBudget() > 0) {
       const evidence = extractVerifiableEvidence(expandedMetadata, config.policy_recheck_identifier_caps);
-      if (evidence.totalTokens > 0 || (pass2Matches && pass2Matches.length > 0)) {
-        try {
-          policyAfter = await this.withRetryableDbConflict(
-            async () => this.withTimeout(
+      const policyRecheckMaxAttempts = Math.max(0, Number(config.policy_recheck_max_attempts ?? 1));
+      if (policyRecheckMaxAttempts <= 0) {
+        addEvent({
+          stage: 'policy_recheck',
+          outcome: 'skipped',
+          reason: 'attempt_cap_reached',
+          reasonCode: 'attempt_cap_reached',
+          fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED
+        });
+      } else if (evidence.totalTokens > 0 || pass2EvidenceMatches.length > 0) {
+        let policyRecheckError = null;
+        let policyRecheckStageError = null;
+        for (let attempt = 1; attempt <= policyRecheckMaxAttempts; attempt += 1) {
+          try {
+            policyAfter = await this.withTimeout(
               policyEngine.evaluateItem(expandedMetadata, {
                 ragCache: {
-                  matches: pass2Matches ? pass2Matches.slice(0, 5) : [],
+                  matches: pass2EvidenceMatches.slice(0, 5),
                   timestamp: Date.now()
                 }
               }),
               Math.max(1, remainingBudget()),
               'policy_recheck_timeout'
-            ),
-            {
-              maxAttempts: 2,
-              baseDelayMs: 75,
-              onRetry: ({ attempt, maxAttempts, delayMs: _delayMs, reasonCode, sqlState }) => {
-                addEvent({
-                  stage: 'policy_recheck',
-                  outcome: 'retry',
-                  reason: `retry_${attempt}_of_${maxAttempts}`,
-                  reasonCode,
-                  fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED,
-                  recoverable: true,
-                  sqlState
-                });
-              }
+            );
+            policyRecheckError = null;
+            policyRecheckStageError = null;
+            break;
+          } catch (error) {
+            const stageError = classifyStageError('policy_recheck', error, 'policy_recheck_failed');
+            policyRecheckError = error;
+            policyRecheckStageError = stageError;
+            if (canRetryStage({ stageError, attempt, maxAttempts: policyRecheckMaxAttempts })) {
+              addEvent({
+                stage: 'policy_recheck',
+                outcome: 'retry',
+                reason: `retry_${attempt}_of_${policyRecheckMaxAttempts}`,
+                reasonCode: stageError.reasonCode,
+                fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED,
+                recoverable: stageError.recoverable,
+                sqlState: stageError.sqlState
+              });
+              const delayMs = Math.min(500, retrievalRetryBaseDelayMs * Math.pow(2, attempt - 1));
+              await this.sleep(Math.min(delayMs, remainingBudget()));
+              continue;
             }
-          );
+            break;
+          }
+        }
+
+        if (!policyRecheckError) {
           policyGate = evaluatePolicyRecheckGate({
             policyBefore: policyResult,
             policyAfter,
@@ -1754,13 +1983,13 @@ ${response}
               adoptionReason: 'Policy re-check upgraded confidence'
             });
           }
-        } catch (error) {
+        } else {
           hadError = true;
-          const stageError = classifyStageError('policy_recheck', error, 'policy_recheck_failed');
+          const stageError = policyRecheckStageError || classifyStageError('policy_recheck', policyRecheckError, 'policy_recheck_failed');
           addEvent({
             stage: 'policy_recheck',
             outcome: 'error',
-            reason: error.message,
+            reason: policyRecheckError.message,
             reasonCode: stageError.reasonCode,
             fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED,
             recoverable: stageError.recoverable,
@@ -1802,7 +2031,7 @@ ${response}
           try {
             aiCallsUsed += 1;
             const aiRerunMatch = await this.aiClassify(expandedMetadata, libraries, signalContext, {
-              mode: 'classify',
+              mode: 'verify',
               ragContext: pass2RagContext
             });
             pass2Candidate = this.buildAiRerunCandidate({
@@ -1895,6 +2124,7 @@ ${response}
       policyGate,
       pass1Diagnostics,
       pass2Diagnostics,
+      pass2Conflict,
       config
     });
     const resolution = resolveConflictDecision({
@@ -1913,43 +2143,16 @@ ${response}
       machineOnly: true
     });
     let trace = null;
-    if (config.rag_loop_trace_enabled) {
-      try {
-        trace = buildRagLoopTrace({
-          mode: rolloutMode,
-          ran: true,
-          trigger: trigger.trigger,
-          strategy: strategySelection.strategy,
-          events,
-          pass1Diagnostics,
-          pass2Diagnostics,
-          comparison,
-          resolution,
-          learning,
-          timing: {
-            total: Date.now() - loopStart
-          },
-          traceConfig
-        });
-      } catch (error) {
-        hadError = true;
-        addEvent({
-          stage: 'trace',
-          outcome: 'error',
-          reason: error.message,
-          reasonCode: 'trace_build_failed',
-          fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED
-        });
-        logger.warn('Failed to build rag loop trace', {
-          correlationId,
-          stage: 'trace',
-          reason_code: 'trace_build_failed',
-          fallback_action: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED,
-          error: error.message
-        });
-        trace = null;
+    trace = buildTraceSafely({
+      ran: true,
+      strategy: strategySelection.strategy,
+      comparison,
+      resolution,
+      learning,
+      timing: {
+        total: Date.now() - loopStart
       }
-    }
+    });
 
     const decision = applyOrShadowDecision({
       baselineResult,
@@ -2441,26 +2644,13 @@ ${response}
         });
         const effectiveRagContext = finalResult.ragContext || ragContext;
 
-        // Ensure low-confidence results surface policy-driven clarifications
-        if (!finalResult.needs_clarification && finalResult.confidence < 70) {
-          const policyQuestion = await policyQuestionBuilder.build({
-            metadata,
-            policyResult: policyResult || null,
-            libraries,
-            suggestedLibrary: finalResult.library || null,
-            ragContext: effectiveRagContext,
-            aiResult: finalResult
-          });
-
-          if (policyQuestion) {
-            finalResult.needs_clarification = true;
-            finalResult.clarification = policyQuestion;
-            finalResult.policy_question = policyQuestion;
-            finalResult.pending_reason = policyQuestion.problem_summary;
-          }
-        }
-
-        return finalResult;
+        return this.ensureDecisionQuestion({
+          metadata,
+          result: finalResult,
+          policyResult: policyResult || null,
+          libraries,
+          ragContext: effectiveRagContext
+        });
       } catch (error) {
         const fallbackConfidence = policySignalContext.confidence || 0;
         const suggestedLibrary = policySignalContext.suggestedLibrary;
@@ -2487,29 +2677,43 @@ ${response}
             confidence: fallbackConfidence,
             libraries: libraries,
             signalContext: policySignalContext,
-            transientError: error
+            transientError: error,
+            previousRetryCount: metadata.retry_count,
+            maxRetries: metadata.max_retries
           });
         }
 
         if (suggestedLibrary && fallbackConfidence >= 50) {
-          return {
+          return this.ensureDecisionQuestion({
+            metadata,
+            result: {
             library: suggestedLibrary,
             confidence: fallbackConfidence,
             method: 'signal_calculation',
             reason: 'Calculated from policy signals (AI unavailable)',
             libraries: libraries,
             policyResult
-          };
+            },
+            policyResult: policyResult || null,
+            libraries,
+            ragContext
+          });
         }
 
         const fallbackLibrary = libraries[libraries.length - 1];
-        return {
-          library: fallbackLibrary,
-          confidence: 50,
-          method: 'fallback',
-          reason: `Default library - AI unavailable (fell back to ${fallbackLibrary.name})`,
-          libraries: libraries,
-        };
+        return this.ensureDecisionQuestion({
+          metadata,
+          result: {
+            library: fallbackLibrary,
+            confidence: 50,
+            method: 'fallback',
+            reason: `Default library - AI unavailable (fell back to ${fallbackLibrary.name})`,
+            libraries: libraries,
+          },
+          policyResult: policyResult || null,
+          libraries,
+          ragContext
+        });
       }
     }
 
@@ -2618,25 +2822,13 @@ ${response}
       });
       const effectiveRagContext = finalResult.ragContext || ragContext;
 
-      if (!finalResult.needs_clarification && finalResult.confidence < 70) {
-        const policyQuestion = await policyQuestionBuilder.build({
-          metadata,
-          policyResult: metadata.policyResult || null,
-          libraries,
-          suggestedLibrary: finalResult.library || null,
-          ragContext: effectiveRagContext,
-          aiResult: finalResult
-        });
-
-        if (policyQuestion) {
-          finalResult.needs_clarification = true;
-          finalResult.clarification = policyQuestion;
-          finalResult.policy_question = policyQuestion;
-          finalResult.pending_reason = policyQuestion.problem_summary;
-        }
-      }
-
-      return finalResult;
+      return this.ensureDecisionQuestion({
+        metadata,
+        result: finalResult,
+        policyResult: metadata.policyResult || null,
+        libraries,
+        ragContext: effectiveRagContext
+      });
     } catch (error) {
       const isTransientAiAvailability = this.isAiTransientAvailabilityError(error);
 
@@ -2661,28 +2853,42 @@ ${response}
           confidence: confidenceResult.confidence,
           libraries: libraries,
           signalContext,
-          transientError: error
+          transientError: error,
+          previousRetryCount: metadata.retry_count,
+          maxRetries: metadata.max_retries
         });
       }
 
       if (confidenceResult.suggestedLibrary && confidenceResult.confidence >= 50) {
-        return {
-          library: confidenceResult.suggestedLibrary,
-          confidence: confidenceResult.confidence,
-          method: 'signal_calculation',
-          reason: `Calculated from signals (AI unavailable)`,
-          libraries: libraries,
-        };
+        return this.ensureDecisionQuestion({
+          metadata,
+          result: {
+            library: confidenceResult.suggestedLibrary,
+            confidence: confidenceResult.confidence,
+            method: 'signal_calculation',
+            reason: 'Calculated from signals (AI unavailable)',
+            libraries: libraries,
+          },
+          policyResult: metadata.policyResult || null,
+          libraries,
+          ragContext
+        });
       }
 
       const fallbackLibrary = libraries[libraries.length - 1];
-      return {
-        library: fallbackLibrary,
-        confidence: 50,
-        method: 'fallback',
-        reason: `Default library - AI unavailable (fell back to ${fallbackLibrary.name})`,
-        libraries: libraries,
-      };
+      return this.ensureDecisionQuestion({
+        metadata,
+        result: {
+          library: fallbackLibrary,
+          confidence: 50,
+          method: 'fallback',
+          reason: `Default library - AI unavailable (fell back to ${fallbackLibrary.name})`,
+          libraries: libraries,
+        },
+        policyResult: metadata.policyResult || null,
+        libraries,
+        ragContext
+      });
     }
   }
 
@@ -3035,6 +3241,13 @@ Think step by step, then respond with ONLY one of the formats above.`;
       : { model: 'llama3.2', temperature: 0.30 };
     const aiResponseRepairEnabled = providerRow?.ai_response_repair_enabled !== false;
     const disallowPartialStreamResponse = providerRow?.classification_disallow_partial_stream_response !== false;
+    const provider = await aiRouter.getProvider('classification');
+
+    if (!provider) {
+      throw new Error('AI is not available - no provider configured or budget exhausted');
+    }
+
+    const generationModel = provider.config?.model || config.model;
 
     // Acquire lock with high priority (classification always wins)
     await providerLock.acquireLock('classification', 'high');
@@ -3052,7 +3265,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
       // Track generation status for UI
       const itemTitle = metadata.title || 'Unknown';
-      ollamaService.setGenerationStatus(true, config.model, itemTitle);
+      ollamaService.setGenerationStatus(true, generationModel, itemTitle);
 
       try {
         const maxTransientStreamAttempts = 2;
@@ -3062,34 +3275,42 @@ Think step by step, then respond with ONLY one of the formats above.`;
         while (streamAttempt < maxTransientStreamAttempts) {
           streamAttempt += 1;
           try {
-            // Use streaming to monitor progress
-            let lastLogTime = Date.now();
-            response = await ollamaService.generateWithProgress(
-              prompt,
-              config.model,
-              parseFloat(config.temperature),
-              (tokenCount, isComplete) => {
-                // Update token count for UI
-                ollamaService.updateTokenCount(tokenCount);
+            if (provider.type === 'ollama') {
+              // Use streaming to monitor progress for local generation.
+              let lastLogTime = Date.now();
+              response = await ollamaService.generateWithProgress(
+                prompt,
+                generationModel,
+                parseFloat(config.temperature),
+                (tokenCount, isComplete) => {
+                  // Update token count for UI
+                  ollamaService.updateTokenCount(tokenCount);
 
-                // Log progress every 2 seconds or on completion
-                const now = Date.now();
-                if (isComplete || now - lastLogTime > 2000) {
-                  logger.debug('Ollama generation progress', {
-                    tokens: tokenCount,
-                    complete: isComplete,
-                    model: config.model
-                  });
-                  lastLogTime = now;
+                  // Log progress every 2 seconds or on completion
+                  const now = Date.now();
+                  if (isComplete || now - lastLogTime > 2000) {
+                    logger.debug('Ollama generation progress', {
+                      tokens: tokenCount,
+                      complete: isComplete,
+                      model: generationModel
+                    });
+                    lastLogTime = now;
+                  }
+                },
+                null,
+                {
+                  allowPartialOnAbort: !disallowPartialStreamResponse,
+                  allowPartialOnStall: !disallowPartialStreamResponse,
+                  requireDoneSignal: disallowPartialStreamResponse
                 }
-              },
-              null,
-              {
-                allowPartialOnAbort: !disallowPartialStreamResponse,
-                allowPartialOnStall: !disallowPartialStreamResponse,
-                requireDoneSignal: disallowPartialStreamResponse
-              }
-            );
+              );
+            } else {
+              response = await aiRouter.classify(prompt, {
+                taskType: 'classification',
+                requestType: mode === 'verify' ? 'classification_verify' : 'classification',
+                itemTitle
+              });
+            }
             lastStreamError = null;
             break;
           } catch (streamError) {
@@ -3101,7 +3322,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
             logger.warn('Transient AI stream failure - retrying classification generation', {
               title: metadata?.title,
-              model: config.model,
+              model: generationModel,
               attempt: streamAttempt,
               maxAttempts: maxTransientStreamAttempts,
               code: streamError.code,
@@ -3219,28 +3440,14 @@ Think step by step, then respond with ONLY one of the formats above.`;
     const signalsJson = result.signals ? JSON.stringify(result.signals) :
       result.signalContext?.signals ? JSON.stringify(result.signalContext.signals) : null;
 
-    // For pending items (needs clarification)
-    const pendingReason = result.pending_reason || (result.needs_clarification ? result.reason : null);
-    const policyQuestion = await this.normalizePolicyQuestion(result.policy_question);
-
-    // Handle retry status
-    let status;
-    if (result.needs_retry) {
-      status = 'pending_retry';
-    } else {
-      // Determine status: awaiting_decision if needs clarification, fallback method, or low confidence
-      status = (
-        result.needs_clarification ||
-        result.method === 'fallback' ||
-        (result.confidence && result.confidence < 70)
-      ) ? 'awaiting_decision' : 'completed';
-    }
-
-    // Only set library when classification is complete
-    // When awaiting_decision or pending_retry, library_id and library_name should be NULL to prevent premature assignment
-    const isAwaitingDecision = status === 'awaiting_decision' || status === 'pending_retry';
-    const libraryId = isAwaitingDecision ? null : (result.library?.id || null);
-    const libraryName = isAwaitingDecision ? null : (result.library?.name || null);
+    const {
+      status,
+      libraryId,
+      libraryName,
+      pendingReason,
+      policyQuestion,
+      profileSnapshot
+    } = await this.deriveClassificationPersistenceState(result);
 
     const ragContext = result.ragContext || result.signalContext?.ragContext || null;
     const ragTopMatch = ragContext?.similarItems?.[0] || null;
@@ -3259,6 +3466,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
       weights: result.policyResult?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
       rag_details: ragDetails,
       rag_loop_trace: result.ragLoopTrace || null,
+      rag_loop_summary: this.buildRagLoopSummary(result),
       parse_diagnostics: result.parse_diagnostics || null,
       processing_time_ms: startTime ? Date.now() - startTime : null
     };
@@ -3268,21 +3476,6 @@ Think step by step, then respond with ONLY one of the formats above.`;
       ...metadata,
       classification_details: classificationDetails
     };
-
-    // Get library profile snapshot for completed classifications
-    let profileSnapshot = null;
-    if (libraryId && status === 'completed') {
-      try {
-        const libraryProfileService = require('./libraryProfileService');
-        const profileStats = await libraryProfileService.getProfileStats(libraryId);
-        profileSnapshot = JSON.stringify(profileStats);
-      } catch (error) {
-        logger.warn('Failed to get profile snapshot for classification', {
-          libraryId,
-          error: error.message
-        });
-      }
-    }
 
     const ragGraphExtractor = require('./ragGraphExtractor');
     const graphRel = ragGraphExtractor.extract(enrichedMetadata);
@@ -3529,6 +3722,115 @@ Think step by step, then respond with ONLY one of the formats above.`;
         error: error.message
       });
     }
+  }
+
+  async rebindRetryLineage(classificationId, metadata = {}) {
+    const lineage = metadata.retry_lineage;
+    if (!lineage || typeof lineage !== 'object') {
+      return;
+    }
+
+    const normalizeIds = (ids) => (
+      Array.isArray(ids)
+        ? [...new Set(
+          ids
+            .map((id) => Number.parseInt(id, 10))
+            .filter((id) => Number.isInteger(id) && id > 0)
+        )]
+        : []
+    );
+
+    const mediaRequestIds = normalizeIds(lineage.media_request_ids);
+    const webhookLogIds = normalizeIds(lineage.webhook_log_ids);
+    const originalClassificationId = Number.parseInt(lineage.original_classification_id, 10);
+
+    if (
+      mediaRequestIds.length === 0 &&
+      webhookLogIds.length === 0 &&
+      (!Number.isInteger(originalClassificationId) || originalClassificationId < 1)
+    ) {
+      return;
+    }
+
+    try {
+      if (mediaRequestIds.length > 0) {
+        await db.query(
+          `UPDATE media_requests
+           SET classification_id = $1
+           WHERE id = ANY($2::int[])`,
+          [classificationId, mediaRequestIds]
+        );
+      }
+
+      if (webhookLogIds.length > 0) {
+        await db.query(
+          `UPDATE webhook_log
+           SET classification_id = $1
+           WHERE id = ANY($2::int[])`,
+          [classificationId, webhookLogIds]
+        );
+      }
+
+      if (Number.isInteger(originalClassificationId) && originalClassificationId > 0) {
+        await classificationOutcomeService.recordOutcome(originalClassificationId, {
+          replacement_classification_id: classificationId
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to rebind retry lineage', {
+        classificationId,
+        originalClassificationId,
+        mediaRequestIds,
+        webhookLogIds,
+        error: error.message
+      });
+    }
+  }
+
+  async deriveClassificationPersistenceState(result) {
+    let status;
+    if (result.needs_retry) {
+      status = 'pending_retry';
+    } else {
+      status = (
+        result.needs_clarification ||
+        result.method === 'fallback' ||
+        (result.confidence && result.confidence < 70)
+      ) ? 'awaiting_decision' : 'completed';
+    }
+
+    const isAwaitingDecision = status === 'awaiting_decision' || status === 'pending_retry';
+    const libraryId = isAwaitingDecision ? null : (result.library?.id || result.library?.library_id || null);
+    const libraryName = isAwaitingDecision ? null : (result.library?.name || result.library?.library_name || null);
+    const pendingReason = status === 'completed'
+      ? null
+      : (result.pending_reason || (status === 'awaiting_decision' ? result.reason : null));
+    const policyQuestion = status === 'awaiting_decision'
+      ? await this.normalizePolicyQuestion(result.policy_question || result.clarification)
+      : null;
+
+    let profileSnapshot = null;
+    if (libraryId && status === 'completed') {
+      try {
+        const libraryProfileService = require('./libraryProfileService');
+        const profileStats = await libraryProfileService.getProfileStats(libraryId);
+        profileSnapshot = JSON.stringify(profileStats);
+      } catch (error) {
+        logger.warn('Failed to get profile snapshot for classification', {
+          libraryId,
+          error: error.message
+        });
+      }
+    }
+
+    return {
+      status,
+      libraryId,
+      libraryName,
+      pendingReason,
+      policyQuestion,
+      profileSnapshot
+    };
   }
 
   async routeToArr(metadata, library) {
@@ -3898,6 +4200,54 @@ Think step by step, then respond with ONLY one of the formats above.`;
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
+  async ensureDecisionQuestion({ metadata, result, policyResult = null, libraries = [], ragContext = null }) {
+    if (!result || result.needs_retry) {
+      return result;
+    }
+
+    const requiresDecisionQuestion = Boolean(
+      result.needs_clarification ||
+      result.method === 'fallback' ||
+      (result.confidence && result.confidence < 70)
+    );
+
+    if (!requiresDecisionQuestion) {
+      result.needs_clarification = false;
+      result.clarification = null;
+      result.policy_question = null;
+      result.pending_reason = null;
+      return result;
+    }
+
+    const existingQuestion = result.policy_question || result.clarification || null;
+    if (existingQuestion) {
+      result.needs_clarification = true;
+      result.clarification = result.clarification || existingQuestion;
+      result.policy_question = result.policy_question || existingQuestion;
+      result.pending_reason = result.pending_reason || existingQuestion.problem_summary || result.reason || null;
+      return result;
+    }
+
+    const effectivePolicyResult = result.policyResult || policyResult || null;
+    const policyQuestion = await policyQuestionBuilder.build({
+      metadata,
+      policyResult: effectivePolicyResult,
+      libraries,
+      suggestedLibrary: result.library || null,
+      ragContext,
+      aiResult: result
+    });
+
+    if (policyQuestion) {
+      result.needs_clarification = true;
+      result.clarification = policyQuestion;
+      result.policy_question = policyQuestion;
+      result.pending_reason = policyQuestion.problem_summary;
+    }
+
+    return result;
+  }
+
   async normalizePolicyQuestion(value) {
     if (!value) return null;
     let parsed = null;
@@ -4047,159 +4397,17 @@ Think step by step, then respond with ONLY one of the formats above.`;
    */
   async retryClassification(classificationId) {
     try {
-      // Get the classification entry
-      const result = await db.query(
-        `SELECT * FROM classification_history WHERE id = $1`,
-        [classificationId]
-      );
-
-      if (result.rows.length === 0) {
-        logger.warn('Classification not found for retry', { classificationId });
-        return;
-      }
-
-      const classification = result.rows[0];
-
-      // Check if we've exceeded max retries
-      if (classification.retry_count >= classification.max_retries) {
-        logger.warn('Max retries exceeded - marking as awaiting_decision', {
-          classificationId,
-          retry_count: classification.retry_count,
-        });
-
-        // Update to awaiting_decision after max retries
-        await db.query(
-          `UPDATE classification_history 
-           SET status = 'awaiting_decision',
-               reason = $1,
-               method = 'fallback'
-           WHERE id = $2`,
-          [
-            `AI unavailable after ${classification.retry_count} retries - manual review needed`,
-            classificationId,
-          ]
-        );
-
-        // Send notification for manual review if metadata is valid
-        let metadata;
-        try {
-          metadata = JSON.parse(classification.metadata);
-        } catch (parseError) {
-          logger.error('Failed to parse metadata for notification after max retries', {
-            classificationId,
-            error: parseError.message,
-          });
-          // Cannot send notification without valid metadata, but status is already updated
-          return;
-        }
-
-        try {
-          await discordBot.sendConfidenceBasedNotification(
-            metadata,
-            {
-              confidence: classification.confidence || 50,
-              reason: `AI unavailable after ${classification.retry_count} retries`,
-              needs_clarification: true,
-            },
-            null
-          );
-        } catch (notificationError) {
-          logger.error('Failed to send notification after max retries', {
-            classificationId,
-            error: notificationError.message,
-          });
-        }
-
-        // Create in-app notification for manual review
-        await createAwaitingDecisionNotification(
-          classificationId,
-          classification.title,
-          `AI unavailable after ${classification.retry_count} retries - manual review needed`,
-          classification.media_type
-        );
-
-        return;
-      }
-
-      // Attempt re-classification
-      logger.info('Retrying classification', {
-        classificationId,
-        retry_count: classification.retry_count,
-        title: classification.title,
+      const result = await classificationRetryService.retryClassifications({
+        classificationIds: [classificationId],
+        actor: 'scheduler',
+        purgeLearning: false,
+        correlationId: `scheduler-retry-${classificationId}`,
+        taskSource: 'retry_queue',
+        metadataEnrichmentSource: 'retry_queue_followup',
+        route: 'scheduler:retry-queue'
       });
 
-      // Parse the original metadata
-      let metadata;
-      try {
-        metadata = JSON.parse(classification.metadata);
-      } catch (parseError) {
-        logger.error('Failed to parse metadata for retry', {
-          classificationId,
-          error: parseError.message,
-        });
-        // Mark as failed if metadata is invalid
-        await db.query(
-          `UPDATE classification_history 
-           SET status = 'failed',
-               error_message = $1
-           WHERE id = $2`,
-          ['Invalid metadata - cannot retry', classificationId]
-        );
-        return;
-      }
-
-      // Re-run classification
-      const newResult = await this.classify(metadata);
-
-      // If classification succeeded (not pending_retry), update the entry
-      if (!newResult.needs_retry) {
-        await db.query(
-          `UPDATE classification_history 
-           SET status = $1,
-               method = $2,
-               reason = $3,
-               confidence = $4,
-               library_id = $5,
-               library_name = $6,
-               retry_count = $7,
-               retry_after = NULL
-           WHERE id = $8`,
-          [
-            newResult.needs_clarification ? 'awaiting_decision' : 'completed',
-            newResult.method,
-            newResult.reason,
-            newResult.confidence,
-            newResult.library?.id || null,
-            newResult.library?.name || null,
-            classification.retry_count + 1,
-            classificationId,
-          ]
-        );
-
-        logger.info('Classification retry succeeded', {
-          classificationId,
-          method: newResult.method,
-          library: newResult.library?.name,
-        });
-      } else {
-        // Still failing - increment retry count and update retry_after
-        await db.query(
-          `UPDATE classification_history 
-           SET retry_count = $1,
-               retry_after = $2
-           WHERE id = $3`,
-          [
-            classification.retry_count + 1,
-            new Date(Date.now() + RETRY_DELAY_MS),
-            classificationId,
-          ]
-        );
-
-        logger.info('Classification retry still pending', {
-          classificationId,
-          retry_count: classification.retry_count + 1,
-        });
-      }
+      return result.results?.[0] || null;
     } catch (error) {
       logger.error('Failed to retry classification', {
         classificationId,

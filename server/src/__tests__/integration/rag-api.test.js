@@ -37,6 +37,7 @@ jest.mock('../../utils/logger', () => ({
 const express = require('express');
 const ragRouter = require('../../routes/rag');
 const ragLoopMetricsCollector = require('../../services/ragLoopMetricsCollector');
+const manualBackfillService = require('../../services/manualBackfillService');
 const bodyParser = require('body-parser');
 
 // Don't mock the database module locally - allow it to use the global mock from setup.js
@@ -215,6 +216,126 @@ describe('RAG API Integration Tests', () => {
             expect(response.body.pgvectorBuild).toBe('multi');
             expect(response.body.cpuAvx).toBe('true');
             expect(response.body.cpuAvx2).toBe('true');
+        });
+    });
+
+    describe('POST /api/rag/backfill/start', () => {
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
+        it('delegates the legacy backfill start route through manualBackfillService', async () => {
+            jest.spyOn(manualBackfillService, 'start').mockResolvedValue({
+                status: 'running',
+                batchSize: 25
+            });
+            jest.spyOn(manualBackfillService, 'getStatus').mockResolvedValue({
+                status: 'running',
+                processed: 0,
+                total: 10,
+                batchSize: 25
+            });
+
+            const response = await request(app)
+                .post('/api/rag/backfill/start')
+                .send({ limit: 25 })
+                .expect(200);
+
+            expect(manualBackfillService.start).toHaveBeenCalledWith({ batchSize: 25 });
+            expect(response.body).toEqual({
+                success: true,
+                status: {
+                    status: 'running',
+                    processed: 0,
+                    total: 10,
+                    batchSize: 25
+                }
+            });
+        });
+
+        it('accepts batchSize on the legacy route too', async () => {
+            jest.spyOn(manualBackfillService, 'start').mockResolvedValue({
+                status: 'running',
+                batchSize: 30
+            });
+            jest.spyOn(manualBackfillService, 'getStatus').mockResolvedValue({
+                status: 'running',
+                processed: 0,
+                total: 10,
+                batchSize: 30
+            });
+
+            await request(app)
+                .post('/api/rag/backfill/start')
+                .send({ batchSize: 30 })
+                .expect(200);
+
+            expect(manualBackfillService.start).toHaveBeenCalledWith({ batchSize: 30 });
+        });
+
+        it('rejects invalid manual backfill sizes on the legacy route', async () => {
+            const response = await request(app)
+                .post('/api/rag/backfill/start')
+                .send({ limit: 0 })
+                .expect(400);
+
+            expect(response.body.error).toContain('batchSize must be a positive integer');
+        });
+    });
+
+    describe('POST /api/rag/backfill/manual/start', () => {
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
+        it('accepts legacy limit payloads on the manual route', async () => {
+            jest.spyOn(manualBackfillService, 'start').mockResolvedValue({
+                status: 'running',
+                batchSize: 18
+            });
+            jest.spyOn(manualBackfillService, 'getStatus').mockResolvedValue({
+                status: 'running',
+                processed: 0,
+                total: 10,
+                batchSize: 18
+            });
+
+            const response = await request(app)
+                .post('/api/rag/backfill/manual/start')
+                .send({ limit: 18 })
+                .expect(200);
+
+            expect(manualBackfillService.start).toHaveBeenCalledWith({ batchSize: 18 });
+            expect(response.body.success).toBe(true);
+        });
+
+        it('allows service-side default batch size resolution when no payload size is supplied', async () => {
+            jest.spyOn(manualBackfillService, 'start').mockResolvedValue({
+                status: 'running',
+                batchSize: 50
+            });
+            jest.spyOn(manualBackfillService, 'getStatus').mockResolvedValue({
+                status: 'running',
+                processed: 0,
+                total: 10,
+                batchSize: 50
+            });
+
+            await request(app)
+                .post('/api/rag/backfill/manual/start')
+                .send({})
+                .expect(200);
+
+            expect(manualBackfillService.start).toHaveBeenCalledWith({});
+        });
+
+        it('rejects invalid manual backfill sizes on the manual route', async () => {
+            const response = await request(app)
+                .post('/api/rag/backfill/manual/start')
+                .send({ batchSize: -5 })
+                .expect(400);
+
+            expect(response.body.error).toContain('batchSize must be a positive integer');
         });
     });
 
@@ -597,6 +718,12 @@ describe('RAG API Integration Tests', () => {
             expect(response.body).toHaveProperty('pendingBreakdown');
             expect(response.body.pendingBreakdown).toEqual({ text: 1, image: 1, total: 2 });
             expect(response.body.pending).toBe(2);
+            expect(response.body.idle).toHaveProperty('status');
+            expect(response.body.idle).toHaveProperty('enabled');
+            expect(response.body.idle).toHaveProperty('cooldownUntil');
+            expect(response.body.scheduled).toHaveProperty('status');
+            expect(response.body.scheduled).toHaveProperty('isRunning');
+            expect(response.body.scheduled).toHaveProperty('stopRequested');
         });
     });
 

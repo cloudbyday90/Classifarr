@@ -68,7 +68,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
 
     const user = await authService.authenticate(identifier, password);
-    const accessToken = await authService.generateAccessToken(user);
+    const accessToken = await authService.generateAccessToken(user, sanitizedRememberMe);
     const refreshToken = await authService.generateRefreshToken(
       user.id,
       req.get('User-Agent'),
@@ -141,9 +141,7 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
     const user = userResult.rows[0];
     const rememberMe = tokenData.remember_me || false;
 
-    await authService.revokeRefreshToken(refreshToken, req.ip);
-
-    const newAccessToken = await authService.generateAccessToken(user);
+    const newAccessToken = await authService.generateAccessToken(user, rememberMe);
     const newRefreshToken = await authService.generateRefreshToken(
       user.id,
       req.get('User-Agent'),
@@ -153,6 +151,17 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
       // whichever is later — the old expiry or now — rather than always from now.
       rememberMe ? tokenData.expires_at : null
     );
+
+    try {
+      const revokedOldToken = await authService.revokeRefreshToken(refreshToken, req.ip);
+      if (!revokedOldToken) {
+        await authService.revokeRefreshToken(newRefreshToken, req.ip);
+        return res.status(401).json({ error: 'Invalid or expired refresh token' });
+      }
+    } catch (rotationError) {
+      await authService.revokeRefreshToken(newRefreshToken, req.ip).catch(() => {});
+      throw rotationError;
+    }
 
     const secureCookies = resolveSecureCookieFlag(req, runtimeSettings.getValue('force_secure_cookies'));
     res.cookie('access_token', newAccessToken, authService.getCookieOptions(secureCookies, rememberMe));
@@ -170,7 +179,7 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(401).json({ error: error.message || 'Token refresh failed' });
+    res.status(500).json({ error: error.message || 'Token refresh failed' });
   }
 });
 

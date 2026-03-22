@@ -838,7 +838,7 @@ class EnrichmentRetryService {
     }
 
     /**
-     * Backfill retry queue with items missing OMDb data
+     * Backfill Tavily retry queue with items missing OMDb data
      */
     async backfillRetryQueue() {
         const result = await db.query(`
@@ -856,7 +856,12 @@ class EnrichmentRetryService {
     `);
 
         logger.info('Backfilled retry queue', { itemsQueued: result.rowCount });
-        return { queued: result.rowCount };
+        return {
+            success: true,
+            queued: result.rowCount,
+            enrichmentType: 'tavily',
+            reason: 'items_missing_omdb_data',
+        };
     }
 }
 

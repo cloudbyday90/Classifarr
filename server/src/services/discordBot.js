@@ -29,6 +29,7 @@ const {
 const db = require("../config/database");
 const { createLogger } = require("../utils/logger");
 const { normalizeMetadataList } = require("../utils/metadataNormalization");
+const classificationOutcomeService = require("./classificationOutcomeService");
 
 const logger = createLogger("discordBot");
 const clarificationService = require("./clarificationService");
@@ -262,6 +263,7 @@ class DiscordBotService {
   }
 
   async getServers(botToken = null) {
+    let testClient = null;
     try {
       // Always prefer stored token (the passed botToken might be masked from frontend)
       // Use ignoreEnabledStatus=true to get token even when bot is disabled
@@ -272,7 +274,7 @@ class DiscordBotService {
       }
 
       // Create temporary client
-      const testClient = new Client({
+      testClient = new Client({
         intents: [GatewayIntentBits.Guilds],
       });
 
@@ -303,15 +305,18 @@ class DiscordBotService {
         memberCount: guild.memberCount,
       }));
 
-      await testClient.destroy();
-
       return guilds;
     } catch (error) {
       throw new Error(`Failed to fetch servers: ${error.message}`);
+    } finally {
+      if (testClient) {
+        await testClient.destroy().catch(() => {});
+      }
     }
   }
 
   async getChannels(serverId, botToken = null) {
+    let testClient = null;
     try {
       // Always prefer stored token (the passed botToken might be masked from frontend)
       // Use ignoreEnabledStatus=true to get token even when bot is disabled
@@ -322,7 +327,7 @@ class DiscordBotService {
       }
 
       // Create temporary client
-      const testClient = new Client({
+      testClient = new Client({
         intents: [GatewayIntentBits.Guilds],
       });
 
@@ -348,7 +353,6 @@ class DiscordBotService {
 
       const guild = testClient.guilds.cache.get(serverId);
       if (!guild) {
-        await testClient.destroy();
         throw new Error("Server not found or bot not added to this server");
       }
 
@@ -364,11 +368,13 @@ class DiscordBotService {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      await testClient.destroy();
-
       return channels;
     } catch (error) {
       throw new Error(`Failed to fetch channels: ${error.message}`);
+    } finally {
+      if (testClient) {
+        await testClient.destroy().catch(() => {});
+      }
     }
   }
 
@@ -1132,15 +1138,8 @@ class DiscordBotService {
         const action = parts[0];
 
         if (action === "correct") {
-          const _classificationId = parts[1];
-          await interaction.update({
-            components: [],
-            embeds: [
-              EmbedBuilder.from(interaction.message.embeds[0]).setFooter({
-                text: "✅ Confirmed correct by user",
-              }),
-            ],
-          });
+          const classificationId = parseInt(parts[1]);
+          await this.processVerification(classificationId, true, interaction);
         } else if (action === "reclassify") {
           const classificationId = parts[1];
           const newLibraryId = parts[2];
@@ -1241,6 +1240,7 @@ class DiscordBotService {
 
       const originalLibraryId = classResult.rows[0].library_id;
       const classification = classResult.rows[0];
+      const existingLibraryId = this.toFiniteNumber(classification.library_id);
 
       // Get new library info
       const libResult = await db.query(
@@ -1257,6 +1257,14 @@ class DiscordBotService {
       }
 
       const newLibraryName = libResult.rows[0].name;
+
+      if (existingLibraryId !== null && existingLibraryId === newLibraryId) {
+        await interaction.followUp({
+          content: "✅ Already processed — no changes made.",
+          ephemeral: true,
+        });
+        return;
+      }
 
       const clarificationResponse = {
         corrected_library_id: newLibraryId,
@@ -1283,7 +1291,6 @@ class DiscordBotService {
           JSON.stringify(clarificationResponse),
         ],
       );
-
       // Save correction
       await db.query(
         "INSERT INTO classification_corrections (classification_id, original_library_id, corrected_library_id, corrected_by) VALUES ($1, $2, $3, $4)",
@@ -1294,6 +1301,13 @@ class DiscordBotService {
           interaction.user.username,
         ],
       );
+      await classificationOutcomeService.recordOutcome(classificationId, {
+        type: "corrected",
+        source: "discord_correction",
+        actor: interaction.user.username,
+        final_library_id: newLibraryId,
+        final_library_name: newLibraryName
+      });
 
       // Learn from this correction (user selected a different library)
       try {
@@ -1469,6 +1483,20 @@ class DiscordBotService {
         selectedLabel = selectedButton?.label || selectedLabel;
       }
 
+      const existingLibraryId = this.toFiniteNumber(classification.library_id);
+      if (
+        ['completed', 'routed', 'corrected', 'verified'].includes(classification.status) &&
+        existingLibraryId !== null &&
+        libraryId !== null &&
+        existingLibraryId === libraryId
+      ) {
+        await interaction.followUp({
+          content: "✅ Already processed — no changes made.",
+          ephemeral: true,
+        });
+        return;
+      }
+
       // v0.33: Use resolvePolicyQuestion for proper pattern generation
       try {
         const resolveResult = await clarificationService.resolvePolicyQuestion(
@@ -1480,10 +1508,50 @@ class DiscordBotService {
         );
 
         // Route to arr if resolution indicates we should
+        if (resolveResult.alreadyResolved) {
+          await interaction.followUp({
+            content: "✅ Already processed — no changes made.",
+            ephemeral: true,
+          });
+          return;
+        }
+
         if (resolveResult.shouldRoute) {
           routingOutcome = await this.routeAfterClarification(classificationId);
         }
       } catch (resolveError) {
+        if (resolveError?.statusCode === 404) {
+          await interaction.followUp({
+            content: "Classification not found",
+            ephemeral: true,
+          });
+          return;
+        }
+
+        if (resolveError?.statusCode === 400) {
+          await interaction.followUp({
+            content: "Invalid library selection",
+            ephemeral: true,
+          });
+          return;
+        }
+
+        if (resolveError?.statusCode === 409 && resolveError?.code === 'policy_question_stale') {
+          await interaction.followUp({
+            content: "This policy question is stale and must be retried from the latest queue state.",
+            ephemeral: true,
+          });
+          return;
+        }
+
+        if (resolveError?.statusCode === 409) {
+          await interaction.followUp({
+            content: "✅ Already processed — no changes made.",
+            ephemeral: true,
+          });
+          return;
+        }
+
         logger.error(
           "resolvePolicyQuestion failed, falling back to legacy handling:",
           resolveError,
@@ -1663,6 +1731,13 @@ class DiscordBotService {
          WHERE id = $1`,
         [classificationId],
       );
+      await classificationOutcomeService.recordOutcome(classificationId, {
+        type: 'verified',
+        source: 'discord_verification',
+        actor: interaction.user.username,
+        final_library_id: classification.library_id || null,
+        final_library_name: classification.library_name || null
+      });
 
       // Learn from this verification (user confirmed the classification)
       try {

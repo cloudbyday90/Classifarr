@@ -362,6 +362,50 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('Resolved "Motorvalley" but routing did not complete (Sonarr API connection failed).')
   })
 
+  it('shows batch routing warnings when confirm all resolves items but routing is skipped', async () => {
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 201,
+            title: 'Motorvalley',
+            year: 2026,
+            media_type: 'tv',
+            confidence: 22.72,
+            policy_question: {
+              question: 'Does this belong in TV Shows?',
+              options: [{ label: 'Yes', value: 'yes', library_id: 10 }],
+            },
+          },
+          {
+            id: 202,
+            title: 'The Burbs',
+            year: 1989,
+            media_type: 'movie',
+            confidence: 30,
+            policy_question: {
+              question: 'Movie or Family?',
+              options: [{ label: 'Movies', value: 'movies', library_id: 8 }],
+            },
+          },
+        ],
+      },
+    })
+    apiMock.resolvePendingClassification
+      .mockResolvedValueOnce({ data: { routed: false, routingReason: 'missing_tvdb_id' } })
+      .mockResolvedValueOnce({ data: { routed: true } })
+
+    const wrapper = await mountCommandCenter()
+    const confirmAllButton = wrapper.findAll('button').find((node) => node.text() === 'Confirm All')
+
+    expect(confirmAllButton).toBeTruthy()
+    await confirmAllButton.trigger('click')
+    await flushPromises()
+
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('Resolved "Motorvalley" but routing did not complete (missing_tvdb_id).')
+  })
+
   it('retries a single needs-attention classification', async () => {
     const wrapper = await mountCommandCenter()
     const retryButton = wrapper.findAll('button').find((node) => node.text() === 'Retry Classification')

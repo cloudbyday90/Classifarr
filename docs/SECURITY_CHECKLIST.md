@@ -81,6 +81,7 @@ grep "router.use(" server/src/routes/api.js
 | Route | Expected middleware | Finding |
 |---|---|---|
 | `/media-server` | `authenticateToken, requireAdmin` | #3 |
+| `/classification/progress` | `authenticateToken, requireAdmin` | #32 |
 | `/classification` | `authenticateToken, requireAdmin` | #2 |
 | `/settings` | `authenticateToken, requireAdmin` | #1 |
 | `/reclassification` | `authenticateToken, requireAdmin` | #14 |
@@ -94,7 +95,7 @@ grep "router.use(" server/src/routes/api.js
 | `/keys` | `authenticateToken, requireAdmin` | #22 |
 | `/backup` | `authenticateToken, requireAdmin` | #23 |
 
-**Pass:** all 13 routes include both `authenticateToken` and `requireAdmin` in the middleware chain; no route above is mounted without auth middleware.
+**Pass:** all 14 routes include both `authenticateToken` and `requireAdmin` in the middleware chain; no route above is mounted without auth middleware.
 
 ### B2 — Tier 2 authenticated routes (authenticateToken only)
 
@@ -403,4 +404,5 @@ Notes / exceptions:
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.1.0 | 2026-03-22 | — | Added finding #32: `/classification/progress` route was mounted unauthenticated in `index.js` outside `apiRouter`; fixed by moving into `api.js` Tier 1 block with `authenticateToken + requireAdmin`. Added `/classification/progress` row to B1 table (14 Tier 1 routes). Updated pass criterion count from 13 to 14. |
 | 1.0.0 | 2026-03-05 | — | Initial checklist created from 31 baseline findings in `SECURITY_REVIEW.md` plus 3 post-review findings (2026-03-05). Covers all CIS Docker, OWASP API Top 10, SANS CWE Top 25, Node.js, and NIST CSF 2.0 mappings from `SECURITY_BENCHMARKS.md`. |

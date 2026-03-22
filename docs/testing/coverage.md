@@ -39,6 +39,13 @@ cd server && npm run test:coverage:unit
 cd server && npm run test:coverage:integration
 ```
 
+Integration log interpretation:
+- See `docs/testing/integration-log-inventory.md` for the current baseline of
+  expected warning/error output from a passing server integration run.
+- Do not suppress warning/error lines by default just to make output quieter;
+  some of them are the evidence that negative-path integration coverage is
+  executing as intended.
+
 ## Coverage Thresholds
 
 **Server Jest thresholds (enforced in `server/jest.config.js`):**

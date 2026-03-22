@@ -37,6 +37,7 @@ const queueService = require('./services/queueService');
 const errorHandler = require('./middleware/errorHandler');
 const { ensureCsrfCookie, csrfProtection } = require('./middleware/csrf');
 const { setLoggerDb } = require('./utils/logger');
+const { evaluateCorsOrigin } = require('./utils/corsPolicy');
 const providerLock = require('./services/providerLock');
 const avxGuard = require('./services/avxGuard');
 const runtimeSettings = require('./config/runtimeSettings');
@@ -50,15 +51,12 @@ const ENFORCE_HTTPS_HEADERS = (process.env.ENFORCE_HTTPS_HEADERS || 'false').toL
 const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = runtimeSettings.getCorsOriginsList();
-    if (allowedOrigins.length === 0) {
-      if (!origin) return callback(null, true);
-      return callback(null, origin);
-    }
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      callback(null, origin);
-    } else {
+    const decision = evaluateCorsOrigin(origin, allowedOrigins);
+
+    if (decision.reject) {
       callback(new Error('Not allowed by CORS'));
+    } else {
+      callback(null, decision.value);
     }
   },
   credentials: true,
@@ -153,10 +151,6 @@ app.get('/health', async (req, res) => {
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../public')));
-
-// Classification progress API route (must be before catch-all)
-const classificationProgressRouter = require('./routes/classificationProgress');
-app.use('/api/classification/progress', classificationProgressRouter);
 
 // Fallback to index.html for client-side routing (MUST BE LAST)
 // Express 5 requires named wildcards: {*splat} matches all paths including /

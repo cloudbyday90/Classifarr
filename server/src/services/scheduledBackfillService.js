@@ -30,6 +30,7 @@ class ScheduledBackfillService {
         this.schedulerInterval = null;
         this.isRunning = false;
         this.lastCheckTime = null;
+        this.shouldContinueRunning = false;
     }
 
     /**
@@ -146,9 +147,10 @@ class ScheduledBackfillService {
         // Advisory lock guard: prevents split-brain races in multi-process deployments.
         // Session-level lock is held for the full duration of the backfill run.
         const lockAcquired = await withSessionAdvisoryLock(
-            DB_ADVISORY_LOCKS.SCHEDULED_BACKFILL,
+            DB_ADVISORY_LOCKS.BACKFILL_OWNER,
             async () => {
                 this.isRunning = true;
+                this.shouldContinueRunning = true;
                 const startTime = Date.now();
                 let processed = 0;
                 const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
@@ -167,7 +169,7 @@ class ScheduledBackfillService {
                 const runId = runResult.rows[0].id;
 
                 try {
-                    while (Date.now() - startTime < this.schedule.maxDuration) {
+                    while (this.shouldContinueRunning && Date.now() - startTime < this.schedule.maxDuration) {
                         const pending = await embeddingService.getPendingEmbeddings({
                             limit: this.schedule.batchSize,
                             includeImage
@@ -179,6 +181,11 @@ class ScheduledBackfillService {
                         }
 
                         for (const item of pending) {
+                            if (!this.shouldContinueRunning) {
+                                logger.info('Scheduled backfill stop requested, ending active run');
+                                break;
+                            }
+
                             if (Date.now() - startTime >= this.schedule.maxDuration) {
                                 logger.info('Max duration reached, stopping scheduled backfill');
                                 break;
@@ -220,16 +227,17 @@ class ScheduledBackfillService {
                     }
 
                     const duration = Date.now() - startTime;
+                    const finalStatus = this.shouldContinueRunning ? 'completed' : 'cancelled';
 
                     await db.query(`
                         UPDATE backfill_runs 
-                        SET status = 'completed', 
+                        SET status = $1, 
                             completed_at = NOW(),
-                            processed = $1
-                        WHERE id = $2
-                    `, [processed, runId]);
+                            processed = $2
+                        WHERE id = $3
+                    `, [finalStatus, processed, runId]);
 
-                    logger.info('Scheduled backfill completed', {
+                    logger.info(`Scheduled backfill ${finalStatus}`, {
                         processed,
                         durationMs: duration
                     });
@@ -246,11 +254,12 @@ class ScheduledBackfillService {
                     `, [error.message, processed, runId]);
                 } finally {
                     this.isRunning = false;
+                    this.shouldContinueRunning = false;
                 }
             }
         );
         if (!lockAcquired) {
-            logger.info('Scheduled backfill skipped: advisory lock held by another process');
+            logger.info('Scheduled backfill skipped: another backfill mode already owns the worker');
         }
     }
 
@@ -269,10 +278,21 @@ class ScheduledBackfillService {
         return this.schedule;
     }
 
+    getStatus() {
+        return {
+            ...this.schedule,
+            status: this.isRunning ? 'running' : (this.schedule.enabled ? 'enabled' : 'disabled'),
+            isRunning: this.isRunning,
+            lastCheckTime: this.lastCheckTime,
+            stopRequested: this.isRunning ? !this.shouldContinueRunning : false
+        };
+    }
+
     /**
      * Stop scheduler
      */
     stop() {
+        this.shouldContinueRunning = false;
         if (this.schedulerInterval) {
             clearInterval(this.schedulerInterval);
             this.schedulerInterval = null;

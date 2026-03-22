@@ -145,6 +145,69 @@ describe('CommandCenter realtime and mobile behavior', () => {
     wrapper.unmount()
   })
 
+  it('opens and closes the processing details sheet on mobile', async () => {
+    mockMatchMedia(true)
+    const wrapper = await mountCommandCenter()
+
+    const detailsButton = wrapper.findAll('button').find((node) => node.text() === 'View Details')
+    expect(detailsButton).toBeDefined()
+
+    await detailsButton.trigger('click')
+    await flushPromises()
+
+    const dialog = document.body.querySelector('[role="dialog"][aria-modal="true"]')
+    expect(dialog).not.toBeNull()
+    expect(document.body.textContent).toContain('Processing Details')
+    expect(document.body.textContent).toContain('Inception')
+    expect(document.body.classList.contains('overflow-hidden')).toBe(true)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+
+    expect(document.body.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull()
+    expect(document.body.classList.contains('overflow-hidden')).toBe(false)
+    expect(document.activeElement).toBe(detailsButton.element)
+
+    wrapper.unmount()
+  })
+
+  it('closes the processing details sheet when the selected task disappears on refresh', async () => {
+    mockMatchMedia(true)
+    const wrapper = await mountCommandCenter()
+
+    const detailsButton = wrapper.findAll('button').find((node) => node.text() === 'View Details')
+    expect(detailsButton).toBeDefined()
+
+    await detailsButton.trigger('click')
+    await flushPromises()
+
+    expect(document.body.textContent).toContain('Inception')
+
+    apiMock.getClassificationProgress.mockResolvedValueOnce({
+      data: [{
+        taskId: 16,
+        title: 'Replacement Task',
+        year: 2024,
+        mediaType: 'movie',
+        currentPhase: 'decision',
+        phaseIndex: 7,
+        totalPhases: 8,
+        progress: 90,
+        phaseDuration: 1800,
+        phases: [{ name: 'decision', label: 'Decision', status: 'in_progress' }],
+      }],
+    })
+
+    await wrapper.vm.$.setupState.refreshOperationalData()
+    await flushPromises()
+
+    expect(document.body.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull()
+    expect(document.body.textContent).not.toContain('Processing DetailsReplacement Task')
+    expect(document.activeElement).toBe(detailsButton.element)
+
+    wrapper.unmount()
+  })
+
   it('has accessible action controls on mobile for failed tasks and quick add', async () => {
     mockMatchMedia(true)
     apiMock.getQueueFailed.mockResolvedValueOnce([

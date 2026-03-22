@@ -1,7 +1,7 @@
 # Classifarr Security Benchmarks
 
-- **Version:** 1.6.0
-- **Last Updated:** 2026-02-25
+- **Version:** 1.8.0
+- **Last Updated:** 2026-03-22
 - **Scope:** All Classifarr components (API, Container, Dependencies)
 
 ---
@@ -790,7 +790,7 @@ image: ghcr.io/cloudbyday90/classifarr:v1.2.3
 - Two-tier auth strategy (Admin vs User)
 - No anonymous access to protected resources
 
-**Code Reference:** `server/src/routes/api.js:72-97`
+**Code Reference:** `server/src/routes/api.js:72-98`
 
 **Status:** ✅ Compliant
 
@@ -1202,7 +1202,7 @@ contentSecurityPolicy: {
 | Function | Category | Classifarr Implementation | Status |
 |----------|----------|--------------------------|--------|
 | ID.AM | Asset Management | Docker image, database, config files | ✅ |
-| ID.RA | Risk Assessment | Security review with 31 baseline findings + 2026-02-25 follow-up fixes | ✅ |
+| ID.RA | Risk Assessment | Security review with 32 baseline findings + post-review fixes (2026-02-25, 2026-03-05, 2026-03-22) | ✅ |
 | ID.IM | Improvement | Ongoing security updates | ✅ |
 
 ### PROTECT (PR)
@@ -1307,6 +1307,7 @@ docker compose config
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-03-22 | 1.8.0 | Security regression audit: found and fixed finding #32 — `/api/classification/progress` was mounted directly on `app` in `index.js` outside the auth-gated `apiRouter` with no authentication middleware, exposing active task IDs, titles, phases, and progress percentages to unauthenticated callers. Fixed by moving mount into `api.js` Tier 1 block as `router.use('/classification/progress', authenticateToken, requireAdmin, ...)` before the existing `/classification` mount. CWE-306/CWE-862 posture maintained. All verification commands clean: 0 audit vulnerabilities, 587 server tests passing, 1345 client tests passing, `lint:security` 0 errors, `lint:tests` 0 errors, `docker compose config` valid. NIST ID.RA updated to 32 findings. |
 | 2026-03-05 | 1.7.0 | Unreleased security hardening: (1) `check_ollama_config.js` and `logs.txt` removed from git tracking—`check_ollama_config.js` was a debug script doing `SELECT * FROM ollama_config` with `process.exit()`; (2) `db.healthCheck()` now returns a generic `'Database connection failed'` string in `NODE_ENV=production` instead of the raw pg `err.message` (which can contain internal host IPs/ports); `check_*.js` and `logs*.txt` patterns added to `.gitignore`. CWE-200 (Information Exposure) posture strengthened for future unauthenticated `/health` endpoint use. |
 | 2026-02-25 | 1.6.0 | Aligned benchmark claims with current docs and deployment behavior: documented Docker Content Trust, interface binding, and image pinning guidance in README; updated NIST GV.PO to compliant with SECURITY.md coverage; clarified HTTPS wording for local HTTP compatibility; added verification command checklist |
 | 2026-02-25 | 1.5.0 | Added enforced CI security gates for gitleaks and Trivy, integrated server SAST linting (`eslint-plugin-security`), and aligned benchmark scan language with implemented workflows |

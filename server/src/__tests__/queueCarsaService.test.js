@@ -1,0 +1,76 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: licensed under GPL-3.0
+ * See LICENSE file for details.
+ */
+
+jest.mock('../services/mediaSync', () => ({
+    syncAllLibraries: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../services/scheduler', () => ({
+    runGapAnalysis: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mediaSyncService = require('../services/mediaSync');
+const scheduler = require('../services/scheduler');
+const { QueueCarsaService } = require('../services/queueCarsaService');
+
+describe('QueueCarsaService', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    it('resolves the scheduler lazily during clearAndResync instead of capturing it at module load time', async () => {
+        const syncStatus = {
+            isRunning: false,
+            start: jest.fn(),
+            stop: jest.fn(),
+            updateProgress: jest.fn(),
+            forceStop: jest.fn(),
+        };
+
+        const service = new QueueCarsaService({
+            db: {
+                query: jest.fn().mockResolvedValue({ rowCount: 0, rows: [] }),
+            },
+            logger: {
+                info: jest.fn(),
+                warn: jest.fn(),
+                error: jest.fn(),
+                debug: jest.fn(),
+            },
+            syncStatus,
+            mediaSyncService,
+            captureLibrarySnapshot: jest.fn().mockResolvedValue({ libraries: {}, mappings: [] }),
+            buildLibraryLookup: jest.fn().mockResolvedValue({ byExternalId: {}, byNameType: {} }),
+            remapMappings: jest.fn().mockResolvedValue({ totalRemapped: 0, totalFailed: 0, radarr: [], sonarr: [] }),
+            notifyRemapFailures: jest.fn().mockResolvedValue(undefined),
+            performCleanup: jest.fn().mockResolvedValue({
+                queueResult: { rowCount: 0 },
+                embeddingsResult: { rowCount: 0 },
+                historyResult: { rowCount: 0 },
+                patternsResult: { rowCount: 0 },
+                correctionsResult: { rowCount: 0 },
+                rulesV2Result: { rowCount: 0 },
+                syncStatusRowsResult: { rowCount: 0 },
+                collectionsResult: { rowCount: 0 },
+                itemsResult: { rowCount: 0 },
+                librariesResult: { rowCount: 0 },
+                feedbackLibraryRefsCleared: 0,
+            }),
+            resetVolatileState: jest.fn(),
+        });
+
+        const result = await service.clearAndResync();
+        expect(result.success).toBe(true);
+
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(mediaSyncService.syncAllLibraries).toHaveBeenCalledTimes(1);
+        expect(scheduler.runGapAnalysis).toHaveBeenCalledTimes(1);
+        expect(syncStatus.stop).toHaveBeenCalledTimes(1);
+    });
+});

@@ -320,6 +320,52 @@ describe('Enrichment Pipeline Integration', () => {
     });
 
     describe('Classification History Logging', () => {
+        it('should persist source-library identity in enriched metadata for later classification fast paths', async () => {
+            const taskPayload = {
+                title: 'Source Library Carryover',
+                year: 2024,
+                source_library_id: 12,
+                source_library_name: 'Imported Movies',
+                itemId: 710,
+                media: { media_type: 'movie' }
+            };
+
+            const task = {
+                id: 9,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify(taskPayload),
+                attempts: 0,
+                max_attempts: 3
+            };
+
+            let capturedMetadata = null;
+
+            db.query.mockImplementation((query, params) => {
+                if (query.includes('omdb_config') || query.includes('tavily_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('UPDATE media_server_items') && query.includes('SET metadata')) {
+                    capturedMetadata = typeof params[0] === 'string' ? JSON.parse(params[0]) : params[0];
+                    return Promise.resolve({ rows: [], rowCount: 1 });
+                }
+                if (query.includes('SELECT 1 FROM libraries WHERE id')) {
+                    return Promise.resolve({ rows: [{ id: 12 }] });
+                }
+                if (query.includes('SELECT 1 FROM classification_history')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                return Promise.resolve({ rows: [], rowCount: 1 });
+            });
+
+            await queueService.processTask(task);
+
+            expect(capturedMetadata).toBeTruthy();
+            expect(capturedMetadata.source_library_id).toBe(12);
+            expect(capturedMetadata.source_library_name).toBe('Imported Movies');
+            expect(capturedMetadata.content_analysis.source_library_id).toBe(12);
+            expect(capturedMetadata.content_analysis.source_library_name).toBe('Imported Movies');
+        });
+
         it('should log items with TMDB ID to classification_history', async () => {
             const taskPayload = {
                 title: 'Inception',
@@ -514,6 +560,64 @@ describe('Enrichment Pipeline Integration', () => {
 
             // Should NOT attempt to insert when library doesn't exist (prevents FK constraint violation)
             expect(classificationInsertCalled).not.toHaveBeenCalled();
+        });
+
+        it('should use a recovered library name when classification_history is written with only source_library_id', async () => {
+            const taskPayload = {
+                title: 'Recovered Library History Name',
+                year: 2024,
+                tmdb_id: 424242,
+                source_library_id: 15,
+                source_library_name: null,
+                itemId: 701,
+                media: { media_type: 'movie' }
+            };
+
+            const task = {
+                id: 10,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify(taskPayload),
+                attempts: 0,
+                max_attempts: 3
+            };
+
+            let capturedInsertParams = null;
+
+            db.query.mockImplementation((query, params) => {
+                if (query.includes('FROM media_server_items msi')) {
+                    return Promise.resolve({
+                        rows: [{
+                            tmdb_id: 424242,
+                            library_id: 15,
+                            metadata: {},
+                            library_name: null
+                        }]
+                    });
+                }
+                if (query === 'SELECT name FROM libraries WHERE id = $1') {
+                    return Promise.resolve({ rows: [{ name: 'Recovered History Library' }] });
+                }
+                if (query.includes('omdb_config') || query.includes('tavily_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('SELECT 1 FROM libraries WHERE id')) {
+                    return Promise.resolve({ rows: [{ id: 15 }] });
+                }
+                if (query.includes('SELECT 1 FROM classification_history')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('INSERT INTO classification_history')) {
+                    capturedInsertParams = params;
+                    return Promise.resolve({ rows: [] });
+                }
+                return Promise.resolve({ rows: [], rowCount: 1 });
+            });
+
+            await queueService.processTask(task);
+
+            expect(capturedInsertParams).toBeDefined();
+            expect(capturedInsertParams[8]).toBe('Already in library: Recovered History Library');
+            expect(capturedInsertParams[9]).toEqual(expect.stringContaining('"source_library_name":"Recovered History Library"'));
         });
     });
 

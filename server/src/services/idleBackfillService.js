@@ -25,6 +25,7 @@ class IdleBackfillService {
         this.config = null;
         this.manualBackfillService = null; // Will be set by orchestrator
         this.includeImage = false;
+        this.providerOfflineUntil = null;
     }
 
     /**
@@ -119,10 +120,17 @@ class IdleBackfillService {
                 return;
             }
 
+            if (this.providerOfflineUntil && Date.now() < this.providerOfflineUntil) {
+                logger.info('Idle backfill NOT started: Provider offline cooldown active', {
+                    retryAt: new Date(this.providerOfflineUntil).toISOString()
+                });
+                return;
+            }
+
             // Advisory lock guard: prevents split-brain races in multi-process deployments.
             // Session-level lock is held for the full duration of the backfill run.
             const lockAcquired = await withSessionAdvisoryLock(
-                DB_ADVISORY_LOCKS.IDLE_BACKFILL,
+                DB_ADVISORY_LOCKS.BACKFILL_OWNER,
                 async () => {
                     this.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
 
@@ -206,12 +214,12 @@ class IdleBackfillService {
                                     );
                                 } catch (error) {
                                     if (error.message === 'PROVIDER_OFFLINE') {
-                                        logger.warn('Provider offline detected - pausing idle backfill for 5 minutes');
-                                        await this.sleep(300000); // Wait 5 minutes
-                                        
-                                        // Reset idle check so we don't immediately exit if user moved mouse during sleep
-                                        // but logic will check isIdle() at loop start anyway.
-                                        // Breaking the inner loop to re-evaluate conditions
+                                        this.providerOfflineUntil = Date.now() + 300000;
+                                        logger.warn('Provider offline detected - deferring idle backfill for 5 minutes', {
+                                            retryAt: new Date(this.providerOfflineUntil).toISOString()
+                                        });
+
+                                        // Break out immediately so the shared ownership lock is released.
                                         break; 
                                     }
 
@@ -256,7 +264,7 @@ class IdleBackfillService {
                 }
             );
             if (!lockAcquired) {
-                logger.info('Idle backfill skipped: advisory lock held by another process');
+                logger.info('Idle backfill skipped: another backfill mode already owns the worker');
             }
         } catch (error) {
             logger.error('Idle backfill startup error', { error: error.message });
@@ -301,8 +309,23 @@ class IdleBackfillService {
      * Get current status
      */
     getStatus() {
+        const enabled = this.config?.idle_backfill_enabled === true;
+        const cooldownActive = Number.isFinite(this.providerOfflineUntil) && Date.now() < this.providerOfflineUntil;
+        const status = this.isRunning
+            ? 'running'
+            : cooldownActive
+                ? 'cooldown'
+                : enabled
+                    ? 'enabled'
+                    : 'disabled';
+
         return {
+            status,
+            enabled,
             isRunning: this.isRunning,
+            batchSize: this.batchSize,
+            includeImage: this.includeImage,
+            cooldownUntil: cooldownActive ? new Date(this.providerOfflineUntil).toISOString() : null,
             config: this.config
         };
     }

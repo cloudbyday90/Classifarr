@@ -270,11 +270,11 @@ elif [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
 fi
 
 if [ -f "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" ]; then
-    if [ "$IS_ROOT" = "true" ] || [ -w "$PKGLIBDIR" ]; then
-        ln -sf "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" "$PKGLIBDIR/vector.so" || \
-            echo "WARN: Unable to update pgvector symlink (insufficient permissions)"
+    if [ "$IS_ROOT" = "true" ] || [ -w "$PKGLIBDIR/vector.so" ]; then
+        cp -f "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" "$PKGLIBDIR/vector.so" || \
+            echo "WARN: Unable to update pgvector binary (insufficient permissions)"
     else
-        echo "WARN: Cannot update pgvector symlink without root; using existing vector.so"
+        echo "WARN: Cannot update pgvector binary without root; using existing vector.so"
     fi
     export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="$SELECTED_VARIANT"
     echo "pgvector selected: $SELECTED_VARIANT"

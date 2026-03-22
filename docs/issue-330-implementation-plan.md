@@ -1,6 +1,17 @@
 # Issue #330 — Embedding Service Integration: Secure API Key Flow, Health Monitoring & Robust Error Handling
 
-## Status: Design Phase
+## Status: Design Phase (secure sidecar auth/key flow not started)
+
+### Current State Snapshot (Already Landed Outside Issue 330 Proper)
+
+The secure sidecar API key flow described in this plan has **not** been implemented yet. However, a few adjacent enhancements to the existing image-embedding path have already landed separately:
+
+- Local image-embedding health now consults `/ready` when available and surfaces warmup as `degraded` instead of flattening every successful process check to `connected`.
+- `checkImageEmbeddings()` now has a mode/config guard so non-local image-embedding modes do not generate false sidecar failures.
+- `/api/system/health` image-embedding status is now mapped into `client/src/stores/serviceStatus.js`.
+- Shared service consumers now recognize `imageEmbeddings` as a first-class service key and route users to the correct RAG & Embeddings settings surface.
+
+Those changes improve observability for the feature as it exists today. The new work in this plan is still the secure sidecar credential flow, authenticated `/models` and `/embed-image` calls, timeout/config plumbing, and optional Discord/system-alert behavior.
 
 ---
 
@@ -63,7 +74,7 @@ The Classifarr retry logic should parse `Retry-After` on 429 responses.
 
 ### 2.5 Rich `/health` and `/ready` Responses
 
-The sidecar's `/health` returns device info, per-model load status, memory stats, and queue stats. The current `checkImageEmbeddings()` only looks at HTTP status code. We could parse the response body to surface whether the model is actually loaded (vs. the process being up but still warming up). The `/ready` endpoint specifically indicates model readiness (`ready: bool, default_model_loaded: bool`). Proposal: poll `/ready` and use it to set `degraded` vs. `healthy` — service is up but not ready → `degraded`; service is up **and** ready → `healthy`.
+The sidecar's `/health` returns device info, per-model load status, memory stats, and queue stats. The `/ready` endpoint specifically indicates model readiness (`ready: bool, default_model_loaded: bool`). Classifarr now polls `/ready` when available and uses it to distinguish warmup from readiness: service up but not ready → `degraded`; service up and ready → `connected`. The remaining gap is not readiness detection; it is secure authenticated traffic for `/models` and `/embed-image`, plus the broader operator workflow described below.
 
 ### 2.6 Key Setup Flow (from README)
 
@@ -92,7 +103,7 @@ The sidecar ships `scripts/generate_env.py` which auto-generates a cryptographic
 | Discord bot services | `server/src/services/discordBot.js` | `sendClassificationNotification` exists; no generic system alert yet |
 | Encryption primitives | `server/src/utils/encryption.js` | `encryptValue`, `decryptValue`, `formatEncryptedValue` |
 | Settings DB table | `ai_provider_config` | Already has `image_embedding_local_host/port/model` columns |
-| Settings routes | `server/src/routes/settings.js` | Manages `ai_provider_config` |
+| Settings routes | `server/src/routes/helpers/aiSettingsHandlers.js` (mounted from `server/src/routes/settings.js`) | Manages `ai_provider_config` |
 | Settings UI | `client/src/views/rag/ImageEmbeddingsTab.vue` | `separate_local` block (host/port/model); cloud block has the `type="password"` API key field pattern to mirror |
 
 ---
@@ -134,21 +145,21 @@ The sidecar emits `Retry-After: <seconds>` on queue-full `429` responses. Classi
 ### 3.10 Default RPS Mismatch
 Classifarr's `DEFAULTS.rps = 2` (in `imageEmbeddingProvider.js`) equates to 120 requests/minute. The sidecar's default rate limit is `30/minute`. These will clash without user configuration. Either the Classifarr default must be lowered (e.g., 0.5 req/sec = 30/min) or the discrepancy must be clearly documented with a recommendation to raise `rate_limit_embed` in the sidecar's `config.toml`.
 
-### 3.11 Health Check Does Not Differentiate Model-Loaded vs. Service-Up
-The current `checkImageEmbeddings()` only checks if the HTTP response is `2xx`. The sidecar's `/ready` endpoint returns `ready: false` while the model is still warming up. Classifarr treats "service up but model not loaded" and "service up and ready" identically — both would show as `connected`.
+### 3.11 Resolved Since Original Draft: Health Check Now Differentiates Model-Loaded vs. Service-Up
+This gap is no longer active. `checkImageEmbeddings()` now consults `/ready` when available and surfaces a reachable-but-warming sidecar as `degraded` instead of `connected`.
 
-### 3.12 `serviceStatus.js` Store Does Not Track Image Embeddings
-`client/src/stores/serviceStatus.js` maps all major services (database, radarr, sonarr, aiProvider, etc.) to their health status values, but **`imageEmbeddings` is absent from the map**. The frontend has no visibility into embedding service state.
+### 3.12 Partially Resolved Since Original Draft: `serviceStatus.js` Now Tracks Image Embeddings, But Still Lacks Generic Transition Notifications
+`client/src/stores/serviceStatus.js` now maps `imageEmbeddings` from `/api/system/health`, so the frontend does have shared visibility into embedding service state.
 
-Note: `response.data.imageEmbeddings` (status string) and `response.data.details.imageEmbeddings` (full object) are already returned by `GET /api/system/health` in `system.js` — they just aren't mapped into the store yet.
+`response.data.imageEmbeddings` (status string) and `response.data.details.imageEmbeddings` (full object) are now consumed by the shared store, and `client/src/constants/serviceConfig.js` also recognizes `imageEmbeddings` as a first-class service key.
 
-Additionally, the store has no *transition detection* — it refreshes snapshot state every 30 seconds but never diffs previous vs. current status. There is no mechanism to fire a toast or any UI notification when a service goes from `connected` to `degraded` or `disconnected`.
+What still remains is the second half of the original gap: the store still has no generic previous-vs-current transition detection, and it still does not fire shared toasts when a service moves from `connected` to `degraded` or `disconnected`.
 
 ### 3.13 No In-App Notification on Service Health Changes
 Users without Discord configured have no way to know when the image embedding sidecar (or any service) becomes unreachable. The `useToast()` composable and `Toast.vue` component are already fully implemented and globally mounted — but nothing calls them in response to health state transitions.
 
-### 3.14 Health Poller Has No Mode Guard
-`checkImageEmbeddings()` will attempt to connect to the sidecar regardless of `image_mode`. If a user is using cloud embeddings (not `separate_local`), the poller will perpetually fail to connect, generate log noise, and — once Discord alerting is added — fire spurious alerts about a service the user never configured.
+### 3.14 Resolved Since Original Draft: Health Poller Now Has a Mode Guard
+This gap is no longer active. `checkImageEmbeddings()` now exits early for non-`separate_local` image modes instead of treating cloud or disabled image-embedding modes as sidecar failures.
 
 ### 3.15 `embeddingRouter.js` Uses an Inline Circuit Breaker Object
 `embeddingRouter.js` implements its own hand-rolled circuit breaker as a module-level plain object (`circuitBreaker = { state, failures, lastFailure, threshold, resetTimeMs }`) with inline `isCircuitOpen()` / `recordFailure()` / `resetCircuit()` methods on the class. This duplicates logic that already exists in the shared `CircuitBreaker` class in `circuitBreaker.js` (Gap 3.4 is about `imageEmbeddingProvider.js` not using it; this is the same pattern in `embeddingRouter.js`). The two implementations have divergent default parameters (5-minute reset in the inline version vs. the shared class defaults).
@@ -291,8 +302,8 @@ The `serviceStatus.js` store is the right place to centralize frontend health tr
 5. Write the new statuses to `_previousStatuses` after diffing.
 6. **First-poll handling:** Treat `undefined → unhealthy` as an alertable transition. If the service is already `degraded` or `disconnected` on the very first poll (e.g., Classifarr restarted while sidecar was down), fire the alert. Skip toasts only if the service is already `connected`/`healthy` on first check — there is nothing to report.
 7. Scope: apply to **all services** in the map — the logic is generic (one loop). Applying only to `imageEmbeddings` would be a missed opportunity given the store already tracks everything else.
-8. **Add `imageEmbeddings` to the store's mapping** — it is currently absent (see Gap 3.12). Map from `response.data.imageEmbeddings` (status) and `response.data.details.imageEmbeddings` (details) — both are already present in the `/api/system/health` response.
-9. **Reuse existing `SERVICE_NAMES`** from `client/src/constants/serviceConfig.js` for display labels. `imageEmbeddings` is missing from that map and must be added (`imageEmbeddings: 'Image Embedding Service'`). Do not create a separate `SERVICE_DISPLAY_NAMES` constant.
+8. **`imageEmbeddings` is already in the shared store mapping** — keep using `response.data.imageEmbeddings` (status) and `response.data.details.imageEmbeddings` (details) from `/api/system/health`. The remaining work is transition detection and notification behavior, not basic mapping.
+9. **Reuse existing `SERVICE_NAMES`** from `client/src/constants/serviceConfig.js` for display labels. `imageEmbeddings` is already present in that map (`imageEmbeddings: 'Image Embeddings'`). Do not create a separate `SERVICE_DISPLAY_NAMES` constant.
 
 This costs ~25 extra lines in the store and gives every future service health event a toast path for free.
 
@@ -358,7 +369,7 @@ Both migrations use `ADD COLUMN IF NOT EXISTS` and are fully non-breaking for fr
 
 No changes required. The sidecar credential is stored as an encrypted column in `ai_provider_config`, not in the `api_keys` table.
 
-### 5.3 `server/src/routes/settings.js`
+### 5.3 `server/src/routes/helpers/aiSettingsHandlers.js` (mounted from `server/src/routes/settings.js`)
 
 No new key-management endpoints needed. The `image_embedding_local_api_key` field is saved and cleared through the existing settings save flow — the same path used by `image_embedding_cloud_api_key`.
 
@@ -509,6 +520,8 @@ When the circuit breaker transitions to OPEN after `failureThreshold` failures, 
 
 ### 5.5 `server/src/services/healthCheckService.js`
 
+Status update: the `/ready` polling and mode-guard parts of this section have already landed. The remaining work here is transition-aware alerting, richer logging, and any future sidecar-auth-aware operator behavior.
+
 **`checkImageEmbeddings()` changes:**
 
 1. **No auth header needed for `/health` or `/ready`** — both are public on the sidecar (see section 2.2). No change to the health/ready HTTP calls.
@@ -621,16 +634,18 @@ Ensure the settings load function passes `image_local_api_key` (masked by the se
 
 ### 5.9 `client/src/stores/serviceStatus.js`
 
-Two additions to the existing store:
+Status update: the shared store already maps `imageEmbeddings`, and `client/src/constants/serviceConfig.js` already includes the `imageEmbeddings` service entry. The remaining work in this section is generic transition detection plus user-facing notifications.
 
-**1. Add `imageEmbeddings` to the service map** inside `fetchServiceStatus()`:
+Remaining additions to the existing store:
+
+**1. Preserve the existing `imageEmbeddings` service map entry** inside `fetchServiceStatus()`:
 ```js
 imageEmbeddings: {
   status: response.data.imageEmbeddings,
   details: response.data.details?.imageEmbeddings
 },
 ```
-This ensures the embedding service status is available to all components via `getServiceStatus('imageEmbeddings')`.
+This is already in place and ensures the embedding service status is available to all components via `getServiceStatus('imageEmbeddings')`.
 
 **2. Add transition detection for all services** — generic, fires toasts on any status change:
 ```js
@@ -666,7 +681,7 @@ for (const [key, service] of Object.entries(serviceHealth.value)) {
 }
 ```
 
-**`SERVICE_NAMES` addition required:** Add `imageEmbeddings: 'Image Embedding Service'` to the existing `SERVICE_NAMES` map in `client/src/constants/serviceConfig.js`. Do not create a separate display names constant.
+**Current state:** `SERVICE_NAMES` already includes `imageEmbeddings: 'Image Embeddings'` in `client/src/constants/serviceConfig.js`. Reuse that existing constant; do not create a separate display names constant.
 
 **Scope:** applies to all services in the map — generic logic, zero extra cost per new service added in future.
 
@@ -852,7 +867,7 @@ When moving to implementation:
 - [ ] Write migration `20260310_200000_add_embedding_service_auth.sql` — add `image_embedding_local_api_key TEXT` and `image_embedding_local_timeout_ms INTEGER DEFAULT 15000` to `ai_provider_config`
 - [ ] Write migration `20260310_210000_add_discord_system_errors_flag.sql` — add `notify_on_system_errors BOOLEAN NOT NULL DEFAULT TRUE` to `discord_config`
 
-**Server: settings route (`settings.js`)**
+**Server: settings route (`aiSettingsHandlers.js`, mounted from `settings.js`)**
 - [ ] Encrypt `image_embedding_local_api_key` on save, return masked value on read (same pattern as `image_embedding_cloud_api_key`)
 - [ ] Include `discord_config.notify_on_system_errors` in Discord settings read/write
 
@@ -881,17 +896,17 @@ When moving to implementation:
 - [ ] Remove `AbortError` guard before `this.recordFailure()` — `.run()` handles this internally; retain the AbortError check before fallback logic
 - [ ] Verify Ollama fallback fires correctly on `err.code === 'CIRCUIT_OPEN'`; AbortError propagates before fallback path
 
-**Server: `settings.js`**
+**Server: `aiSettingsHandlers.js`**
 - [ ] When `image_embedding_local_api_key` is saved or cleared, emit `logger.info('[AUDIT] Sidecar API key updated', { action: key ? 'set' : 'cleared' })` — file/console only (logger.info does not persist to error_log)
 
 **Server: `healthCheckService.js`**
 - [ ] Add `const logger = createLogger('HealthCheck')` at file top if not already present (needed for Gap 3.23 fix)
-- [ ] Add mode guard: if `image_mode !== 'separate_local'`, return `{ status: 'not_configured' }` immediately — no HTTP calls, no alerts
-- [ ] Poll `/ready` in addition to `/health`; map `ready: false` → `degraded`, `ready: true` → `connected`
+- [x] Add mode guard: if `image_mode !== 'separate_local'`, return `{ status: 'not_configured' }` immediately — no HTTP calls, no alerts
+- [x] Poll `/ready` in addition to `/health`; map `ready: false` → `degraded`, `ready: true` → `connected`
 - [ ] Add `_previousStatuses` map; call `discordBotService.sendSystemAlert()` only on status transitions
 - [ ] Handle first-poll edge case: `undefined → unhealthy` is alertable; `undefined → connected` is silent
 - [ ] Fix silent outer catch (Gap 3.23): add `logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', { error: error.message })` in the catch block
-- [ ] ~~No auth header needed for `/health` / `/ready`~~ — confirmed public, no change required
+- [x] ~~No auth header needed for `/health` / `/ready`~~ — confirmed public, no change required
 
 **Server: `discordBot.js`**
 - [ ] Add `sendSystemAlert(serviceKey, newStatus, previousStatus)` method
@@ -900,9 +915,9 @@ When moving to implementation:
 - [ ] Keep message minimal: what changed + "Check the Classifarr logs for details"   - Apply same first-poll edge case: `undefined → unhealthy` is alertable; `undefined → connected` is silent
 
 **Client: `constants/serviceConfig.js`**
-- [ ] Add `imageEmbeddings: 'Image Embedding Service'` to `SERVICE_NAMES`
+- [x] Add `imageEmbeddings` to `SERVICE_NAMES` so shared service consumers recognize the image-embedding service
 **Client: `stores/serviceStatus.js`**
-- [ ] Add `imageEmbeddings` to the service health map (from `response.data.imageEmbeddings`)
+- [x] Add `imageEmbeddings` to the service health map (from `response.data.imageEmbeddings`)
 - [ ] Add `_previousStatuses` ref and transition detection loop after each `fetchServiceStatus()`
 - [ ] Fire `useToast().warning()` / `.error()` on unhealthy transitions; `.success()` on recovery
 - [ ] Apply to all services in the map (generic loop)

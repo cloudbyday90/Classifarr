@@ -7,6 +7,8 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const classificationOutcomeService = require('./classificationOutcomeService');
+const { ENRICHMENT_METADATA_KEYS, buildJsonbDeleteChain } = require('../utils/metadataEnrichment');
 const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
 const logger = createLogger('ClassificationRetryService');
@@ -14,6 +16,8 @@ const logger = createLogger('ClassificationRetryService');
 const MAX_BATCH_SIZE = 100;
 const ELIGIBLE_STATUSES = new Set(['awaiting_decision', 'pending_retry']);
 const RETRY_ROUTE = '/api/classification/retry';
+const DEFAULT_RETRY_TASK_SOURCE = 'manual_retry';
+const DEFAULT_RETRY_FOLLOWUP_SOURCE = 'manual_retry_followup';
 
 function isFinitePositiveInt(value) {
   const parsed = Number.parseInt(value, 10);
@@ -66,6 +70,10 @@ function buildRetryPayload(row, metadata, mediaItemId) {
     original_language: metadata.original_language || 'en',
     requested_seasons: requestedSeasons,
     include_specials: metadata.include_specials === true,
+    retry_count: Number.isInteger(Number(row.retry_count)) ? Number(row.retry_count) : 0,
+    max_retries: Number.isInteger(Number(row.max_retries)) && Number(row.max_retries) > 0
+      ? Number(row.max_retries)
+      : 3,
     source_library_id: toPositiveInt(metadata.source_library_id),
     source_library_name: metadata.source_library_name || null,
     itemId: toPositiveInt(mediaItemId || metadata.itemId || metadata.item_id || metadata.media_item_id),
@@ -80,6 +88,9 @@ function buildRetryPayload(row, metadata, mediaItemId) {
 
   if (!requestedSeasons) delete payload.requested_seasons;
   if (!payload.itemId) delete payload.itemId;
+  if (metadata.retry_lineage && typeof metadata.retry_lineage === 'object') {
+    payload.retry_lineage = metadata.retry_lineage;
+  }
 
   return payload;
 }
@@ -153,7 +164,15 @@ class ClassificationRetryService {
     return { error: null, ids: deduped };
   }
 
-  async retryClassifications({ classificationIds, actor = 'admin', purgeLearning = true, correlationId = null } = {}) {
+  async retryClassifications({
+    classificationIds,
+    actor = 'admin',
+    purgeLearning = false,
+    correlationId = null,
+    taskSource = DEFAULT_RETRY_TASK_SOURCE,
+    metadataEnrichmentSource = DEFAULT_RETRY_FOLLOWUP_SOURCE,
+    route = RETRY_ROUTE
+  } = {}) {
     const normalized = this.normalizeIds(classificationIds);
     if (normalized.error) {
       const validationError = new Error(normalized.error);
@@ -165,18 +184,26 @@ class ClassificationRetryService {
     const startedAt = Date.now();
     const results = [];
 
-    this.logger.info('Classification retry requested', {
+      this.logger.info('Classification retry requested', {
       correlationId,
       actor,
       batchSize: ids.length,
-      route: RETRY_ROUTE,
+      route,
       result: 'request_accepted'
     });
 
     const client = await this.db.pool.connect();
     try {
       for (const classificationId of ids) {
-        const itemResult = await this.retrySingle(client, { classificationId, actor, purgeLearning, correlationId });
+        const itemResult = await this.retrySingle(client, {
+          classificationId,
+          actor,
+          purgeLearning,
+          correlationId,
+          taskSource,
+          metadataEnrichmentSource,
+          route
+        });
         results.push(itemResult);
       }
     } finally {
@@ -187,10 +214,10 @@ class ClassificationRetryService {
     const skipped = results.filter(row => row.skipped === true).length;
     const failed = results.filter(row => row.failed === true).length;
 
-    this.logger.info('Classification retry batch completed', {
+      this.logger.info('Classification retry batch completed', {
       correlationId,
       actor,
-      route: RETRY_ROUTE,
+      route,
       batchSize: ids.length,
       queued,
       skipped,
@@ -225,7 +252,9 @@ class ClassificationRetryService {
          LIMIT 1`,
         [identity.tmdbId, identity.mediaType]
       );
-      return result.rows[0] || null;
+      if (result.rows[0]) {
+        return result.rows[0];
+      }
     }
 
     if (!identity.title) return null;
@@ -249,32 +278,56 @@ class ClassificationRetryService {
   async resolveMediaItemId(client, metadata, identity) {
     const fromMetadata = toPositiveInt(metadata.itemId || metadata.item_id || metadata.media_item_id);
     if (fromMetadata) return fromMetadata;
+    const sourceLibraryId = toPositiveInt(metadata.source_library_id);
 
     if (identity.tmdbId) {
-      const byTmdb = await client.query(
-        `SELECT id
-         FROM media_server_items
-         WHERE tmdb_id = $1
-           AND media_type = $2
-         ORDER BY last_synced DESC NULLS LAST, id DESC
-         LIMIT 1`,
-        [identity.tmdbId, identity.mediaType]
-      );
+      const byTmdb = sourceLibraryId
+        ? await client.query(
+          `SELECT id
+           FROM media_server_items
+           WHERE tmdb_id = $1
+             AND media_type = $2
+             AND library_id = $3
+           ORDER BY last_synced DESC NULLS LAST, id DESC
+           LIMIT 1`,
+          [identity.tmdbId, identity.mediaType, sourceLibraryId]
+        )
+        : await client.query(
+          `SELECT id
+           FROM media_server_items
+           WHERE tmdb_id = $1
+             AND media_type = $2
+           ORDER BY last_synced DESC NULLS LAST, id DESC
+           LIMIT 1`,
+          [identity.tmdbId, identity.mediaType]
+        );
       if (byTmdb.rows[0]?.id) return byTmdb.rows[0].id;
     }
 
     if (!identity.title) return null;
 
-    const byTitle = await client.query(
-      `SELECT id
-       FROM media_server_items
-       WHERE LOWER(TRIM(title)) = $1
-         AND media_type = $2
-         AND COALESCE(NULLIF(year::text, ''), '') = COALESCE($3, '')
-       ORDER BY last_synced DESC NULLS LAST, id DESC
-       LIMIT 1`,
-      [identity.title, identity.mediaType, identity.year]
-    );
+    const byTitle = sourceLibraryId
+      ? await client.query(
+        `SELECT id
+         FROM media_server_items
+         WHERE LOWER(TRIM(title)) = $1
+           AND media_type = $2
+           AND COALESCE(NULLIF(year::text, ''), '') = COALESCE($3, '')
+           AND library_id = $4
+         ORDER BY last_synced DESC NULLS LAST, id DESC
+         LIMIT 1`,
+        [identity.title, identity.mediaType, identity.year, sourceLibraryId]
+      )
+      : await client.query(
+        `SELECT id
+         FROM media_server_items
+         WHERE LOWER(TRIM(title)) = $1
+           AND media_type = $2
+           AND COALESCE(NULLIF(year::text, ''), '') = COALESCE($3, '')
+         ORDER BY last_synced DESC NULLS LAST, id DESC
+         LIMIT 1`,
+        [identity.title, identity.mediaType, identity.year]
+      );
     return byTitle.rows[0]?.id || null;
   }
 
@@ -297,6 +350,41 @@ class ClassificationRetryService {
     await client.query('DELETE FROM embedding_retry_queue WHERE classification_id = $1', [classificationId]);
     await client.query('DELETE FROM embedding_errors WHERE classification_id = $1', [classificationId]);
     await client.query('DELETE FROM pattern_match_log WHERE classification_id = $1', [classificationId]);
+  }
+
+  async captureRetryLineage(client, classificationId) {
+    const mediaRequestsResult = await client.query(
+      `SELECT id
+       FROM media_requests
+       WHERE classification_id = $1
+       ORDER BY id ASC`,
+      [classificationId]
+    );
+
+    const webhookLogResult = await client.query(
+      `SELECT id
+       FROM webhook_log
+       WHERE classification_id = $1
+       ORDER BY id ASC`,
+      [classificationId]
+    );
+
+    const mediaRequestIds = mediaRequestsResult.rows
+      .map((row) => toPositiveInt(row.id))
+      .filter(Boolean);
+    const webhookLogIds = webhookLogResult.rows
+      .map((row) => toPositiveInt(row.id))
+      .filter(Boolean);
+
+    if (mediaRequestIds.length === 0 && webhookLogIds.length === 0) {
+      return null;
+    }
+
+    return {
+      original_classification_id: classificationId,
+      media_request_ids: mediaRequestIds,
+      webhook_log_ids: webhookLogIds
+    };
   }
 
   async cleanupEnrichmentState(client, mediaItemId) {
@@ -329,13 +417,7 @@ class ClassificationRetryService {
     const metadataResetResult = await client.query(
       `UPDATE media_server_items
        SET metadata = (
-         COALESCE(metadata, '{}'::jsonb)
-         - 'omdb'
-         - 'tavily_imdb'
-         - 'tavily_advisory'
-         - 'tavily_content_type'
-         - 'tavily_holiday'
-         - 'tavily_anime'
+         ${buildJsonbDeleteChain("COALESCE(metadata, '{}'::jsonb)", ENRICHMENT_METADATA_KEYS)}
        ),
            enrichment_status = 'pending'
        WHERE id = $1`,
@@ -350,7 +432,16 @@ class ClassificationRetryService {
     };
   }
 
-  async enqueueMetadataEnrichmentTask({ classificationId, mediaItemId, retryPayload, metadata, actor, correlationId }) {
+  async enqueueMetadataEnrichmentTask({
+    classificationId,
+    mediaItemId,
+    retryPayload,
+    metadata,
+    actor,
+    correlationId,
+    metadataEnrichmentSource,
+    route
+  }) {
     if (!mediaItemId) {
       return {
         metadataEnrichmentQueued: false,
@@ -373,7 +464,7 @@ class ClassificationRetryService {
         `INSERT INTO task_queue (task_type, payload, priority, source, max_attempts)
          VALUES ($1, $2::jsonb, $3, $4, $5)
          RETURNING id`,
-        ['metadata_enrichment', JSON.stringify(enrichmentPayload), 1, 'manual_retry_followup', 5]
+        ['metadata_enrichment', JSON.stringify(enrichmentPayload), 1, metadataEnrichmentSource, 5]
       );
 
       const taskId = result.rows[0]?.id || null;
@@ -383,10 +474,10 @@ class ClassificationRetryService {
         metadataEnrichmentReason: taskId ? 'queued' : 'not_queued'
       };
     } catch (error) {
-      this.logger.warn('Metadata enrichment enqueue skipped after classification retry', {
+        this.logger.warn('Metadata enrichment enqueue skipped after classification retry', {
         correlationId,
         actor,
-        route: RETRY_ROUTE,
+        route,
         classificationId,
         mediaItemId,
         result: 'skipped',
@@ -401,7 +492,15 @@ class ClassificationRetryService {
     }
   }
 
-  async retrySingle(client, { classificationId, actor, purgeLearning, correlationId }) {
+  async retrySingle(client, {
+    classificationId,
+    actor,
+    purgeLearning,
+    correlationId,
+    taskSource = DEFAULT_RETRY_TASK_SOURCE,
+    metadataEnrichmentSource = DEFAULT_RETRY_FOLLOWUP_SOURCE,
+    route = RETRY_ROUTE
+  }) {
     const baseResult = {
       classificationId,
       queued: false,
@@ -426,7 +525,7 @@ class ClassificationRetryService {
       await client.query('BEGIN');
 
       const rowResult = await client.query(
-        `SELECT id, tmdb_id, media_type, title, year, status, metadata
+        `SELECT id, tmdb_id, media_type, title, year, status, metadata, retry_count, max_retries
          FROM classification_history
          WHERE id = $1
          FOR UPDATE`,
@@ -439,7 +538,7 @@ class ClassificationRetryService {
         this.logger.warn('Classification retry skipped: not found', {
           correlationId,
           actor,
-          route: RETRY_ROUTE,
+          route,
           classificationId,
           result: 'skipped',
           reasonCode: 'not_found'
@@ -452,7 +551,7 @@ class ClassificationRetryService {
         this.logger.warn('Classification retry skipped: status ineligible', {
           correlationId,
           actor,
-          route: RETRY_ROUTE,
+          route,
           classificationId,
           result: 'skipped',
           status: row.status,
@@ -469,7 +568,7 @@ class ClassificationRetryService {
         this.logger.warn('Classification retry skipped: duplicate pending task', {
           correlationId,
           actor,
-          route: RETRY_ROUTE,
+          route,
           classificationId,
           result: 'skipped',
           existingTaskId: existingTask.id,
@@ -480,6 +579,10 @@ class ClassificationRetryService {
       }
 
       const mediaItemId = await this.resolveMediaItemId(client, metadata, identity);
+      const retryLineage = await this.captureRetryLineage(client, classificationId);
+      if (retryLineage) {
+        metadata.retry_lineage = retryLineage;
+      }
 
       await this.cleanupClassificationArtifacts(client, classificationId);
       const enrichmentCleanup = await this.cleanupEnrichmentState(client, mediaItemId);
@@ -496,16 +599,31 @@ class ClassificationRetryService {
         purgedLearning = (learningResult.rowCount || 0) > 0;
       }
 
-      await client.query('DELETE FROM classification_history WHERE id = $1', [classificationId]);
-
       const retryPayload = buildRetryPayload(row, metadata, mediaItemId);
       const queueResult = await client.query(
         `INSERT INTO task_queue (task_type, payload, priority, source, max_attempts)
          VALUES ($1, $2::jsonb, $3, $4, $5)
          RETURNING id`,
-        ['classification', JSON.stringify(retryPayload), 2, 'manual_retry', 5]
+        ['classification', JSON.stringify(retryPayload), 2, taskSource, 5]
       );
       const taskId = queueResult.rows[0]?.id || null;
+
+      await client.query(
+        `UPDATE classification_history
+         SET status = 'reclassified',
+             pending_reason = NULL
+         WHERE id = $1`,
+        [classificationId]
+      );
+      await classificationOutcomeService.recordOutcome(classificationId, {
+        type: 'retried',
+        source: taskSource,
+        actor,
+        purged_learning: purgedLearning,
+        replacement_task_id: taskId,
+        correlation_id: correlationId,
+        route
+      }, { client });
 
       await client.query('COMMIT');
 
@@ -515,13 +633,15 @@ class ClassificationRetryService {
         retryPayload,
         metadata,
         actor,
-        correlationId
+        correlationId,
+        metadataEnrichmentSource,
+        route
       });
 
-      this.logger.info('Classification retry queued', {
+        this.logger.info('Classification retry queued', {
         correlationId,
         actor,
-        route: RETRY_ROUTE,
+        route,
         classificationId,
         taskId,
         metadataEnrichmentTaskId: metadataEnrichmentResult.metadataEnrichmentTaskId,
@@ -546,10 +666,10 @@ class ClassificationRetryService {
         // Ignore rollback errors after primary failure
       }
 
-      this.logger.error('Classification retry failed', {
+        this.logger.error('Classification retry failed', {
         correlationId,
         actor,
-        route: RETRY_ROUTE,
+        route,
         classificationId,
         result: 'failed',
         reasonCode: 'retry_failed',

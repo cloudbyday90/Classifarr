@@ -131,6 +131,88 @@ describe('PolicyEngine Integration Tests', () => {
             expect(testPolicy.rag_weight).toBe(0.2);
             expect(testPolicy.history_weight).toBe(0.1);
         });
+
+        test('should preserve stored combination_mode and use it in DB-backed evaluation', async () => {
+            const comboLibraryRes = await db.query(`
+                INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)
+                VALUES ($1, 'test-combo-lib-' || gen_random_uuid()::text, 'Combination Mode Library', 'movie', true)
+                RETURNING id
+            `, [testMediaServerId]);
+            const comboLibraryId = comboLibraryRes.rows[0].id;
+
+            const actionPresetRes = await db.query(`
+                INSERT INTO content_presets (key, name, signals, is_system)
+                VALUES (
+                    'test_combo_action',
+                    'Test Combo Action',
+                    '{"genres": {"require_any": ["Action"]}}'::jsonb,
+                    false
+                )
+                RETURNING id
+            `);
+            const actionPresetId = actionPresetRes.rows[0].id;
+
+            const comedyPresetRes = await db.query(`
+                INSERT INTO content_presets (key, name, signals, is_system)
+                VALUES (
+                    'test_combo_comedy',
+                    'Test Combo Comedy',
+                    '{"genres": {"require_any": ["Comedy"]}}'::jsonb,
+                    false
+                )
+                RETURNING id
+            `);
+            const comedyPresetId = comedyPresetRes.rows[0].id;
+
+            const comboPolicyRes = await db.query(`
+                INSERT INTO library_policies (
+                    library_id,
+                    name,
+                    enabled,
+                    auto_classify_threshold,
+                    prompt_threshold,
+                    trust_patterns,
+                    trust_rag,
+                    trust_history,
+                    combination_mode,
+                    preset_weight,
+                    profile_weight,
+                    pattern_weight,
+                    rag_weight,
+                    history_weight
+                )
+                VALUES ($1, 'Combination Mode Policy', true, 85, 60, false, false, false, 'average', 1.0, 0.0, 0.0, 0.0, 0.0)
+                RETURNING id
+            `, [comboLibraryId]);
+            const comboPolicyId = comboPolicyRes.rows[0].id;
+
+            try {
+                await db.query(`
+                    INSERT INTO policy_presets (policy_id, preset_id, weight)
+                    VALUES ($1, $2, 1.0), ($1, $3, 1.0)
+                `, [comboPolicyId, actionPresetId, comedyPresetId]);
+
+                const policies = await policyEngine.getActivePolicies();
+                const comboPolicy = policies.find(p => p.id === comboPolicyId);
+
+                expect(comboPolicy).toBeDefined();
+                expect(comboPolicy.combination_mode).toBe('average');
+
+                const evaluation = await policyEngine.evaluatePolicy(comboPolicy, {
+                    title: 'Action Only',
+                    genres: ['Action'],
+                    media_type: 'movie'
+                });
+
+                expect(evaluation.combination_mode).toBe('average');
+                expect(evaluation.scores.preset).toBe(40);
+                expect(evaluation.score).toBe(40);
+            } finally {
+                await db.query('DELETE FROM library_policies WHERE id = $1', [comboPolicyId]);
+                await db.query('DELETE FROM content_presets WHERE id = ANY($1::int[])', [[actionPresetId, comedyPresetId]]);
+                await db.query('DELETE FROM libraries WHERE id = $1', [comboLibraryId]);
+            }
+        });
     });
 
     describe('checkAuthoritativeSignals', () => {
@@ -588,6 +670,25 @@ describe('PolicyEngine Integration Tests', () => {
 
             expect(result.action).toBe('prompt_select');
             expect(result.confidence).toBe(50);
+        });
+
+        test('should return manual if score is below the prompt-select floor', () => {
+            const ranked = [
+                {
+                    policy_id: 1,
+                    library_id: testLibraryId,
+                    library_name: 'Test Library',
+                    score: 39,
+                    auto_classify_threshold: 85,
+                    prompt_threshold: 60
+                }
+            ];
+
+            const result = policyEngine.determineAction(ranked);
+
+            expect(result.action).toBe('manual');
+            expect(result.confidence).toBe(39);
+            expect(result.ranked).toHaveLength(1);
         });
 
         test('should return manual if no rankings', () => {

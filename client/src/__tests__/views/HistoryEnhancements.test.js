@@ -56,7 +56,45 @@ const baseHistoryRows = [
     method: 'policy_engine',
     confidence: 92,
     created_at: '2026-02-13T10:00:00.000Z',
-    metadata: {},
+    metadata: {
+      classification_details: {
+        rag_loop_trace: {
+          mode: 'apply',
+          ran: true,
+          trigger: 'ai_low_confidence',
+          strategy: 'hybrid',
+          diagnostics: {
+            pass1: { top_similarity: 0.62 },
+            pass2: { top_similarity: 0.81 }
+          },
+          decision: {
+            outcome: 'pass2',
+            reason: 'policy_upgrade'
+          },
+          events: [
+            { stage: 'gate', outcome: 'run', reason_code: 'ai_low_confidence' },
+            { stage: 'retrieval_pass2', outcome: 'applied', reason_code: 'hybrid' }
+          ]
+        },
+        outcome_link: {
+          type: 'verified',
+          source: 'discord_verification',
+          actor: 'mod-user',
+          final_library_name: 'TV Shows',
+          recorded_at: '2026-02-13T10:15:00.000Z',
+          updated_at: '2026-02-13T10:15:00.000Z'
+        },
+        outcome_path: {
+          first_type: 'retried',
+          latest_type: 'verified',
+          first_source: 'manual_retry',
+          latest_source: 'discord_verification',
+          first_recorded_at: '2026-02-13T10:05:00.000Z',
+          latest_updated_at: '2026-02-13T10:15:00.000Z',
+          transition_count: 2
+        }
+      }
+    },
   },
   {
     id: 202,
@@ -158,5 +196,23 @@ describe('History enhancements behavior', () => {
     await rowCheckboxes[1].setValue(true)
     await flushPromises()
     expect(wrapper.text()).toContain('Batch Reclassify')
+  })
+
+  it('shows second-pass trace and linked outcome in the detail modal', async () => {
+    const wrapper = await mountHistory()
+
+    const firstTitleCell = wrapper.find('tbody tr td:nth-child(2)')
+    await firstTitleCell.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Targeted Re-check Trace')
+    expect(wrapper.text()).toContain('Linked Outcome')
+    expect(wrapper.text()).toContain('Discord Verification')
+    expect(wrapper.text()).toContain('Verified')
+    expect(wrapper.text()).toContain('TV Shows')
+    expect(wrapper.text()).toContain('Recorded:')
+    expect(wrapper.text()).toContain('Transitions: 2')
+    expect(wrapper.text()).toContain('First:')
+    expect(wrapper.text()).toContain('Manual Retry')
   })
 })

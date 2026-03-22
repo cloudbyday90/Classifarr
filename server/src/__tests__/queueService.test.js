@@ -6,10 +6,6 @@
  * See LICENSE file for details.
  */
 
-const queueService = require('../services/queueService');
-const db = require('../config/database');
-const classificationService = require('../services/classification');
-
 jest.mock('../config/database');
 jest.mock('../services/classification');
 jest.mock('../utils/logger', () => ({
@@ -34,7 +30,15 @@ jest.mock('../services/tavily', () => ({
 }), { virtual: true });
 
 jest.mock('../services/enrichmentRetryService', () => ({
-    queueForRetry: jest.fn().mockResolvedValue()
+    queueForRetry: jest.fn().mockResolvedValue(),
+    getStats: jest.fn().mockResolvedValue({ tavily: { pending: 0 }, total: { pending: 0 } }),
+    processRetryQueue: jest.fn().mockResolvedValue({ processed: 0 }),
+    backfillRetryQueue: jest.fn().mockResolvedValue({
+        success: true,
+        queued: 0,
+        enrichmentType: 'tavily',
+        reason: 'items_missing_omdb_data'
+    })
 }), { virtual: true });
 
 jest.mock('../utils/rateLimiter', () => ({
@@ -54,6 +58,10 @@ jest.mock('../services/mediaSync', () => ({
 jest.mock('../services/scheduler', () => ({
     runGapAnalysis: jest.fn().mockResolvedValue({})
 }), { virtual: true });
+
+const queueService = require('../services/queueService');
+const db = require('../config/database');
+const classificationService = require('../services/classification');
 
 describe('QueueService', () => {
     beforeEach(() => {
@@ -79,6 +87,9 @@ describe('QueueService', () => {
         // at module scope with virtual:true). Wire the virtual mock into the instance so that
         // tests can control getByTitle / checkHealth via mock methods.
         queueService.omdbService = require('../services/omdb');
+        queueService.enrichmentRetryService = require('../services/enrichmentRetryService');
+        queueService.queueCarsaService.mediaSyncService = require('../services/mediaSync');
+        queueService.queueCarsaService.getScheduler = () => require('../services/scheduler');
     });
 
     describe('enqueue', () => {
@@ -159,10 +170,11 @@ describe('QueueService', () => {
             );
         });
 
-        it('should include source: metadata_enrichment in content_analysis even when OMDb returns no data', async () => {
+        it('should preserve source-library identity and metadata_enrichment source in persisted metadata', async () => {
             // Regression test: the second enrichmentData.content_analysis assignment previously
-            // dropped the `source` key, causing refillQueue to re-select items with no OMDb data
-            // indefinitely (content_analysis.source IS DISTINCT FROM 'metadata_enrichment' → true).
+            // dropped the `source` key and source-library identity, causing refillQueue to
+            // re-select items with no OMDb data and later classification paths to lose the
+            // exact source-library fast path.
             const task = {
                 id: 99,
                 task_type: 'metadata_enrichment',
@@ -197,8 +209,171 @@ describe('QueueService', () => {
             await queueService.processTask(task);
 
             expect(capturedMetadata).not.toBeNull();
+            expect(capturedMetadata.source_library_id).toBe(3);
+            expect(capturedMetadata.source_library_name).toBe('Movies');
             expect(capturedMetadata.content_analysis).toBeDefined();
             expect(capturedMetadata.content_analysis.source).toBe('metadata_enrichment');
+            expect(capturedMetadata.content_analysis.source_library_id).toBe(3);
+            expect(capturedMetadata.content_analysis.source_library_name).toBe('Movies');
+        });
+
+        it('should mark holiday-only Tavily enrichment as tavilyEnriched in the completed task result', async () => {
+            const task = {
+                id: 100,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify({
+                    title: 'Holiday Special',
+                    year: 2024,
+                    itemId: 56,
+                    source_library_id: 4,
+                    source_library_name: 'Seasonal',
+                    media: { media_type: 'movie' }
+                })
+            };
+
+            const tavilyService = require('../services/tavily');
+            tavilyService.getContentAdvisory.mockResolvedValue(null);
+            tavilyService.search.mockResolvedValue({
+                answer: 'This title is commonly grouped with holiday viewing.'
+            });
+
+            let completedResult = null;
+            db.query.mockImplementation((query, params) => {
+                if (query.includes('SELECT * FROM omdb_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('SELECT * FROM tavily_config')) {
+                    return Promise.resolve({
+                        rows: [{ api_key: 'tavily-key', search_depth: 'advanced', max_results: 3 }]
+                    });
+                }
+                if (query.includes('SELECT 1 FROM libraries WHERE id')) {
+                    return Promise.resolve({ rows: [{ exists: 1 }] });
+                }
+                if (query.includes('SELECT 1 FROM classification_history')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('UPDATE task_queue') && params?.[1]) {
+                    completedResult = JSON.parse(params[1]);
+                }
+                return Promise.resolve({ rows: [], rowCount: 1 });
+            });
+
+            await queueService.processTask(task);
+
+            expect(completedResult).toBeTruthy();
+            expect(completedResult.result.tavilyEnriched).toBe(true);
+        });
+
+        it('should return the self-healed source library name in the completed task result', async () => {
+            const task = {
+                id: 101,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify({
+                    title: 'Recovered Library Name',
+                    year: 2024,
+                    itemId: 57,
+                    source_library_id: 8,
+                    media: { media_type: 'movie' }
+                })
+            };
+
+            let completedResult = null;
+            db.query.mockImplementation((query, params) => {
+                if (query.includes('FROM media_server_items msi')) {
+                    return Promise.resolve({
+                        rows: [{
+                            tmdb_id: null,
+                            library_id: 8,
+                            metadata: {},
+                            library_name: 'Recovered Movies'
+                        }]
+                    });
+                }
+                if (query.includes('SELECT * FROM omdb_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('SELECT * FROM tavily_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('SELECT 1 FROM libraries WHERE id')) {
+                    return Promise.resolve({ rows: [{ exists: 1 }] });
+                }
+                if (query.includes('SELECT 1 FROM classification_history')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('UPDATE task_queue') && params?.[1]) {
+                    completedResult = JSON.parse(params[1]);
+                }
+                return Promise.resolve({ rows: [], rowCount: 1 });
+            });
+
+            await queueService.processTask(task);
+
+            expect(completedResult).toBeTruthy();
+            expect(completedResult.result.sourceLibrary).toBe('Recovered Movies');
+        });
+
+        it('should recover a missing source library name from the libraries table for completion and persistence', async () => {
+            const task = {
+                id: 102,
+                task_type: 'metadata_enrichment',
+                payload: JSON.stringify({
+                    title: 'Fallback Library Name',
+                    year: 2024,
+                    itemId: 58,
+                    source_library_id: 999,
+                    source_library_name: null,
+                    media: { media_type: 'movie' }
+                })
+            };
+
+            let capturedMetadata = null;
+            let completedResult = null;
+
+            db.query.mockImplementation((query, params) => {
+                if (query.includes('FROM media_server_items msi')) {
+                    return Promise.resolve({
+                        rows: [{
+                            tmdb_id: null,
+                            library_id: 999,
+                            metadata: {},
+                            library_name: null
+                        }]
+                    });
+                }
+                if (query === 'SELECT name FROM libraries WHERE id = $1') {
+                    return Promise.resolve({ rows: [{ name: 'Recovered Queue Library' }] });
+                }
+                if (query.includes('SELECT * FROM omdb_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('SELECT * FROM tavily_config')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('UPDATE media_server_items') && params?.[0]) {
+                    capturedMetadata = typeof params[0] === 'string' ? JSON.parse(params[0]) : params[0];
+                    return Promise.resolve({ rows: [], rowCount: 1 });
+                }
+                if (query.includes('SELECT 1 FROM libraries WHERE id')) {
+                    return Promise.resolve({ rows: [{ exists: 1 }] });
+                }
+                if (query.includes('SELECT 1 FROM classification_history')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (query.includes('UPDATE task_queue') && params?.[1]) {
+                    completedResult = JSON.parse(params[1]);
+                }
+                return Promise.resolve({ rows: [], rowCount: 1 });
+            });
+
+            await queueService.processTask(task);
+
+            expect(capturedMetadata).toBeTruthy();
+            expect(capturedMetadata.source_library_name).toBe('Recovered Queue Library');
+            expect(capturedMetadata.content_analysis.source_library_name).toBe('Recovered Queue Library');
+            expect(completedResult).toBeTruthy();
+            expect(completedResult.result.sourceLibrary).toBe('Recovered Queue Library');
         });
 
         it('should suppress warn spam for OMDb HALF_OPEN throttling and queue for OMDb retry', async () => {
@@ -440,6 +615,150 @@ describe('QueueService', () => {
                 expect.any(Object)
             );
         });
+
+        it('should keep failed metadata_enrichment tasks eligible for refill requeue', async () => {
+            db.query.mockResolvedValueOnce({ rows: [] });
+
+            const result = await queueService.refillQueue();
+
+            expect(result).toEqual({ queued: 0 });
+            const sql = db.query.mock.calls[0][0];
+            expect(sql).toMatch(/status IN \('pending', 'processing'\)/);
+            expect(sql).not.toMatch(/'failed'/);
+        });
+
+        it('should keep metadata_enrichment anti-loop filtering in the refill selector', async () => {
+            db.query.mockResolvedValueOnce({ rows: [] });
+
+            const result = await queueService.refillQueue();
+
+            expect(result).toEqual({ queued: 0 });
+            const sql = db.query.mock.calls[0][0];
+            expect(sql).toMatch(/msi\.metadata->'omdb' IS NULL/);
+            expect(sql).toMatch(/msi\.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'/);
+        });
+
+        it('should tolerate orphaned library rows by defaulting media_type and preserving null library name', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    id: 44,
+                    title: 'Orphaned Library Movie',
+                    metadata: { summary: 'Still ingestible without joined library metadata' },
+                    genres: [],
+                    tags: [],
+                    content_rating: null,
+                    tmdb_id: null,
+                    tvdb_id: null,
+                    imdb_id: null,
+                    year: 2024,
+                    library_id: 999,
+                    library_name: null,
+                    media_type: null
+                }]
+            });
+
+            jest.spyOn(queueService, 'enqueue').mockResolvedValue(1003);
+
+            const result = await queueService.refillQueue();
+
+            expect(result).toEqual({ queued: 1 });
+            expect(queueService.enqueue).toHaveBeenCalledWith(
+                'metadata_enrichment',
+                expect.objectContaining({
+                    source_library_id: 999,
+                    source_library_name: null,
+                    media: { media_type: 'movie' }
+                }),
+                expect.objectContaining({
+                    source: 'gap_analysis'
+                })
+            );
+        });
+    });
+
+    describe('queue API facade helpers', () => {
+        it('getLiveStats assembles the combined queue payload', async () => {
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [{
+                        new_classified: '4',
+                        all_classified: '9',
+                        new_avg_confidence: '82.6',
+                        all_avg_confidence: '78.4'
+                    }]
+                })
+                .mockResolvedValueOnce({
+                    rows: [{
+                        total_items: '100',
+                        enriched: '45',
+                        tavily_enriched: '30',
+                        omdb_enriched: '20'
+                    }]
+                })
+                .mockResolvedValueOnce({
+                    rows: [{ pending: '7' }]
+                });
+
+            jest.spyOn(queueService, 'getStats').mockResolvedValue({ pending: 2, aiAvailable: true, workerRunning: true });
+            jest.spyOn(queueService, 'getGapAnalysisStats').mockResolvedValue({ unprocessed: 3 });
+            jest.spyOn(queueService, 'getEnrichmentRetryStats').mockResolvedValue({ tavily: { pending: 1 }, total: { pending: 1 } });
+
+            const result = await queueService.getLiveStats();
+            const enrichmentSql = db.query.mock.calls[1][0];
+
+            expect(result.queue.pending).toBe(2);
+            expect(result.today.classified).toBe(4);
+            expect(result.today.avgConfidence).toBe(83);
+            expect(result.enrichment.progress).toBe(45);
+            expect(result.enrichment.pending).toBe(7);
+            expect(result.enrichment.retryQueue.total.pending).toBe(1);
+            expect(result.health.ai).toBe(true);
+            expect(result).toHaveProperty('timestamp');
+            expect(enrichmentSql).toContain("metadata->'tavily_holiday' IS NOT NULL");
+            expect(enrichmentSql).toContain("metadata->'tavily_anime' IS NOT NULL");
+        });
+
+        it('getLiveStats falls back when retry queue stats are unavailable', async () => {
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [{ new_classified: '0', all_classified: '0', new_avg_confidence: null, all_avg_confidence: null }]
+                })
+                .mockResolvedValueOnce({
+                    rows: [{ total_items: '10', enriched: '0', tavily_enriched: '0', omdb_enriched: '0' }]
+                })
+                .mockResolvedValueOnce({
+                    rows: [{ pending: '0' }]
+                });
+
+            jest.spyOn(queueService, 'getStats').mockResolvedValue({ pending: 0, aiAvailable: true, workerRunning: true });
+            jest.spyOn(queueService, 'getGapAnalysisStats').mockResolvedValue({ unprocessed: 0 });
+            jest.spyOn(queueService, 'getEnrichmentRetryStats').mockRejectedValue(new Error('retry stats unavailable'));
+
+            const result = await queueService.getLiveStats();
+
+            expect(result.enrichment.retryQueue.total.pending).toBe(0);
+        });
+
+        it('delegates retry queue operations through the injected enrichment retry service', async () => {
+            const enrichmentRetryService = require('../services/enrichmentRetryService');
+            enrichmentRetryService.getStats.mockResolvedValueOnce({ tavily: { pending: 2 } });
+            enrichmentRetryService.processRetryQueue.mockResolvedValueOnce({ processed: 5, failed: 1 });
+            enrichmentRetryService.backfillRetryQueue.mockResolvedValueOnce({
+                success: true,
+                queued: 13,
+                enrichmentType: 'tavily',
+                reason: 'items_missing_omdb_data'
+            });
+
+            await expect(queueService.getEnrichmentRetryStats()).resolves.toEqual({ tavily: { pending: 2 } });
+            await expect(queueService.processEnrichmentRetryQueue(25, 'tavily')).resolves.toEqual({ processed: 5, failed: 1 });
+            await expect(queueService.backfillEnrichmentRetryQueue()).resolves.toEqual({
+                success: true,
+                queued: 13,
+                enrichmentType: 'tavily',
+                reason: 'items_missing_omdb_data'
+            });
+        });
     });
 
     describe('startWorker', () => {
@@ -646,6 +965,12 @@ describe('QueueService', () => {
             expect(stats.classificationPauseReason).toBeNull();
         });
 
+        it('should propagate read-model failures instead of flattening them', async () => {
+            jest.spyOn(queueService.queueReadModel, 'getStats').mockRejectedValueOnce(new Error('stats query failed'));
+
+            await expect(queueService.getStats()).rejects.toThrow('stats query failed');
+        });
+
         it('should surface dispatch check failures as a paused state', async () => {
             jest.spyOn(queueService, 'hasClassificationDispatchBlocker').mockResolvedValue({
                 hasProcessingClassification: false,
@@ -669,10 +994,13 @@ describe('QueueService', () => {
 
     describe('retryTask', () => {
         it('should reset failed task to pending', async () => {
-            db.query.mockResolvedValue({ rowCount: 1 });
+            db.query
+                .mockResolvedValueOnce({ rows: [{ id: 123, status: 'failed' }] })
+                .mockResolvedValueOnce({ rowCount: 1 });
 
-            await queueService.retryTask(123);
+            const result = await queueService.retryTask(123);
 
+            expect(result).toEqual({ success: true });
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE task_queue.*SET status = 'pending'/s),
                 expect.arrayContaining([123])
@@ -682,10 +1010,13 @@ describe('QueueService', () => {
 
     describe('cancelTask', () => {
         it('should mark task as cancelled', async () => {
-            db.query.mockResolvedValue({ rowCount: 1 });
+            db.query
+                .mockResolvedValueOnce({ rows: [{ id: 123, status: 'pending' }] })
+                .mockResolvedValueOnce({ rowCount: 1 });
 
-            await queueService.cancelTask(123);
+            const result = await queueService.cancelTask(123);
 
+            expect(result).toEqual({ success: true });
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE task_queue.*SET status = 'cancelled'/s),
                 expect.arrayContaining([123])
@@ -694,34 +1025,49 @@ describe('QueueService', () => {
     });
 
     describe('dismissFailedTask', () => {
-        it('should delete a failed task and return true when row is removed', async () => {
-            db.query.mockResolvedValue({ rowCount: 1 });
+        it('should delete a failed task and return a success result when row is removed', async () => {
+            db.query
+                .mockResolvedValueOnce({ rows: [{ id: 456, status: 'failed' }] })
+                .mockResolvedValueOnce({ rowCount: 1 });
 
             const result = await queueService.dismissFailedTask(456);
 
-            expect(result).toBe(true);
+            expect(result).toEqual({ success: true });
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/DELETE FROM task_queue[\s\S]*status = 'failed'/),
                 expect.arrayContaining([456])
             );
         });
 
-        it('should return false when no failed task row was removed', async () => {
-            db.query.mockResolvedValue({ rowCount: 0 });
+        it('should return a not_found result when the task row is missing', async () => {
+            db.query.mockResolvedValueOnce({ rows: [] });
 
             const result = await queueService.dismissFailedTask(999);
 
-            expect(result).toBe(false);
+            expect(result).toEqual({ success: false, code: 'not_found' });
         });
     });
 
     describe('bulk queue actions', () => {
+        it('should delegate Ollama status through the queue facade', () => {
+            queueService.ollamaService.getGenerationStatus = jest.fn().mockReturnValue({
+                isGenerating: true,
+                model: 'gemma3',
+            });
+
+            expect(queueService.getOllamaStatus()).toEqual({
+                isGenerating: true,
+                model: 'gemma3',
+            });
+            expect(queueService.ollamaService.getGenerationStatus).toHaveBeenCalled();
+        });
+
         it('should clear failed tasks and return affected count', async () => {
             db.query.mockResolvedValue({ rowCount: 3 });
 
-            const count = await queueService.clearFailedTasks();
+            const result = await queueService.clearFailedTasks();
 
-            expect(count).toBe(3);
+            expect(result).toEqual({ success: true, count: 3 });
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/DELETE FROM task_queue WHERE status = 'failed'/)
             );
@@ -730,9 +1076,9 @@ describe('QueueService', () => {
         it('should retry all failed tasks and return affected count', async () => {
             db.query.mockResolvedValue({ rowCount: 4 });
 
-            const count = await queueService.retryAllFailedTasks();
+            const result = await queueService.retryAllFailedTasks();
 
-            expect(count).toBe(4);
+            expect(result).toEqual({ success: true, count: 4 });
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE task_queue[\s\S]*WHERE status = 'failed'/)
             );
@@ -741,9 +1087,9 @@ describe('QueueService', () => {
         it('should cancel all pending tasks and return affected count', async () => {
             db.query.mockResolvedValue({ rowCount: 7 });
 
-            const count = await queueService.cancelAllPendingTasks();
+            const result = await queueService.cancelAllPendingTasks();
 
-            expect(count).toBe(7);
+            expect(result).toEqual({ success: true, count: 7 });
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE task_queue[\s\S]*WHERE status = 'pending'/)
             );

@@ -19,13 +19,13 @@
 const authService = require('../services/auth');
 
 function extractToken(req) {
-  if (req.cookies && req.cookies.access_token) {
-    return req.cookies.access_token;
-  }
-
   const authHeader = req.headers['authorization'];
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.split(' ')[1];
+  }
+
+  if (req.cookies && req.cookies.access_token) {
+    return req.cookies.access_token;
   }
 
   return null;

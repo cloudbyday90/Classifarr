@@ -249,6 +249,12 @@ describe('useServiceRequirements composable', () => {
       expect(mockPush).toHaveBeenCalledWith('/settings?tab=ai')
     })
 
+    it('navigates to image embedding settings', () => {
+      const { navigateToSettings } = useServiceRequirements([])
+      navigateToSettings('imageEmbeddings')
+      expect(mockPush).toHaveBeenCalledWith('/settings?tab=rag')
+    })
+
     it('navigates to Media Server settings', () => {
       const { navigateToSettings } = useServiceRequirements([])
       navigateToSettings('mediaServer')
@@ -303,6 +309,15 @@ describe('useServiceRequirements composable', () => {
 
       const { isServiceAvailable } = useServiceRequirements([])
       expect(isServiceAvailable('discordBot')).toBe(false)
+    })
+
+    it('returns true for degraded image embeddings when allowDegraded is enabled', () => {
+      serviceStatusStore.serviceHealth = {
+        imageEmbeddings: { status: 'degraded' }
+      }
+
+      const { isServiceAvailable } = useServiceRequirements([], { allowDegraded: true })
+      expect(isServiceAvailable('imageEmbeddings')).toBe(true)
     })
   })
 

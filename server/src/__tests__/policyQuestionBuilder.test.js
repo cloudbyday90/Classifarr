@@ -389,6 +389,50 @@ describe('PolicyQuestionBuilder', () => {
     expect(result.why_uncertain).toContain('Swedish/Norwegian/Danish/Finnish');
   });
 
+  test('should keep named conflict libraries in options even when ranked fallbacks would otherwise fill the first three slots', async () => {
+    const libraries = [
+      { id: 11, name: 'Foreign Language', media_type: 'movie' },
+      { id: 14, name: 'Movies', media_type: 'movie' },
+      { id: 15, name: 'Family', media_type: 'movie' },
+      { id: 16, name: 'Comedy', media_type: 'movie' },
+    ];
+
+    const policyResult = {
+      ranked: [
+        { library_id: 14, library_name: 'Movies', score: 52, policy_id: 2, policy_name: 'Movies Policy', scores: {}, weights: {} },
+        { library_id: 15, library_name: 'Family', score: 48, policy_id: 3, policy_name: 'Family Policy', scores: {}, weights: {} },
+        { library_id: 16, library_name: 'Comedy', score: 44, policy_id: 4, policy_name: 'Comedy Policy', scores: {}, weights: {} },
+      ],
+      languageConflicts: [
+        {
+          policy_id: 1,
+          policy_name: 'Foreign Language Policy',
+          library_id: 11,
+          library_name: 'Foreign Language',
+          score: 0,
+          required_languages: ['fr'],
+          item_language: 'en',
+        }
+      ]
+    };
+
+    const result = await policyQuestionBuilder.build({
+      metadata: {
+        title: 'Test Import',
+        media_type: 'movie',
+        original_language: 'en',
+      },
+      policyResult,
+      libraries,
+    });
+
+    expect(result).toBeDefined();
+    expect(result.question).toContain('Foreign Language');
+    expect(result.options[0].library_name).toBe('Movies');
+    expect(result.options.some(option => option.library_name === 'Foreign Language')).toBe(true);
+    expect(result.options.some(option => option.library_name === 'Comedy')).toBe(false);
+  });
+
   test('should generate a language mismatch question when known language conflicts with active candidate presets', async () => {
     // Scenario: Anime Movies IS in ranked candidates (preset scored it via genre only,
     // language preset not attached), but its policy's presets have language: { require_any: ['ja'] }.
@@ -430,6 +474,52 @@ describe('PolicyQuestionBuilder', () => {
     expect(result.question).not.toContain('Japanese');
 
     jest.restoreAllMocks();
+  });
+
+  test('should generate a language conflict question for English strict exclude conflicts', async () => {
+    const libraries = [
+      { id: 21, name: 'Movies', media_type: 'movie' },
+      { id: 22, name: 'Foreign Language', media_type: 'movie' },
+    ];
+
+    const policyResult = {
+      ranked: [
+        { library_id: 21, library_name: 'Movies', score: 58, policy_id: 2, policy_name: 'Movies Policy', scores: {}, weights: {} },
+      ],
+      languageConflicts: [
+        {
+          policy_id: 1,
+          policy_name: 'Foreign Language Policy',
+          library_id: 22,
+          library_name: 'Foreign Language',
+          score: 0,
+          required_languages: [],
+          excluded_languages: ['en'],
+          item_language: 'en',
+        }
+      ]
+    };
+
+    const result = await policyQuestionBuilder.build({
+      metadata: {
+        title: 'English Drama',
+        media_type: 'movie',
+        original_language: 'en',
+        genres: ['Drama'],
+      },
+      policyResult,
+      libraries,
+    });
+
+    expect(result).toBeDefined();
+    expect(result.problem_summary).toBe('Language conflict');
+    expect(result.question).toContain('English');
+    expect(result.question).toContain('Foreign Language');
+    expect(result.options[0].library_name).toBe('Movies');
+    expect(result.options.some(option => option.library_name === 'Foreign Language')).toBe(true);
+    expect(result.meta.primary_candidate_library_name).toBe('Movies');
+    expect(result.meta.question_anchor_library_name).toBe('Movies');
+    expect(result.meta.question_anchor_reason).toBe('primary_candidate');
   });
 
   test('should format expanded language codes using human-readable labels', () => {

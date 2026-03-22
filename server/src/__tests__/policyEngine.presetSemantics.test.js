@@ -250,5 +250,63 @@ describe('PolicyEngine preset semantics', () => {
                 item_language: 'ka'
             }));
         });
+
+        test('excludes strict English exclude policies from ranked results', async () => {
+            const policy = {
+                id: 31,
+                name: 'Foreign Language Policy',
+                library_id: 61,
+                library_name: 'Foreign Language',
+                library_media_type: 'movie',
+                auto_classify_threshold: 85,
+                prompt_threshold: 60,
+                trust_rag: false,
+                rag_weight: 0,
+                presets: [
+                    {
+                        signals: {
+                            genres: {
+                                require_any: ['Drama'],
+                                weight: 1.0
+                            },
+                            language: {
+                                exclude: ['en'],
+                                weight: 1.0,
+                                strict: true
+                            }
+                        }
+                    }
+                ]
+            };
+
+            jest.spyOn(policyEngine, 'checkAuthoritativeSignals').mockResolvedValue(null);
+            jest.spyOn(policyEngine, 'getActivePolicies').mockResolvedValue([policy]);
+            jest.spyOn(policyEngine, 'evaluatePolicy').mockResolvedValue({
+                score: 74,
+                library_id: 61,
+                library_name: 'Foreign Language',
+                policy_id: 31,
+                policy_name: 'Foreign Language Policy',
+                auto_classify_threshold: 85,
+                prompt_threshold: 60
+            });
+
+            const result = await policyEngine.evaluateItem({
+                title: 'English Drama',
+                media_type: 'movie',
+                genres: ['Drama'],
+                original_language: 'en'
+            });
+
+            expect(result.action).toBe('manual');
+            expect(result.ranked).toEqual([]);
+            expect(result.languageConflicts).toHaveLength(1);
+            expect(result.languageConflicts[0]).toEqual(expect.objectContaining({
+                policy_id: 31,
+                library_name: 'Foreign Language',
+                item_language: 'en',
+                excluded_languages: ['en']
+            }));
+        });
     });
 });

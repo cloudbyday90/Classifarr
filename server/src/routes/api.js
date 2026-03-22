@@ -50,6 +50,7 @@ const ratingNormalizationRouter = require('./ratingNormalization');
 const syncRouter = require('./sync');
 const apiKeysRouter = require('./apiKeys');
 const notificationsRouter = require('./notifications');
+const classificationProgressRouter = require('./classificationProgress');
 
 const router = express.Router();
 
@@ -70,6 +71,7 @@ router.use('/backup', backupRouter);
 
 // Tier 1: Admin-Only Routes
 router.use('/media-server', authenticateToken, requireAdmin, mediaServerRouter);
+router.use('/classification/progress', authenticateToken, requireAdmin, classificationProgressRouter);
 router.use('/classification', authenticateToken, requireAdmin, classificationRouter);
 router.use('/settings', authenticateToken, requireAdmin, settingsRouter);
 router.use('/reclassification', authenticateToken, requireAdmin, reclassificationRouter);

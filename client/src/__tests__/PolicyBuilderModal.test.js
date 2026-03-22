@@ -52,6 +52,17 @@ describe('PolicyBuilderModal.vue', () => {
       usage_count: 1,
       source: 'builtin',
       signals: {}
+    },
+    {
+      id: 9,
+      key: 'custom_family_mix',
+      name: 'Family Remix',
+      icon: '⚙️',
+      category: 'custom',
+      description: 'My custom family preset',
+      usage_count: 2,
+      source: 'custom',
+      signals: {}
     }
   ];
 
@@ -86,6 +97,82 @@ describe('PolicyBuilderModal.vue', () => {
 
     expect(document.body.textContent).toContain('Used in 4 policies');
     expect(document.body.textContent).toContain('Used in 1 policy');
+  });
+
+  it('shows My Presets when attachable custom presets exist', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: []
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('My Presets');
+    expect(document.body.textContent).toContain('Family Remix');
+  });
+
+  it('includes profile weight in the advanced total and save payload', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          profile_weight: 0.25,
+          preset_weight: 0.35,
+          pattern_weight: 0.15,
+          rag_weight: 0.15,
+          history_weight: 0.10,
+          presets: [
+            { id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }
+          ]
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    wrapper.vm.showAdvanced = true;
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Profile: 25%');
+    expect(document.body.textContent).toContain('Total: 100%');
+
+    await wrapper.vm.save();
+
+    const emittedSave = wrapper.emitted('save');
+    expect(emittedSave).toBeTruthy();
+    expect(emittedSave[0][0]).toMatchObject({
+      profile_weight: 0.25,
+      preset_weight: 0.35,
+      pattern_weight: 0.15,
+      rag_weight: 0.15,
+      history_weight: 0.10
+    });
   });
 
   it('uses preset usage map for suggested cards without usage_count payload', async () => {
@@ -130,6 +217,49 @@ describe('PolicyBuilderModal.vue', () => {
 
     expect(document.body.textContent).toContain('Used in 4 policies');
     expect(api.get).toHaveBeenCalledWith('/policies/presets/suggest/1');
+  });
+
+  it('marks suggested custom presets as My Preset', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      if (url === '/policies/presets/suggest/1') {
+        return Promise.resolve({
+          data: {
+            suggestions: [
+              {
+                id: 9,
+                name: 'Family Remix',
+                icon: '⚙️',
+                source: 'custom',
+                suggestion_score: 88,
+                match_score: 88
+              }
+            ]
+          }
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: []
+        }
+      },
+      attachTo: document.body
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('My Preset');
+    expect(document.body.textContent).toContain('Family Remix');
   });
 
   it('lets users mark language presets as strict and emits strict customSignals on save', async () => {

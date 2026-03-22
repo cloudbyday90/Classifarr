@@ -156,6 +156,7 @@ describe('Command Center shell navigation', () => {
     })
 
     const alwaysVisibleAnchors = [
+      'alerts',
       'processing',
       'needs-attention',
       'errors',
@@ -169,7 +170,6 @@ describe('Command Center shell navigation', () => {
       expect(wrapper.find(`#${anchor}`).exists()).toBe(true)
     }
 
-    expect(wrapper.find('#alerts').exists()).toBe(false)
     expect(wrapper.find('#enrichment').exists()).toBe(false)
   })
 

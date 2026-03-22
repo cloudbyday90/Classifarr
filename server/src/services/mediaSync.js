@@ -74,6 +74,7 @@ class MediaSyncService {
         let totalItems = 0;
         let processedItems = 0;
         let hasMore = true;
+        const seenItemExternalIds = new Set();
 
         while (hasMore) {
           const items = await service.getLibraryItems(url, api_key, external_id, {
@@ -88,6 +89,9 @@ class MediaSyncService {
 
           // Process batch
           for (const item of items) {
+            if (item?.external_id) {
+              seenItemExternalIds.add(String(item.external_id));
+            }
             await this.upsertMediaItem(media_server_id, libraryId, item);
             processedItems++;
           }
@@ -118,8 +122,19 @@ class MediaSyncService {
 
         // Sync collections
         const collections = await service.getCollections(url, api_key, external_id);
+        const seenCollectionExternalIds = new Set();
         for (const collection of collections) {
+          if (collection?.external_id) {
+            seenCollectionExternalIds.add(String(collection.external_id));
+          }
           await this.upsertCollection(media_server_id, libraryId, collection);
+        }
+
+        let prunedItems = 0;
+        let prunedCollections = 0;
+        if (!incremental) {
+          prunedItems = await this.pruneMissingMediaItems(libraryId, [...seenItemExternalIds]);
+          prunedCollections = await this.pruneMissingCollections(libraryId, [...seenCollectionExternalIds]);
         }
 
         // Reconcile awaiting decision items with synced media
@@ -136,14 +151,18 @@ class MediaSyncService {
         logger.info(`Library sync completed`, {
           libraryId,
           totalItems,
-          collectionsCount: collections.length
+          collectionsCount: collections.length,
+          prunedItems,
+          prunedCollections
         });
 
         return {
           success: true,
           totalItems,
           processedItems,
-          collections: collections.length
+          collections: collections.length,
+          prunedItems,
+          prunedCollections
         };
       } catch (error) {
         // Mark sync as failed
@@ -354,6 +373,56 @@ class MediaSyncService {
         return;
       }
       logger.error(`Error upserting collection`, { collection: collection.name, error: error.message });
+    }
+  }
+
+  async pruneMissingMediaItems(libraryId, seenExternalIds = []) {
+    try {
+      const result = seenExternalIds.length > 0
+        ? await db.query(
+          `DELETE FROM media_server_items
+           WHERE library_id = $1
+             AND NOT (external_id = ANY($2::text[]))`,
+          [libraryId, seenExternalIds]
+        )
+        : await db.query(
+          `DELETE FROM media_server_items
+           WHERE library_id = $1`,
+          [libraryId]
+        );
+
+      return result.rowCount || 0;
+    } catch (error) {
+      logger.error('Failed to prune missing media items after full sync', {
+        libraryId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  async pruneMissingCollections(libraryId, seenExternalIds = []) {
+    try {
+      const result = seenExternalIds.length > 0
+        ? await db.query(
+          `DELETE FROM media_server_collections
+           WHERE library_id = $1
+             AND NOT (external_id = ANY($2::text[]))`,
+          [libraryId, seenExternalIds]
+        )
+        : await db.query(
+          `DELETE FROM media_server_collections
+           WHERE library_id = $1`,
+          [libraryId]
+        );
+
+      return result.rowCount || 0;
+    } catch (error) {
+      logger.error('Failed to prune missing collections after full sync', {
+        libraryId,
+        error: error.message
+      });
+      throw error;
     }
   }
 

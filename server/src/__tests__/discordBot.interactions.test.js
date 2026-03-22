@@ -31,6 +31,9 @@ jest.mock('../services/clarificationService', () => ({
 jest.mock('../services/autoLearningService', () => ({
     learnFromFeedback: jest.fn()
 }));
+jest.mock('../services/classificationOutcomeService', () => ({
+    recordOutcome: jest.fn().mockResolvedValue({ updated: true })
+}));
 
 // routeAfterClarification() requires './classification' dynamically to avoid
 // circular deps. Jest intercepts the require so  the mock works correctly.
@@ -41,6 +44,7 @@ jest.mock('../services/classification', () => ({
 const db = require('../config/database');
 const clarificationService = require('../services/clarificationService');
 const autoLearningService = require('../services/autoLearningService');
+const classificationOutcomeService = require('../services/classificationOutcomeService');
 const { EmbedBuilder } = require('discord.js');
 const discordBot = require('../services/discordBot');
 
@@ -89,6 +93,28 @@ beforeEach(() => {
     clarificationService.recordResponse.mockResolvedValue(undefined);
 });
 
+describe('handleInteraction', () => {
+    test('routes the "correct" button through processVerification instead of cosmetic-only update', async () => {
+        const interaction = makeInteraction({
+            customId: 'correct_100',
+            isButton: jest.fn(() => true),
+            isStringSelectMenu: jest.fn(() => false),
+        });
+        const processVerificationSpy = jest
+            .spyOn(discordBot, 'processVerification')
+            .mockResolvedValue(undefined);
+
+        try {
+            await discordBot.handleInteraction(interaction);
+
+            expect(processVerificationSpy).toHaveBeenCalledWith(100, true, interaction);
+            expect(interaction.update).not.toHaveBeenCalled();
+        } finally {
+            processVerificationSpy.mockRestore();
+        }
+    });
+});
+
 // ── processVerification ───────────────────────────────────────────────────────
 
 describe('processVerification', () => {
@@ -99,7 +125,9 @@ describe('processVerification', () => {
             callOrder.push('db.query');
             return { rows: [MOCK_CLASSIFICATION] };
         });
-        db.query.mockResolvedValue({ rows: [], rowCount: 0 });
+        db.query
+            .mockResolvedValueOnce({ rows: [{ name: 'Series' }] })
+            .mockResolvedValue({ rows: [], rowCount: 0 });
 
         const interaction = makeInteraction({
             deferUpdate: jest.fn().mockImplementation(async () => {
@@ -123,6 +151,10 @@ describe('processVerification', () => {
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
         expect(interaction.reply).not.toHaveBeenCalled();
+        expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(100, expect.objectContaining({
+            type: 'verified',
+            source: 'discord_verification',
+        }));
     });
 
     test('idempotency guard: followUp + early exit when status is already "verified"', async () => {
@@ -220,15 +252,21 @@ describe('processCorrection', () => {
     test('uses editReply for the success embed — NOT update() or reply()', async () => {
         db.query
             .mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] })           // classification
-            .mockResolvedValueOnce({ rows: [{ name: 'Movies' }] })            // library lookup
+            .mockResolvedValueOnce({ rows: [{ name: 'Series' }] })            // library lookup
             .mockResolvedValue({ rows: [], rowCount: 1 });
 
         const interaction = makeInteraction();
-        await discordBot.processCorrection(100, 10, interaction);
+        await discordBot.processCorrection(100, 11, interaction);
 
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
         expect(interaction.reply).not.toHaveBeenCalled();
+        expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(100, expect.objectContaining({
+            type: 'corrected',
+            source: 'discord_correction',
+            final_library_id: 11,
+            final_library_name: 'Series'
+        }));
     });
 
     test('followUp (not reply) when classification is not found', async () => {
@@ -257,6 +295,21 @@ describe('processCorrection', () => {
         );
         expect(interaction.editReply).not.toHaveBeenCalled();
         expect(interaction.reply).not.toHaveBeenCalled();
+    });
+
+    test('idempotency guard: followUp + early exit when correction targets the existing library', async () => {
+        db.query
+            .mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'corrected', library_id: 10 }] })
+            .mockResolvedValueOnce({ rows: [{ name: 'Movies' }] });
+
+        const interaction = makeInteraction();
+        await discordBot.processCorrection(100, 10, interaction);
+
+        expect(interaction.followUp).toHaveBeenCalledWith(
+            expect.objectContaining({ content: expect.stringContaining('Already processed') })
+        );
+        expect(interaction.editReply).not.toHaveBeenCalled();
+        expect(db.query).toHaveBeenCalledTimes(2);
     });
 
     test('catch block uses followUp, not reply', async () => {
@@ -332,6 +385,82 @@ describe('processClarificationResponse', () => {
         );
         expect(interaction.editReply).not.toHaveBeenCalled();
         expect(interaction.reply).not.toHaveBeenCalled();
+    });
+
+    test('idempotency guard: followUp + early exit when clarification is already resolved to the same library', async () => {
+        db.query.mockResolvedValueOnce({
+            rows: [{
+                ...MOCK_CLASSIFICATION,
+                status: 'completed',
+                library_id: 10,
+                policy_question: {
+                    options: [{ label: 'Movies', library_id: 10 }]
+                }
+            }]
+        });
+
+        const interaction = makeInteraction();
+        await discordBot.processClarificationResponse(100, 0, interaction);
+
+        expect(interaction.followUp).toHaveBeenCalledWith(
+            expect.objectContaining({ content: expect.stringContaining('Already processed') })
+        );
+        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+        expect(interaction.editReply).not.toHaveBeenCalled();
+    });
+
+    test('does not fall back to legacy mutation when resolvePolicyQuestion reports stale resolution', async () => {
+        const staleError = new Error('Classification is no longer awaiting decision');
+        staleError.statusCode = 409;
+        db.query.mockResolvedValueOnce({
+            rows: [{
+                ...MOCK_CLASSIFICATION,
+                status: 'awaiting_decision',
+                library_id: 10,
+                policy_question: {
+                    options: [{ label: 'Movies', library_id: 10 }]
+                }
+            }]
+        });
+        clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(staleError);
+
+        const interaction = makeInteraction();
+        await discordBot.processClarificationResponse(100, 0, interaction);
+
+        expect(interaction.followUp).toHaveBeenCalledWith(
+            expect.objectContaining({ content: expect.stringContaining('Already processed') })
+        );
+        expect(interaction.editReply).not.toHaveBeenCalled();
+        expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
+    test('shows a stale-question retry message instead of already-processed when policy context changed', async () => {
+        const staleQuestionError = new Error('Policy question is stale and must be retried');
+        staleQuestionError.statusCode = 409;
+        staleQuestionError.code = 'policy_question_stale';
+        db.query.mockResolvedValueOnce({
+            rows: [{
+                ...MOCK_CLASSIFICATION,
+                status: 'awaiting_decision',
+                library_id: 10,
+                policy_question: {
+                    options: [{ label: 'Movies', library_id: 10 }]
+                }
+            }]
+        });
+        clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(staleQuestionError);
+
+        const interaction = makeInteraction();
+        await discordBot.processClarificationResponse(100, 0, interaction);
+
+        expect(interaction.followUp).toHaveBeenCalledWith(
+            expect.objectContaining({ content: expect.stringContaining('stale') })
+        );
+        expect(interaction.followUp).not.toHaveBeenCalledWith(
+            expect.objectContaining({ content: expect.stringContaining('Already processed') })
+        );
+        expect(interaction.editReply).not.toHaveBeenCalled();
+        expect(db.query).toHaveBeenCalledTimes(1);
     });
 
     test('catch block uses followUp, not reply', async () => {

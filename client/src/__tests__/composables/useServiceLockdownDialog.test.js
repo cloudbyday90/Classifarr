@@ -98,6 +98,7 @@ describe('useServiceLockdownDialog', () => {
 
       const services = [
         { key: 'aiProvider', url: '/settings?tab=ai', name: 'AI Provider' },
+        { key: 'imageEmbeddings', url: '/settings?tab=rag', name: 'Image Embeddings' },
         { key: 'mediaServer', url: '/settings?tab=mediaserver', name: 'Media Server' },
         { key: 'radarr', url: '/settings?tab=radarr', name: 'Radarr' },
         { key: 'sonarr', url: '/settings?tab=sonarr', name: 'Sonarr' },

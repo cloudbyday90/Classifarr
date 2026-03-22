@@ -19,6 +19,7 @@
 // Service-to-settings URL mapping
 export const SERVICE_SETTINGS_MAP = {
   aiProvider: '/settings?tab=ai',
+  imageEmbeddings: '/settings?tab=rag',
   mediaServer: '/settings?tab=mediaserver',
   radarr: '/settings?tab=radarr',
   sonarr: '/settings?tab=sonarr',
@@ -33,6 +34,7 @@ export const SERVICE_SETTINGS_MAP = {
 // Human-readable service names
 export const SERVICE_NAMES = {
   aiProvider: 'AI Provider',
+  imageEmbeddings: 'Image Embeddings',
   mediaServer: 'Media Server',
   radarr: 'Radarr',
   sonarr: 'Sonarr',

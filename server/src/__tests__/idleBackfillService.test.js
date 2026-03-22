@@ -12,7 +12,7 @@ const db = require('../config/database');
 jest.mock('../config/database', () => ({
     query: jest.fn(),
     withSessionAdvisoryLock: jest.fn(),
-    DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003 }
+    DB_ADVISORY_LOCKS: { IDLE_BACKFILL: 1001, SCHEDULED_BACKFILL: 1002, MANUAL_BACKFILL: 1003, BACKFILL_OWNER: 1004 }
 }));
 
 jest.mock('../services/embeddingService', () => ({
@@ -43,12 +43,13 @@ const embeddingService = require('../services/embeddingService');
 
 describe('IdleBackfillService', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        jest.resetAllMocks();
 
         // Reset service state
         idleBackfillService.isRunning = false;
         idleBackfillService.config = null;
         idleBackfillService.includeImage = false;
+        idleBackfillService.providerOfflineUntil = null;
         embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
         embeddingService.getPendingCount.mockResolvedValue(0);
         embeddingService.getPendingEmbeddings.mockResolvedValue([]);
@@ -272,6 +273,60 @@ describe('IdleBackfillService', () => {
         });
     });
 
+    describe('provider offline cooldown', () => {
+        test('releases the run immediately and records a cooldown instead of sleeping under the lock', async () => {
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [{
+                        rag_enabled: true,
+                        idle_backfill_enabled: true,
+                        idle_threshold: 30000,
+                        idle_batch_size: 10
+                    }]
+                })
+                .mockResolvedValueOnce({ rows: [{ id: 51 }] })
+                .mockResolvedValueOnce({ rows: [] });
+
+            embeddingService.getPendingCount.mockResolvedValueOnce(1);
+            embeddingService.getPendingEmbeddings.mockResolvedValueOnce([
+                { id: 5, needsText: true, needsImage: false, metadata: {}, title: 'Offline', media_type: 'movie', library_name: 'Movies' }
+            ]);
+            embeddingService.generateAndStore.mockRejectedValueOnce(new Error('PROVIDER_OFFLINE'));
+            idleDetector.isIdle.mockReturnValue(true);
+            const sleepSpy = jest.spyOn(idleBackfillService, 'sleep');
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(sleepSpy).not.toHaveBeenCalledWith(300000);
+            expect(idleBackfillService.isRunning).toBe(false);
+            expect(idleBackfillService.providerOfflineUntil).toEqual(expect.any(Number));
+        });
+
+        test('skips restart attempts while provider offline cooldown is active', async () => {
+            idleBackfillService.providerOfflineUntil = Date.now() + 60000;
+            const lockBodySpy = jest.fn();
+            db.withSessionAdvisoryLock.mockImplementation(async (_lockKey, fn) => {
+                lockBodySpy.mockImplementation(fn);
+                await fn();
+                return true;
+            });
+
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    rag_enabled: true,
+                    idle_backfill_enabled: true,
+                    idle_threshold: 30000,
+                    idle_batch_size: 10
+                }]
+            });
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(db.withSessionAdvisoryLock).not.toHaveBeenCalled();
+            expect(lockBodySpy).not.toHaveBeenCalled();
+        });
+    });
+
     describe('getStatus', () => {
         test('should return current status', () => {
             idleBackfillService.isRunning = true;
@@ -280,9 +335,26 @@ describe('IdleBackfillService', () => {
             const status = idleBackfillService.getStatus();
 
             expect(status).toEqual({
+                status: 'running',
+                enabled: false,
                 isRunning: true,
+                batchSize: 10,
+                includeImage: false,
+                cooldownUntil: null,
                 config: { idle_batch_size: 20 }
             });
+        });
+
+        test('reports cooldown status when provider cooldown is active', () => {
+            idleBackfillService.config = { idle_backfill_enabled: true, idle_batch_size: 20 };
+            idleBackfillService.providerOfflineUntil = Date.now() + 60000;
+
+            const status = idleBackfillService.getStatus();
+
+            expect(status.status).toBe('cooldown');
+            expect(status.enabled).toBe(true);
+            expect(status.isRunning).toBe(false);
+            expect(status.cooldownUntil).toEqual(expect.any(String));
         });
     });
 
@@ -306,6 +378,10 @@ describe('IdleBackfillService', () => {
 
             // isRunning should remain false — no backfill was started
             expect(idleBackfillService.isRunning).toBe(false);
+            expect(db.withSessionAdvisoryLock).toHaveBeenCalledWith(
+                db.DB_ADVISORY_LOCKS.BACKFILL_OWNER,
+                expect.any(Function)
+            );
         });
     });
 });

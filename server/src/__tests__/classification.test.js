@@ -27,6 +27,9 @@ const policyQuestionBuilder = require('../services/policyQuestionBuilder');
 const ragRetriever = require('../services/ragRetriever');
 const ragLoopResilienceManager = require('../services/ragLoopResilienceManager');
 const ollamaService = require('../services/ollama');
+const aiRouter = require('../services/aiRouter');
+const classificationRetryService = require('../services/classificationRetryService');
+const classificationOutcomeService = require('../services/classificationOutcomeService');
 const providerLock = require('../services/providerLock');
 const ragLogger = require('../utils/ragLogger');
 const { OperationController } = require('../utils/operationController');
@@ -46,6 +49,8 @@ jest.mock('../services/contentTypeAnalyzer');
 jest.mock('../services/policyQuestionBuilder', () => ({
   build: jest.fn()
 }));
+jest.mock('../services/classificationRetryService');
+jest.mock('../services/classificationOutcomeService');
 jest.mock('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(),
@@ -95,6 +100,71 @@ describe('ClassificationService', () => {
         message: 'rag_pass2_semantic_timeout',
         code: 'ETIMEDOUT'
       });
+    });
+  });
+
+  describe('mergeMetadataForRecheck', () => {
+    test('replaces weak metadata with richer authoritative enrichment values', () => {
+      const merged = classificationService.mergeMetadataForRecheck(
+        {
+          title: 'Example',
+          genres: ['Drama'],
+          keywords: ['family'],
+          production_companies: [{ name: 'Studio' }],
+          cast: [{ name: 'Lead Actor' }],
+          original_title: 'Example',
+          overview: 'Short summary.'
+        },
+        {
+          genres: ['Drama', 'Mystery'],
+          keywords: ['family', 'investigation', 'crime'],
+          belongs_to_collection: { name: 'Example Collection' },
+          production_companies: [{ name: 'Studio' }, { name: 'Distributor' }],
+          cast: [{ name: 'Lead Actor' }, { name: 'Supporting Actor' }],
+          original_title: 'Original Example',
+          overview: 'A much richer authoritative summary that provides substantially more context for retrieval.'
+        }
+      );
+
+      expect(merged.genres).toEqual(['Drama', 'Mystery']);
+      expect(merged.keywords).toEqual(['family', 'investigation', 'crime']);
+      expect(merged.belongs_to_collection).toEqual({ name: 'Example Collection' });
+      expect(merged.production_companies).toEqual([{ name: 'Studio' }, { name: 'Distributor' }]);
+      expect(merged.cast).toEqual([{ name: 'Lead Actor' }, { name: 'Supporting Actor' }]);
+      expect(merged.original_title).toBe('Original Example');
+      expect(merged.overview).toContain('authoritative summary');
+    });
+
+    test('preserves richer existing metadata when enrichment is weaker', () => {
+      const merged = classificationService.mergeMetadataForRecheck(
+        {
+          title: 'Example',
+          genres: ['Drama', 'Mystery', 'Thriller'],
+          keywords: ['family', 'investigation', 'crime'],
+          belongs_to_collection: { name: 'Example Collection' },
+          production_companies: [{ name: 'Studio' }, { name: 'Distributor' }],
+          cast: [{ name: 'Lead Actor' }, { name: 'Supporting Actor' }],
+          original_title: 'Original Example',
+          overview: 'A much richer authoritative summary that provides substantially more context for retrieval.'
+        },
+        {
+          genres: ['Drama'],
+          keywords: ['family'],
+          belongs_to_collection: { name: 'Ex' },
+          production_companies: [{ name: 'Studio' }],
+          cast: [{ name: 'Lead Actor' }],
+          original_title: 'Example',
+          overview: 'Short summary.'
+        }
+      );
+
+      expect(merged.genres).toEqual(['Drama', 'Mystery', 'Thriller']);
+      expect(merged.keywords).toEqual(['family', 'investigation', 'crime']);
+      expect(merged.belongs_to_collection).toEqual({ name: 'Example Collection' });
+      expect(merged.production_companies).toEqual([{ name: 'Studio' }, { name: 'Distributor' }]);
+      expect(merged.cast).toEqual([{ name: 'Lead Actor' }, { name: 'Supporting Actor' }]);
+      expect(merged.original_title).toBe('Original Example');
+      expect(merged.overview).toContain('authoritative summary');
     });
   });
 
@@ -772,6 +842,76 @@ describe('Classification Details Storage', () => {
     });
   });
 
+  test('should store compact rag_loop_summary when second-pass trace is present', async () => {
+    const result = await classificationService.logClassification(
+      {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Summary Example',
+        year: 2025
+      },
+      {
+        library: { id: 1, name: 'Movies' },
+        confidence: 74,
+        method: 'policy_recheck',
+        reason: 'Policy re-check upgraded confidence',
+        ragLoopTrace: {
+          mode: 'apply',
+          ran: true,
+          trigger: 'policy_prompt_select',
+          strategy: 'hybrid',
+          diagnostics: {
+            pass1: { match_count: 1, top_similarity: 0.61 },
+            pass2: { match_count: 3, top_similarity: 0.78 }
+          },
+          decision: {
+            outcome: 'policy',
+            reason: 'policy_precedence',
+            comparator: 'policy_gate'
+          },
+          events: [
+            { stage: 'gate', outcome: 'run', reason_code: 'policy_prompt_select' },
+            { stage: 'gate', outcome: 'strategy_selected', reason_code: 'low_signal' },
+            { stage: 'enrichment', outcome: 'applied', reason_code: 'metadata_updated' },
+            { stage: 'retrieval_pass2', outcome: 'applied', reason_code: 'hybrid' },
+            { stage: 'policy_recheck', outcome: 'accepted', reason_code: 'policy_upgrade_accepted' }
+          ]
+        }
+      }
+    );
+
+    expect(result).toBe(12345);
+
+    const insertCalls = db.query.mock.calls.filter(call =>
+      typeof call[0] === 'string' && call[0].includes('INSERT INTO classification_history')
+    );
+    const metadataParam = insertCalls[0][1][9];
+    const metadata = JSON.parse(metadataParam);
+
+    expect(metadata.classification_details.rag_loop_summary).toEqual({
+      ran: true,
+      mode: 'apply',
+      trigger: 'policy_prompt_select',
+      strategy: 'hybrid',
+      decision_outcome: 'policy',
+      decision_reason: 'policy_precedence',
+      comparator: 'policy_gate',
+      adopted: true,
+      had_error: false,
+      pass1_match_count: 1,
+      pass1_top_similarity: 0.61,
+      pass2_match_count: 3,
+      pass2_top_similarity: 0.78,
+      stages: {
+        gate: { outcome: 'run', reason_code: 'policy_prompt_select' },
+        enrichment: { outcome: 'applied', reason_code: 'metadata_updated' },
+        retrieval_pass2: { outcome: 'applied', reason_code: 'hybrid' },
+        policy_recheck: { outcome: 'accepted', reason_code: 'policy_upgrade_accepted' },
+        ai_rerun: null
+      }
+    });
+  });
+
   test('should use default scores and weights when policyResult is missing', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'manual',
@@ -811,6 +951,48 @@ describe('Classification Details Storage', () => {
       pattern: 0.15,
       rag: 0.15,
       history: 0.10
+    });
+    expect(metadata.classification_details.rag_loop_summary).toEqual(
+      expect.objectContaining({
+        decision_outcome: 'baseline',
+        decision_reason: 'not_ran',
+        adopted: false,
+        stages: expect.objectContaining({
+          gate: expect.objectContaining({
+            outcome: 'skipped',
+            reason_code: 'policy_context_missing'
+          })
+        })
+      })
+    );
+  });
+});
+
+describe('retry lineage outcome linking', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    db.query.mockResolvedValue({ rows: [] });
+  });
+
+  test('rebindRetryLineage links replacement classification on the original row', async () => {
+    await classificationService.rebindRetryLineage(902, {
+      retry_lineage: {
+        original_classification_id: 901,
+        media_request_ids: [11, 12],
+        webhook_log_ids: [31]
+      }
+    });
+
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE media_requests'),
+      [902, [11, 12]]
+    );
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE webhook_log'),
+      [902, [31]]
+    );
+    expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(901, {
+      replacement_classification_id: 902
     });
   });
 });
@@ -874,6 +1056,291 @@ describe('Issue 275 rag loop orchestration', () => {
     rag_loop_half_open_probe_count: 2,
     rag_loop_global_bypass_multi_open_enabled: true,
     rag_loop_global_bypass_ms: 60000
+  });
+
+  test('retries metadata enrichment within the configured second-pass attempt budget', async () => {
+    const config = {
+      ...buildRagConfig('apply'),
+      policy_recheck_metadata_enrichment_enabled: true,
+      policy_recheck_metadata_max_attempts: 2
+    };
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+
+    const timeoutError = new Error('metadata_enrichment_timeout');
+    timeoutError.name = 'TimeoutError';
+    timeoutError.code = 'ETIMEDOUT';
+
+    const enrichSpy = jest.spyOn(classificationService, 'enrichWithTMDB')
+      .mockRejectedValueOnce(timeoutError)
+      .mockResolvedValueOnce({
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family'],
+        belongs_to_collection: { name: 'Example Collection' },
+        production_companies: [{ name: 'Studio' }],
+        cast: [{ name: 'Lead Actor' }]
+      });
+    jest.spyOn(classificationService, 'sleep').mockResolvedValue();
+
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 74,
+      library: {
+        library_id: 2,
+        library_name: 'Family',
+        policy_id: 99,
+        policy_name: 'Family Policy'
+      },
+      ranked: [
+        {
+          library_id: 2,
+          library_name: 'Family',
+          score: 74,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }
+      ]
+    });
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(enrichSpy).toHaveBeenCalledTimes(2);
+    expect(result.ragLoopTrace.events.some((event) =>
+      event.stage === 'enrichment' &&
+      event.outcome === 'retry' &&
+      event.recoverable === true
+    )).toBe(true);
+    expect(result.ragLoopTrace.events.some((event) =>
+      event.stage === 'enrichment' &&
+      event.outcome === 'applied' &&
+      event.reason_code === 'metadata_updated'
+    )).toBe(true);
+  });
+
+  test('passes richer authoritative enrichment metadata into policy recheck', async () => {
+    const config = {
+      ...buildRagConfig('apply'),
+      policy_recheck_metadata_enrichment_enabled: true,
+      policy_recheck_metadata_max_attempts: 1
+    };
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+    jest.spyOn(classificationService, 'enrichWithTMDB').mockResolvedValue({
+      tmdb_id: 123,
+      media_type: 'movie',
+      title: 'Example',
+      genres: ['Drama', 'Mystery'],
+      keywords: ['family', 'investigation', 'crime'],
+      belongs_to_collection: { name: 'Example Collection' },
+      production_companies: [{ name: 'Studio' }, { name: 'Distributor' }],
+      cast: [{ name: 'Lead Actor' }, { name: 'Supporting Actor' }],
+      original_title: 'Original Example',
+      overview: 'A much richer authoritative summary that provides substantially more context for retrieval.'
+    });
+
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 74,
+      library: {
+        library_id: 2,
+        library_name: 'Family',
+        policy_id: 99,
+        policy_name: 'Family Policy'
+      },
+      ranked: [
+        {
+          library_id: 2,
+          library_name: 'Family',
+          score: 74,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }
+      ]
+    });
+
+    await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family'],
+        original_title: 'Example',
+        overview: 'Short summary.'
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(policyEngine.evaluateItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genres: ['drama', 'mystery'],
+        keywords: ['family', 'investigation', 'crime'],
+        belongs_to_collection: { name: 'Example Collection' },
+        original_title: 'Original Example'
+      }),
+      expect.any(Object)
+    );
+  });
+
+  test('skips metadata enrichment when the configured second-pass attempt cap is zero', async () => {
+    const config = {
+      ...buildRagConfig('apply'),
+      policy_recheck_metadata_enrichment_enabled: true,
+      policy_recheck_metadata_max_attempts: 0
+    };
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+
+    const enrichSpy = jest.spyOn(classificationService, 'enrichWithTMDB');
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(enrichSpy).not.toHaveBeenCalled();
+    expect(result.ragLoopTrace.events.some((event) =>
+      event.stage === 'enrichment' &&
+      event.outcome === 'skipped' &&
+      event.reason_code === 'attempt_cap_reached'
+    )).toBe(true);
+  });
+
+  test('skips the whole second pass when rag_loop_max_passes is limited to one', async () => {
+    const config = {
+      ...buildRagConfig('apply'),
+      rag_loop_max_passes: 1
+    };
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(ragRetriever.semanticSearchCandidates).not.toHaveBeenCalled();
+    expect(result.ragLoopTrace.events.some((event) =>
+      event.stage === 'gate' &&
+      event.outcome === 'skipped' &&
+      event.reason_code === 'max_passes_reached'
+    )).toBe(true);
   });
 
   test('shadow mode remains non-invasive while attaching trace', async () => {
@@ -1012,6 +1479,165 @@ describe('Issue 275 rag loop orchestration', () => {
     expect(result.ragLoopTrace.mode).toBe('apply');
   });
 
+  test('apply mode preserves baseline when second-pass conflict persists despite improvement', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+
+    ragRetriever.semanticSearchCandidates.mockResolvedValue([
+      { libraryId: 1, libraryName: 'Movies', similarity: 0.76 },
+      { libraryId: 1, libraryName: 'Movies', similarity: 0.75 },
+      { libraryId: 2, libraryName: 'Family', similarity: 0.755 },
+      { libraryId: 2, libraryName: 'Family', similarity: 0.745 }
+    ]);
+    ragRetriever.hybridSearch.mockResolvedValue([
+      { libraryId: 2, libraryName: 'Family', similarity: 0.82 },
+      { libraryId: 2, libraryName: 'Family', similarity: 0.80 }
+    ]);
+
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 74,
+      library: {
+        library_id: 2,
+        library_name: 'Family',
+        policy_id: 99,
+        policy_name: 'Family Policy'
+      },
+      ranked: [
+        {
+          library_id: 2,
+          library_name: 'Family',
+          score: 74,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }
+      ]
+    });
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(result.library.id).toBe(1);
+    expect(result.confidence).toBe(58);
+    expect(result.ragLoopTrace.decision.outcome).toBe('baseline');
+    expect(result.ragLoopTrace.decision.reason).toBe('conflict_persists');
+  });
+
+  test('uses one unified pass2 evidence pool for diagnostics, rag context, and policy recheck cache', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+
+    ragRetriever.semanticSearchCandidates.mockResolvedValue([
+      { libraryId: 1, libraryName: 'Movies', similarity: 0.78 },
+      { libraryId: 1, libraryName: 'Movies', similarity: 0.77 },
+      { libraryId: 1, libraryName: 'Movies', similarity: 0.76 }
+    ]);
+    ragRetriever.hybridSearch.mockResolvedValue([
+      { libraryId: 2, libraryName: 'Family', similarity: 0.91 },
+      { libraryId: 2, libraryName: 'Family', similarity: 0.90 }
+    ]);
+
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 74,
+      library: {
+        library_id: 2,
+        library_name: 'Family',
+        policy_id: 99,
+        policy_name: 'Family Policy'
+      },
+      ranked: [
+        {
+          library_id: 2,
+          library_name: 'Family',
+          score: 74,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }
+      ]
+    });
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(policyEngine.evaluateItem).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        ragCache: expect.objectContaining({
+          matches: expect.arrayContaining([
+            expect.objectContaining({ libraryId: 1, libraryName: 'Movies', similarity: 0.78 })
+          ])
+        })
+      })
+    );
+    expect(result.ragContext.similarItems[0]).toEqual(
+      expect.objectContaining({ libraryId: 1, libraryName: 'Movies', similarity: 0.78 })
+    );
+    expect(result.ragLoopTrace.diagnostics.pass2.top_similarity).toBe(0.78);
+  });
+
   test('policy-first trigger fails open with deterministic guard reason when tmdb mapping is missing', async () => {
     jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
 
@@ -1057,6 +1683,44 @@ describe('Issue 275 rag loop orchestration', () => {
       event.stage === 'gate' &&
       event.reason_code === 'missing_tmdb_id' &&
       event.fallback_action === 'policy_recheck_skipped'
+    )).toBe(true);
+  });
+
+  test('non-actionable policy results still allow low-confidence ai second pass', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('shadow'));
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 321,
+        media_type: 'movie',
+        title: 'Low Confidence Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 55,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'manual',
+        confidence: 0,
+        ranked: []
+      },
+      signalContext: { confidence: 55 },
+      ragContext: null
+    });
+
+    expect(result.ragLoopTrace.trigger).toBe('ai_low_confidence');
+    expect(result.ragLoopTrace.events.some(event =>
+      event.stage === 'gate' &&
+      event.outcome === 'run' &&
+      event.reason_code === 'ai_low_confidence'
     )).toBe(true);
   });
 
@@ -1293,7 +1957,10 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('retries retryable sqlstate conflicts during policy recheck and records deterministic reason', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+      ...buildRagConfig('apply'),
+      policy_recheck_max_attempts: 2
+    });
 
     const retryableConflict = new Error('serialization failure');
     retryableConflict.code = '40001';
@@ -1361,6 +2028,55 @@ describe('Issue 275 rag loop orchestration', () => {
       event.outcome === 'retry' &&
       event.reason_code === 'db_retryable_conflict' &&
       event.sql_state === '40001'
+    )).toBe(true);
+  });
+
+  test('skips policy recheck when the configured policy recheck attempt cap is zero', async () => {
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+      ...buildRagConfig('apply'),
+      policy_recheck_max_attempts: 0
+    });
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 123,
+        media_type: 'movie',
+        title: 'Example',
+        genres: ['Drama'],
+        keywords: ['family']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: {
+        action: 'prompt_select',
+        confidence: 54,
+        ranked: [{
+          library_id: 1,
+          library_name: 'Movies',
+          score: 54,
+          prompt_threshold: 60,
+          auto_classify_threshold: 85
+        }]
+      },
+      signalContext: { confidence: 58 },
+      ragContext: {
+        similarItems: [{ libraryId: 1, libraryName: 'Movies', similarity: 0.61 }]
+      }
+    });
+
+    expect(policyEngine.evaluateItem).not.toHaveBeenCalled();
+    expect(result.ragLoopTrace.events.some((event) =>
+      event.stage === 'policy_recheck' &&
+      event.outcome === 'skipped' &&
+      event.reason_code === 'attempt_cap_reached'
     )).toBe(true);
   });
 
@@ -1444,6 +2160,83 @@ describe('Issue 275 rag loop orchestration', () => {
       event.outcome === 'skipped' &&
       event.reason_code === 'ai_budget_exhausted'
     )).toBe(true);
+  });
+
+  test('runs second-pass ai rerun in verify mode instead of classify mode', async () => {
+    const config = {
+      ...buildRagConfig('apply'),
+      policy_recheck_max_ai_calls_per_item: 2
+    };
+    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+    ragRetriever.semanticSearchCandidates.mockImplementation(async (_metadata, _limit, options = {}) => {
+      if (options.pass === 'pass1') {
+        return [
+          { libraryId: 1, libraryName: 'Movies', similarity: 0.58 },
+          { libraryId: 2, libraryName: 'Family', similarity: 0.57 }
+        ];
+      }
+
+      return [
+        { libraryId: 1, libraryName: 'Movies', similarity: 0.74 },
+        { libraryId: 1, libraryName: 'Movies', similarity: 0.73 }
+      ];
+    });
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_select',
+      confidence: 54,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 54,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    });
+
+    const aiClassifySpy = jest.spyOn(classificationService, 'aiClassify').mockResolvedValue({
+      library: { id: 2, name: 'Family' },
+      confidence: 74,
+      verified_by_ai: true,
+      reason: 'Verified against suggested library'
+    });
+
+    const result = await classificationService.evaluateRagLoopSecondPass({
+      metadata: {
+        tmdb_id: 456,
+        media_type: 'movie',
+        title: 'Low Confidence Example',
+        genres: ['Drama'],
+        keywords: ['mystery']
+      },
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      baselineResult: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 58,
+        method: 'ai_analysis',
+        needs_clarification: false
+      },
+      policyResult: null,
+      signalContext: {
+        confidence: 58,
+        suggestedLibrary: { id: 1, name: 'Movies' }
+      },
+      ragContext: null
+    });
+
+    expect(aiClassifySpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Array),
+      expect.objectContaining({
+        suggestedLibrary: { id: 1, name: 'Movies' }
+      }),
+      expect.objectContaining({
+        mode: 'verify'
+      })
+    );
+    expect(result.method).toBe('ai_verified');
   });
 
   test('treats schema mismatch during policy recheck as fail-open and traceable', async () => {
@@ -1570,6 +2363,94 @@ describe('Issue 275 rag loop orchestration', () => {
     );
   });
 
+  test('writes pass2 success metrics when retrieval_pass2 applied events are logged', async () => {
+    const stageSpy = jest.spyOn(ragLogger, 'logStageEvent')
+      .mockResolvedValue({ logged: true, deduped: false });
+    const operationSpy = jest.spyOn(ragLogger, 'logOperation')
+      .mockResolvedValue(undefined);
+
+    await classificationService.persistRagLoopStageEvents({
+      classificationId: 7707,
+      metadata: {
+        tmdb_id: 2468,
+        media_type: 'movie',
+        title: 'Pass2 Success Example'
+      },
+      result: {
+        ragLoopLogContext: {
+          correlationId: 'corr-pass2-success',
+          mode: 'apply',
+          strategy: 'hybrid',
+          trigger: 'policy_prompt_select',
+          events: [
+            {
+              stage: 'retrieval_pass2',
+              outcome: 'applied',
+              reason_code: 'hybrid',
+              recoverable: true
+            }
+          ]
+        }
+      }
+    });
+
+    expect(stageSpy).toHaveBeenCalledTimes(1);
+    expect(operationSpy).toHaveBeenCalledWith(
+      'second_pass_retrieval_pass2',
+      0,
+      true,
+      expect.objectContaining({
+        itemsProcessed: 1,
+        metadata: expect.objectContaining({
+          stage: 'retrieval_pass2',
+          outcome: 'applied',
+          reason_code: 'hybrid',
+          classification_id: 7707
+        })
+      })
+    );
+  });
+
+  test('preserves rag_candidate stage identity when persisting second-pass stage events', async () => {
+    const stageSpy = jest.spyOn(ragLogger, 'logStageEvent')
+      .mockResolvedValue({ logged: true, deduped: false });
+
+    await classificationService.persistRagLoopStageEvents({
+      classificationId: 8808,
+      metadata: {
+        tmdb_id: 97531,
+        media_type: 'movie',
+        title: 'Candidate Stage Example'
+      },
+      result: {
+        ragLoopLogContext: {
+          correlationId: 'corr-rag-candidate',
+          mode: 'apply',
+          strategy: 'hybrid',
+          trigger: 'ai_low_confidence',
+          events: [
+            {
+              stage: 'rag_candidate',
+              outcome: 'applied',
+              reason_code: 'rag_candidate_built',
+              recoverable: true
+            }
+          ]
+        }
+      }
+    });
+
+    expect(stageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: 'rag_candidate',
+        reason_code: 'rag_candidate_built',
+        metadata: expect.objectContaining({
+          source_stage: 'rag_candidate'
+        })
+      })
+    );
+  });
+
   test('does not write rag_metrics parity rows when stage event write was deduped', async () => {
     jest.spyOn(ragLogger, 'logStageEvent')
       .mockResolvedValue({ logged: false, deduped: true });
@@ -1670,6 +2551,244 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 });
 
+describe('second-pass result materialization', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('buildPolicyRecheckCandidate clears stale clarification state while carrying updated policy result', () => {
+    const baselineResult = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 58,
+      method: 'ai_analysis',
+      needs_clarification: true,
+      policy_question: { problem_summary: 'Old question' },
+      clarification: { problem_summary: 'Old question' },
+      pending_reason: 'Old question',
+      policyResult: { action: 'prompt_select' },
+      ragContext: { similarItems: [{ libraryId: 1 }] }
+    };
+
+    const policyResult = {
+      action: 'auto_classify',
+      confidence: 77,
+      library: {
+        library_id: 2,
+        library_name: 'Family'
+      }
+    };
+
+    const result = classificationService.buildPolicyRecheckCandidate({
+      baselineResult,
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      policyResult,
+      ragContext: { similarItems: [{ libraryId: 2 }] },
+      adoptionReason: 'Policy re-check upgraded confidence'
+    });
+
+    expect(result.library.id).toBe(2);
+    expect(result.needs_clarification).toBe(false);
+    expect(result.policy_question).toBeNull();
+    expect(result.clarification).toBeNull();
+    expect(result.pending_reason).toBeNull();
+    expect(result.policyResult).toBe(policyResult);
+  });
+
+  test('buildAiRerunCandidate clears stale clarification state when rerun result does not carry one', () => {
+    const baselineResult = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 58,
+      method: 'ai_analysis',
+      needs_clarification: true,
+      policy_question: { problem_summary: 'Old question' },
+      clarification: { problem_summary: 'Old question' },
+      pending_reason: 'Old question',
+      policyResult: { action: 'prompt_select' }
+    };
+
+    const aiRerunMatch = {
+      library: { id: 2, name: 'Family' },
+      confidence: 72,
+      verified_by_ai: false,
+      reason: 'Rerun result'
+    };
+
+    const result = classificationService.buildAiRerunCandidate({
+      baselineResult,
+      aiRerunMatch,
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      signalContext: { confidence: 58 },
+      policyResult: { action: 'prompt_confirm' },
+      ragContext: null
+    });
+
+    expect(result.library.id).toBe(2);
+    expect(result.policy_question).toBeNull();
+    expect(result.clarification).toBeNull();
+    expect(result.pending_reason).toBeNull();
+  });
+
+  test('ensureDecisionQuestion builds from the adopted result policy context', async () => {
+    policyQuestionBuilder.build.mockResolvedValue({
+      problem_summary: 'Use updated policy context',
+      question: 'Which library?',
+      options: [{ label: 'Family', library_id: 2, library_name: 'Family' }]
+    });
+
+    const stalePolicyResult = {
+      action: 'prompt_select',
+      ranked: [{ library_id: 1, library_name: 'Movies' }]
+    };
+    const updatedPolicyResult = {
+      action: 'prompt_confirm',
+      ranked: [{ library_id: 2, library_name: 'Family' }]
+    };
+
+    const result = await classificationService.ensureDecisionQuestion({
+      metadata: {
+        tmdb_id: 1001,
+        media_type: 'movie',
+        title: 'Ambiguous Family Title'
+      },
+      result: {
+        library: { id: 2, name: 'Family' },
+        confidence: 62,
+        method: 'policy_recheck',
+        policyResult: updatedPolicyResult
+      },
+      policyResult: stalePolicyResult,
+      libraries: [
+        { id: 1, name: 'Movies' },
+        { id: 2, name: 'Family' }
+      ],
+      ragContext: null
+    });
+
+    expect(policyQuestionBuilder.build).toHaveBeenCalledWith(expect.objectContaining({
+      policyResult: updatedPolicyResult
+    }));
+    expect(result.pending_reason).toBe('Use updated policy context');
+  });
+
+  test('deriveClassificationPersistenceState drops stale question state for completed results', async () => {
+    const normalizeSpy = jest.spyOn(classificationService, 'normalizePolicyQuestion');
+
+    const state = await classificationService.deriveClassificationPersistenceState({
+      library: { id: 2, name: 'Family' },
+      confidence: 82,
+      method: 'policy_recheck',
+      pending_reason: 'Old question',
+      policy_question: { problem_summary: 'Old question' },
+      clarification: { problem_summary: 'Old question' }
+    });
+
+    expect(state.status).toBe('completed');
+    expect(state.pendingReason).toBeNull();
+    expect(state.policyQuestion).toBeNull();
+    expect(normalizeSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('Classification retry persistence', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('retryClassification delegates scheduler retries through the shared retry service', async () => {
+    classificationRetryService.retryClassifications.mockResolvedValue({
+      requested: 1,
+      queued: 1,
+      skipped: 0,
+      failed: 0,
+      results: [{ classificationId: 123, queued: true, reasonCode: 'queued', taskId: 5001 }]
+    });
+
+    const result = await classificationService.retryClassification(123);
+
+    expect(result).toEqual({
+      classificationId: 123,
+      queued: true,
+      reasonCode: 'queued',
+      taskId: 5001
+    });
+    expect(classificationRetryService.retryClassifications).toHaveBeenCalledWith({
+      classificationIds: [123],
+      actor: 'scheduler',
+      purgeLearning: false,
+      correlationId: 'scheduler-retry-123',
+      taskSource: 'retry_queue',
+      metadataEnrichmentSource: 'retry_queue_followup',
+      route: 'scheduler:retry-queue'
+    });
+  });
+
+  test('retryClassification returns null when the shared retry service has no per-item result', async () => {
+    classificationRetryService.retryClassifications.mockResolvedValue({
+      requested: 1,
+      queued: 0,
+      skipped: 1,
+      failed: 0,
+      results: []
+    });
+
+    const result = await classificationService.retryClassification(456);
+
+    expect(result).toBeNull();
+    expect(classificationRetryService.retryClassifications).toHaveBeenCalledWith({
+      classificationIds: [456],
+      actor: 'scheduler',
+      purgeLearning: false,
+      correlationId: 'scheduler-retry-456',
+      taskSource: 'retry_queue',
+      metadataEnrichmentSource: 'retry_queue_followup',
+      route: 'scheduler:retry-queue'
+    });
+  });
+
+  test('logClassification persists fallback clarification when policy_question is absent', async () => {
+    const insertCalls = [];
+    db.query.mockImplementation((text, params) => {
+      const query = typeof text === 'string' ? text : '';
+      if (query.includes('INSERT INTO classification_history')) {
+        insertCalls.push([text, params]);
+        return { rows: [{ id: 999 }] };
+      }
+      return { rows: [] };
+    });
+
+    jest.spyOn(classificationService, 'normalizePolicyQuestion').mockResolvedValue('{"problem_summary":"Unable to auto-classify"}');
+
+    await classificationService.logClassification(
+      { tmdb_id: 55, media_type: 'movie', title: 'Fallback Test', year: 2026 },
+      {
+        needs_retry: false,
+        needs_clarification: true,
+        method: 'fallback',
+        reason: 'AI could not determine classification - manual review needed',
+        confidence: 50,
+        clarification: {
+          problem_summary: 'Unable to auto-classify',
+          question: 'Which library should this item go to?',
+          options: [{ label: 'Movies', library_id: 1, library_name: 'Movies' }]
+        }
+      }
+    );
+
+    expect(insertCalls).toHaveLength(1);
+    expect(insertCalls[0][1][14]).toBe('{"problem_summary":"Unable to auto-classify"}');
+  });
+});
+
 describe('AI availability fallback handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -1750,6 +2869,79 @@ describe('AI availability fallback handling', () => {
     expect(result.method).toBe('queued_for_retry');
     expect(result.reason).toBe('AI stream ended before completion signal - queued for retry');
     expect(result.retry_reason_code).toBe('ai_stream_incomplete');
+  });
+
+  test('increments persisted retry state when a requeued classification fails again', async () => {
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 82,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 82,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    });
+
+    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+      new Error('[ProviderLock] Timeout waiting for lock (requestor: classification)')
+    );
+
+    const result = await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 },
+      retry_count: 2,
+      max_retries: 4
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.method).toBe('queued_for_retry');
+
+    const insertCalls = db.query.mock.calls.filter(call =>
+      typeof call[0] === 'string' && call[0].includes('INSERT INTO classification_history')
+    );
+    expect(insertCalls).toHaveLength(1);
+    expect(insertCalls[0][1][10]).toBe('pending_retry');
+    expect(insertCalls[0][1][17]).toBe(3);
+    expect(insertCalls[0][1][18]).toBe(4);
+  });
+
+  test('rebinds request and webhook lineage after retry-created classifications are persisted', async () => {
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      confidence: 82,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 82,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    });
+
+    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+      new Error('[ProviderLock] Timeout waiting for lock (requestor: classification)')
+    );
+
+    const result = await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 },
+      retry_lineage: {
+        original_classification_id: 991,
+        media_request_ids: [14, 18],
+        webhook_log_ids: [27]
+      }
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.method).toBe('queued_for_retry');
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE media_requests'),
+      [12345, [14, 18]]
+    );
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE webhook_log'),
+      [12345, [27]]
+    );
   });
 
   describe('checkLearnedPatterns', () => {
@@ -1850,6 +3042,89 @@ describe('AI availability fallback handling', () => {
     expect(result.success).toBe(true);
     expect(result.method).toBe('signal_calculation');
   });
+
+  test('adds a policy question when policy-signal fallback stays in awaiting-decision confidence band', async () => {
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_select',
+      confidence: 60,
+      ranked: [{
+        library_id: 1,
+        library_name: 'Movies',
+        score: 60,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85
+      }]
+    });
+    policyQuestionBuilder.build.mockResolvedValue({
+      problem_summary: 'Low confidence',
+      question: 'Which library should this go to?',
+      options: [{ label: 'Movies', library_id: 1, library_name: 'Movies' }]
+    });
+
+    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+      new Error('response_parse_failure')
+    );
+
+    const result = await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 }
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.method).toBe('signal_calculation');
+
+    const insertCalls = db.query.mock.calls.filter(call =>
+      typeof call[0] === 'string' && call[0].includes('INSERT INTO classification_history')
+    );
+    expect(insertCalls).toHaveLength(1);
+    expect(insertCalls[0][1][10]).toBe('awaiting_decision');
+    expect(insertCalls[0][1][14]).not.toBeNull();
+    expect(JSON.parse(insertCalls[0][1][14])).toEqual(expect.objectContaining({
+      problem_summary: 'Low confidence',
+      question: 'Which library should this go to?'
+    }));
+    expect(insertCalls[0][1][13]).toBe('Low confidence');
+  });
+
+  test('adds a manual-selection question when legacy signal fallback stays in awaiting-decision confidence band', async () => {
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'manual',
+      confidence: 0,
+      ranked: []
+    });
+    confidenceCalculator.calculate.mockReturnValue({
+      confidence: 60,
+      suggestedLibrary: { id: 1, name: 'Movies', media_type: 'movie' }
+    });
+    confidenceCalculator.toAIContext.mockReturnValue('');
+    policyQuestionBuilder.build.mockResolvedValue({
+      problem_summary: 'Manual selection needed',
+      question: 'Which library should this go to?',
+      options: [{ label: 'Movies', library_id: 1, library_name: 'Movies' }]
+    });
+
+    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+      new Error('response_parse_failure')
+    );
+
+    const result = await classificationService.classify({
+      media: { media_type: 'movie', tmdbId: 123 }
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.method).toBe('signal_calculation');
+
+    const insertCalls = db.query.mock.calls.filter(call =>
+      typeof call[0] === 'string' && call[0].includes('INSERT INTO classification_history')
+    );
+    expect(insertCalls).toHaveLength(1);
+    expect(insertCalls[0][1][10]).toBe('awaiting_decision');
+    expect(insertCalls[0][1][14]).not.toBeNull();
+    expect(JSON.parse(insertCalls[0][1][14])).toEqual(expect.objectContaining({
+      problem_summary: 'Manual selection needed',
+      question: 'Which library should this go to?'
+    }));
+    expect(insertCalls[0][1][13]).toBe('Manual selection needed');
+  });
 });
 
 describe('Phase 1 AI contract and stream guard', () => {
@@ -1888,6 +3163,7 @@ describe('Phase 1 AI contract and stream guard', () => {
       if (query.includes('FROM ai_provider_config WHERE id = 1')) {
         return {
           rows: [{
+            primary_provider: 'ollama',
             ollama_model: 'gemma3:12b',
             temperature: 0.3,
             ai_response_repair_enabled: true,
@@ -1977,6 +3253,57 @@ describe('Phase 1 AI contract and stream guard', () => {
 
     expect(result.format).toBe('confident');
     expect(ollamaService.generateWithProgress).toHaveBeenCalledTimes(2);
+  });
+
+  test('routes classification generation through aiRouter for cloud providers', async () => {
+    db.query.mockImplementation((text) => {
+      const query = typeof text === 'string' ? text : '';
+      if (query.includes('FROM tavily_config')) {
+        return { rows: [] };
+      }
+      if (query.includes('FROM ai_provider_config WHERE id = 1')) {
+        return {
+          rows: [{
+            primary_provider: 'openai',
+            model: 'gpt-5-mini',
+            temperature: 0.2,
+            ai_response_repair_enabled: true,
+            classification_disallow_partial_stream_response: true
+          }]
+        };
+      }
+      return { rows: [] };
+    });
+
+    jest.spyOn(aiRouter, 'getProvider').mockResolvedValue({
+      type: 'openai',
+      isCloud: true,
+      config: {
+        primary_provider: 'openai',
+        model: 'gpt-5-mini',
+        temperature: 0.2
+      }
+    });
+    jest.spyOn(aiRouter, 'classify').mockResolvedValue(
+      'CONFIDENT|1|81|Signals align with Movies library.'
+    );
+    jest.spyOn(ollamaService, 'generateWithProgress').mockResolvedValue('');
+
+    const result = await classificationService.aiClassify(metadata, libraries, signalContext, {
+      mode: 'classify'
+    });
+
+    expect(result.format).toBe('confident');
+    expect(aiRouter.getProvider).toHaveBeenCalledWith('classification');
+    expect(aiRouter.classify).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        taskType: 'classification',
+        requestType: 'classification',
+        itemTitle: 'Hoppers'
+      })
+    );
+    expect(ollamaService.generateWithProgress).not.toHaveBeenCalled();
   });
 
   test('treats stream timeout/abort errors as transient availability failures', () => {

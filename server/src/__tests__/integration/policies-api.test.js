@@ -30,6 +30,7 @@ describe('Policies API Integration Tests', () => {
     let testLibraryId;
     let testPolicyId;
     let testPresetIds = [];
+    let customPresetId;
 
     // Setup test data before all tests
     beforeAll(async () => {
@@ -54,6 +55,29 @@ describe('Policies API Integration Tests', () => {
             SELECT id FROM content_presets WHERE is_system = true LIMIT 5
         `);
         testPresetIds = presetsResult.rows.map(r => r.id);
+
+        await db.query(`
+            DELETE FROM content_presets
+            WHERE key = 'test_custom_policy_preset'
+        `);
+
+        const customPresetResult = await db.query(`
+            INSERT INTO content_presets (
+                key, name, description, icon, category, signals, is_system, display_order
+            )
+            VALUES (
+                'test_custom_policy_preset',
+                'Anime Family Remix',
+                'Custom preset attachable to policies and matching anime libraries',
+                '⚙️',
+                'custom',
+                '{"genres":{"prefer":["Family"]}}'::jsonb,
+                false,
+                0
+            )
+            RETURNING id
+        `);
+        customPresetId = customPresetResult.rows[0].id;
     });
 
     // Clean up after all tests
@@ -62,6 +86,7 @@ describe('Policies API Integration Tests', () => {
         if (testPolicyId) {
             await db.query('DELETE FROM library_policies WHERE id = $1', [testPolicyId]);
         }
+        await db.query("DELETE FROM content_presets WHERE key = 'test_custom_policy_preset'");
         // Delete test library and media server (cascade will handle libraries)
         await db.query('DELETE FROM media_server WHERE name = $1', ['Test Server']);
     });
@@ -86,9 +111,10 @@ describe('Policies API Integration Tests', () => {
                 priority: 5,
                 auto_classify_threshold: 85,
                 prompt_threshold: 60,
-                preset_weight: 0.40,
-                pattern_weight: 0.30,
-                rag_weight: 0.20,
+                preset_weight: 0.35,
+                profile_weight: 0.25,
+                pattern_weight: 0.15,
+                rag_weight: 0.15,
                 history_weight: 0.10,
                 combination_mode: 'best_match',
                 presets: [
@@ -162,6 +188,15 @@ describe('Policies API Integration Tests', () => {
             expect(response.body.auto_classify_threshold).toBe(90);
             expect(response.body.presets).toHaveLength(2);
         });
+
+        test('should reject partial updates that break merged weight totals', async () => {
+            const response = await request(app)
+                .put(`/api/policies/${testPolicyId}`)
+                .send({ preset_weight: 0.9 })
+                .expect(400);
+
+            expect(response.body.error).toContain('Weights must sum to 1.0');
+        });
     });
 
     describe('GET /api/policies/:id/presets', () => {
@@ -193,6 +228,52 @@ describe('Policies API Integration Tests', () => {
                 .send({ preset_id: testPresetIds[3], weight: 1.0 })
                 .expect(400);
         });
+
+        test('should accept custom_signals alias when attaching preset', async () => {
+            const response = await request(app)
+                .post(`/api/policies/${testPolicyId}/presets`)
+                .send({
+                    preset_id: testPresetIds[4],
+                    custom_signals: {
+                        language: {
+                            require_any: ['sv'],
+                            strict: true
+                        }
+                    }
+                })
+                .expect(201);
+
+            expect(response.body.customSignals).toEqual({
+                language: {
+                    require_any: ['sv'],
+                    strict: true
+                }
+            });
+
+            await request(app)
+                .delete(`/api/policies/${testPolicyId}/presets/${testPresetIds[4]}`)
+                .expect(200);
+        });
+
+        test('should attach a custom preset to policy', async () => {
+            const response = await request(app)
+                .post(`/api/policies/${testPolicyId}/presets`)
+                .send({ preset_id: customPresetId, weight: 1.1 })
+                .expect(201);
+
+            expect(response.body).toHaveProperty('policy_id', testPolicyId);
+            expect(response.body).toHaveProperty('preset_id', customPresetId);
+
+            const policyResponse = await request(app)
+                .get(`/api/policies/${testPolicyId}`)
+                .expect(200);
+
+            expect(policyResponse.body.presets.some(preset => preset.id === customPresetId && preset.source === 'custom')).toBe(true);
+
+            await request(app)
+                .delete(`/api/policies/${testPolicyId}/presets/${customPresetId}`)
+                .expect(200);
+        });
     });
 
     describe('DELETE /api/policies/:id/presets/:presetId', () => {
@@ -210,18 +291,27 @@ describe('Policies API Integration Tests', () => {
     });
 
     describe('GET /api/policies/presets/all', () => {
-        test('should return all presets', async () => {
+        test('should return all attachable presets including custom presets', async () => {
             const response = await request(app)
                 .get('/api/policies/presets/all')
                 .expect(200);
 
             expect(Array.isArray(response.body)).toBe(true);
             expect(response.body.length).toBeGreaterThan(0);
+            expect(response.body.some(preset => preset.id === customPresetId && preset.source === 'custom')).toBe(true);
             response.body.forEach(preset => {
                 expect(preset).toHaveProperty('usage_count');
                 expect(Number.isInteger(preset.usage_count)).toBe(true);
                 expect(preset.usage_count).toBeGreaterThanOrEqual(0);
             });
+        });
+
+        test('should support builtin-only attachable preset mode', async () => {
+            const response = await request(app)
+                .get('/api/policies/presets/all?include_custom=false')
+                .expect(200);
+
+            expect(response.body.every(preset => preset.source === 'builtin')).toBe(true);
         });
 
         test('should filter by category', async () => {
@@ -401,6 +491,17 @@ describe('Policies API Integration Tests', () => {
                 expect(suggestion.match_score).toBe(suggestion.suggestion_score);
                 expect(Array.isArray(suggestion.match_reasons)).toBe(true);
             });
+        });
+
+        test('should include matching custom presets in attachable suggestions', async () => {
+            const response = await request(app)
+                .get(`/api/policies/presets/suggest/${animeLibraryId}`)
+                .expect(200);
+
+            const customSuggestion = response.body.suggestions.find(s => s.id === customPresetId);
+            expect(customSuggestion).toBeDefined();
+            expect(customSuggestion.source).toBe('custom');
+            expect(customSuggestion.suggestion_score).toBeGreaterThan(0);
         });
 
         test('should not falsely suggest scandinavian for comedy and standup from stopword overlap', async () => {

@@ -176,7 +176,9 @@ describe('CommandCenter context modules', () => {
     // Find the search input (may need to look more broadly)
     const searchInput = wrapper.find('input[placeholder="Search TMDB..."]')
     await searchInput.setValue('Inception')
-    await searchInput.trigger('keyup.enter')
+    const searchButton = wrapper.findAll('button').find((node) => node.text() === 'Search')
+    expect(searchButton).toBeDefined()
+    await searchButton.trigger('click')
     await flushPromises()
 
     expect(apiMock.searchTMDB).toHaveBeenCalledWith('Inception', 'multi')
@@ -198,6 +200,40 @@ describe('CommandCenter context modules', () => {
       title: 'Inception',
     })
     expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+
+  it('clears stale quick add selection when the query changes', async () => {
+    const { wrapper } = await mountCommandCenter()
+
+    const quickAddHeader = wrapper.findAll('h2').find((node) => node.text().includes('Quick Add'))
+    expect(quickAddHeader).toBeDefined()
+    await quickAddHeader.trigger('click')
+    await flushPromises()
+
+    const searchInput = wrapper.find('input[placeholder="Search TMDB..."]')
+    await searchInput.setValue('Inception')
+
+    const searchButton = wrapper.findAll('button').find((node) => node.text() === 'Search')
+    expect(searchButton).toBeDefined()
+    await searchButton.trigger('click')
+    await flushPromises()
+
+    const resultButton = wrapper.findAll('button').find((node) => node.text().includes('Inception'))
+    expect(resultButton).toBeDefined()
+    await resultButton.trigger('click')
+    await flushPromises()
+
+    const addButton = wrapper.findAll('button').find((node) => node.text() === 'Add')
+    expect(addButton).toBeDefined()
+    expect(addButton.attributes('disabled')).toBeUndefined()
+    expect(wrapper.text()).toContain('Selected: Inception')
+
+    await searchInput.setValue('Interstellar')
+    await flushPromises()
+
+    expect(addButton.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).not.toContain('Selected: Inception')
+    expect(wrapper.text()).not.toContain('was added to the queue')
   })
 
   it('renders library stats with manage-libraries navigation', async () => {
@@ -237,7 +273,9 @@ describe('CommandCenter context modules', () => {
 
     const searchInput = wrapper.find('input[placeholder="Search TMDB..."]')
     await searchInput.setValue('Inception')
-    await searchInput.trigger('keyup.enter')
+    const searchButton = wrapper.findAll('button').find((node) => node.text() === 'Search')
+    expect(searchButton).toBeDefined()
+    await searchButton.trigger('click')
     await flushPromises()
 
     const resultButton = wrapper.findAll('button').find((node) => node.text().includes('Inception'))

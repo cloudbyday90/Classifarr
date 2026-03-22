@@ -113,6 +113,7 @@ describe('Auth Routes', () => {
         .send({ identifier: 'testuser', password: 'pass', rememberMe: 'yes' });
 
       // 'yes' is not strictly true, so the route must coerce it to false
+      expect(authService.generateAccessToken.mock.calls[0][1]).toBe(false);
       expect(authService.generateRefreshToken.mock.calls[0][3]).toBe(false);
     });
 
@@ -143,6 +144,7 @@ describe('Auth Routes', () => {
         .post('/auth/login')
         .send({ identifier: 'testuser', password: 'validpass', rememberMe: true });
       
+      expect(authService.generateAccessToken.mock.calls[0][1]).toBe(true);
       // Verify the 4th argument (rememberMe) was passed as true
       expect(authService.generateRefreshToken.mock.calls[0][3]).toBe(true);
     });
@@ -187,7 +189,7 @@ describe('Auth Routes', () => {
       const mockUser = { id: 1, username: 'testuser', role: 'admin' };
       authService.validateRefreshToken.mockResolvedValueOnce({ user_id: 1, remember_me: false });
       db.query.mockResolvedValueOnce({ rows: [mockUser] });
-      authService.revokeRefreshToken.mockResolvedValueOnce();
+      authService.revokeRefreshToken.mockResolvedValueOnce(true);
       authService.generateAccessToken.mockResolvedValueOnce('new-access-token');
       authService.generateRefreshToken.mockResolvedValueOnce('new-refresh-token');
       
@@ -200,6 +202,10 @@ describe('Auth Routes', () => {
       expect(res.body.success).toBe(true);
       // Refresh token must NOT be in the response body
       expect(res.body.refreshToken).toBeUndefined();
+      expect(authService.generateAccessToken).toHaveBeenCalledWith(mockUser, false);
+      expect(authService.generateRefreshToken.mock.invocationCallOrder[0]).toBeLessThan(
+        authService.revokeRefreshToken.mock.invocationCallOrder[0]
+      );
     });
 
     it('should revoke all user sessions and return 401 when a replayed (compromised) token is presented', async () => {
@@ -235,7 +241,7 @@ describe('Auth Routes', () => {
         expires_at: existingExpiry
       });
       db.query.mockResolvedValueOnce({ rows: [mockUser] });
-      authService.revokeRefreshToken.mockResolvedValueOnce();
+      authService.revokeRefreshToken.mockResolvedValueOnce(true);
       authService.generateAccessToken.mockResolvedValueOnce('new-access-token');
       authService.generateRefreshToken.mockResolvedValueOnce('new-refresh-token');
 
@@ -245,10 +251,53 @@ describe('Auth Routes', () => {
         .send({});
 
       expect(res.status).toBe(200);
+      expect(authService.generateAccessToken).toHaveBeenCalledWith(mockUser, true);
       // 5th argument (index 4) to generateRefreshToken must be the existing expiry for sliding window
       const callArgs = authService.generateRefreshToken.mock.calls[0];
       expect(callArgs[3]).toBe(true);        // rememberMe
       expect(callArgs[4]).toEqual(existingExpiry); // slideFromDate
+    });
+
+    it('should return 500 and revoke the new token when old-token revocation fails after generation', async () => {
+      const mockUser = { id: 1, username: 'testuser', role: 'admin' };
+      authService.validateRefreshToken.mockResolvedValueOnce({ user_id: 1, remember_me: false });
+      db.query.mockResolvedValueOnce({ rows: [mockUser] });
+      authService.generateAccessToken.mockResolvedValueOnce('new-access-token');
+      authService.generateRefreshToken.mockResolvedValueOnce('new-refresh-token');
+      authService.revokeRefreshToken
+        .mockRejectedValueOnce(new Error('rotation write failed'))
+        .mockResolvedValueOnce(true);
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', 'refresh_token=valid-token')
+        .send({});
+
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBe('rotation write failed');
+      expect(authService.revokeRefreshToken).toHaveBeenNthCalledWith(1, 'valid-token', expect.anything());
+      expect(authService.revokeRefreshToken).toHaveBeenNthCalledWith(2, 'new-refresh-token', expect.anything());
+    });
+
+    it('should return 401 when the old refresh token was already rotated before revocation', async () => {
+      const mockUser = { id: 1, username: 'testuser', role: 'admin' };
+      authService.validateRefreshToken.mockResolvedValueOnce({ user_id: 1, remember_me: false });
+      db.query.mockResolvedValueOnce({ rows: [mockUser] });
+      authService.generateAccessToken.mockResolvedValueOnce('new-access-token');
+      authService.generateRefreshToken.mockResolvedValueOnce('new-refresh-token');
+      authService.revokeRefreshToken
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', 'refresh_token=valid-token')
+        .send({});
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Invalid or expired refresh token');
+      expect(authService.revokeRefreshToken).toHaveBeenNthCalledWith(1, 'valid-token', expect.anything());
+      expect(authService.revokeRefreshToken).toHaveBeenNthCalledWith(2, 'new-refresh-token', expect.anything());
     });
   });
 
@@ -322,6 +371,27 @@ describe('Auth Routes', () => {
       
       expect(res.status).toBe(200);
       expect(res.body.id).toBe(1);
+    });
+
+    it('should prefer Authorization bearer token over stale access_token cookie', async () => {
+      authService.verifyToken.mockImplementationOnce(async (token) => {
+        if (token === 'valid-token') {
+          return { id: 1, username: 'testuser', role: 'admin' };
+        }
+        throw Object.assign(new Error('jwt malformed'), { name: 'JsonWebTokenError' });
+      });
+      db.query.mockResolvedValueOnce({
+        rows: [{ id: 1, username: 'testuser', role: 'admin', is_active: true, last_login: '2026-01-01', created_at: '2025-01-01' }]
+      });
+
+      const res = await request(app)
+        .get('/auth/me')
+        .set('Authorization', 'Bearer valid-token')
+        .set('Cookie', 'access_token=stale-cookie-token');
+
+      expect(res.status).toBe(200);
+      expect(res.body.id).toBe(1);
+      expect(authService.verifyToken).toHaveBeenCalledWith('valid-token');
     });
 
     it('should return 404 when user not found', async () => {

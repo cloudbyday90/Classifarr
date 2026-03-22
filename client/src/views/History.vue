@@ -322,6 +322,72 @@
             </p>
           </div>
 
+          <!-- Outcome Link -->
+          <div class="bg-background rounded-lg p-4 border border-gray-700">
+            <h4 class="font-semibold mb-3 text-emerald-400">🧭 Linked Outcome</h4>
+            <div v-if="outcomeLink" class="space-y-3">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Outcome:</span>
+                  <span class="ml-2 text-gray-200">{{ outcomeTypeLabel }}</span>
+                </div>
+                <div class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Source:</span>
+                  <span class="ml-2 text-gray-200">{{ outcomeSourceLabel }}</span>
+                </div>
+                <div v-if="outcomeLink.final_library_name" class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Final Library:</span>
+                  <span class="ml-2 text-gray-200">{{ outcomeLink.final_library_name }}</span>
+                </div>
+                <div v-if="outcomeLink.replacement_classification_id" class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Replacement Row:</span>
+                  <span class="ml-2 text-gray-200">#{{ outcomeLink.replacement_classification_id }}</span>
+                </div>
+                <div v-if="outcomeLink.replacement_task_id" class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Retry Task:</span>
+                  <span class="ml-2 text-gray-200">#{{ outcomeLink.replacement_task_id }}</span>
+                </div>
+                <div v-if="outcomeLink.actor" class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Actor:</span>
+                  <span class="ml-2 text-gray-200">{{ outcomeLink.actor }}</span>
+                </div>
+                <div v-if="outcomeRecordedAtLabel" class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Recorded:</span>
+                  <span class="ml-2 text-gray-200">{{ outcomeRecordedAtLabel }}</span>
+                </div>
+                <div v-if="outcomeUpdatedAtLabel" class="bg-gray-800/50 rounded-md p-2">
+                  <span class="text-gray-400">Updated:</span>
+                  <span class="ml-2 text-gray-200">{{ outcomeUpdatedAtLabel }}</span>
+                </div>
+              </div>
+
+              <div v-if="outcomeRoutingLabel" class="rounded-md border border-gray-700 bg-gray-800/40 px-3 py-2 text-sm text-gray-300">
+                Routing: {{ outcomeRoutingLabel }}
+              </div>
+
+              <div v-if="outcomePathSummary" class="rounded-md border border-gray-700 bg-gray-800/40 px-3 py-3 text-sm text-gray-300 space-y-2">
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span>
+                    First:
+                    <span class="text-gray-100">{{ outcomePathSummary.firstLabel }}</span>
+                  </span>
+                  <span>
+                    Latest:
+                    <span class="text-gray-100">{{ outcomePathSummary.latestLabel }}</span>
+                  </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+                  <span>Transitions: {{ outcomePathSummary.transitionCount }}</span>
+                  <span v-if="outcomePathSummary.firstRecordedAt">First recorded: {{ outcomePathSummary.firstRecordedAt }}</span>
+                  <span v-if="outcomePathSummary.latestUpdatedAt">Latest updated: {{ outcomePathSummary.latestUpdatedAt }}</span>
+                </div>
+              </div>
+            </div>
+            <p v-else class="text-sm text-gray-400">
+              No linked follow-up outcome recorded for this item yet.
+            </p>
+          </div>
+
           <!-- Metadata -->
           <div v-if="selectedItem.metadata" class="bg-background rounded-lg p-4 border border-gray-700">
             <h4 class="font-semibold mb-3">📊 Metadata</h4>
@@ -615,6 +681,98 @@ const ragLoopBeforeAfterLabel = computed(() => {
     return `${before}% -> ${after}%`
   }
   return 'n/a'
+})
+
+const outcomeLink = computed(() => {
+  const outcome = parsedMetadata.value?.classification_details?.outcome_link
+  return outcome && typeof outcome === 'object' ? outcome : null
+})
+
+const outcomePath = computed(() => {
+  const path = parsedMetadata.value?.classification_details?.outcome_path
+  return path && typeof path === 'object' ? path : null
+})
+
+const formatOutcomeType = (type) => {
+  const labels = {
+    verified: 'Verified',
+    corrected: 'Corrected',
+    resolved: 'Resolved',
+    retried: 'Retried'
+  }
+  return labels[type] || type || 'Unknown'
+}
+
+const formatOutcomeSource = (source) => {
+  const labels = {
+    discord_verification: 'Discord Verification',
+    discord_correction: 'Discord Correction',
+    policy_question: 'Policy Question',
+    api_correction: 'API Correction',
+    manual_retry: 'Manual Retry',
+    retry_queue: 'Scheduler Retry'
+  }
+  return labels[source] || source || 'Unknown'
+}
+
+const outcomeTypeLabel = computed(() => {
+  return formatOutcomeType(outcomeLink.value?.type)
+})
+
+const outcomeSourceLabel = computed(() => {
+  return formatOutcomeSource(outcomeLink.value?.source)
+})
+
+const outcomeRoutingLabel = computed(() => {
+  const routing = outcomeLink.value?.routing
+  if (!routing || typeof routing !== 'object') return null
+
+  if (routing.routed === true) {
+    return 'Completed'
+  }
+
+  const reason = routing.reason || 'not routed'
+  return routing.error ? `${reason} (${routing.error})` : reason
+})
+
+const formatOptionalDateTime = (value) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleString()
+}
+
+const outcomeRecordedAtLabel = computed(() => {
+  return formatOptionalDateTime(outcomeLink.value?.recorded_at)
+})
+
+const outcomeUpdatedAtLabel = computed(() => {
+  return formatOptionalDateTime(outcomeLink.value?.updated_at)
+})
+
+const outcomePathSummary = computed(() => {
+  const path = outcomePath.value
+  if (!path) return null
+
+  const transitionCount = Number.isFinite(Number(path.transition_count))
+    ? Number(path.transition_count)
+    : Array.isArray(path.transitions)
+      ? path.transitions.length
+      : 0
+  if (transitionCount < 2) return null
+
+  const firstType = path.first_type || path.first_outcome?.type
+  const latestType = path.latest_type || path.latest_outcome?.type
+  const firstSource = path.first_source || path.first_outcome?.source
+  const latestSource = path.latest_source || path.latest_outcome?.source
+
+  return {
+    transitionCount,
+    firstLabel: `${formatOutcomeType(firstType)} via ${formatOutcomeSource(firstSource)}`,
+    latestLabel: `${formatOutcomeType(latestType)} via ${formatOutcomeSource(latestSource)}`,
+    firstRecordedAt: formatOptionalDateTime(path.first_recorded_at || path.first_outcome?.recorded_at),
+    latestUpdatedAt: formatOptionalDateTime(path.latest_updated_at || path.latest_outcome?.updated_at)
+  }
 })
 
 // Check if signal breakdown should be shown (only for policy engine methods with actual scores)

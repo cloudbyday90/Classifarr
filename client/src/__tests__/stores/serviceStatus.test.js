@@ -71,6 +71,7 @@ describe('useServiceStatusStore', () => {
           radarr: 'not_configured',
           sonarr: 'not_configured',
           ollama: 'configured',
+          imageEmbeddings: 'degraded',
           tmdb: 'configured',
           omdb: 'not_configured',
           discordBot: 'not_configured',
@@ -78,7 +79,8 @@ describe('useServiceStatusStore', () => {
           queueWorker: 'healthy',
           details: {
             database: { error: null },
-            mediaServer: { error: null }
+            mediaServer: { error: null },
+            imageEmbeddings: { readiness: 'warming_up', error: null }
           }
         }
       }
@@ -91,6 +93,8 @@ describe('useServiceStatusStore', () => {
       expect(store.serviceHealth.database.status).toBe('connected')
       expect(store.serviceHealth.mediaServer.status).toBe('connected')
       expect(store.serviceHealth.aiProvider.status).toBe('configured')
+      expect(store.serviceHealth.imageEmbeddings.status).toBe('degraded')
+      expect(store.serviceHealth.imageEmbeddings.details).toEqual({ readiness: 'warming_up', error: null })
       expect(store.lastFetch).not.toBeNull()
       expect(store.isLoading).toBe(false)
       expect(store.error).toBeNull()

@@ -194,10 +194,24 @@ describe('ClassificationRetryService integration', () => {
     });
 
     const oldClassification = await pool.query(
-      'SELECT id FROM classification_history WHERE id = $1',
+      `SELECT id,
+              status,
+              metadata->'classification_details'->'outcome_link' AS outcome_link
+       FROM classification_history
+       WHERE id = $1`,
       [oldClassificationId]
     );
-    expect(oldClassification.rows).toHaveLength(0);
+    expect(oldClassification.rows).toHaveLength(1);
+    expect(oldClassification.rows[0].status).toBe('reclassified');
+    expect(oldClassification.rows[0].outcome_link).toEqual(
+      expect.objectContaining({
+        type: 'retried',
+        source: 'manual_retry',
+        actor: 'integration-admin',
+        replacement_task_id: expect.any(Number),
+        purged_learning: true
+      })
+    );
 
     const newClassificationTask = await pool.query(
       `SELECT id, task_type, status, source, payload
@@ -468,7 +482,7 @@ describe('ClassificationRetryService integration', () => {
     expect(queuedResults.length).toBe(1);
     expect(failedResults.length).toBe(0);
     expect(skippedResults.length).toBe(1);
-    expect(['not_found', 'duplicate_pending_task']).toContain(skippedResults[0].reasonCode);
+    expect(['status_ineligible', 'duplicate_pending_task']).toContain(skippedResults[0].reasonCode);
 
     const queuedClassificationTasks = await pool.query(
       `SELECT COUNT(*)::int AS count

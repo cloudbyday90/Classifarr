@@ -1052,7 +1052,10 @@ describe('EnrichmentRetryService', () => {
 
             const result = await service.backfillRetryQueue();
 
+            expect(result.success).toBe(true);
             expect(result.queued).toBe(25);
+            expect(result.enrichmentType).toBe('tavily');
+            expect(result.reason).toBe('items_missing_omdb_data');
             expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('INSERT INTO enrichment_retry_queue')
             );
@@ -1063,7 +1066,9 @@ describe('EnrichmentRetryService', () => {
 
             const result = await service.backfillRetryQueue();
 
+            expect(result.success).toBe(true);
             expect(result.queued).toBe(0);
+            expect(result.enrichmentType).toBe('tavily');
         });
     });
 

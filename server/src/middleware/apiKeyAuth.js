@@ -78,12 +78,12 @@ async function authenticateTokenOrApiKey(req, res, next) {
   
   try {
     let token = null;
+    const authHeader = req.headers['authorization'];
     
-    if (req.cookies && req.cookies.access_token) {
-      token = req.cookies.access_token;
-    } else {
-      const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader && authHeader.split(' ')[1];
+    } else if (req.cookies && req.cookies.access_token) {
+      token = req.cookies.access_token;
     }
     
     if (!token) {

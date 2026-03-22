@@ -18,6 +18,7 @@
 
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const classificationOutcomeService = require('./classificationOutcomeService');
 const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
 const {
   buildQuestionContextCacheKey,
@@ -43,6 +44,32 @@ function clampConfidence(value, min = 0, max = 100) {
 }
 
 class ClarificationService {
+  createStatusError(message, statusCode, code = null) {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    if (code) {
+      error.code = code;
+    }
+    return error;
+  }
+
+  parsePolicyQuestion(value) {
+    if (!value) return null;
+    return typeof value === 'string' ? this.safeParseJson(value) : value;
+  }
+
+  getQuestionOptionLibraryIds(question) {
+    if (!question || !Array.isArray(question.options)) {
+      return [];
+    }
+
+    return Array.from(new Set(
+      question.options
+        .map((option) => Number.parseInt(option?.library_id, 10))
+        .filter((libraryId) => Number.isInteger(libraryId) && libraryId > 0)
+    ));
+  }
+
   /**
    * Get confidence thresholds
    * @returns {Promise<Array>} Thresholds
@@ -571,15 +598,14 @@ class ClarificationService {
     try {
       await client.query('BEGIN');
 
-      // Get the classification details
+      // Lock the pending classification first so validation and resolution share one view.
       const classResult = await client.query(
-        `SELECT ch.*, l.name as selected_library_name, l.arr_type as selected_arr_type
+        `SELECT ch.*
          FROM classification_history ch
-         JOIN libraries l ON l.id = $2
          WHERE ch.id = $1
            AND ch.status = 'awaiting_decision'
          FOR UPDATE`,
-        [classificationId, selectedLibraryId]
+        [classificationId]
       );
 
       if (classResult.rows.length === 0) {
@@ -633,7 +659,62 @@ class ClarificationService {
       }
 
       const classification = classResult.rows[0];
-      const selectedLibraryName = classification.selected_library_name || classification.library_name;
+      const selectedLibraryResult = await client.query(
+        `SELECT id, name, arr_type, media_type, is_active
+         FROM libraries
+         WHERE id = $1`,
+        [selectedLibraryId]
+      );
+
+      if (selectedLibraryResult.rows.length === 0) {
+        throw this.createStatusError('Invalid library_id', 400, 'invalid_library_id');
+      }
+
+      const selectedLibrary = selectedLibraryResult.rows[0];
+      if (selectedLibrary.is_active !== true) {
+        throw this.createStatusError('Selected library is inactive', 400, 'inactive_library');
+      }
+
+      const classificationMediaType = String(classification.media_type || '').toLowerCase();
+      const selectedLibraryMediaType = String(selectedLibrary.media_type || '').toLowerCase();
+      if (
+        classificationMediaType &&
+        selectedLibraryMediaType &&
+        classificationMediaType !== selectedLibraryMediaType
+      ) {
+        throw this.createStatusError(
+          'Selected library is not valid for this media type',
+          400,
+          'library_media_type_mismatch'
+        );
+      }
+
+      const policyQuestion = this.parsePolicyQuestion(classification.policy_question);
+      if (policyQuestion) {
+        const currentContextVersion = await getPolicyQuestionContextVersion(
+          client,
+          extractQuestionContext(policyQuestion)
+        );
+
+        if (isPolicyQuestionStale(policyQuestion, currentContextVersion)) {
+          throw this.createStatusError(
+            'Policy question is stale and must be retried',
+            409,
+            'policy_question_stale'
+          );
+        }
+
+        const optionLibraryIds = this.getQuestionOptionLibraryIds(policyQuestion);
+        if (optionLibraryIds.length > 0 && !optionLibraryIds.includes(selectedLibraryId)) {
+          throw this.createStatusError(
+            'Selected library is no longer valid for this policy question',
+            400,
+            'invalid_policy_option'
+          );
+        }
+      }
+
+      const selectedLibraryName = selectedLibrary.name || classification.library_name;
       const metadata = typeof classification.metadata === 'string'
         ? (this.safeParseJson(classification.metadata) || {})
         : (classification.metadata || {});
@@ -648,7 +729,8 @@ class ClarificationService {
              confidence = 100,
              method = 'manual_classification',
              reason = $4,
-             pending_reason = NULL
+             pending_reason = NULL,
+             policy_question = NULL
          WHERE id = $1`,
         [
           classificationId,
@@ -658,19 +740,21 @@ class ClarificationService {
         ]
       );
 
+      await classificationOutcomeService.recordOutcome(classificationId, {
+        type: 'resolved',
+        source: 'policy_question',
+        actor: resolvedBy,
+        selected_option: selectedOption || null,
+        final_library_id: selectedLibraryId,
+        final_library_name: selectedLibraryName
+      }, { client });
+
       // Optionally generate a learned pattern
       let learnedPattern = null;
       if (generateRule && metadata.tmdb_id) {
         // Check if this is a tmdb_id that was previously uncertain
         // Create an exact_match pattern so this exact item is remembered
-        
-        // First, safely parse policy_question (may already be an object from JSONB)
-        const policyQuestion = classification.policy_question
-          ? (typeof classification.policy_question === 'string'
-              ? this.safeParseJson(classification.policy_question)
-              : classification.policy_question)
-          : null;
-        
+
         const patternResult = await client.query(
           `INSERT INTO learning_patterns 
            (tmdb_id, media_type, library_id, pattern_type, confidence, metadata, created_by)

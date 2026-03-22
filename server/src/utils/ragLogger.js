@@ -218,11 +218,6 @@ class RAGLogger {
             return false;
         }
 
-        // Applied second-pass outcomes are expected successful behavior, not bugs.
-        if (payload.level === 'INFO' && outcome === 'applied') {
-            return true;
-        }
-
         if (!SECOND_PASS_NOOP_SUPPRESS_REASONS.has(reasonCode)) {
             return false;
         }

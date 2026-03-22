@@ -226,7 +226,7 @@ describe('Sync Lock Integration Tests', () => {
 
   describe('POST /api/queue task action routes', () => {
     it('should dismiss a failed task via /task/:id/dismiss', async () => {
-      jest.spyOn(queueService, 'dismissFailedTask').mockResolvedValue(true);
+      jest.spyOn(queueService, 'dismissFailedTask').mockResolvedValue({ success: true });
 
       const response = await request(app)
         .post('/api/queue/task/55/dismiss')
@@ -237,7 +237,7 @@ describe('Sync Lock Integration Tests', () => {
     });
 
     it('should retry all failed tasks via /retry-all-failed', async () => {
-      jest.spyOn(queueService, 'retryAllFailedTasks').mockResolvedValue(3);
+      jest.spyOn(queueService, 'retryAllFailedTasks').mockResolvedValue({ success: true, count: 3 });
 
       const response = await request(app)
         .post('/api/queue/retry-all-failed')
@@ -249,7 +249,7 @@ describe('Sync Lock Integration Tests', () => {
     });
 
     it('should clear all failed tasks via /clear-failed', async () => {
-      jest.spyOn(queueService, 'clearFailedTasks').mockResolvedValue(2);
+      jest.spyOn(queueService, 'clearFailedTasks').mockResolvedValue({ success: true, count: 2 });
 
       const response = await request(app)
         .post('/api/queue/clear-failed')

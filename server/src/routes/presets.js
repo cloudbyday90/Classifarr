@@ -20,8 +20,54 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
+const { listPresets } = require('../utils/presetCatalog');
 
 const logger = createLogger('PresetsRoute');
+
+function isValidSignalsPayload(signals) {
+    return Boolean(signals) && typeof signals === 'object' && !Array.isArray(signals);
+}
+
+function normalizeCustomPresetRow(row) {
+    if (!row) {
+        return row;
+    }
+
+    return {
+        ...row,
+        created_by: row.created_by ?? row.user_id ?? null,
+        created_by_username: row.created_by_username ?? null,
+        source: 'custom'
+    };
+}
+
+function slugifyPresetName(name) {
+    const slug = String(name || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+    return slug || 'preset';
+}
+
+function buildCustomPresetKey(id, name) {
+    return `custom_${id}_${slugifyPresetName(name)}`.slice(0, 50);
+}
+
+async function getCustomPresetById(id) {
+    const result = await db.query(`
+        SELECT 
+            cp.*,
+            cp.user_id as created_by,
+            u.username as created_by_username
+        FROM content_presets cp
+        LEFT JOIN users u ON cp.user_id = u.id
+        WHERE cp.id = $1
+          AND cp.is_system = false
+    `, [id]);
+
+    return result.rows[0] ? normalizeCustomPresetRow(result.rows[0]) : null;
+}
 
 // ============================================================================
 // CUSTOM PRESETS CRUD
@@ -38,13 +84,15 @@ router.get('/custom', async (req, res) => {
         const result = await db.query(`
             SELECT 
                 cp.*,
+                cp.user_id as created_by,
                 u.username as created_by_username
-            FROM custom_presets cp
-            LEFT JOIN users u ON cp.created_by = u.id
+            FROM content_presets cp
+            LEFT JOIN users u ON cp.user_id = u.id
+            WHERE cp.is_system = false
             ORDER BY cp.name
         `);
 
-        res.json(result.rows);
+        res.json(result.rows.map(normalizeCustomPresetRow));
     } catch (error) {
         logger.error('Failed to list custom presets', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -60,21 +108,13 @@ router.get('/custom', async (req, res) => {
 router.get('/custom/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const preset = await getCustomPresetById(id);
 
-        const result = await db.query(`
-            SELECT 
-                cp.*,
-                u.username as created_by_username
-            FROM custom_presets cp
-            LEFT JOIN users u ON cp.created_by = u.id
-            WHERE cp.id = $1
-        `, [id]);
-
-        if (result.rows.length === 0) {
+        if (!preset) {
             return res.status(404).json({ error: 'Custom preset not found' });
         }
 
-        res.json(result.rows[0]);
+        res.json(preset);
     } catch (error) {
         logger.error('Failed to get custom preset', { error: error.message, id: req.params.id });
         res.status(500).json({ error: error.message });
@@ -108,22 +148,30 @@ router.post('/custom', async (req, res) => {
         }
 
         // Validate signals structure
-        if (typeof signals !== 'object') {
+        if (!isValidSignalsPayload(signals)) {
             return res.status(400).json({ error: 'Signals must be a valid object' });
         }
 
-        const result = await db.query(`
-            INSERT INTO custom_presets (name, description, icon, category, signals, created_by)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING *
-        `, [name.trim(), description, icon, category, JSON.stringify(signals), created_by]);
+        const keySeed = await db.query(`SELECT nextval('content_presets_id_seq') AS id`);
+        const presetId = keySeed.rows[0].id;
+        const presetKey = buildCustomPresetKey(presetId, name.trim());
+
+        await db.query(`
+            INSERT INTO content_presets (
+                id, key, name, description, icon, category, signals,
+                is_system, user_id, is_public, display_order
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, false, 0)
+        `, [presetId, presetKey, name.trim(), description, icon, category, JSON.stringify(signals), created_by]);
+
+        const createdPreset = await getCustomPresetById(presetId);
 
         logger.info('Custom preset created', {
-            id: result.rows[0].id,
-            name: result.rows[0].name
+            id: createdPreset.id,
+            name: createdPreset.name
         });
 
-        res.status(201).json(result.rows[0]);
+        res.status(201).json(createdPreset);
     } catch (error) {
         logger.error('Failed to create custom preset', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -149,7 +197,7 @@ router.put('/custom/:id', async (req, res) => {
 
         // Check if preset exists
         const existing = await db.query(
-            'SELECT * FROM custom_presets WHERE id = $1',
+            'SELECT * FROM content_presets WHERE id = $1 AND is_system = false',
             [id]
         );
 
@@ -166,7 +214,7 @@ router.put('/custom/:id', async (req, res) => {
             return res.status(400).json({ error: 'Preset name must be 100 characters or less' });
         }
 
-        if (signals !== undefined && typeof signals !== 'object') {
+        if (signals !== undefined && !isValidSignalsPayload(signals)) {
             return res.status(400).json({ error: 'Signals must be a valid object' });
         }
 
@@ -174,10 +222,11 @@ router.put('/custom/:id', async (req, res) => {
         const updates = [];
         const values = [];
         let paramIndex = 1;
+        const effectiveName = name !== undefined ? name.trim() : existing.rows[0].name;
 
         if (name !== undefined) {
             updates.push(`name = $${paramIndex++}`);
-            values.push(name.trim());
+            values.push(effectiveName);
         }
         if (description !== undefined) {
             updates.push(`description = $${paramIndex++}`);
@@ -195,26 +244,31 @@ router.put('/custom/:id', async (req, res) => {
             updates.push(`signals = $${paramIndex++}`);
             values.push(JSON.stringify(signals));
         }
+        if (name !== undefined) {
+            updates.push(`key = $${paramIndex++}`);
+            values.push(buildCustomPresetKey(id, effectiveName));
+        }
 
         // Always update timestamp
         updates.push(`updated_at = NOW()`);
 
         if (updates.length === 1) {
             // Only timestamp update, nothing else to change
-            return res.json(existing.rows[0]);
+            return res.json(normalizeCustomPresetRow(existing.rows[0]));
         }
 
         values.push(id);
-        const result = await db.query(`
-            UPDATE custom_presets 
+        await db.query(`
+            UPDATE content_presets 
             SET ${updates.join(', ')}
-            WHERE id = $${paramIndex}
-            RETURNING *
+            WHERE id = $${paramIndex} AND is_system = false
         `, values);
 
-        logger.info('Custom preset updated', { id, name: result.rows[0].name });
+        const updatedPreset = await getCustomPresetById(id);
 
-        res.json(result.rows[0]);
+        logger.info('Custom preset updated', { id, name: updatedPreset.name });
+
+        res.json(updatedPreset);
     } catch (error) {
         logger.error('Failed to update custom preset', { error: error.message, id: req.params.id });
         res.status(500).json({ error: error.message });
@@ -233,7 +287,7 @@ router.delete('/custom/:id', async (req, res) => {
 
         // Check if preset exists
         const existing = await db.query(
-            'SELECT * FROM custom_presets WHERE id = $1',
+            'SELECT * FROM content_presets WHERE id = $1 AND is_system = false',
             [id]
         );
 
@@ -241,11 +295,7 @@ router.delete('/custom/:id', async (req, res) => {
             return res.status(404).json({ error: 'Custom preset not found' });
         }
 
-        // Check if preset is used in any policies (via policy_presets table)
-        // Note: Custom presets will need a different FK relationship
-        // For now, just delete
-
-        await db.query('DELETE FROM custom_presets WHERE id = $1', [id]);
+        await db.query('DELETE FROM content_presets WHERE id = $1 AND is_system = false', [id]);
 
         logger.info('Custom preset deleted', { id, name: existing.rows[0].name });
 
@@ -271,75 +321,15 @@ router.delete('/custom/:id', async (req, res) => {
  */
 router.get('/all', async (req, res) => {
     try {
-        const { category, search, include_custom = 'true' } = req.query;
+        const { category, search, include_custom } = req.query;
+        const presets = await listPresets({
+            category,
+            search,
+            includeCustom: include_custom !== 'false',
+            orderBy: 'unified'
+        });
 
-        let query = `
-            SELECT 
-                cp.id, 
-                cp.key, 
-                cp.name, 
-                cp.description, 
-                cp.icon, 
-                cp.category, 
-                cp.signals,
-                cp.is_system,
-                cp.display_order,
-                COALESCE(ppu.usage_count, 0)::int AS usage_count,
-                'builtin' as source
-            FROM content_presets cp
-            LEFT JOIN (
-                SELECT preset_id, COUNT(*)::int AS usage_count
-                FROM policy_presets
-                GROUP BY preset_id
-            ) ppu ON ppu.preset_id = cp.id
-            WHERE 1=1
-        `;
-        let params = [];
-
-        if (category) {
-            params.push(category);
-            query += ` AND category = $${params.length}`;
-        }
-
-        if (search) {
-            params.push(`%${search.toLowerCase()}%`);
-            query += ` AND (LOWER(name) LIKE $${params.length} OR LOWER(description) LIKE $${params.length})`;
-        }
-
-        // Union with custom presets if requested
-        if (include_custom === 'true') {
-            query += `
-                UNION ALL
-                SELECT 
-                    id + 100000 as id,  -- Offset to avoid ID collision
-                    'custom_' || id as key,
-                    name,
-                    description,
-                    icon,
-                    category,
-                    signals,
-                    false as is_system,
-                    0 as display_order,
-                    0 as usage_count,
-                    'custom' as source
-                FROM custom_presets
-                WHERE 1=1
-            `;
-
-            if (category && category !== 'custom') {
-                query += ` AND category = '${category}'`;
-            }
-
-            if (search) {
-                query += ` AND (LOWER(name) LIKE '%${search.toLowerCase()}%' OR LOWER(description) LIKE '%${search.toLowerCase()}%')`;
-            }
-        }
-
-        query += ` ORDER BY source DESC, display_order, name`;
-
-        const result = await db.query(query, params);
-
-        res.json(result.rows);
+        res.json(presets);
     } catch (error) {
         logger.error('Failed to list all presets', { error: error.message });
         res.status(500).json({ error: error.message });

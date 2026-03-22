@@ -152,14 +152,30 @@ class AIResponseParser {
             return null;
         }
 
+        const confirmedLibrary = libraries[libraryIndex];
+        const suggestedLibrary = signalContext?.suggestedLibrary || null;
+
+        if (suggestedLibrary && confirmedLibrary.id !== suggestedLibrary.id) {
+            logger.warn('Verify-mode CONFIRM disagreed with suggested library', {
+                title: metadata?.title,
+                suggestedLibrary: suggestedLibrary.name,
+                confirmedLibrary: confirmedLibrary.name
+            });
+            return this.createVerifyDisagreementResult(context, {
+                conflictingLibrary: confirmedLibrary,
+                disagreementReason: reason,
+                sourceFormat: 'confirm'
+            });
+        }
+
         logger.info('AI confirmed classification', {
             title: metadata?.title,
-            library: libraries[libraryIndex].name,
+            library: confirmedLibrary.name,
             originalConfidence: signalContext.confidence
         });
 
         return {
-            library: libraries[libraryIndex],
+            library: confirmedLibrary,
             confidence: signalContext.confidence, // Use pre-calculated confidence
             reason: `AI verified: ${reason}`,
             needs_clarification: false,
@@ -429,53 +445,84 @@ class AIResponseParser {
             if (!suggestedLibrary) {
                 return null;
             }
-
-            const title = metadata?.title || 'this item';
-            const alternatives = libraries
-                .filter(lib => lib.id !== suggestedLibrary.id)
-                .slice(0, 3);
-            const options = [
-                {
-                    label: suggestedLibrary.name,
-                    value: `library_${suggestedLibrary.id}`,
-                    library_id: suggestedLibrary.id,
-                    library_name: suggestedLibrary.name,
-                },
-                ...alternatives.map(lib => ({
-                    label: lib.name,
-                    value: `library_${lib.id}`,
-                    library_id: lib.id,
-                    library_name: lib.name,
-                }))
-            ].slice(0, 4);
-
-            const question = `The AI disagreed with classifying "${title}" as "${suggestedLibrary.name}". Please confirm or choose an alternative.`;
-            const policyQuestion = {
-                problem_summary: 'AI disagreed with suggested classification',
-                why_uncertain: 'The AI returned a narrative response instead of a structured format, indicating uncertainty about the suggested library.',
-                question,
-                options,
-                generated_at: new Date().toISOString(),
-                signal_breakdown: signalContext?.breakdown || [],
-                calculated_confidence: signalContext?.confidence || null,
-            };
-
-            return {
-                library: suggestedLibrary,
-                confidence: Number.isFinite(Number(signalContext?.confidence))
-                    ? Number(signalContext.confidence)
-                    : 50,
-                reason: `Needs clarification: AI returned narrative disagreement in verify mode`,
-                needs_clarification: true,
-                clarification: policyQuestion,
-                pending_reason: 'AI returned narrative disagreement in verify mode',
-                policy_question: policyQuestion,
-                libraries,
-                format: 'narrative_clarify',
-            };
+            return this.createVerifyDisagreementResult(context, {
+                sourceFormat: 'narrative'
+            });
         }
 
         return this.createContractViolationResult(context);
+    }
+
+    createVerifyDisagreementResult(context, details = {}) {
+        const { libraries, signalContext, metadata } = context;
+        const suggestedLibrary = signalContext?.suggestedLibrary;
+        if (!suggestedLibrary) {
+            return this.createFallbackResult(libraries, metadata, {
+                parseFailureReason: 'verify_missing_suggested_library'
+            });
+        }
+
+        const title = metadata?.title || 'this item';
+        const orderedAlternatives = [];
+
+        if (details.conflictingLibrary && details.conflictingLibrary.id !== suggestedLibrary.id) {
+            orderedAlternatives.push(details.conflictingLibrary);
+        }
+
+        for (const library of libraries) {
+            if (library.id !== suggestedLibrary.id && !orderedAlternatives.some(candidate => candidate.id === library.id)) {
+                orderedAlternatives.push(library);
+            }
+        }
+
+        const options = [
+            {
+                label: suggestedLibrary.name,
+                value: `library_${suggestedLibrary.id}`,
+                library_id: suggestedLibrary.id,
+                library_name: suggestedLibrary.name,
+            },
+            ...orderedAlternatives.slice(0, 3).map(lib => ({
+                label: lib.name,
+                value: `library_${lib.id}`,
+                library_id: lib.id,
+                library_name: lib.name,
+            }))
+        ].slice(0, 4);
+
+        const whyUncertain = details.conflictingLibrary
+            ? `The AI verify response selected "${details.conflictingLibrary.name}" instead of confirming the suggested library "${suggestedLibrary.name}".`
+            : 'The AI returned a narrative response instead of confirming the suggested library, indicating disagreement or uncertainty.';
+        const question = `The AI disagreed with classifying "${title}" as "${suggestedLibrary.name}". Please confirm or choose an alternative.`;
+        const policyQuestion = {
+            problem_summary: 'AI disagreed with suggested classification',
+            why_uncertain: whyUncertain,
+            question,
+            options,
+            generated_at: new Date().toISOString(),
+            signal_breakdown: signalContext?.breakdown || [],
+            calculated_confidence: signalContext?.confidence || null,
+            meta: {
+                source_format: details.sourceFormat || 'verify_disagreement',
+                conflicting_library_id: details.conflictingLibrary?.id || null,
+                conflicting_library_name: details.conflictingLibrary?.name || null,
+                disagreement_reason: details.disagreementReason || null
+            }
+        };
+
+        return {
+            library: suggestedLibrary,
+            confidence: Number.isFinite(Number(signalContext?.confidence))
+                ? Number(signalContext.confidence)
+                : 50,
+            reason: 'Needs clarification: AI disagreed with suggested classification',
+            needs_clarification: true,
+            clarification: policyQuestion,
+            pending_reason: 'AI disagreed with suggested classification',
+            policy_question: policyQuestion,
+            libraries,
+            format: details.sourceFormat === 'narrative' ? 'narrative_clarify' : 'verify_disagreement',
+        };
     }
 
     /**
@@ -487,6 +534,17 @@ class AIResponseParser {
     createFallbackResult(libraries, metadata, options = {}) {
         const parseFailureReason = options.parseFailureReason || 'unknown_parse_failure';
         const defaultLibrary = this.getDefaultLibrary(libraries, metadata?.media_type);
+        const orderedLibraries = [];
+
+        if (defaultLibrary) {
+            orderedLibraries.push(defaultLibrary);
+        }
+
+        for (const library of libraries || []) {
+            if (!orderedLibraries.some(candidate => candidate.id === library.id)) {
+                orderedLibraries.push(library);
+            }
+        }
 
         return {
             library: defaultLibrary,
@@ -498,7 +556,7 @@ class AIResponseParser {
                 problem_summary: 'Unable to auto-classify',
                 why_uncertain: 'The AI classification returned an unexpected format. Manual review is recommended.',
                 question: `Which library should "${metadata?.title || 'this item'}" be added to?`,
-                options: libraries.slice(0, 4).map(lib => ({
+                options: orderedLibraries.slice(0, 4).map(lib => ({
                     label: lib.name,
                     value: `library_${lib.id}`,
                     library_id: lib.id,

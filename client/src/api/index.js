@@ -634,6 +634,12 @@ export default {
   getDetailedStats() {
     return apiClient.get('/stats/detailed')
   },
+
+  getSecondPassEvaluation(days = 30) {
+    return apiClient.get('/classification/second-pass-evaluation', {
+      params: { days }
+    })
+  },
   getDailyStats(days = 30) {
     return apiClient.get('/stats/daily', { params: { days } })
   },

@@ -28,6 +28,7 @@
 
 const db = require('../../config/database');
 const queueService = require('../../services/queueService');
+const { withConsoleSpy } = require('../setup/consoleHelpers');
 
 describe('Queue Robustness Integration Tests', () => {
     beforeEach(async () => {
@@ -48,7 +49,15 @@ describe('Queue Robustness Integration Tests', () => {
                 VALUES ('classification', 'processing', '{}', 5, NOW() - INTERVAL '1 second')
             `);
 
-            const count = await queueService.recoverExpiredVisibilityTasks();
+            const count = await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+                const recoveredCount = await queueService.recoverExpiredVisibilityTasks();
+
+                expect(spy).toHaveBeenCalledTimes(1);
+                expect(getMessages()).toContain('Recovered tasks with expired visibility timeout');
+                expect(getMessages()).toContain('"count":1');
+
+                return recoveredCount;
+            });
 
             expect(count).toBe(1);
 
@@ -85,7 +94,16 @@ describe('Queue Robustness Integration Tests', () => {
 
             queueService.processing = 3; // Simulate 3 occupied slots
 
-            const count = await queueService.recoverExpiredVisibilityTasks();
+            const count = await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+                const recoveredCount = await queueService.recoverExpiredVisibilityTasks();
+
+                expect(spy).toHaveBeenCalledTimes(1);
+                expect(getMessages()).toContain('Recovered tasks with expired visibility timeout');
+                expect(getMessages()).toContain('"count":2');
+                expect(getMessages()).toContain('"processingAfter":1');
+
+                return recoveredCount;
+            });
 
             // 2 expired, 1 still valid
             expect(count).toBe(2);
@@ -102,7 +120,14 @@ describe('Queue Robustness Integration Tests', () => {
 
             queueService.processing = 1; // Under-reported (shouldn't happen, but guard holds)
 
-            await queueService.recoverExpiredVisibilityTasks();
+            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+                await queueService.recoverExpiredVisibilityTasks();
+
+                expect(spy).toHaveBeenCalledTimes(1);
+                expect(getMessages()).toContain('Recovered tasks with expired visibility timeout');
+                expect(getMessages()).toContain('"count":2');
+                expect(getMessages()).toContain('"processingAfter":0');
+            });
 
             expect(queueService.processing).toBe(0); // Math.max(0, 1-2) = 0
         });
@@ -113,7 +138,13 @@ describe('Queue Robustness Integration Tests', () => {
                 VALUES ('classification', 'processing', '{}', 5, NOW() - INTERVAL '1 second')
             `);
 
-            await queueService.recoverExpiredVisibilityTasks();
+            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+                await queueService.recoverExpiredVisibilityTasks();
+
+                expect(spy).toHaveBeenCalledTimes(1);
+                expect(getMessages()).toContain('Recovered tasks with expired visibility timeout');
+                expect(getMessages()).toContain('"count":1');
+            });
 
             const row = await db.query(`SELECT error_message FROM task_queue LIMIT 1`);
             expect(row.rows[0].error_message).toBe('Recovered: visibility timeout expired');

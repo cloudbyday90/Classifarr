@@ -45,6 +45,7 @@
  */
 
 const NONEXISTENT_LIBRARY_ID = 999999999;
+const { withConsoleSpy } = require('../setup/consoleHelpers');
 
 let db;
 let mediaSyncService;
@@ -59,9 +60,15 @@ beforeAll(() => {
 describe('MediaSyncService: library-not-found handling', () => {
     describe('syncLibrary()', () => {
         it('throws LibraryNotFoundError (not a generic Error) when library does not exist', async () => {
-            await expect(
-                mediaSyncService.syncLibrary(NONEXISTENT_LIBRARY_ID)
-            ).rejects.toBeInstanceOf(LibraryNotFoundError);
+            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+                await expect(
+                    mediaSyncService.syncLibrary(NONEXISTENT_LIBRARY_ID)
+                ).rejects.toBeInstanceOf(LibraryNotFoundError);
+
+                expect(spy).toHaveBeenCalledTimes(1);
+                expect(getMessages()).toContain('Library not found during sync');
+                expect(getMessages()).toContain(String(NONEXISTENT_LIBRARY_ID));
+            });
         });
 
         it('does not create a sync status record when library lookup fails', async () => {
@@ -72,9 +79,15 @@ describe('MediaSyncService: library-not-found handling', () => {
             );
             const countBefore = parseInt(before.rows[0].count);
 
-            await expect(
-                mediaSyncService.syncLibrary(NONEXISTENT_LIBRARY_ID)
-            ).rejects.toBeInstanceOf(LibraryNotFoundError);
+            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+                await expect(
+                    mediaSyncService.syncLibrary(NONEXISTENT_LIBRARY_ID)
+                ).rejects.toBeInstanceOf(LibraryNotFoundError);
+
+                expect(spy).toHaveBeenCalledTimes(1);
+                expect(getMessages()).toContain('Library not found during sync');
+                expect(getMessages()).toContain(String(NONEXISTENT_LIBRARY_ID));
+            });
 
             // No status record should have been inserted (abort is early)
             const after = await db.query(
@@ -87,9 +100,15 @@ describe('MediaSyncService: library-not-found handling', () => {
 
     describe('getLibraryItems()', () => {
         it('throws LibraryNotFoundError (not a generic Error) when library does not exist', async () => {
-            await expect(
-                mediaSyncService.getLibraryItems(NONEXISTENT_LIBRARY_ID)
-            ).rejects.toBeInstanceOf(LibraryNotFoundError);
+            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+                await expect(
+                    mediaSyncService.getLibraryItems(NONEXISTENT_LIBRARY_ID)
+                ).rejects.toBeInstanceOf(LibraryNotFoundError);
+
+                expect(spy).toHaveBeenCalledTimes(1);
+                expect(getMessages()).toContain('Library not found when getting items');
+                expect(getMessages()).toContain(String(NONEXISTENT_LIBRARY_ID));
+            });
         });
 
         it('reads from a real library without error when it exists', async () => {

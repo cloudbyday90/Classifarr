@@ -112,6 +112,8 @@ let healthCache = {
         responseTime: null,
         provider: 'unknown',
         mode: 'disabled',
+        readiness: 'unknown',
+        ready: null,
         previousStatus: null,
         previousResponseTime: null
     }
@@ -766,6 +768,8 @@ async function checkImageEmbeddings() {
                 lastSuccessfulCheck: previous.lastSuccessfulCheck,
                 provider: 'unknown',
                 mode: 'disabled',
+                readiness: 'unknown',
+                ready: null,
                 previousStatus: previous.status
             };
             return healthCache.imageEmbeddings;
@@ -787,6 +791,8 @@ async function checkImageEmbeddings() {
                 lastSuccessfulCheck: previous.lastSuccessfulCheck,
                 provider: 'disabled',
                 mode,
+                readiness: 'disabled',
+                ready: false,
                 previousStatus: previous.status,
                 previousResponseTime: previous.responseTime
             };
@@ -811,6 +817,8 @@ async function checkImageEmbeddings() {
                 responseTime: null,
                 provider,
                 mode,
+                readiness: 'not_configured',
+                ready: false,
                 previousStatus: previous.status,
                 previousResponseTime: previous.responseTime
             };
@@ -820,17 +828,47 @@ async function checkImageEmbeddings() {
         let success = false;
         let responseTime = 0;
         let error = null;
+        let readiness = provider === 'cloud' ? 'ready' : 'unknown';
+        let ready = provider === 'cloud' ? true : null;
 
         if (provider === 'local' && config.image_embedding_local_host) {
             const host = config.image_embedding_local_host;
             const port = config.image_embedding_local_port || 8000;
-            const url = `http://${host}:${port}/health`;
+            const baseUrl = `http://${host}:${port}`;
+            const healthUrl = `${baseUrl}/health`;
             const start = Date.now();
 
             try {
-                const response = await require('axios').get(url, { timeout: 5000 });
+                const axios = require('axios');
+                const response = await axios.get(healthUrl, { timeout: 5000 });
                 responseTime = Date.now() - start;
                 success = response.status >= 200 && response.status < 300;
+
+                if (success) {
+                    try {
+                        const readyResponse = await axios.get(`${baseUrl}/ready`, { timeout: 5000 });
+                        const readyPayload = readyResponse?.data || {};
+                        const isReady = readyPayload.ready === true && readyPayload.default_model_loaded !== false;
+
+                        ready = isReady;
+                        readiness = isReady ? 'ready' : 'warming_up';
+                    } catch (readyError) {
+                        const readyStatus = readyError?.response?.status;
+
+                        if (readyStatus === 404 || readyStatus === 405) {
+                            // Older sidecar builds may not expose /ready yet.
+                            ready = null;
+                            readiness = 'unknown';
+                        } else {
+                            ready = null;
+                            readiness = 'unknown';
+                            logger.warn('Image embedding readiness check failed after successful health check', {
+                                error: readyError.message,
+                                status: readyStatus
+                            });
+                        }
+                    }
+                }
             } catch (err) {
                 responseTime = Date.now() - start;
                 error = err.message;
@@ -857,7 +895,7 @@ async function checkImageEmbeddings() {
         }
 
         const status = success
-            ? 'connected'
+            ? (provider === 'local' && readiness === 'warming_up' ? 'degraded' : 'connected')
             : ((provider === 'unknown'
                 || (!hasStoredImageEmbeddings
                     && !previous.lastSuccessfulCheck
@@ -872,6 +910,8 @@ async function checkImageEmbeddings() {
             responseTime: responseTime || null,
             provider,
             mode,
+            readiness,
+            ready,
             error,
             previousStatus: previous.status,
             previousResponseTime: previous.responseTime
@@ -883,6 +923,8 @@ async function checkImageEmbeddings() {
             lastSuccessfulCheck: previous.lastSuccessfulCheck,
             error: error.message,
             provider: 'unknown',
+            readiness: 'unknown',
+            ready: null,
             previousStatus: previous.status
         };
     }

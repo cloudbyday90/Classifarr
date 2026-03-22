@@ -277,16 +277,36 @@ describe('MediaSyncService', () => {
                 { external_id: '2', title: 'Movie 2', tmdb_id: 456 }
             ];
 
-            mockDb.query
-                .mockResolvedValueOnce({ rows: [mockLibrary] })
-                .mockResolvedValueOnce({ rows: [{ id: 100 }] })
-                .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rows: [] });
+            mockDb.query.mockImplementation((sql) => {
+                if (sql.includes('FROM libraries l')) {
+                    return Promise.resolve({ rows: [mockLibrary] });
+                }
+                if (sql.includes('INSERT INTO media_server_sync_status')) {
+                    return Promise.resolve({ rows: [{ id: 100 }] });
+                }
+                if (sql === 'SELECT id FROM libraries WHERE id = $1') {
+                    return Promise.resolve({ rows: [{ id: 1 }] });
+                }
+                if (sql.includes('INSERT INTO media_server_items')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (sql.includes('SET items_total = $1, items_processed = $2')) {
+                    return Promise.resolve({ rowCount: 1 });
+                }
+                if (sql.includes('DELETE FROM media_server_items')) {
+                    return Promise.resolve({ rowCount: 1 });
+                }
+                if (sql.includes('DELETE FROM media_server_collections')) {
+                    return Promise.resolve({ rowCount: 2 });
+                }
+                if (sql.includes('UPDATE classification_history ch')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (sql.includes("SET status = $1, completed_at = NOW(), items_total = $2, items_processed = $3")) {
+                    return Promise.resolve({ rowCount: 1 });
+                }
+                throw new Error(`Unexpected query: ${sql}`);
+            });
 
             mockPlexService.getLibraryItems.mockResolvedValue(mockItems);
             mockPlexService.getCollections.mockResolvedValue([]);
@@ -296,6 +316,8 @@ describe('MediaSyncService', () => {
 
             expect(mockPlexService.getLibraryItems).toHaveBeenCalled();
             expect(result.success).toBe(true);
+            expect(result.prunedItems).toBe(1);
+            expect(result.prunedCollections).toBe(2);
         });
 
         it('should mark sync as failed on error', async () => {
@@ -334,10 +356,27 @@ describe('MediaSyncService', () => {
                 external_id: 'library-1'
             };
 
-            mockDb.query
-                .mockResolvedValueOnce({ rows: [mockLibrary] })
-                .mockResolvedValueOnce({ rows: [{ id: 100 }] })
-                .mockResolvedValueOnce({ rows: [] });
+            mockDb.query.mockImplementation((sql) => {
+                if (sql.includes('FROM libraries l')) {
+                    return Promise.resolve({ rows: [mockLibrary] });
+                }
+                if (sql.includes('INSERT INTO media_server_sync_status')) {
+                    return Promise.resolve({ rows: [{ id: 100 }] });
+                }
+                if (sql.includes('DELETE FROM media_server_items')) {
+                    return Promise.resolve({ rowCount: 0 });
+                }
+                if (sql.includes('DELETE FROM media_server_collections')) {
+                    return Promise.resolve({ rowCount: 0 });
+                }
+                if (sql.includes('UPDATE classification_history ch')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (sql.includes("SET status = $1, completed_at = NOW(), items_total = $2, items_processed = $3")) {
+                    return Promise.resolve({ rowCount: 1 });
+                }
+                throw new Error(`Unexpected query: ${sql}`);
+            });
 
             mockJellyfinService.getLibraryItems.mockResolvedValue([]);
             mockJellyfinService.getCollections.mockResolvedValue([]);
@@ -359,10 +398,27 @@ describe('MediaSyncService', () => {
                 external_id: 'library-1'
             };
 
-            mockDb.query
-                .mockResolvedValueOnce({ rows: [mockLibrary] })
-                .mockResolvedValueOnce({ rows: [{ id: 100 }] })
-                .mockResolvedValueOnce({ rows: [] });
+            mockDb.query.mockImplementation((sql) => {
+                if (sql.includes('FROM libraries l')) {
+                    return Promise.resolve({ rows: [mockLibrary] });
+                }
+                if (sql.includes('INSERT INTO media_server_sync_status')) {
+                    return Promise.resolve({ rows: [{ id: 100 }] });
+                }
+                if (sql.includes('DELETE FROM media_server_items')) {
+                    return Promise.resolve({ rowCount: 0 });
+                }
+                if (sql.includes('DELETE FROM media_server_collections')) {
+                    return Promise.resolve({ rowCount: 0 });
+                }
+                if (sql.includes('UPDATE classification_history ch')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (sql.includes("SET status = $1, completed_at = NOW(), items_total = $2, items_processed = $3")) {
+                    return Promise.resolve({ rowCount: 1 });
+                }
+                throw new Error(`Unexpected query: ${sql}`);
+            });
 
             mockEmbyService.getLibraryItems.mockResolvedValue([]);
             mockEmbyService.getCollections.mockResolvedValue([]);
@@ -371,6 +427,56 @@ describe('MediaSyncService', () => {
 
             expect(mockEmbyService.getLibraryItems).toHaveBeenCalled();
             expect(result.success).toBe(true);
+        });
+
+        it('should not prune unseen rows during incremental sync', async () => {
+            const mockLibrary = {
+                id: 1,
+                name: 'Movies',
+                type: 'plex',
+                url: 'http://plex:32400',
+                api_key: 'test-token',
+                media_server_id: 1,
+                external_id: '1'
+            };
+
+            mockDb.query.mockImplementation((sql) => {
+                if (sql.includes('FROM libraries l')) {
+                    return Promise.resolve({ rows: [mockLibrary] });
+                }
+                if (sql.includes('INSERT INTO media_server_sync_status')) {
+                    return Promise.resolve({ rows: [{ id: 100 }] });
+                }
+                if (sql === 'SELECT id FROM libraries WHERE id = $1') {
+                    return Promise.resolve({ rows: [{ id: 1 }] });
+                }
+                if (sql.includes('INSERT INTO media_server_items')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (sql.includes('SET items_total = $1, items_processed = $2')) {
+                    return Promise.resolve({ rowCount: 1 });
+                }
+                if (sql.includes('UPDATE classification_history ch')) {
+                    return Promise.resolve({ rows: [] });
+                }
+                if (sql.includes("SET status = $1, completed_at = NOW(), items_total = $2, items_processed = $3")) {
+                    return Promise.resolve({ rowCount: 1 });
+                }
+                throw new Error(`Unexpected query: ${sql}`);
+            });
+
+            mockPlexService.getLibraryItems.mockResolvedValue([{ external_id: '1', title: 'Movie 1', tmdb_id: 123 }]);
+            mockPlexService.getCollections.mockResolvedValue([]);
+            mockContentTypeAnalyzer.analyze.mockResolvedValue({ analyzed: false });
+
+            const pruneItemsSpy = jest.spyOn(service, 'pruneMissingMediaItems');
+            const pruneCollectionsSpy = jest.spyOn(service, 'pruneMissingCollections');
+
+            const result = await service.syncLibrary(1, { incremental: true, batchSize: 50 });
+
+            expect(result.success).toBe(true);
+            expect(pruneItemsSpy).not.toHaveBeenCalled();
+            expect(pruneCollectionsSpy).not.toHaveBeenCalled();
         });
     });
 
@@ -416,6 +522,32 @@ describe('MediaSyncService', () => {
             expect(upsertCall[1][10]).toEqual(['Action', 'Comedy']);
             expect(upsertCall[1][11]).toEqual(['hero']);
             expect(upsertCall[1][12]).toEqual(['Saga']);
+        });
+    });
+
+    describe('full-sync pruning helpers', () => {
+        it('pruneMissingMediaItems deletes all cached rows when the remote library is empty', async () => {
+            mockDb.query.mockResolvedValue({ rowCount: 4 });
+
+            const result = await service.pruneMissingMediaItems(7, []);
+
+            expect(result).toBe(4);
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining('DELETE FROM media_server_items'),
+                [7]
+            );
+        });
+
+        it('pruneMissingCollections preserves seen external ids during full sync', async () => {
+            mockDb.query.mockResolvedValue({ rowCount: 2 });
+
+            const result = await service.pruneMissingCollections(9, ['collection-a', 'collection-b']);
+
+            expect(result).toBe(2);
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining('DELETE FROM media_server_collections'),
+                [9, ['collection-a', 'collection-b']]
+            );
         });
     });
 });

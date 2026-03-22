@@ -281,6 +281,17 @@ describe('Queue API Integration Tests', () => {
             expect(check.rows[0].error_message).toBeNull();
         });
 
+        test('should return 409 when retrying a task in the wrong state', async () => {
+            const taskId = await insertTask('pending');
+
+            const response = await request(app)
+                .post(`/api/queue/task/${taskId}/retry`)
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(409);
+
+            expect(response.body.code).toBe('invalid_state');
+        });
+
         test('should return 401 without authentication', async () => {
             const taskId = await insertTask('failed');
 
@@ -313,9 +324,9 @@ describe('Queue API Integration Tests', () => {
             const response = await request(app)
                 .post('/api/queue/task/999999/dismiss')
                 .set('Authorization', `Bearer ${testToken}`)
-                .expect(200);
+                .expect(404);
 
-            expect(response.body.success).toBe(false);
+            expect(response.body.code).toBe('not_found');
         });
 
         test('should return 401 without authentication', async () => {
@@ -344,6 +355,26 @@ describe('Queue API Integration Tests', () => {
             // Verify DB state
             const check = await db.query('SELECT status FROM task_queue WHERE id = $1', [taskId]);
             expect(check.rows[0].status).toBe('cancelled');
+        });
+
+        test('should return 409 when cancelling a task in the wrong state', async () => {
+            const taskId = await insertTask('failed');
+
+            const response = await request(app)
+                .post(`/api/queue/task/${taskId}/cancel`)
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(409);
+
+            expect(response.body.code).toBe('invalid_state');
+        });
+
+        test('should return 400 for invalid task ids', async () => {
+            const response = await request(app)
+                .post('/api/queue/task/not-a-number/cancel')
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(400);
+
+            expect(response.body.code).toBe('invalid_task_id');
         });
 
         test('should return 401 without authentication', async () => {

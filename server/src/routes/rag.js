@@ -23,6 +23,22 @@ const { getRagLoopDefaultConfig, validateAndNormalizeRagLoopConfig } = require('
 
 const logger = createLogger('RAG API');
 
+const parseManualBackfillStartOptions = (body = {}) => {
+    const rawBatchSize = body.batchSize ?? body.limit;
+    if (rawBatchSize === undefined || rawBatchSize === null || rawBatchSize === '') {
+        return {};
+    }
+
+    const batchSize = Number(rawBatchSize);
+    if (!Number.isInteger(batchSize) || batchSize <= 0) {
+        const error = new Error('batchSize must be a positive integer');
+        error.status = 400;
+        throw error;
+    }
+
+    return { batchSize };
+};
+
 const updateImageModelsCache = async ({ scope, payload }) => {
     try {
         const result = await db.query(
@@ -446,49 +462,15 @@ router.post('/test', async (req, res) => {
  */
 router.post('/backfill/start', async (req, res) => {
     try {
-        const { limit = 100 } = req.body;
-        const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
-        const pending = await embeddingService.getPendingEmbeddings({
-            limit,
-            includeImage
-        });
-
-        let processed = 0;
-        let failed = 0;
-
-        for (const row of pending) {
-            try {
-                const metadata = row.metadata || {};
-                if (row.needsText) {
-                    await embeddingService.generateAndStore(row.id, {
-                        ...metadata,
-                        title: row.title,
-                        media_type: row.media_type,
-                        library_name: row.library_name
-                    });
-                } else if (row.needsImage) {
-                    await embeddingService.generateImageEmbedding(row.id, {
-                        ...metadata,
-                        title: row.title,
-                        media_type: row.media_type,
-                        library_name: row.library_name
-                    });
-                }
-                processed++;
-            } catch (_error) {
-                failed++;
-            }
-        }
-
+        const options = parseManualBackfillStartOptions(req.body);
+        await manualBackfillService.start(options);
         res.json({
             success: true,
-            processed,
-            failed,
-            remaining: pending.length - processed
+            status: await manualBackfillService.getStatus()
         });
     } catch (error) {
         logger.error('Backfill failed', { error: error.message });
-        res.status(500).json({ success: false, error: error.message });
+        res.status(error.status || 400).json({ success: false, error: error.message });
     }
 });
 
@@ -1071,12 +1053,12 @@ const { parseDaysConfig, formatDaysConfig } = require('../utils/backfillHelpers'
  */
 router.post('/backfill/manual/start', async (req, res) => {
     try {
-        const { batchSize } = req.body;
-        await manualBackfillService.start({ batchSize });
+        const options = parseManualBackfillStartOptions(req.body);
+        await manualBackfillService.start(options);
         res.json({ success: true, status: await manualBackfillService.getStatus() });
     } catch (error) {
         logger.error('Failed to start manual backfill', { error: error.message });
-        res.status(400).json({ error: error.message });
+        res.status(error.status || 400).json({ error: error.message });
     }
 });
 
@@ -1131,13 +1113,13 @@ router.get('/backfill/status', async (req, res) => {
         const pending = await manualBackfillService.getPendingCount();
         const manualStatus = await manualBackfillService.getStatus();
         const idleStatus = idleBackfillService.getStatus();
-        const scheduleConfig = scheduledBackfillService.getSchedule();
+        const scheduledStatus = scheduledBackfillService.getStatus();
         const pendingBreakdown = await embeddingService.getPendingBreakdown();
 
         res.json({
             manual: manualStatus,
             idle: idleStatus,
-            scheduled: scheduleConfig,
+            scheduled: scheduledStatus,
             pending,
             pendingBreakdown
         });
@@ -1264,6 +1246,8 @@ router.put('/backfill/idle', async (req, res) => {
                 idle_batch_size = $3
             WHERE id = 1
         `, [enabled, threshold, batchSize]);
+
+        await idleBackfillService.loadConfig();
 
         res.json({ success: true });
     } catch (error) {

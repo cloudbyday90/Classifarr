@@ -56,9 +56,10 @@ class BackfillOrchestrator {
         }
 
         // Create and store new listeners
-        this.idleListener = () => {
+        this.idleListener = async () => {
             // Only start idle backfill if manual backfill is not running
-            if (this.manualBackfillService.getStatus().status !== 'running') {
+            const manualStatus = await this.manualBackfillService.getStatus();
+            if (!['running', 'cancelling'].includes(manualStatus.status)) {
                 logger.info('System idle, starting idle backfill');
                 this.idleBackfillService.startIdleBackfill().catch(error => {
                     logger.error('Idle backfill error', { error: error.message });

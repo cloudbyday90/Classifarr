@@ -12,7 +12,7 @@
     <div>
       <h1 class="text-3xl font-bold mb-2">Presets Manager</h1>
       <p class="text-gray-400">
-        Browse system presets or create your own custom classification presets
+        Browse built-in presets or create your own reusable presets for policy attachment
       </p>
     </div>
 
@@ -45,7 +45,7 @@
 
     <!-- Tabs -->
     <Tabs v-model="activeTab" :tabs="tabs">
-      <!-- System Presets Tab -->
+      <!-- Built-in Presets Tab -->
       <template #system>
         <div v-if="loadingSystem" class="flex justify-center py-12">
           <Spinner />
@@ -54,7 +54,7 @@
           {{ errorSystem }}
         </div>
         <div v-else-if="filteredSystemPresets.length === 0" class="text-center py-12 text-gray-400">
-          No system presets found matching your criteria
+          No built-in presets found matching your criteria
         </div>
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <PresetCard
@@ -67,7 +67,7 @@
         </div>
       </template>
 
-      <!-- Custom Presets Tab -->
+      <!-- My Presets Tab -->
       <template #custom>
         <div class="mb-4">
           <Button variant="primary" @click="openCreateModal">
@@ -84,10 +84,10 @@
         </div>
         <div v-else-if="filteredCustomPresets.length === 0" class="text-center py-12 text-gray-400">
           <div class="mb-4">
-            {{ searchQuery || categoryFilter ? 'No custom presets found matching your criteria' : 'No custom presets yet' }}
+            {{ searchQuery || categoryFilter ? 'No saved presets found matching your criteria' : 'No saved presets yet' }}
           </div>
           <div v-if="!searchQuery && !categoryFilter" class="text-sm">
-            Create your first custom preset to get started
+            Create your first preset to get started
           </div>
         </div>
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -155,8 +155,8 @@ const searchQuery = ref('')
 const categoryFilter = ref('')
 
 const tabs = [
-  { id: 'system', label: 'System Presets', icon: '📋' },
-  { id: 'custom', label: 'Custom Presets', icon: '⚙️' }
+  { id: 'system', label: 'Built-in Presets', icon: '📋' },
+  { id: 'custom', label: 'My Presets', icon: '⚙️' }
 ]
 
 // System Presets State

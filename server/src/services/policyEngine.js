@@ -32,12 +32,23 @@ const FORMULA_CONFIDENCE_CAP = 95;
 
 // Default weight for RAG scoring when not explicitly configured
 const DEFAULT_RAG_WEIGHT = 0.15;
+const VALID_COMBINATION_MODES = new Set(['best_match', 'average', 'weighted_average', 'require_all']);
+
+function normalizePresetAttachmentWeight(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : 1.0;
+}
+const POLICY_PROMPT_SELECT_MIN_CONFIDENCE = 40;
 
 /**
  * Policy-Driven Classification Engine
  * Evaluates media items against library policies with comprehensive signal scoring
  */
 class PolicyEngine {
+    normalizeCombinationMode(mode) {
+        return VALID_COMBINATION_MODES.has(mode) ? mode : 'best_match';
+    }
+
     /**
      * Main entry point: Evaluate an item against all active policies
      * @param {object} item - Media item with metadata (title, genres, keywords, etc.)
@@ -151,7 +162,7 @@ class PolicyEngine {
 
                 // Detect language conflicts before deciding whether to use the score.
                 // Must run regardless of evaluation.score value (see comment above).
-                if (itemLanguage && itemLanguage !== 'en') {
+                if (itemLanguage) {
                     for (const preset of (policy.presets || [])) {
                         const signals = preset.signals || {};
                         const languageConflict = this.getStrictLanguageConflict(signals.language, itemLanguage);
@@ -287,6 +298,7 @@ class PolicyEngine {
                     lp.trust_patterns,
                     lp.trust_rag,
                     lp.trust_history,
+                    lp.combination_mode,
                     lp.preset_weight,
                     lp.profile_weight,
                     lp.pattern_weight,
@@ -357,7 +369,7 @@ class PolicyEngine {
 
             // Score presets
             if (policy.presets && policy.presets.length > 0) {
-                scores.preset = await this.scorePresets(policy.presets, item);
+                scores.preset = await this.scorePresets(policy.presets, item, policy.combination_mode);
             }
 
             // Score profile (library statistical match)
@@ -432,6 +444,7 @@ class PolicyEngine {
                 weights,
                 breakdown,
                 agreement,
+                combination_mode: this.normalizeCombinationMode(policy.combination_mode),
                 auto_classify_threshold: policy.auto_classify_threshold,
                 prompt_threshold: policy.prompt_threshold
             };
@@ -484,27 +497,54 @@ class PolicyEngine {
      * @param {object} item - Media item
      * @returns {Promise<number>} Score 0-100
      */
-    async scorePresets(presets, item) {
+    async scorePresets(presets, item, combinationMode = 'best_match') {
         try {
             if (!presets || presets.length === 0) {
                 return 0;
             }
 
-            let totalScore = 0;
-            let totalWeight = 0;
+            const normalizedMode = this.normalizeCombinationMode(combinationMode);
+            const presetScores = [];
 
             for (const preset of presets) {
-                const presetWeight = preset.weight ?? 1.0;
+                const presetWeight = normalizePresetAttachmentWeight(preset.weight);
                 const mergedSignals = mergePresetSignals(
                     normalizeSignalConfig(preset.signals),
                     normalizeSignalConfig(preset.custom_signals)
                 );
                 const signalScore = await this.evaluatePresetSignals(mergedSignals, item);
-                
-                totalScore += signalScore * presetWeight;
-                totalWeight += presetWeight;
+
+                presetScores.push({
+                    score: signalScore,
+                    weight: presetWeight
+                });
             }
 
+            if (presetScores.length === 0) {
+                return 0;
+            }
+
+            if (normalizedMode === 'best_match') {
+                return Math.min(
+                    Math.max(...presetScores.map((preset) => preset.score)),
+                    FORMULA_CONFIDENCE_CAP
+                );
+            }
+
+            if (normalizedMode === 'average') {
+                const totalScore = presetScores.reduce((sum, preset) => sum + preset.score, 0);
+                return Math.min(totalScore / presetScores.length, FORMULA_CONFIDENCE_CAP);
+            }
+
+            if (normalizedMode === 'require_all' && presetScores.some((preset) => preset.score <= 0)) {
+                return 0;
+            }
+
+            const totalScore = presetScores.reduce(
+                (sum, preset) => sum + (preset.score * preset.weight),
+                0
+            );
+            const totalWeight = presetScores.reduce((sum, preset) => sum + preset.weight, 0);
             const finalScore = totalWeight > 0 ? (totalScore / totalWeight) : 0;
             
             // Cap at FORMULA_CONFIDENCE_CAP (95) - 100% reserved for authoritative signals
@@ -1193,9 +1233,20 @@ class PolicyEngine {
                 };
             }
 
-            // Below prompt threshold - show selection prompt
+            // Low-confidence but still plausible candidate: show selection prompt
+            if (top.score >= POLICY_PROMPT_SELECT_MIN_CONFIDENCE) {
+                return {
+                    action: 'prompt_select',
+                    confidence: top.score,
+                    method: 'policy_engine',
+                    breakdown: top.breakdown,
+                    ranked
+                };
+            }
+
+            // Very low confidence: treat as manual review
             return {
-                action: 'prompt_select',
+                action: 'manual',
                 confidence: top.score,
                 method: 'policy_engine',
                 breakdown: top.breakdown,

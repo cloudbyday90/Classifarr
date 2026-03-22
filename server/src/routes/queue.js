@@ -8,12 +8,86 @@
 const express = require('express');
 const router = express.Router();
 const queueService = require('../services/queueService');
-const ollamaService = require('../services/ollama');
-const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const { authenticateTokenOrApiKey, requireReadWrite } = require('../middleware/apiKeyAuth');
 
 const logger = createLogger('QueueRoutes');
+const VALID_RETRY_ENRICHMENT_TYPES = new Set(['tavily', 'omdb']);
+const MAX_QUEUE_LIST_LIMIT = 100;
+const MAX_RETRY_PROCESS_LIMIT = 200;
+
+function parsePositiveInteger(value) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseLimit(value, defaultValue, maxValue) {
+    if (value === undefined) {
+        return defaultValue;
+    }
+    const parsed = parsePositiveInteger(value);
+    if (!parsed) {
+        return null;
+    }
+    return parsed <= maxValue ? parsed : null;
+}
+
+function parseRetryEnrichmentType(value) {
+    if (value === undefined) {
+        return 'tavily';
+    }
+    if (typeof value !== 'string') {
+        return null;
+    }
+    const normalized = value.trim().toLowerCase();
+    return VALID_RETRY_ENRICHMENT_TYPES.has(normalized) ? normalized : null;
+}
+
+function sendMutationResult(res, result, successStatus = 200) {
+    if (result?.success) {
+        return res.status(successStatus).json(result);
+    }
+
+    if (result?.code === 'not_found' || result?.code === 'task_not_found' || result?.code === 'library_not_found') {
+        return res.status(404).json({
+            error: result.code === 'library_not_found' ? 'Library not found' : 'Task not found',
+            code: result.code,
+        });
+    }
+
+    if (result?.code === 'invalid_state') {
+        return res.status(409).json({
+            error: 'Task is not in a valid state for this action',
+            code: result.code,
+            currentStatus: result.currentStatus || null,
+        });
+    }
+
+    if (result?.code === 'invalid_task_type') {
+        return res.status(409).json({
+            error: 'Task type does not support manual classification',
+            code: result.code,
+            taskType: result.taskType || null,
+        });
+    }
+
+    return res.status(500).json({
+        error: 'Queue action failed',
+        code: result?.code || 'queue_action_failed',
+    });
+}
+
+function sendBulkMutationResult(res, result) {
+    if (result?.success) {
+        return res.status(200).json(result);
+    }
+
+    return res.status(500).json({
+        error: 'Queue bulk action failed',
+        code: result?.code || 'queue_action_failed',
+        action: result?.action || null,
+    });
+}
 
 // Apply authentication to all queue routes
 router.use(authenticateTokenOrApiKey);
@@ -29,7 +103,7 @@ router.use(authenticateTokenOrApiKey);
  */
 router.get('/ollama-status', async (req, res) => {
     try {
-        const status = ollamaService.getGenerationStatus();
+        const status = queueService.getOllamaStatus();
         res.json(status);
     } catch (error) {
         logger.error('Failed to get ollama status', { error: error.message });
@@ -86,83 +160,8 @@ router.get('/gap-analysis-stats', async (req, res) => {
  */
 router.get('/live-stats', async (req, res) => {
     try {
-        const [queueStats, gapStats, todayResult, enrichmentResult, enrichmentQueueResult] = await Promise.all([
-            queueService.getStats(),
-            queueService.getGapAnalysisStats(),
-            // Today's classification counts:
-            // - new_classified: excludes source_library (new classifications only - for Dashboard)
-            // - all_classified: includes source_library (all activity - for Activity page)
-            db.query(`
-                SELECT 
-                    COUNT(*) FILTER (WHERE method != 'source_library') as new_classified,
-                    COUNT(*) as all_classified,
-                    AVG(confidence) FILTER (WHERE method != 'source_library') as new_avg_confidence,
-                    AVG(confidence) as all_avg_confidence
-                FROM classification_history 
-                WHERE created_at >= CURRENT_DATE
-            `),
-            db.query(`
-                SELECT 
-                    COUNT(*) as total_items,
-                    COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL OR metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as enriched,
-                    COUNT(*) FILTER (WHERE metadata->'tavily_imdb' IS NOT NULL OR metadata->'tavily_advisory' IS NOT NULL) as tavily_enriched,
-                    COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL) as omdb_enriched
-                FROM media_server_items
-            `),
-            db.query(`
-                SELECT COUNT(*) as pending FROM task_queue 
-                WHERE task_type = 'metadata_enrichment' AND status = 'pending'
-            `)
-        ]);
-        const enrichmentPending = parseInt(enrichmentQueueResult.rows[0]?.pending) || 0;
-
-        const totalItems = parseInt(enrichmentResult.rows[0]?.total_items) || 0;
-        const enrichedItems = parseInt(enrichmentResult.rows[0]?.enriched) || 0;
-        const tavilyEnrichedItems = parseInt(enrichmentResult.rows[0]?.tavily_enriched) || 0;
-        const omdbEnrichedItems = parseInt(enrichmentResult.rows[0]?.omdb_enriched) || 0;
-        const enrichmentProgress = totalItems > 0 ? Math.round((enrichedItems / totalItems) * 100) : 0;
-
-        const newClassifiedToday = parseInt(todayResult.rows[0]?.new_classified) || 0;
-        const allClassifiedToday = parseInt(todayResult.rows[0]?.all_classified) || 0;
-        const newAvgConfidence = parseFloat(todayResult.rows[0]?.new_avg_confidence) || 0;
-        const allAvgConfidence = parseFloat(todayResult.rows[0]?.all_avg_confidence) || 0;
-
-        // Get retry queue stats
-        let retryQueueStats = { tavily: { pending: 0 }, total: { pending: 0 } };
-        try {
-            const enrichmentRetryService = require('../services/enrichmentRetryService');
-            retryQueueStats = await enrichmentRetryService.getStats();
-        } catch (_e) {
-            // Retry queue table may not exist yet
-        }
-
-        res.json({
-            queue: queueStats,
-            gapAnalysis: gapStats,
-            today: {
-                // New classifications only (excludes source_library) - for Dashboard
-                classified: newClassifiedToday,
-                avgConfidence: Math.round(newAvgConfidence),
-                // All activity including enrichments - for Activity page
-                allClassified: allClassifiedToday,
-                allAvgConfidence: Math.round(allAvgConfidence)
-            },
-            enrichment: {
-                totalItems,
-                enriched: enrichedItems,
-                tavilyEnriched: tavilyEnrichedItems,
-                omdbEnriched: omdbEnrichedItems,
-                progress: enrichmentProgress,
-                pending: enrichmentPending,
-                retryQueue: retryQueueStats
-            },
-            health: {
-                ai: queueStats?.aiAvailable ?? false,
-                worker: queueStats?.workerRunning ?? false,
-                database: true
-            },
-            timestamp: new Date().toISOString()
-        });
+        const stats = await queueService.getLiveStats();
+        res.json(stats);
     } catch (error) {
         logger.error('Failed to get live stats', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -180,7 +179,14 @@ router.get('/live-stats', async (req, res) => {
  */
 router.get('/pending', async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 20;
+        const limit = parseLimit(req.query.limit, 20, MAX_QUEUE_LIST_LIMIT);
+        if (!limit) {
+            return res.status(400).json({
+                error: `Valid positive limit up to ${MAX_QUEUE_LIST_LIMIT} is required`,
+                code: 'invalid_limit',
+                max: MAX_QUEUE_LIST_LIMIT,
+            });
+        }
         const tasks = await queueService.getPendingTasks(limit);
         res.json(tasks);
     } catch (error) {
@@ -200,7 +206,14 @@ router.get('/pending', async (req, res) => {
  */
 router.get('/failed', async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 20;
+        const limit = parseLimit(req.query.limit, 20, MAX_QUEUE_LIST_LIMIT);
+        if (!limit) {
+            return res.status(400).json({
+                error: `Valid positive limit up to ${MAX_QUEUE_LIST_LIMIT} is required`,
+                code: 'invalid_limit',
+                max: MAX_QUEUE_LIST_LIMIT,
+            });
+        }
         const tasks = await queueService.getFailedTasks(limit);
         res.json(tasks);
     } catch (error) {
@@ -223,9 +236,12 @@ router.get('/failed', async (req, res) => {
  */
 router.post('/task/:id/retry', requireReadWrite, async (req, res) => {
     try {
-        const taskId = parseInt(req.params.id);
-        const success = await queueService.retryTask(taskId);
-        res.json({ success });
+        const taskId = parsePositiveInteger(req.params.id);
+        if (!taskId) {
+            return res.status(400).json({ error: 'Valid task id is required', code: 'invalid_task_id' });
+        }
+        const result = await queueService.retryTask(taskId);
+        sendMutationResult(res, result);
     } catch (error) {
         logger.error('Failed to retry task', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -246,9 +262,12 @@ router.post('/task/:id/retry', requireReadWrite, async (req, res) => {
  */
 router.post('/task/:id/dismiss', requireReadWrite, async (req, res) => {
     try {
-        const taskId = parseInt(req.params.id);
-        const success = await queueService.dismissFailedTask(taskId);
-        res.json({ success });
+        const taskId = parsePositiveInteger(req.params.id);
+        if (!taskId) {
+            return res.status(400).json({ error: 'Valid task id is required', code: 'invalid_task_id' });
+        }
+        const result = await queueService.dismissFailedTask(taskId);
+        sendMutationResult(res, result);
     } catch (error) {
         logger.error('Failed to dismiss task', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -269,9 +288,12 @@ router.post('/task/:id/dismiss', requireReadWrite, async (req, res) => {
  */
 router.post('/task/:id/cancel', requireReadWrite, async (req, res) => {
     try {
-        const taskId = parseInt(req.params.id);
-        const success = await queueService.cancelTask(taskId);
-        res.json({ success });
+        const taskId = parsePositiveInteger(req.params.id);
+        if (!taskId) {
+            return res.status(400).json({ error: 'Valid task id is required', code: 'invalid_task_id' });
+        }
+        const result = await queueService.cancelTask(taskId);
+        sendMutationResult(res, result);
     } catch (error) {
         logger.error('Failed to cancel task', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -286,9 +308,11 @@ router.post('/task/:id/cancel', requireReadWrite, async (req, res) => {
  */
 router.post('/clear-completed', requireReadWrite, async (req, res) => {
     try {
-        const count = await queueService.clearCompletedTasks();
-        logger.info('Cleared completed tasks', { count });
-        res.json({ success: true, count });
+        const result = await queueService.clearCompletedTasks();
+        if (result?.success) {
+            logger.info('Cleared completed tasks', { count: result.count });
+        }
+        sendBulkMutationResult(res, result);
     } catch (error) {
         logger.error('Failed to clear completed tasks', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -303,9 +327,11 @@ router.post('/clear-completed', requireReadWrite, async (req, res) => {
  */
 router.post('/clear-failed', requireReadWrite, async (req, res) => {
     try {
-        const count = await queueService.clearFailedTasks();
-        logger.info('Cleared failed tasks', { count });
-        res.json({ success: true, count });
+        const result = await queueService.clearFailedTasks();
+        if (result?.success) {
+            logger.info('Cleared failed tasks', { count: result.count });
+        }
+        sendBulkMutationResult(res, result);
     } catch (error) {
         logger.error('Failed to clear failed tasks', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -320,9 +346,11 @@ router.post('/clear-failed', requireReadWrite, async (req, res) => {
  */
 router.post('/retry-all-failed', requireReadWrite, async (req, res) => {
     try {
-        const count = await queueService.retryAllFailedTasks();
-        logger.info('Queued all failed tasks for retry', { count });
-        res.json({ success: true, count });
+        const result = await queueService.retryAllFailedTasks();
+        if (result?.success) {
+            logger.info('Queued all failed tasks for retry', { count: result.count });
+        }
+        sendBulkMutationResult(res, result);
     } catch (error) {
         logger.error('Failed to retry all tasks', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -337,9 +365,11 @@ router.post('/retry-all-failed', requireReadWrite, async (req, res) => {
  */
 router.post('/cancel-all-pending', requireReadWrite, async (req, res) => {
     try {
-        const count = await queueService.cancelAllPendingTasks();
-        logger.info('Cancelled all pending tasks', { count });
-        res.json({ success: true, count });
+        const result = await queueService.cancelAllPendingTasks();
+        if (result?.success) {
+            logger.info('Cancelled all pending tasks', { count: result.count });
+        }
+        sendBulkMutationResult(res, result);
     } catch (error) {
         logger.error('Failed to cancel all tasks', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -354,9 +384,11 @@ router.post('/cancel-all-pending', requireReadWrite, async (req, res) => {
  */
 router.post('/reprocess-completed', requireReadWrite, async (req, res) => {
     try {
-        const count = await queueService.reprocessCompleted();
-        logger.info('Queued completed items for reprocessing', { count });
-        res.json({ success: true, count });
+        const result = await queueService.reprocessCompleted();
+        if (result?.success) {
+            logger.info('Queued completed items for reprocessing', { count: result.count });
+        }
+        sendBulkMutationResult(res, result);
     } catch (error) {
         logger.error('Failed to reprocess completed', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -373,7 +405,7 @@ router.post('/clear-and-resync', requireReadWrite, async (req, res) => {
     try {
         const result = await queueService.clearAndResync();
         logger.info('Cleared queue and triggered resync', result);
-        res.json({ success: true, ...result });
+        res.json(result);
     } catch (error) {
         logger.error('Failed to clear and resync', {
             error: error.message,
@@ -403,102 +435,20 @@ router.post('/clear-and-resync', requireReadWrite, async (req, res) => {
  */
 router.post('/tasks/:id/classify', requireReadWrite, async (req, res) => {
     try {
-        const taskId = parseInt(req.params.id);
+        const taskId = parsePositiveInteger(req.params.id);
         const { library_id, resolved_by = 'admin' } = req.body;
+        const libraryId = parsePositiveInteger(library_id);
 
-        if (!library_id) {
-            return res.status(400).json({ error: 'library_id is required' });
+        if (!taskId) {
+            return res.status(400).json({ error: 'Valid task id is required', code: 'invalid_task_id' });
         }
 
-        // Get the task details
-        const taskResult = await db.query(
-            'SELECT * FROM task_queue WHERE id = $1',
-            [taskId]
-        );
-
-        if (taskResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Task not found' });
+        if (!libraryId) {
+            return res.status(400).json({ error: 'Valid library_id is required', code: 'invalid_library_id' });
         }
 
-        const task = taskResult.rows[0];
-        const payload = typeof task.payload === 'string' ? JSON.parse(task.payload) : task.payload;
-
-        // Get library details
-        const libResult = await db.query('SELECT * FROM libraries WHERE id = $1', [library_id]);
-        if (libResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Library not found' });
-        }
-        const library = libResult.rows[0];
-
-        // Extract metadata from task payload
-        const metadata = payload.media || payload.metadata || payload;
-        const title = metadata.title || payload.title || 'Unknown';
-        const year = metadata.year || payload.year;
-        const tmdbId = metadata.tmdb_id || payload.tmdb_id;
-        const mediaType = metadata.media_type || library.media_type || 'movie';
-
-        // Create classification history entry with manual_classification method
-        const ragGraphExtractor = require('../services/ragGraphExtractor');
-        const graphRel = ragGraphExtractor.extract(metadata);
-
-        const insertResult = await db.query(
-            `INSERT INTO classification_history 
-             (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, director_name, primary_studio_name, genre_names, cast_ids, cast_names)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-             RETURNING id`,
-            [
-                tmdbId,
-                mediaType,
-                title,
-                year,
-                library_id,
-                library.name,
-                100, // Manual = 100% confidence
-                'manual_classification',
-                `Manually classified by ${resolved_by}`,
-                JSON.stringify(metadata),
-                'completed',
-                graphRel.director_name,
-                graphRel.primary_studio_name,
-                graphRel.genre_names,
-                graphRel.cast_ids,
-                graphRel.cast_names
-            ]
-        );
-
-        const classificationId = insertResult.rows[0].id;
-
-        // Mark the task as completed
-        await db.query(
-            `UPDATE task_queue SET status = 'completed', completed_at = NOW() WHERE id = $1`,
-            [taskId]
-        );
-
-        // Route to Radarr/Sonarr
-        const classificationService = require('../services/classification');
-        await classificationService.routeToArr(metadata, library);
-
-        // Store learning pattern for this tmdb_id
-        if (tmdbId) {
-            await db.query(
-                `INSERT INTO learning_patterns 
-                 (tmdb_id, media_type, library_id, pattern_type, confidence, metadata, created_by)
-                 VALUES ($1, $2, $3, 'exact_match', 100, $4, $5)
-                 ON CONFLICT (tmdb_id, media_type, pattern_type) 
-                 DO UPDATE SET library_id = $3, confidence = 100, metadata = $4, created_by = $5, updated_at = NOW()`,
-                [tmdbId, mediaType, library_id, JSON.stringify({ title, resolved_by }), resolved_by]
-            );
-        }
-
-        logger.info('Manually classified task', { taskId, classificationId, libraryId: library_id, title });
-
-        res.json({
-            success: true,
-            classificationId,
-            libraryId: library_id,
-            libraryName: library.name,
-            message: `Classified "${title}" to ${library.name}`
-        });
+        const result = await queueService.manualClassifyTask(taskId, libraryId, resolved_by);
+        sendMutationResult(res, result);
     } catch (error) {
         logger.error('Failed to manually classify task', { error: error.message });
         res.status(500).json({ error: error.message });
@@ -518,8 +468,7 @@ router.post('/tasks/:id/classify', requireReadWrite, async (req, res) => {
  */
 router.get('/retry-stats', async (req, res) => {
     try {
-        const enrichmentRetryService = require('../services/enrichmentRetryService');
-        const stats = await enrichmentRetryService.getStats();
+        const stats = await queueService.getEnrichmentRetryStats();
         res.json(stats);
     } catch (error) {
         logger.error('Failed to get retry stats', { error: error.message });
@@ -544,15 +493,33 @@ router.get('/retry-stats', async (req, res) => {
  *               enrichmentType:
  *                 type: string
  *                 default: tavily
+ *                 enum: [tavily, omdb]
  *     responses:
  *       200:
  *         description: Processing result
  */
 router.post('/retry-process', requireReadWrite, async (req, res) => {
     try {
-        const { limit = 50, enrichmentType = 'tavily' } = req.body;
-        const enrichmentRetryService = require('../services/enrichmentRetryService');
-        const result = await enrichmentRetryService.processRetryQueue(limit, enrichmentType);
+        const limit = parseLimit(req.body?.limit, 50, MAX_RETRY_PROCESS_LIMIT);
+        const enrichmentType = parseRetryEnrichmentType(req.body?.enrichmentType);
+
+        if (!limit) {
+            return res.status(400).json({
+                error: `Valid positive limit up to ${MAX_RETRY_PROCESS_LIMIT} is required`,
+                code: 'invalid_limit',
+                max: MAX_RETRY_PROCESS_LIMIT,
+            });
+        }
+
+        if (!enrichmentType) {
+            return res.status(400).json({
+                error: 'Valid enrichmentType is required',
+                code: 'invalid_enrichment_type',
+                allowed: Array.from(VALID_RETRY_ENRICHMENT_TYPES),
+            });
+        }
+
+        const result = await queueService.processEnrichmentRetryQueue(limit, enrichmentType);
         res.json(result);
     } catch (error) {
         logger.error('Failed to process retry queue', { error: error.message });
@@ -564,15 +531,14 @@ router.post('/retry-process', requireReadWrite, async (req, res) => {
  * @swagger
  * /api/queue/retry-backfill:
  *   post:
- *     summary: Backfill retry queue with items missing OMDb data
+ *     summary: Backfill Tavily retry queue with items missing OMDb data
  *     responses:
  *       200:
- *         description: Number of items queued
+ *         description: Number of items queued for Tavily fallback enrichment
  */
 router.post('/retry-backfill', requireReadWrite, async (req, res) => {
     try {
-        const enrichmentRetryService = require('../services/enrichmentRetryService');
-        const result = await enrichmentRetryService.backfillRetryQueue();
+        const result = await queueService.backfillEnrichmentRetryQueue();
         res.json(result);
     } catch (error) {
         logger.error('Failed to backfill retry queue', { error: error.message });
@@ -581,4 +547,3 @@ router.post('/retry-backfill', requireReadWrite, async (req, res) => {
 });
 
 module.exports = router;
-

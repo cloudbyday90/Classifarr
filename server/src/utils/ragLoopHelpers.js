@@ -27,6 +27,7 @@ const HIGH_IMPACT_FIELDS = Object.freeze([
 const RAG_LOOP_REASON_CODES = Object.freeze({
     FEATURE_DISABLED: 'feature_disabled',
     GATE_NOT_MET: 'gate_not_met',
+    MAX_PASSES_REACHED: 'max_passes_reached',
     POLICY_PROMPT_RISK_CLEAR: 'policy_prompt_risk_clear',
     POLICY_CONTEXT_MISSING: 'policy_context_missing',
     MISSING_TMDB_ID: 'missing_tmdb_id',
@@ -70,6 +71,7 @@ const TRACE_ALLOWED_STAGES = new Set([
     'retrieval_pass2',
     'policy_recheck',
     'ai_rerun',
+    'rag_candidate',
     'trace'
 ]);
 const TRACE_ALLOWED_TRIGGERS = new Set([
@@ -298,17 +300,31 @@ function isRetryableDbConflictError(error) {
     return classifyDbSqlState(error).retryable;
 }
 
+function hasActionablePolicyContext(policyResult = null) {
+    if (!policyResult || typeof policyResult !== 'object') {
+        return false;
+    }
+
+    const action = typeof policyResult.action === 'string'
+        ? policyResult.action.trim().toLowerCase()
+        : '';
+    const ranked = Array.isArray(policyResult.ranked) ? policyResult.ranked.filter(Boolean) : [];
+    const hasLibrary = !!policyResult.library;
+
+    if (action === 'prompt_select' || action === 'prompt_confirm') {
+        return true;
+    }
+
+    if ((action === 'auto_classify' || action === 'manual') && (hasLibrary || ranked.length > 0)) {
+        return true;
+    }
+
+    return hasLibrary || ranked.length > 0;
+}
+
 function resolvePolicyContextOrFallback(item = {}) {
     const policyResult = item.policyResult || null;
-    const hasContext = !!(
-        policyResult &&
-        typeof policyResult === 'object' &&
-        (
-            typeof policyResult.action === 'string' ||
-            Array.isArray(policyResult.ranked) ||
-            policyResult.library
-        )
-    );
+    const hasContext = hasActionablePolicyContext(policyResult);
 
     if (hasContext) {
         return {
@@ -582,10 +598,12 @@ function selectRetryStrategy(pass1Diagnostics = {}, metadataCompleteness = {}, c
     const hasConflict = pass1Diagnostics.conflict?.isConflict === true;
     const preferSemanticOnConflict = config.rag_retry_conflict_semantic_preferred !== false;
     const preferHybridOnSparseMetadata = config.rag_retry_sparse_metadata_prefers_hybrid !== false;
+    const useHybridOnRetry = config.rag_loop_use_hybrid_on_retry !== false;
+    const fallbackStrategy = useHybridOnRetry ? 'hybrid' : 'semantic';
 
     if (matchCount === 0 || topSimilarity < lowSignalFloor) {
         return {
-            strategy: 'hybrid',
+            strategy: fallbackStrategy,
             reason: 'low_signal',
             overrideApplied: false
         };
@@ -601,14 +619,14 @@ function selectRetryStrategy(pass1Diagnostics = {}, metadataCompleteness = {}, c
 
     if (metadataCompleteness.isSparse && preferHybridOnSparseMetadata) {
         return {
-            strategy: 'hybrid',
+            strategy: fallbackStrategy,
             reason: 'sparse_metadata',
             overrideApplied: false
         };
     }
 
     return {
-        strategy: 'hybrid',
+        strategy: fallbackStrategy,
         reason: 'auto_default',
         overrideApplied: false
     };
@@ -706,6 +724,7 @@ function comparePassResults({
     policyGate = null,
     pass1Diagnostics = {},
     pass2Diagnostics = {},
+    pass2Conflict = null,
     config = {}
 } = {}) {
     if (!baselineResult || !pass2Result) {
@@ -713,6 +732,16 @@ function comparePassResults({
             adopt: false,
             reason: 'missing_candidate',
             metrics: {}
+        };
+    }
+
+    if (pass2Conflict?.isConflict === true) {
+        return {
+            adopt: false,
+            reason: 'conflict_persists',
+            metrics: {
+                conflict: true
+            }
         };
     }
 
@@ -765,20 +794,20 @@ function resolveConflictDecision({
         };
     }
 
+    if (pass2Conflict?.isConflict === true) {
+        return {
+            resolvedResult: baselineResult,
+            source: 'baseline',
+            reason: 'conflict_persists'
+        };
+    }
+
     const policyUpgraded = isPolicyActionUpgrade(policyBefore, policyAfter);
     if (policyUpgraded && comparison?.adopt && pass2Result) {
         return {
             resolvedResult: pass2Result,
             source: 'policy',
             reason: 'policy_precedence'
-        };
-    }
-
-    if (pass2Conflict?.isConflict === true && !comparison?.adopt) {
-        return {
-            resolvedResult: baselineResult,
-            source: 'baseline',
-            reason: 'conflict_persists'
         };
     }
 
@@ -1072,6 +1101,15 @@ function shouldTriggerSecondPass({
         };
     }
 
+    const maxPasses = clamp(toNumber(config.rag_loop_max_passes, 2), 1, 2);
+    if (maxPasses < 2) {
+        return {
+            run: false,
+            trigger: null,
+            reason: RAG_LOOP_REASON_CODES.MAX_PASSES_REACHED
+        };
+    }
+
     if (policyResult?.action === 'prompt_select' && config.policy_recheck_below_prompt_threshold_enabled) {
         const skipWhenAiConfident = config.policy_recheck_skip_when_ai_confident_enabled !== false;
         const ranked = Array.isArray(policyResult?.ranked) ? policyResult.ranked : [];
@@ -1141,7 +1179,7 @@ function shouldTriggerSecondPass({
 
     const lowConfidenceThreshold = clamp(toNumber(config.rag_loop_low_confidence_threshold, 70), 0, 100);
 
-    if (!policyResult && aiResult && aiResult.needs_clarification !== true && toNumber(aiResult.confidence, 0) < lowConfidenceThreshold) {
+    if (!hasActionablePolicyContext(policyResult) && aiResult && aiResult.needs_clarification !== true && toNumber(aiResult.confidence, 0) < lowConfidenceThreshold) {
         return {
             run: true,
             trigger: 'ai_low_confidence',
@@ -1149,7 +1187,7 @@ function shouldTriggerSecondPass({
         };
     }
 
-    if (!policyResult && !aiResult && signalContext && toNumber(signalContext.confidence, 0) < 60) {
+    if (!hasActionablePolicyContext(policyResult) && !aiResult && signalContext && toNumber(signalContext.confidence, 0) < 60) {
         return {
             run: true,
             trigger: 'legacy_low_signal',
@@ -1270,7 +1308,7 @@ function isLearningEligible({
     userValidated = false,
     machineOnly = true
 } = {}) {
-    if (rolloutMode === 'shadow') {
+    if (rolloutMode === 'shadow' && !config.policy_learning_include_shadow_feedback) {
         return {
             eligible: false,
             reason: 'shadow_excluded'

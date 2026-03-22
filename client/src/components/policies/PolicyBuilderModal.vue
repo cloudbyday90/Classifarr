@@ -86,6 +86,12 @@
                 Suggestion score: {{ preset.suggestion_score ?? preset.match_score ?? 0 }}
               </div>
               <div
+                v-if="preset.source === 'custom'"
+                class="text-[11px] text-blue-300"
+              >
+                My Preset
+              </div>
+              <div
                 v-if="hasRuntimeSemanticsWarning(preset)"
                 class="text-[11px] text-amber-400"
               >
@@ -146,10 +152,7 @@
           <div class="flex-1 min-w-0">
             <div class="font-medium truncate">{{ preset.name }}</div>
             <div class="text-xs text-gray-400 truncate">{{ preset.description || preset.category }}</div>
-            <div
-              v-if="preset.source !== 'custom'"
-              class="text-[11px] text-gray-500 truncate"
-            >
+            <div class="text-[11px] text-gray-500 truncate">
               {{ formatUsageLabel(getPresetUsageCount(preset)) }}
             </div>
           </div>
@@ -527,6 +530,20 @@
               
               <div>
                 <label class="block text-sm font-medium mb-2">
+                  Profile: {{ Math.round(form.profile_weight * 100) }}%
+                </label>
+                <input 
+                  type="range" 
+                  v-model.number="form.profile_weight" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  class="w-full"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium mb-2">
                   Patterns: {{ Math.round(form.pattern_weight * 100) }}%
                 </label>
                 <input 
@@ -684,6 +701,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/api'
+import presetsApi from '@/api/presets'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 
@@ -733,9 +751,10 @@ const form = ref({
   trust_patterns: true,
   trust_rag: true,
   trust_history: true,
-  preset_weight: 0.40,
-  pattern_weight: 0.30,
-  rag_weight: 0.20,
+  preset_weight: 0.35,
+  profile_weight: 0.25,
+  pattern_weight: 0.15,
+  rag_weight: 0.15,
   history_weight: 0.10,
   combination_mode: 'best_match',
 })
@@ -759,7 +778,7 @@ const availableRatings = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV
 const availableGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']
 
 const totalWeight = computed(() => {
-  return form.value.preset_weight + form.value.pattern_weight + 
+  return form.value.preset_weight + form.value.profile_weight + form.value.pattern_weight + 
          form.value.rag_weight + form.value.history_weight
 })
 
@@ -879,11 +898,16 @@ const categoryTabs = computed(() => {
     { value: 'all', label: 'All', count: allPresets.value.length }
   ];
   
-  // Get unique categories from presets
+  const customCount = allPresets.value.filter(p => p.source === 'custom').length;
+  if (customCount > 0) {
+    categories.push({ value: 'custom', label: 'My Presets', count: customCount });
+  }
+
+  // Get unique categories from builtin presets
   const categoryCounts = {};
   allPresets.value.forEach(p => {
     const cat = p.category || 'uncategorized';
-    if (cat !== 'custom') {
+    if (p.source !== 'custom' && cat !== 'custom') {
       categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
     }
   });
@@ -895,12 +919,6 @@ const categoryTabs = computed(() => {
       count 
     });
   });
-  
-  // Add "My Presets" tab for custom presets
-  const customCount = allPresets.value.filter(p => p.source === 'custom').length;
-  if (customCount > 0) {
-    categories.push({ value: 'custom', label: 'My Presets', count: customCount });
-  }
   
   return categories;
 });
@@ -1101,9 +1119,10 @@ watch(() => props.policy, (newPolicy) => {
       trust_patterns: newPolicy.trust_patterns !== false,
       trust_rag: newPolicy.trust_rag !== false,
       trust_history: newPolicy.trust_history !== false,
-      preset_weight: newPolicy.preset_weight ?? 0.40,
-      pattern_weight: newPolicy.pattern_weight ?? 0.30,
-      rag_weight: newPolicy.rag_weight ?? 0.20,
+      preset_weight: newPolicy.preset_weight ?? 0.35,
+      profile_weight: newPolicy.profile_weight ?? 0.25,
+      pattern_weight: newPolicy.pattern_weight ?? 0.15,
+      rag_weight: newPolicy.rag_weight ?? 0.15,
       history_weight: newPolicy.history_weight ?? 0.10,
       combination_mode: newPolicy.combination_mode || 'best_match',
     }
@@ -1150,7 +1169,7 @@ const fetchLibraries = async () => {
 
 const fetchPresets = async () => {
   try {
-    const response = await api.get('/policies/presets/all')
+    const response = await presetsApi.getAttachablePresets()
     allPresets.value = response.data
   } catch (error) {
     console.error('Failed to fetch presets:', error)
@@ -1429,9 +1448,10 @@ const resetForm = () => {
     trust_patterns: true,
     trust_rag: true,
     trust_history: true,
-    preset_weight: 0.40,
-    pattern_weight: 0.30,
-    rag_weight: 0.20,
+    preset_weight: 0.35,
+    profile_weight: 0.25,
+    pattern_weight: 0.15,
+    rag_weight: 0.15,
     history_weight: 0.10,
     combination_mode: 'best_match',
   }

@@ -35,8 +35,12 @@ var mockLogger = {
 jest.mock('../utils/logger', () => ({
   createLogger: () => mockLogger,
 }));
+jest.mock('../services/classificationOutcomeService', () => ({
+  recordOutcome: jest.fn().mockResolvedValue({ updated: true })
+}));
 
 const db = require('../config/database');
+const classificationOutcomeService = require('../services/classificationOutcomeService');
 const clarificationService = require('../services/clarificationService');
 
 function getRequiredBindCount(sql) {
@@ -602,6 +606,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
           .mockResolvedValueOnce({
             rows: [{
@@ -635,6 +640,14 @@ describe('ClarificationService', () => {
 
       const metadataParam = JSON.parse(learningPatternCall[1][3]);
       expect(metadataParam.selected_option).toBe('Yes');
+      expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(1, expect.objectContaining({
+        type: 'resolved',
+        source: 'policy_question',
+        actor: 'test-user',
+        selected_option: 'Yes',
+        final_library_id: 2,
+        final_library_name: expect.any(String)
+      }), { client: mockClient });
     });
 
     test('should handle policy_question as JSONB object from database', async () => {
@@ -658,6 +671,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
           .mockResolvedValueOnce({ 
             rows: [{ 
@@ -696,6 +710,11 @@ describe('ClarificationService', () => {
       const metadataParam = JSON.parse(learningPatternCall[1][3]);
       expect(metadataParam.original_question).toBe('Is this a documentary?');
       expect(metadataParam.selected_option).toBe('No');
+
+      const updateCall = mockClient.query.mock.calls.find(call =>
+        call[0] && call[0].includes('UPDATE classification_history')
+      );
+      expect(updateCall[0]).toContain('policy_question = NULL');
     });
 
     test('should handle policy_question as string (legacy data)', async () => {
@@ -716,6 +735,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
           .mockResolvedValueOnce({ 
             rows: [{ 
@@ -772,6 +792,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
           .mockResolvedValueOnce({ 
             rows: [{ 
@@ -825,6 +846,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
           .mockResolvedValueOnce({ 
             rows: [{ 
@@ -880,6 +902,7 @@ describe('ClarificationService', () => {
         query: createStrictQueryMock([
           { rows: [] }, // BEGIN
           { rows: [mockClassification] }, // Get classification
+          { rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }, // selected library
           { rows: [] }, // UPDATE classification_history
           { rows: [{ id: 1, tmdb_id: 99999, library_id: 5, pattern_type: 'exact_match', confidence: 100 }] }, // INSERT exact_match
           { rows: [] }, // advisory lock: documentary
@@ -919,6 +942,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 99999, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
@@ -971,6 +995,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
@@ -1020,6 +1045,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
@@ -1066,6 +1092,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
@@ -1106,6 +1133,7 @@ describe('ClarificationService', () => {
         query: jest.fn()
           .mockResolvedValueOnce({ rows: [] }) // BEGIN
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
+          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 77777, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
@@ -1203,6 +1231,148 @@ describe('ClarificationService', () => {
       ).rejects.toMatchObject({
         message: 'Invalid library_id',
         statusCode: 400
+      });
+    });
+
+    test('rejects inactive selected libraries', async () => {
+      const mockClassification = {
+        id: 1,
+        title: 'Test Movie',
+        media_type: 'movie',
+        policy_question: null,
+        metadata: '{}'
+      };
+
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // locked pending lookup
+          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: false }] }) // selected library
+          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      await expect(
+        clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'admin', true)
+      ).rejects.toMatchObject({
+        message: 'Selected library is inactive',
+        statusCode: 400,
+        code: 'inactive_library'
+      });
+    });
+
+    test('rejects selected libraries with mismatched media types', async () => {
+      const mockClassification = {
+        id: 1,
+        title: 'Test Movie',
+        media_type: 'movie',
+        policy_question: null,
+        metadata: '{}'
+      };
+
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // locked pending lookup
+          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'TV Shows', media_type: 'tv', is_active: true }] }) // selected library
+          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      await expect(
+        clarificationService.resolvePolicyQuestion(1, 5, 'TV Shows', 'admin', true)
+      ).rejects.toMatchObject({
+        message: 'Selected library is not valid for this media type',
+        statusCode: 400,
+        code: 'library_media_type_mismatch'
+      });
+    });
+
+    test('rejects selected libraries that are no longer valid options for the current policy question', async () => {
+      const mockClassification = {
+        id: 1,
+        title: 'Test Movie',
+        media_type: 'movie',
+        policy_question: {
+          question: 'Which library should this go to?',
+          options: [
+            { label: 'Movies', library_id: 5 }
+          ],
+          meta: {
+            question_context: {
+              version: '2026-03-21T00:00:00.000Z',
+              policy_ids: [1],
+              library_ids: [5]
+            }
+          }
+        },
+        metadata: '{}'
+      };
+
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // locked pending lookup
+          .mockResolvedValueOnce({ rows: [{ id: 6, name: 'Family', media_type: 'movie', is_active: true }] }) // selected library
+          .mockResolvedValueOnce({ rows: [{ context_version: '2026-03-21T00:00:00.000Z' }] }) // current context
+          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      await expect(
+        clarificationService.resolvePolicyQuestion(1, 6, 'Family', 'admin', true)
+      ).rejects.toMatchObject({
+        message: 'Selected library is no longer valid for this policy question',
+        statusCode: 400,
+        code: 'invalid_policy_option'
+      });
+    });
+
+    test('rejects stale policy questions before applying a resolution', async () => {
+      const mockClassification = {
+        id: 1,
+        title: 'Test Movie',
+        media_type: 'movie',
+        policy_question: {
+          question: 'Which library should this go to?',
+          options: [
+            { label: 'Movies', library_id: 5 }
+          ],
+          meta: {
+            question_context: {
+              version: '2026-03-20T00:00:00.000Z',
+              policy_ids: [1],
+              library_ids: [5]
+            }
+          }
+        },
+        metadata: '{}'
+      };
+
+      const mockClient = {
+        query: jest.fn()
+          .mockResolvedValueOnce({ rows: [] }) // BEGIN
+          .mockResolvedValueOnce({ rows: [mockClassification] }) // locked pending lookup
+          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
+          .mockResolvedValueOnce({ rows: [{ context_version: '2026-03-21T00:00:00.000Z' }] }) // current context
+          .mockResolvedValueOnce({ rows: [] }), // ROLLBACK
+        release: jest.fn()
+      };
+
+      db.pool.connect.mockResolvedValueOnce(mockClient);
+
+      await expect(
+        clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'admin', true)
+      ).rejects.toMatchObject({
+        message: 'Policy question is stale and must be retried',
+        statusCode: 409,
+        code: 'policy_question_stale'
       });
     });
   });

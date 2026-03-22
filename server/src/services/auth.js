@@ -30,6 +30,7 @@ const SESSION_EXPIRY_HOURS = 48;
 const REMEMBER_ME_EXPIRY_DAYS = 30;
 const MAX_FAILED_LOGINS = 10;
 const LOCKOUT_DURATION_MINUTES = 15;
+let nonPersistentAccessInvalidBeforeMs = Date.now();
 
 // Pre-computed at startup so authenticate() always spends ~the same time in
 // bcrypt.compare regardless of whether the username exists. This prevents
@@ -91,14 +92,17 @@ async function getJWTSecret() {
   }
 }
 
-async function generateAccessToken(user) {
+async function generateAccessToken(user, rememberMe = false) {
   const secret = await getJWTSecret();
+  const issuedAtMs = Date.now();
 
   const payload = {
     id: user.id,
     username: user.username,
     role: user.role,
-    type: 'access'
+    type: 'access',
+    persistent_session: rememberMe,
+    issued_at_ms: issuedAtMs
   };
 
   return jwt.sign(payload, secret, {
@@ -217,7 +221,18 @@ async function verifyToken(token) {
   // Let the original JsonWebTokenError / TokenExpiredError propagate so callers
   // can distinguish an expired-but-valid token (retriable with a refresh token)
   // from a genuinely malformed / wrong-secret token (not retriable).
-  return jwt.verify(token, secret);
+  const decoded = jwt.verify(token, secret);
+
+  if (
+    decoded?.type === 'access' &&
+    decoded.persistent_session !== true &&
+    typeof decoded.issued_at_ms === 'number' &&
+    decoded.issued_at_ms < nonPersistentAccessInvalidBeforeMs
+  ) {
+    throw new jwt.TokenExpiredError('jwt expired', new Date(nonPersistentAccessInvalidBeforeMs));
+  }
+
+  return decoded;
 }
 
 async function auditLog(userId, action, ipAddress, userAgent, metadata = {}) {
@@ -322,10 +337,15 @@ function getRefreshTokenCookieOptions(isSecure = false, rememberMe = false) {
 }
 
 async function revokeAllRefreshTokensOnStartup() {
+  nonPersistentAccessInvalidBeforeMs = Date.now();
   const result = await db.query(
     `UPDATE refresh_tokens SET revoked_at = NOW() WHERE revoked_at IS NULL AND remember_me = false`
   );
   return result.rowCount;
+}
+
+function getNonPersistentAccessInvalidBeforeMs() {
+  return nonPersistentAccessInvalidBeforeMs;
 }
 
 module.exports = {
@@ -341,6 +361,7 @@ module.exports = {
   revokeAllRefreshTokensOnStartup,
   cleanupExpiredTokens,
   verifyToken,
+  getNonPersistentAccessInvalidBeforeMs,
   auditLog,
   authenticate,
   getJWTSecret,

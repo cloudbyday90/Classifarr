@@ -212,6 +212,24 @@ describe('API Key Authentication Middleware', () => {
       expect(next).toHaveBeenCalled();
     });
 
+    test('should prefer Authorization bearer token over stale access_token cookie', async () => {
+      const mockUser = {
+        id: 1,
+        username: 'testuser',
+        role: 'admin'
+      };
+
+      req.cookies = { access_token: 'stale-cookie-token' };
+      req.headers['authorization'] = 'Bearer validtoken123';
+      authService.verifyToken.mockResolvedValue(mockUser);
+
+      await authenticateTokenOrApiKey(req, res, next);
+
+      expect(authService.verifyToken).toHaveBeenCalledWith('validtoken123');
+      expect(req.user).toEqual(mockUser);
+      expect(next).toHaveBeenCalled();
+    });
+
     test('should reject when neither API key nor JWT token is present', async () => {
       await authenticateTokenOrApiKey(req, res, next);
 

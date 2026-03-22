@@ -100,6 +100,24 @@ describe('AIResponseParser', () => {
             const result = aiResponseParser.parseConfirmFormat(response, context);
             expect(result).toBeNull();
         });
+
+        it('turns verify-mode CONFIRM disagreement into clarification instead of confirming a different library', () => {
+            const response = 'CONFIRM|2|Drama signals are stronger than the suggested action profile';
+            const context = {
+                libraries: mockLibraries,
+                signalContext: mockSignalContext,
+                metadata: mockMetadata
+            };
+
+            const result = aiResponseParser.parse(response, context, { mode: 'verify' });
+
+            expect(result.format).toBe('verify_disagreement');
+            expect(result.needs_clarification).toBe(true);
+            expect(result.library).toEqual(mockSignalContext.suggestedLibrary);
+            expect(result.policy_question.meta.conflicting_library_name).toBe('Drama Movies');
+            expect(result.policy_question.options[0].library_name).toBe('Action Movies');
+            expect(result.policy_question.options.map(option => option.library_name)).toContain('Drama Movies');
+        });
     });
 
     describe('parseConfidentFormat', () => {
@@ -711,6 +729,29 @@ describe('AIResponseParser', () => {
             expect(result.confidence).toBe(50);
             expect(result.clarification.options.length).toBeLessThanOrEqual(4);
             expect(result.clarification.question).toContain('Test Movie');
+        });
+
+        it('keeps the default suggested library inside the selectable fallback options', () => {
+            const libraries = [
+                { id: 1, name: 'Action', media_type: 'movie' },
+                { id: 2, name: 'Drama', media_type: 'movie' },
+                { id: 3, name: 'Family', media_type: 'movie' },
+                { id: 4, name: 'Comedy', media_type: 'movie' },
+                { id: 5, name: 'Movies', media_type: 'movie' }
+            ];
+
+            const result = aiResponseParser.createFallbackResult(libraries, {
+                title: 'Fallback Test',
+                media_type: 'movie'
+            });
+
+            expect(result.library).toEqual(expect.objectContaining({ id: 5, name: 'Movies' }));
+            expect(result.clarification.options[0]).toEqual(expect.objectContaining({
+                library_id: 5,
+                library_name: 'Movies'
+            }));
+            expect(result.clarification.options.map(option => option.library_id)).toContain(5);
+            expect(result.clarification.options).toHaveLength(4);
         });
 
         it('should handle missing metadata', () => {

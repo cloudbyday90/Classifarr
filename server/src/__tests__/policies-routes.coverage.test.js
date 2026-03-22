@@ -44,9 +44,12 @@ describe('Policies routes coverage', () => {
   });
 
   describe('GET /api/policies/presets/all', () => {
-    test('returns presets with category and search filters', async () => {
+    test('returns attachable presets with category and search filters', async () => {
       db.query.mockResolvedValueOnce({
-        rows: [{ id: 1, name: 'Family', usage_count: 2 }]
+        rows: [
+          { id: 1, name: 'Family', usage_count: 2, source: 'builtin' },
+          { id: 9, name: 'Family Remix', usage_count: 1, source: 'custom' }
+        ]
       });
 
       const res = await request(app)
@@ -56,8 +59,25 @@ describe('Policies routes coverage', () => {
       const [sql, params] = db.query.mock.calls[0];
       expect(sql).toContain('cp.category = $1');
       expect(sql).toContain('cp.name ILIKE $2');
+      expect(sql).toContain('UNION ALL');
       expect(params).toEqual(['audience', '%family%']);
+      expect(res.body).toHaveLength(2);
+      expect(res.body.map((preset) => preset.source)).toEqual(['builtin', 'custom']);
+    });
+
+    test('supports builtin-only mode when include_custom is false', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ id: 1, name: 'Family', usage_count: 2, source: 'builtin' }]
+      });
+
+      const res = await request(app)
+        .get('/api/policies/presets/all?include_custom=false')
+        .expect(200);
+
+      const [sql] = db.query.mock.calls[0];
+      expect(sql).not.toContain('UNION ALL');
       expect(res.body).toHaveLength(1);
+      expect(res.body[0].source).toBe('builtin');
     });
 
     test('returns 500 on database failure', async () => {
@@ -152,6 +172,47 @@ describe('Policies routes coverage', () => {
       expect(Array.isArray(res.body.suggestions[0].suggestion_reasons)).toBe(true);
       expect(res.body.suggestions[0].match_score).toBe(res.body.suggestions[0].suggestion_score);
       expect(Array.isArray(res.body.suggestions[0].match_reasons)).toBe(true);
+    });
+
+    test('includes attachable custom presets in suggestion scoring', async () => {
+      db.query
+        .mockResolvedValueOnce({
+          rows: [{ id: 7, name: 'Anime Family Movies', media_type: 'movie' }]
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 10,
+              key: 'anime',
+              name: 'Anime',
+              description: 'Animation and anime content',
+              icon: 'sparkles',
+              category: 'genre',
+              signals: { genres: { require_any: ['Animation'], prefer: ['Family'] } },
+              is_system: true,
+              display_order: 1,
+              source: 'builtin'
+            },
+            {
+              id: 21,
+              key: 'custom_anime_family',
+              name: 'Anime Family Remix',
+              description: 'My anime-focused family preset',
+              icon: 'gear',
+              category: 'custom',
+              signals: { genres: { prefer: ['Animation', 'Family'] } },
+              is_system: false,
+              display_order: 0,
+              source: 'custom'
+            }
+          ]
+        });
+
+      const res = await request(app)
+        .get('/api/policies/presets/suggest/7')
+        .expect(200);
+
+      expect(res.body.suggestions.some((suggestion) => suggestion.id === 21 && suggestion.source === 'custom')).toBe(true);
     });
 
     test('does not produce substring false positives from stopwords', async () => {
@@ -409,12 +470,35 @@ describe('Policies routes coverage', () => {
         .send({
           library_id: 1,
           name: 'Bad weights',
+          profile_weight: 0.25,
           preset_weight: 0.5,
           pattern_weight: 0.3,
           rag_weight: 0.3,
           history_weight: 0.1
         })
         .expect(400);
+
+      await request(app)
+        .post('/api/policies')
+        .send({
+          library_id: 1,
+          name: 'Bad preset attachment weight',
+          presets: [{ preset_id: 9, weight: -1 }]
+        })
+        .expect(400);
+    });
+
+    test('rejects unsupported combination modes on create', async () => {
+      const res = await request(app)
+        .post('/api/policies')
+        .send({
+          library_id: 1,
+          name: 'Bad mode',
+          combination_mode: 'consensus'
+        })
+        .expect(400);
+
+      expect(res.body.error).toContain('combination_mode');
     });
 
     test('creates policy with presets and commits transaction', async () => {
@@ -436,9 +520,10 @@ describe('Policies routes coverage', () => {
         .send({
           library_id: 4,
           name: 'Family Policy',
-          preset_weight: 0.4,
-          pattern_weight: 0.3,
-          rag_weight: 0.2,
+          preset_weight: 0.35,
+          profile_weight: 0.25,
+          pattern_weight: 0.15,
+          rag_weight: 0.15,
           history_weight: 0.1,
           presets: [
             { preset_id: 5, weight: 1.0 },
@@ -486,8 +571,41 @@ describe('Policies routes coverage', () => {
       expect(db.query).not.toHaveBeenCalled();
     });
 
+    test('rejects unsupported combination modes on update', async () => {
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({ combination_mode: 'consensus' })
+        .expect(400);
+
+      expect(res.body.error).toContain('combination_mode');
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
+    test('rejects invalid profile_weight values on update', async () => {
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({ profile_weight: 1.2 })
+        .expect(400);
+
+      expect(res.body.error).toContain('profile_weight');
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
+    test('rejects non-positive preset attachment weights on update', async () => {
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({ presets: [{ preset_id: 3, weight: 0 }] })
+        .expect(400);
+
+      expect(res.body.error).toContain('presets[0].weight');
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
     test('updates policy with preset replacement', async () => {
       db.query
+        .mockResolvedValueOnce({
+          rows: [{ id: 8, preset_weight: 0.35, profile_weight: 0.25, pattern_weight: 0.15, rag_weight: 0.15, history_weight: 0.1 }]
+        }) // SELECT existing policy weights
         .mockResolvedValueOnce({}) // UPDATE policy
         .mockResolvedValueOnce({}) // DELETE presets
         .mockResolvedValueOnce({}) // INSERT preset
@@ -502,9 +620,10 @@ describe('Policies routes coverage', () => {
         .put('/api/policies/8')
         .send({
           name: 'Updated',
-          preset_weight: 0.4,
-          pattern_weight: 0.3,
-          rag_weight: 0.2,
+          preset_weight: 0.35,
+          profile_weight: 0.25,
+          pattern_weight: 0.15,
+          rag_weight: 0.15,
           history_weight: 0.1,
           presets: [{ preset_id: 3, weight: 2.0 }]
         })
@@ -515,10 +634,22 @@ describe('Policies routes coverage', () => {
       expect(res.body.presets).toHaveLength(1);
     });
 
+    test('rejects partial updates that break merged weight totals', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ id: 8, preset_weight: 0.35, profile_weight: 0.25, pattern_weight: 0.15, rag_weight: 0.15, history_weight: 0.1 }]
+      });
+
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({ preset_weight: 0.9 })
+        .expect(400);
+
+      expect(res.body.error).toContain('Weights must sum to 1.0');
+      expect(db.withTransaction).not.toHaveBeenCalled();
+    });
+
     test('returns 404 after update when policy no longer exists', async () => {
-      db.query
-        .mockResolvedValueOnce({}) // UPDATE policy
-        .mockResolvedValueOnce({ rows: [] }); // SELECT updated policy — not found
+      db.query.mockResolvedValueOnce({ rows: [] }); // SELECT existing policy — not found
 
       await request(app)
         .put('/api/policies/404')
@@ -618,6 +749,35 @@ describe('Policies routes coverage', () => {
       expect(res.body.preset_id).toBe(8);
       expect(db.query.mock.calls[1][1][3]).toEqual({
         ratings: ['PG'],
+        language: { require_any: ['sv'], strict: true }
+      });
+    });
+
+    test('rejects non-positive preset attachment weights', async () => {
+      await request(app)
+        .post('/api/policies/22/presets')
+        .send({ preset_id: 8, weight: -1 })
+        .expect(400);
+    });
+
+    test('accepts custom_signals alias when attaching a preset', async () => {
+      db.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{ policy_id: 22, preset_id: 8, weight: 1.0 }]
+        });
+
+      await request(app)
+        .post('/api/policies/22/presets')
+        .send({
+          preset_id: 8,
+          custom_signals: {
+            language: { require_any: ['sv'], strict: true }
+          }
+        })
+        .expect(201);
+
+      expect(db.query.mock.calls[1][1][3]).toEqual({
         language: { require_any: ['sv'], strict: true }
       });
     });

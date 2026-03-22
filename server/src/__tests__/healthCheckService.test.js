@@ -96,4 +96,55 @@ describe('healthCheckService.checkImageEmbeddings', () => {
 
         expect(result.status).toBe('disconnected');
     });
+
+    test('returns degraded when local image embeddings are reachable but not ready', async () => {
+        db.query.mockResolvedValueOnce({
+            rows: [{
+                rag_image_weight: 0.3,
+                image_embedding_provider_mode: 'separate_local',
+                image_embedding_local_host: 'image-embedder',
+                image_embedding_local_port: 11434,
+                image_embedding_cloud_provider: null,
+                image_embedding_cloud_api_key: null,
+                image_embedding_models_cache_updated_at: '2026-03-15T00:00:00.000Z'
+            }]
+        });
+
+        axios.get
+            .mockResolvedValueOnce({ status: 200, data: { status: 'ok' } })
+            .mockResolvedValueOnce({ status: 200, data: { ready: false, default_model_loaded: false } });
+
+        const result = await healthCheckService.checkImageEmbeddings();
+
+        expect(result.status).toBe('degraded');
+        expect(result.readiness).toBe('warming_up');
+        expect(result.ready).toBe(false);
+    });
+
+    test('stays connected when local health is good and /ready is unavailable', async () => {
+        db.query.mockResolvedValueOnce({
+            rows: [{
+                rag_image_weight: 0.3,
+                image_embedding_provider_mode: 'separate_local',
+                image_embedding_local_host: 'image-embedder',
+                image_embedding_local_port: 11434,
+                image_embedding_cloud_provider: null,
+                image_embedding_cloud_api_key: null,
+                image_embedding_models_cache_updated_at: '2026-03-15T00:00:00.000Z'
+            }]
+        });
+
+        const readyError = new Error('Not found');
+        readyError.response = { status: 404 };
+
+        axios.get
+            .mockResolvedValueOnce({ status: 200, data: { status: 'ok' } })
+            .mockRejectedValueOnce(readyError);
+
+        const result = await healthCheckService.checkImageEmbeddings();
+
+        expect(result.status).toBe('connected');
+        expect(result.readiness).toBe('unknown');
+        expect(result.ready).toBeNull();
+    });
 });

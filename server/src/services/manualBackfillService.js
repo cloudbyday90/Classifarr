@@ -20,8 +20,15 @@ const logger = createLogger('ManualBackfillService');
  */
 class ManualBackfillService {
     constructor() {
-        this.state = {
-            status: 'idle', // 'idle' | 'running' | 'paused' | 'completed'
+        this.state = this.createInitialState();
+        this.isProcessing = false; // Flag to prevent concurrent runBackfill() calls
+        this._lockClient = null;   // Dedicated client holding the session advisory lock
+        this._activeRunPromise = null;
+    }
+
+    createInitialState() {
+        return {
+            status: 'idle', // 'idle' | 'running' | 'paused' | 'cancelling' | 'completed' | 'failed'
             processed: 0,
             total: 0,
             startTime: null,
@@ -31,8 +38,72 @@ class ManualBackfillService {
             runId: null,
             includeImage: false
         };
-        this.isProcessing = false; // Flag to prevent concurrent runBackfill() calls
-        this._lockClient = null;   // Dedicated client holding the session advisory lock
+    }
+
+    async tryAcquireSessionLock(lockClient, lockKey, message) {
+        const { rows } = await lockClient.query(
+            'SELECT pg_try_advisory_lock($1) AS acquired',
+            [lockKey]
+        );
+        if (!rows[0].acquired) {
+            throw new Error(message);
+        }
+    }
+
+    async acquireLock() {
+        if (this._lockClient) {
+            return this._lockClient;
+        }
+
+        const lockClient = await db.pool.connect();
+        let released = false;
+        const acquiredLocks = [];
+        try {
+            await this.tryAcquireSessionLock(
+                lockClient,
+                DB_ADVISORY_LOCKS.BACKFILL_OWNER,
+                'Another backfill mode is already running'
+            );
+            acquiredLocks.push(DB_ADVISORY_LOCKS.BACKFILL_OWNER);
+            await this.tryAcquireSessionLock(
+                lockClient,
+                DB_ADVISORY_LOCKS.MANUAL_BACKFILL,
+                'Backfill already running in another process'
+            );
+            acquiredLocks.push(DB_ADVISORY_LOCKS.MANUAL_BACKFILL);
+
+            this._lockClient = lockClient;
+            return lockClient;
+        } catch (error) {
+            if (!released && this._lockClient !== lockClient) {
+                for (const lockKey of acquiredLocks.reverse()) {
+                    await lockClient.query('SELECT pg_advisory_unlock($1)', [lockKey]).catch(() => {});
+                }
+                lockClient.release();
+            }
+            logger.info('Manual backfill skipped: advisory lock held by another process', {
+                error: error.message
+            });
+            throw error;
+        }
+    }
+
+    async releaseLock(context = 'unlock advisory lock') {
+        if (!this._lockClient) {
+            return;
+        }
+
+        const lockClient = this._lockClient;
+        this._lockClient = null;
+        const lockKeys = [
+            DB_ADVISORY_LOCKS.MANUAL_BACKFILL,
+            DB_ADVISORY_LOCKS.BACKFILL_OWNER
+        ];
+        for (const lockKey of lockKeys) {
+            await lockClient.query('SELECT pg_advisory_unlock($1)', [lockKey])
+                .catch((unlockErr) => logger.error(`Failed to ${context}`, { error: unlockErr.message, lockKey }));
+        }
+        lockClient.release();
     }
 
     /**
@@ -54,12 +125,62 @@ class ManualBackfillService {
         });
     }
 
+    resolveBatchSize(options = {}, configuredBatchSize = null) {
+        const candidate = options.batchSize ?? options.limit ?? configuredBatchSize ?? 50;
+        const parsed = Number(candidate);
+        if (!Number.isInteger(parsed) || parsed <= 0) {
+            throw new Error('batchSize must be a positive integer');
+        }
+        return parsed;
+    }
+
+    launchTrackedRun(errorLogMessage) {
+        const runPromise = this.runBackfill()
+            .catch(error => {
+                logger.error(errorLogMessage, { error: error.message });
+                this.state.error = error.message;
+                this.state.status = 'failed';
+            })
+            .finally(() => {
+                if (this._activeRunPromise === runPromise) {
+                    this._activeRunPromise = null;
+                }
+            });
+
+        this._activeRunPromise = runPromise;
+        return runPromise;
+    }
+
+    async syncTrackedTotal(currentPending, { persist = true } = {}) {
+        const pendingCount = Number(currentPending) || 0;
+        const dynamicTotal = this.state.processed + Math.max(0, pendingCount);
+        const nextTotal = Math.max(this.state.total, dynamicTotal);
+
+        if (nextTotal === this.state.total) {
+            return this.state.total;
+        }
+
+        this.state.total = nextTotal;
+        this.updateETA();
+
+        if (persist && this.state.runId) {
+            await db.query(
+                'UPDATE backfill_runs SET total = $1, processed = $2 WHERE id = $3',
+                [this.state.total, this.state.processed, this.state.runId]
+            );
+        }
+
+        return this.state.total;
+    }
+
     /**
      * Start manual backfill
      */
     async start(options = {}) {
         // Check if RAG is enabled before starting
-        const configResult = await db.query('SELECT rag_enabled FROM ai_provider_config WHERE id = 1');
+        const configResult = await db.query(
+            'SELECT rag_enabled, manual_backfill_batch_size FROM ai_provider_config WHERE id = 1'
+        );
         if (configResult.rows.length === 0) {
             throw new Error('RAG configuration not found. Complete setup in Settings before running backfill.');
         }
@@ -67,26 +188,16 @@ class ManualBackfillService {
             throw new Error('RAG is not enabled. Please enable RAG in settings before running backfill.');
         }
 
-        if (this.state.status === 'running') {
+        if (['running', 'paused', 'cancelling'].includes(this.state.status) || this._activeRunPromise) {
             throw new Error('Backfill already running');
         }
 
         // Advisory lock guard: prevents split-brain races in multi-process deployments.
         // Session-level lock is acquired here and held until runBackfill() completes.
-        const lockClient = await db.pool.connect();
-        const { rows: lockRows } = await lockClient.query(
-            'SELECT pg_try_advisory_lock($1) AS acquired',
-            [DB_ADVISORY_LOCKS.MANUAL_BACKFILL]
-        );
-        if (!lockRows[0].acquired) {
-            lockClient.release();
-            logger.info('Manual backfill skipped: advisory lock held by another process');
-            throw new Error('Backfill already running in another process');
-        }
-        this._lockClient = lockClient;
+        await this.acquireLock();
 
         try {
-            this.state.batchSize = options.batchSize || 50;
+            this.state.batchSize = this.resolveBatchSize(options, configResult.rows[0].manual_backfill_batch_size);
             this.state.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
             this.state.total = await this.getPendingCount(this.state.includeImage);
             this.state.processed = 0;
@@ -109,19 +220,12 @@ class ManualBackfillService {
             this.state.runId = runResult.rows[0].id;
         } catch (setupError) {
             // Release the lock if setup fails before runBackfill() is called
-            await this._lockClient.query('SELECT pg_advisory_unlock($1)', [DB_ADVISORY_LOCKS.MANUAL_BACKFILL])
-                .catch((unlockErr) => logger.error('Failed to unlock advisory lock during setup error', { error: unlockErr.message }));
-            this._lockClient.release();
-            this._lockClient = null;
+            await this.releaseLock('unlock advisory lock during setup error');
             throw setupError;
         }
 
         // Run in background; lock is released in runBackfill()'s finally block
-        this.runBackfill().catch(error => {
-            logger.error('Manual backfill error', { error: error.message });
-            this.state.error = error.message;
-            this.state.status = 'failed';
-        });
+        this.launchTrackedRun('Manual backfill error');
 
         return await this.getStatus();
     }
@@ -155,6 +259,9 @@ class ManualBackfillService {
                     this.state.error = 'Circuit breaker OPEN - too many failures. Please reset and try again.';
                     break;
                 }
+
+                const currentPending = await this.getPendingCount(this.state.includeImage);
+                await this.syncTrackedTotal(currentPending);
 
                 const pending = await this.getPendingEmbeddings(this.state.batchSize, this.state.includeImage);
 
@@ -210,6 +317,21 @@ class ManualBackfillService {
                 }
             }
 
+            if (this.state.status === 'cancelling') {
+                await db.query(`
+                    UPDATE backfill_runs
+                    SET status = 'cancelled',
+                        completed_at = NOW(),
+                        processed = $1,
+                        total = $2,
+                        error = $3
+                    WHERE id = $4
+                `, [this.state.processed, this.state.total, this.state.error, this.state.runId]);
+
+                logger.info('Manual backfill cancelled', { processed: this.state.processed });
+                return;
+            }
+
             if (this.state.status === 'running') {
                 this.state.status = 'completed';
 
@@ -217,9 +339,10 @@ class ManualBackfillService {
                     UPDATE backfill_runs 
                     SET status = 'completed', 
                         completed_at = NOW(),
-                        processed = $1
-                    WHERE id = $2
-                `, [this.state.processed, this.state.runId]);
+                        processed = $1,
+                        total = $2
+                    WHERE id = $3
+                `, [this.state.processed, this.state.total, this.state.runId]);
 
                 logger.info('Manual backfill completed', { processed: this.state.processed });
             }
@@ -234,19 +357,15 @@ class ManualBackfillService {
                     SET status = 'failed', 
                         completed_at = NOW(),
                         error = $1,
-                        processed = $2
-                    WHERE id = $3
-                `, [error.message, this.state.processed, this.state.runId]);
+                        processed = $2,
+                        total = $3
+                    WHERE id = $4
+                `, [error.message, this.state.processed, this.state.total, this.state.runId]);
             }
         } finally {
             this.isProcessing = false;
             // Release session-level advisory lock held since start()
-            if (this._lockClient) {
-                await this._lockClient.query('SELECT pg_advisory_unlock($1)', [DB_ADVISORY_LOCKS.MANUAL_BACKFILL])
-                    .catch((unlockErr) => logger.error('Failed to unlock advisory lock', { error: unlockErr.message }));
-                this._lockClient.release();
-                this._lockClient = null;
-            }
+            await this.releaseLock('unlock advisory lock');
         }
     }
 
@@ -272,6 +391,7 @@ class ManualBackfillService {
      */
     async resume() {
         if (this.state.status === 'paused') {
+            await this.acquireLock();
             this.state.status = 'running';
             logger.info('Manual backfill resumed', { processed: this.state.processed });
 
@@ -282,12 +402,36 @@ class ManualBackfillService {
                 );
             }
 
-            // Continue running
-            this.runBackfill().catch(error => {
-                logger.error('Resume backfill error', { error: error.message });
-                this.state.error = error.message;
-                this.state.status = 'failed';
-            });
+            // Continue running with the same tracked promise contract as start()
+            this.launchTrackedRun('Resume backfill error');
+        }
+    }
+
+    async cancel() {
+        if (this.state.status === 'running') {
+            this.state.status = 'cancelling';
+            logger.info('Manual backfill cancellation requested', { processed: this.state.processed });
+            if (this._activeRunPromise) {
+                await this._activeRunPromise;
+            }
+            return;
+        }
+
+        if (this.state.status === 'paused') {
+            if (this._activeRunPromise) {
+                await this._activeRunPromise;
+            }
+            if (this.state.runId) {
+                await db.query(`
+                    UPDATE backfill_runs
+                    SET status = 'cancelled',
+                        completed_at = NOW(),
+                        processed = $1,
+                        error = $2
+                    WHERE id = $3
+                `, [this.state.processed, this.state.error, this.state.runId]);
+            }
+            await this.releaseLock('unlock advisory lock during cancellation');
         }
     }
 
@@ -295,17 +439,11 @@ class ManualBackfillService {
      * Clear/reset backfill state
      */
     async clear() {
-        this.state = {
-            status: 'idle',
-            processed: 0,
-            total: 0,
-            startTime: null,
-            eta: null,
-            batchSize: 50,
-            error: null,
-            runId: null,
-            includeImage: false
-        };
+        if (['running', 'paused', 'cancelling'].includes(this.state.status)) {
+            await this.cancel();
+        }
+
+        this.state = this.createInitialState();
         this.isProcessing = false;
         logger.info('Manual backfill state cleared');
     }
@@ -332,16 +470,16 @@ class ManualBackfillService {
             ? this.state.includeImage
             : await embeddingService.shouldIncludeImageEmbeddings();
         const currentPending = await this.getPendingCount(includeImage);
-        // Calculate dynamic total as processed + pending to account for items
-        // that may have been added during the backfill process (e.g., new classifications)
-        const dynamicTotal = this.state.processed + currentPending;
-        
-        // Use the larger of initial total or dynamic total to avoid progress going backwards
-        const total = Math.max(this.state.total, dynamicTotal);
-        
+
+        await this.syncTrackedTotal(currentPending, {
+            persist: ['running', 'paused', 'cancelling'].includes(this.state.status)
+        });
+
+        const total = this.state.total;
+
         // Clamp processed value to never exceed total (prevents progress > 100%)
         const clampedProcessed = Math.min(this.state.processed, total);
-        
+
         return {
             ...this.state,
             total: total,
