@@ -21,6 +21,7 @@ jest.mock('../config/database');
 
 // Mock ollama service  
 jest.mock('../services/ollama');
+jest.mock('../services/cloudLLM');
 
 // Mock logger
 jest.mock('../utils/logger', () => ({
@@ -41,6 +42,7 @@ jest.mock('axios', () => mockAxios);
 // Import modules after mocks are set up
 const db = require('../config/database');
 const ollamaService = require('../services/ollama');
+const cloudLLMService = require('../services/cloudLLM');
 const embeddingProvider = require('../services/embeddingProvider');
 
 describe('EmbeddingProvider', () => {
@@ -107,6 +109,79 @@ describe('EmbeddingProvider', () => {
                 provider: 'ollama',
                 model: 'nomic-embed-text-v2-moe',
                 cost: 0
+            });
+        });
+
+        it('should use legacy OpenAI same-mode configuration through cloudLLMService', async () => {
+            const mockConfig = {
+                embedding_provider_mode: 'same',
+                primary_provider: 'openai',
+                api_key: 'sk-test-key',
+                api_endpoint: null,
+                embedding_model: 'text-embedding-3-small'
+            };
+
+            db.query.mockResolvedValue({ rows: [mockConfig] });
+            cloudLLMService.embed.mockResolvedValue({
+                embedding: [0.7, 0.8, 0.9],
+                dims: 3,
+                cost: 0.0002
+            });
+
+            const result = await embeddingProvider.getEmbedding('test text');
+
+            expect(cloudLLMService.embed).toHaveBeenCalledWith(
+                'test text',
+                {
+                    primary_provider: 'openai',
+                    api_key: 'sk-test-key',
+                    api_endpoint: null
+                },
+                'text-embedding-3-small',
+                null
+            );
+            expect(result).toEqual({
+                embedding: [0.7, 0.8, 0.9],
+                dims: 3,
+                provider: 'openai',
+                model: 'text-embedding-3-small',
+                cost: 0.0002
+            });
+        });
+
+        it('should use legacy Gemini same-mode configuration through cloudLLMService', async () => {
+            const mockConfig = {
+                embedding_provider_mode: 'same',
+                primary_provider: 'gemini',
+                api_key: 'gemini-key',
+                embedding_model: 'text-embedding-005'
+            };
+
+            db.query.mockResolvedValue({ rows: [mockConfig] });
+            cloudLLMService.embedGemini.mockResolvedValue({
+                embedding: [0.1, 0.2, 0.3, 0.4],
+                dims: 4,
+                cost: 0.0001
+            });
+
+            const result = await embeddingProvider.getEmbedding('test text');
+
+            expect(cloudLLMService.embedGemini).toHaveBeenCalledWith(
+                'test text',
+                {
+                    primary_provider: 'gemini',
+                    api_key: 'gemini-key',
+                    api_endpoint: undefined
+                },
+                'text-embedding-005',
+                null
+            );
+            expect(result).toEqual({
+                embedding: [0.1, 0.2, 0.3, 0.4],
+                dims: 4,
+                provider: 'gemini',
+                model: 'text-embedding-005',
+                cost: 0.0001
             });
         });
     });
@@ -334,6 +409,32 @@ describe('EmbeddingProvider', () => {
             expect(result.provider).toBe('ollama');
         });
 
+        it('should test saved same-mode cloud configuration successfully', async () => {
+            const mockConfig = {
+                embedding_provider_mode: 'same',
+                primary_provider: 'openai',
+                api_key: 'sk-test-key',
+                embedding_model: 'text-embedding-3-small'
+            };
+
+            db.query.mockResolvedValue({ rows: [mockConfig] });
+            cloudLLMService.embed.mockResolvedValue({
+                embedding: [0.7, 0.8, 0.9],
+                dims: 3,
+                cost: 0.0002
+            });
+
+            const result = await embeddingProvider.testConnection();
+
+            expect(result).toEqual({
+                success: true,
+                provider: 'openai',
+                model: 'text-embedding-3-small',
+                dimensions: 3,
+                cost: 0.0002
+            });
+        });
+
         it('should return error on test failure', async () => {
             db.query.mockResolvedValue({ rows: [] });
 
@@ -341,6 +442,20 @@ describe('EmbeddingProvider', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toBeDefined();
+        });
+    });
+
+    describe('getRecommendedModels', () => {
+        it('returns the shared recommended model catalog for text embeddings', () => {
+            const models = embeddingProvider.getRecommendedModels();
+
+            expect(models).toHaveProperty('ollama');
+            expect(models).toHaveProperty('openai');
+            expect(models).toHaveProperty('gemini');
+            expect(models.ollama[0]).toEqual(expect.objectContaining({
+                id: expect.any(String),
+                dims: expect.any(Number)
+            }));
         });
     });
 

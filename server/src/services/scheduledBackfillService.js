@@ -139,6 +139,14 @@ class ScheduledBackfillService {
             return;
         }
 
+        const availability = await embeddingService.getProviderAvailabilityStatus({ refresh: true });
+        if (availability.status === 'cooldown' || availability.status === 'probing') {
+            logger.info('Scheduled backfill skipped: embedding provider unavailable', {
+                retryAt: availability.cooldownUntil
+            }, { skipDbPersist: true });
+            return;
+        }
+
         if (this.isRunning) {
             logger.warn('Scheduled backfill already running');
             return;
@@ -154,6 +162,7 @@ class ScheduledBackfillService {
                 const startTime = Date.now();
                 let processed = 0;
                 const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+                let providerUnavailable = false;
 
                 logger.info('Starting scheduled backfill', {
                     batchSize: this.schedule.batchSize,
@@ -217,6 +226,16 @@ class ScheduledBackfillService {
                                     );
                                 }
                             } catch (error) {
+                                if (error.message === 'PROVIDER_OFFLINE') {
+                                    providerUnavailable = true;
+                                    this.shouldContinueRunning = false;
+                                    const offlineStatus = embeddingService.getProviderAvailabilityStatus();
+                                    logger.warn('Scheduled backfill paused: embedding provider unavailable', {
+                                        retryAt: offlineStatus.cooldownUntil
+                                    }, { skipDbPersist: true });
+                                    break;
+                                }
+
                                 logger.error('Failed to generate embedding in scheduled backfill', {
                                     id: item.id,
                                     title: item.title,
@@ -227,7 +246,9 @@ class ScheduledBackfillService {
                     }
 
                     const duration = Date.now() - startTime;
-                    const finalStatus = this.shouldContinueRunning ? 'completed' : 'cancelled';
+                    const finalStatus = providerUnavailable
+                        ? 'completed'
+                        : (this.shouldContinueRunning ? 'completed' : 'cancelled');
 
                     await db.query(`
                         UPDATE backfill_runs 

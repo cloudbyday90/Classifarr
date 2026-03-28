@@ -17,8 +17,7 @@
  */
 
 /*
- * Integration tests for RAG API endpoints
- * Tests for v0.39.3-alpha bug fixes
+ * Integration tests for canonical RAG API endpoints.
  */
 
 const request = require('supertest');
@@ -57,7 +56,6 @@ describe('RAG API Integration Tests', () => {
         // Clear any existing data
         await pool.query('TRUNCATE TABLE ai_provider_config RESTART IDENTITY CASCADE');
         await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
-        await pool.query('TRUNCATE TABLE embedding_retry_queue RESTART IDENTITY CASCADE');
 
         // Insert default config
         await pool.query(`
@@ -80,7 +78,11 @@ describe('RAG API Integration Tests', () => {
                 .expect(200);
 
             expect(response.body).toHaveProperty('providerOnline');
+            expect(response.body).toHaveProperty('embeddingAvailability');
             expect(typeof response.body.providerOnline).toBe('boolean');
+            expect(response.body.embeddingAvailability).toHaveProperty('status');
+            expect(response.body.embeddingAvailability).toHaveProperty('presentation');
+            expect(response.body.embeddingAvailability).toHaveProperty('controls');
         });
 
         it('should return providerOnline=true when same mode is properly configured', async () => {
@@ -219,70 +221,6 @@ describe('RAG API Integration Tests', () => {
         });
     });
 
-    describe('POST /api/rag/backfill/start', () => {
-        afterEach(() => {
-            jest.restoreAllMocks();
-        });
-
-        it('delegates the legacy backfill start route through manualBackfillService', async () => {
-            jest.spyOn(manualBackfillService, 'start').mockResolvedValue({
-                status: 'running',
-                batchSize: 25
-            });
-            jest.spyOn(manualBackfillService, 'getStatus').mockResolvedValue({
-                status: 'running',
-                processed: 0,
-                total: 10,
-                batchSize: 25
-            });
-
-            const response = await request(app)
-                .post('/api/rag/backfill/start')
-                .send({ limit: 25 })
-                .expect(200);
-
-            expect(manualBackfillService.start).toHaveBeenCalledWith({ batchSize: 25 });
-            expect(response.body).toEqual({
-                success: true,
-                status: {
-                    status: 'running',
-                    processed: 0,
-                    total: 10,
-                    batchSize: 25
-                }
-            });
-        });
-
-        it('accepts batchSize on the legacy route too', async () => {
-            jest.spyOn(manualBackfillService, 'start').mockResolvedValue({
-                status: 'running',
-                batchSize: 30
-            });
-            jest.spyOn(manualBackfillService, 'getStatus').mockResolvedValue({
-                status: 'running',
-                processed: 0,
-                total: 10,
-                batchSize: 30
-            });
-
-            await request(app)
-                .post('/api/rag/backfill/start')
-                .send({ batchSize: 30 })
-                .expect(200);
-
-            expect(manualBackfillService.start).toHaveBeenCalledWith({ batchSize: 30 });
-        });
-
-        it('rejects invalid manual backfill sizes on the legacy route', async () => {
-            const response = await request(app)
-                .post('/api/rag/backfill/start')
-                .send({ limit: 0 })
-                .expect(400);
-
-            expect(response.body.error).toContain('batchSize must be a positive integer');
-        });
-    });
-
     describe('POST /api/rag/backfill/manual/start', () => {
         afterEach(() => {
             jest.restoreAllMocks();
@@ -346,7 +284,11 @@ describe('RAG API Integration Tests', () => {
                 .expect(200);
 
             expect(response.body).toHaveProperty('providerOnline');
+            expect(response.body).toHaveProperty('providerConfigured');
+            expect(response.body).toHaveProperty('embeddingAvailability');
             expect(typeof response.body.providerOnline).toBe('boolean');
+            expect(response.body.embeddingAvailability).toHaveProperty('presentation');
+            expect(response.body.embeddingAvailability).toHaveProperty('controls');
         });
 
         it('should return stats object with counts', async () => {
@@ -368,6 +310,69 @@ describe('RAG API Integration Tests', () => {
             expect(response.body).toHaveProperty('recentActivity');
             expect(Array.isArray(response.body.recentActivity)).toBe(true);
         });
+    });
+
+    describe('operational RAG routes', () => {
+        it('returns advanced config defaults when the singleton config row is missing', async () => {
+            await pool.query('TRUNCATE TABLE ai_provider_config RESTART IDENTITY CASCADE');
+
+            const response = await request(app)
+                .get('/api/rag/advanced')
+                .expect(200);
+
+            expect(response.body).toEqual(expect.objectContaining({
+                max_retries: 3,
+                retry_delay: 1000,
+                request_timeout: 30000,
+                cache_enabled: false,
+                cache_ttl: 24,
+                verbose_logging: false,
+                log_embedding_content: false
+            }));
+
+            await pool.query(`
+                INSERT INTO ai_provider_config (id, primary_provider, embedding_provider_mode)
+                VALUES (1, 'ollama', 'same')
+            `);
+        });
+
+        it('preserves retry validation errors through the extracted helper path', async () => {
+            const response = await request(app)
+                .put('/api/rag/settings/embedding/retry')
+                .send({ request_timeout: 1000, jitter_factor: 2 })
+                .expect(400);
+
+            expect(response.body.error).toBe('Validation failed');
+            expect(response.body.details).toEqual(expect.arrayContaining([
+                'request_timeout must be between 5000 and 300000 (5s-300s)',
+                'jitter_factor must be between 0 and 1'
+            ]));
+        });
+    });
+
+    describe('POST /api/rag/text-models', () => {
+        it('returns provider-aware recommendations for same-mode Ollama', async () => {
+            await pool.query(`
+                UPDATE ai_provider_config
+                SET primary_provider = 'ollama',
+                    embedding_provider_mode = 'same'
+                WHERE id = 1
+            `);
+
+            const response = await request(app)
+                .post('/api/rag/text-models')
+                .send({ mode: 'same' })
+                .expect(200);
+
+            expect(response.body.provider).toBe('ollama');
+            expect(Array.isArray(response.body.recommended)).toBe(true);
+            expect(response.body.recommended[0]).toEqual(expect.objectContaining({
+                id: expect.any(String),
+                dims: expect.any(Number)
+            }));
+            expect(response.body.models).toEqual([]);
+        });
+
     });
 
     describe('POST /api/rag/test-connection', () => {
@@ -446,6 +451,7 @@ describe('RAG API Integration Tests', () => {
             // Check top-level structure
             expect(response.body).toHaveProperty('stats');
             expect(response.body).toHaveProperty('providerOnline');
+            expect(response.body).toHaveProperty('embeddingAvailability');
             expect(response.body).toHaveProperty('operationMetrics');
             expect(response.body).toHaveProperty('providerMetrics');
             expect(response.body).toHaveProperty('circuitBreaker');
@@ -497,6 +503,9 @@ describe('RAG API Integration Tests', () => {
                 .get('/api/rag/detailed')
                 .expect(200);
 
+            expect(response.body.embeddingAvailability).toHaveProperty('status');
+            expect(response.body.embeddingAvailability).toHaveProperty('presentation');
+            expect(response.body.embeddingAvailability).toHaveProperty('controls');
             expect(response.body.circuitBreaker).toHaveProperty('state');
             expect(response.body.circuitBreaker).toHaveProperty('failureCount');
             expect(response.body.circuitBreaker).toHaveProperty('lastFailureTime');
@@ -718,6 +727,15 @@ describe('RAG API Integration Tests', () => {
             expect(response.body).toHaveProperty('pendingBreakdown');
             expect(response.body.pendingBreakdown).toEqual({ text: 1, image: 1, total: 2 });
             expect(response.body.pending).toBe(2);
+            expect(response.body.embeddingAvailability).toHaveProperty('status');
+            expect(response.body.embeddingAvailability).toHaveProperty('presentation');
+            expect(response.body.embeddingAvailability).toHaveProperty('controls');
+            expect(response.body.manual).toHaveProperty('presentation');
+            expect(response.body.manual).toHaveProperty('controls');
+            expect(response.body.idle).toHaveProperty('presentation');
+            expect(response.body.idle).toHaveProperty('controls');
+            expect(response.body.scheduled).toHaveProperty('presentation');
+            expect(response.body.scheduled).toHaveProperty('controls');
             expect(response.body.idle).toHaveProperty('status');
             expect(response.body.idle).toHaveProperty('enabled');
             expect(response.body.idle).toHaveProperty('cooldownUntil');
@@ -727,8 +745,56 @@ describe('RAG API Integration Tests', () => {
         });
     });
 
-    describe('GET /api/rag/image-models-cache', () => {
-        it('returns cached models for matching local config', async () => {
+    describe('GET /api/rag/backfill/config', () => {
+        it('returns consolidated backfill configuration', async () => {
+            const response = await request(app)
+                .get('/api/rag/backfill/config')
+                .expect(200);
+
+            expect(response.body).toHaveProperty('realtime_embedding_enabled');
+            expect(response.body).toHaveProperty('idle_backfill_enabled');
+            expect(response.body).toHaveProperty('idle_threshold');
+            expect(response.body).toHaveProperty('idle_batch_size');
+            expect(response.body).toHaveProperty('scheduled_backfill_enabled');
+            expect(response.body).toHaveProperty('scheduled_backfill_time');
+            expect(response.body).toHaveProperty('scheduled_backfill_days');
+            expect(response.body).toHaveProperty('scheduled_backfill_batch_size');
+            expect(response.body).toHaveProperty('scheduled_backfill_max_duration');
+        });
+    });
+
+    describe('PUT /api/rag/backfill/config', () => {
+        it('updates consolidated backfill configuration', async () => {
+            const response = await request(app)
+                .put('/api/rag/backfill/config')
+                .send({
+                    realtime_embedding_enabled: false,
+                    idle_backfill_enabled: false,
+                    idle_threshold: 45000,
+                    idle_batch_size: 12,
+                    scheduled_backfill_enabled: true,
+                    scheduled_backfill_time: '03:30',
+                    scheduled_backfill_days: '1,3,5',
+                    scheduled_backfill_batch_size: 250,
+                    scheduled_backfill_max_duration: 1800000
+                })
+                .expect(200);
+
+            expect(response.body.success).toBe(true);
+            expect(response.body.config.realtime_embedding_enabled).toBe(false);
+            expect(response.body.config.idle_backfill_enabled).toBe(false);
+            expect(Number(response.body.config.idle_threshold)).toBe(45000);
+            expect(Number(response.body.config.idle_batch_size)).toBe(12);
+            expect(response.body.config.scheduled_backfill_enabled).toBe(true);
+            expect(response.body.config.scheduled_backfill_time).toBe('03:30');
+            expect(response.body.config.scheduled_backfill_days).toBe('1,3,5');
+            expect(Number(response.body.config.scheduled_backfill_batch_size)).toBe(250);
+            expect(Number(response.body.config.scheduled_backfill_max_duration)).toBe(1800000);
+        });
+    });
+
+    describe('POST /api/rag/image-models-metadata', () => {
+        it('returns cached models for matching local config through the canonical metadata route', async () => {
             await pool.query(`
                 UPDATE ai_provider_config
                 SET image_embedding_provider_mode = 'separate_local',
@@ -746,37 +812,14 @@ describe('RAG API Integration Tests', () => {
             })]);
 
             const response = await request(app)
-                .get('/api/rag/image-models-cache')
+                .post('/api/rag/image-models-metadata')
+                .send({ mode: 'separate_local', refresh: false })
                 .expect(200);
 
             expect(response.body.cacheHit).toBe(true);
             expect(response.body.scope).toBe('local');
             expect(response.body.models).toEqual([{ id: 'vit-l-14', name: 'ViT-L-14' }]);
         });
-
-        it('returns empty cache when config does not match', async () => {
-            await pool.query(`
-                UPDATE ai_provider_config
-                SET image_embedding_provider_mode = 'separate_local',
-                    image_embedding_local_host = 'localhost',
-                    image_embedding_local_port = 8000,
-                    image_embedding_models_cache = $1::jsonb
-                WHERE id = 1
-            `, [JSON.stringify({
-                local: {
-                    host: 'other-host',
-                    port: 8001,
-                    models: [{ id: 'vit-l-14', name: 'ViT-L-14' }],
-                    fetched_at: '2026-02-05T00:00:00Z'
-                }
-            })]);
-
-            const response = await request(app)
-                .get('/api/rag/image-models-cache')
-                .expect(200);
-
-            expect(response.body.cacheHit).toBe(false);
-            expect(response.body.models).toEqual([]);
-        });
     });
+
 });

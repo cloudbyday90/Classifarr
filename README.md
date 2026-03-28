@@ -664,6 +664,7 @@ Security and docs checks:
 ```bash
 npm --prefix server run lint:security
 npm run lint:docs
+npm run lint:docs:rag-api
 ```
 
 CI-aligned run:

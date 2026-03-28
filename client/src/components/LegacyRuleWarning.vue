@@ -19,6 +19,8 @@
 </template>
 
 <script>
+import api from '@/api'
+
 export default {
   name: 'LegacyRuleWarning',
   props: {
@@ -43,15 +45,8 @@ export default {
   methods: {
     async checkLegacyRules() {
       try {
-        const response = await fetch(`/api/migration/libraries/${this.libraryId}/rules`);
-        
-        if (!response.ok) {
-          console.error('Failed to check legacy rules: HTTP', response.status, response.statusText);
-          this.ruleCount = 0;
-          return;
-        }
-        
-        const rules = await response.json();
+        const response = await api.getLibraryMigrationRules(this.libraryId);
+        const rules = response.data;
         this.ruleCount = Array.isArray(rules) ? rules.length : 0;
       } catch (error) {
         console.error('Failed to check legacy rules:', error);

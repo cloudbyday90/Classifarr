@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const db = require('../config/database');
 const embeddingRouter = require('./embeddingRouter');
 const imageEmbeddingProvider = require('./imageEmbeddingProvider');
+const embeddingAvailabilityService = require('./embeddingAvailabilityService');
 const { createLogger } = require('../utils/logger');
 const { normalizeMetadataList } = require('../utils/metadataNormalization');
 
@@ -23,7 +24,65 @@ class EmbeddingService {
     constructor() {
         // Embedding format version for migration tracking
         this.EMBEDDING_FORMAT_VERSION = 2;
-        this.isProviderOffline = false;
+    }
+
+    getProviderAvailabilityStatus(options = {}) {
+        if (options.refresh === true) {
+            return embeddingAvailabilityService.getStatusFresh();
+        }
+        return embeddingAvailabilityService.getStatus();
+    }
+
+    resetProviderAvailability() {
+        return embeddingAvailabilityService.resetAvailability();
+    }
+
+    createProviderOfflineError(status = embeddingAvailabilityService.getStatus()) {
+        const error = new Error('PROVIDER_OFFLINE');
+        error.code = 'EMBEDDING_PROVIDER_OFFLINE';
+        error.cooldownUntil = status.cooldownUntil || null;
+        error.lastError = status.lastError || null;
+        return error;
+    }
+
+    isProviderConnectionError(error) {
+        const message = error?.message || '';
+        const code = error?.code || '';
+
+        return code === 'EMBEDDING_CIRCUIT_OPEN' ||
+            code === 'EMBEDDING_PROVIDER_OFFLINE' ||
+            message.includes('PROVIDER_OFFLINE') ||
+            message.includes('Circuit breaker is OPEN') ||
+            message.includes('ECONNREFUSED') ||
+            message.includes('ETIMEDOUT') ||
+            message.includes('ENOTFOUND') ||
+            message.includes('EHOSTUNREACH') ||
+            message.includes('fetch failed') ||
+            message.includes('Failed to fetch models');
+    }
+
+    async markProviderOffline(error, { source = 'embedding' } = {}) {
+        return await embeddingAvailabilityService.markUnavailable(error, { source });
+    }
+
+    async probeProviderRecovery() {
+        return await embeddingAvailabilityService.runRecoveryProbe(async () => await embeddingRouter.testConnection());
+    }
+
+    async ensureProviderAvailable() {
+        const status = await this.getProviderAvailabilityStatus({ refresh: true });
+        if (!status.isOffline) {
+            return;
+        }
+
+        if (status.status === 'cooldown' || status.status === 'probing') {
+            throw this.createProviderOfflineError(status);
+        }
+
+        const recovered = await this.probeProviderRecovery();
+        if (!recovered) {
+            throw this.createProviderOfflineError(await this.getProviderAvailabilityStatus({ refresh: true }));
+        }
     }
 
     hashValue(value) {
@@ -292,6 +351,8 @@ class EmbeddingService {
                 return null;
             }
 
+            await this.ensureProviderAvailable();
+
             // Format metadata for embedding
             const text = this.formatForEmbedding(metadata);
 
@@ -303,10 +364,9 @@ class EmbeddingService {
             // Generate embedding
             const result = await embeddingRouter.embed(text);
 
-            // Reset offline state if successful
-            if (this.isProviderOffline) {
-                logger.info('Embedding provider detected as back online');
-                this.isProviderOffline = false;
+            const availability = this.getProviderAvailabilityStatus();
+            if (availability.isOffline) {
+                await this.resetProviderAvailability();
             }
 
             // Store embedding
@@ -331,20 +391,12 @@ class EmbeddingService {
 
             return stored;
         } catch (error) {
-            // Check for connection refusal (provider offline)
-            const isConnectionError = error.message.includes('ECONNREFUSED') || 
-                                     error.message.includes('ETIMEDOUT') ||
-                                     error.message.includes('fetch failed');
-
-            if (isConnectionError) {
-                // Only log the first time we detect it's offline
-                if (!this.isProviderOffline) {
-                    logger.error('Embedding provider is offline', { error: error.message });
-                    this.isProviderOffline = true;
+            if (this.isProviderConnectionError(error)) {
+                if (error.code !== 'EMBEDDING_PROVIDER_OFFLINE') {
+                    await this.markProviderOffline(error, { source: 'generateAndStore' });
                 }
-                
-                // Propagate specific error so caller can back off
-                throw new Error('PROVIDER_OFFLINE');
+
+                throw this.createProviderOfflineError(this.getProviderAvailabilityStatus());
             }
 
             // For other errors, log normally
@@ -353,8 +405,6 @@ class EmbeddingService {
                 error: error.message
             });
 
-            // Add to retry queue only for non-connection errors
-            await this.addToRetryQueue(classificationId, error.message);
             return null;
         }
     }
@@ -547,9 +597,6 @@ class EmbeddingService {
                 embeddingResult.model
             ]);
 
-            // Clean up any retry queue entry for this classification since it's now complete
-            await db.query('DELETE FROM embedding_retry_queue WHERE classification_id = $1', [classificationId]);
-
             return {
                 id: result.rows[0].id,
                 dims: embeddingResult.dims,
@@ -644,66 +691,6 @@ class EmbeddingService {
     }
 
     /**
-     * Add failed embedding to retry queue
-     */
-    async addToRetryQueue(classificationId, errorMessage) {
-        try {
-            await db.query(`
-                INSERT INTO embedding_retry_queue 
-                (classification_id, last_error, next_retry_at)
-                VALUES ($1, $2, NOW() + INTERVAL '5 minutes')
-                ON CONFLICT DO NOTHING
-            `, [classificationId, errorMessage]);
-        } catch (error) {
-            logger.warn('Failed to add to retry queue', { error: error.message });
-        }
-    }
-
-    /**
-     * Process retry queue
-     */
-    async processRetryQueue() {
-        try {
-            const items = await db.query(`
-                SELECT rq.*, ch.title, ch.media_type, ch.library_name
-                FROM embedding_retry_queue rq
-                JOIN classification_history ch ON rq.classification_id = ch.id
-                WHERE rq.status = 'pending' 
-                AND rq.next_retry_at <= NOW()
-                AND rq.attempt_count < rq.max_attempts
-                LIMIT 10
-            `);
-
-            for (const item of items.rows) {
-                try {
-                    await this.generateAndStore(item.classification_id, item);
-
-                    // Remove from queue on success
-                    await db.query(
-                        'DELETE FROM embedding_retry_queue WHERE id = $1',
-                        [item.id]
-                    );
-                } catch (error) {
-                    // Update attempt count
-                    await db.query(`
-                        UPDATE embedding_retry_queue 
-                        SET attempt_count = attempt_count + 1,
-                            last_error = $1,
-                            next_retry_at = NOW() + INTERVAL '15 minutes',
-                            updated_at = NOW()
-                        WHERE id = $2
-                    `, [error.message, item.id]);
-                }
-            }
-
-            return items.rows.length;
-        } catch (error) {
-            logger.error('Failed to process retry queue', { error: error.message });
-            return 0;
-        }
-    }
-
-    /**
      * Get embedding statistics
      */
     async getStats() {
@@ -717,10 +704,6 @@ class EmbeddingService {
                 FROM classification_embeddings
             `);
 
-            const queueResult = await db.query(`
-                SELECT COUNT(*) as pending FROM embedding_retry_queue WHERE status = 'pending'
-            `);
-
             const stats = result.rows[0];
             const includeImage = await this.shouldIncludeImageEmbeddings();
             const actualPending = await this.getPendingCount({ includeImage });
@@ -731,7 +714,7 @@ class EmbeddingService {
                 stale: parseInt(stats.stale) || 0,
                 providers: parseInt(stats.providers) || 0,
                 avgDims: Math.round(parseFloat(stats.avg_dims)) || 0,
-                pendingRetries: parseInt(queueResult.rows[0].pending) || 0,
+                pendingRetries: 0,
                 pendingCount: actualPending  // Fixed: Now counts actual items without embeddings
             };
         } catch (error) {

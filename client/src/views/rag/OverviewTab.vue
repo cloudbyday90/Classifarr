@@ -14,12 +14,21 @@
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm text-gray-400">Provider Status</p>
-            <p :class="['text-2xl font-bold mt-1', stats.providerOnline ? 'text-green-400' : 'text-red-400']">
-              {{ stats.providerOnline ? 'Online' : 'Offline' }}
+            <p :class="['text-2xl font-bold mt-1', providerAvailabilityTextClass]">
+              {{ providerAvailabilityLabel }}
+            </p>
+            <p v-if="providerAvailability.retryAt" class="text-xs text-gray-500 mt-1">
+              Retry after {{ formatTimestamp(providerAvailability.retryAt) }}
+            </p>
+            <p v-else-if="providerAvailability.status === 'probe_due'" class="text-xs text-gray-500 mt-1">
+              Waiting for next recovery probe
+            </p>
+            <p v-if="providerAvailability.lastError" class="text-xs text-gray-500 mt-1 line-clamp-2">
+              {{ providerAvailability.lastError }}
             </p>
           </div>
-          <span :class="['text-sm font-semibold', stats.providerOnline ? 'text-green-400' : 'text-red-400']">
-            {{ stats.providerOnline ? 'ON' : 'OFF' }}
+          <span :class="['text-sm font-semibold', providerAvailabilityTextClass]">
+            {{ providerAvailabilityFlag }}
           </span>
         </div>
       </div>
@@ -120,6 +129,18 @@
     <!-- Text Embedding Summary -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 space-y-4">
       <h3 class="text-lg font-semibold text-white">Text Embedding Summary</h3>
+      <div
+        v-if="providerAvailability.status !== 'available'"
+        class="rounded-lg border px-4 py-3 text-sm"
+        :class="availabilityToneClasses.bannerClass"
+      >
+        <p class="font-medium">
+          {{ providerAvailability.presentation.headline }}
+        </p>
+        <p class="mt-1 text-gray-300">
+          {{ providerAvailability.presentation.detail }}
+        </p>
+      </div>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
         <div class="bg-gray-700/30 rounded-lg p-3">
           <p class="text-gray-400">Provider</p>
@@ -185,18 +206,17 @@
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
           <p class="text-gray-400">Manual Backfill</p>
-          <p class="text-white font-medium">{{ backfillStatus.manual.status || 'idle' }}</p>
+          <p class="text-white font-medium">{{ backfillStatus.manual.presentation.statusLabel }}</p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
           <p class="text-gray-400">Idle Backfill</p>
-          <p class="text-white font-medium">
-            {{ backfillStatus.idle.isRunning ? 'running' : (backfillStatus.idle.config?.idle_backfill_enabled ? 'enabled' : 'disabled') }}
-          </p>
+          <p class="text-white font-medium">{{ backfillStatus.idle.presentation.statusLabel }}</p>
         </div>
         <div class="bg-gray-700/30 rounded-lg p-3">
           <p class="text-gray-400">Scheduled Backfill</p>
-          <p class="text-white font-medium">
-            {{ backfillStatus.scheduled.enabled ? `enabled (${backfillStatus.scheduled.time})` : 'disabled' }}
+          <p class="text-white font-medium">{{ backfillStatus.scheduled.presentation.statusLabel }}</p>
+          <p v-if="backfillStatus.scheduled.enabled" class="text-xs text-gray-500 mt-1">
+            {{ backfillStatus.scheduled.time }}
           </p>
         </div>
       </div>
@@ -261,6 +281,16 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
+import {
+  buildEmbeddingProviderIndicator,
+  defaultEmbeddingAvailability,
+  getEmbeddingAvailabilityToneClasses,
+  normalizeEmbeddingAvailability
+} from '@/utils/embeddingAvailabilityUi'
+import {
+  defaultBackfillModeStatus,
+  normalizeBackfillModeStatus
+} from '@/utils/backfillStatusUi'
 
 const emit = defineEmits(['navigate'])
 const toast = useToast()
@@ -281,7 +311,8 @@ const stats = ref({
   imageModel: null,
   heartbeatActive: false,
   queueSize: 0,
-  lastEmbeddingTime: null
+  lastEmbeddingTime: null,
+  embeddingAvailability: defaultEmbeddingAvailability()
 })
 
 const imageStatusLabel = computed(() => {
@@ -351,9 +382,9 @@ const config = ref({
 const recentActivity = ref([])
 const reembeddingImages = ref(false)
 const backfillStatus = ref({
-  manual: { status: 'idle' },
-  idle: { isRunning: false, config: null },
-  scheduled: { enabled: false, time: '02:00' },
+  manual: defaultBackfillModeStatus('manual'),
+  idle: defaultBackfillModeStatus('idle'),
+  scheduled: defaultBackfillModeStatus('scheduled'),
   pending: 0
 })
 
@@ -379,6 +410,16 @@ const textModelLabel = computed(() => {
   return config.value.embedding_model || 'default'
 })
 
+const providerAvailability = computed(() => normalizeEmbeddingAvailability(stats.value.embeddingAvailability))
+const providerIndicator = computed(() => buildEmbeddingProviderIndicator(providerAvailability.value, {
+  providerOnline: stats.value.providerOnline,
+  providerConfigured: stats.value.providerConfigured ?? true
+}))
+const providerAvailabilityLabel = computed(() => providerIndicator.value.label)
+const providerAvailabilityFlag = computed(() => providerIndicator.value.flag)
+const providerAvailabilityTextClass = computed(() => providerIndicator.value.textClass)
+const availabilityToneClasses = computed(() => getEmbeddingAvailabilityToneClasses(providerAvailability.value))
+
 const loadStats = async () => {
   try {
     loading.value = true
@@ -386,15 +427,20 @@ const loadStats = async () => {
     const handleApiError = () => ({ data: {} })
 
     const [overviewRes, configRes, backfillRes] = await Promise.all([
-      api.get('/rag/status').catch(handleApiError),
-      api.get('/settings/ai').catch(handleApiError),
-      api.get('/rag/backfill/status').catch(handleApiError)
+      api.getRagStatus().catch(handleApiError),
+      api.getAIConfig().catch(handleApiError),
+      api.getBackfillStatus().catch(handleApiError)
     ])
 
     const imageData = overviewRes.data?.image || {}
+    const embeddingAvailability = normalizeEmbeddingAvailability(
+      overviewRes.data?.embeddingAvailability || backfillRes.data?.embeddingAvailability
+    )
     stats.value = {
       ...overviewRes.data?.stats,
+      providerConfigured: overviewRes.data?.providerConfigured ?? true,
       providerOnline: overviewRes.data?.providerOnline ?? false,
+      embeddingAvailability,
       totalEmbeddings: overviewRes.data?.stats?.totalEmbeddings ?? overviewRes.data?.stats?.total ?? 0,
       pendingCount: overviewRes.data?.stats?.pendingCount ?? overviewRes.data?.stats?.pendingRetries ?? 0,
       failedCount: 0,
@@ -411,9 +457,10 @@ const loadStats = async () => {
 
     recentActivity.value = overviewRes.data?.recentActivity || []
     backfillStatus.value = {
-      manual: backfillRes.data?.manual || { status: 'idle' },
-      idle: backfillRes.data?.idle || { isRunning: false, config: null },
-      scheduled: backfillRes.data?.scheduled || { enabled: false, time: '02:00' },
+      manual: normalizeBackfillModeStatus('manual', backfillRes.data?.manual),
+      idle: normalizeBackfillModeStatus('idle', backfillRes.data?.idle),
+      scheduled: normalizeBackfillModeStatus('scheduled', backfillRes.data?.scheduled),
+      embeddingAvailability,
       pending: backfillRes.data?.pending || 0
     }
 

@@ -18,7 +18,8 @@ jest.mock('../services/embeddingService', () => ({
     shouldIncludeImageEmbeddings: jest.fn(),
     getPendingEmbeddings: jest.fn(),
     generateAndStore: jest.fn(),
-    generateImageEmbedding: jest.fn()
+    generateImageEmbedding: jest.fn(),
+    getProviderAvailabilityStatus: jest.fn()
 }));
 
 jest.mock('../utils/logger', () => ({
@@ -51,6 +52,10 @@ describe('ScheduledBackfillService', () => {
         db.withSessionAdvisoryLock.mockResolvedValue(false);
         embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
         embeddingService.getPendingEmbeddings.mockResolvedValue([]);
+        embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+            status: 'available',
+            cooldownUntil: null
+        });
     });
 
     afterEach(() => {
@@ -127,5 +132,16 @@ describe('ScheduledBackfillService', () => {
             expect.stringContaining('SET status = $1'),
             ['cancelled', 1, 14]
         );
+    });
+
+    it('skips scheduled runs while provider cooldown is active', async () => {
+        embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+            status: 'cooldown',
+            cooldownUntil: new Date(Date.now() + 60000).toISOString()
+        });
+
+        await scheduledBackfillService.runScheduledBackfill();
+
+        expect(db.withSessionAdvisoryLock).not.toHaveBeenCalled();
     });
 });

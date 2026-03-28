@@ -54,9 +54,9 @@ export function useCommandCenterData({ router }) {
     { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
   )
 
-  const { data: ollamaStatusData, isStale: ollamaStatusStale, refresh: refreshOllamaStatus, cacheTimestamp: ollamaStatusTimestamp } = useSWR(
-    'command-center:ollama-status',
-    async () => unwrapResponse(await api.getOllamaStatus(), { isActive: false }),
+  const { data: aiGenerationStatusData, isStale: aiGenerationStatusStale, refresh: refreshAiGenerationStatus, cacheTimestamp: aiGenerationStatusTimestamp } = useSWR(
+    'command-center:ai-generation-status',
+    async () => unwrapResponse(await api.getAiGenerationStatus(), { isActive: false }),
     { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
   )
 
@@ -86,7 +86,7 @@ export function useCommandCenterData({ router }) {
 
   const { data: arrConfigStatusData, isStale: arrConfigStatusStale, refresh: refreshArrConfigStatus, cacheTimestamp: arrConfigStatusTimestamp } = useSWR(
     'command-center:arr-config-status',
-    async () => unwrapResponse(await api.get('/settings/arr-config-status'), { incompleteConfigs: [] }),
+    async () => unwrapResponse(await api.getArrConfigStatus(), { incompleteConfigs: [] }),
     { ttl: CACHE_TTL.LONG, pollInterval: POLL_INTERVALS.SLOW, pollOnlyWhenVisible: true }
   )
 
@@ -96,7 +96,7 @@ export function useCommandCenterData({ router }) {
     || pendingTasksStale.value
     || failedTasksStale.value
     || pendingClassificationsStale.value
-    || ollamaStatusStale.value
+    || aiGenerationStatusStale.value
     || aiUsageStale.value
     || liveFeedStale.value
     || mediaServerConfigStale.value
@@ -123,7 +123,7 @@ export function useCommandCenterData({ router }) {
   const upNextCount = computed(() => pendingQueueTasks.value.length)
   const failedQueueTasks = computed(() => Array.isArray(failedTasksData.value) ? failedTasksData.value : [])
   const needsAttentionItems = computed(() => Array.isArray(pendingClassificationData.value?.items) ? pendingClassificationData.value.items : [])
-  const ollamaStatus = computed(() => ollamaStatusData.value || { isActive: false })
+  const aiGenerationStatus = computed(() => aiGenerationStatusData.value || { isActive: false })
   const aiBudget = computed(() => aiUsageData.value?.budget || { limit: null, used: 0, percentUsed: 0 })
   const enrichmentTotal = computed(() => Number(enrichmentStats.value.totalItems || 0))
   const enrichmentEnriched = computed(() => Number(enrichmentStats.value.enriched || 0))
@@ -173,7 +173,7 @@ export function useCommandCenterData({ router }) {
       pendingTasksTimestamp.value,
       failedTasksTimestamp.value,
       pendingClassificationsTimestamp.value,
-      ollamaStatusTimestamp.value,
+      aiGenerationStatusTimestamp.value,
       aiUsageTimestamp.value,
       librariesTimestamp.value,
       liveFeedTimestamp.value,
@@ -232,11 +232,11 @@ export function useCommandCenterData({ router }) {
     }
   }))
 
-  const ollamaTelemetryLine = computed(() => {
-    if (!ollamaStatus.value?.isActive) return ''
-    const model = ollamaStatus.value.model || 'unknown-model'
-    const tokens = Number(ollamaStatus.value.tokenCount || 0)
-    const elapsedSeconds = Number(ollamaStatus.value.elapsedSeconds || 0)
+  const aiGenerationTelemetryLine = computed(() => {
+    if (!aiGenerationStatus.value?.isActive) return ''
+    const model = aiGenerationStatus.value.model || 'unknown-model'
+    const tokens = Number(aiGenerationStatus.value.tokenCount || 0)
+    const elapsedSeconds = Number(aiGenerationStatus.value.elapsedSeconds || 0)
     return `${model} • ${tokens} tokens • ${elapsedSeconds.toFixed(1)}s`
   })
 
@@ -256,7 +256,7 @@ export function useCommandCenterData({ router }) {
       refreshPendingTasks(),
       refreshFailedTasks(),
       refreshPendingClassifications(),
-      refreshOllamaStatus(),
+      refreshAiGenerationStatus(),
       refreshAiUsage(),
       refreshLiveFeed(),
       refreshMediaServerConfig(),
@@ -308,8 +308,8 @@ export function useCommandCenterData({ router }) {
     liveFeedItems,
     liveStats,
     needsAttentionItems,
-    ollamaStatus,
-    ollamaTelemetryLine,
+    aiGenerationStatus,
+    aiGenerationTelemetryLine,
     pendingQueueTasks,
     primaryActiveTask,
     queuePendingCount,
@@ -322,7 +322,7 @@ export function useCommandCenterData({ router }) {
     refreshLiveFeed,
     refreshLiveStats,
     refreshMediaServerConfig,
-    refreshOllamaStatus,
+    refreshAiGenerationStatus,
     refreshOperationalData,
     refreshPendingClassifications,
     refreshPendingTasks,

@@ -97,6 +97,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue';
+import api from '@/api';
 import AccuracyChart from './AccuracyChart.vue';
 
 export default {
@@ -157,10 +158,8 @@ export default {
 
     const loadStats = async () => {
       try {
-        const response = await fetch(`/api/stats/policies/${props.policy.id}`);
-        if (response.ok) {
-          stats.value = await response.json();
-        }
+        const response = await api.getPolicyStatsDetail(props.policy.id);
+        stats.value = response.data;
       } catch (error) {
         console.error('Failed to load policy stats:', error);
       }
@@ -168,10 +167,8 @@ export default {
 
     const loadComparison = async () => {
       try {
-        const response = await fetch(`/api/stats/policies/${props.policy.id}/compare`);
-        if (response.ok) {
-          comparison.value = await response.json();
-        }
+        const response = await api.getPolicyStatsComparison(props.policy.id);
+        comparison.value = response.data;
       } catch (error) {
         console.error('Failed to load comparison:', error);
       }

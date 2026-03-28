@@ -15,19 +15,19 @@ const { apiMock } = vi.hoisted(() => ({
     getQueuePending: vi.fn(),
     getQueueFailed: vi.fn(),
     getPendingClassifications: vi.fn(),
-    getOllamaStatus: vi.fn(),
+    getAiGenerationStatus: vi.fn(),
     getAIUsage: vi.fn(),
     getLibraries: vi.fn(),
     getLiveFeed: vi.fn(),
     getMediaServerConfig: vi.fn(),
-    get: vi.fn(),
+    getArrConfigStatus: vi.fn(),
     searchTMDB: vi.fn(),
     submitManualRequest: vi.fn(),
     syncLibrary: vi.fn(),
     cancelQueueTask: vi.fn(),
     cancelAllPendingTasks: vi.fn(),
     post: vi.fn(),
-    processRetryQueue: vi.fn(),
+    processEnrichmentRetries: vi.fn(),
     resolvePendingClassification: vi.fn(),
     retryQueueTask: vi.fn(),
     dismissQueueTask: vi.fn(),
@@ -94,7 +94,7 @@ describe('CommandCenter context modules', () => {
     apiMock.getQueuePending.mockResolvedValue([])
     apiMock.getQueueFailed.mockResolvedValue([])
     apiMock.getPendingClassifications.mockResolvedValue({ data: { items: [] } })
-    apiMock.getOllamaStatus.mockResolvedValue({ data: { isActive: false } })
+    apiMock.getAiGenerationStatus.mockResolvedValue({ data: { isActive: false } })
     apiMock.getAIUsage.mockResolvedValue({ data: { budget: { limit: 5, used: 2.1, percentUsed: 42 } } })
     apiMock.getLibraries.mockResolvedValue({
       data: [{ id: 10, name: 'TV Shows', media_type: 'tv', is_active: true, item_count: 2104 }],
@@ -112,7 +112,7 @@ describe('CommandCenter context modules', () => {
       },
     })
     apiMock.getMediaServerConfig.mockResolvedValue({ data: { id: 1, name: 'Plex' } })
-    apiMock.get.mockResolvedValue({ data: { incompleteConfigs: [] } })
+    apiMock.getArrConfigStatus.mockResolvedValue({ data: { incompleteConfigs: [] } })
     apiMock.searchTMDB.mockResolvedValue({
       data: [{ id: 27205, media_type: 'movie', title: 'Inception', release_date: '2010-07-16' }],
     })
@@ -249,7 +249,7 @@ describe('CommandCenter context modules', () => {
 
   it('shows configure media server CTA when setup is incomplete', async () => {
     apiMock.getMediaServerConfig.mockResolvedValueOnce({ data: null })
-    apiMock.get.mockResolvedValueOnce({
+    apiMock.getArrConfigStatus.mockResolvedValueOnce({
       data: {
         incompleteConfigs: [{ type: 'Radarr', id: 1, missingField: 'quality_profile_id' }],
       },

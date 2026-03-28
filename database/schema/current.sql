@@ -2183,43 +2183,6 @@ ALTER SEQUENCE public.embedding_errors_id_seq OWNED BY public.embedding_errors.i
 
 
 --
--- Name: embedding_retry_queue; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.embedding_retry_queue (
-    id integer NOT NULL,
-    classification_id bigint NOT NULL,
-    attempt_count integer DEFAULT 0,
-    max_attempts integer DEFAULT 5,
-    last_error text,
-    next_retry_at timestamp without time zone DEFAULT now(),
-    status character varying(20) DEFAULT 'pending'::character varying,
-    created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now()
-);
-
-
---
--- Name: embedding_retry_queue_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.embedding_retry_queue_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: embedding_retry_queue_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.embedding_retry_queue_id_seq OWNED BY public.embedding_retry_queue.id;
-
-
---
 -- Name: enrichment_retry_queue; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4832,13 +4795,6 @@ ALTER TABLE ONLY public.embedding_errors ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
--- Name: embedding_retry_queue id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.embedding_retry_queue ALTER COLUMN id SET DEFAULT nextval('public.embedding_retry_queue_id_seq'::regclass);
-
-
---
 -- Name: enrichment_retry_queue id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5459,14 +5415,6 @@ ALTER TABLE ONLY public.embedding_costs
 
 ALTER TABLE ONLY public.embedding_errors
     ADD CONSTRAINT embedding_errors_pkey PRIMARY KEY (id);
-
-
---
--- Name: embedding_retry_queue embedding_retry_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.embedding_retry_queue
-    ADD CONSTRAINT embedding_retry_queue_pkey PRIMARY KEY (id);
 
 
 --
@@ -6504,13 +6452,6 @@ CREATE INDEX idx_embedding_errors_classification ON public.embedding_errors USIN
 --
 
 CREATE INDEX idx_embedding_errors_resolved ON public.embedding_errors USING btree (resolved);
-
-
---
--- Name: idx_embedding_retry_pending; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_embedding_retry_pending ON public.embedding_retry_queue USING btree (next_retry_at, status) WHERE ((status)::text = 'pending'::text);
 
 
 --
@@ -7589,14 +7530,6 @@ ALTER TABLE ONLY public.dismissed_patterns
 
 ALTER TABLE ONLY public.embedding_errors
     ADD CONSTRAINT embedding_errors_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
-
-
---
--- Name: embedding_retry_queue embedding_retry_queue_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.embedding_retry_queue
-    ADD CONSTRAINT embedding_retry_queue_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
 
 
 --

@@ -23,9 +23,15 @@ import api from '../api';
 
 vi.mock('../api', () => ({
   default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn()
+    getHeartbeatSettings: vi.fn(),
+    updateHeartbeatSettings: vi.fn(),
+    getBackfillConfig: vi.fn(),
+    getBackfillStatus: vi.fn(),
+    updateBackfillConfig: vi.fn(),
+    startManualBackfill: vi.fn(),
+    pauseManualBackfill: vi.fn(),
+    resumeManualBackfill: vi.fn(),
+    clearManualBackfill: vi.fn()
   }
 }));
 
@@ -42,38 +48,33 @@ describe('BackfillTab.vue', () => {
   const mountComponent = () => mount(BackfillTab);
 
   const mockConfigEndpoints = () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/settings/heartbeat') {
-        return Promise.resolve({
-          data: { heartbeat_timeout: 30000, heartbeat_interval: 5000, max_wait_time: 60000 }
-        });
+    api.getHeartbeatSettings.mockResolvedValue({
+      data: { heartbeat_timeout: 30000, heartbeat_interval: 5000, max_wait_time: 60000 }
+    });
+    api.getBackfillConfig.mockResolvedValue({
+      data: {
+        realtime_embedding_enabled: true,
+        idle_backfill_enabled: true,
+        idle_threshold: 30000,
+        idle_batch_size: 10,
+        scheduled_backfill_enabled: true,
+        scheduled_backfill_time: '02:00',
+        scheduled_backfill_batch_size: 100,
+        scheduled_backfill_max_duration: 3600000
       }
-      if (url === '/rag/backfill/realtime') {
-        return Promise.resolve({ data: { realtime_embedding_enabled: true } });
+    });
+    api.getBackfillStatus.mockResolvedValue({
+      data: {
+        manual: { status: 'running', processed: 10, total: 100, eta: 120 },
+        embeddingAvailability: {
+          status: 'available',
+          cooldownUntil: null,
+          lastError: null,
+          failureCount: 0
+        },
+        pending: 7,
+        pendingBreakdown: { text: 2, image: 5 }
       }
-      if (url === '/rag/backfill/idle') {
-        return Promise.resolve({ data: { idle_backfill_enabled: true, idle_threshold: 30000, idle_batch_size: 10 } });
-      }
-      if (url === '/rag/backfill/schedule') {
-        return Promise.resolve({
-          data: {
-            scheduled_backfill_enabled: true,
-            scheduled_backfill_time: '02:00',
-            scheduled_backfill_batch_size: 100,
-            scheduled_backfill_max_duration: 3600000
-          }
-        });
-      }
-      if (url === '/rag/backfill/status') {
-        return Promise.resolve({
-          data: {
-            manual: { status: 'running', processed: 10, total: 100, eta: 120 },
-            pending: 7,
-            pendingBreakdown: { text: 2, image: 5 }
-          }
-        });
-      }
-      return Promise.reject(new Error(`Unknown URL: ${url}`));
     });
   };
 
@@ -97,6 +98,50 @@ describe('BackfillTab.vue', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('ETA: 2m 0s');
+
+    wrapper.unmount();
+  });
+
+  it('shows provider cooldown state and disables start and resume', async () => {
+    api.getHeartbeatSettings.mockResolvedValue({
+      data: { heartbeat_timeout: 30000, heartbeat_interval: 5000, max_wait_time: 60000 }
+    });
+    api.getBackfillConfig.mockResolvedValue({
+      data: {
+        realtime_embedding_enabled: true,
+        idle_backfill_enabled: true,
+        idle_threshold: 30000,
+        idle_batch_size: 10,
+        scheduled_backfill_enabled: true,
+        scheduled_backfill_time: '02:00',
+        scheduled_backfill_batch_size: 100,
+        scheduled_backfill_max_duration: 3600000
+      }
+    });
+    api.getBackfillStatus.mockResolvedValue({
+      data: {
+        manual: { status: 'paused', processed: 10, total: 100, eta: 120 },
+        embeddingAvailability: {
+          status: 'cooldown',
+          cooldownUntil: '2026-03-28T00:00:00.000Z',
+          lastError: 'connect ETIMEDOUT 192.168.50.95:11434',
+          failureCount: 4
+        },
+        pending: 7,
+        pendingBreakdown: { text: 2, image: 5 }
+      }
+    });
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Embedding provider cooling down');
+    expect(wrapper.text()).toContain('connect ETIMEDOUT 192.168.50.95:11434');
+    expect(wrapper.text()).toContain('Failure count: 4');
+
+    const buttons = wrapper.findAll('button');
+    expect(buttons[0].attributes('disabled')).toBeDefined();
+    expect(buttons[2].attributes('disabled')).toBeDefined();
 
     wrapper.unmount();
   });

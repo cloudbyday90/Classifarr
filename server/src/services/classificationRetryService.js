@@ -347,7 +347,6 @@ class ClassificationRetryService {
     await client.query('DELETE FROM content_analysis_log WHERE classification_id = $1', [classificationId]);
     await client.query('DELETE FROM classification_corrections WHERE classification_id = $1', [classificationId]);
     await client.query('DELETE FROM classification_embeddings WHERE classification_id = $1', [classificationId]);
-    await client.query('DELETE FROM embedding_retry_queue WHERE classification_id = $1', [classificationId]);
     await client.query('DELETE FROM embedding_errors WHERE classification_id = $1', [classificationId]);
     await client.query('DELETE FROM pattern_match_log WHERE classification_id = $1', [classificationId]);
   }

@@ -309,6 +309,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
+import {
+  defaultBackfillModeStatus,
+  normalizeBackfillModeStatus
+} from '@/utils/backfillStatusUi'
 
 const toast = useToast()
 
@@ -340,9 +344,8 @@ const status = ref({
   mode: 'disabled'
 })
 const backfillStatus = ref({
-  idleEnabled: false,
-  scheduledEnabled: false,
-  scheduledTime: '02:00'
+  idle: defaultBackfillModeStatus('idle'),
+  scheduled: defaultBackfillModeStatus('scheduled')
 })
 
 const saving = ref(false)
@@ -432,7 +435,7 @@ const hydrateCachedModels = () => {
 const loadServerModelsCache = async () => {
   if (imageDisabled.value) return
   try {
-    const response = await api.getImageEmbeddingModelsCache()
+    const response = await api.getImageModelMetadata(getImageModelRequest({ refresh: false }))
     const models = response.data?.models || []
     const fetchedAt = response.data?.fetchedAt || null
     const cacheHit = response.data?.cacheHit === true
@@ -578,12 +581,16 @@ const imageModelDimsLabel = computed(() => {
 
 const idleBackfillLabel = computed(() => {
   if (imageDisabled.value) return 'Off'
-  return backfillStatus.value.idleEnabled ? 'On' : 'Off'
+  const idle = backfillStatus.value.idle
+  if (!idle?.enabled) return 'Off'
+  return idle.presentation?.statusLabel || 'On'
 })
 const scheduledBackfillLabel = computed(() => {
   if (imageDisabled.value) return 'Off'
-  if (!backfillStatus.value.scheduledEnabled) return 'Off'
-  return `On (${backfillStatus.value.scheduledTime})`
+  const scheduled = backfillStatus.value.scheduled
+  if (!scheduled?.enabled) return 'Off'
+  const label = scheduled.presentation?.statusLabel || 'On'
+  return scheduled.time ? `${label} (${scheduled.time})` : label
 })
 
 const modelChangedWarning = computed(() => {
@@ -616,7 +623,7 @@ const modelsCacheSourceLabel = computed(() => {
 
 const loadConfig = async () => {
   try {
-    const configRes = await api.get('/settings/ai')
+    const configRes = await api.getAIConfig()
     const data = configRes.data || {}
     const rawMode = data.image_embedding_provider_mode || 'disabled'
     const normalizedMode = rawMode === 'local'
@@ -652,7 +659,7 @@ const loadConfig = async () => {
 
 const loadStatus = async () => {
   try {
-    const statusRes = await api.get('/rag/status')
+    const statusRes = await api.getRagStatus()
     const imageStatus = statusRes.data?.image || {}
     const enabled = imageStatus.enabled ?? false
     const derivedState = imageStatus.status
@@ -688,12 +695,7 @@ const fetchImageCloudModels = async ({ silent = false } = {}) => {
 
   loadingImageCloudModels.value = true
   try {
-    const response = await api.getRagEmbeddingModels({
-      provider: config.value.image_cloud_provider,
-      api_key: config.value.image_cloud_api_key,
-      api_endpoint: config.value.image_cloud_api_endpoint,
-      kind: 'image'
-    })
+    const response = await api.getImageModelMetadata(getImageModelRequest({ refresh: true }))
 
     const models = response.data?.models || []
     if (config.value.image_cloud_model && !models.find(m => m.id === config.value.image_cloud_model)) {
@@ -735,7 +737,12 @@ const fetchImageLocalModels = async ({ silent = false } = {}) => {
 
   loadingImageLocalModels.value = true
   try {
-    const response = await api.getImageEmbeddingLocalModels(host, port)
+    const response = await api.getImageModelMetadata({
+      mode: 'separate_local',
+      local_host: host,
+      local_port: port,
+      refresh: true
+    })
     const models = response.data?.models || []
 
     imageLocalModels.value = models
@@ -835,7 +842,7 @@ const saveConfig = async ({ silent = false } = {}) => {
   saving.value = true
 
   try {
-    await api.put('/settings/ai', {
+    await api.updateAIConfig({
       rag_enabled: true,
       image_embedding_provider_mode: config.value.image_mode,
       image_embedding_local_host: config.value.image_local_host,
@@ -919,20 +926,25 @@ const formatTimeAgo = (date) => {
 
 const loadBackfillStatus = async () => {
   try {
-    const [idleRes, scheduleRes] = await Promise.all([
-      api.get('/rag/backfill/idle'),
-      api.get('/rag/backfill/schedule')
-    ])
-
+    const response = await api.getBackfillStatus()
     backfillStatus.value = {
-      idleEnabled: idleRes.data?.idle_backfill_enabled ?? false,
-      scheduledEnabled: scheduleRes.data?.scheduled_backfill_enabled ?? false,
-      scheduledTime: scheduleRes.data?.scheduled_backfill_time || '02:00'
+      idle: normalizeBackfillModeStatus('idle', response.data?.idle),
+      scheduled: normalizeBackfillModeStatus('scheduled', response.data?.scheduled)
     }
   } catch (error) {
     console.error('Failed to load backfill status:', error)
   }
 }
+
+const getImageModelRequest = ({ refresh = false } = {}) => ({
+  mode: config.value.image_mode,
+  local_host: config.value.image_local_host,
+  local_port: config.value.image_local_port,
+  cloud_provider: config.value.image_cloud_provider,
+  cloud_api_key: config.value.image_cloud_api_key,
+  cloud_api_endpoint: config.value.image_cloud_api_endpoint,
+  refresh
+})
 
 onMounted(async () => {
   await loadConfig()

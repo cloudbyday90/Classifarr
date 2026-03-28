@@ -12,7 +12,14 @@ vi.mock('../api', () => ({
   default: {
     get: vi.fn(),
     put: vi.fn(),
-    post: vi.fn()
+    post: vi.fn(),
+    getAIConfig: vi.fn(),
+    updateAIConfig: vi.fn(),
+    getRagAdvancedConfig: vi.fn(),
+    getRagPromotionReadiness: vi.fn(),
+    updateRagAdvancedConfig: vi.fn(),
+    clearRagEmbeddings: vi.fn(),
+    resetRagConfig: vi.fn()
   }
 }))
 
@@ -69,14 +76,16 @@ describe('AdvancedTab Issue 275 UI controls', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     api.put.mockResolvedValue({ data: { success: true } })
+    api.updateAIConfig.mockResolvedValue({ data: { success: true } })
+    api.updateRagAdvancedConfig.mockResolvedValue({ data: { success: true } })
   })
 
   function mockSuccessfulGets() {
+    api.getAIConfig.mockResolvedValue({ data: issue275Settings })
+    api.getRagAdvancedConfig.mockResolvedValue({ data: baseAdvanced })
+    api.getRagPromotionReadiness.mockResolvedValue({ data: promotionReadiness })
     api.get.mockImplementation((url) => {
-      if (url === '/rag/advanced') return Promise.resolve({ data: baseAdvanced })
       if (url === '/settings/embedding/retry') return Promise.resolve({ data: baseRetry })
-      if (url === '/settings/ai') return Promise.resolve({ data: issue275Settings })
-      if (url === '/rag/loop/promotion-readiness') return Promise.resolve({ data: promotionReadiness })
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
   }
@@ -94,11 +103,11 @@ describe('AdvancedTab Issue 275 UI controls', () => {
   })
 
   it('shows compatibility message when Issue 275 keys are unavailable', async () => {
+    api.getAIConfig.mockResolvedValue({ data: {} })
+    api.getRagAdvancedConfig.mockResolvedValue({ data: baseAdvanced })
+    api.getRagPromotionReadiness.mockRejectedValue(new Error('404'))
     api.get.mockImplementation((url) => {
-      if (url === '/rag/advanced') return Promise.resolve({ data: baseAdvanced })
       if (url === '/settings/embedding/retry') return Promise.resolve({ data: baseRetry })
-      if (url === '/settings/ai') return Promise.resolve({ data: {} })
-      if (url === '/rag/loop/promotion-readiness') return Promise.reject(new Error('404'))
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
 
@@ -119,13 +128,16 @@ describe('AdvancedTab Issue 275 UI controls', () => {
     await saveButton.trigger('click')
     await flushPromises()
 
-    const settingsAiCall = api.put.mock.calls.find(([url]) => url === '/settings/ai')
-    expect(settingsAiCall).toBeTruthy()
-    expect(settingsAiCall[1]).toMatchObject({
+    expect(api.updateRagAdvancedConfig).toHaveBeenCalledWith(expect.objectContaining({
+      max_retries: 3,
+      retry_delay: 1000,
+      request_timeout: 30000
+    }))
+    expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
       rag_retrieval_loop_enabled: true,
       rag_loop_rollout_mode: 'shadow',
       rag_loop_low_confidence_threshold: 60,
       rag_retry_strategy: 'auto'
-    })
+    }))
   })
 })

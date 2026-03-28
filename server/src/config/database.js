@@ -180,6 +180,7 @@ const DB_ADVISORY_LOCKS = {
   SCHEDULED_BACKFILL: 1002,
   MANUAL_BACKFILL: 1003,
   BACKFILL_OWNER: 1004,
+  EMBEDDING_PROVIDER_PROBE: 1005,
   STARTUP_RESET: 1234567890,
   // Scheduler job locks — prevent two processes from running the same job simultaneously
   // during rolling restarts (e.g. K8s maxSurge, docker compose up --no-deps).

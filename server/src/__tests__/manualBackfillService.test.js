@@ -19,6 +19,7 @@
 const manualBackfillService = require('../services/manualBackfillService');
 const embeddingService = require('../services/embeddingService');
 const embeddingProvider = require('../services/embeddingProvider');
+const embeddingRouter = require('../services/embeddingRouter');
 const db = require('../config/database');
 
 jest.mock('../services/embeddingService', () => ({
@@ -26,13 +27,14 @@ jest.mock('../services/embeddingService', () => ({
     getPendingCount: jest.fn(),
     getPendingEmbeddings: jest.fn(),
     generateAndStore: jest.fn(),
-    generateImageEmbedding: jest.fn()
+    generateImageEmbedding: jest.fn(),
+    getProviderAvailabilityStatus: jest.fn()
 }));
 jest.mock('../services/embeddingProvider', () => ({
-    warmup: jest.fn(),
-    circuitBreaker: {
-        getStatus: jest.fn()
-    }
+    warmup: jest.fn()
+}));
+jest.mock('../services/embeddingRouter', () => ({
+    getCircuitStatus: jest.fn()
 }));
 jest.mock('../config/database', () => {
     const mockPoolClient = {
@@ -63,7 +65,11 @@ describe('ManualBackfillService', () => {
         jest.resetAllMocks();
         await manualBackfillService.clear();
         manualBackfillService._lockClient = null;
-        embeddingProvider.circuitBreaker.getStatus.mockReturnValue({ state: 'CLOSED' });
+        embeddingRouter.getCircuitStatus.mockReturnValue({ state: 'CLOSED' });
+        embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+            status: 'available',
+            cooldownUntil: null
+        });
 
         // Default: advisory lock acquired (so existing tests pass)
         const mockPoolClient = db._mockPoolClient;
@@ -330,13 +336,76 @@ describe('ManualBackfillService', () => {
             includeImage: true
         };
 
-        embeddingProvider.circuitBreaker.getStatus.mockReturnValue({ state: 'OPEN' });
+        embeddingRouter.getCircuitStatus.mockReturnValue({ state: 'OPEN' });
 
         await manualBackfillService.runBackfill();
 
         expect(manualBackfillService.state.status).toBe('paused');
         expect(manualBackfillService.state.error).toContain('Circuit breaker OPEN');
         expect(embeddingService.getPendingEmbeddings).not.toHaveBeenCalled();
+    });
+
+    it('start rejects when provider cooldown is active', async () => {
+        db.query.mockResolvedValueOnce({ rows: [{ rag_enabled: true, manual_backfill_batch_size: 40 }] });
+        embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+            status: 'cooldown',
+            cooldownUntil: new Date(Date.now() + 60000).toISOString()
+        });
+
+        await expect(manualBackfillService.start()).rejects.toThrow(/Embedding provider unavailable until/);
+    });
+
+    it('resume rejects when provider cooldown is active', async () => {
+        manualBackfillService.state = {
+            status: 'paused',
+            processed: 2,
+            total: 10,
+            startTime: Date.now(),
+            eta: null,
+            batchSize: 10,
+            error: null,
+            runId: 55,
+            includeImage: true
+        };
+
+        embeddingService.getProviderAvailabilityStatus.mockResolvedValue({
+            status: 'cooldown',
+            cooldownUntil: new Date(Date.now() + 60000).toISOString()
+        });
+
+        await expect(manualBackfillService.resume()).rejects.toThrow(/Embedding provider unavailable until/);
+        expect(db.pool.connect).not.toHaveBeenCalled();
+    });
+
+    it('runBackfill pauses when provider becomes unavailable', async () => {
+        manualBackfillService.state = {
+            status: 'running',
+            processed: 0,
+            total: 5,
+            startTime: Date.now(),
+            eta: null,
+            batchSize: 10,
+            error: null,
+            runId: 15,
+            includeImage: true
+        };
+
+        embeddingService.getPendingCount.mockResolvedValueOnce(1);
+        embeddingService.getPendingEmbeddings.mockResolvedValueOnce([
+            { id: 1, needsText: true, needsImage: false, metadata: {}, title: 'Offline', media_type: 'movie', library_name: 'Movies' }
+        ]);
+        embeddingService.generateAndStore.mockRejectedValueOnce(new Error('PROVIDER_OFFLINE'));
+        embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+            status: 'cooldown',
+            cooldownUntil: new Date(Date.now() + 60000).toISOString()
+        });
+        db.query.mockResolvedValue({ rows: [] });
+
+        await manualBackfillService.runBackfill();
+
+        expect(manualBackfillService.state.status).toBe('paused');
+        expect(manualBackfillService.state.error).toContain('Embedding provider unavailable until');
+        expect(embeddingService.generateAndStore).toHaveBeenCalledTimes(1);
     });
 
     it('runBackfill completes when no pending items remain', async () => {

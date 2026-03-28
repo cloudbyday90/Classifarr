@@ -41,7 +41,7 @@ onMounted(async () => {
   }
 
   try {
-    const response = await api.get('/rag/status')
+    const response = await api.getRagStatus()
     if (response.data?.pgvectorVariant === 'generic') {
       show.value = true
     }

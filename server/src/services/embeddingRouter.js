@@ -10,8 +10,8 @@
 
 const db = require('../config/database');
 const ollamaService = require('./ollama');
-const cloudLLMService = require('./cloudLLM');
 const embeddingProvider = require('./embeddingProvider');
+const { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } = require('./embeddingCircuitBreaker');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('EmbeddingRouter');
@@ -25,30 +25,16 @@ const DEFAULT_MODELS = {
     litellm: 'text-embedding-3-small'
 };
 
-// Circuit breaker state
-const circuitBreaker = {
-    state: 'CLOSED', // CLOSED, OPEN, HALF_OPEN
-    failures: 0,
-    lastFailure: null,
-    threshold: 5,
-    resetTimeMs: 300000 // 5 minutes
-};
-
 /**
  * Embedding Router Service
  * Routes embedding requests to the appropriate provider (Ollama, OpenAI, Gemini)
  * with fallback support and circuit breaker protection
  */
 class EmbeddingRouter {
-    constructor() {
-        this.config = null;
-    }
-
     /**
-     * Reset cached configuration
+     * Reset downstream provider runtime state after settings changes.
      */
     resetConfig() {
-        this.config = null;
         embeddingProvider.resetConfig();
     }
 
@@ -136,53 +122,25 @@ class EmbeddingRouter {
     }
 
     /**
-     * Get the effective embedding provider
-     * 'auto' = use same as LLM provider
-     */
-    async getProvider() {
-        const config = await this.getConfig();
-        if (!config) return null;
-
-        let provider = config.embedding_provider;
-
-        // 'auto' means use the same provider as LLM
-        if (provider === 'auto') {
-            provider = config.primary_provider;
-        }
-
-        return {
-            provider,
-            model: config.embedding_model || DEFAULT_MODELS[provider] || DEFAULT_MODELS.ollama,
-            config
-        };
-    }
-
-    /**
      * Check circuit breaker state
      */
     isCircuitOpen() {
-        if (circuitBreaker.state === 'OPEN') {
-            const timeSinceFailure = Date.now() - circuitBreaker.lastFailure;
-            if (timeSinceFailure > circuitBreaker.resetTimeMs) {
-                circuitBreaker.state = 'HALF_OPEN';
-                logger.info('Circuit breaker half-open, testing provider');
-                return false;
-            }
-            return true;
-        }
-        return false;
+        return embeddingProvider.getCircuitStatus().state === 'OPEN';
     }
 
     /**
      * Record a failure for circuit breaker
      */
-    recordFailure() {
-        circuitBreaker.failures++;
-        circuitBreaker.lastFailure = Date.now();
+    recordFailure(error = null) {
+        const previousStatus = embeddingProvider.getCircuitStatus();
+        embeddingCircuitBreaker.recordFailure(error || new Error('Embedding router failure'));
+        const nextStatus = embeddingProvider.getCircuitStatus();
 
-        if (circuitBreaker.failures >= circuitBreaker.threshold) {
-            circuitBreaker.state = 'OPEN';
-            logger.error('Circuit breaker opened', { failures: circuitBreaker.failures });
+        if (previousStatus.state !== 'OPEN' && nextStatus.state === 'OPEN') {
+            logger.warn('Circuit breaker opened', {
+                failures: nextStatus.failureCount ?? nextStatus.failures ?? 0,
+                error: error?.message || null
+            }, { skipDbPersist: true });
         }
     }
 
@@ -190,8 +148,73 @@ class EmbeddingRouter {
      * Reset circuit breaker on success
      */
     resetCircuit() {
-        circuitBreaker.state = 'CLOSED';
-        circuitBreaker.failures = 0;
+        embeddingProvider.resetCircuit();
+    }
+
+    isConfigurationError(error) {
+        return error?.isConfigurationError === true || error?.name === 'ConfigurationError';
+    }
+
+    isOpenCircuitError(error) {
+        return error?.code === 'EMBEDDING_CIRCUIT_OPEN' ||
+            error?.message?.includes('Circuit breaker is OPEN');
+    }
+
+    shouldRecordFailure(error) {
+        if (!error || error.name === 'AbortError') {
+            return false;
+        }
+
+        if (this.isConfigurationError(error) || this.isOpenCircuitError(error)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    async getOpenCircuitFallback(text, config, signal) {
+        const mode = config?.embedding_provider_mode || 'same';
+
+        if (mode === 'same') {
+            const providerConfig = embeddingProvider.getSameModeProvider(config);
+            const provider = providerConfig?.provider || 'ollama';
+
+            if (!config?.ollama_fallback_enabled || provider === 'ollama') {
+                const error = new Error(OPEN_CIRCUIT_ERROR_MESSAGE);
+                error.code = 'EMBEDDING_CIRCUIT_OPEN';
+                throw error;
+            }
+
+            logger.info('Circuit breaker open, using Ollama fallback', { provider }, { skipDbPersist: true });
+            return await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
+        }
+
+        if (mode === 'cloud' && config?.ollama_fallback_enabled) {
+            logger.info('Circuit breaker open, using Ollama fallback', { mode }, { skipDbPersist: true });
+            return await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
+        }
+
+        const error = new Error(OPEN_CIRCUIT_ERROR_MESSAGE);
+        error.code = 'EMBEDDING_CIRCUIT_OPEN';
+        throw error;
+    }
+
+    async testConnection() {
+        return await embeddingProvider.testConnection();
+    }
+
+    canUseOllamaFallback(config) {
+        if (!config?.ollama_fallback_enabled) {
+            return false;
+        }
+
+        const mode = config?.embedding_provider_mode || 'same';
+        if (mode !== 'same') {
+            return true;
+        }
+
+        const providerConfig = embeddingProvider.getSameModeProvider(config);
+        return providerConfig?.provider !== 'ollama';
     }
 
     /**
@@ -213,106 +236,43 @@ class EmbeddingRouter {
             throw new Error('RAG is not enabled');
         }
 
-        // Check circuit breaker
-        if (this.isCircuitOpen()) {
-            logger.warn('Circuit breaker open, using fallback');
-            return await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
-        }
-
         const config = await this.getConfig();
 
-        // Check if using new embedding provider mode
         const mode = config?.embedding_provider_mode || 'same';
 
-        if (mode !== 'same') {
-            // Use new embeddingProvider service for separate_ollama and cloud modes
-            try {
-                const result = await embeddingProvider.getEmbedding(text, { signal });
-
-                // Success - reset circuit breaker
-                this.resetCircuit();
-
-                return result;
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    throw error;
-                }
-                
-                this.recordFailure();
-
-                logger.warn('Embedding provider failed, trying fallback', {
-                    mode,
-                    error: error.message
-                });
-
-                // Try Ollama fallback if enabled
-                if (config?.ollama_fallback_enabled) {
-                    try {
-                        const fallbackResult = await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
-                        return {
-                            ...fallbackResult,
-                            provider: 'ollama',
-                            model: DEFAULT_MODELS.ollama,
-                            fallback: true
-                        };
-                    } catch (fallbackError) {
-                        if (fallbackError.name === 'AbortError') {
-                            throw fallbackError;
-                        }
-                        logger.error('Fallback embedding also failed', { error: fallbackError.message });
-                    }
-                }
-
-                throw error;
-            }
+        if (mode === 'same' && !embeddingCircuitBreaker.isAllowed()) {
+            const fallbackResult = await this.getOpenCircuitFallback(text, config, signal);
+            return {
+                ...fallbackResult,
+                provider: 'ollama',
+                model: DEFAULT_MODELS.ollama,
+                fallback: true
+            };
         }
 
-        // Legacy behavior: use embedding_provider column (mode = 'same')
-        const { provider, model, config: providerConfig } = await this.getProvider();
-
         try {
-            let result;
-
-            switch (provider) {
-                case 'ollama':
-                    result = await this.embedWithOllama(text, model, '5m', signal);
-                    break;
-
-                case 'gemini':
-                    result = await this.embedWithGemini(text, model, providerConfig, signal);
-                    break;
-
-                case 'openai':
-                case 'openrouter':
-                case 'litellm':
-                case 'custom':
-                    result = await this.embedWithCloud(text, model, providerConfig, signal);
-                    break;
-
-                default:
-                    logger.warn(`Unknown embedding provider: ${provider}, falling back to Ollama`);
-                    result = await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
-            }
-
-            // Success - reset circuit breaker
-            this.resetCircuit();
-
-            return result;
-
+            return await embeddingProvider.getEmbedding(text, { signal });
         } catch (error) {
             if (error.name === 'AbortError') {
                 throw error;
             }
-            
-            this.recordFailure();
+
+            if (this.isOpenCircuitError(error)) {
+                const fallbackResult = await this.getOpenCircuitFallback(text, config, signal);
+                return {
+                    ...fallbackResult,
+                    provider: 'ollama',
+                    model: DEFAULT_MODELS.ollama,
+                    fallback: true
+                };
+            }
 
             logger.warn('Embedding failed, trying fallback', {
-                provider,
+                mode,
                 error: error.message
             });
 
-            // Try Ollama fallback if enabled
-            if (config?.ollama_fallback_enabled) {
+            if (this.canUseOllamaFallback(config)) {
                 try {
                     const fallbackResult = await this.embedWithOllama(text, DEFAULT_MODELS.ollama, '5m', signal);
                     return {
@@ -345,68 +305,23 @@ class EmbeddingRouter {
         };
     }
 
-    async embedWithCloud(text, model, config, signal = null) {
-        const result = await cloudLLMService.embed(text, config, model, signal);
-        return {
-            embedding: result.embedding,
-            dims: result.dims,
-            cost: result.cost
-        };
-    }
-
-    async embedWithGemini(text, model, config, signal = null) {
-        const result = await cloudLLMService.embedGemini(text, config, model, signal);
-        return {
-            embedding: result.embedding,
-            dims: result.dims,
-            cost: result.cost
-        };
-    }
-
     /**
      * Get circuit breaker status
      */
     getCircuitStatus() {
+        const status = embeddingProvider.getCircuitStatus();
         return {
-            state: circuitBreaker.state,
-            failures: circuitBreaker.failures,
-            lastFailure: circuitBreaker.lastFailure,
-            threshold: circuitBreaker.threshold
+            ...status,
+            failures: status.failureCount ?? 0,
+            lastFailure: status.lastFailureTime ?? null,
+            threshold: status.config?.failureThreshold ?? 0
         };
     }
 
-    /**
-     * Get recommended embedding models for each provider
-     */
-    getRecommendedModels() {
-        return {
-            ollama: [
-                // Popular/Recommended
-                { id: 'nomic-embed-text', name: 'Nomic Embed Text', dims: 768, recommended: true, desc: 'High-performing open embedding model with large context window' },
-                { id: 'mxbai-embed-large', name: 'MxBai Embed Large', dims: 1024, recommended: true, desc: 'State-of-the-art large embedding model from mixedbread.ai' },
-                { id: 'bge-m3', name: 'BGE-M3', dims: 1024, desc: 'Multi-Functionality, Multi-Linguality, Multi-Granularity model from BAAI' },
-                { id: 'all-minilm', name: 'All-MiniLM', dims: 384, desc: 'Fast, lightweight model for sentence embeddings' },
-                // Additional models
-                { id: 'snowflake-arctic-embed', name: 'Snowflake Arctic Embed', dims: 1024, desc: 'Suite of text embedding models optimized for performance' },
-                { id: 'snowflake-arctic-embed2', name: 'Snowflake Arctic Embed 2', dims: 1024, desc: 'Multilingual support without sacrificing English performance' },
-                { id: 'nomic-embed-text-v2-moe', name: 'Nomic Embed v2 MoE', dims: 768, desc: 'Multilingual MoE text embedding model' },
-                { id: 'bge-large', name: 'BGE Large', dims: 1024, desc: 'Embedding model from BAAI mapping texts to vectors' },
-                { id: 'qwen3-embedding', name: 'Qwen3 Embedding', dims: 1024, desc: 'Text embeddings from Qwen3 series in various sizes' },
-                { id: 'granite-embedding', name: 'Granite Embedding', dims: 768, desc: 'IBM Granite multilingual text embedding model' },
-                { id: 'embeddinggemma', name: 'EmbeddingGemma', dims: 768, desc: '300M parameter embedding model from Google' },
-                { id: 'paraphrase-multilingual', name: 'Paraphrase Multilingual', dims: 768, desc: 'Sentence-transformers model for clustering or semantic search' }
-            ],
-            openai: [
-                { id: 'text-embedding-3-small', name: 'Embedding 3 Small', dims: 1536, recommended: true, desc: 'Cost-effective, efficient for most use cases' },
-                { id: 'text-embedding-3-large', name: 'Embedding 3 Large', dims: 3072, desc: 'Highest quality for demanding applications' },
-                { id: 'text-embedding-ada-002', name: 'Ada 002', dims: 1536, desc: 'Previous generation, widely supported' }
-            ],
-            gemini: [
-                { id: 'text-embedding-005', name: 'Text Embedding 005', dims: 768, recommended: true, desc: 'Latest Gemini embedding model' },
-                { id: 'text-embedding-004', name: 'Text Embedding 004', dims: 768, desc: 'Previous Gemini embedding model' }
-            ]
-        };
+    getCircuitStateHistory(limit = 20) {
+        return embeddingProvider.getCircuitStateHistory(limit);
     }
+
 }
 
 module.exports = new EmbeddingRouter();

@@ -77,6 +77,7 @@
 
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import api from '@/api';
 import AlertsBanner from '@/components/stats/AlertsBanner.vue';
 import StatCard from '@/components/stats/StatCard.vue';
 import PolicyStatsCard from '@/components/stats/PolicyStatsCard.vue';
@@ -116,51 +117,23 @@ export default {
     };
 
     const loadOverview = async () => {
-      const response = await fetch('/api/stats/overview');
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          console.error('Authentication failed. Please log in again.');
-          return;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
-      overview.value = await response.json();
+      const response = await api.getPolicyStatsOverview();
+      overview.value = response.data;
     };
 
     const loadPolicies = async () => {
-      const response = await fetch('/api/stats/policies');
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          console.error('Authentication failed. Please log in again.');
-          return;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
-      policiesWithStats.value = await response.json();
+      const response = await api.getPolicyStatsList();
+      policiesWithStats.value = response.data;
     };
 
     const loadLiveFeed = async () => {
-      const response = await fetch('/api/stats/live-feed?limit=20');
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          console.error('Authentication failed. Please log in again.');
-          return;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
-      liveFeed.value = await response.json();
+      const response = await api.getPolicyStatsLiveFeed(20);
+      liveFeed.value = response.data;
     };
 
     const loadAlerts = async () => {
-      const response = await fetch('/api/stats/alerts');
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          console.error('Authentication failed. Please log in again.');
-          return;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
-      alerts.value = await response.json();
+      const response = await api.getPolicyStatsAlerts();
+      alerts.value = response.data;
     };
 
     const showPolicyDetails = (policy) => {

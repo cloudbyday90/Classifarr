@@ -15,8 +15,10 @@ import api from '../api'
 
 vi.mock('../api', () => ({
   default: {
-    get: vi.fn(),
     put: vi.fn(),
+    getAIConfig: vi.fn(),
+    updateAIConfig: vi.fn(),
+    getRagGraphFillRate: vi.fn(),
   },
 }))
 
@@ -33,28 +35,21 @@ const defaultConfig = {
 }
 
 const mockApiSuccess = (configOverrides = {}) => {
-  api.get.mockImplementation((url) => {
-    if (url === '/settings/ai') {
-      return Promise.resolve({ data: { ...defaultConfig, ...configOverrides } })
+  api.getAIConfig.mockResolvedValue({ data: { ...defaultConfig, ...configOverrides } })
+  api.getRagGraphFillRate.mockResolvedValue({
+    data: {
+      total: 100,
+      has_collection: 80,
+      has_director: 90,
+      has_studio: 60,
+      has_cast: 70,
+      has_genres: 85,
+      pct_collection: 80,
+      pct_director: 90,
+      pct_studio: 60,
+      pct_cast: 70,
+      pct_genres: 85,
     }
-    if (url === '/rag/graph/fill-rate') {
-      return Promise.resolve({
-        data: {
-          total: 100,
-          has_collection: 80,
-          has_director: 90,
-          has_studio: 60,
-          has_cast: 70,
-          has_genres: 85,
-          pct_collection: 80,
-          pct_director: 90,
-          pct_studio: 60,
-          pct_cast: 70,
-          pct_genres: 85,
-        }
-      })
-    }
-    return Promise.reject(new Error(`Unexpected GET ${url}`))
   })
 }
 
@@ -132,14 +127,14 @@ describe('GraphTab.vue', () => {
     mockApiSuccess({ rag_graph_weight: 0.35 })
     mount(GraphTab)
     await flushPromises()
-    expect(api.get).toHaveBeenCalledWith('/settings/ai')
+    expect(api.getAIConfig).toHaveBeenCalled()
   })
 
   it('loads fill-rate on mount', async () => {
     mockApiSuccess()
     mount(GraphTab)
     await flushPromises()
-    expect(api.get).toHaveBeenCalledWith('/rag/graph/fill-rate')
+    expect(api.getRagGraphFillRate).toHaveBeenCalled()
   })
 
   it('displays fill-rate percentages when data loads', async () => {
@@ -151,11 +146,8 @@ describe('GraphTab.vue', () => {
   })
 
   it('shows fill-rate error message on API failure', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/settings/ai') return Promise.resolve({ data: defaultConfig })
-      if (url === '/rag/graph/fill-rate') return Promise.reject(new Error('Network error'))
-      return Promise.reject(new Error(`Unexpected GET ${url}`))
-    })
+    api.getAIConfig.mockResolvedValue({ data: defaultConfig })
+    api.getRagGraphFillRate.mockRejectedValue(new Error('Network error'))
     const wrapper = mount(GraphTab)
     await flushPromises()
     expect(wrapper.text()).toContain('Failed to load fill-rate data')
@@ -163,13 +155,13 @@ describe('GraphTab.vue', () => {
 
   it('calls PUT /settings/ai on save', async () => {
     mockApiSuccess()
-    api.put.mockResolvedValue({ data: {} })
+    api.updateAIConfig.mockResolvedValue({ data: {} })
     const wrapper = mount(GraphTab)
     await flushPromises()
     const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save'))
     await saveBtn.trigger('click')
     await flushPromises()
-    expect(api.put).toHaveBeenCalledWith('/settings/ai', expect.objectContaining({
+    expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
       rag_graph_enabled: false,
       rag_graph_weight: 0.20,
     }))
@@ -177,7 +169,7 @@ describe('GraphTab.vue', () => {
 
   it('shows save confirmation message on successful save', async () => {
     mockApiSuccess()
-    api.put.mockResolvedValue({ data: {} })
+    api.updateAIConfig.mockResolvedValue({ data: {} })
     const wrapper = mount(GraphTab)
     await flushPromises()
     const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save'))
@@ -188,7 +180,7 @@ describe('GraphTab.vue', () => {
 
   it('shows error message on failed save', async () => {
     mockApiSuccess()
-    api.put.mockRejectedValue({ response: { data: { error: 'DB error' } } })
+    api.updateAIConfig.mockRejectedValue({ response: { data: { error: 'DB error' } } })
     const wrapper = mount(GraphTab)
     await flushPromises()
     const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save'))
@@ -199,7 +191,7 @@ describe('GraphTab.vue', () => {
 
   it('falls back to generic error message when save error has no response body', async () => {
     mockApiSuccess()
-    api.put.mockRejectedValue(new Error('Network error'))
+    api.updateAIConfig.mockRejectedValue(new Error('Network error'))
     const wrapper = mount(GraphTab)
     await flushPromises()
     const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save'))
@@ -209,19 +201,16 @@ describe('GraphTab.vue', () => {
   })
 
   it('handles loadConfig gracefully when /settings/ai fails', async () => {
-    api.get.mockImplementation((url) => {
-      if (url === '/settings/ai') return Promise.reject(new Error('Server error'))
-      if (url === '/rag/graph/fill-rate') return Promise.resolve({
-        data: {
-          total: 0,
-          has_collection: 0, pct_collection: 0,
-          has_director: 0,   pct_director:   0,
-          has_studio: 0,     pct_studio:     0,
-          has_cast: 0,       pct_cast:       0,
-          has_genres: 0,     pct_genres:     0,
-        }
-      })
-      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    api.getAIConfig.mockRejectedValue(new Error('Server error'))
+    api.getRagGraphFillRate.mockResolvedValue({
+      data: {
+        total: 0,
+        has_collection: 0, pct_collection: 0,
+        has_director: 0,   pct_director:   0,
+        has_studio: 0,     pct_studio:     0,
+        has_cast: 0,       pct_cast:       0,
+        has_genres: 0,     pct_genres:     0,
+      }
     })
     // Should not throw — just use default config values
     const wrapper = mount(GraphTab)
@@ -241,19 +230,16 @@ describe('GraphTab.vue', () => {
     })
 
     it('returns red for pct < 50', async () => {
-      api.get.mockImplementation((url) => {
-        if (url === '/settings/ai') return Promise.resolve({ data: { ...defaultConfig, rag_graph_enabled: true } })
-        if (url === '/rag/graph/fill-rate') return Promise.resolve({
-          data: {
-            total: 100,
-            has_collection: 10, pct_collection: 10,
-            has_director: 10,   pct_director:   10,
-            has_studio: 10,     pct_studio:     10,
-            has_cast: 10,       pct_cast:       10,
-            has_genres: 10,     pct_genres:     10,
-          }
-        })
-        return Promise.reject(new Error(`Unexpected GET ${url}`))
+      api.getAIConfig.mockResolvedValue({ data: { ...defaultConfig, rag_graph_enabled: true } })
+      api.getRagGraphFillRate.mockResolvedValue({
+        data: {
+          total: 100,
+          has_collection: 10, pct_collection: 10,
+          has_director: 10,   pct_director:   10,
+          has_studio: 10,     pct_studio:     10,
+          has_cast: 10,       pct_cast:       10,
+          has_genres: 10,     pct_genres:     10,
+        }
       })
       const wrapper = mount(GraphTab)
       await flushPromises()

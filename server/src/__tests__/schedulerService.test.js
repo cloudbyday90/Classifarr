@@ -15,7 +15,11 @@ jest.mock('../services/embeddingService', () => ({
     getPendingCount: jest.fn().mockResolvedValue(0),
     getPendingEmbeddings: jest.fn().mockResolvedValue([]),
     generateAndStore: jest.fn().mockResolvedValue(),
-    generateImageEmbedding: jest.fn().mockResolvedValue()
+    generateImageEmbedding: jest.fn().mockResolvedValue(),
+    getProviderAvailabilityStatus: jest.fn().mockReturnValue({
+        status: 'available',
+        cooldownUntil: null
+    })
 }));
 
 jest.mock('../utils/logger', () => ({
@@ -44,7 +48,11 @@ describe('SchedulerService (schedulerService.js)', () => {
             getPendingCount: jest.fn().mockResolvedValue(0),
             getPendingEmbeddings: jest.fn().mockResolvedValue([]),
             generateAndStore: jest.fn().mockResolvedValue(),
-            generateImageEmbedding: jest.fn().mockResolvedValue()
+            generateImageEmbedding: jest.fn().mockResolvedValue(),
+            getProviderAvailabilityStatus: jest.fn().mockReturnValue({
+                status: 'available',
+                cooldownUntil: null
+            })
         }));
         jest.mock('../utils/logger', () => ({
             createLogger: () => ({
@@ -157,6 +165,33 @@ describe('SchedulerService (schedulerService.js)', () => {
             const usesEmbeddingCosts = allSqlCalls.some(sql => sql && sql.includes('embedding_costs'));
             expect(usesEmbeddingCosts).toBe(false);
         });
+
+        it('skips scheduler backfill while provider cooldown is active', async () => {
+            const dbModule = require('../config/database');
+            const embeddingModule = require('../services/embeddingService');
+
+            dbModule.query.mockImplementation((sql) => {
+                if (sql.includes('rag_enabled')) {
+                    return Promise.resolve({ rows: [{ rag_enabled: true }] });
+                }
+                if (sql.includes('backfill_runs')) {
+                    return Promise.resolve({ rows: [{ is_running: false, last_run: null }] });
+                }
+                return Promise.resolve({ rows: [] });
+            });
+
+            embeddingModule.getPendingCount.mockResolvedValue(5);
+            embeddingModule.getProviderAvailabilityStatus.mockReturnValue({
+                status: 'cooldown',
+                cooldownUntil: new Date(Date.now() + 60000).toISOString()
+            });
+
+            jest.spyOn(schedulerService, 'runRagBackfill').mockResolvedValue();
+
+            await schedulerService.checkRagBackfillSchedule();
+
+            expect(schedulerService.runRagBackfill).not.toHaveBeenCalled();
+        });
     });
 
     describe('runRagBackfill', () => {
@@ -260,6 +295,38 @@ describe('SchedulerService (schedulerService.js)', () => {
             );
             expect(failedUpdateCall).toBeDefined();
             expect(failedUpdateCall[1][1]).toBe(77); // runId = 77
+        });
+
+        it('stops the batch when the provider is offline', async () => {
+            const dbModule = require('../config/database');
+            const embeddingModule = require('../services/embeddingService');
+
+            const pendingItems = [
+                { id: 1, title: 'Movie A', media_type: 'movie', library_name: 'Movies', metadata: {}, needsText: true, needsImage: false },
+                { id: 2, title: 'Movie B', media_type: 'movie', library_name: 'Movies', metadata: {}, needsText: true, needsImage: false }
+            ];
+
+            embeddingModule.shouldIncludeImageEmbeddings.mockResolvedValue(false);
+            embeddingModule.getPendingEmbeddings.mockResolvedValue(pendingItems);
+            embeddingModule.generateAndStore.mockRejectedValueOnce(new Error('PROVIDER_OFFLINE'));
+            embeddingModule.getProviderAvailabilityStatus.mockReturnValue({
+                status: 'cooldown',
+                cooldownUntil: new Date(Date.now() + 60000).toISOString()
+            });
+
+            dbModule.query.mockImplementation((sql) => {
+                if (sql.includes('INSERT INTO backfill_runs')) {
+                    return Promise.resolve({ rows: [{ id: 66 }] });
+                }
+                if (sql.includes('UPDATE backfill_runs')) {
+                    return Promise.resolve({ rowCount: 1 });
+                }
+                return Promise.resolve({ rows: [] });
+            });
+
+            await schedulerService.runRagBackfill();
+
+            expect(embeddingModule.generateAndStore).toHaveBeenCalledTimes(1);
         });
     });
 

@@ -54,7 +54,7 @@ const checkIncompleteConfigs = async () => {
   if (dismissed.value) return
   
   try {
-    const response = await api.genericRequest('get', '/api/settings/arr-config-status')
+    const response = await api.getArrConfigStatus()
     if (response.data && response.data.incompleteConfigs) {
       incompleteConfigs.value = response.data.incompleteConfigs
       hasIncompleteConfigs.value = incompleteConfigs.value.length > 0

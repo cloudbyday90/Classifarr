@@ -628,7 +628,7 @@ const applyPromotionMetrics = (payload = {}) => {
 const loadPromotionMetrics = async () => {
   loadingPromotionMetrics.value = true
   try {
-    const response = await api.get('/rag/loop/promotion-readiness')
+    const response = await api.getRagPromotionReadiness()
     applyPromotionMetrics(response.data || {})
     promotionMetricsAvailable.value = true
   } catch (error) {
@@ -642,9 +642,9 @@ const loadPromotionMetrics = async () => {
 
 const loadConfig = async () => {
   const [advancedRes, retryRes, aiRes] = await Promise.allSettled([
-    api.get('/rag/advanced'),
+    api.getRagAdvancedConfig(),
     api.get('/settings/embedding/retry'),
-    api.get('/settings/ai')
+    api.getAIConfig()
   ])
 
   try {
@@ -717,9 +717,9 @@ const saveAdvancedConfig = async () => {
   saveMessage.value = ''
 
   try {
-    await api.put('/rag/advanced', config.value)
+    await api.updateRagAdvancedConfig(config.value)
     if (secondPassConfigAvailable.value) {
-      await api.put('/settings/ai', normalizeSecondPassConfigForSave(secondPassConfig.value))
+      await api.updateAIConfig(normalizeSecondPassConfigForSave(secondPassConfig.value))
     }
     await loadPromotionMetrics()
 
@@ -744,7 +744,7 @@ const confirmClearEmbeddings = async () => {
   }
 
   try {
-    await api.post('/rag/clear-embeddings')
+    await api.clearRagEmbeddings()
     alert('All embeddings have been cleared')
   } catch (error) {
     alert('Failed to clear embeddings: ' + (error.response?.data?.error || error.message))
@@ -757,7 +757,7 @@ const confirmResetConfig = async () => {
   }
 
   try {
-    await api.post('/rag/reset-config')
+    await api.resetRagConfig()
     await loadConfig()
     alert('Configuration has been reset to defaults')
   } catch (error) {

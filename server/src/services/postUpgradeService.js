@@ -29,11 +29,6 @@ const POST_UPGRADE_TASKS = {
             id: 'backfill_library_name_0393',
             action: 'backfill_library_name',
             description: 'Populate library_name where missing'
-        },
-        {
-            id: 'clear_stale_retry_queue_0393',
-            action: 'clear_stale_retry_queue',
-            description: 'Remove orphaned entries from embedding retry queue'
         }
     ],
     '0.41.2': [
@@ -211,20 +206,12 @@ class PostUpgradeService {
                 await this.clearLogs();
                 break;
 
-            case 'clear_embedding_queue':
-                await this.clearEmbeddingQueue();
-                break;
-
             case 'rebuild_embeddings':
                 await this.rebuildEmbeddings();
                 break;
 
             case 'backfill_library_name':
                 await this.backfillLibraryName();
-                break;
-
-            case 'clear_stale_retry_queue':
-                await this.clearStaleRetryQueue();
                 break;
 
             default:
@@ -293,15 +280,6 @@ class PostUpgradeService {
     }
 
     /**
-     * Task Action: Clear embedding retry queue
-     */
-    async clearEmbeddingQueue() {
-        logger.info('Clearing embedding retry queue...');
-        const result = await db.query('DELETE FROM embedding_retry_queue');
-        logger.info(`Cleared ${result.rowCount} items from embedding retry queue`);
-    }
-
-    /**
      * Task Action: Rebuild embeddings (mark all as stale)
      */
     async rebuildEmbeddings() {
@@ -327,24 +305,6 @@ class PostUpgradeService {
         logger.info(`Backfilled library_name for ${result.rowCount} classifications`);
     }
 
-    /**
-     * Task Action: Clear stale entries from embedding retry queue
-     * Removes items that are marked as 'pending' but already have embeddings
-     */
-    async clearStaleRetryQueue() {
-        logger.info('Clearing stale entries from embedding retry queue...');
-
-        // Delete retry queue entries where the classification already has an embedding
-        const result = await db.query(`
-            DELETE FROM embedding_retry_queue erq
-            WHERE EXISTS (
-                SELECT 1 FROM classification_embeddings ce
-                WHERE ce.classification_id = erq.classification_id
-            )
-        `);
-
-        logger.info(`Cleared ${result.rowCount} stale entries from retry queue`);
-    }
 }
 
 module.exports = new PostUpgradeService();

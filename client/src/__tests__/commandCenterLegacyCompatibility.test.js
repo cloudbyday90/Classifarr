@@ -15,16 +15,16 @@ const { apiMock } = vi.hoisted(() => ({
     getQueuePending: vi.fn(),
     getQueueFailed: vi.fn(),
     getPendingClassifications: vi.fn(),
-    getOllamaStatus: vi.fn(),
+    getAiGenerationStatus: vi.fn(),
     getAIUsage: vi.fn(),
     getLibraries: vi.fn(),
     getLiveFeed: vi.fn(),
     getMediaServerConfig: vi.fn(),
-    get: vi.fn(),
+    getArrConfigStatus: vi.fn(),
     cancelQueueTask: vi.fn(),
     cancelAllPendingTasks: vi.fn(),
     post: vi.fn(),
-    processRetryQueue: vi.fn(),
+    processEnrichmentRetries: vi.fn(),
     resolvePendingClassification: vi.fn(),
     retryQueueTask: vi.fn(),
     dismissQueueTask: vi.fn(),
@@ -105,12 +105,12 @@ describe('CommandCenter legacy compatibility guidance', () => {
     apiMock.getQueuePending.mockResolvedValue([])
     apiMock.getQueueFailed.mockResolvedValue([])
     apiMock.getPendingClassifications.mockResolvedValue({ data: { items: [] } })
-    apiMock.getOllamaStatus.mockResolvedValue({ data: { isActive: false } })
+    apiMock.getAiGenerationStatus.mockResolvedValue({ data: { isActive: false } })
     apiMock.getAIUsage.mockResolvedValue({ data: { budget: { limit: 5, used: 1, percentUsed: 20 } } })
     apiMock.getLibraries.mockResolvedValue({ data: [] })
     apiMock.getLiveFeed.mockResolvedValue({ data: { items: [] } })
     apiMock.getMediaServerConfig.mockResolvedValue({ data: { id: 1, name: 'Plex' } })
-    apiMock.get.mockResolvedValue({ data: { incompleteConfigs: [] } })
+    apiMock.getArrConfigStatus.mockResolvedValue({ data: { incompleteConfigs: [] } })
   })
 
   it('renders queue legacy redirect guidance and can dismiss it', async () => {

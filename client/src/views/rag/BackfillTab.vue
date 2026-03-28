@@ -119,6 +119,11 @@
           <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
         </label>
       </div>
+
+      <div class="mb-4 rounded-lg border px-4 py-3 text-sm" :class="idleToneClasses.bannerClass">
+        <p class="font-medium">{{ idleStatus.presentation.headline }}</p>
+        <p class="mt-1 text-gray-300">{{ idleStatus.presentation.detail }}</p>
+      </div>
       
       <div v-if="backfill.idle_enabled" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -162,6 +167,11 @@
           <div class="w-11 h-6 bg-gray-700 peer-focus:outline-hidden peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
         </label>
       </div>
+
+      <div class="mb-4 rounded-lg border px-4 py-3 text-sm" :class="scheduledToneClasses.bannerClass">
+        <p class="font-medium">{{ scheduledStatus.presentation.headline }}</p>
+        <p class="mt-1 text-gray-300">{{ scheduledStatus.presentation.detail }}</p>
+      </div>
       
       <div v-if="backfill.scheduled_enabled" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -196,6 +206,28 @@
     <!-- Manual Backfill -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
       <h3 class="text-lg font-semibold text-white mb-4">Manual Backfill</h3>
+
+      <div
+        v-if="embeddingAvailability.status !== 'available'"
+        class="mb-4 rounded-lg border px-4 py-3"
+        :class="availabilityToneClasses.bannerClass"
+      >
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="font-medium">
+              {{ embeddingAvailability.presentation.headline }}
+            </p>
+            <p class="mt-1 text-sm text-gray-300">
+              {{ embeddingAvailability.presentation.detail }}
+            </p>
+          </div>
+          <div class="text-right text-sm text-gray-300">
+            <p>Status: {{ embeddingAvailability.presentation.statusLabel }}</p>
+            <p v-if="embeddingAvailability.retryAt">Retry after {{ formatTimestamp(embeddingAvailability.retryAt) }}</p>
+            <p v-if="embeddingAvailability.failureCount">Failure count: {{ embeddingAvailability.failureCount }}</p>
+          </div>
+        </div>
+      </div>
       
       <div class="flex items-center justify-between mb-4">
         <div>
@@ -212,28 +244,28 @@
       <div class="flex gap-3 mb-4">
         <button
           @click="startBackfill"
-          :disabled="manualStatus.status === 'running'"
+          :disabled="!manualStatus.controls.canStart || !embeddingAvailability.controls.canStartManualBackfill"
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Start
         </button>
         <button
           @click="pauseBackfill"
-          :disabled="manualStatus.status !== 'running'"
+          :disabled="!manualStatus.controls.canPause"
           class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Pause
         </button>
         <button
           @click="resumeBackfill"
-          :disabled="manualStatus.status !== 'paused'"
+          :disabled="!manualStatus.controls.canResume || !embeddingAvailability.controls.canResumeManualBackfill"
           class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Resume
         </button>
         <button
           @click="clearBackfill"
-          :disabled="manualStatus.status === 'running'"
+          :disabled="!manualStatus.controls.canClear"
           class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Clear
@@ -275,8 +307,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
+import {
+  defaultEmbeddingAvailability,
+  getEmbeddingAvailabilityToneClasses,
+  normalizeEmbeddingAvailability
+} from '@/utils/embeddingAvailabilityUi'
+import {
+  defaultBackfillModeStatus,
+  getBackfillToneClasses,
+  normalizeBackfillModeStatus
+} from '@/utils/backfillStatusUi'
 
 const heartbeat = ref({
   timeout: 30000,
@@ -302,7 +344,7 @@ const lockStatus = ref({
 })
 
 const manualStatus = ref({
-  status: 'idle',
+  ...defaultBackfillModeStatus('manual'),
   processed: 0,
   total: 0,
   pending: 0,
@@ -311,6 +353,13 @@ const manualStatus = ref({
   progress: 0,
   eta: null
 })
+const idleStatus = ref(defaultBackfillModeStatus('idle'))
+const scheduledStatus = ref(defaultBackfillModeStatus('scheduled'))
+
+const embeddingAvailability = ref(defaultEmbeddingAvailability())
+const availabilityToneClasses = computed(() => getEmbeddingAvailabilityToneClasses(embeddingAvailability.value))
+const idleToneClasses = computed(() => getBackfillToneClasses(idleStatus.value))
+const scheduledToneClasses = computed(() => getBackfillToneClasses(scheduledStatus.value))
 
 const saving = ref(false)
 const saveMessage = ref('')
@@ -320,11 +369,9 @@ let statusInterval = null
 
 const loadConfig = async () => {
   try {
-    const [heartbeatRes, realtimeRes, idleRes, scheduleRes] = await Promise.all([
-      api.get('/settings/heartbeat'),
-      api.get('/rag/backfill/realtime'),
-      api.get('/rag/backfill/idle'),
-      api.get('/rag/backfill/schedule')
+    const [heartbeatRes, backfillConfigRes] = await Promise.all([
+      api.getHeartbeatSettings(),
+      api.getBackfillConfig()
     ])
 
     heartbeat.value = {
@@ -333,15 +380,16 @@ const loadConfig = async () => {
       maxWait: heartbeatRes.data.max_wait_time || 60000
     }
 
+    const configData = backfillConfigRes.data || {}
     backfill.value = {
-      realtime_enabled: realtimeRes.data.realtime_embedding_enabled ?? true,
-      idle_enabled: idleRes.data.idle_backfill_enabled ?? true,
-      idle_threshold: idleRes.data.idle_threshold || 30000,
-      idle_batch_size: idleRes.data.idle_batch_size || 10,
-      scheduled_enabled: scheduleRes.data.scheduled_backfill_enabled || false,
-      scheduled_time: scheduleRes.data.scheduled_backfill_time || '02:00',
-      scheduled_batch_size: scheduleRes.data.scheduled_backfill_batch_size || 100,
-      scheduled_max_duration_min: Math.floor((scheduleRes.data.scheduled_backfill_max_duration || 3600000) / 60000)
+      realtime_enabled: configData.realtime_embedding_enabled ?? true,
+      idle_enabled: configData.idle_backfill_enabled ?? true,
+      idle_threshold: configData.idle_threshold || 30000,
+      idle_batch_size: configData.idle_batch_size || 10,
+      scheduled_enabled: configData.scheduled_backfill_enabled || false,
+      scheduled_time: configData.scheduled_backfill_time || '02:00',
+      scheduled_batch_size: configData.scheduled_backfill_batch_size || 100,
+      scheduled_max_duration_min: Math.floor((configData.scheduled_backfill_max_duration || 3600000) / 60000)
     }
   } catch (error) {
     console.error('Failed to load config:', error)
@@ -350,11 +398,15 @@ const loadConfig = async () => {
 
 const loadManualStatus = async () => {
   try {
-    const response = await api.get('/rag/backfill/status')
-    const manual = response.data.manual
+    const response = await api.getBackfillStatus()
+    const manual = response.data.manual || {}
     const breakdown = response.data.pendingBreakdown || {}
+    embeddingAvailability.value = normalizeEmbeddingAvailability(response.data.embeddingAvailability)
+    idleStatus.value = normalizeBackfillModeStatus('idle', response.data.idle)
+    scheduledStatus.value = normalizeBackfillModeStatus('scheduled', response.data.scheduled)
 
-    manualStatus.value = {
+    manualStatus.value = normalizeBackfillModeStatus('manual', {
+      ...manual,
       status: manual.status || 'idle',
       processed: manual.processed || 0,
       total: manual.total || 0,
@@ -363,7 +415,7 @@ const loadManualStatus = async () => {
       pendingImage: breakdown.image ?? 0,
       progress: manual.total > 0 ? (manual.processed / manual.total) * 100 : 0,
       eta: manual.eta || null
-    }
+    })
   } catch (error) {
     console.error('Failed to load manual status:', error)
   }
@@ -371,16 +423,17 @@ const loadManualStatus = async () => {
 
 const startBackfill = async () => {
   try {
-    await api.post('/rag/backfill/manual/start', {})
+    await api.startManualBackfill({})
     await loadManualStatus()
   } catch (error) {
     console.error('Failed to start backfill:', error)
+    alert(error.response?.data?.error || error.message)
   }
 }
 
 const pauseBackfill = async () => {
   try {
-    await api.post('/rag/backfill/manual/pause')
+    await api.pauseManualBackfill()
     await loadManualStatus()
   } catch (error) {
     console.error('Failed to pause backfill:', error)
@@ -389,16 +442,17 @@ const pauseBackfill = async () => {
 
 const resumeBackfill = async () => {
   try {
-    await api.post('/rag/backfill/manual/resume')
+    await api.resumeManualBackfill()
     await loadManualStatus()
   } catch (error) {
     console.error('Failed to resume backfill:', error)
+    alert(error.response?.data?.error || error.message)
   }
 }
 
 const clearBackfill = async () => {
   try {
-    await api.post('/rag/backfill/manual/clear')
+    await api.clearManualBackfill()
     await loadManualStatus()
   } catch (error) {
     console.error('Failed to clear backfill:', error)
@@ -411,25 +465,21 @@ const saveQueueConfig = async () => {
 
   try {
     await Promise.all([
-      api.put('/settings/heartbeat', {
+      api.updateHeartbeatSettings({
         heartbeat_timeout: heartbeat.value.timeout,
         heartbeat_interval: heartbeat.value.interval,
         max_wait_time: heartbeat.value.maxWait
       }),
-      api.put('/rag/backfill/realtime', {
-        enabled: backfill.value.realtime_enabled
-      }),
-      api.put('/rag/backfill/idle', {
-        enabled: backfill.value.idle_enabled,
-        threshold: backfill.value.idle_threshold,
-        batchSize: backfill.value.idle_batch_size
-      }),
-      api.put('/rag/backfill/schedule', {
-        enabled: backfill.value.scheduled_enabled,
-        time: backfill.value.scheduled_time,
-        days: '0,1,2,3,4,5,6',
-        batchSize: backfill.value.scheduled_batch_size,
-        maxDuration: backfill.value.scheduled_max_duration_min * 60000
+      api.updateBackfillConfig({
+        realtime_embedding_enabled: backfill.value.realtime_enabled,
+        idle_backfill_enabled: backfill.value.idle_enabled,
+        idle_threshold: backfill.value.idle_threshold,
+        idle_batch_size: backfill.value.idle_batch_size,
+        scheduled_backfill_enabled: backfill.value.scheduled_enabled,
+        scheduled_backfill_time: backfill.value.scheduled_time,
+        scheduled_backfill_days: '0,1,2,3,4,5,6',
+        scheduled_backfill_batch_size: backfill.value.scheduled_batch_size,
+        scheduled_backfill_max_duration: backfill.value.scheduled_max_duration_min * 60000
       })
     ])
 
@@ -457,6 +507,17 @@ const formatDuration = (ms) => {
 const formatETA = (eta) => {
   if (!eta) return 'N/A'
   return formatDuration(eta * 1000)
+}
+
+const formatTimestamp = (timestamp) => {
+  if (!timestamp) return 'N/A'
+  const date = new Date(timestamp)
+  return date.toLocaleString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short'
+  })
 }
 
 onMounted(() => {

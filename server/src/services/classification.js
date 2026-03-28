@@ -3552,10 +3552,17 @@ Think step by step, then respond with ONLY one of the formats above.`;
             library_name: libraryName
           });
         } catch (embedError) {
-          logger.error('[Embedding] Real-time generation failed, will retry in backfill', {
-            id: classificationId,
-            error: embedError.message
-          });
+          if (embedError.message === 'PROVIDER_OFFLINE') {
+            logger.debug('[Embedding] Real-time generation deferred: provider unavailable', {
+              id: classificationId,
+              retryAt: embedError.cooldownUntil || null
+            });
+          } else {
+            logger.error('[Embedding] Real-time generation failed, will retry in backfill', {
+              id: classificationId,
+              error: embedError.message
+            });
+          }
         }
       } else {
         // Queue for backfill (async, don't wait)

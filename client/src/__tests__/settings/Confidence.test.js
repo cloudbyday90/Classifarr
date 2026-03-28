@@ -17,7 +17,15 @@ vi.mock('@/api', () => ({
   default: {
     get: vi.fn(),
     put: vi.fn(),
-    post: vi.fn()
+    post: vi.fn(),
+    getConfidenceSettings: vi.fn(),
+    updateConfidenceSettings: vi.fn(),
+    getConfidenceHistory: vi.fn(),
+    revertConfidenceSetting: vi.fn(),
+    exportConfidenceSettings: vi.fn(),
+    getAIConfig: vi.fn(),
+    updateAIConfig: vi.fn(),
+    getLatestRagFallbackIncident: vi.fn()
   }
 }))
 
@@ -54,26 +62,17 @@ function mockGetRoutes({
   incident = { incident: null, fallback_state: null, checked_at: null },
   history = []
 } = {}) {
-  api.get.mockImplementation((url) => {
-    if (url === '/api/settings/confidence') {
-      return Promise.resolve({ data: confidence })
-    }
-    if (url === '/api/settings/ai') {
-      return Promise.resolve({ data: ai })
-    }
-    if (url === '/api/rag/loop/latest-fallback-incident') {
-      return Promise.resolve({ data: incident })
-    }
-    if (url === '/api/settings/confidence/history') {
-      return Promise.resolve({ data: history })
-    }
-    return Promise.resolve({ data: [] })
-  })
+  api.getConfidenceSettings.mockResolvedValue({ data: confidence })
+  api.getAIConfig.mockResolvedValue({ data: ai })
+  api.getLatestRagFallbackIncident.mockResolvedValue({ data: incident })
+  api.getConfidenceHistory.mockResolvedValue({ data: history })
 }
 
 describe('Confidence Settings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    api.updateConfidenceSettings.mockResolvedValue({ data: { success: true } })
+    api.updateAIConfig.mockResolvedValue({ data: { success: true } })
   })
 
   it('loads discord and rag-loop safety settings from APIs', async () => {
@@ -91,9 +90,9 @@ describe('Confidence Settings', () => {
     const wrapper = mount(Confidence)
     await flushPromises()
 
-    expect(api.get).toHaveBeenCalledWith('/api/settings/confidence')
-    expect(api.get).toHaveBeenCalledWith('/api/settings/ai')
-    expect(api.get).toHaveBeenCalledWith('/api/rag/loop/latest-fallback-incident')
+    expect(api.getConfidenceSettings).toHaveBeenCalled()
+    expect(api.getAIConfig).toHaveBeenCalled()
+    expect(api.getLatestRagFallbackIncident).toHaveBeenCalled()
 
     expect(wrapper.vm.discordSettings.includeSignalBreakdown).toBe(true)
     expect(wrapper.vm.discordSettings.showSimilarItems).toBe(false)
@@ -103,8 +102,6 @@ describe('Confidence Settings', () => {
 
   it('saves confidence payload and rag-loop safety toggles', async () => {
     mockGetRoutes()
-    api.put.mockResolvedValue({ data: { success: true } })
-
     const wrapper = mount(Confidence)
     await flushPromises()
 
@@ -116,14 +113,13 @@ describe('Confidence Settings', () => {
     await wrapper.vm.saveAllSettings()
     await flushPromises()
 
-    expect(api.put).toHaveBeenCalledWith(
-      '/api/settings/confidence',
+    expect(api.updateConfidenceSettings).toHaveBeenCalledWith(
       expect.objectContaining({
         discord_include_signal_breakdown: false,
         discord_show_similar_items: false
       })
     )
-    expect(api.put).toHaveBeenCalledWith('/api/settings/ai', {
+    expect(api.updateAIConfig).toHaveBeenCalledWith({
       rag_loop_auto_fallback_enabled: false,
       rag_loop_auto_recover_enabled: true
     })

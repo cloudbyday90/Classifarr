@@ -114,6 +114,14 @@ class SchedulerService {
 
             if (pendingCount === 0) return;
 
+            const availability = await embeddingService.getProviderAvailabilityStatus({ refresh: true });
+            if (availability.status === 'cooldown' || availability.status === 'probing') {
+                logger.debug('RAG backfill: skipped because embedding provider is unavailable', {
+                    retryAt: availability.cooldownUntil
+                });
+                return;
+            }
+
             // Check if a scheduler backfill is already running, and when the last one completed.
             // Checking is_running prevents overlapping executions when a batch takes longer
             // than the poll interval or longer than the 5-minute throttle window.
@@ -170,6 +178,7 @@ class SchedulerService {
 
             let processed = 0;
             let failed = 0;
+            let providerUnavailable = false;
 
             for (const row of pending) {
                 try {
@@ -191,6 +200,15 @@ class SchedulerService {
                     }
                     processed++;
                 } catch (error) {
+                    if (error.message === 'PROVIDER_OFFLINE') {
+                        providerUnavailable = true;
+                        const availability = embeddingService.getProviderAvailabilityStatus();
+                        logger.debug('RAG backfill batch paused: embedding provider unavailable', {
+                            retryAt: availability.cooldownUntil
+                        });
+                        break;
+                    }
+
                     failed++;
                     logger.debug('Backfill item failed', { id: row.id, error: error.message });
                 }
@@ -201,7 +219,7 @@ class SchedulerService {
                 [processed, runId]
             );
 
-            if (processed > 0) {
+            if (processed > 0 || providerUnavailable) {
                 logger.info('RAG backfill batch complete', { processed, failed });
             }
         } catch (error) {

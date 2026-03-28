@@ -17,11 +17,19 @@
  */
 
 const embeddingService = require('../services/embeddingService');
+const embeddingAvailabilityService = require('../services/embeddingAvailabilityService');
 const embeddingRouter = require('../services/embeddingRouter');
 const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 jest.mock('../services/embeddingRouter');
 jest.mock('../config/database');
+jest.mock('../services/embeddingAvailabilityService', () => ({
+    getStatus: jest.fn(),
+    getStatusFresh: jest.fn(),
+    resetAvailability: jest.fn(),
+    markUnavailable: jest.fn(),
+    runRecoveryProbe: jest.fn()
+}));
 jest.mock('../utils/logger', () => ({
     createLogger: () => ({
         info: jest.fn(),
@@ -44,6 +52,18 @@ describe('EmbeddingService - Rich Embeddings', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        const availableStatus = {
+            status: 'available',
+            isOffline: false,
+            cooldownUntil: null,
+            lastError: null,
+            failureCount: 0
+        };
+        embeddingAvailabilityService.getStatus.mockReturnValue(availableStatus);
+        embeddingAvailabilityService.getStatusFresh.mockResolvedValue(availableStatus);
+        embeddingAvailabilityService.resetAvailability.mockResolvedValue(availableStatus);
+        embeddingAvailabilityService.markUnavailable.mockResolvedValue(availableStatus);
+        embeddingAvailabilityService.runRecoveryProbe.mockResolvedValue(true);
     });
 
     describe('EMBEDDING_FORMAT_VERSION', () => {

@@ -111,6 +111,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import api from '@/api';
 
 const props = defineProps({
   classificationId: {
@@ -127,15 +128,13 @@ const loadProfileStats = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const response = await fetch(`/api/classification/history/${props.classificationId}/profile`);
-    if (response.ok) {
-      profileStats.value = await response.json();
-    } else {
-      error.value = 'Profile not available for this classification';
-    }
+    const response = await api.getClassificationProfile(props.classificationId);
+    profileStats.value = response.data;
   } catch (err) {
     console.error('Failed to load profile stats:', err);
-    error.value = 'Failed to load profile statistics';
+    error.value = err?.response?.status === 404
+      ? 'Profile not available for this classification'
+      : 'Failed to load profile statistics';
   } finally {
     loading.value = false;
   }

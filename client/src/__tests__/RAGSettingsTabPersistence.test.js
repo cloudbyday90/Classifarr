@@ -17,36 +17,31 @@ import api from '../api'
 
 vi.mock('../api', () => ({
   default: {
-    get: vi.fn(),
+    getSystemHeartbeat: vi.fn(),
+    getRagStatus: vi.fn(),
+    getBackfillStatus: vi.fn(),
   },
 }))
 
 const mockApiGet = (overrides = {}) => {
-  api.get.mockImplementation((url) => {
-    if (url === '/rag/status') {
-      return Promise.resolve({
-        data: {
-          providerOnline: true,
-          stats: { total: 123 },
-          image: { providerOnline: true, stats: { total: 456 } },
-          ...overrides.status,
-        }
-      })
+  api.getSystemHeartbeat.mockResolvedValue({
+    data: { active: true, ...overrides.heartbeat }
+  })
+
+  api.getRagStatus.mockResolvedValue({
+    data: {
+      providerOnline: true,
+      stats: { total: 123 },
+      image: { providerOnline: true, stats: { total: 456 } },
+      ...overrides.status,
     }
-    if (url === '/rag/backfill/status') {
-      return Promise.resolve({
-        data: {
-          pendingBreakdown: { text: 0, image: 0 },
-          ...overrides.backfill,
-        }
-      })
+  })
+
+  api.getBackfillStatus.mockResolvedValue({
+    data: {
+      pendingBreakdown: { text: 0, image: 0 },
+      ...overrides.backfill,
     }
-    if (url === '/system/heartbeat') {
-      return Promise.resolve({
-        data: { active: true, ...overrides.heartbeat }
-      })
-    }
-    return Promise.reject(new Error(`Unexpected GET ${url}`))
   })
 }
 

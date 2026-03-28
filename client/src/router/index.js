@@ -190,8 +190,8 @@ router.beforeEach(async (to, from, next) => {
 
   try {
     // Check if user account setup is required
-    const setupResponse = await fetch('/api/setup/status')
-    const setupData = await setupResponse.json()
+    const setupResponse = await api.getSetupStatus()
+    const setupData = setupResponse.data
 
     // If no users exist yet, force the initial admin creation flow.
     // This includes redirecting away from /login, which would otherwise be a dead-end.

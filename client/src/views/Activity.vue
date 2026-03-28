@@ -128,11 +128,11 @@
               </span>
             </div>
             <button 
-              @click="processRetryQueue" 
+              @click="processEnrichmentRetries" 
               :disabled="retryProcessing"
               class="px-3 py-1 text-xs bg-orange-600 hover:bg-orange-500 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {{ retryProcessing ? 'Processing...' : 'Process Queue' }}
+              {{ retryProcessing ? 'Processing...' : 'Process Retries' }}
             </button>
           </div>
           <p class="text-xs text-gray-400 mt-1">
@@ -143,7 +143,7 @@
     </Card>
 
     <!-- Ollama AI Status -->
-    <Card v-if="ollamaStatus.isActive">
+    <Card v-if="aiGenerationStatus.isActive">
       <template #header>
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
@@ -159,14 +159,14 @@
       
       <div class="flex items-center justify-between p-3 bg-linear-to-r from-purple-900/30 to-blue-900/30 rounded-lg">
         <div class="space-y-1">
-          <div class="font-medium text-purple-300">{{ ollamaStatus.itemTitle }}</div>
+          <div class="font-medium text-purple-300">{{ aiGenerationStatus.itemTitle }}</div>
           <div class="text-sm text-gray-400">
-            Model: <span class="text-blue-300">{{ ollamaStatus.model }}</span>
+            Model: <span class="text-blue-300">{{ aiGenerationStatus.model }}</span>
           </div>
         </div>
         <div class="text-right">
-          <div class="text-2xl font-bold text-purple-400">{{ ollamaStatus.tokenCount }}</div>
-          <div class="text-sm text-gray-400">tokens • {{ ollamaStatus.elapsedSeconds }}s</div>
+          <div class="text-2xl font-bold text-purple-400">{{ aiGenerationStatus.tokenCount }}</div>
+          <div class="text-sm text-gray-400">tokens • {{ aiGenerationStatus.elapsedSeconds }}s</div>
         </div>
       </div>
     </Card>
@@ -317,7 +317,7 @@ const stats = ref({
   enrichment: null
 })
 
-const ollamaStatus = ref({
+const aiGenerationStatus = ref({
   isActive: false,
   model: null,
   tokenCount: 0,
@@ -348,8 +348,8 @@ const refreshData = async () => {
     const [liveStats, liveFeed, pendingTasks, aiStatus, progressData] = await Promise.all([
       api.getLiveStats(),
       api.getLiveFeed(50),
-      api.getPendingTasks(5),
-      api.getOllamaStatus().catch(() => ({ data: { isActive: false } })),
+      api.getQueuePending(5),
+      api.getAiGenerationStatus().catch(() => ({ data: { isActive: false } })),
       api.getClassificationProgress().catch(() => ({ data: [] }))
     ])
 
@@ -373,15 +373,15 @@ const refreshData = async () => {
     }
 
     // Update up next queue (only pending items, not ghost processing)
-    if (pendingTasks.data) {
-      upNextQueue.value = pendingTasks.data
+    if (Array.isArray(pendingTasks)) {
+      upNextQueue.value = pendingTasks
         .filter(t => t.status === 'pending')
         .slice(0, 5)
     }
 
     // Update Ollama status
     if (aiStatus.data) {
-      ollamaStatus.value = aiStatus.data
+      aiGenerationStatus.value = aiStatus.data
     }
 
     // Update active classifications (initial state, then WebSocket takes over)
@@ -432,15 +432,15 @@ const formatTimeAgo = (timestamp) => {
   return `${diffDays}d ago`
 }
 
-const processRetryQueue = async () => {
+const processEnrichmentRetries = async () => {
   try {
     retryProcessing.value = true
-    await api.processRetryQueue({ limit: 50, enrichmentType: 'tavily' })
+    await api.processEnrichmentRetries({ limit: 50, enrichmentType: 'tavily' })
     // Refresh stats after processing
     await refreshData()
   } catch (error) {
-    console.error('Failed to process retry queue:', error)
-    alert('Failed to process retry queue. Check if Tavily is configured and has quota.')
+    console.error('Failed to process enrichment retries:', error)
+    alert('Failed to process enrichment retries. Check if Tavily is configured and has quota.')
   } finally {
     retryProcessing.value = false
   }

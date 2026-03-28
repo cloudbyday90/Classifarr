@@ -27,7 +27,10 @@ vi.mock('../api', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
-    put: vi.fn()
+    put: vi.fn(),
+    getBackfillStatus: vi.fn(),
+    getRagStatus: vi.fn(),
+    getAIConfig: vi.fn()
   }
 }));
 
@@ -74,11 +77,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         }
       };
 
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.resolve(mockStatusData);
-        if (url === '/settings/ai') return Promise.resolve({ data: {} });
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue({ data: {} });
+      api.getBackfillStatus.mockResolvedValue({ data: {} })
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -101,11 +102,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         }
       };
 
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.resolve(mockStatusData);
-        if (url === '/settings/ai') return Promise.resolve({ data: {} });
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue({ data: {} });
+      api.getBackfillStatus.mockResolvedValue({ data: {} })
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -127,17 +126,45 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         }
       };
 
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.resolve(mockStatusData);
-        if (url === '/settings/ai') return Promise.resolve({ data: {} });
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue({ data: {} });
+      api.getBackfillStatus.mockResolvedValue({ data: {} })
 
       const wrapper = mountComponent();
       await flushPromises();
 
       // Should default to Offline when providerOnline is not provided
       expect(wrapper.text()).toContain('Offline');
+    });
+
+    it('shows cooldown state from embedding availability when provider is paused', async () => {
+      const mockStatusData = {
+        data: {
+          providerOnline: false,
+          embeddingAvailability: {
+            status: 'cooldown',
+            cooldownUntil: '2026-03-28T00:00:00.000Z',
+            lastError: 'connect ETIMEDOUT 192.168.50.95:11434',
+            failureCount: 4
+          },
+          stats: {
+            totalEmbeddings: 0,
+            pendingCount: 0,
+            failedCount: 0
+          },
+          recentActivity: []
+        }
+      };
+
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue({ data: {} });
+      api.getBackfillStatus.mockResolvedValue({ data: {} })
+
+      const wrapper = mountComponent();
+      await flushPromises();
+
+      expect(wrapper.text()).toContain('Cooling Down');
+      expect(wrapper.text()).toContain('connect ETIMEDOUT 192.168.50.95:11434');
     });
   });
 
@@ -167,11 +194,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         }
       };
 
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.resolve(mockStatusData);
-        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue(mockConfigData);
+      api.getBackfillStatus.mockResolvedValue({ data: {} })
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -203,11 +228,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         }
       };
 
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.resolve(mockStatusData);
-        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue(mockConfigData);
+      api.getBackfillStatus.mockResolvedValue({ data: {} })
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -240,12 +263,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         }
       };
 
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.resolve(mockStatusData);
-        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
-        if (url === '/rag/backfill/status') return Promise.resolve({ data: {} });
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue(mockConfigData);
+      api.getBackfillStatus.mockResolvedValue({ data: {} })
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -273,18 +293,17 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         } 
       };
 
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.resolve(mockStatusData);
-        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue(mockConfigData);
+      api.getBackfillStatus.mockResolvedValue({ data: {} })
 
       mountComponent();
       await flushPromises();
 
       // Verify that loadStats was called (which calls both endpoints)
-      expect(api.get).toHaveBeenCalledWith('/rag/status');
-      expect(api.get).toHaveBeenCalledWith('/settings/ai');
+      expect(api.getRagStatus).toHaveBeenCalled();
+      expect(api.getAIConfig).toHaveBeenCalled();
+      expect(api.getBackfillStatus).toHaveBeenCalled();
     });
 
     it('renders with data from API', async () => {
@@ -300,11 +319,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         }
       };
 
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.resolve(mockStatusData);
-        if (url === '/settings/ai') return Promise.resolve({ data: {} });
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue({ data: {} });
+      api.getBackfillStatus.mockResolvedValue({ data: {} });
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -316,11 +333,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
     });
 
     it('loads data successfully even when one API call fails', async () => {
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.reject(new Error('Network error'));
-        if (url === '/settings/ai') return Promise.resolve({ data: {} });
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockRejectedValue(new Error('Network error'));
+      api.getAIConfig.mockResolvedValue({ data: {} });
+      api.getBackfillStatus.mockResolvedValue({ data: {} });
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -361,11 +376,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
         }
       };
 
-      api.get.mockImplementation((url) => {
-        if (url === '/rag/status') return Promise.resolve(mockStatusData);
-        if (url === '/settings/ai') return Promise.resolve(mockConfigData);
-        return Promise.reject(new Error('Unknown URL'));
-      });
+      api.getRagStatus.mockResolvedValue(mockStatusData);
+      api.getAIConfig.mockResolvedValue(mockConfigData);
+      api.getBackfillStatus.mockResolvedValue({ data: {} });
 
       const wrapper = mountComponent();
       await flushPromises();
@@ -378,7 +391,9 @@ describe('OverviewTab.vue - v0.39.3-alpha Bug Fix Regression Tests', () => {
     });
 
     it('renders without crashing when API returns empty object', async () => {
-      api.get.mockImplementation(() => Promise.resolve({ data: {} }));
+      api.getRagStatus.mockResolvedValue({ data: {} });
+      api.getAIConfig.mockResolvedValue({ data: {} });
+      api.getBackfillStatus.mockResolvedValue({ data: {} });
 
       const wrapper = mountComponent();
       await flushPromises();

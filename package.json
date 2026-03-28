@@ -22,7 +22,8 @@
     "migration:check": "node scripts/check-migrations.js",
     "migration:create": "node scripts/create-migration.js",
     "db:dump-schema": "node scripts/dump-schema.js",
-    "lint:docs": "markdownlint-cli2"
+    "lint:docs": "markdownlint-cli2",
+    "lint:docs:rag-api": "node scripts/check-rag-api-docs.js"
   },
   "dependencies": {
     "axios": "^1.13.6",

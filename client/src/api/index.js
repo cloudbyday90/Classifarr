@@ -52,6 +52,32 @@ const apiClient = axios.create({
   withCredentials: true,
 })
 
+function getSettingsRequest(category = null) {
+  if (category) {
+    return apiClient.get(`/settings/category/${category}`)
+  }
+  return apiClient.get('/settings')
+}
+
+function updateSettingsRequest(categoryOrSettings, settings = null) {
+  if (settings !== null && typeof categoryOrSettings === 'string') {
+    return apiClient.put(`/settings/category/${categoryOrSettings}`, settings)
+  }
+  return apiClient.put('/settings', categoryOrSettings)
+}
+
+function getPendingQueueRequest(limit = 20) {
+  return apiClient.get('/queue/pending', { params: { limit } })
+}
+
+function retryQueueTaskRequest(taskId) {
+  return apiClient.post(`/queue/task/${taskId}/retry`)
+}
+
+function cancelQueueTaskRequest(taskId) {
+  return apiClient.post(`/queue/task/${taskId}/cancel`)
+}
+
 async function refreshAccessToken() {
   if (refreshInProgress) {
     return refreshInProgress
@@ -144,22 +170,6 @@ export default {
     return apiClient.get('/auth/me')
   },
 
-  getSessions() {
-    return apiClient.get('/auth/sessions')
-  },
-
-  revokeSession(sessionId) {
-    return apiClient.delete(`/auth/sessions/${sessionId}`)
-  },
-
-  changePassword(currentPassword, newPassword, confirmPassword) {
-    return apiClient.post('/auth/change-password', { currentPassword, newPassword, confirmPassword })
-  },
-
-  getSessionInfo() {
-    return apiClient.get('/auth/session')
-  },
-
   clearAuth() {
     // Session state is managed server-side via httpOnly cookies — no client-side cleanup needed
   },
@@ -181,20 +191,47 @@ export default {
   },
 
   getSettings(category = null) {
-    if (category) {
-      return apiClient.get(`/settings/category/${category}`)
-    }
-    return apiClient.get('/settings')
+    return getSettingsRequest(category)
+  },
+  getConfidenceSettings() {
+    return apiClient.get('/settings/confidence')
+  },
+  updateConfidenceSettings(data) {
+    return apiClient.put('/settings/confidence', data)
+  },
+  getConfidenceHistory(params) {
+    return apiClient.get('/settings/confidence/history', { params })
+  },
+  revertConfidenceSetting(auditId) {
+    return apiClient.post(`/settings/confidence/revert/${auditId}`)
+  },
+  exportConfidenceSettings() {
+    return apiClient.post('/settings/confidence/export')
   },
   updateSettings(categoryOrSettings, settings = null) {
-    if (settings !== null && typeof categoryOrSettings === 'string') {
-      return apiClient.put(`/settings/category/${categoryOrSettings}`, settings)
-    }
-    return apiClient.put('/settings', categoryOrSettings)
+    return updateSettingsRequest(categoryOrSettings, settings)
   },
 
   getMediaServerConfig() {
     return apiClient.get('/media-server')
+  },
+  getArrConfigStatus() {
+    return apiClient.get('/settings/arr-config-status')
+  },
+  getSetupStatus() {
+    return apiClient.get('/setup/status')
+  },
+  getSetupWizardStatus() {
+    return apiClient.get('/settings/setup-status')
+  },
+  getHeartbeatSettings() {
+    return apiClient.get('/settings/heartbeat')
+  },
+  updateHeartbeatSettings(data) {
+    return apiClient.put('/settings/heartbeat', data)
+  },
+  getSystemHeartbeat() {
+    return apiClient.get('/system/heartbeat')
   },
   updateMediaServerConfig(config) {
     return apiClient.post('/media-server', config)
@@ -263,9 +300,6 @@ export default {
   authenticateEmby(serverUrl, username, password) {
     return apiClient.post('/emby/authenticate', { serverUrl, username, password })
   },
-  verifyEmbyToken(serverUrl, token) {
-    return apiClient.post('/emby/verify', { serverUrl, token })
-  },
   saveEmbyServer(serverUrl, token, serverName) {
     return apiClient.post('/emby/save', { serverUrl, token, serverName })
   },
@@ -282,14 +316,23 @@ export default {
   syncLibrary(id, options = {}) {
     return apiClient.post(`/libraries/${id}/sync`, options)
   },
-  getLibraryLabels(id) {
-    return apiClient.get(`/libraries/${id}/labels`)
+  getLibraryMigrationRules(libraryId) {
+    return apiClient.get(`/migration/libraries/${libraryId}/rules`)
   },
-  addLibraryLabel(id, data) {
-    return apiClient.post(`/libraries/${id}/labels`, data)
+  getMigrationStatus() {
+    return apiClient.get('/migration/status')
   },
-  removeLibraryLabel(id, labelId) {
-    return apiClient.delete(`/libraries/${id}/labels/${labelId}`)
+  getMigrationLibraries() {
+    return apiClient.get('/migration/libraries')
+  },
+  migrateAllLibraryRules(libraryId, data) {
+    return apiClient.post(`/migration/libraries/${libraryId}/migrate-all`, data)
+  },
+  analyzeMigrationRule(ruleId) {
+    return apiClient.get(`/migration/rules/${ruleId}/analyze`)
+  },
+  migrateRule(ruleId, data) {
+    return apiClient.post(`/migration/rules/${ruleId}/migrate`, data)
   },
   getLibraryRules(id) {
     return apiClient.get(`/libraries/${id}/rules`)
@@ -303,22 +346,12 @@ export default {
   getRuleSuggestions(id) {
     return apiClient.get(`/libraries/${id}/rules/suggest`)
   },
-  getPendingSuggestions() {
-    return apiClient.get('/libraries/pending-suggestions')
-  },
-  dismissSuggestions(libraryId) {
-    return apiClient.post(`/libraries/${libraryId}/dismiss-suggestions`)
-  },
   getLibraryArrOptions(id) {
     return apiClient.get(`/libraries/${id}/arr-options`)
   },
   updateLibraryArrSettings(id, settings) {
     return apiClient.put(`/libraries/${id}/arr-settings`, { settings })
   },
-  syncArrProfiles() {
-    return apiClient.post('/libraries/sync-arr-profiles')
-  },
-
   getLibraryProfile(libraryId) {
     return apiClient.get(`/libraries/${libraryId}/profile`)
   },
@@ -332,30 +365,36 @@ export default {
   getHistory(params) {
     return apiClient.get('/classification/history', { params })
   },
-  getClassification(id) {
-    return apiClient.get(`/classification/history/${id}`)
-  },
   submitCorrection(data) {
     return apiClient.post('/classification/corrections', data)
   },
   getStats() {
     return apiClient.get('/classification/stats')
   },
+  getClassificationProfile(classificationId) {
+    return apiClient.get(`/classification/history/${classificationId}/profile`)
+  },
   getClassificationProgress() {
     return apiClient.get('/classification/progress')
   },
 
-  getPatterns(params) {
-    return apiClient.get('/patterns', { params })
+  getPolicyStatsOverview() {
+    return apiClient.get('/stats/overview')
   },
-  getPattern(id) {
-    return apiClient.get(`/patterns/${id}`)
+  getPolicyStatsList() {
+    return apiClient.get('/stats/policies')
   },
-  getLibraryPatterns(libraryId) {
-    return apiClient.get(`/patterns/library/${libraryId}`)
+  getPolicyStatsLiveFeed(limit = 20) {
+    return apiClient.get('/stats/live-feed', { params: { limit } })
   },
-  getPatternSummary() {
-    return apiClient.get('/patterns/summary')
+  getPolicyStatsAlerts() {
+    return apiClient.get('/stats/alerts')
+  },
+  getPolicyStatsDetail(policyId) {
+    return apiClient.get(`/stats/policies/${policyId}`)
+  },
+  getPolicyStatsComparison(policyId) {
+    return apiClient.get(`/stats/policies/${policyId}/compare`)
   },
   getPatternConfig() {
     return apiClient.get('/patterns/config')
@@ -363,33 +402,8 @@ export default {
   updatePatternConfig(config) {
     return apiClient.put('/patterns/config', config)
   },
-  approvePattern(id, data) {
-    return apiClient.put(`/patterns/${id}/approve`, data)
-  },
-  rejectPattern(id, data) {
-    return apiClient.put(`/patterns/${id}/reject`, data)
-  },
-  deletePattern(id) {
-    return apiClient.delete(`/patterns/${id}`)
-  },
-  discoverPatterns() {
-    return apiClient.post('/patterns/discover')
-  },
-  discoverLibraryPatterns(libraryId) {
-    return apiClient.post(`/patterns/discover/${libraryId}`)
-  },
-  resolveConflicts() {
-    return apiClient.post('/patterns/resolve-conflicts')
-  },
   getCostSummary() {
     return apiClient.get('/patterns/cost-summary')
-  },
-
-  getSettings() {
-    return apiClient.get('/settings')
-  },
-  updateSettings(data) {
-    return apiClient.put('/settings', data)
   },
 
   getRadarrConfig() {
@@ -406,9 +420,6 @@ export default {
   },
   testRadarrConnection(config) {
     return apiClient.post('/settings/radarr/test', config)
-  },
-  getRadarrRootFolders(id) {
-    return apiClient.get(`/settings/radarr/${id}/root-folders`)
   },
   getRadarrQualityProfiles(id) {
     return apiClient.get(`/settings/radarr/${id}/quality-profiles`)
@@ -429,38 +440,15 @@ export default {
   testSonarrConnection(config) {
     return apiClient.post('/settings/sonarr/test', config)
   },
-  getSonarrRootFolders(id) {
-    return apiClient.get(`/settings/sonarr/${id}/root-folders`)
-  },
   getSonarrQualityProfiles(id) {
     return apiClient.get(`/settings/sonarr/${id}/quality-profiles`)
   },
 
-  getOllamaConfig() {
-    return apiClient.get('/settings/ollama')
-  },
-  updateOllamaConfig(data) {
-    return apiClient.put('/settings/ollama', data)
-  },
   testOllama(host, port) {
     return apiClient.post('/settings/ollama/test', { host, port })
   },
   getOllamaModels(host, port) {
     return apiClient.get('/settings/ollama/models', { params: { host, port } })
-  },
-
-  getTMDBConfig() {
-    return apiClient.get('/settings/tmdb')
-  },
-  updateTMDBConfig(data) {
-    return apiClient.put('/settings/tmdb', data)
-  },
-
-  getNotificationConfig() {
-    return apiClient.get('/settings/notifications')
-  },
-  updateNotificationConfig(data) {
-    return apiClient.put('/settings/notifications', data)
   },
 
   getTavilyConfig() {
@@ -472,10 +460,6 @@ export default {
   testTavily(data) {
     return apiClient.post('/settings/tavily/test', data)
   },
-  testTavilySearch(data) {
-    return apiClient.post('/settings/tavily/search', data)
-  },
-
   getOMDbConfig() {
     return apiClient.get('/settings/omdb')
   },
@@ -485,10 +469,6 @@ export default {
   testOMDb(data) {
     return apiClient.post('/settings/omdb/test', data)
   },
-  testOMDbSearch(data) {
-    return apiClient.post('/settings/omdb/search', data)
-  },
-
   getAIConfig() {
     return apiClient.get('/settings/ai')
   },
@@ -501,17 +481,80 @@ export default {
   getAIModels(data) {
     return apiClient.post('/settings/ai/models', data)
   },
-  getRagEmbeddingModels(data) {
-    return apiClient.post('/rag/embedding-models', data)
+  getRagStatus() {
+    return apiClient.get('/rag/status')
+  },
+  getRagDetailed(params = {}) {
+    return apiClient.get('/rag/detailed', { params })
+  },
+  getRagTextModels(data = {}) {
+    return apiClient.post('/rag/text-models', data)
+  },
+  getBackfillStatus() {
+    return apiClient.get('/rag/backfill/status')
+  },
+  getBackfillConfig() {
+    return apiClient.get('/rag/backfill/config')
+  },
+  updateBackfillConfig(data) {
+    return apiClient.put('/rag/backfill/config', data)
+  },
+  startManualBackfill(data = {}) {
+    return apiClient.post('/rag/backfill/manual/start', data)
+  },
+  pauseManualBackfill() {
+    return apiClient.post('/rag/backfill/manual/pause')
+  },
+  resumeManualBackfill() {
+    return apiClient.post('/rag/backfill/manual/resume')
+  },
+  clearManualBackfill() {
+    return apiClient.post('/rag/backfill/manual/clear')
+  },
+  testRagConnection(data) {
+    return apiClient.post('/rag/test-connection', data)
+  },
+  resetRagCircuitBreaker() {
+    return apiClient.post('/rag/circuit-breaker/reset')
+  },
+  warmupRagModel() {
+    return apiClient.post('/rag/warmup')
+  },
+  exportRagConfig() {
+    return apiClient.post('/rag/export/config')
+  },
+  exportRagLogs() {
+    return apiClient.post('/rag/export/logs')
+  },
+  exportRagMetrics() {
+    return apiClient.post('/rag/export/metrics')
+  },
+  getLatestRagFallbackIncident() {
+    return apiClient.get('/rag/loop/latest-fallback-incident')
+  },
+  getRagPromotionReadiness() {
+    return apiClient.get('/rag/loop/promotion-readiness')
+  },
+  getRagAdvancedConfig() {
+    return apiClient.get('/rag/advanced')
+  },
+  updateRagAdvancedConfig(data) {
+    return apiClient.put('/rag/advanced', data)
+  },
+  clearRagEmbeddings() {
+    return apiClient.post('/rag/clear-embeddings')
+  },
+  resetRagConfig() {
+    return apiClient.post('/rag/reset-config')
   },
   testImageEmbeddingConnection(data) {
     return apiClient.post('/rag/image-test-connection', data)
   },
-  getImageEmbeddingModelsCache() {
-    return apiClient.get('/rag/image-models-cache')
+  getImageModelMetadata(data = {}) {
+    return apiClient.post('/rag/image-models-metadata', data)
   },
-  getImageEmbeddingLocalModels(host, port) {
-    return apiClient.get('/rag/image-models', { params: { host, port } })
+  getRagGraphFillRate() {
+    return apiClient.get('/rag/graph/fill-rate')
   },
   reembedImages() {
     return apiClient.post('/rag/reembed-images')
@@ -519,13 +562,6 @@ export default {
   getAIUsage() {
     return apiClient.get('/settings/ai/usage')
   },
-  getAIStatus() {
-    return apiClient.get('/settings/ai/status')
-  },
-  resetAIUsage() {
-    return apiClient.post('/settings/ai/reset-usage')
-  },
-
   getWebhookConfig() {
     return apiClient.get('/settings/webhook')
   },
@@ -537,9 +573,6 @@ export default {
   },
   getWebhookSecret() {
     return apiClient.get('/settings/webhook/secret')
-  },
-  getWebhookUrl() {
-    return apiClient.get('/settings/webhook/url')
   },
   getWebhookLogs(params) {
     return apiClient.get('/settings/webhook/logs', { params })
@@ -554,27 +587,12 @@ export default {
   getQueueStats() {
     return apiClient.get('/queue/stats')
   },
-  getPendingTasks(limit = 20) {
-    return apiClient.get('/queue/pending', { params: { limit } })
-  },
-  retryTask(taskId) {
-    return apiClient.post(`/queue/task/${taskId}/retry`)
-  },
-  cancelTask(taskId) {
-    return apiClient.post(`/queue/task/${taskId}/cancel`)
-  },
 
   getWebhookConfigs() {
     return apiClient.get('/settings/webhook/configs')
   },
-  getWebhookConfigById(id) {
-    return apiClient.get(`/settings/webhook/configs/${id}`)
-  },
   createWebhookConfig(config) {
     return apiClient.post('/settings/webhook/configs', config)
-  },
-  updateWebhookSourceConfig(id, config) {
-    return apiClient.put(`/settings/webhook/configs/${id}`, config)
   },
   deleteWebhookConfig(id) {
     return apiClient.delete(`/settings/webhook/configs/${id}`)
@@ -640,10 +658,6 @@ export default {
       params: { days }
     })
   },
-  getDailyStats(days = 30) {
-    return apiClient.get('/stats/daily', { params: { days } })
-  },
-
   getScheduledTasks() {
     return apiClient.get('/scheduler')
   },
@@ -687,19 +701,19 @@ export default {
   },
 
   getQueuePending(limit = 20) {
-    return apiClient.get(`/queue/pending?limit=${limit}`).then(r => r.data)
+    return getPendingQueueRequest(limit).then(r => r.data)
   },
   getQueueFailed(limit = 20) {
     return apiClient.get(`/queue/failed?limit=${limit}`).then(r => r.data)
   },
   retryQueueTask(taskId) {
-    return apiClient.post(`/queue/task/${taskId}/retry`)
+    return retryQueueTaskRequest(taskId)
   },
   dismissQueueTask(taskId) {
     return apiClient.post(`/queue/task/${taskId}/dismiss`)
   },
   cancelQueueTask(taskId) {
-    return apiClient.post(`/queue/task/${taskId}/cancel`)
+    return cancelQueueTaskRequest(taskId)
   },
   clearCompletedTasks() {
     return apiClient.post('/queue/clear-completed')
@@ -735,18 +749,11 @@ export default {
   retryClassifications(classificationIds, options = {}) {
     return apiClient.post('/classification/retry', { classificationIds, options })
   },
-  getOllamaStatus() {
+  getAiGenerationStatus() {
     return apiClient.get('/queue/ollama-status')
   },
-
-  getRetryStats() {
-    return apiClient.get('/queue/retry-stats')
-  },
-  processRetryQueue(options = {}) {
+  processEnrichmentRetries(options = {}) {
     return apiClient.post('/queue/retry-process', options)
-  },
-  backfillRetryQueue() {
-    return apiClient.post('/queue/retry-backfill')
   },
 
   createReclassificationBatch(items, pauseOnError = true) {
@@ -770,19 +777,12 @@ export default {
   getReclassificationBatchStatus(batchId) {
     return apiClient.get(`/reclassification/batch/${batchId}`)
   },
-  getReclassificationBatchProgress(batchId) {
-    return apiClient.get(`/reclassification/batch/${batchId}/progress`)
-  },
   skipReclassificationItem(batchId, itemId) {
     return apiClient.post(`/reclassification/batch/${batchId}/item/${itemId}/skip`)
   },
   retryReclassificationItem(batchId, itemId) {
     return apiClient.post(`/reclassification/batch/${batchId}/item/${itemId}/retry`)
   },
-  listReclassificationBatches(limit = 20) {
-    return apiClient.get(`/reclassification/batches?limit=${limit}`)
-  },
-
   getSuggestions(status = 'pending', policyId = null) {
     const params = {}
     if (status) params.status = status
@@ -798,13 +798,6 @@ export default {
   rejectSuggestion(id, reason) {
     return apiClient.post(`/suggestions/${id}/reject`, { reason })
   },
-  getSuggestionImpact(id) {
-    return apiClient.get(`/suggestions/${id}/impact`)
-  },
-  getPolicySuggestionsSummary(policyId) {
-    return apiClient.get(`/suggestions/policy/${policyId}/summary`)
-  },
-
   getApiKeys() {
     return apiClient.get('/keys')
   },

@@ -98,11 +98,11 @@
             v-model="config.embedding_model"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
           >
-            <option v-for="model in recommendedModels" :key="model.name" :value="model.name">
-              {{ model.name }} - {{ model.description }}
+            <option v-for="model in recommendedModels" :key="model.id" :value="model.id">
+              {{ model.id }} - {{ model.description }}
             </option>
           </select>
-          <p class="text-xs text-gray-400">Uses the same Ollama server as your AI classification provider.</p>
+          <p class="text-xs text-gray-400">Uses the same provider path as your AI classification setup.</p>
         </div>
 
         <div v-if="config.mode === 'separate_ollama'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
@@ -132,8 +132,8 @@
                 v-model="config.ollama_model"
                 class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
-                <option v-for="model in recommendedModels" :key="model.name" :value="model.name">
-                  {{ model.name }} - {{ model.description }}
+                <option v-for="model in recommendedModels" :key="model.id" :value="model.id">
+                  {{ model.id }} - {{ model.description }}
                 </option>
               </select>
             </div>
@@ -221,9 +221,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
+import {
+  defaultBackfillModeStatus,
+  normalizeBackfillModeStatus
+} from '@/utils/backfillStatusUi'
 
 const toast = useToast()
 
@@ -248,9 +252,8 @@ const status = ref({
   mode: 'same'
 })
 const backfillStatus = ref({
-  idleEnabled: false,
-  scheduledEnabled: false,
-  scheduledTime: '02:00'
+  idle: defaultBackfillModeStatus('idle'),
+  scheduled: defaultBackfillModeStatus('scheduled')
 })
 
 const saving = ref(false)
@@ -259,18 +262,7 @@ const testResult = ref(null)
 const cloudModels = ref([])
 const loadingCloudModels = ref(false)
 const lastModelsFetchAt = ref(null)
-
-const recommendedModels = ref([
-  { name: 'nomic-embed-text', description: 'Recommended - 768 dims, fast', dims: 768 },
-  { name: 'nomic-embed-text-v1.5', description: '768 dims, improved quality', dims: 768 },
-  { name: 'nomic-embed-text-v2-moe', description: '768 dims, multilingual', dims: 768 },
-  { name: 'mxbai-embed-large', description: 'State-of-art - 1024 dims', dims: 1024 },
-  { name: 'snowflake-arctic-embed2', description: 'Enterprise grade - 1024 dims', dims: 1024 },
-  { name: 'bge-m3', description: 'Multilingual - 1024 dims', dims: 1024 },
-  { name: 'bge-large', description: 'High precision - 1024 dims', dims: 1024 },
-  { name: 'all-minilm', description: 'Very fast - 384 dims', dims: 384 },
-  { name: 'paraphrase-multilingual', description: 'Multilingual - 768 dims', dims: 768 }
-])
+const recommendedModels = ref([])
 
 const statusLabel = computed(() => {
   if (status.value.providerOnline) return 'Online'
@@ -303,7 +295,7 @@ const textRuntimeLabel = computed(() => {
 
 const textModelDimsLabel = computed(() => {
   const selected = getSelectedModelName()
-  const known = recommendedModels.value.find(model => model.name === selected)
+  const known = recommendedModels.value.find(model => model.id === selected)
   if (known?.dims) return `${known.dims}`
   if (testResult.value?.success && testResult.value?.dims) return `${testResult.value.dims}`
   return 'n/a'
@@ -324,7 +316,7 @@ const lastModelsFetchLabel = computed(() => {
 
 const loadConfig = async () => {
   try {
-    const configRes = await api.get('/settings/ai')
+    const configRes = await api.getAIConfig()
     const data = configRes.data || {}
 
     config.value = {
@@ -351,7 +343,7 @@ const loadConfig = async () => {
 
 const loadStatus = async () => {
   try {
-    const statusRes = await api.get('/rag/status')
+    const statusRes = await api.getRagStatus()
     const data = statusRes.data || {}
 
     status.value = {
@@ -374,12 +366,18 @@ const fetchCloudModels = async () => {
 
   loadingCloudModels.value = true
   try {
-    const response = await api.getRagEmbeddingModels({
+    const response = await api.getRagTextModels(getTextModelRequest({
+      mode: 'cloud',
       provider: config.value.cloud_provider,
       api_key: config.value.cloud_api_key
-    })
+    }))
 
     const models = response.data?.models || []
+    recommendedModels.value = mergeConfiguredModels(
+      (response.data?.recommended || [])
+        .map(toRecommendedModelOption)
+        .filter(model => model.id)
+    )
     if (config.value.cloud_model && !models.find(m => m.id === config.value.cloud_model)) {
       models.unshift({ id: config.value.cloud_model, name: config.value.cloud_model })
     }
@@ -405,7 +403,7 @@ const testConnection = async () => {
   testResult.value = null
 
   try {
-    const response = await api.post('/rag/test-connection', {
+    const response = await api.testRagConnection({
       mode: config.value.mode,
       host: config.value.ollama_host,
       port: config.value.ollama_port,
@@ -438,7 +436,7 @@ const saveConfig = async () => {
   saving.value = true
 
   try {
-    await api.put('/settings/ai', {
+    await api.updateAIConfig({
       rag_enabled: true,
       embedding_provider_mode: config.value.mode,
       embedding_model: config.value.embedding_model,
@@ -513,10 +511,16 @@ const formatMode = (mode) => {
   return mode || 'same'
 }
 
-const idleBackfillLabel = computed(() => (backfillStatus.value.idleEnabled ? 'On' : 'Off'))
+const idleBackfillLabel = computed(() => {
+  const idle = backfillStatus.value.idle
+  if (!idle?.enabled) return 'Off'
+  return idle.presentation?.statusLabel || 'On'
+})
 const scheduledBackfillLabel = computed(() => {
-  if (!backfillStatus.value.scheduledEnabled) return 'Off'
-  return `On (${backfillStatus.value.scheduledTime})`
+  const scheduled = backfillStatus.value.scheduled
+  if (!scheduled?.enabled) return 'Off'
+  const label = scheduled.presentation?.statusLabel || 'On'
+  return scheduled.time ? `${label} (${scheduled.time})` : label
 })
 
 const modeBadgeClass = (mode) => {
@@ -544,26 +548,78 @@ const formatTimeAgo = (date) => {
 
 const loadBackfillStatus = async () => {
   try {
-    const [idleRes, scheduleRes] = await Promise.all([
-      api.get('/rag/backfill/idle'),
-      api.get('/rag/backfill/schedule')
-    ])
-
+    const response = await api.getBackfillStatus()
     backfillStatus.value = {
-      idleEnabled: idleRes.data?.idle_backfill_enabled ?? false,
-      scheduledEnabled: scheduleRes.data?.scheduled_backfill_enabled ?? false,
-      scheduledTime: scheduleRes.data?.scheduled_backfill_time || '02:00'
+      idle: normalizeBackfillModeStatus('idle', response.data?.idle),
+      scheduled: normalizeBackfillModeStatus('scheduled', response.data?.scheduled)
     }
   } catch (error) {
     console.error('Failed to load backfill status:', error)
   }
 }
 
+const getTextModelRequest = (overrides = {}) => {
+  const nextMode = overrides.mode || config.value.mode
+  return {
+    mode: nextMode,
+    provider: overrides.provider ?? (nextMode === 'cloud' ? config.value.cloud_provider : undefined),
+    api_key: overrides.api_key ?? (nextMode === 'cloud' ? config.value.cloud_api_key : undefined)
+  }
+}
+
+const toRecommendedModelOption = (model) => ({
+  id: model?.id || model?.name || '',
+  name: model?.name || model?.id || '',
+  description: model?.desc || model?.description || model?.name || model?.id || 'Recommended embedding model',
+  dims: model?.dims ?? null
+})
+
+const mergeConfiguredModels = (models) => {
+  const merged = [...models]
+  const selectedModels = [config.value.embedding_model, config.value.ollama_model].filter(Boolean)
+
+  for (const selected of selectedModels) {
+    if (!merged.find(model => model.id === selected)) {
+      merged.unshift({
+        id: selected,
+        name: selected,
+        description: 'Configured model',
+        dims: null
+      })
+    }
+  }
+
+  return merged
+}
+
+const loadRecommendedModels = async () => {
+  try {
+    const response = await api.getRagTextModels(getTextModelRequest())
+    const providerModels = response.data?.recommended || []
+    recommendedModels.value = mergeConfiguredModels(
+      providerModels
+        .map(toRecommendedModelOption)
+        .filter(model => model.id)
+    )
+  } catch (error) {
+    console.error('Failed to load recommended embedding models:', error)
+    recommendedModels.value = mergeConfiguredModels([])
+  }
+}
+
 onMounted(async () => {
   await loadConfig()
+  await loadRecommendedModels()
   await loadStatus()
   await loadBackfillStatus()
 })
+
+watch(
+  () => [config.value.mode, config.value.primary_provider, config.value.cloud_provider].join('|'),
+  async () => {
+    await loadRecommendedModels()
+  }
+)
 </script>
 
 

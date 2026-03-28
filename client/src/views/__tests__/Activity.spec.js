@@ -34,8 +34,8 @@ vi.mock('@/api', () => ({
   default: {
     getLiveStats: vi.fn().mockResolvedValue({ data: { health: {}, today: {}, queue: {}, gapAnalysis: {}, enrichment: {} } }),
     getLiveFeed: vi.fn().mockResolvedValue({ data: { items: [] } }),
-    getPendingTasks: vi.fn().mockResolvedValue({ data: [] }),
-    getOllamaStatus: vi.fn().mockResolvedValue({ data: { isActive: false } }),
+    getQueuePending: vi.fn().mockResolvedValue([]),
+    getAiGenerationStatus: vi.fn().mockResolvedValue({ data: { isActive: false } }),
     getClassificationProgress: vi.fn().mockResolvedValue({ data: [] }),
     getQueueSettings: vi.fn().mockResolvedValue({ data: {} })
   }

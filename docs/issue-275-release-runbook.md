@@ -116,9 +116,9 @@ To benefit from Issue 275 faster on sparse traffic:
 
 Example local backfill call:
 ```bash
-curl -X POST http://localhost:21324/api/rag/backfill/start \
+curl -X POST http://localhost:21324/api/rag/backfill/manual/start \
   -H "Content-Type: application/json" \
-  -d "{\"limit\":1000}"
+  -d "{\"batchSize\":1000}"
 ```
 
 ## Apply Operational Visibility Validation Gate

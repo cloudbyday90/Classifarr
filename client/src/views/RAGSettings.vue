@@ -167,9 +167,9 @@ const loadStatusBar = async () => {
   try {
     const [statusRes, backfillRes, heartbeatRes] = await Promise.all([
       // api client has baseURL '/api' already
-      api.get('/rag/status'),
-      api.get('/rag/backfill/status'),
-      api.get('/system/heartbeat')
+      api.getRagStatus(),
+      api.getBackfillStatus(),
+      api.getSystemHeartbeat()
     ])
 
     const pendingBreakdown = backfillRes.data.pendingBreakdown || { text: 0, image: 0 }

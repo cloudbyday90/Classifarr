@@ -108,6 +108,39 @@ curl -X GET http://localhost:21324/api/system/health/services \
 
 ---
 
+## Canonical RAG & Embeddings Endpoints
+
+The RAG surface was recently consolidated. For new integrations, prefer these endpoints:
+
+### Status and Configuration
+
+- `GET /api/rag/status` — current RAG status, embedding availability, and text/image provider state
+- `GET /api/rag/backfill/status` — normalized manual/idle/scheduled backfill status
+- `GET /api/rag/backfill/config` — canonical backfill configuration read
+- `PUT /api/rag/backfill/config` — canonical backfill configuration write
+
+### Text Embedding Models
+
+- `POST /api/rag/text-models` — canonical text model metadata endpoint
+  Returns provider-aware recommended models plus live-discovered cloud models for the active or supplied text embedding mode.
+- `POST /api/rag/test-connection` — validate the current or proposed text embedding configuration
+
+### Image Embedding Models
+
+- `POST /api/rag/image-models-metadata` — canonical image model metadata endpoint
+  Returns either active-config cache data or refreshed local/cloud image model metadata, depending on the `refresh` flag.
+- `POST /api/rag/image-test-connection` — validate the current or proposed image embedding configuration
+- `POST /api/rag/reembed-images` — clear stored image embeddings so backfill can regenerate them
+
+### Backfill Actions
+
+- `POST /api/rag/backfill/manual/start` — start a manual text embedding backfill run
+- `POST /api/rag/backfill/manual/pause` — pause the active manual run
+- `POST /api/rag/backfill/manual/resume` — resume a paused manual run
+- `POST /api/rag/backfill/manual/clear` — clear the current manual run state
+
+---
+
 ---
 
 ## Response Formats

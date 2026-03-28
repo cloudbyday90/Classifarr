@@ -77,14 +77,14 @@ describe('CircuitBreaker', () => {
             expect(circuitBreaker.state).toBe(STATES.OPEN);
         });
 
-        it('should pass the original error object to logger.warn for stack trace persistence', () => {
+        it('should emit non-persistent debug diagnostics for recorded failures', () => {
             const err = new Error('timeout of 15000ms exceeded');
             circuitBreaker.recordFailure(err);
 
-            expect(mockLogger.warn).toHaveBeenCalled();
-            const call = mockLogger.warn.mock.calls[0];
+            expect(mockLogger.debug).toHaveBeenCalled();
+            const call = mockLogger.debug.mock.calls[0];
             expect(call[0]).toBe('Circuit breaker recorded failure');
-            expect(call[2]?.error).toBe(err);
+            expect(call[2]).toEqual({ skipDbPersist: true });
         });
     });
 

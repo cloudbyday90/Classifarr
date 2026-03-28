@@ -133,8 +133,8 @@ export default {
       this.loading = true;
       try {
         const [statusResponse, librariesResponse] = await Promise.all([
-          api.get('/migration/status'),
-          api.get('/migration/libraries'),
+          api.getMigrationStatus(),
+          api.getMigrationLibraries(),
         ]);
 
         this.migrationStatus = statusResponse.data;
@@ -165,7 +165,7 @@ export default {
     },
     async performMigration(library) {
       try {
-        const response = await api.post(`/migration/libraries/${library.library_id}/migrate-all`, {
+        const response = await api.migrateAllLibraryRules(library.library_id, {
           autoSuggest: true,
         });
         const results = response.data;

@@ -15,9 +15,44 @@ const cloudLLMService = require('./cloudLLM');
 const providerLock = require('./providerLock');
 const { createLogger } = require('../utils/logger');
 const { withRetry, isRetryableError } = require('../utils/retryUtils');
-const CircuitBreaker = require('./circuitBreaker');
+const { embeddingCircuitBreaker, OPEN_CIRCUIT_ERROR_MESSAGE } = require('./embeddingCircuitBreaker');
 
 const logger = createLogger('EmbeddingProvider');
+
+const SAME_MODE_DEFAULTS = {
+    ollama: 'nomic-embed-text-v2-moe',
+    openai: 'text-embedding-3-small',
+    gemini: 'text-embedding-005',
+    openrouter: 'text-embedding-3-small',
+    litellm: 'text-embedding-3-small',
+    custom: 'text-embedding-3-small'
+};
+
+const RECOMMENDED_EMBEDDING_MODELS = {
+    ollama: [
+        { id: 'nomic-embed-text', name: 'Nomic Embed Text', dims: 768, recommended: true, desc: 'High-performing open embedding model with large context window' },
+        { id: 'mxbai-embed-large', name: 'MxBai Embed Large', dims: 1024, recommended: true, desc: 'State-of-the-art large embedding model from mixedbread.ai' },
+        { id: 'bge-m3', name: 'BGE-M3', dims: 1024, desc: 'Multi-Functionality, Multi-Linguality, Multi-Granularity model from BAAI' },
+        { id: 'all-minilm', name: 'All-MiniLM', dims: 384, desc: 'Fast, lightweight model for sentence embeddings' },
+        { id: 'snowflake-arctic-embed', name: 'Snowflake Arctic Embed', dims: 1024, desc: 'Suite of text embedding models optimized for performance' },
+        { id: 'snowflake-arctic-embed2', name: 'Snowflake Arctic Embed 2', dims: 1024, desc: 'Multilingual support without sacrificing English performance' },
+        { id: 'nomic-embed-text-v2-moe', name: 'Nomic Embed v2 MoE', dims: 768, desc: 'Multilingual MoE text embedding model' },
+        { id: 'bge-large', name: 'BGE Large', dims: 1024, desc: 'Embedding model from BAAI mapping texts to vectors' },
+        { id: 'qwen3-embedding', name: 'Qwen3 Embedding', dims: 1024, desc: 'Text embeddings from Qwen3 series in various sizes' },
+        { id: 'granite-embedding', name: 'Granite Embedding', dims: 768, desc: 'IBM Granite multilingual text embedding model' },
+        { id: 'embeddinggemma', name: 'EmbeddingGemma', dims: 768, desc: '300M parameter embedding model from Google' },
+        { id: 'paraphrase-multilingual', name: 'Paraphrase Multilingual', dims: 768, desc: 'Sentence-transformers model for clustering or semantic search' }
+    ],
+    openai: [
+        { id: 'text-embedding-3-small', name: 'Embedding 3 Small', dims: 1536, recommended: true, desc: 'Cost-effective, efficient for most use cases' },
+        { id: 'text-embedding-3-large', name: 'Embedding 3 Large', dims: 3072, desc: 'Highest quality for demanding applications' },
+        { id: 'text-embedding-ada-002', name: 'Ada 002', dims: 1536, desc: 'Previous generation, widely supported' }
+    ],
+    gemini: [
+        { id: 'text-embedding-005', name: 'Text Embedding 005', dims: 768, recommended: true, desc: 'Latest Gemini embedding model' },
+        { id: 'text-embedding-004', name: 'Text Embedding 004', dims: 768, desc: 'Previous Gemini embedding model' }
+    ]
+};
 
 /**
  * Configuration Error class - used to distinguish config errors from transient failures
@@ -114,12 +149,7 @@ const PROVIDER_DEFAULTS = {
  */
 class EmbeddingProvider {
     constructor() {
-        this.config = null;
-        this.circuitBreaker = new CircuitBreaker({
-            failureThreshold: 5,
-            recoveryTimeout: 60000,
-            halfOpenMaxAttempts: 3
-        });
+        this.circuitBreaker = embeddingCircuitBreaker;
 
         // Metrics tracking
         // Note: Updates to these metrics are performed with simple increments which are
@@ -177,11 +207,10 @@ class EmbeddingProvider {
     }
 
     /**
-     * Reset cached configuration
+     * Reset runtime state after settings changes.
      */
     resetConfig() {
-        this.config = null;
-        logger.info('Embedding provider config cache cleared');
+        logger.debug('Embedding provider reset hook invoked');
     }
 
     /**
@@ -199,6 +228,115 @@ class EmbeddingProvider {
             lastRequestTime: null,
             errorHistory: [],
             retryHistory: []
+        };
+        this.circuitBreaker.reset();
+    }
+
+    getCircuitStatus() {
+        return this.circuitBreaker.getStatus();
+    }
+
+    getCircuitStateHistory(limit = 20) {
+        return this.circuitBreaker.getStateHistory(limit);
+    }
+
+    resetCircuit() {
+        this.circuitBreaker.reset();
+    }
+
+    getSameModeProvider(config = {}) {
+        const provider = config.primary_provider;
+        if (!provider || provider === 'none') {
+            throw new ConfigurationError('No AI provider configured for embedding generation. Please configure an AI provider in Settings > AI Provider.');
+        }
+
+        return {
+            provider,
+            model: config.embedding_model || SAME_MODE_DEFAULTS[provider] || SAME_MODE_DEFAULTS.ollama
+        };
+    }
+
+    buildLegacyCloudConfig(config = {}, provider) {
+        return {
+            primary_provider: provider,
+            api_key: config.api_key,
+            api_endpoint: config.api_endpoint
+        };
+    }
+
+    async getSameModeEmbedding(text, config = {}, signal = null) {
+        const { provider, model } = this.getSameModeProvider(config);
+
+        switch (provider) {
+            case 'ollama':
+                return await this.getOllamaEmbedding(
+                    text,
+                    null,
+                    null,
+                    model,
+                    config,
+                    signal
+                );
+
+            case 'gemini': {
+                const cloudConfig = this.buildLegacyCloudConfig(config, provider);
+                if (!cloudConfig.api_key) {
+                    throw new ConfigurationError('No API key configured for gemini');
+                }
+                const result = await cloudLLMService.embedGemini(text, cloudConfig, model, signal);
+                return {
+                    embedding: result.embedding,
+                    dims: result.dims,
+                    provider,
+                    model,
+                    cost: result.cost
+                };
+            }
+
+            case 'openai':
+            case 'openrouter':
+            case 'litellm':
+            case 'custom': {
+                const cloudConfig = this.buildLegacyCloudConfig(config, provider);
+                if (!cloudConfig.api_key) {
+                    throw new ConfigurationError(`No API key configured for ${provider}`);
+                }
+                const result = await cloudLLMService.embed(text, cloudConfig, model, signal);
+                return {
+                    embedding: result.embedding,
+                    dims: result.dims,
+                    provider,
+                    model,
+                    cost: result.cost
+                };
+            }
+
+            default:
+                throw new ConfigurationError(`Unknown embedding provider: ${provider}`);
+        }
+    }
+
+    normalizeTestConfig(savedConfig = {}, override = {}) {
+        if (!override || Object.keys(override).length === 0) {
+            return savedConfig;
+        }
+
+        const mode = override.mode || override.embedding_provider_mode || savedConfig.embedding_provider_mode || 'same';
+        return {
+            ...savedConfig,
+            embedding_provider_mode: mode,
+            embedding_model: override.model || savedConfig.embedding_model,
+            ollama_host: override.host || savedConfig.ollama_host,
+            ollama_port: override.port || savedConfig.ollama_port,
+            embedding_ollama_host: override.host || override.embedding_ollama_host || savedConfig.embedding_ollama_host,
+            embedding_ollama_port: override.port || override.embedding_ollama_port || savedConfig.embedding_ollama_port,
+            embedding_ollama_model: override.model || override.embedding_ollama_model || savedConfig.embedding_ollama_model,
+            embedding_cloud_provider: override.provider || override.embedding_cloud_provider || savedConfig.embedding_cloud_provider,
+            embedding_cloud_api_key: override.api_key || override.embedding_cloud_api_key || savedConfig.embedding_cloud_api_key,
+            embedding_cloud_model: override.model || override.embedding_cloud_model || savedConfig.embedding_cloud_model,
+            api_key: override.api_key || savedConfig.api_key,
+            api_endpoint: override.api_endpoint || savedConfig.api_endpoint,
+            primary_provider: override.primary_provider || savedConfig.primary_provider
         };
     }
 
@@ -338,7 +476,8 @@ class EmbeddingProvider {
 
         // Check circuit breaker
         if (!this.circuitBreaker.isAllowed()) {
-            const error = new Error('Circuit breaker is OPEN - too many recent failures');
+            const error = new Error(OPEN_CIRCUIT_ERROR_MESSAGE);
+            error.code = 'EMBEDDING_CIRCUIT_OPEN';
             logger.warn('Request blocked by circuit breaker');
 
             // Record the circuit breaker rejection in error history
@@ -399,21 +538,9 @@ class EmbeddingProvider {
 
             switch (mode) {
                 case 'same':
-                    // Use classification provider (legacy behavior via ollamaService)
-                    // Validate that primary provider is configured
-                    if (!config.primary_provider || config.primary_provider === 'none') {
-                        throw new ConfigurationError('No AI provider configured for embedding generation. Please configure an AI provider in Settings > AI Provider.');
-                    }
                     // Check preemption BEFORE starting HTTP request (Node.js event loop is non-preemptive)
                     checkPreemptionAndYield();
-                    result = await this.getOllamaEmbedding(
-                        text,
-                        null,  // Don't pass host - use ollamaService
-                        null,  // Don't pass port - use ollamaService
-                        config.embedding_model || 'nomic-embed-text-v2-moe',
-                        config,
-                        signal
-                    );
+                    result = await this.getSameModeEmbedding(text, config, signal);
                     break;
 
                 case 'separate_ollama':
@@ -481,7 +608,15 @@ class EmbeddingProvider {
             // Don't trip for client errors (4xx), configuration issues, or validation errors to avoid false 'Offline' status
             const isConfigError = error.isConfigurationError || error.name === 'ConfigurationError';
             if (!isConfigError && (retryable || (error.response?.status >= 500))) {
+                const previousStatus = this.getCircuitStatus();
                 this.circuitBreaker.recordFailure(error);
+                const nextStatus = this.getCircuitStatus();
+                if (previousStatus.state !== 'OPEN' && nextStatus.state === 'OPEN') {
+                    logger.warn('Circuit breaker opened', {
+                        failures: nextStatus.failureCount ?? 0,
+                        error: error.message
+                    }, { skipDbPersist: true });
+                }
             }
 
             this.recordError(error, latency, retryable);
@@ -953,32 +1088,28 @@ class EmbeddingProvider {
      */
     async testConnection(config = {}) {
         try {
-            // If config is provided, we are testing a specific setup (draft)
-            if (Object.keys(config).length > 0) {
-                const mode = config.mode || config.embedding_provider_mode;
-
-                if (mode === 'same' || mode === 'separate_ollama') {
-                    const host = config.host || config.embedding_ollama_host;
-                    const port = config.port || config.embedding_ollama_port;
-                    const model = config.model || config.embedding_ollama_model;
-
-                    // Use getOllamaEmbedding with explicit config
-                    const result = await this.getOllamaEmbedding('Test Connection', host, port, model, config);
-
-                    return {
-                        success: true,
-                        provider: 'ollama',
-                        model: model,
-                        dimensions: result.dims,
-                        cost: 0
-                    };
-                }
-
-                // TODO: Add cloud provider test logic here if needed
+            const savedConfig = await this.getConfig();
+            const effectiveConfig = this.normalizeTestConfig(savedConfig || {}, config);
+            if (!effectiveConfig || Object.keys(effectiveConfig).length === 0) {
+                throw new ConfigurationError('No embedding provider configuration found');
             }
 
-            // Fallback: Test existing saved configuration
-            const testEmbedding = await this.getEmbedding('test connection');
+            const mode = effectiveConfig.embedding_provider_mode || 'same';
+            let testEmbedding;
+
+            if (mode === 'same') {
+                testEmbedding = await this.getSameModeEmbedding('test connection', effectiveConfig);
+            } else if (mode === 'separate_ollama') {
+                const host = effectiveConfig.embedding_ollama_host;
+                const port = effectiveConfig.embedding_ollama_port;
+                const model = effectiveConfig.embedding_ollama_model || SAME_MODE_DEFAULTS.ollama;
+                testEmbedding = await this.getOllamaEmbedding('test connection', host, port, model, effectiveConfig);
+            } else if (mode === 'cloud') {
+                testEmbedding = await this.getCloudEmbedding('test connection', effectiveConfig);
+            } else {
+                throw new ConfigurationError(`Unknown embedding provider mode: ${mode}`);
+            }
+
             return {
                 success: true,
                 provider: testEmbedding.provider,
@@ -999,6 +1130,10 @@ class EmbeddingProvider {
      */
     getProviderDefaults() {
         return PROVIDER_DEFAULTS;
+    }
+
+    getRecommendedModels() {
+        return RECOMMENDED_EMBEDDING_MODELS;
     }
 
     /**

@@ -17,6 +17,7 @@
  */
 
 const embeddingService = require('../services/embeddingService');
+const embeddingAvailabilityService = require('../services/embeddingAvailabilityService');
 const embeddingRouter = require('../services/embeddingRouter');
 const imageEmbeddingProvider = require('../services/imageEmbeddingProvider');
 const db = require('../config/database');
@@ -28,6 +29,13 @@ jest.mock('../services/imageEmbeddingProvider', () => ({
     getEffectiveModel: jest.fn(),
     getEffectiveSize: jest.fn(),
     embedImageFromUrl: jest.fn()
+}));
+jest.mock('../services/embeddingAvailabilityService', () => ({
+    getStatus: jest.fn(),
+    getStatusFresh: jest.fn(),
+    resetAvailability: jest.fn(),
+    markUnavailable: jest.fn(),
+    runRecoveryProbe: jest.fn()
 }));
 jest.mock('../config/database');
 jest.mock('../utils/logger', () => ({
@@ -44,6 +52,24 @@ describe('EmbeddingService', () => {
         jest.restoreAllMocks();
         // clearAllMocks is also good for mock fns, but restore handles spies
         jest.clearAllMocks();
+        const availableStatus = {
+            status: 'available',
+            isOffline: false,
+            cooldownUntil: null,
+            lastError: null,
+            failureCount: 0
+        };
+        embeddingAvailabilityService.getStatus.mockReturnValue(availableStatus);
+        embeddingAvailabilityService.getStatusFresh.mockResolvedValue(availableStatus);
+        embeddingAvailabilityService.resetAvailability.mockResolvedValue(availableStatus);
+        embeddingAvailabilityService.markUnavailable.mockResolvedValue({
+            ...availableStatus,
+            status: 'cooldown',
+            isOffline: true,
+            cooldownUntil: new Date(Date.now() + 60000).toISOString()
+        });
+        embeddingAvailabilityService.runRecoveryProbe.mockResolvedValue(true);
+        embeddingService.resetProviderAvailability();
         embeddingRouter.isEnabled.mockResolvedValue(true);
         imageEmbeddingProvider.getConfig.mockResolvedValue(null);
         imageEmbeddingProvider.isConfigured.mockReturnValue(false);
@@ -78,7 +104,6 @@ describe('EmbeddingService', () => {
             embeddingRouter.isEnabled.mockResolvedValue(false);
 
             const storeSpy = jest.spyOn(embeddingService, 'storeEmbedding');
-            const retrySpy = jest.spyOn(embeddingService, 'addToRetryQueue');
 
             const result = await embeddingService.generateAndStore(1, {
                 title: 'Test Title',
@@ -88,7 +113,43 @@ describe('EmbeddingService', () => {
             expect(result).toBeNull();
             expect(embeddingRouter.embed).not.toHaveBeenCalled();
             expect(storeSpy).not.toHaveBeenCalled();
-            expect(retrySpy).not.toHaveBeenCalled();
+        });
+
+        it('should surface provider cooldown without queueing retries', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            const openCircuitError = new Error('Circuit breaker is OPEN - embedding provider cooldown active');
+            openCircuitError.code = 'EMBEDDING_CIRCUIT_OPEN';
+            embeddingRouter.embed.mockRejectedValue(openCircuitError);
+
+            await expect(embeddingService.generateAndStore(1, {
+                title: 'Test Title',
+                overview: 'Test Overview'
+            })).rejects.toThrow('PROVIDER_OFFLINE');
+        });
+
+        it('should short-circuit while provider cooldown is active', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingAvailabilityService.getStatusFresh.mockResolvedValue({
+                status: 'cooldown',
+                isOffline: true,
+                cooldownUntil: new Date(Date.now() + 60000).toISOString(),
+                lastError: 'connect ETIMEDOUT',
+                failureCount: 2
+            });
+            embeddingAvailabilityService.getStatus.mockReturnValue({
+                status: 'cooldown',
+                isOffline: true,
+                cooldownUntil: new Date(Date.now() + 60000).toISOString(),
+                lastError: 'connect ETIMEDOUT',
+                failureCount: 2
+            });
+
+            await expect(embeddingService.generateAndStore(1, {
+                title: 'Test Title',
+                overview: 'Test Overview'
+            })).rejects.toThrow('PROVIDER_OFFLINE');
+
+            expect(embeddingRouter.embed).not.toHaveBeenCalled();
         });
 
         it('should handle errors gracefully', async () => {
@@ -289,9 +350,6 @@ describe('EmbeddingService', () => {
                     rows: [{ total: '100', stale: '5', providers: '2', avg_dims: '768.5' }]
                 })
                 .mockResolvedValueOnce({
-                    rows: [{ pending: '3' }]  // retry queue count
-                })
-                .mockResolvedValueOnce({
                     rows: [{ count: '42' }]  // actual pending embeddings (items without embeddings)
                 });
 
@@ -303,7 +361,7 @@ describe('EmbeddingService', () => {
                 stale: 5,
                 providers: 2,
                 avgDims: 769,
-                pendingRetries: 3,
+                pendingRetries: 0,
                 pendingCount: 42  // Now counts actual items without embeddings, not retry queue
             });
         });

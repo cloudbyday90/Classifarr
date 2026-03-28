@@ -10,6 +10,7 @@ const db = require('../config/database');
 const { DB_ADVISORY_LOCKS } = require('../config/database');
 const embeddingService = require('./embeddingService');
 const embeddingProvider = require('./embeddingProvider');
+const embeddingRouter = require('./embeddingRouter');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('ManualBackfillService');
@@ -134,6 +135,10 @@ class ManualBackfillService {
         return parsed;
     }
 
+    buildProviderUnavailableMessage(availability = {}) {
+        return `Embedding provider unavailable until ${availability.cooldownUntil || 'recovery probe succeeds'}`;
+    }
+
     launchTrackedRun(errorLogMessage) {
         const runPromise = this.runBackfill()
             .catch(error => {
@@ -190,6 +195,11 @@ class ManualBackfillService {
 
         if (['running', 'paused', 'cancelling'].includes(this.state.status) || this._activeRunPromise) {
             throw new Error('Backfill already running');
+        }
+
+        const availability = await embeddingService.getProviderAvailabilityStatus({ refresh: true });
+        if (availability.status === 'cooldown' || availability.status === 'probing') {
+            throw new Error(this.buildProviderUnavailableMessage(availability));
         }
 
         // Advisory lock guard: prevents split-brain races in multi-process deployments.
@@ -252,7 +262,7 @@ class ManualBackfillService {
 
             while (this.state.status === 'running' && this.state.processed < this.state.total) {
                 // Check circuit breaker status
-                const circuitStatus = embeddingProvider.circuitBreaker.getStatus();
+                const circuitStatus = embeddingRouter.getCircuitStatus();
                 if (circuitStatus.state === 'OPEN') {
                     logger.warn('Circuit breaker is OPEN, pausing backfill');
                     this.state.status = 'paused';
@@ -302,6 +312,16 @@ class ManualBackfillService {
                             );
                         }
                     } catch (error) {
+                        if (error.message === 'PROVIDER_OFFLINE') {
+                            const offlineStatus = embeddingService.getProviderAvailabilityStatus();
+                            this.state.status = 'paused';
+                            this.state.error = `${this.buildProviderUnavailableMessage(offlineStatus)}.`;
+                            logger.warn('Manual backfill paused: embedding provider unavailable', {
+                                retryAt: offlineStatus.cooldownUntil
+                            }, { skipDbPersist: true });
+                            break;
+                        }
+
                         logger.error('Failed to generate embedding', {
                             id: item.id,
                             title: item.title,
@@ -329,6 +349,23 @@ class ManualBackfillService {
                 `, [this.state.processed, this.state.total, this.state.error, this.state.runId]);
 
                 logger.info('Manual backfill cancelled', { processed: this.state.processed });
+                return;
+            }
+
+            if (this.state.status === 'paused') {
+                await db.query(`
+                    UPDATE backfill_runs
+                    SET status = 'paused',
+                        error = $1,
+                        processed = $2,
+                        total = $3
+                    WHERE id = $4
+                `, [this.state.error, this.state.processed, this.state.total, this.state.runId]);
+
+                logger.info('Manual backfill paused', {
+                    processed: this.state.processed,
+                    reason: this.state.error
+                });
                 return;
             }
 
@@ -391,6 +428,11 @@ class ManualBackfillService {
      */
     async resume() {
         if (this.state.status === 'paused') {
+            const availability = await embeddingService.getProviderAvailabilityStatus({ refresh: true });
+            if (availability.status === 'cooldown' || availability.status === 'probing') {
+                throw new Error(this.buildProviderUnavailableMessage(availability));
+            }
+
             await this.acquireLock();
             this.state.status = 'running';
             logger.info('Manual backfill resumed', { processed: this.state.processed });

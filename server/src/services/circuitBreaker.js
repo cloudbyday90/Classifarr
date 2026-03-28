@@ -150,12 +150,12 @@ class CircuitBreaker {
         this.failureCount++;
         this.lastFailureTime = Date.now();
 
-        logger.warn('Circuit breaker recorded failure', {
+        logger.debug('Circuit breaker recorded failure', {
             state: this.state,
             failureCount: this.failureCount,
             threshold: this.failureThreshold,
             error: error.message
-        }, { error });
+        }, { skipDbPersist: true });
 
         if (this.state === STATES.HALF_OPEN && !this._isTransitioning) {
             // Failed during recovery - go back to OPEN
@@ -184,7 +184,7 @@ class CircuitBreaker {
      * Manually reset the circuit breaker
      */
     reset() {
-        logger.info('Circuit breaker manually reset');
+        logger.info('Circuit breaker manually reset', null, { skipDbPersist: true });
         this.failureCount = 0;
         this.successCount = 0;
         this.halfOpenAttempts = 0;
@@ -224,7 +224,7 @@ class CircuitBreaker {
             from: oldState,
             to: newState,
             reason
-        });
+        }, { skipDbPersist: true });
     }
 
     /**

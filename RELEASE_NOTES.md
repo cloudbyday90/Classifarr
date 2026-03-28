@@ -34,7 +34,7 @@ Upgrade effort              [█████████░] one migration (cust
 
 ### 🔧 Reliability Improvements
 - Full library syncs now prune media/collection rows that disappeared from the remote server so stale cache entries stop appearing in reconciliation.
-- Manual RAG backfill pause/resume now reacquires the advisory lock before processing resumes, and the legacy start route now goes through the same lock-aware lifecycle.
+- Manual RAG backfill pause/resume now reacquires the advisory lock before processing resumes, and manual backfill start handling now goes through the same lock-aware lifecycle.
 - Queue bulk actions now surface actual database failures instead of returning a misleading zero-count success.
 - Startup circular dependency between the scheduler and queue service removed — `refillQueue is not a function` on first scheduler run is gone.
 - CORS no longer reflects arbitrary origins when no allowlist is configured.

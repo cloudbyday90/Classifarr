@@ -445,7 +445,7 @@ onMounted(async () => {
 
 async function loadSettings() {
   try {
-    const response = await api.get('/api/settings/confidence')
+    const response = await api.getConfidenceSettings()
     const data = response.data
     
     // Parse and populate settings with fallbacks
@@ -506,9 +506,7 @@ async function loadSettings() {
 
 async function loadAuditHistory() {
   try {
-    const response = await api.get('/api/settings/confidence/history', {
-      params: { limit: 20 }
-    })
+    const response = await api.getConfidenceHistory({ limit: 20 })
     const rows = Array.isArray(response.data) ? response.data : []
     auditHistory.value = rows
       .map(normalizeAuditRow)
@@ -522,7 +520,7 @@ async function loadAuditHistory() {
 
 async function loadRagLoopSettings() {
   try {
-    const response = await api.get('/api/settings/ai')
+    const response = await api.getAIConfig()
     const data = response.data || {}
     ragLoopSettings.autoFallbackEnabled = data.rag_loop_auto_fallback_enabled !== false
     ragLoopSettings.autoRecoverEnabled = data.rag_loop_auto_recover_enabled === true
@@ -533,7 +531,7 @@ async function loadRagLoopSettings() {
 
 async function loadFallbackIncident() {
   try {
-    const response = await api.get('/api/rag/loop/latest-fallback-incident')
+    const response = await api.getLatestRagFallbackIncident()
     fallbackIncident.value = response.data?.incident || null
     fallbackState.value = response.data?.fallback_state || null
     fallbackCheckedAt.value = response.data?.checked_at || null
@@ -619,8 +617,8 @@ async function saveAllSettings() {
       _reason: 'Manual update from settings UI'
     }
     
-    const response = await api.put('/api/settings/confidence', payload)
-    await api.put('/api/settings/ai', {
+    await api.updateConfidenceSettings(payload)
+    await api.updateAIConfig({
       rag_loop_auto_fallback_enabled: ragLoopSettings.autoFallbackEnabled,
       rag_loop_auto_recover_enabled: ragLoopSettings.autoRecoverEnabled
     })
@@ -641,7 +639,7 @@ async function revertSetting(auditId) {
   }
   
   try {
-    await api.post(`/api/settings/confidence/revert/${auditId}`)
+    await api.revertConfidenceSetting(auditId)
     toast.success('Setting reverted')
     await loadSettings()
     await loadAuditHistory()
@@ -653,7 +651,7 @@ async function revertSetting(auditId) {
 
 async function exportSettings() {
   try {
-    const response = await api.post('/api/settings/confidence/export')
+    const response = await api.exportConfidenceSettings()
     const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

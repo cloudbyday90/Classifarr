@@ -156,7 +156,7 @@
                   </Button>
                 </div>
 
-                <p v-if="ollamaTelemetryLine" class="processing-telemetry">{{ ollamaTelemetryLine }}</p>
+                <p v-if="aiGenerationTelemetryLine" class="processing-telemetry">{{ aiGenerationTelemetryLine }}</p>
 
                 <div class="processing-queue-stats">
                   <span>Queue: {{ queuePendingCount }} pending</span>
@@ -303,9 +303,9 @@
                 v-if="enrichmentOmdbPending > 0"
                 variant="secondary"
                 size="sm"
-                :disabled="isActionBusy('retry-queue-omdb')"
-                :loading="isActionBusy('retry-queue-omdb')"
-                @click.stop="processRetryQueue('omdb')"
+                :disabled="isActionBusy('process-enrichment-retries-omdb')"
+                :loading="isActionBusy('process-enrichment-retries-omdb')"
+                @click.stop="processEnrichmentRetries('omdb')"
               >
                 Retry OMDb ({{ enrichmentOmdbPending }})
               </Button>
@@ -313,9 +313,9 @@
                 v-if="enrichmentTavilyPending > 0"
                 variant="warning"
                 size="sm"
-                :disabled="isActionBusy('retry-queue-tavily')"
-                :loading="isActionBusy('retry-queue-tavily')"
-                @click.stop="processRetryQueue('tavily')"
+                :disabled="isActionBusy('process-enrichment-retries-tavily')"
+                :loading="isActionBusy('process-enrichment-retries-tavily')"
+                @click.stop="processEnrichmentRetries('tavily')"
               >
                 Retry Tavily ({{ enrichmentTavilyPending }})
               </Button>
@@ -487,7 +487,7 @@ const {
   isAnyDataStale,
   lastUpdatedText,
   needsAttentionItems,
-  ollamaTelemetryLine,
+  aiGenerationTelemetryLine,
   pendingQueueTasks,
   primaryActiveTask,
   queuePendingCount,
@@ -703,7 +703,7 @@ function taskMediaType(task) {
 async function cancelPendingTask(taskId) { await runActionWithBusy(taskId === pendingQueueTasks.value[0]?.id ? 'cancel-first' : `cancel-${taskId}`, async () => { await api.cancelQueueTask(taskId) }) }
 async function cancelAllPendingTasks() { await runActionWithBusy('cancel-all', async () => { await api.cancelAllPendingTasks() }) }
 
-async function processRetryQueue(type = 'tavily') { await runActionWithBusy(`retry-queue-${type}`, async () => { await api.processRetryQueue({ limit: 50, enrichmentType: type }) }) }
+async function processEnrichmentRetries(type = 'tavily') { await runActionWithBusy(`process-enrichment-retries-${type}`, async () => { await api.processEnrichmentRetries({ limit: 50, enrichmentType: type }) }) }
 
 async function retryFailedTask(taskId) { await runActionWithBusy(`retry-failed-${taskId}`, async () => { await api.retryQueueTask(taskId) }) }
 async function dismissFailedTask(taskId) { await runActionWithBusy(`dismiss-failed-${taskId}`, async () => { await api.dismissQueueTask(taskId) }) }

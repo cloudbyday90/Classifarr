@@ -20,7 +20,8 @@ jest.mock('../services/embeddingService', () => ({
     generateImageEmbedding: jest.fn(),
     getPendingCount: jest.fn(),
     getPendingEmbeddings: jest.fn(),
-    shouldIncludeImageEmbeddings: jest.fn()
+    shouldIncludeImageEmbeddings: jest.fn(),
+    getProviderAvailabilityStatus: jest.fn()
 }));
 
 jest.mock('../utils/idleDetector', () => ({
@@ -49,10 +50,13 @@ describe('IdleBackfillService', () => {
         idleBackfillService.isRunning = false;
         idleBackfillService.config = null;
         idleBackfillService.includeImage = false;
-        idleBackfillService.providerOfflineUntil = null;
         embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
         embeddingService.getPendingCount.mockResolvedValue(0);
         embeddingService.getPendingEmbeddings.mockResolvedValue([]);
+        embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+            status: 'available',
+            cooldownUntil: null
+        });
 
         // Default: advisory lock acquired — fn() is called and returns true
         db.withSessionAdvisoryLock.mockImplementation(async (lockKey, fn) => {
@@ -299,11 +303,14 @@ describe('IdleBackfillService', () => {
 
             expect(sleepSpy).not.toHaveBeenCalledWith(300000);
             expect(idleBackfillService.isRunning).toBe(false);
-            expect(idleBackfillService.providerOfflineUntil).toEqual(expect.any(Number));
+            expect(embeddingService.getProviderAvailabilityStatus).toHaveBeenCalled();
         });
 
         test('skips restart attempts while provider offline cooldown is active', async () => {
-            idleBackfillService.providerOfflineUntil = Date.now() + 60000;
+            embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+                status: 'cooldown',
+                cooldownUntil: new Date(Date.now() + 60000).toISOString()
+            });
             const lockBodySpy = jest.fn();
             db.withSessionAdvisoryLock.mockImplementation(async (_lockKey, fn) => {
                 lockBodySpy.mockImplementation(fn);
@@ -347,7 +354,10 @@ describe('IdleBackfillService', () => {
 
         test('reports cooldown status when provider cooldown is active', () => {
             idleBackfillService.config = { idle_backfill_enabled: true, idle_batch_size: 20 };
-            idleBackfillService.providerOfflineUntil = Date.now() + 60000;
+            embeddingService.getProviderAvailabilityStatus.mockReturnValue({
+                status: 'cooldown',
+                cooldownUntil: new Date(Date.now() + 60000).toISOString()
+            });
 
             const status = idleBackfillService.getStatus();
 

@@ -53,8 +53,6 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_logs
                 .mockResolvedValueOnce({ rowCount: 5 }) // backfill_library_name
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - backfill_library_name
-                .mockResolvedValueOnce({ rowCount: 2 }) // clear_stale_retry_queue
-                .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_stale_retry_queue
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - DELETE error_log
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete - clear_logs (v0.41.2)
@@ -76,7 +74,7 @@ describe('PostUpgradeService', () => {
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(8); // All tasks should execute
+            expect(result.executed).toBe(7); // All tasks should execute
             expect(result.skipped).toBe(0);
         });
 
@@ -104,7 +102,6 @@ describe('PostUpgradeService', () => {
                     rows: [
                         { task_id: 'clear_logs_0393' },
                         { task_id: 'backfill_library_name_0393' },
-                        { task_id: 'clear_stale_retry_queue_0393' },
                         { task_id: 'clear_logs_0412' },
                         { task_id: 'clear_logs_0413' },
                         { task_id: 'clear_logs_0427' },
@@ -116,7 +113,7 @@ describe('PostUpgradeService', () => {
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(0);
-            expect(result.skipped).toBe(8);
+            expect(result.skipped).toBe(7);
         });
 
         it('should handle partial execution when some tasks fail', async () => {
@@ -128,8 +125,6 @@ describe('PostUpgradeService', () => {
                 .mockRejectedValueOnce(new Error('Failed to truncate')) // clear_logs fails
                 .mockResolvedValueOnce({ rowCount: 5 }) // backfill_library_name succeeds
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for backfill
-                .mockResolvedValueOnce({ rowCount: 2 }) // clear_stale_retry_queue succeeds
-                .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for clear_stale_retry_queue
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - DELETE error_log
                 .mockResolvedValueOnce({ rowCount: 0 }) // clear_logs (v0.41.2) - DELETE app_log
                 .mockResolvedValueOnce({ rowCount: 1 }) // markTaskComplete for clear_logs (v0.41.2)
@@ -149,7 +144,7 @@ describe('PostUpgradeService', () => {
             const result = await postUpgradeService.runPendingTasks();
 
             // Only the successful task should be counted
-            expect(result.executed).toBe(7);
+            expect(result.executed).toBe(6);
         });
     });
 
@@ -170,18 +165,6 @@ describe('PostUpgradeService', () => {
 
             expect(db.query).toHaveBeenCalledWith('DELETE FROM error_log WHERE resolved = false');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM app_log');
-        });
-
-        it('should execute clear_embedding_queue task', async () => {
-            db.query.mockResolvedValueOnce({ rowCount: 15 });
-
-            await postUpgradeService.executeTask({
-                id: 'test_clear_queue',
-                action: 'clear_embedding_queue',
-                description: 'Test'
-            });
-
-            expect(db.query).toHaveBeenCalledWith('DELETE FROM embedding_retry_queue');
         });
 
         it('should execute rebuild_embeddings task', async () => {

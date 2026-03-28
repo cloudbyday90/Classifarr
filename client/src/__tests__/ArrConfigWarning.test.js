@@ -26,7 +26,7 @@ const mockPush = vi.fn();
 // Mock API
 vi.mock('../api', () => ({
   default: {
-    genericRequest: vi.fn()
+    getArrConfigStatus: vi.fn()
   }
 }));
 
@@ -46,7 +46,7 @@ describe('ArrConfigWarning.vue', () => {
 
   describe('Rendering', () => {
     it('renders without crashing when no incomplete configs', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: { incompleteConfigs: [] }
       });
 
@@ -57,7 +57,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('does not display warning when all configs are complete', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: { incompleteConfigs: [] }
       });
 
@@ -68,7 +68,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('displays warning banner when incomplete configs exist', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' }
@@ -84,7 +84,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('displays warning icon', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
@@ -101,7 +101,7 @@ describe('ArrConfigWarning.vue', () => {
 
   describe('Incomplete Configs Display', () => {
     it('displays single Radarr incomplete config', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' }
@@ -118,7 +118,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('displays single Sonarr incomplete config', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Sonarr', name: 'Sonarr Anime', id: 2, missingField: 'quality_profile_id' }
@@ -135,7 +135,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('displays multiple incomplete configs', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' },
@@ -154,7 +154,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('uses unique keys for multiple configs', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: 'Radarr 1', id: 1, missingField: 'quality_profile_id' },
@@ -175,7 +175,7 @@ describe('ArrConfigWarning.vue', () => {
 
   describe('Navigation', () => {
     it('navigates to Radarr settings when Configure Radarr Now is clicked', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' }
@@ -193,7 +193,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('navigates to Sonarr settings when Configure Sonarr Now is clicked', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Sonarr', name: 'Sonarr HD', id: 2, missingField: 'quality_profile_id' }
@@ -213,7 +213,7 @@ describe('ArrConfigWarning.vue', () => {
 
   describe('Dismiss Functionality', () => {
     it('hides warning when dismiss button is clicked', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
@@ -233,7 +233,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('displays dismiss button with correct icon', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
@@ -252,18 +252,18 @@ describe('ArrConfigWarning.vue', () => {
 
   describe('API Integration', () => {
     it('calls API endpoint on mount', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: { incompleteConfigs: [] }
       });
 
       mount(ArrConfigWarning);
       await flushPromises();
 
-      expect(api.genericRequest).toHaveBeenCalledWith('get', '/api/settings/arr-config-status');
+      expect(api.getArrConfigStatus).toHaveBeenCalled();
     });
 
     it('handles API errors gracefully', async () => {
-      api.genericRequest.mockRejectedValueOnce(new Error('Network error'));
+      api.getArrConfigStatus.mockRejectedValueOnce(new Error('Network error'));
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const wrapper = mount(ArrConfigWarning);
@@ -277,7 +277,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('does not call API if already dismissed', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
@@ -293,7 +293,7 @@ describe('ArrConfigWarning.vue', () => {
       await dismissButton.trigger('click');
 
       // Clear mock to reset call count
-      api.genericRequest.mockClear();
+      api.getArrConfigStatus.mockClear();
 
       // Component should not call API again even if checkIncompleteConfigs is triggered
       expect(wrapper.find('.bg-yellow-900\\/30').exists()).toBe(false);
@@ -302,7 +302,7 @@ describe('ArrConfigWarning.vue', () => {
 
   describe('Edge Cases', () => {
     it('handles missing config name gracefully', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {
           incompleteConfigs: [
             { type: 'Radarr', name: null, id: 1, missingField: 'quality_profile_id' }
@@ -318,7 +318,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('handles null response data', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: null
       });
 
@@ -330,7 +330,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('handles undefined incompleteConfigs', async () => {
-      api.genericRequest.mockResolvedValueOnce({
+      api.getArrConfigStatus.mockResolvedValueOnce({
         data: {}
       });
 

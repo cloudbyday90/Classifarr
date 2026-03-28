@@ -68,7 +68,7 @@ Executed local runtime rebuild cycle using `docker-compose.yml`:
 - Verified migration tracking includes:
   - `20260211_090400_enable_rag_loop_apply_defaults.sql`
 - Ran optional acceleration check:
-  - `POST /api/rag/backfill/start` with `limit=1000` returned `processed=0`, `failed=0`, `remaining=0` (no pending local backlog)
+  - `POST /api/rag/backfill/manual/start` with `batchSize=1000` returned `processed=0`, `failed=0`, `remaining=0` (no pending local backlog)
 
 ## Environment-Gated / Pending
 The following Phase 8 tasks require staging/production execution and were not executable in this local-only pass:

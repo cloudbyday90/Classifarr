@@ -47,13 +47,13 @@ describe('errorHandler middleware', () => {
     test('returns clean 400 for malformed JSON payloads without errorId', async () => {
         const app = express();
         app.use(express.json());
-        app.post('/api/rag/backfill/start', (req, res) => {
+        app.post('/api/rag/backfill/manual/start', (req, res) => {
             res.json({ ok: true });
         });
         app.use(errorHandler);
 
         const response = await request(app)
-            .post('/api/rag/backfill/start')
+            .post('/api/rag/backfill/manual/start')
             .set('Content-Type', 'application/json')
             .send("{'invalid': true}");
 

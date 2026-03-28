@@ -25,7 +25,6 @@ class IdleBackfillService {
         this.config = null;
         this.manualBackfillService = null; // Will be set by orchestrator
         this.includeImage = false;
-        this.providerOfflineUntil = null;
     }
 
     /**
@@ -120,9 +119,10 @@ class IdleBackfillService {
                 return;
             }
 
-            if (this.providerOfflineUntil && Date.now() < this.providerOfflineUntil) {
+            const availability = await embeddingService.getProviderAvailabilityStatus({ refresh: true });
+            if (availability.status === 'cooldown' || availability.status === 'probing') {
                 logger.info('Idle backfill NOT started: Provider offline cooldown active', {
-                    retryAt: new Date(this.providerOfflineUntil).toISOString()
+                    retryAt: availability.cooldownUntil
                 });
                 return;
             }
@@ -214,12 +214,13 @@ class IdleBackfillService {
                                     );
                                 } catch (error) {
                                     if (error.message === 'PROVIDER_OFFLINE') {
-                                        this.providerOfflineUntil = Date.now() + 300000;
-                                        logger.warn('Provider offline detected - deferring idle backfill for 5 minutes', {
-                                            retryAt: new Date(this.providerOfflineUntil).toISOString()
-                                        });
+                                        const offlineStatus = embeddingService.getProviderAvailabilityStatus();
+                                        logger.warn('Provider offline detected - deferring idle backfill until recovery probe succeeds', {
+                                            retryAt: offlineStatus.cooldownUntil
+                                        }, { skipDbPersist: true });
 
                                         // Break out immediately so the shared ownership lock is released.
+                                        this.isRunning = false;
                                         break; 
                                     }
 
@@ -310,7 +311,8 @@ class IdleBackfillService {
      */
     getStatus() {
         const enabled = this.config?.idle_backfill_enabled === true;
-        const cooldownActive = Number.isFinite(this.providerOfflineUntil) && Date.now() < this.providerOfflineUntil;
+        const availability = embeddingService.getProviderAvailabilityStatus();
+        const cooldownActive = availability.status === 'cooldown' || availability.status === 'probing';
         const status = this.isRunning
             ? 'running'
             : cooldownActive
@@ -325,7 +327,7 @@ class IdleBackfillService {
             isRunning: this.isRunning,
             batchSize: this.batchSize,
             includeImage: this.includeImage,
-            cooldownUntil: cooldownActive ? new Date(this.providerOfflineUntil).toISOString() : null,
+            cooldownUntil: cooldownActive ? availability.cooldownUntil : null,
             config: this.config
         };
     }

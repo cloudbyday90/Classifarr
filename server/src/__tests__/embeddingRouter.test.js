@@ -16,96 +16,91 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const embeddingRouter = require('../services/embeddingRouter');
-const db = require('../config/database');
-const ollamaService = require('../services/ollama');
-const cloudLLMService = require('../services/cloudLLM');
+var mockLogger;
 
 jest.mock('../config/database');
 jest.mock('../services/ollama');
 jest.mock('../services/cloudLLM');
-jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
+jest.mock('../services/embeddingProvider');
+jest.mock('../utils/logger', () => {
+    mockLogger = {
         info: jest.fn(),
         error: jest.fn(),
         warn: jest.fn(),
         debug: jest.fn()
-    })
-}));
+    };
+
+    return {
+        createLogger: () => mockLogger
+    };
+});
+
+const embeddingRouter = require('../services/embeddingRouter');
+const db = require('../config/database');
+const ollamaService = require('../services/ollama');
+const embeddingProvider = require('../services/embeddingProvider');
+const { embeddingCircuitBreaker } = require('../services/embeddingCircuitBreaker');
 
 describe('EmbeddingRouter', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
         jest.clearAllMocks();
-        // Reset cache
-        embeddingRouter.providerCache = null;
-        embeddingRouter.capabilitiesCache = {};
-    });
-
-    describe('getProvider', () => {
-        it('should return null if no DB config', async () => {
-            db.query.mockResolvedValue({ rows: [] });
-
-            const config = await embeddingRouter.getProvider();
-            expect(config).toBeNull();
-        });
-
-        it('should return configured provider', async () => {
-            db.query.mockResolvedValue({
-                rows: [{
-                    embedding_provider: 'openai', // Correct column name
-                    embedding_model: 'text-embedding-3-small',
-                    api_key: 'sk-test',
-                    is_active: true,
-                    rag_enabled: true
-                }]
-            });
-
-            const config = await embeddingRouter.getProvider();
-
-            expect(config.provider).toBe('openai');
-            expect(config.model).toBe('text-embedding-3-small');
-        });
+        embeddingProvider.getCircuitStatus.mockImplementation(() => embeddingCircuitBreaker.getStatus());
+        embeddingProvider.resetCircuit.mockImplementation(() => embeddingCircuitBreaker.reset());
+        embeddingProvider.getCircuitStateHistory.mockImplementation((limit) => embeddingCircuitBreaker.getStateHistory(limit));
+        embeddingProvider.getSameModeProvider.mockImplementation((config = {}) => ({
+            provider: config.primary_provider || 'ollama',
+            model: config.embedding_model || 'nomic-embed-text-v2-moe'
+        }));
+        embeddingRouter.resetCircuit();
     });
 
     describe('embed', () => {
-        it('should route to Ollama', async () => {
-            // Mock isEnabled to true
+        it('delegates primary embedding execution to embeddingProvider', async () => {
             jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
-
-            const mockConfig = { provider: 'ollama', model: 'test-model' };
-            jest.spyOn(embeddingRouter, 'getProvider').mockResolvedValue(mockConfig);
-
-            ollamaService.embed.mockResolvedValue({ embedding: [0.1, 0.2, 0.3], dims: 3 });
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'same'
+            });
+            embeddingProvider.getEmbedding.mockResolvedValue({
+                embedding: [0.1, 0.2, 0.3],
+                dims: 3,
+                provider: 'ollama',
+                model: 'test-model',
+                cost: 0
+            });
 
             const result = await embeddingRouter.embed('test text');
 
-            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'test-model', '5m', null);
+            expect(embeddingProvider.getEmbedding).toHaveBeenCalledWith('test text', { signal: null });
             expect(result.embedding).toEqual([0.1, 0.2, 0.3]);
         });
 
-        it('should route to CloudLLM (OpenAI)', async () => {
+        it('uses Ollama fallback when primary execution fails and fallback is configured', async () => {
             jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
-
-            const mockConfig = {
-                provider: 'openai',
-                model: 'gpt-embed',
-                config: { api_key: 'key' } // Nested config 
-            };
-            jest.spyOn(embeddingRouter, 'getProvider').mockResolvedValue(mockConfig);
-
-            cloudLLMService.embed.mockResolvedValue({ embedding: [0.9, 0.8], dims: 2, cost: 0.01 });
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'cloud',
+                ollama_fallback_enabled: true
+            });
+            embeddingProvider.getEmbedding.mockRejectedValue(new Error('cloud timeout'));
+            ollamaService.embed.mockResolvedValue({ embedding: [0.9, 0.8], dims: 2 });
 
             const result = await embeddingRouter.embed('cloud text');
 
-            // Expect correct params extraction
-            expect(cloudLLMService.embed).toHaveBeenCalledWith('cloud text', mockConfig.config, 'gpt-embed', null);
+            expect(ollamaService.embed).toHaveBeenCalledWith('cloud text', 'nomic-embed-text-v2-moe', '5m', null);
             expect(result.embedding).toEqual([0.9, 0.8]);
+            expect(result.fallback).toBe(true);
         });
 
         it('should handle errors and throw', async () => {
             jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
-            jest.spyOn(embeddingRouter, 'getProvider').mockRejectedValue(new Error('Config Error'));
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'same',
+                ollama_fallback_enabled: false
+            });
+            embeddingProvider.getEmbedding.mockRejectedValue(new Error('Config Error'));
 
             await expect(embeddingRouter.embed('fail')).rejects.toThrow('Config Error');
         });
@@ -188,17 +183,91 @@ describe('EmbeddingRouter', () => {
             const status = embeddingRouter.getCircuitStatus();
             expect(status.failures).toBe(0);
             expect(status.state).toBe('CLOSED');
+            expect(status.lastFailure).toBeNull();
+        });
+
+        it('logs circuit breaker opened only once per open transition', () => {
+            for (let i = 0; i < 5; i++) {
+                embeddingRouter.recordFailure(new Error(`failure ${i + 1}`));
+            }
+
+            embeddingRouter.recordFailure(new Error('repeated half-open failure'));
+
+            expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                'Circuit breaker opened',
+                expect.objectContaining({ failures: 5 }),
+                { skipDbPersist: true }
+            );
         });
     });
 
-    describe('getRecommendedModels', () => {
-        it('should return models for all providers', () => {
-            const models = embeddingRouter.getRecommendedModels();
+    describe('open circuit handling', () => {
+        it('throws a cooldown error when circuit is open without a usable fallback', async () => {
+            jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'same',
+                ollama_fallback_enabled: false
+            });
+            embeddingProvider.getSameModeProvider.mockReturnValue({
+                provider: 'ollama',
+                model: 'nomic-embed-text'
+            });
 
-            expect(models).toHaveProperty('ollama');
-            expect(models).toHaveProperty('openai');
-            expect(models).toHaveProperty('gemini');
-            expect(models.ollama.length).toBeGreaterThan(0);
+            for (let i = 0; i < 5; i++) {
+                embeddingRouter.recordFailure(new Error('provider down'));
+            }
+
+            await expect(embeddingRouter.embed('test text')).rejects.toThrow(
+                'Circuit breaker is OPEN - embedding provider cooldown active'
+            );
+            expect(ollamaService.embed).not.toHaveBeenCalled();
+        });
+
+        it('uses Ollama fallback when circuit is open for a non-Ollama provider', async () => {
+            jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'same',
+                ollama_fallback_enabled: true
+            });
+            embeddingProvider.getSameModeProvider.mockReturnValue({
+                provider: 'openai',
+                model: 'text-embedding-3-small',
+                config: { api_key: 'key' }
+            });
+            ollamaService.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+
+            for (let i = 0; i < 5; i++) {
+                embeddingRouter.recordFailure(new Error('cloud timeout'));
+            }
+
+            const result = await embeddingRouter.embed('test text');
+
+            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'nomic-embed-text-v2-moe', '5m', null);
+            expect(result).toMatchObject({
+                provider: 'ollama',
+                model: 'nomic-embed-text-v2-moe',
+                fallback: true
+            });
+        });
+
+        it('does not record circuit failures for configuration errors from embeddingProvider', async () => {
+            jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'cloud',
+                ollama_fallback_enabled: false
+            });
+
+            const configError = new Error('No API key configured');
+            configError.name = 'ConfigurationError';
+            configError.isConfigurationError = true;
+            embeddingProvider.getEmbedding.mockRejectedValue(configError);
+
+            await expect(embeddingRouter.embed('test text')).rejects.toThrow('No API key configured');
+            expect(embeddingRouter.getCircuitStatus().failures).toBe(0);
         });
     });
 });

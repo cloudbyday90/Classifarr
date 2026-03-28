@@ -97,6 +97,19 @@
 
     <!-- Circuit Breaker Status -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+      <div
+        v-if="embeddingAvailability.status !== 'available'"
+        class="mb-4 rounded-lg border px-4 py-3 text-sm"
+        :class="availabilityToneClasses.bannerClass"
+      >
+        <p class="font-medium">
+          {{ embeddingAvailability.presentation.headline }}
+        </p>
+        <p class="mt-1 text-gray-300">{{ embeddingAvailability.presentation.detail }}</p>
+        <p v-if="embeddingAvailability.retryAt" class="mt-1 text-gray-300">
+          Retry after {{ formatTimestamp(embeddingAvailability.retryAt) }}
+        </p>
+      </div>
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-white">Circuit Breaker</h3>
         <button
@@ -106,6 +119,30 @@
         >
           Reset
         </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div class="bg-gray-700/30 rounded-lg p-4">
+          <p class="text-sm text-gray-400 mb-2">Availability</p>
+          <p :class="['text-xl font-bold', availabilityToneClasses.textClass]">{{ embeddingAvailability.presentation.statusLabel }}</p>
+        </div>
+
+        <div class="bg-gray-700/30 rounded-lg p-4">
+          <p class="text-sm text-gray-400 mb-2">Retry / Probe</p>
+          <p class="text-sm text-white">
+            {{ embeddingAvailability.retryAt ? formatTimestamp(embeddingAvailability.retryAt) : 'Immediate' }}
+          </p>
+        </div>
+
+        <div class="bg-gray-700/30 rounded-lg p-4">
+          <p class="text-sm text-gray-400 mb-2">Failure Count</p>
+          <p class="text-xl font-bold text-white">{{ embeddingAvailability.failureCount || 0 }}</p>
+        </div>
+
+        <div class="bg-gray-700/30 rounded-lg p-4">
+          <p class="text-sm text-gray-400 mb-2">Last Error</p>
+          <p class="text-sm text-white break-words">{{ embeddingAvailability.presentation.detail || 'None' }}</p>
+        </div>
       </div>
       
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -343,6 +380,10 @@ import { ref, computed } from 'vue'
 import { useSWR } from '@/composables/useSWR'
 import { CACHE_KEYS, CACHE_TTL, POLL_INTERVALS } from '@/constants/cacheKeys'
 import api from '@/api'
+import {
+  getEmbeddingAvailabilityToneClasses,
+  normalizeEmbeddingAvailability
+} from '@/utils/embeddingAvailabilityUi'
 
 // ============================================
 // SWR: RAG stats with 5s polling
@@ -356,7 +397,7 @@ const {
 } = useSWR(
   CACHE_KEYS.STATS_RAG,
   async () => {
-    const response = await api.get('/rag/detailed', { params: { hours: 24 } })
+    const response = await api.getRagDetailed({ hours: 24 })
     
     if (response.data.error) {
       throw new Error(response.data.error)
@@ -374,6 +415,7 @@ const {
         avgGenerationTime: response.data.stats.avgGenerationTime || 0
       },
       providerOnline: response.data.providerOnline || false,
+      embeddingAvailability: normalizeEmbeddingAvailability(response.data.embeddingAvailability),
       providerMetrics: response.data.providerMetrics || {},
       circuitBreaker: response.data.circuitBreaker || {
         state: 'CLOSED',
@@ -399,7 +441,7 @@ const stats = computed(() => ragData.value?.stats || {
   failed24h: 0,
   avgGenerationTime: 0
 })
-const providerOnline = computed(() => ragData.value?.providerOnline || false)
+const embeddingAvailability = computed(() => normalizeEmbeddingAvailability(ragData.value?.embeddingAvailability))
 const providerMetrics = computed(() => ragData.value?.providerMetrics || {
   totalRequests: 0,
   successfulRequests: 0,
@@ -418,6 +460,7 @@ const circuitBreaker = computed(() => ragData.value?.circuitBreaker || {
   stateHistory: []
 })
 const backfillHistory = computed(() => ragData.value?.backfillHistory || [])
+const availabilityToneClasses = computed(() => getEmbeddingAvailabilityToneClasses(embeddingAvailability.value))
 
 // ============================================
 // Local state for actions
@@ -430,7 +473,7 @@ const resetCircuitBreaker = async () => {
   }
 
   try {
-    await api.post('/rag/circuit-breaker/reset')
+    await api.resetRagCircuitBreaker()
     await refresh()
   } catch (err) {
     console.error('Failed to reset circuit breaker:', err)
@@ -440,7 +483,7 @@ const resetCircuitBreaker = async () => {
 const warmupModel = async () => {
   warmingUp.value = true
   try {
-    const response = await api.post('/rag/warmup')
+    const response = await api.warmupRagModel()
     if (response.data.success) {
       alert(`Model warmed up successfully in ${response.data.duration}ms`)
       await refresh()
@@ -455,7 +498,7 @@ const warmupModel = async () => {
 
 const exportConfig = async () => {
   try {
-    const response = await api.post('/rag/export/config')
+    const response = await api.exportRagConfig()
     downloadJSON(response.data, 'rag-config.json')
   } catch (error) {
     console.error('Failed to export config:', error)
@@ -464,26 +507,16 @@ const exportConfig = async () => {
 
 const exportLogs = async () => {
   try {
-    const response = await api.post('/rag/export/logs')
+    const response = await api.exportRagLogs()
     downloadJSON(response.data, 'rag-logs.json')
   } catch (error) {
     console.error('Failed to export logs:', error)
   }
 }
 
-const metricsExport = async () => {
-  try {
-    const response = await api.post('/rag/export/metrics')
-    downloadJSON(response.data, 'rag-metrics.json')
-  } catch (error) {
-    console.error('Failed to export metrics:', error)
-  }
-}
-
-// Rename exportMetrics to avoid conflict if any (Wait, original function was exportMetrics, sticking to it)
 const exportMetrics = async () => {
   try {
-    const response = await api.post('/rag/export/metrics')
+    const response = await api.exportRagMetrics()
     downloadJSON(response.data, 'rag-metrics.json')
   } catch (error) {
     console.error('Failed to export metrics:', error)
