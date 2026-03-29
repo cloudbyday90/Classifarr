@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.45.2-beta] — 2026-03-29
+
+Package version: `0.45.2-beta`
+
+### Changed
+
+- **Client and server npm dependencies were refreshed to the current baseline, and the client lint/tooling stack was modernized** — the client now includes Vue `3.5.31`, Vite `8.0.3`, `vitest` `4.1.2`, `@vitest/coverage-v8` `4.1.2`, `axios` `1.14.0`, `eslint-plugin-vue` `10.8.0`, `globals` `17.4.0`, `@eslint/js` `10.0.1`, and `eslint` `10.1.0`, while the server and root package manifests now use `axios` `1.14.0`. (`package.json`, `package-lock.json`, `client/package.json`, `client/package-lock.json`, `server/package.json`, `server/package-lock.json`)
+
+- **CI and container maintenance defaults were tightened to better match current Node/npm and workflow practices** — GitHub Actions now target the rolling Node `24` line with lockfile-based npm caches, the copyright workflow now uses `npm ci`, Trivy SARIF uploads now use `github/codeql-action` v4, the CI Postgres service is pinned to `17.7-alpine3.23`, and the Docker build/runtime stages now use `node:24.14.1-alpine3.23`. (`.github/workflows/ci.yml`, `.github/workflows/copyright-compliance.yml`, `.github/workflows/trivy.yml`, `Dockerfile`)
+
+- **Workflow dependency hygiene is now hardened and automated** — third-party and GitHub-hosted workflow actions are now pinned to full commit SHAs instead of floating tags, and Dependabot now watches both GitHub Actions and the root/client/server npm manifests so future maintenance updates arrive as reviewable PRs instead of manual drift. (`.github/workflows/*.yml`, `.github/dependabot.yml`)
+
+- **Dependabot update flow is now grouped and scheduled for lower-noise maintenance** — GitHub Actions and npm updates now run on a weekly Monday cadence with explicit Eastern Time scheduling, dependency labels, pull-request caps, and grouped root/client/server update streams so routine maintenance arrives as a smaller set of reviewable PRs instead of one package bump at a time. (`.github/dependabot.yml`)
+
+- **Dependency and release maintenance policy is now documented in-repo** — the repo now includes a dedicated maintenance guide covering update grouping, full-SHA GitHub Actions pinning, verification expectations, and version/runtime policy, and the main README links it from the documentation index. (`docs/maintenance.md`, `README.md`)
+
 ## [v0.45.1-beta] — 2026-03-28
 
 Package version: `0.45.1-beta`

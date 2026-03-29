@@ -4,7 +4,7 @@
 # ===========================================
 
 # Stage 1: Frontend Builder
-FROM node:24.11.0-alpine AS frontend-builder
+FROM node:24.14.1-alpine3.23 AS frontend-builder
 
 WORKDIR /build/client
 
@@ -20,7 +20,7 @@ COPY client/ ./
 RUN npm run build
 
 # Stage 2: Backend Builder  
-FROM node:24.11.0-alpine AS backend-builder
+FROM node:24.14.1-alpine3.23 AS backend-builder
 
 WORKDIR /build/server
 
@@ -35,7 +35,7 @@ RUN npm ci --only=production
 RUN npm rebuild bcrypt
 
 # Stage 3: Production Runtime
-FROM node:24.11.0-alpine AS production
+FROM node:24.14.1-alpine3.23 AS production
 
 # pgvector build mode:
 # - multi (default): build generic + AVX + AVX2 variants, select at runtime

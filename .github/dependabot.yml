@@ -1,26 +1,78 @@
 version: 2
 updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
-
-  - package-ecosystem: "npm"
-    directory: "/server"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
+      day: "monday"
+      time: "03:30"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "npm"
+      - "root"
+    open-pull-requests-limit: 5
+    groups:
+      root-npm:
+        patterns:
+          - "*"
 
   - package-ecosystem: "npm"
     directory: "/client"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "npm"
+      - "client"
     open-pull-requests-limit: 10
+    groups:
+      client-runtime:
+        dependency-type: "production"
+        patterns:
+          - "*"
+      client-tooling:
+        dependency-type: "development"
+        patterns:
+          - "*"
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: "npm"
+    directory: "/server"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "04:30"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "npm"
+      - "server"
     open-pull-requests-limit: 10
-
+    groups:
+      server-runtime:
+        dependency-type: "production"
+        patterns:
+          - "*"
+      server-tooling:
+        dependency-type: "development"
+        patterns:
+          - "*"

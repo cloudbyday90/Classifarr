@@ -1,6 +1,6 @@
 {
   "name": "classifarr-client",
-  "version": "0.45.1-beta",
+  "version": "0.45.2-beta",
   "license": "GPL-3.0-or-later",
   "engines": {
     "node": ">=24.11.0",
@@ -24,27 +24,27 @@
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
     "@vueuse/core": "^14.2.1",
-    "axios": "^1.13.6",
+    "axios": "^1.14.0",
     "pinia": "^3.0.4",
     "socket.io-client": "^4.8.3",
     "vue": "^3.5.31",
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@testing-library/vue": "^8.1.0",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitest/coverage-v8": "^4.1.2",
     "@vue/test-utils": "^2.4.6",
-    "eslint": "^9.39.4",
-    "eslint-plugin-vue": "~10.4.0",
-    "globals": "^16.5.0",
+    "eslint": "^10.1.0",
+    "eslint-plugin-vue": "~10.8.0",
+    "globals": "^17.4.0",
     "jsdom": "^29.0.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.3",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.2"
   },
   "overrides": {
     "minimatch": "10.2.4",

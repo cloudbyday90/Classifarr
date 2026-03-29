@@ -1,6 +1,44 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.45.1-beta`. Package files use semver-safe versions such as `0.45.1-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.45.2-beta`. Package files use semver-safe versions such as `0.45.2-beta`.
+
+## v0.45.2-beta
+**Title: Maintenance is quieter, upgrades are cleaner, and release safety is stronger**
+
+### 🎉 What You'll Notice
+- **Routine updates should show up in fewer, cleaner PRs** — Dependabot now watches the repo on a schedule and groups related updates together instead of trickling in as one-off maintenance noise.
+- **Build and release infrastructure is more predictable** — the app, CI, and container images now target a current Node 24 baseline with tighter image and workflow pinning.
+- **Frontend and repo tooling are more current** — the client lint/test stack and shared npm dependencies were refreshed so routine upgrades are less likely to pile up into one large migration later.
+
+### 📊 Quick Visual
+```text
+v0.45.2-beta Snapshot
+Update automation          [██████████] grouped Dependabot PRs, weekly cadence
+Release safety             [██████████] workflow SHAs pinned, stricter CI defaults
+Runtime freshness          [█████████░] current Node 24 baseline and pinned images
+Operator effort            [█████████░] less manual dependency drift to manage
+```
+
+### ✨ Highlights
+- **Dependency maintenance is now automated instead of ad hoc** — GitHub Actions plus the root, client, and server npm manifests are all covered by scheduled Dependabot updates.
+- **Workflow supply-chain posture is tighter** — GitHub-hosted and third-party actions now use immutable full-length commit SHAs instead of floating tags.
+- **The frontend tooling stack is current again** — Vue/Vite test and lint dependencies, plus the client ESLint stack, were refreshed to the current baseline.
+- **Maintenance expectations are documented in the repo** — there is now a dedicated maintenance policy covering update cadence, verification expectations, and version/runtime guidance.
+
+### 🔧 Reliability Improvements
+- CI now uses lockfile-based npm caching and `npm ci` where a lockfile exists.
+- Docker build/runtime stages are pinned to `node:24.14.1-alpine3.23`, and the CI Postgres service is pinned to `17.7-alpine3.23`.
+- Trivy SARIF uploads now follow the current CodeQL v4 action path.
+- Root, client, and server direct npm dependencies are aligned on the latest safe baseline currently in use by the repo.
+
+### 👥 Who This Helps
+- **End users:** fewer chances of large, disruptive maintenance jumps and more predictable release quality over time.
+- **Operators/admins:** lower routine maintenance overhead, clearer update policy, and better workflow provenance.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.45.1-beta
 **Title: Embeddings are calmer, RAG is cleaner, and release checks are stricter**
