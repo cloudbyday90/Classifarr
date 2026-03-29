@@ -769,7 +769,7 @@ const refreshHealth = async () => {
   // Force refresh from backend
   try {
     await api.post('/system/health/refresh')
-  } catch (e) {
+  } catch {
     // Fallback to regular load
   }
   await loadHealth()

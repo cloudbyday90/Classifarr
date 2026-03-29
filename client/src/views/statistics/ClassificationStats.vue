@@ -320,8 +320,7 @@ import api from '@/api'
 const {
   data: statsData,
   isLoading,
-  isStale,
-  error
+  isStale
 } = useSWR(
   CACHE_KEYS.STATS_CLASSIFICATION,
   async () => {

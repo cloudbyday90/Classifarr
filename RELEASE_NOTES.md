@@ -1,6 +1,44 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.45.0-beta`. Package files use semver-safe versions such as `0.45.0-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.45.1-beta`. Package files use semver-safe versions such as `0.45.1-beta`.
+
+## v0.45.1-beta
+**Title: Embeddings are calmer, RAG is cleaner, and release checks are stricter**
+
+### 🎉 What You'll Notice
+- **Embedding outages no longer spam retries for days** — when your local or cloud embedding provider goes offline, Classifarr now pauses embedding work and waits for recovery instead of repeatedly hammering the same failed path.
+- **RAG settings and status are easier to trust** — text/image model choices, backfill controls, and health reporting now flow through one modern API shape instead of a mix of older route patterns.
+- **Frontend quality checks are stronger before release** — the Vue client now has first-class ESLint coverage, so dead imports, stale helpers, and similar issues are caught before shipping.
+
+### 📊 Quick Visual
+```text
+v0.45.1-beta Snapshot
+Embedding resilience        [██████████] shared cooldowns, cleaner recovery, less noise
+RAG API clarity             [█████████░] canonical routes, shared status/config contracts
+Frontend verification       [█████████░] client lint joins tests, coverage, and Docker checks
+Upgrade effort              [██████████] safe migrations, no manual schema work
+```
+
+### ✨ Highlights
+- **Embedding recovery is now coordinated across the app** — shared availability state, smarter cooldowns, and provider-aware probes stop repeated retry storms when Ollama or a cloud embedding endpoint is unavailable.
+- **The RAG surface is simpler to operate** — status, model metadata, and backfill controls were consolidated behind the current route contract, and the old transition routes were removed instead of being kept alive forever.
+- **The RAG backend is easier to maintain** — the oversized route module was split into focused helpers for backfill, status, diagnostics, operations, and model metadata, with direct helper-level coverage added.
+- **Client API usage is cleaner and more consistent** — the remaining direct `fetch('/api/...')` holdouts and old queue-era aliases were replaced with named shared helpers.
+
+### 🔧 Reliability Improvements
+- The dead embedding retry queue is gone from both runtime behavior and the live schema.
+- Embedding breaker ownership now lives in one place, reducing double-counted failures and split same-mode behavior.
+- Dependency overrides now pin the patched transitive versions needed to clear current audit findings.
+- Client lint now runs in the normal root and CI verification flow alongside the existing server checks.
+
+### 👥 Who This Helps
+- **End users:** fewer embedding stalls turning into endless background noise, and more consistent RAG behavior once providers come back online.
+- **Operators/admins:** cleaner backfill/status visibility, fewer stale APIs to reason about, and stronger release gates before a build goes out.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.45.0-beta
 **Title: Classification gets smarter, policies get honest, and second-pass finally has a scoreboard**

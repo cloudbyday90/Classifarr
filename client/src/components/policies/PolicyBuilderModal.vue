@@ -736,8 +736,6 @@ const hasExistingPresets = computed(() => {
   return props.policy?.presets?.length > 0 || selectedPresets.value.length > 0
 })
 
-const isEditing = computed(() => !!props.policy)
-
 const form = ref({
   library_id: null,
   name: '',
@@ -773,10 +771,6 @@ const selectedCategory = ref('all')
 const presetMigrationNotice = ref(null)
 const PRESET_MIGRATION_NOTICE_DISMISS_KEY = 'classifarr.presetMigrationNotice.dismissed'
 
-// Available options for signal customization
-const availableRatings = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR']
-const availableGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'History', 'Horror', 'Music', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']
-
 const totalWeight = computed(() => {
   return form.value.preset_weight + form.value.profile_weight + form.value.pattern_weight + 
          form.value.rag_weight + form.value.history_weight
@@ -787,21 +781,6 @@ const currentLibrary = computed(() => {
   if (!form.value.library_id) return null
   return libraries.value.find(l => l.id === form.value.library_id) || { id: form.value.library_id, name: 'Unknown' }
 })
-
-const existingPresetIds = computed(() => {
-  return selectedPresets.value.map(p => p.preset_id || p.id)
-})
-
-// Group libraries by media type
-const movieLibraries = computed(() => 
-  libraries.value.filter(lib => lib.media_type === 'movie' || lib.media_type === 'movies')
-)
-const tvLibraries = computed(() => 
-  libraries.value.filter(lib => lib.media_type === 'tv' || lib.media_type === 'show' || lib.media_type === 'shows')
-)
-const otherLibraries = computed(() => 
-  libraries.value.filter(lib => !['movie', 'movies', 'tv', 'show', 'shows'].includes(lib.media_type))
-)
 
 // Combined signals from all selected presets (union of all signals)
 // Combined signals from all selected presets (union of all signals with source attribution)
@@ -954,6 +933,37 @@ const formatUsageLabel = (usageCount) => {
   const count = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 0;
   return `Used in ${count} ${count === 1 ? 'policy' : 'policies'}`;
 };
+
+const collectPresetSignalValues = (signalType, keys) => {
+  const values = new Set();
+
+  for (const preset of allPresets.value) {
+    const signalConfig = preset?.signals?.[signalType];
+    if (!signalConfig || typeof signalConfig !== 'object') {
+      continue;
+    }
+
+    for (const key of keys) {
+      const entries = signalConfig[key];
+      if (!Array.isArray(entries)) {
+        continue;
+      }
+
+      for (const entry of entries) {
+        const normalizedEntry = String(entry || '').trim();
+        if (normalizedEntry) {
+          values.add(normalizedEntry);
+        }
+      }
+    }
+  }
+
+  return Array.from(values).sort((left, right) => left.localeCompare(right));
+};
+
+const availableRatings = computed(() => collectPresetSignalValues('certifications', ['include']));
+
+const availableGenres = computed(() => collectPresetSignalValues('genres', ['prefer', 'exclude', 'require_any']));
 
 const languageLabels = {
   da: 'Danish',
@@ -1247,25 +1257,6 @@ const addAllSuggested = () => {
       togglePresetSelection(preset)
     }
   })
-}
-
-const updatePresetWeight = (presetId, weight) => {
-  const preset = selectedPresets.value.find(p => p.preset_id === presetId || p.id === presetId)
-  if (preset) {
-    preset.weight = weight
-  }
-}
-
-const getPresetCustomSignals = (presetId) => {
-  const preset = selectedPresets.value.find(p => p.preset_id === presetId || p.id === presetId)
-  return preset?.customSignals || null
-}
-
-const updatePresetSignals = (presetId, signals) => {
-  const preset = selectedPresets.value.find(p => p.preset_id === presetId || p.id === presetId)
-  if (preset) {
-    preset.customSignals = signals
-  }
 }
 
 const removePreset = (presetId) => {

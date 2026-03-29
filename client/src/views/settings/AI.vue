@@ -444,7 +444,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Toggle from '@/components/common/Toggle.vue'
@@ -504,9 +504,6 @@ const budgetPercentUsed = computed(() => {
   return Math.round((config.value.current_month_usage_usd / config.value.monthly_budget_usd) * 100)
 })
 
-// RAG statistics
-const ragStats = ref(null)
-
 // Cost summary
 const costSummary = ref(null)
 
@@ -538,7 +535,7 @@ const parseOllamaHost = (hostValue) => {
       host: parsed.hostname,
       port: parseInt(parsed.port) || 11434
     }
-  } catch (e) {
+  } catch {
     // If parsing fails, just strip protocol and port manually
     let host = hostValue.replace(/^https?:\/\//, '')
     const portMatch = host.match(/:(\d+)/)
@@ -727,10 +724,4 @@ const saveConfig = async () => {
   }
 }
 
-const formatTokens = (tokens) => {
-  if (!tokens) return '0'
-  if (tokens >= 1000000) return (tokens / 1000000).toFixed(1) + 'M'
-  if (tokens >= 1000) return (tokens / 1000).toFixed(1) + 'K'
-  return tokens.toString()
-}
 </script>

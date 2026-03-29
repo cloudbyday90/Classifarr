@@ -42,4 +42,27 @@ describe('embeddingAvailabilityPresenter', () => {
         expect(presented.controls.canRunJobs).toBe(true);
         expect(presented.controls.queuedWorkPaused).toBe(false);
     });
+
+    it('covers probing and probe_due states with default details', () => {
+        const probing = presentEmbeddingAvailability({
+            status: 'probing',
+            retryAt: '2026-03-28T01:00:00.000Z'
+        });
+        const probeDue = presentEmbeddingAvailability({
+            status: 'probe_due'
+        });
+
+        expect(probing.retryAt).toBe('2026-03-28T01:00:00.000Z');
+        expect(probing.presentation).toEqual({
+            statusLabel: 'Probing',
+            flag: 'TEST',
+            headline: 'Embedding provider recovery probe in progress',
+            detail: 'Queued embedding work is paused until the provider passes a recovery probe.',
+            tone: 'warning'
+        });
+        expect(probing.controls.canRunJobs).toBe(false);
+        expect(probeDue.presentation.statusLabel).toBe('Probe Due');
+        expect(probeDue.presentation.flag).toBe('HOLD');
+        expect(probeDue.controls.queuedWorkPaused).toBe(true);
+    });
 });

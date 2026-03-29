@@ -96,7 +96,7 @@
 <script setup>
 import { ref } from 'vue';
 
-const props = defineProps({
+defineProps({
   task: {
     type: Object,
     required: true

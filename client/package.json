@@ -1,6 +1,6 @@
 {
   "name": "classifarr-client",
-  "version": "0.45.0-beta",
+  "version": "0.45.1-beta",
   "license": "GPL-3.0-or-later",
   "engines": {
     "node": ">=24.11.0",
@@ -11,6 +11,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "preview": "vite preview",
     "test": "node ./scripts/run-vitest.mjs run",
     "test:unit": "node ./scripts/run-vitest.mjs run --dir src/__tests__",
@@ -29,11 +31,15 @@
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@tailwindcss/postcss": "^4.2.2",
     "@testing-library/vue": "^8.1.0",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitest/coverage-v8": "^4.1.0",
     "@vue/test-utils": "^2.4.6",
+    "eslint": "^9.39.4",
+    "eslint-plugin-vue": "~10.4.0",
+    "globals": "^16.5.0",
     "jsdom": "^29.0.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
@@ -41,8 +47,7 @@
     "vitest": "^4.1.0"
   },
   "overrides": {
-    "minimatch": "10.2.3"
+    "minimatch": "10.2.4",
+    "brace-expansion": "5.0.5"
   }
 }
-
-

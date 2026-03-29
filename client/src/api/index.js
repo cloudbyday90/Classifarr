@@ -92,8 +92,6 @@ async function refreshAccessToken() {
         headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
       })
       return response
-    } catch (error) {
-      throw error
     } finally {
       refreshInProgress = null
     }
@@ -133,7 +131,7 @@ apiClient.interceptors.response.use(
     try {
       await refreshAccessToken()
       return apiClient(originalRequest)
-    } catch (refreshError) {
+    } catch {
       if (window.location.pathname !== '/login') {
         window.location.href = '/login?expired=true'
       }

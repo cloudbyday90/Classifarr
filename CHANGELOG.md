@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.45.1-beta] — 2026-03-28
+
+Package version: `0.45.1-beta`
+
 ### Changed
 
 - **Embedding/backfill availability, status, and config now flow through shared server and client contracts instead of duplicated per-mode logic** — provider availability is persisted in the database, backfill and availability status are exposed through shared presenters, the canonical backfill config/status routes now anchor the API surface, and the RAG UI now consumes named API helpers instead of scattering raw route strings across tabs. (`server/src/services/embeddingAvailabilityService.js`, `server/src/utils/embeddingAvailabilityPresenter.js`, `server/src/utils/backfillStatusPresenter.js`, `server/src/routes/rag.js`, `client/src/api/index.js`, `client/src/utils/embeddingAvailabilityUi.js`, `client/src/utils/backfillStatusUi.js`, `client/src/views/RAGSettings.vue`, `client/src/views/rag/*.vue`)
@@ -57,6 +61,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Setup, heartbeat, and ARR-config status calls now go through named client API helpers instead of raw low-level requests** — the route guard, Setup banner, Command Center data layer, and RAG settings/backfill screens now use explicit helper methods for setup status, heartbeat settings/health, and ARR config status rather than hand-rolling `fetch('/api/...')` or generic `api.get('/...')` calls. (`client/src/api/index.js`, `client/src/router/index.js`, `client/src/composables/useCommandCenterData.js`, `client/src/components/SetupBanner.vue`, `client/src/views/RAGSettings.vue`, `client/src/views/rag/BackfillTab.vue`)
 
+- **Dependency policy now explicitly pins the currently patched transitive security fixes instead of waiting on stale lockfiles or upstream lag** — root/server/client manifests now override `brace-expansion` to `5.0.5`, `server` also pins `path-to-regexp` to `8.4.0`, and the root tooling manifest pins `smol-toml` to `1.6.1` while `markdownlint-cli2` still depends on the older vulnerable release. (`package.json`, `server/package.json`, `client/package.json`)
+
+- **The Vue 3 + Vite client now has a first-class ESLint contract instead of relying only on tests and builds** — the frontend uses a flat-config ESLint setup with `@eslint/js` and `eslint-plugin-vue` on the client codebase, the new `client` lint scripts are wired into the package manifest, and the related pass cleaned out dead imports, dead helpers, and unused catch parameters across the UI so the client lint surface is fully green without relaxing the real correctness checks. (`client/package.json`, `client/eslint.config.js`, `client/src/api/index.js`, `client/src/**/*.vue`, `client/src/**/*.test.js`)
+
+- **Frontend linting now participates in the normal root and CI verification flow instead of living as a standalone local command** — the root package now exposes `lint`, `lint:server`, and `lint:client`, the CI workflow runs client ESLint after installing frontend dependencies, and the README now documents the shared local verification entry points. (`package.json`, `.github/workflows/ci.yml`, `README.md`)
+
 - **The first `rag.js` decomposition pass started by extracting backfill plumbing into a focused route helper module** — manual backfill option parsing, shared embedding-availability/backfill-status resolution, and canonical backfill config reads/writes now live in `ragBackfillHelpers.js`, reducing the amount of non-route machinery owned directly by `server/src/routes/rag.js` without changing endpoint contracts. (`server/src/routes/rag.js`, `server/src/routes/helpers/ragBackfillHelpers.js`)
 
 - **The second `rag.js` decomposition pass extracts text/image model metadata resolution into its own helper module** — provider-aware text-model recommendation/discovery logic, image-model lookup/cache resolution, and image-model cache persistence now live in `ragModelMetadataHelpers.js`, leaving the route file to focus more on HTTP handling while preserving the canonical text and image model endpoints. (`server/src/routes/rag.js`, `server/src/routes/helpers/ragModelMetadataHelpers.js`)
@@ -100,6 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded direct helper-level coverage for the new RAG route composition modules so the decomposition is pinned below the large integration test surface, including the extracted backfill/config wiring, model-metadata resolution, operations, and status payload helpers. (`server/src/__tests__/ragCoreHelpers.test.js`, `server/src/__tests__/ragDiagnosticsHelpers.test.js`, `server/src/__tests__/ragBackfillHelpers.test.js`, `server/src/__tests__/ragModelMetadataHelpers.test.js`, `server/src/__tests__/ragOperationsHelpers.test.js`, `server/src/__tests__/ragStatusHelpers.test.js`)
 
 - Updated the RAG API integration coverage and the dedicated docs-linter tests to assert the canonical-only RAG surface after removing the old transition routes. (`server/src/__tests__/integration/rag-api.test.js`, `scripts/__tests__/check-rag-api-docs.test.js`)
+
+- Added targeted branch coverage for the shared RAG helpers and SSL/presenter seams that were dragging the server ratchet just below baseline, including direct route-registration tests for diagnostics/operations/core flows, deeper metadata/status helper permutations, and direct certificate-validation helper tests. (`server/src/__tests__/ragCoreHelpers.test.js`, `server/src/__tests__/ragDiagnosticsHelpers.test.js`, `server/src/__tests__/ragOperationsHelpers.test.js`, `server/src/__tests__/ragModelMetadataHelpers.test.js`, `server/src/__tests__/ragStatusHelpers.test.js`, `server/src/__tests__/sslSettingsHandlers.test.js`, `server/src/__tests__/settings-ssl-routes.test.js`, `server/src/__tests__/backfillStatusPresenter.test.js`, `server/src/__tests__/embeddingAvailabilityPresenter.test.js`)
 
 ---
 

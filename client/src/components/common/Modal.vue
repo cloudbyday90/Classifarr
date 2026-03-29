@@ -34,7 +34,7 @@
 <script setup>
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps({
+defineProps({
   modelValue: {
     type: Boolean,
     required: true,

@@ -6,7 +6,9 @@
  * See LICENSE file for details.
  */
 
-const { createRagDiagnosticsHelpers } = require('../routes/helpers/ragDiagnosticsHelpers');
+const express = require('express');
+const request = require('supertest');
+const { createRagDiagnosticsHelpers, registerRagDiagnosticsRoutes } = require('../routes/helpers/ragDiagnosticsHelpers');
 
 describe('ragDiagnosticsHelpers', () => {
     const buildHelpers = (overrides = {}) => createRagDiagnosticsHelpers({
@@ -187,5 +189,129 @@ describe('ragDiagnosticsHelpers', () => {
         expect(logger.error).toHaveBeenCalledWith('Background migration error', {
             error: 'background failed'
         });
+    });
+
+    test('getLatestFallbackIncidentPayload tolerates missing rag loop columns during rollout bootstrap', async () => {
+        const db = {
+            query: jest.fn().mockRejectedValue(Object.assign(new Error('missing column'), { code: '42703' }))
+        };
+        const helpers = buildHelpers({ db });
+
+        const payload = await helpers.getLatestFallbackIncidentPayload();
+
+        expect(payload.incident).toBeNull();
+        expect(payload.rollout_mode).toBe('shadow');
+        expect(payload.fallback_state.auto_fallback_enabled).toBe(true);
+        expect(payload.fallback_state.breach_count).toBe(0);
+    });
+
+    test('registerRagDiagnosticsRoutes covers success, 404, and 500 response paths', async () => {
+        const logger = {
+            error: jest.fn()
+        };
+        const helpers = {
+            approvePattern: jest.fn()
+                .mockResolvedValueOnce({ pattern: { id: 1 } })
+                .mockRejectedValueOnce(Object.assign(new Error('missing approve'), { status: 404 })),
+            discoverPatterns: jest.fn()
+                .mockResolvedValueOnce({ success: true })
+                .mockRejectedValueOnce(new Error('discover failed')),
+            getCircuitBreakerPayload: jest.fn()
+                .mockReturnValueOnce({ state: 'OPEN' })
+                .mockImplementationOnce(() => {
+                    throw new Error('breaker failed');
+                }),
+            getErrorsPayload: jest.fn()
+                .mockResolvedValueOnce({ errors: [] })
+                .mockRejectedValueOnce(new Error('errors failed')),
+            getGraphFillRatePayload: jest.fn()
+                .mockResolvedValueOnce({ total: 0 })
+                .mockRejectedValueOnce(new Error('graph failed')),
+            getLatestFallbackIncidentPayload: jest.fn()
+                .mockResolvedValueOnce({ incident: null })
+                .mockRejectedValueOnce(new Error('fallback failed')),
+            getMigrationStatus: jest.fn()
+                .mockResolvedValueOnce({ running: false })
+                .mockRejectedValueOnce(new Error('migration status failed')),
+            getPatternsPayload: jest.fn()
+                .mockResolvedValueOnce({ patterns: [] })
+                .mockRejectedValueOnce(new Error('patterns failed')),
+            getPromotionReadinessPayload: jest.fn()
+                .mockResolvedValueOnce({ ready: true })
+                .mockRejectedValueOnce(new Error('promotion failed')),
+            rejectPattern: jest.fn()
+                .mockResolvedValueOnce({ pattern: { id: 2 } })
+                .mockRejectedValueOnce(Object.assign(new Error('missing reject'), { status: 404 })),
+            resetCircuitBreaker: jest.fn()
+                .mockReturnValueOnce({ success: true })
+                .mockImplementationOnce(() => {
+                    throw new Error('reset failed');
+                }),
+            startMigration: jest.fn()
+                .mockResolvedValueOnce({ success: true })
+                .mockRejectedValueOnce(new Error('start failed')),
+            warmup: jest.fn()
+                .mockResolvedValueOnce({ success: true })
+                .mockRejectedValueOnce(new Error('warmup failed'))
+        };
+
+        const app = express();
+        const router = express.Router();
+        app.use(express.json());
+        registerRagDiagnosticsRoutes({ router, logger, helpers });
+        app.use('/rag', router);
+
+        await request(app).get('/rag/loop/latest-fallback-incident').expect(200, { incident: null });
+        await request(app).get('/rag/loop/latest-fallback-incident').expect(500, { error: 'fallback failed' });
+
+        await request(app).get('/rag/loop/promotion-readiness').expect(200, { ready: true });
+        await request(app).get('/rag/loop/promotion-readiness').expect(500, { error: 'promotion failed' });
+
+        await request(app).get('/rag/circuit-breaker').expect(200, { state: 'OPEN' });
+        await request(app).get('/rag/circuit-breaker').expect(500, { error: 'breaker failed' });
+
+        await request(app).post('/rag/circuit-breaker/reset').expect(200, { success: true });
+        await request(app).post('/rag/circuit-breaker/reset').expect(500, { error: 'reset failed' });
+
+        await request(app).post('/rag/warmup').expect(200, { success: true });
+        await request(app).post('/rag/warmup').expect(500, { success: false, error: 'warmup failed' });
+
+        await request(app).get('/rag/errors').expect(200, { errors: [] });
+        await request(app).get('/rag/errors').expect(500, { error: 'errors failed' });
+
+        await request(app).get('/rag/migration/status').expect(200, { running: false });
+        await request(app).get('/rag/migration/status').expect(500, { error: 'migration status failed' });
+
+        await request(app).post('/rag/migration/start').send({}).expect(200, { success: true });
+        await request(app).post('/rag/migration/start').send({}).expect(500, { error: 'start failed' });
+
+        await request(app).get('/rag/patterns').expect(200, { patterns: [] });
+        await request(app).get('/rag/patterns').expect(500, { error: 'patterns failed' });
+
+        await request(app).post('/rag/patterns/discover').expect(200, { success: true });
+        await request(app).post('/rag/patterns/discover').expect(500, { error: 'discover failed' });
+
+        await request(app).put('/rag/patterns/1/approve').send({ approvedBy: 'me' }).expect(200, { pattern: { id: 1 } });
+        await request(app).put('/rag/patterns/1/approve').send({ approvedBy: 'me' }).expect(404, { error: 'missing approve' });
+
+        await request(app).put('/rag/patterns/2/reject').send({ rejectedBy: 'me' }).expect(200, { pattern: { id: 2 } });
+        await request(app).put('/rag/patterns/2/reject').send({ rejectedBy: 'me' }).expect(404, { error: 'missing reject' });
+
+        await request(app).get('/rag/graph/fill-rate').expect(200, { total: 0 });
+        await request(app).get('/rag/graph/fill-rate').expect(500, { error: 'graph failed' });
+
+        expect(logger.error).toHaveBeenCalledWith('Failed to get rag loop latest fallback incident', { error: 'fallback failed' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to get rag loop promotion readiness', { error: 'promotion failed' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to get circuit breaker status', { error: 'breaker failed' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to reset circuit breaker', { error: 'reset failed' });
+        expect(logger.error).toHaveBeenCalledWith('Model warmup failed', { error: 'warmup failed' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to get RAG errors', { error: 'errors failed' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to get migration status', { error: 'migration status failed' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to start migration', { error: 'start failed' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to get patterns', { error: 'patterns failed' });
+        expect(logger.error).toHaveBeenCalledWith('Pattern discovery failed', { error: 'discover failed' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to approve pattern', { error: 'missing approve' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to reject pattern', { error: 'missing reject' });
+        expect(logger.error).toHaveBeenCalledWith('Failed to get graph fill-rate', { error: 'graph failed' });
     });
 });

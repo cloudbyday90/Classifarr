@@ -205,7 +205,7 @@ export default {
           try {
             await this.migrateRule(parseInt(ruleId, 10), analysis.suggestions[suggestionIndex]);
             successCount++;
-          } catch (error) {
+          } catch {
             failCount++;
           }
         }

@@ -80,6 +80,11 @@ jobs:
           cd client
           npm audit --omit=dev
 
+      - name: Lint client
+        run: |
+          cd client
+          npm run lint
+
       - name: Run server tests
         run: |
           cd server

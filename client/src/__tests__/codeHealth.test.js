@@ -71,9 +71,6 @@ const CLIENT_SRC  = path.resolve(__dirname, '..').replace(/\\/g, '/');
 const CLIENT_ROOT = path.resolve(__dirname, '../../').replace(/\\/g, '/');
 // REPO_ROOT: 3 levels up from client/src/__tests__ → client/src → client → repo root
 const REPO_ROOT   = path.resolve(__dirname, '../../..').replace(/\\/g, '/');
-// PROJECT_ROOT kept for backward-compat (was incorrectly 4 levels up; prefer REPO_ROOT)
-const PROJECT_ROOT = REPO_ROOT;
-
 /** Relative display path from CLIENT_SRC */
 function rel(filePath) {
   return filePath.replace(/\\/g, '/').replace(CLIENT_SRC + '/', '');

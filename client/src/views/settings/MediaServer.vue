@@ -596,7 +596,6 @@ const config = ref({
   api_key: ''
 })
 
-const loading = ref(false)
 const saving = ref(false)
 const syncing = ref(false)
 const connectionStatus = ref({
@@ -815,32 +814,6 @@ const loadPlexUserAndServers = async () => {
   }
 }
 
-const testServerConnection = async (server) => {
-  testingServer.value = server.clientIdentifier
-  
-  try {
-    // Find the best working connection
-    const response = await api.findPlexConnection(server)
-    
-    serverTestResults.value[server.clientIdentifier] = {
-      success: response.data.success,
-      connection: response.data.connection
-    }
-    
-    // Update the server's preferred connection if found
-    if (response.data.success && response.data.connection) {
-      const idx = plexServers.value.findIndex(s => s.clientIdentifier === server.clientIdentifier)
-      if (idx >= 0) {
-        plexServers.value[idx].bestConnection = response.data.connection
-      }
-    }
-  } catch (error) {
-    serverTestResults.value[server.clientIdentifier] = { success: false }
-  } finally {
-    testingServer.value = null
-  }
-}
-
 const selectPlexServer = (server) => {
   selectedServer.value = server
   // Reset connection selection when switching servers
@@ -892,71 +865,6 @@ const saveSelectedConnection = async (conn) => {
 }
 
 // Test all connections for a server and auto-select the best working one
-const testAllConnectionsAndSelect = async (server) => {
-  if (!server.connections || server.connections.length === 0) return
-  
-  testingAllConnections.value = true
-  
-  // Test all connections in parallel
-  const testPromises = server.connections.map(async (conn) => {
-    try {
-      const response = await api.testPlexConnection(conn.uri, server.accessToken)
-      connectionTestResults.value[conn.uri] = {
-        success: response.data.success,
-        serverName: response.data.serverName
-      }
-      return { conn, success: response.data.success }
-    } catch (error) {
-      connectionTestResults.value[conn.uri] = { success: false }
-      return { conn, success: false }
-    }
-  })
-  
-  const results = await Promise.all(testPromises)
-  testingAllConnections.value = false
-  
-  // Find working connections
-  const workingConnections = results.filter(r => r.success).map(r => r.conn)
-  
-  if (workingConnections.length === 0) {
-    // No working connections found
-    return
-  }
-  
-  // Smart selection priority (for Docker compatibility):
-  // 1. HTTPS remote (non-local, non-relay) - most reliable for Docker
-  // 2. HTTP remote (non-local, non-relay)
-  // 3. Relay (works through internet but may be slower)
-  // 4. HTTPS local (may work if host networking)
-  // 5. HTTP local (least likely to work in Docker)
-  
-  const sortedConnections = workingConnections.sort((a, b) => {
-    // Score connections (higher = better for Docker)
-    const scoreConnection = (conn) => {
-      let score = 0
-      // Prefer non-local
-      if (!conn.local) score += 100
-      // Prefer non-relay (relay can be slow)
-      if (!conn.relay) score += 50
-      // Prefer HTTPS
-      if (conn.protocol === 'https') score += 10
-      return score
-    }
-    return scoreConnection(b) - scoreConnection(a)
-  })
-  
-  // Auto-select the best connection
-  // User requested manual selection - we do not auto-select anymore
-  // selectedConnection.value = sortedConnections[0]
-  
-  // Update server test results for backward compatibility
-
-  serverTestResults.value[server.clientIdentifier] = {
-    success: true,
-    connection: selectedConnection.value
-  }
-}
-
 const testSingleConnection = async (conn) => {
   if (!selectedServer.value) return
   
@@ -968,7 +876,7 @@ const testSingleConnection = async (conn) => {
       success: response.data.success,
       serverName: response.data.serverName
     }
-  } catch (error) {
+  } catch {
     connectionTestResults.value[conn.uri] = { success: false }
   } finally {
     testingConnection.value = null
@@ -1236,7 +1144,7 @@ const authenticateJellyfin = async () => {
   }
 }
 
-const saveJellyfinConnection = async (token, username = null) => {
+const saveJellyfinConnection = async (token) => {
   try {
     const serverName = jellyfinServerInfo.value?.serverName || 'Jellyfin Server'
     
@@ -1252,7 +1160,7 @@ const saveJellyfinConnection = async (token, username = null) => {
     jellyfinAuthLoading.value = false
     
     toast.success(`Connected to ${serverName}!`)
-  } catch (error) {
+  } catch {
     jellyfinError.value = 'Failed to save server configuration'
     jellyfinAuthLoading.value = false
   }
@@ -1323,7 +1231,7 @@ const authenticateEmby = async () => {
   }
 }
 
-const saveEmbyConnection = async (token, username = null) => {
+const saveEmbyConnection = async (token) => {
   try {
     const serverName = embyServerInfo.value?.serverName || 'Emby Server'
     
@@ -1339,7 +1247,7 @@ const saveEmbyConnection = async (token, username = null) => {
     embyAuthLoading.value = false
     
     toast.success(`Connected to ${serverName}!`)
-  } catch (error) {
+  } catch {
     embyError.value = 'Failed to save server configuration'
     embyAuthLoading.value = false
   }
@@ -1357,27 +1265,6 @@ const resetEmbyAuth = () => {
 
 const capitalizeFirst = (str) => {
   return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
-const getUrlPlaceholder = () => {
-  const placeholders = {
-    plex: 'http://localhost:32400',
-    emby: 'http://localhost:8096',
-    jellyfin: 'http://localhost:8096'
-  }
-  return placeholders[config.value.type] || 'http://localhost:8096'
-}
-
-const getTokenPlaceholder = () => {
-  return config.value.type === 'plex' ? 'Your Plex token' : 'Your API key'
-}
-
-const getTokenHelp = () => {
-  if (config.value.type === 'emby') {
-    return 'Find in Emby: Settings → Advanced → API Keys'
-  } else {
-    return 'Find in Jellyfin: Dashboard → Advanced → API Keys'
-  }
 }
 
 const syncLibraries = async () => {

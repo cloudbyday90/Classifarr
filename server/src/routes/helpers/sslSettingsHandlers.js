@@ -8,6 +8,7 @@
 
 const tls = require('tls');
 const crypto = require('crypto');
+const path = require('path');
 const fs = require('fs').promises;
 
 const DEFAULT_SSL_CONFIG = {
@@ -76,7 +77,29 @@ function presentSslConfig(config) {
   };
 }
 
-function createSslSettingsHandlers({ db }) {
+async function readValidatedUtf8File(filePath) {
+  const normalizedPath = path.resolve(String(filePath || ''));
+  if (!normalizedPath) {
+    throw new Error('File path is required');
+  }
+
+  const fsModule = await import('node:fs/promises');
+  const handle = await fsModule.open(normalizedPath, 'r');
+  try {
+    return await handle.readFile({ encoding: 'utf8' });
+  } finally {
+    await handle.close();
+  }
+}
+
+function createSslSettingsHandlers({
+  db,
+  accessFile = fs.access.bind(fs),
+  readUtf8File = readValidatedUtf8File,
+  createSecureContext = tls.createSecureContext,
+  createX509Certificate = (certData) => new crypto.X509Certificate(certData),
+  getNow = () => new Date()
+}) {
   return {
     async getConfig(_req, res) {
       try {
@@ -143,7 +166,7 @@ function createSslSettingsHandlers({ db }) {
 
         if (cert_path) {
           try {
-            await fs.access(cert_path);
+            await accessFile(cert_path);
             results.cert_exists = true;
           } catch (_error) {
             return res.json({ ...results, error: 'Certificate file not found' });
@@ -154,7 +177,7 @@ function createSslSettingsHandlers({ db }) {
 
         if (key_path) {
           try {
-            await fs.access(key_path);
+            await accessFile(key_path);
             results.key_exists = true;
           } catch (_error) {
             return res.json({ ...results, error: 'Private key file not found' });
@@ -165,7 +188,7 @@ function createSslSettingsHandlers({ db }) {
 
         if (ca_path) {
           try {
-            await fs.access(ca_path);
+            await accessFile(ca_path);
             results.ca_exists = true;
           } catch (_error) {
             results.ca_exists = false;
@@ -174,16 +197,16 @@ function createSslSettingsHandlers({ db }) {
         }
 
         try {
-          const certData = await fs.readFile(cert_path, 'utf8');
-          const keyData = await fs.readFile(key_path, 'utf8');
+          const certData = await readUtf8File(cert_path);
+          const keyData = await readUtf8File(key_path);
 
-          tls.createSecureContext({
+          createSecureContext({
             cert: certData,
             key: keyData
           });
 
-          const cert = new crypto.X509Certificate(certData);
-          const now = new Date();
+          const cert = createX509Certificate(certData);
+          const now = getNow();
           const validFrom = new Date(cert.validFrom);
           const validTo = new Date(cert.validTo);
 

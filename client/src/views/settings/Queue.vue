@@ -408,7 +408,7 @@ const clearCompleted = async () => {
     const response = await api.clearCompletedTasks()
     showAction(`Cleared ${response.data?.count || 0} completed tasks`, true)
     await loadStats()
-  } catch (error) {
+  } catch {
     showAction('Failed to clear completed tasks', false)
   } finally {
     actionLoading.value = false
@@ -421,7 +421,7 @@ const clearFailed = async () => {
     const response = await api.clearFailedTasks()
     showAction(`Cleared ${response.data?.count || 0} failed tasks`, true)
     await loadStats()
-  } catch (error) {
+  } catch {
     showAction('Failed to clear failed tasks', false)
   } finally {
     actionLoading.value = false
@@ -434,7 +434,7 @@ const retryAllFailed = async () => {
     const response = await api.retryAllFailedTasks()
     showAction(`Queued ${response.data?.count || 0} tasks for retry`, true)
     await loadStats()
-  } catch (error) {
+  } catch {
     showAction('Failed to retry tasks', false)
   } finally {
     actionLoading.value = false
@@ -447,7 +447,7 @@ const cancelAllPending = async () => {
     const response = await api.cancelAllPendingTasks()
     showAction(`Cancelled ${response.data?.count || 0} pending tasks`, true)
     await loadStats()
-  } catch (error) {
+  } catch {
     showAction('Failed to cancel tasks', false)
   } finally {
     actionLoading.value = false

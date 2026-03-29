@@ -19,8 +19,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // ── axios mock ────────────────────────────────────────────────────────────────
 // We need the mock factory to return both a default export (the axios constructor
 // for direct calls) and a create() method that returns the same mock instance.
-const mockRequest = vi.fn()
-
 vi.mock('axios', () => {
   const instance = {
     post: vi.fn(),

@@ -535,7 +535,7 @@ async function loadFallbackIncident() {
     fallbackIncident.value = response.data?.incident || null
     fallbackState.value = response.data?.fallback_state || null
     fallbackCheckedAt.value = response.data?.checked_at || null
-  } catch (error) {
+  } catch {
     fallbackIncident.value = null
     fallbackState.value = null
     fallbackCheckedAt.value = null

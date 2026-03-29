@@ -284,7 +284,7 @@ const toggleEnabled = async (task) => {
     await api.updateScheduledTask(task.id, { enabled: !task.enabled })
     await loadData()
     toast.success(task.enabled ? 'Schedule paused' : 'Schedule enabled')
-  } catch (error) {
+  } catch {
     toast.error('Failed to update schedule')
   }
 }
@@ -295,7 +295,7 @@ const runNow = async (task) => {
     await api.runScheduledTask(task.id)
     await loadData()
     toast.success('Task execution started')
-  } catch (error) {
+  } catch {
     toast.error('Failed to run task')
   } finally {
     running.value = null
@@ -308,7 +308,7 @@ const deleteTask = async (task) => {
     await api.deleteScheduledTask(task.id)
     await loadData()
     toast.success('Schedule deleted')
-  } catch (error) {
+  } catch {
     toast.error('Failed to delete schedule')
   }
 }

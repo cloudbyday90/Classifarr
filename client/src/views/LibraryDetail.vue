@@ -463,33 +463,10 @@ const formatConditions = (conditions) => {
   }).filter(Boolean).join(' AND ')
 }
 
-const formatSimpleRule = (rule) => {
-  if (!rule.rule_type) return 'No conditions'
-  return `${rule.rule_type} ${rule.operator} "${rule.value}"`
-}
-
 // Suggestions feature
 const suggestions = ref([])
-const suggestionsLoading = ref(false)
 const suggestionsItemCount = ref(0)
 const applyingIdx = ref(-1)
-
-const getSuggestions = async () => {
-  suggestionsLoading.value = true
-  try {
-    const res = await api.getRuleSuggestions(route.params.id)
-    suggestions.value = res.data.suggestions || []
-    suggestionsItemCount.value = res.data.totalItems || 0
-    if (suggestions.value.length === 0) {
-      toast.info('No patterns found in library content.', 'No Suggestions')
-    }
-  } catch (error) {
-    console.error('Failed to get suggestions:', error)
-    toast.error('Failed to analyze library')
-  } finally {
-    suggestionsLoading.value = false
-  }
-}
 
 const applySuggestion = async (suggestion) => {
   const idx = suggestions.value.indexOf(suggestion)

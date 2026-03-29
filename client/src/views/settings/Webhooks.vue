@@ -579,11 +579,6 @@ const setPrimary = async (id) => {
   }
 }
 
-const requestManagerName = computed(() => {
-  const names = { overseerr: 'Overseerr', jellyseerr: 'Jellyseerr', seer: 'Seer' }
-  return names[config.value.webhook_type] || 'Overseerr'
-})
-
 const stats = ref(null)
 const logsData = ref({ logs: [], page: 1, limit: 20, totalPages: 1 })
 const logs = computed(() => logsData.value.logs || [])
@@ -638,7 +633,7 @@ const copyPayload = async () => {
   try {
     await navigator.clipboard.writeText(jsonPayload)
     toast.success('JSON payload copied to clipboard')
-  } catch (error) {
+  } catch {
     toast.error('Failed to copy payload')
   }
 }
@@ -743,7 +738,7 @@ const changePage = (page) => {
 const testWebhook = async () => {
   testing.value = true
   try {
-    const response = await api.testWebhook()
+    await api.testWebhook()
     toast.success('Test webhook sent successfully')
     // Reload logs and stats to show the test
     await Promise.all([loadLogs(), loadStats()])

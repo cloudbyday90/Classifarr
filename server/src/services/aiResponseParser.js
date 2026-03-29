@@ -427,7 +427,7 @@ class AIResponseParser {
     }
 
     parseNarrativeSuggestion(response, context, mode = 'classify') {
-        const { libraries, signalContext, metadata } = context;
+        const { libraries, signalContext } = context;
 
         if (!Array.isArray(libraries) || libraries.length === 0) {
             return null;

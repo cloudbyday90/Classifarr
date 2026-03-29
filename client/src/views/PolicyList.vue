@@ -58,7 +58,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/api'
-import Button from '@/components/common/Button.vue'
 import PolicyCard from '@/components/policies/PolicyCard.vue'
 import PolicyBuilderModal from '@/components/policies/PolicyBuilderModal.vue'
 
@@ -123,12 +122,6 @@ const fetchLibraries = async () => {
   } catch (error) {
     console.error('Failed to fetch libraries:', error)
   }
-}
-
-const createPolicyForLibrary = (libraryId) => {
-  selectedLibraryId.value = libraryId
-  editingPolicy.value = null
-  showCreateModal.value = true
 }
 
 const editPolicy = async (policy) => {

@@ -1,9 +1,14 @@
 {
   "name": "classifarr",
-  "version": "0.44.2-c.beta",
+  "version": "0.45.1-beta",
   "private": true,
   "license": "GPL-3.0-or-later",
   "scripts": {
+    "lint": "npm run lint:server && npm run lint:client",
+    "lint:server": "npm run lint:server:tests && npm run lint:server:security",
+    "lint:server:tests": "cd server && npm run lint:tests",
+    "lint:server:security": "cd server && npm run lint:security",
+    "lint:client": "cd client && npm run lint",
     "test": "npm run test:server && npm run test:client",
     "test:server": "cd server && npm test",
     "test:client": "cd client && npm test",
@@ -34,6 +39,8 @@
     "markdownlint-cli2": "^0.22.0"
   },
   "overrides": {
-    "minimatch": "10.2.3"
+    "minimatch": "10.2.4",
+    "brace-expansion": "5.0.5",
+    "smol-toml": "1.6.1"
   }
 }

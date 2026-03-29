@@ -301,7 +301,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '@/api'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 

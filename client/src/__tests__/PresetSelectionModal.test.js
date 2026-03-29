@@ -137,7 +137,7 @@ describe('PresetSelectionModal.vue', () => {
     it('shows preset usage count labels for built-in presets', async () => {
       api.get.mockResolvedValue({ data: mockPresets });
 
-      const wrapper = mount(PresetSelectionModal, {
+      mount(PresetSelectionModal, {
         props: {
           modelValue: true,
           library: mockLibrary,

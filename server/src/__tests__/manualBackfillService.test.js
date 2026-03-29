@@ -18,7 +18,6 @@
 
 const manualBackfillService = require('../services/manualBackfillService');
 const embeddingService = require('../services/embeddingService');
-const embeddingProvider = require('../services/embeddingProvider');
 const embeddingRouter = require('../services/embeddingRouter');
 const db = require('../config/database');
 

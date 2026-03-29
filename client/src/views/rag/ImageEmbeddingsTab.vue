@@ -462,7 +462,7 @@ const loadServerModelsCache = async () => {
       lastModelsFetchAt.value = fetchedAt
       modelsCacheSource.value = 'server'
     }
-  } catch (error) {
+  } catch {
     // Best-effort cache warm; ignore failures
   }
 }

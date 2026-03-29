@@ -170,10 +170,6 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
       data: { itemsReset: 50 }
     })
 
-    const mockDialog = {
-      open: vi.fn()
-    }
-
     const wrapper = mount(Queue, {
       global: {
         stubs: {

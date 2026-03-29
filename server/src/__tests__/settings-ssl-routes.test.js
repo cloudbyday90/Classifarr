@@ -64,6 +64,10 @@ describe('Settings SSL Routes', () => {
     app.use('/settings', settingsRouter);
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('returns default SSL settings when no row exists', async () => {
     db.query.mockResolvedValueOnce({ rows: [] });
 
@@ -154,4 +158,55 @@ describe('Settings SSL Routes', () => {
       error: 'Certificate path is required'
     });
   });
+
+  it('returns a 500 when fetching SSL config fails', async () => {
+    db.query.mockRejectedValueOnce(new Error('db offline'));
+
+    const res = await request(app).get('/settings/ssl');
+
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ error: 'db offline' });
+  });
+
+  it('normalizes explicit empty paths to null on update', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{
+          enabled: false,
+          cert_path: null,
+          key_path: null,
+          ca_path: null,
+          force_https: false,
+          hsts_enabled: false,
+          hsts_max_age: 31536000,
+          client_cert_required: false
+        }]
+      });
+
+    const res = await request(app)
+      .put('/settings/ssl')
+      .send({
+        cert_path: '',
+        key_path: '',
+        ca_path: '',
+        hsts_max_age: -1
+      });
+
+    expect(res.status).toBe(200);
+    expect(db.query).toHaveBeenNthCalledWith(2,
+      expect.stringContaining('INSERT INTO ssl_config'),
+      [
+        false,
+        null,
+        null,
+        null,
+        false,
+        false,
+        31536000,
+        false
+      ]
+    );
+  });
+
 });

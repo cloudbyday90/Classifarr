@@ -64,7 +64,7 @@ const remove = (tag) => {
   emit('update:modelValue', props.modelValue.filter(t => t !== tag))
 }
 
-const handleBackspace = (e) => {
+const handleBackspace = () => {
   if (!inputValue.value && props.modelValue.length > 0) {
     // Remove last tag if input is empty
     const newTags = [...props.modelValue]

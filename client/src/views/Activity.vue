@@ -466,7 +466,7 @@ const formatMethod = (method) => {
   return methods[method] || method
 }
 
-const getMethodIcon = (method, eventType = null) => {
+const getMethodIcon = (method) => {
   const icons = {
     // New standardized names
     'ai_analysis': '🤖',
@@ -493,7 +493,7 @@ onMounted(async () => {
     if (settingsRes.data?.activityRefreshInterval) {
       refreshInterval.value = parseInt(settingsRes.data.activityRefreshInterval) || 30
     }
-  } catch (e) {
+  } catch {
     // Use default if settings not available
   }
   

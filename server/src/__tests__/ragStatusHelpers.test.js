@@ -48,8 +48,12 @@ describe('ragStatusHelpers', () => {
         const helpers = buildHelpers();
 
         expect(helpers.parseDetailedHours(undefined)).toBe(24);
+        expect(helpers.parseDetailedHours('720')).toBe(720);
         expect(() => helpers.parseDetailedHours('0')).toThrow(
             "Invalid hours parameter: '0'. Must be an integer between 1 and 720."
+        );
+        expect(() => helpers.parseDetailedHours('721')).toThrow(
+            "Invalid hours parameter: '721'. Must be an integer between 1 and 720."
         );
     });
 
@@ -113,6 +117,60 @@ describe('ragStatusHelpers', () => {
         expect(payload.minimumRequired).toBe(75);
     });
 
+    test('getStatusPayload reports configured local image embeddings when image rows already exist', async () => {
+        const db = {
+            query: jest.fn().mockResolvedValue({
+                rows: []
+            })
+        };
+        const embeddingRouter = {
+            getConfig: jest.fn().mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider: 'openai',
+                embedding_model: 'text-embedding-3-large',
+                rag_min_history_count: 25,
+                rag_image_weight: 0.5
+            }),
+            getCircuitStatus: jest.fn().mockResolvedValue({ state: 'CLOSED' }),
+            getCircuitStateHistory: jest.fn()
+        };
+        const embeddingService = {
+            getStats: jest.fn().mockResolvedValue({ total: 8 }),
+            hasMinimumEmbeddings: jest.fn().mockResolvedValue(false),
+            getImageStats: jest.fn().mockResolvedValue({ total: 3 }),
+            shouldIncludeImageEmbeddings: jest.fn(),
+            getPendingCount: jest.fn()
+        };
+        const imageEmbeddingProvider = {
+            getConfig: jest.fn().mockResolvedValue({
+                image_embedding_provider_mode: 'local',
+                image_embedding_local_host: '127.0.0.1'
+            }),
+            isConfigured: jest.fn(() => true),
+            getEffectiveModel: jest.fn(() => 'jina-clip-v2')
+        };
+        const helpers = buildHelpers({
+            db,
+            embeddingRouter,
+            embeddingService,
+            imageEmbeddingProvider,
+            resolveEmbeddingAvailability: jest.fn().mockResolvedValue({ status: 'available' })
+        });
+
+        const payload = await helpers.getStatusPayload();
+
+        expect(payload.image).toEqual({
+            enabled: true,
+            providerOnline: true,
+            providerConfigured: true,
+            status: 'configured',
+            providerMode: 'separate_local',
+            provider: 'local',
+            model: 'jina-clip-v2',
+            stats: { total: 3 }
+        });
+    });
+
     test('getOverviewPayload carries includeImage into pending-count lookup and respects offline availability', async () => {
         const db = {
             query: jest.fn()
@@ -167,6 +225,43 @@ describe('ragStatusHelpers', () => {
             currentModel: 'text-embedding-3-small',
             recentActivity: [{ id: 11, message: 'recent activity' }]
         });
+    });
+
+    test('getOverviewPayload falls back to an unknown model when the config has no explicit model fields', async () => {
+        const db = {
+            query: jest.fn()
+                .mockResolvedValueOnce({ rows: [{ total: '0' }] })
+                .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+                .mockResolvedValueOnce({ rows: [{}] })
+                .mockResolvedValueOnce({ rows: [] })
+        };
+        const embeddingRouter = {
+            getConfig: jest.fn().mockResolvedValue({
+                embedding_provider_mode: 'same'
+            }),
+            getCircuitStatus: jest.fn().mockResolvedValue({ state: 'CLOSED' }),
+            getCircuitStateHistory: jest.fn()
+        };
+        const embeddingService = {
+            getStats: jest.fn(),
+            hasMinimumEmbeddings: jest.fn(),
+            getImageStats: jest.fn(),
+            shouldIncludeImageEmbeddings: jest.fn().mockResolvedValue(false),
+            getPendingCount: jest.fn().mockResolvedValue(0)
+        };
+        const helpers = buildHelpers({
+            db,
+            embeddingRouter,
+            embeddingService,
+            resolveEmbeddingAvailability: jest.fn().mockResolvedValue({ status: 'available' }),
+            isEmbeddingProviderConfigured: jest.fn(() => false)
+        });
+
+        const payload = await helpers.getOverviewPayload();
+
+        expect(payload.providerConfigured).toBe(false);
+        expect(payload.providerOnline).toBe(false);
+        expect(payload.currentModel).toBe('unknown');
     });
 
     test('getDetailedPayload normalizes breaker diagnostics and provider metrics', async () => {
@@ -287,6 +382,165 @@ describe('ragStatusHelpers', () => {
             embedding_generation: { samples: 3 },
             pattern_mining: { samples: 4 },
             provider: { openai: { requests: 12 } }
+        });
+    });
+
+    test('getStatusPayload normalizes local image mode and returns not_configured when image support is effectively off', async () => {
+        const db = {
+            query: jest.fn().mockRejectedValue(new Error('settings table missing'))
+        };
+        const embeddingRouter = {
+            getConfig: jest.fn().mockResolvedValue({
+                rag_enabled: false,
+                embedding_provider: 'openai',
+                rag_image_weight: 0,
+                embedding_provider_mode: 'cloud'
+            }),
+            getCircuitStatus: jest.fn().mockResolvedValue({ state: 'CLOSED' }),
+            getCircuitStateHistory: jest.fn()
+        };
+        const embeddingService = {
+            getStats: jest.fn().mockResolvedValue({ total: 0 }),
+            hasMinimumEmbeddings: jest.fn().mockResolvedValue(false),
+            getImageStats: jest.fn().mockResolvedValue({ total: 0 }),
+            shouldIncludeImageEmbeddings: jest.fn(),
+            getPendingCount: jest.fn()
+        };
+        const imageEmbeddingProvider = {
+            getConfig: jest.fn().mockResolvedValue({
+                image_embedding_provider_mode: 'local',
+                image_embedding_local_host: '127.0.0.1'
+            }),
+            isConfigured: jest.fn(() => false),
+            getEffectiveModel: jest.fn(() => null)
+        };
+        const helpers = buildHelpers({
+            db,
+            embeddingRouter,
+            embeddingService,
+            imageEmbeddingProvider,
+            resolveEmbeddingAvailability: jest.fn().mockResolvedValue({ status: 'available' }),
+            isEmbeddingProviderConfigured: jest.fn(() => false)
+        });
+
+        const payload = await helpers.getStatusPayload();
+
+        expect(payload.providerConfigured).toBe(false);
+        expect(payload.providerOnline).toBe(false);
+        expect(payload.image).toEqual({
+            enabled: false,
+            providerOnline: false,
+            providerConfigured: false,
+            status: 'disabled',
+            providerMode: 'separate_local',
+            provider: 'local',
+            model: null,
+            stats: { total: 0 }
+        });
+        expect(payload.pgvectorVariant).toBeNull();
+    });
+
+    test('getDetailedPayload falls back to safe defaults when breaker and config fields are missing', async () => {
+        const db = {
+            query: jest.fn()
+                .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+                .mockResolvedValueOnce({ rows: [{}] })
+        };
+        const ragLogger = {
+            getMetricsByOperation: jest.fn()
+                .mockResolvedValueOnce({})
+                .mockResolvedValueOnce({})
+                .mockResolvedValueOnce({})
+                .mockResolvedValueOnce({}),
+            getHealthSummary: jest.fn(),
+            getRecentErrors: jest.fn()
+        };
+        const embeddingService = {
+            getStats: jest.fn().mockResolvedValue({}),
+            hasMinimumEmbeddings: jest.fn(),
+            getImageStats: jest.fn(),
+            shouldIncludeImageEmbeddings: jest.fn(),
+            getPendingCount: jest.fn()
+        };
+        const embeddingRouter = {
+            getConfig: jest.fn().mockResolvedValue({}),
+            getCircuitStatus: jest.fn().mockResolvedValue({}),
+            getCircuitStateHistory: jest.fn(() => [])
+        };
+        const helpers = buildHelpers({
+            db,
+            ragLogger,
+            embeddingService,
+            embeddingRouter,
+            resolveEmbeddingAvailability: jest.fn().mockResolvedValue({ status: 'probe_due' })
+        });
+
+        const payload = await helpers.getDetailedPayload(24);
+
+        expect(payload.stats).toEqual({
+            totalEmbeddings: 0,
+            pendingCount: 0,
+            failedCount: 0,
+            avgGenerationTime: 0,
+            lastEmbeddingTime: null
+        });
+        expect(payload.providerOnline).toBe(false);
+        expect(payload.circuitBreaker).toEqual({
+            state: 'unknown',
+            failureCount: 0,
+            lastFailureTime: null,
+            stateHistory: [],
+            config: {}
+        });
+        expect(payload.config).toEqual({
+            provider: 'unknown',
+            model: 'unknown',
+            dimensions: 0
+        });
+    });
+
+    test('getHealthPayload returns the health summary and recent errors directly', async () => {
+        const ragLogger = {
+            getMetricsByOperation: jest.fn(),
+            getHealthSummary: jest.fn().mockResolvedValue({ status: 'healthy' }),
+            getRecentErrors: jest.fn().mockResolvedValue([{ id: 1, message: 'none' }])
+        };
+        const helpers = buildHelpers({
+            ragLogger
+        });
+
+        const payload = await helpers.getHealthPayload();
+
+        expect(payload).toEqual({
+            health: { status: 'healthy' },
+            recentErrors: [{ id: 1, message: 'none' }]
+        });
+    });
+
+    test('getCostsPayload parses numeric cost aggregates', async () => {
+        const db = {
+            query: jest.fn().mockResolvedValue({
+                rows: [{
+                    provider: 'openai',
+                    total_tokens: '1234',
+                    total_items: '17',
+                    total_cost: '0.42'
+                }]
+            })
+        };
+        const helpers = buildHelpers({
+            db
+        });
+
+        const payload = await helpers.getCostsPayload();
+
+        expect(payload).toEqual({
+            last30Days: [{
+                provider: 'openai',
+                tokens: 1234,
+                items: 17,
+                cost: 0.42
+            }]
         });
     });
 });

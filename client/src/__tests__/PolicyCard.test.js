@@ -16,10 +16,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import PolicyCard from '../components/policies/PolicyCard.vue';
-import Card from '../components/common/Card.vue';
 import Badge from '../components/common/Badge.vue';
 import Button from '../components/common/Button.vue';
 

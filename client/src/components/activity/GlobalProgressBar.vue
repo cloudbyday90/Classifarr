@@ -135,7 +135,7 @@ function formatDuration(ms) {
   return `${seconds}.${Math.floor((ms % 1000) / 100)}s`;
 }
 
-function getStepClasses(phaseId, index) {
+function getStepClasses(phaseId) {
   if (isCurrent(phaseId)) return 'scale-110';
   return '';
 }

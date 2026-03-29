@@ -25,7 +25,6 @@ import {
   cleanupLocalStorageMock,
   setSWRCache,
   getSWRCache,
-  clearSWRCache,
   setSWRCacheExpired,
   createMockFetcher,
   createFailingFetcher
@@ -53,10 +52,8 @@ const createTestComponent = (cacheKey, fetcher, options = {}) => {
 }
 
 describe('useSWR composable', () => {
-  let mockStorage
-
   beforeEach(() => {
-    mockStorage = setupLocalStorageMock()
+    setupLocalStorageMock()
     vi.useFakeTimers()
   })
 

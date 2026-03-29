@@ -432,7 +432,7 @@ async function copyBugReport() {
       textArea.select()
       try {
         document.execCommand('copy')
-      } catch (err) {
+      } catch {
         throw new Error('Fallback copy failed')
       }
       document.body.removeChild(textArea)

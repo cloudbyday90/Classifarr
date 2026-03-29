@@ -1,0 +1,80 @@
+import js from '@eslint/js';
+import globals from 'globals';
+import vue from 'eslint-plugin-vue';
+
+const unusedVarsRule = ['warn', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_', varsIgnorePattern: '^_' }];
+
+export default [
+  {
+    name: 'client/ignores',
+    ignores: ['coverage/**', 'dist/**', 'node_modules/**']
+  },
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: 'warn'
+    }
+  },
+  js.configs.recommended,
+  ...vue.configs['flat/essential'],
+  {
+    name: 'client/app',
+    files: ['src/**/*.{js,vue}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser
+      }
+    },
+    rules: {
+      'no-unused-vars': unusedVarsRule,
+      'vue/multi-word-component-names': 'off'
+    }
+  },
+  {
+    name: 'client/node',
+    files: ['vite.config.js', 'vitest.config.js', 'vitest.setup.js', 'scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.node
+      }
+    },
+    rules: {
+      'no-unused-vars': unusedVarsRule
+    }
+  },
+  {
+    name: 'client/tests',
+    files: ['src/__tests__/**/*.js', 'src/views/__tests__/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.vitest
+      }
+    },
+    rules: {
+      'vue/one-component-per-file': 'off',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.object.name='describe'][callee.property.name='only']",
+          message: 'describe.only() must not be committed.'
+        },
+        {
+          selector: "CallExpression[callee.object.name='it'][callee.property.name='only']",
+          message: 'it.only() must not be committed.'
+        },
+        {
+          selector: "CallExpression[callee.object.name='test'][callee.property.name='only']",
+          message: 'test.only() must not be committed.'
+        }
+      ],
+      'no-unused-vars': unusedVarsRule
+    }
+  }
+];

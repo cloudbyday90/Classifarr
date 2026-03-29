@@ -50,7 +50,6 @@ jest.mock('../services/classification', () => ({
 }));
 
 const queueService = require('../services/queueService');
-const classificationService = require('../services/classification');
 const queueRouter = require('../routes/queue');
 
 describe('Queue routes coverage', () => {

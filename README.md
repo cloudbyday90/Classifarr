@@ -3,12 +3,12 @@
 Route every request to the right library with policy-driven decisions you can trust.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.44.2c--beta-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.45.1--beta-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 Classifarr is an AI- and RAG-powered media classification and routing service. It runs as the decision layer between request inputs (Overseerr/Jellyseerr webhooks, manual/API submissions, and media sync) and your automation stack, then uses metadata, policy rules, and AI/RAG signals to auto-route high-confidence matches to the correct Radarr/Sonarr destination while sending low-confidence cases to review.
 
-**v0.44.2c-beta** is the current public release label in this repo. Package files use the semver-safe form `0.44.2-c.beta`, while the UI, release notes, and Git tags use `v0.44.2c-beta`. This beta line is positioned as stable and production-capable for self-hosted media library operators.
+**v0.45.1-beta** is the current public release label in this repo. Package files use the semver-safe form `0.45.1-beta`, while the UI, release notes, and Git tags use `v0.45.1-beta`. This beta line is positioned as stable and production-capable for self-hosted media library operators.
 
 ## Why Classifarr
 
@@ -120,7 +120,7 @@ Use this baseline compose:
 ```yaml
 services:
   classifarr:
-    image: ghcr.io/cloudbyday90/classifarr:v0.44.2c-beta
+    image: ghcr.io/cloudbyday90/classifarr:v0.45.1-beta
     container_name: classifarr
     user: "1000:1000"
     ports:
@@ -217,6 +217,14 @@ Model selection strategy:
 Pricing note:
 
 - Provider pricing and model catalogs change frequently. Use provider dashboards for live cost checks before locking budgets.
+
+## Local Verification
+
+- Root lint: `npm run lint`
+- Server lint: `npm --prefix server run lint:tests` and `npm --prefix server run lint:security`
+- Client lint: `npm --prefix client run lint`
+- Root tests: `npm test`
+- Root coverage: `npm run test:coverage`
 
 ### Ollama Local Recommendations (AI + RAG Text)
 

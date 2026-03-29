@@ -362,9 +362,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { useDocumentVisibility } from '@vueuse/core'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useServiceRequirements } from '@/composables/useServiceRequirements'
 import { useSWR } from '@/composables/useSWR'
@@ -373,14 +372,11 @@ import api from '@/api'
 import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
-import SetupBanner from '@/components/SetupBanner.vue'
 import ArrConfigWarning from '@/components/settings/ArrConfigWarning.vue'
 import PgvectorVariantBanner from '@/components/PgvectorVariantBanner.vue'
 
 const router = useRouter()
 const librariesStore = useLibrariesStore()
-const visibility = useDocumentVisibility()
-
 // Service requirements for Quick Actions
 const { canUseFeature: canClassifyMedia } = useServiceRequirements(['aiProvider'])
 const { canUseFeature: canManageLibraries } = useServiceRequirements(['mediaServer'])
@@ -454,7 +450,6 @@ const stats = computed(() => dashboardData.value?.stats || {})
 const recentHistory = computed(() => dashboardData.value?.recentHistory || [])
 const awaitingDecisionCount = computed(() => dashboardData.value?.awaitingDecisionCount || 0)
 const queueStats = computed(() => queueData.value?.queueStats || { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true })
-const enrichmentStats = computed(() => queueData.value?.enrichmentStats || { totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 })
 const lastUpdated = computed(() => cacheTimestamp.value ? new Date(cacheTimestamp.value) : null)
 
 // Compute average confidence from backend all-time data
