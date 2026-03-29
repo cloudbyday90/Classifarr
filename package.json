@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "glob": "^13.0.6",
-    "markdownlint-cli2": "^0.21.0"
+    "markdownlint-cli2": "^0.22.0"
   },
   "overrides": {
     "minimatch": "10.2.3"
