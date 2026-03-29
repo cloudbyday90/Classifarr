@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The release cleanup jobs now opt legacy JavaScript actions into Node 24 ahead of GitHub's runner default change** — the two container-image cleanup jobs in CI now set `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` so `actions/delete-package-versions@v5` stops raising the Node 20 deprecation warning while upstream still publishes that action with a Node 20 runtime. (`.github/workflows/ci.yml`)
+
 ## [v0.45.2-beta] — 2026-03-29
 
 Package version: `0.45.2-beta`

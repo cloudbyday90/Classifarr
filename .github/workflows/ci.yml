@@ -237,6 +237,10 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: docker-release
+    env:
+      # `actions/delete-package-versions@v5` still declares `runs.using: node20`.
+      # Force JavaScript actions in this job onto Node 24 ahead of the runner default flip.
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
     permissions:
       packages: write
@@ -311,6 +315,10 @@ jobs:
     name: Cleanup Old Container Images (Manual)
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup'
+    env:
+      # `actions/delete-package-versions@v5` still declares `runs.using: node20`.
+      # Force JavaScript actions in this job onto Node 24 ahead of the runner default flip.
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
     permissions:
       packages: write
