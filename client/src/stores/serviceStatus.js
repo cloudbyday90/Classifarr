@@ -39,48 +39,48 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
       // Map response to our internal structure
       serviceHealth.value = {
         database: {
-          status: response.data.database,
-          details: response.data.details?.database
+          status: response.database,
+          details: response.details?.database
         },
         mediaServer: {
-          status: response.data.mediaServer,
-          details: response.data.details?.mediaServer
+          status: response.mediaServer,
+          details: response.details?.mediaServer
         },
         radarr: {
-          status: response.data.radarr,
-          details: response.data.details?.radarr
+          status: response.radarr,
+          details: response.details?.radarr
         },
         sonarr: {
-          status: response.data.sonarr,
-          details: response.data.details?.sonarr
+          status: response.sonarr,
+          details: response.details?.sonarr
         },
         aiProvider: {
-          status: response.data.ollama,
-          details: response.data.details?.ollama
+          status: response.ollama,
+          details: response.details?.ollama
         },
         imageEmbeddings: {
-          status: response.data.imageEmbeddings,
-          details: response.data.details?.imageEmbeddings
+          status: response.imageEmbeddings,
+          details: response.details?.imageEmbeddings
         },
         tmdb: {
-          status: response.data.tmdb,
-          details: response.data.details?.tmdb
+          status: response.tmdb,
+          details: response.details?.tmdb
         },
         omdb: {
-          status: response.data.omdb,
-          details: response.data.details?.omdb
+          status: response.omdb,
+          details: response.details?.omdb
         },
         discordBot: {
-          status: response.data.discordBot,
-          details: response.data.details?.discordBot
+          status: response.discordBot,
+          details: response.details?.discordBot
         },
         tavily: {
-          status: response.data.tavily,
-          details: response.data.details?.tavily
+          status: response.tavily,
+          details: response.details?.tavily
         },
         queueWorker: {
-          status: response.data.queueWorker,
-          details: response.data.details?.queueWorker
+          status: response.queueWorker,
+          details: response.details?.queueWorker
         },
         webhook: {
           status: 'unknown', // Webhook doesn't have a health check endpoint yet

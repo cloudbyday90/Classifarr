@@ -137,8 +137,8 @@ export default {
           api.getMigrationLibraries(),
         ]);
 
-        this.migrationStatus = statusResponse.data;
-        this.librariesWithRules = librariesResponse.data;
+        this.migrationStatus = statusResponse;
+        this.librariesWithRules = librariesResponse;
       } catch (error) {
         console.error('Failed to load migration data:', error);
         this.showNotification('error', 'Failed to load migration data. Please try again.');

@@ -20,6 +20,9 @@ const db = require('../config/database');
 const patternSignalCollector = require('./patternSignalCollector');
 const ragRetriever = require('./ragRetriever');
 const libraryProfileService = require('./libraryProfileService');
+const policyDecisionBuilder = require('./policyDecisionBuilder');
+const policyExclusionService = require('./policyExclusionService');
+const policyCandidateRanker = require('./policyCandidateRanker');
 const { createLogger } = require('../utils/logger');
 const { mergePresetSignals, normalizeSignalConfig } = require('../utils/policySignals');
 const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
@@ -38,8 +41,6 @@ function normalizePresetAttachmentWeight(value) {
     const numeric = Number(value);
     return Number.isFinite(numeric) && numeric > 0 ? numeric : 1.0;
 }
-const POLICY_PROMPT_SELECT_MIN_CONFIDENCE = 40;
-
 /**
  * Policy-Driven Classification Engine
  * Evaluates media items against library policies with comprehensive signal scoring
@@ -66,34 +67,30 @@ class PolicyEngine {
                     library: authoritativeMatch.library_name,
                     confidence: authoritativeMatch.confidence
                 });
-                return {
+                return policyDecisionBuilder.normalizeResult({
                     action: 'auto_classify',
                     library: authoritativeMatch,
                     confidence: authoritativeMatch.confidence,
                     method: authoritativeMatch.method,
                     ranked: [authoritativeMatch]
-                };
+                });
             }
 
             // 2. Get all active policies
             const policies = await this.getActivePolicies();
             if (policies.length === 0) {
                 logger.warn('No active policies found');
-                return {
+                return policyDecisionBuilder.normalizeResult({
                     action: 'manual',
                     confidence: 0,
                     ranked: []
-                };
+                });
             }
 
             // 2.5. Filter policies by media_type (Bug #9 fix)
             const itemMediaType = item.media_type?.toLowerCase();
-            
-            // If media_type is missing, we cannot filter - log warning and continue with all policies
-            // This maintains backwards compatibility with items that don't have media_type set
-            const candidatePolicies = itemMediaType 
-                ? policies.filter(p => p.library_media_type?.toLowerCase() === itemMediaType)
-                : policies;
+            const { candidatePolicies, skipped: skippedPolicies } =
+                policyExclusionService.applyMediaTypeFilter(policies, itemMediaType);
 
             if (!itemMediaType) {
                 logger.warn('Item missing media_type, evaluating against all policies', {
@@ -106,7 +103,7 @@ class PolicyEngine {
                     mediaType: itemMediaType,
                     totalPolicies: policies.length,
                     candidatePolicies: candidatePolicies.length,
-                    skippedPolicies: policies.length - candidatePolicies.length
+                    skippedPolicies
                 });
             }
 
@@ -115,11 +112,11 @@ class PolicyEngine {
                     title: item.title,
                     mediaType: itemMediaType
                 });
-                return {
+                return policyDecisionBuilder.normalizeResult({
                     action: 'manual',
                     confidence: 0,
                     ranked: []
-                };
+                });
             }
 
             // 3. Pre-fetch RAG matches once for all policies (performance optimization)
@@ -135,7 +132,8 @@ class PolicyEngine {
             };
 
             let ragCache = options.ragCache ? normalizeRagCache(options.ragCache) : null;
-            const anyPolicyUsesRAG = candidatePolicies.some(p => p.trust_rag && (p.rag_weight || DEFAULT_RAG_WEIGHT) > 0);
+            const relatedEvidence = Array.isArray(options.relatedEvidence) ? options.relatedEvidence : [];
+            const anyPolicyUsesRAG = candidatePolicies.some(p => p.trust_rag && (p.rag_weight ?? DEFAULT_RAG_WEIGHT) > 0);
             if (!ragCache) {
                 ragCache = { matches: [], timestamp: Date.now() };
                 if (anyPolicyUsesRAG) {
@@ -152,60 +150,36 @@ class PolicyEngine {
             // candidates. Advisory presets should influence score, not disqualify the
             // policy. Only explicitly strict language requirements are allowed to block
             // a policy from the ranked results.
-            const evaluations = [];
-            const languageConflicts = [];
-            const languageConflictPolicyIds = new Set();
+            const rawEvaluations = [];
             const itemLanguage = (item.original_language || '').toLowerCase();
 
             for (const policy of candidatePolicies) {
-                const evaluation = await this.evaluatePolicy(policy, item, ragCache);
-
-                // Detect language conflicts before deciding whether to use the score.
-                // Must run regardless of evaluation.score value (see comment above).
-                if (itemLanguage) {
-                    for (const preset of (policy.presets || [])) {
-                        const signals = preset.signals || {};
-                        const languageConflict = this.getStrictLanguageConflict(signals.language, itemLanguage);
-                        if (languageConflict) {
-                            languageConflicts.push({
-                                policy_id: policy.id,
-                                policy_name: policy.name,
-                                library_id: policy.library_id,
-                                library_name: policy.library_name,
-                                score: 0,
-                                required_languages: languageConflict.requiredLanguages,
-                                excluded_languages: languageConflict.excludedLanguages,
-                                item_language: itemLanguage,
-                            });
-                            languageConflictPolicyIds.add(policy.id);
-                            break; // one conflict entry per policy is sufficient
-                        }
-                    }
-                }
-
-                // Only include in ranked evaluations when score > 0 AND no strict language
-                // conflict. Advisory language presets remain score-only and must not
-                // exclude otherwise-valid candidates.
-                if (evaluation.score > 0 && !languageConflictPolicyIds.has(policy.id)) {
-                    evaluations.push(evaluation);
-                }
+                const evaluation = await this.evaluatePolicy(policy, item, ragCache, relatedEvidence);
+                rawEvaluations.push(evaluation);
             }
+
+            const { languageConflicts, languageConflictPolicyIds } =
+                policyExclusionService.detectLanguageConflicts(candidatePolicies, rawEvaluations, itemLanguage);
+
+            const evaluations = policyExclusionService.filterValidEvaluations(
+                rawEvaluations, languageConflictPolicyIds
+            );
 
             if (evaluations.length === 0) {
                 logger.info('No policies matched', { title: item.title });
-                return {
+                return policyDecisionBuilder.normalizeResult({
                     action: 'manual',
                     confidence: 0,
                     ranked: [],
                     languageConflicts,
-                };
+                });
             }
 
             // 4. Rank results
-            const ranked = await this.rankResults(evaluations);
+            const ranked = await policyCandidateRanker.rankResults(evaluations);
 
             // 5. Determine action based on top result
-            const result = this.determineAction(ranked);
+            const result = policyCandidateRanker.determineAction(ranked);
 
             logger.info('Policy evaluation complete', {
                 title: item.title,
@@ -215,11 +189,11 @@ class PolicyEngine {
                 languageConflictCount: languageConflicts.length,
             });
 
-            return {
+            return policyDecisionBuilder.normalizeResult({
                 ...result,
                 languageConflicts,
                 ragCache: anyPolicyUsesRAG ? ragCache : { matches: [], timestamp: Date.now() }
-            };
+            });
 
         } catch (error) {
             logger.error('Failed to evaluate item', {
@@ -357,7 +331,7 @@ class PolicyEngine {
      * @param {object} ragCache - Cached RAG search results
      * @returns {Promise<object>} Evaluation result with score breakdown
      */
-    async evaluatePolicy(policy, item, ragCache = { matches: [], timestamp: Date.now() }) {
+    async evaluatePolicy(policy, item, ragCache = { matches: [], timestamp: Date.now() }, relatedEvidence = []) {
         try {
             const scores = {
                 preset: 0,
@@ -376,8 +350,23 @@ class PolicyEngine {
             scores.profile = await this.scoreProfile(policy.library_id, item);
 
             // Score patterns (if trusted)
+            // Phase 4 cutover: prefer unified related evidence when available;
+            // fall back to legacy discovered-patterns collector when not provided.
             if (policy.trust_patterns) {
-                scores.pattern = await this.scorePatterns(policy.library_id, item);
+                if (relatedEvidence.length > 0) {
+                    scores.pattern = await this.scoreRelatedEvidence(policy.library_id, relatedEvidence);
+                    logger.debug('Pattern scored via related evidence (Phase 4)', {
+                        library_id: policy.library_id,
+                        evidenceCount: relatedEvidence.length,
+                        patternScore: scores.pattern,
+                    });
+                } else {
+                    scores.pattern = await this.scorePatterns(policy.library_id, item);
+                    logger.debug('Pattern scored via legacy patterns (no related evidence)', {
+                        library_id: policy.library_id,
+                        patternScore: scores.pattern,
+                    });
+                }
             }
 
             // Score RAG (if trusted)
@@ -625,7 +614,7 @@ class PolicyEngine {
                 const score = this.scoreLanguage(signals.language, item);
                 // Language is advisory by default. Only explicitly strict constraints
                 // are allowed to hard-block the preset.
-                if (score === 0 && this.hasStrictSignalConstraint(signals.language)) {
+                if (score === 0 && policyExclusionService.hasStrictSignalConstraint(signals.language)) {
                     return 0;
                 }
                 const weight = signals.language.weight ?? 1.0;
@@ -653,48 +642,6 @@ class PolicyEngine {
             logger.error('Failed to evaluate preset signals', { error: error.message });
             return 0;
         }
-    }
-
-    hasStrictSignalConstraint(config) {
-        if (!config || config.strict !== true) {
-            return false;
-        }
-
-        const hasRequireAny = Array.isArray(config.require_any) && config.require_any.length > 0;
-        const hasExclude = Array.isArray(config.exclude) && config.exclude.length > 0;
-        return hasRequireAny || hasExclude;
-    }
-
-    getStrictLanguageConflict(config, itemLanguage) {
-        if (!itemLanguage || !this.hasStrictSignalConstraint(config)) {
-            return null;
-        }
-
-        const normalizedLanguage = String(itemLanguage).toLowerCase();
-        const requiredLanguages = Array.isArray(config?.require_any)
-            ? config.require_any.map(lang => String(lang).toLowerCase())
-            : [];
-        const excludedLanguages = Array.isArray(config?.exclude)
-            ? config.exclude.map(lang => String(lang).toLowerCase())
-            : [];
-
-        if (requiredLanguages.length > 0 && !requiredLanguages.includes(normalizedLanguage)) {
-            return {
-                type: 'require_any_mismatch',
-                requiredLanguages,
-                excludedLanguages
-            };
-        }
-
-        if (excludedLanguages.includes(normalizedLanguage)) {
-            return {
-                type: 'excluded_language',
-                requiredLanguages,
-                excludedLanguages
-            };
-        }
-
-        return null;
     }
 
     /**
@@ -1047,6 +994,33 @@ class PolicyEngine {
     }
 
     /**
+     * Score unified related evidence (Phase 4 cutover).
+     * Replaces the legacy discovered-patterns scorer when relatedEvidence is provided
+     * by the caller. Evidence items from classificationEvidenceService (both
+     * learning_patterns and discovered_patterns) are already sorted by confidence
+     * descending; we return the top confidence for the requested library.
+     * @param {number} libraryId - Library ID to score for
+     * @param {Array} relatedEvidence - Evidence array from classificationEvidenceService.collectRelatedEvidence
+     * @returns {Promise<number>} Pattern score (0-95)
+     */
+    async scoreRelatedEvidence(libraryId, relatedEvidence) {
+        try {
+            if (!Array.isArray(relatedEvidence) || relatedEvidence.length === 0) {
+                return 0;
+            }
+            const libraryEvidence = relatedEvidence.filter(e => e.libraryId === libraryId);
+            if (libraryEvidence.length === 0) {
+                return 0;
+            }
+            // Evidence is pre-sorted by confidence descending; take the top entry.
+            return Math.min(libraryEvidence[0].confidence ?? 0, FORMULA_CONFIDENCE_CAP);
+        } catch (error) {
+            logger.debug('Failed to score related evidence', { error: error.message });
+            return 0;
+        }
+    }
+
+    /**
      * Score RAG/embedding similarity
      * @param {number} libraryId - Library ID to score for
      * @param {object} item - Media item
@@ -1162,106 +1136,7 @@ class PolicyEngine {
         }
     }
 
-    /**
-     * Rank and combine policy evaluations
-     */
-    async rankResults(evaluations) {
-        try {
-            // Sort by score descending
-            const ranked = evaluations
-                .filter(e => e.score > 0)
-                .sort((a, b) => b.score - a.score);
 
-            return ranked;
-
-        } catch (error) {
-            logger.error('Failed to rank results', { error: error.message });
-            return evaluations;
-        }
-    }
-
-    /**
-     * Determine action based on ranked results
-     */
-    determineAction(ranked) {
-        try {
-            if (ranked.length === 0) {
-                return {
-                    action: 'manual',
-                    confidence: 0,
-                    ranked: []
-                };
-            }
-
-            const top = ranked[0];
-
-            // Auto-classify if score meets threshold
-            if (top.score >= top.auto_classify_threshold) {
-                return {
-                    action: 'auto_classify',
-                    library: {
-                        library_id: top.library_id,
-                        library_name: top.library_name,
-                        policy_id: top.policy_id,
-                        policy_name: top.policy_name
-                    },
-                    confidence: top.score,
-                    method: 'policy_engine',
-                    scores: top.scores,
-                    weights: top.weights,
-                    breakdown: top.breakdown,
-                    ranked
-                };
-            }
-
-            // Prompt for confirmation if meets prompt threshold
-            if (top.score >= top.prompt_threshold) {
-                return {
-                    action: 'prompt_confirm',
-                    library: {
-                        library_id: top.library_id,
-                        library_name: top.library_name,
-                        policy_id: top.policy_id,
-                        policy_name: top.policy_name
-                    },
-                    confidence: top.score,
-                    method: 'policy_engine',
-                    scores: top.scores,
-                    weights: top.weights,
-                    breakdown: top.breakdown,
-                    ranked
-                };
-            }
-
-            // Low-confidence but still plausible candidate: show selection prompt
-            if (top.score >= POLICY_PROMPT_SELECT_MIN_CONFIDENCE) {
-                return {
-                    action: 'prompt_select',
-                    confidence: top.score,
-                    method: 'policy_engine',
-                    breakdown: top.breakdown,
-                    ranked
-                };
-            }
-
-            // Very low confidence: treat as manual review
-            return {
-                action: 'manual',
-                confidence: top.score,
-                method: 'policy_engine',
-                breakdown: top.breakdown,
-                ranked
-            };
-
-        } catch (error) {
-            logger.error('Failed to determine action', { error: error.message });
-            return {
-                action: 'manual',
-                confidence: 0,
-                ranked
-            };
-        }
-    }
 }
 
 module.exports = new PolicyEngine();

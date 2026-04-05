@@ -34,12 +34,8 @@ import presetsApi from '../api/presets'
 describe('PresetsManager.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    presetsApi.getSystemPresets.mockResolvedValue({
-      data: [{ id: 1, name: 'Family', category: 'audience', signals: {} }]
-    })
-    presetsApi.getCustomPresets.mockResolvedValue({
-      data: [{ id: 9, name: 'Family Remix', category: 'custom', signals: {} }]
-    })
+    presetsApi.getSystemPresets.mockResolvedValue([{ id: 1, name: 'Family', category: 'audience', signals: {} }])
+    presetsApi.getCustomPresets.mockResolvedValue([{ id: 9, name: 'Family Remix', category: 'custom', signals: {} }])
   })
 
   it('uses built-in and my preset labels consistently', async () => {

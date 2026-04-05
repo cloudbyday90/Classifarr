@@ -82,6 +82,7 @@ describe('QueueService', () => {
         queueService.lastOmdbSslWarnAt = 0;
         queueService.omdbSslBlockedUntil = 0;
         queueService.lastOmdbSslProbeAt = 0;
+        queueService.lastAiAvailabilityProbeAt = 0;
 
         // The singleton captured defaultOmdbService at construction time (before jest.mock ran
         // at module scope with virtual:true). Wire the virtual mock into the instance so that
@@ -90,6 +91,10 @@ describe('QueueService', () => {
         queueService.enrichmentRetryService = require('../services/enrichmentRetryService');
         queueService.queueCarsaService.mediaSyncService = require('../services/mediaSync');
         queueService.queueCarsaService.getScheduler = () => require('../services/scheduler');
+        queueService.evidenceService = {
+            purgeAllLegacyPatterns: jest.fn().mockResolvedValue({ deleted: 5, rows: [{ id: 1 }] })
+        };
+        queueService.queueCarsaService.evidenceService = queueService.evidenceService;
     });
 
     describe('enqueue', () => {
@@ -990,6 +995,30 @@ describe('QueueService', () => {
             expect(stats.classificationPaused).toBe(true);
             expect(stats.classificationPauseReason).toBe('dispatch_check_failed');
         });
+
+        it('should surface AI unavailability as a paused classification state while the worker is running', async () => {
+            queueService.running = true;
+            queueService.aiAvailable = false;
+            jest.spyOn(queueService, 'hasClassificationDispatchBlocker').mockResolvedValue({
+                hasProcessingClassification: false,
+                lookupFailed: false
+            });
+            db.query.mockResolvedValueOnce({
+                rows: [{
+                    pending: '1',
+                    processing: '0',
+                    completed: '2',
+                    failed: '0'
+                }]
+            });
+
+            const stats = await queueService.getStats();
+
+            expect(stats.aiAvailable).toBe(false);
+            expect(stats.workerRunning).toBe(true);
+            expect(stats.classificationPaused).toBe(true);
+            expect(stats.classificationPauseReason).toBe('ai_unavailable');
+        });
     });
 
     describe('retryTask', () => {
@@ -1126,7 +1155,11 @@ describe('QueueService', () => {
             expect(db.query).toHaveBeenCalledWith('DELETE FROM content_analysis_log');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM classification_embeddings RETURNING id');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM classification_history RETURNING id');
-            expect(db.query).toHaveBeenCalledWith('DELETE FROM learning_patterns RETURNING id');
+            expect(queueService.evidenceService.purgeAllLegacyPatterns).toHaveBeenCalledWith({
+                client: db,
+                actor: 'carsa',
+                reason: 'clear_and_resync'
+            });
             expect(db.query).toHaveBeenCalledWith('DELETE FROM classification_corrections RETURNING id');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM library_rules_v2 RETURNING id');
             expect(db.query).toHaveBeenCalledWith('DELETE FROM library_custom_rules');

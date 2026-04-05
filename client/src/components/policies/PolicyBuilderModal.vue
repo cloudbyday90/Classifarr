@@ -1170,8 +1170,7 @@ onMounted(async () => {
 
 const fetchLibraries = async () => {
   try {
-    const response = await api.get('/libraries')
-    libraries.value = response.data
+    libraries.value = await api.getData('/libraries')
   } catch (error) {
     console.error('Failed to fetch libraries:', error)
   }
@@ -1179,8 +1178,7 @@ const fetchLibraries = async () => {
 
 const fetchPresets = async () => {
   try {
-    const response = await presetsApi.getAttachablePresets()
-    allPresets.value = response.data
+    allPresets.value = await presetsApi.getAttachablePresets()
   } catch (error) {
     console.error('Failed to fetch presets:', error)
   }
@@ -1188,9 +1186,9 @@ const fetchPresets = async () => {
 
 const fetchPresetMigrationNotice = async () => {
   try {
-    const response = await api.get('/settings')
+    const response = await api.getData('/settings')
     presetMigrationNotice.value = parsePresetMigrationReport(
-      response?.data?.preset_semantics_v2_auto_drop_report
+      response?.preset_semantics_v2_auto_drop_report
     )
   } catch (error) {
     console.error('Failed to fetch preset migration report:', error)
@@ -1213,8 +1211,8 @@ const dismissPresetMigrationNotice = () => {
 watch(() => form.value.library_id, async (newLibraryId) => {
   if (newLibraryId) {
     try {
-      const response = await api.get(`/policies/presets/suggest/${newLibraryId}`)
-      suggestedPresets.value = response.data.suggestions || []
+      const response = await api.getData(`/policies/presets/suggest/${newLibraryId}`)
+      suggestedPresets.value = response.suggestions || []
     } catch (error) {
       console.error('Failed to fetch suggested presets:', error)
       suggestedPresets.value = []

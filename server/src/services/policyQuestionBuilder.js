@@ -74,7 +74,7 @@ const LANGUAGE_LABELS = {
 };
 
 class PolicyQuestionBuilder {
-  async build({ metadata = {}, policyResult = null, libraries = [], suggestedLibrary = null, ragContext = null, aiResult = null, maxOptions = 3 }) {
+  async build({ metadata = {}, policyResult = null, libraries = [], suggestedLibrary = null, ragContext = null, aiResult = null, maxOptions = 3, relatedEvidenceSummary = null }) {
     const mediaType = metadata.media_type?.toLowerCase();
     const filteredLibraries = this.filterLibrariesByMediaType(libraries, mediaType);
     const languageConflicts = policyResult?.languageConflicts || [];
@@ -85,7 +85,8 @@ class PolicyQuestionBuilder {
         reason: 'No policy candidates available',
         ragContext,
         aiResult,
-        policyResult
+        policyResult,
+        relatedEvidenceSummary,
       });
     }
 
@@ -96,7 +97,7 @@ class PolicyQuestionBuilder {
     const originalLanguage = (metadata.original_language || '').toLowerCase();
     if (originalLanguage && languageConflicts.length > 0) {
       const conflictQuestion = this.buildLanguageConflictQuestion(
-        metadata, candidates, languageConflicts, { ragContext, aiResult, policyResult }
+        metadata, candidates, languageConflicts, { ragContext, aiResult, policyResult, relatedEvidenceSummary }
       );
       if (conflictQuestion) return conflictQuestion;
     }
@@ -111,7 +112,8 @@ class PolicyQuestionBuilder {
         candidates,
         ragContext,
         aiResult,
-        policyResult
+        policyResult,
+        relatedEvidenceSummary,
       });
     }
 
@@ -120,6 +122,7 @@ class PolicyQuestionBuilder {
       aiResult,
       policyResult,
       languageConflicts,
+      relatedEvidenceSummary,
     });
     if (languageQuestion) {
       return languageQuestion;
@@ -128,7 +131,8 @@ class PolicyQuestionBuilder {
     return this.buildCandidateQuestion(metadata, candidates, presetsByPolicy, {
       ragContext,
       aiResult,
-      policyResult
+      policyResult,
+      relatedEvidenceSummary,
     });
   }
 
@@ -396,7 +400,8 @@ class PolicyQuestionBuilder {
         candidates,
         ragContext: extras.ragContext,
         aiResult: extras.aiResult,
-        policyResult: extras.policyResult
+        policyResult: extras.policyResult,
+        relatedEvidenceSummary: extras.relatedEvidenceSummary ?? null,
       });
     }
 
@@ -457,7 +462,7 @@ class PolicyQuestionBuilder {
     });
   }
 
-  buildLibrarySelectionQuestion(metadata, libraries, { reason, candidates, ragContext, aiResult, policyResult } = {}) {
+  buildLibrarySelectionQuestion(metadata, libraries, { reason, candidates, ragContext, aiResult, policyResult, relatedEvidenceSummary = null } = {}) {
     const options = (libraries || []).slice(0, 3).map(lib => this.toOption(lib.name, lib));
     if (options.length === 0) {
       return null;
@@ -469,7 +474,7 @@ class PolicyQuestionBuilder {
       question: `Which library should "${metadata.title || 'this item'}" go to?`,
       options,
       candidates: candidates || [],
-      extras: { ragContext, aiResult, policyResult }
+      extras: { ragContext, aiResult, policyResult, relatedEvidenceSummary }
     });
   }
 
@@ -492,6 +497,7 @@ class PolicyQuestionBuilder {
       }))
       : null;
     const aiRationale = extras.aiResult?.reason || null;
+    const relatedEvidenceSummary = extras.relatedEvidenceSummary ?? null;
     const tags = {
       genres: normalizeMetadataList(metadata.genres),
       keywords: normalizeMetadataList(metadata.keywords).slice(0, 10)
@@ -530,6 +536,7 @@ class PolicyQuestionBuilder {
         policy_weights: policyWeights,
         rag_summary: ragSummary,
         ai_rationale: aiRationale,
+        related_evidence_summary: relatedEvidenceSummary,
         primary_candidate_library_id: primaryCandidateLibraryId,
         primary_candidate_library_name: primaryCandidateLibraryName,
         question_anchor_library_id: questionAnchorLibrary?.id ?? null,

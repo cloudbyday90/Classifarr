@@ -218,9 +218,9 @@ onMounted(async () => {
 
 const loadConfig = async () => {
   try {
-    const response = await api.get('/settings/ssl')
-    if (response.data) {
-      config.value = { ...config.value, ...response.data }
+    const response = await api.getData('/settings/ssl')
+    if (response) {
+      config.value = { ...config.value, ...response }
     }
   } catch (error) {
     console.error('Failed to load SSL config:', error)

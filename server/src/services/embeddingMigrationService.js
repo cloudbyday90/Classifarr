@@ -51,7 +51,7 @@ class EmbeddingMigrationService {
                     logger.info('Auto-starting embedding migration');
                     // Start in background, don't wait
                     this.startBackgroundMigration().catch(error => {
-                        logger.error('Background migration failed', { error: error.message });
+                        logger.error('Background migration failed', { error: error.message }, { error });
                     });
                 } else {
                     logger.info('RAG disabled, skipping auto-migration');
@@ -60,7 +60,7 @@ class EmbeddingMigrationService {
                 logger.debug('Embedding format version is up to date');
             }
         } catch (error) {
-            logger.error('Failed to check migration status', { error: error.message });
+            logger.error('Failed to check migration status', { error: error.message }, { error });
         }
     }
 
@@ -79,7 +79,7 @@ class EmbeddingMigrationService {
             logger.info('Marked embeddings for re-embedding', { count: result.rowCount });
             return result.rowCount;
         } catch (error) {
-            logger.error('Failed to mark embeddings for re-embedding', { error: error.message });
+            logger.error('Failed to mark embeddings for re-embedding', { error: error.message }, { error });
             throw error;
         }
     }
@@ -123,9 +123,14 @@ class EmbeddingMigrationService {
             // Process in batches of 10
             const batchSize = 10;
             const delayBetweenBatches = 30000; // 30 seconds between batches (~120/hour)
+            let deferredReason = null;
 
             while (this.progress.completed + this.progress.failed < this.progress.total && this.isRunning) {
-                await this.processBatch(batchSize);
+                const batchResult = await this.processBatch(batchSize);
+                if (batchResult?.deferredReason) {
+                    deferredReason = batchResult.deferredReason;
+                    break;
+                }
                 
                 // Update estimated completion
                 if (this.progress.completed > 0) {
@@ -137,7 +142,7 @@ class EmbeddingMigrationService {
                 }
 
                 // Wait before next batch
-                if (this.progress.completed + this.progress.failed < this.progress.total) {
+                if (this.isRunning && this.progress.completed + this.progress.failed < this.progress.total) {
                     await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
                 }
             }
@@ -145,11 +150,12 @@ class EmbeddingMigrationService {
             logger.info('Background migration completed', {
                 total: this.progress.total,
                 completed: this.progress.completed,
-                failed: this.progress.failed
+                failed: this.progress.failed,
+                deferredReason
             });
 
         } catch (error) {
-            logger.error('Background migration error', { error: error.message });
+            logger.error('Background migration error', { error: error.message }, { error });
         } finally {
             this.isRunning = false;
         }
@@ -182,12 +188,20 @@ class EmbeddingMigrationService {
                         ? JSON.parse(row.metadata)
                         : row.metadata;
 
-                    await embeddingService.generateAndStore(row.classification_id, {
+                    const generationResult = await embeddingService.generateAndStore(row.classification_id, {
                         ...metadata,
                         title: row.title,
                         media_type: row.media_type,
                         library_name: row.library_name
                     });
+
+                    if (!generationResult) {
+                        logger.debug('Migration item was not stored; leaving it stale', {
+                            id: row.classification_id,
+                            title: row.title
+                        });
+                        continue;
+                    }
 
                     this.progress.completed++;
                     
@@ -197,15 +211,39 @@ class EmbeddingMigrationService {
                         progress: `${this.progress.completed}/${this.progress.total}`
                     });
                 } catch (error) {
+                    if (error.message === 'PROVIDER_OFFLINE') {
+                        const availability = embeddingService.getProviderAvailabilityStatus();
+                        logger.info('Background migration deferred: embedding provider unavailable', {
+                            retryAt: availability.cooldownUntil || null
+                        }, { skipDbPersist: true });
+                        this.isRunning = false;
+                        return { deferredReason: 'provider_unavailable' };
+                    }
+
+                    if (embeddingService.isProviderBusyError(error)) {
+                        logger.info('Background migration yielded to active provider traffic', {
+                            id: row.classification_id,
+                            title: row.title,
+                            lockHolder: error.lockHolder || null,
+                            waitMs: error.waitMs || null,
+                            activeModel: error.activeModel || null
+                        });
+                        this.isRunning = false;
+                        return { deferredReason: 'provider_busy' };
+                    }
+
                     this.progress.failed++;
                     logger.warn('Failed to re-embed classification', {
                         id: row.classification_id,
                         error: error.message
-                    });
+                    }, { error });
                 }
             }
+
+            return { deferredReason: null };
         } catch (error) {
-            logger.error('Failed to process batch', { error: error.message });
+            logger.error('Failed to process batch', { error: error.message }, { error });
+            return { deferredReason: null };
         }
     }
 

@@ -688,19 +688,19 @@ onUnmounted(() => {
 const loadConfig = async () => {
   try {
     const response = await api.getMediaServerConfig()
-    if (response.data) {
+    if (response) {
       config.value = {
-        type: response.data.type || 'plex',
-        name: response.data.name || '',
-        url: response.data.url || '',
-        api_key: response.data.api_key || ''
+        type: response.type || 'plex',
+        name: response.name || '',
+        url: response.url || '',
+        api_key: response.api_key || ''
       }
       
       // Set initial status based on whether config exists
-      if (response.data.url) {
+      if (response.url) {
         connectionStatus.value = {
           status: 'unknown',
-          serviceName: capitalizeFirst(response.data.type || 'plex'),
+          serviceName: capitalizeFirst(response.type || 'plex'),
           details: null,
           error: null,
           lastChecked: null

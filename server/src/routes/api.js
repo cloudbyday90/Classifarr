@@ -40,6 +40,7 @@ const pathMappingsRouter = require('./pathMappings');
 const confidenceRouter = require('./confidence');
 const ragRouter = require('./rag');
 const patternsRouter = require('./patterns');
+const evidenceRouter = require('./evidence');
 const feedbackRouter = require('./feedback');
 const promptsRouter = require('./prompts');
 const policiesRouter = require('./policies');
@@ -80,6 +81,7 @@ router.use('/mappings', authenticateToken, requireAdmin, mappingsRouter);
 router.use('/confidence', authenticateToken, requireAdmin, confidenceRouter);
 router.use('/rag', authenticateToken, requireAdmin, ragRouter);
 router.use('/patterns', authenticateToken, requireAdmin, patternsRouter);
+router.use('/evidence', authenticateToken, requireAdmin, evidenceRouter);
 router.use('/scheduler', authenticateToken, requireAdmin, schedulerRouter);
 router.use('/settings/path-mappings', authenticateToken, requireAdmin, pathMappingsRouter);
 

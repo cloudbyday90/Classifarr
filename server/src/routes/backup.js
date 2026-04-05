@@ -297,8 +297,19 @@ router.post('/preview', async (req, res) => {
         labelPresets: backupData.data.labelPresets?.length || 0,
         scheduledTasks: backupData.data.scheduledTasks?.length || 0,
         learningPatterns: backupData.data.learningPatterns?.length || 0,
-        autoLearnedPreferences: backupData.data.autoLearnedPreferences?.length || 0
-      }
+        autoLearnedPreferences: backupData.data.autoLearnedPreferences?.length || 0,
+        classificationEvidence: backupData.data.classificationEvidence?.length || 0
+      },
+      evidenceCategories: (() => {
+        const rows = backupData.data.classificationEvidence ?? [];
+        const byScope = {};
+        const byProvenance = {};
+        for (const row of rows) {
+          byScope[row.scope]           = (byScope[row.scope]           ?? 0) + 1;
+          byProvenance[row.provenance] = (byProvenance[row.provenance] ?? 0) + 1;
+        }
+        return { byScope, byProvenance, total: rows.length };
+      })()
     };
 
     res.json(preview);

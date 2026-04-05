@@ -220,6 +220,8 @@ else
 
     # Start existing PostgreSQL
     echo "Starting existing PostgreSQL database (version $DATA_PG_VERSION)..."
+    # Remove stale PID file that may have been left behind by an unclean container stop
+    rm -f "$PG_DATA/postmaster.pid"
     run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start
     
     # Wait for PostgreSQL to be ready
@@ -271,7 +273,7 @@ fi
 
 if [ -f "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" ]; then
     if [ "$IS_ROOT" = "true" ] || [ -w "$PKGLIBDIR/vector.so" ]; then
-        cp -f "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" "$PKGLIBDIR/vector.so" || \
+        cat "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" > "$PKGLIBDIR/vector.so" 2>/dev/null || \
             echo "WARN: Unable to update pgvector binary (insufficient permissions)"
     else
         echo "WARN: Cannot update pgvector binary without root; using existing vector.so"

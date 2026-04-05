@@ -21,7 +21,8 @@ jest.mock('../services/embeddingService', () => ({
     getPendingCount: jest.fn(),
     getPendingEmbeddings: jest.fn(),
     shouldIncludeImageEmbeddings: jest.fn(),
-    getProviderAvailabilityStatus: jest.fn()
+    getProviderAvailabilityStatus: jest.fn(),
+    isProviderBusyError: jest.fn()
 }));
 
 jest.mock('../utils/idleDetector', () => ({
@@ -57,6 +58,7 @@ describe('IdleBackfillService', () => {
             status: 'available',
             cooldownUntil: null
         });
+        embeddingService.isProviderBusyError.mockReturnValue(false);
 
         // Default: advisory lock acquired — fn() is called and returns true
         db.withSessionAdvisoryLock.mockImplementation(async (lockKey, fn) => {
@@ -331,6 +333,43 @@ describe('IdleBackfillService', () => {
 
             expect(db.withSessionAdvisoryLock).not.toHaveBeenCalled();
             expect(lockBodySpy).not.toHaveBeenCalled();
+        });
+
+        test('yields without counting progress when provider lock is busy', async () => {
+            db.query
+                .mockResolvedValueOnce({
+                    rows: [{
+                        rag_enabled: true,
+                        idle_backfill_enabled: true,
+                        idle_threshold: 30000,
+                        idle_batch_size: 10
+                    }]
+                })
+                .mockResolvedValueOnce({ rows: [{ id: 52 }] })
+                .mockResolvedValueOnce({ rows: [] });
+
+            embeddingService.getPendingCount.mockResolvedValueOnce(2);
+            embeddingService.getPendingEmbeddings.mockResolvedValueOnce([
+                { id: 7, needsText: true, needsImage: false, metadata: {}, title: 'Busy', media_type: 'movie', library_name: 'Movies' },
+                { id: 8, needsText: true, needsImage: false, metadata: {}, title: 'Later', media_type: 'movie', library_name: 'Movies' }
+            ]);
+            embeddingService.generateAndStore.mockRejectedValueOnce(Object.assign(new Error('PROVIDER_BUSY'), {
+                code: 'EMBEDDING_PROVIDER_BUSY',
+                lockHolder: 'classification',
+                waitMs: 1200,
+                activeModel: 'gemma3:12b'
+            }));
+            embeddingService.isProviderBusyError.mockReturnValue(true);
+            idleDetector.isIdle.mockReturnValue(true);
+
+            await idleBackfillService.startIdleBackfill();
+
+            expect(embeddingService.generateAndStore).toHaveBeenCalledTimes(1);
+            expect(idleBackfillService.isRunning).toBe(false);
+            expect(db.query).toHaveBeenLastCalledWith(
+                expect.stringContaining("SET status = 'completed'"),
+                [0, 52]
+            );
         });
     });
 

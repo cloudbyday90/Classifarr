@@ -151,8 +151,16 @@ class ProviderLockService {
       }
 
       // Check max wait time
-      if (Date.now() - startWait > this.config.maxWaitTime) {
-        throw new Error(`[ProviderLock] Timeout waiting for lock (requestor: ${requestor})`);
+      const waitMs = Date.now() - startWait;
+      if (waitMs > this.config.maxWaitTime) {
+        const error = new Error(`[ProviderLock] Timeout waiting for lock (requestor: ${requestor})`);
+        error.code = 'PROVIDER_LOCK_TIMEOUT';
+        error.requestor = requestor;
+        error.waitMs = waitMs;
+        error.lockHolder = this.lockState.lockedBy || null;
+        error.activeModel = this.lockState.activeModel || null;
+        error.preemptRequested = this.lockState.preemptRequested === true;
+        throw error;
       }
 
       await this.sleep(1000);

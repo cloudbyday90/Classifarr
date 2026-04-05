@@ -14,8 +14,21 @@ const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/
 const logger = createLogger('PatternSignalCollector');
 
 /**
- * Pattern Signal Collector Service
- * Collects classification signals from discovered patterns
+ * Pattern Signal Collector Service — Legacy Read-Only Bridge (Phase 7 demotion)
+ *
+ * This service reads `discovered_patterns` to feed mined-candidate signals via
+ * DiscoveredPatternEvidenceAdapter → ClassificationEvidenceService.
+ *
+ * Phase 7: Classification-time dependence on this path has been stopped
+ * (includeDiscoveredPatterns defaults to false in collectRelatedEvidence).
+ * This service is retained for:
+ *   - explicit comparison flows (ClassificationEvidenceComparisonService)
+ *   - operator diagnostics
+ *   - future migration tooling
+ *
+ * DO NOT restore as a hot-path dependency before reviewing parity against
+ * classification_evidence. Tables (discovered_patterns) will be retired
+ * after a production observability review.
  */
 class PatternSignalCollector {
     /**

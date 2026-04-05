@@ -106,17 +106,76 @@ async function healthCheck() {
 
 /**
  * Timed query wrapper — logs slow queries that exceed POSTGRES_SLOW_QUERY_THRESHOLD_MS.
- * Uses process.hrtime.bigint() for nanosecond precision.
+ * Uses process.hrtime.bigint() for nanosecond precision and, when a dedicated
+ * client is available, splits total time into pool wait and query execution.
  */
 async function timedQuery(text, params) {
-  const start = process.hrtime.bigint();
+  const startedAt = process.hrtime.bigint();
+  let client;
+  let _usedDedicatedClient = false;
+  let poolWaitDurationMs = null;
+  let executionDurationMs = null;
+
   try {
-    return await pool.query(text, params);
+    if (typeof pool.connect === 'function') {
+      const poolWaitStartedAt = process.hrtime.bigint();
+      client = await pool.connect();
+      poolWaitDurationMs = Number(process.hrtime.bigint() - poolWaitStartedAt) / 1e6;
+
+      if (client && typeof client.query === 'function') {
+        _usedDedicatedClient = true;
+        const executionStartedAt = process.hrtime.bigint();
+        try {
+          return await client.query(text, params);
+        } finally {
+          executionDurationMs = Number(process.hrtime.bigint() - executionStartedAt) / 1e6;
+        }
+      }
+    }
+
+    const executionStartedAt = process.hrtime.bigint();
+    try {
+      return await pool.query(text, params);
+    } finally {
+      executionDurationMs = Number(process.hrtime.bigint() - executionStartedAt) / 1e6;
+    }
   } finally {
-    const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+    if (client && typeof client.release === 'function') {
+      client.release();
+    }
+
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
     if (durationMs > SLOW_QUERY_THRESHOLD_MS) {
       const truncated = typeof text === 'string' ? text.slice(0, 120).replace(/\s+/g, ' ').trim() : '[non-string]';
-      logger.warn(`[SLOW QUERY] ${durationMs.toFixed(2)}ms — ${truncated}`);
+      const hasPoolCounters =
+        Number.isFinite(pool.totalCount) &&
+        Number.isFinite(pool.idleCount) &&
+        Number.isFinite(pool.waitingCount);
+      const timingSegments = [
+        `total=${durationMs.toFixed(2)}ms`,
+        Number.isFinite(poolWaitDurationMs) ? `poolWait=${poolWaitDurationMs.toFixed(2)}ms` : null,
+        Number.isFinite(executionDurationMs) ? `exec=${executionDurationMs.toFixed(2)}ms` : null,
+      ].filter(Boolean).join(' ');
+      const poolSuffix = hasPoolCounters
+        ? ` [pool total=${pool.totalCount} idle=${pool.idleCount} waiting=${pool.waitingCount}]`
+        : '';
+      logger.warn(
+        `[SLOW QUERY] ${timingSegments} — ${truncated}${poolSuffix}`,
+        hasPoolCounters
+          ? {
+            durationMs,
+            poolWaitDurationMs,
+            executionDurationMs,
+            poolTotalCount: pool.totalCount,
+            poolIdleCount: pool.idleCount,
+            poolWaitingCount: pool.waitingCount,
+          }
+          : {
+            durationMs,
+            poolWaitDurationMs,
+            executionDurationMs,
+          }
+      );
     }
   }
 }

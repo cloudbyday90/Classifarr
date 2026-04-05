@@ -533,3 +533,47 @@ describe('Code Health — metadata normalization guardrails', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// 12. dotenv.config() must always pass { quiet: true }
+// ---------------------------------------------------------------------------
+
+describe('Code Health — dotenv.config() must include { quiet: true }', () => {
+  /**
+   * dotenv v17+ introduced a rotating marketing "tip" banner printed on every
+   * .config() call. Suppressed by passing { quiet: true }. This check prevents
+   * the option from silently being dropped during a future edit.
+   *
+   * Pattern matches:
+   *   require('dotenv').config()    — no argument; fails
+   *   require("dotenv").config()    — double-quotes variant; fails
+   *   require('dotenv').config({ quiet: true })  — correct; passes (no match)
+   *
+   * Reference: Bug fix in server/src/index.js — added { quiet: true } to
+   * eliminate the dotenv marketing banner from container startup logs.
+   */
+  const DOTENV_BARE_RE = /require\(['"]dotenv['"]\)\.config\(\s*\)/;
+
+  for (const filePath of SOURCE_FILES) {
+    test(`${rel(filePath)} — dotenv.config() must pass { quiet: true }`, () => {
+      const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+      const hits = [];
+
+      lines.forEach((line, i) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+        if (DOTENV_BARE_RE.test(trimmed)) {
+          hits.push(`  line ${i + 1}: ${trimmed.slice(0, 100)}`);
+        }
+      });
+
+      if (hits.length > 0) {
+        throw new Error(
+          `dotenv v17+ prints a marketing banner unless { quiet: true } is passed.\n` +
+          `Replace require('dotenv').config() with require('dotenv').config({ quiet: true }):\n` +
+          hits.join('\n')
+        );
+      }
+    });
+  }
+});

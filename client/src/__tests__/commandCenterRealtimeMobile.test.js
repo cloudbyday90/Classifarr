@@ -101,9 +101,9 @@ describe('CommandCenter realtime and mobile behavior', () => {
     vi.clearAllMocks()
     mockMatchMedia(false)
 
-    apiMock.getLiveStats.mockResolvedValue({ data: createLiveStats() })
-    apiMock.getClassificationProgress.mockResolvedValue({
-      data: [{
+    apiMock.getLiveStats.mockResolvedValue(createLiveStats())
+    apiMock.getClassificationProgress.mockResolvedValue([
+      {
         taskId: 15,
         title: 'Inception',
         year: 2010,
@@ -114,17 +114,17 @@ describe('CommandCenter realtime and mobile behavior', () => {
         progress: 67,
         phaseDuration: 3200,
         phases: [{ name: 'ai_analysis', label: 'AI Analysis', status: 'in_progress' }],
-      }],
-    })
+      },
+    ])
     apiMock.getQueuePending.mockResolvedValue([])
     apiMock.getQueueFailed.mockResolvedValue([])
-    apiMock.getPendingClassifications.mockResolvedValue({ data: { items: [] } })
-    apiMock.getAiGenerationStatus.mockResolvedValue({ data: { isActive: false } })
-    apiMock.getAIUsage.mockResolvedValue({ data: { budget: { limit: 5, used: 1, percentUsed: 20 } } })
-    apiMock.getLibraries.mockResolvedValue({ data: [{ id: 10, name: 'TV Shows', media_type: 'tv', is_active: true }] })
-    apiMock.getLiveFeed.mockResolvedValue({ data: { items: [] } })
-    apiMock.getMediaServerConfig.mockResolvedValue({ data: { id: 1, name: 'Plex' } })
-    apiMock.getArrConfigStatus.mockResolvedValue({ data: { incompleteConfigs: [] } })
+    apiMock.getPendingClassifications.mockResolvedValue({ items: [] })
+    apiMock.getAiGenerationStatus.mockResolvedValue({ isActive: false })
+    apiMock.getAIUsage.mockResolvedValue({ budget: { limit: 5, used: 1, percentUsed: 20 } })
+    apiMock.getLibraries.mockResolvedValue([{ id: 10, name: 'TV Shows', media_type: 'tv', is_active: true }])
+    apiMock.getLiveFeed.mockResolvedValue({ items: [] })
+    apiMock.getMediaServerConfig.mockResolvedValue({ id: 1, name: 'Plex' })
+    apiMock.getArrConfigStatus.mockResolvedValue({ incompleteConfigs: [] })
   })
 
   it('shows freshness UX and polite live-update announcement', async () => {
@@ -183,8 +183,8 @@ describe('CommandCenter realtime and mobile behavior', () => {
 
     expect(document.body.textContent).toContain('Inception')
 
-    apiMock.getClassificationProgress.mockResolvedValueOnce({
-      data: [{
+    apiMock.getClassificationProgress.mockResolvedValueOnce([
+      {
         taskId: 16,
         title: 'Replacement Task',
         year: 2024,
@@ -195,8 +195,8 @@ describe('CommandCenter realtime and mobile behavior', () => {
         progress: 90,
         phaseDuration: 1800,
         phases: [{ name: 'decision', label: 'Decision', status: 'in_progress' }],
-      }],
-    })
+      },
+    ])
 
     await wrapper.vm.$.setupState.refreshOperationalData()
     await flushPromises()

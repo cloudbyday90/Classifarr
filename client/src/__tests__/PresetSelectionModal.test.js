@@ -24,7 +24,8 @@ import api from '../api';
 // Mock the API
 vi.mock('../api', () => ({
   default: {
-    get: vi.fn()
+    get: vi.fn(),
+    getData: vi.fn()
   }
 }));
 
@@ -86,6 +87,7 @@ describe('PresetSelectionModal.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    api.getData.mockImplementation((...args) => api.get(...args).then((response) => response.data));
     api.get.mockResolvedValue({ data: [] });
   });
 

@@ -16,6 +16,7 @@ jest.mock('../services/embeddingService', () => ({
     getPendingEmbeddings: jest.fn().mockResolvedValue([]),
     generateAndStore: jest.fn().mockResolvedValue(),
     generateImageEmbedding: jest.fn().mockResolvedValue(),
+    isProviderBusyError: jest.fn().mockReturnValue(false),
     getProviderAvailabilityStatus: jest.fn().mockReturnValue({
         status: 'available',
         cooldownUntil: null
@@ -49,6 +50,7 @@ describe('SchedulerService (schedulerService.js)', () => {
             getPendingEmbeddings: jest.fn().mockResolvedValue([]),
             generateAndStore: jest.fn().mockResolvedValue(),
             generateImageEmbedding: jest.fn().mockResolvedValue(),
+            isProviderBusyError: jest.fn().mockReturnValue(false),
             getProviderAvailabilityStatus: jest.fn().mockReturnValue({
                 status: 'available',
                 cooldownUntil: null
@@ -206,7 +208,7 @@ describe('SchedulerService (schedulerService.js)', () => {
 
             embeddingModule.shouldIncludeImageEmbeddings.mockResolvedValue(false);
             embeddingModule.getPendingEmbeddings.mockResolvedValue(pendingItems);
-            embeddingModule.generateAndStore.mockResolvedValue();
+            embeddingModule.generateAndStore.mockResolvedValue({});
 
             dbModule.query.mockImplementation((sql) => {
                 if (sql.includes('INSERT INTO backfill_runs')) {
@@ -273,7 +275,7 @@ describe('SchedulerService (schedulerService.js)', () => {
 
             embeddingModule.shouldIncludeImageEmbeddings.mockResolvedValue(false);
             embeddingModule.getPendingEmbeddings.mockResolvedValue(pendingItems);
-            embeddingModule.generateAndStore.mockResolvedValue();
+            embeddingModule.generateAndStore.mockResolvedValue({});
 
             dbModule.query.mockImplementation((sql) => {
                 if (sql.includes('INSERT INTO backfill_runs')) {
@@ -327,6 +329,45 @@ describe('SchedulerService (schedulerService.js)', () => {
             await schedulerService.runRagBackfill();
 
             expect(embeddingModule.generateAndStore).toHaveBeenCalledTimes(1);
+        });
+
+        it('yields the batch without counting progress when the provider is busy', async () => {
+            const dbModule = require('../config/database');
+            const embeddingModule = require('../services/embeddingService');
+
+            const pendingItems = [
+                { id: 1, title: 'Movie A', media_type: 'movie', library_name: 'Movies', metadata: {}, needsText: true, needsImage: false },
+                { id: 2, title: 'Movie B', media_type: 'movie', library_name: 'Movies', metadata: {}, needsText: true, needsImage: false }
+            ];
+
+            embeddingModule.shouldIncludeImageEmbeddings.mockResolvedValue(false);
+            embeddingModule.getPendingEmbeddings.mockResolvedValue(pendingItems);
+            embeddingModule.generateAndStore.mockRejectedValueOnce(Object.assign(new Error('PROVIDER_BUSY'), {
+                code: 'EMBEDDING_PROVIDER_BUSY',
+                lockHolder: 'classification',
+                waitMs: 900,
+                activeModel: 'gemma3:12b'
+            }));
+            embeddingModule.isProviderBusyError.mockReturnValue(true);
+
+            dbModule.query.mockImplementation((sql) => {
+                if (sql.includes('INSERT INTO backfill_runs')) {
+                    return Promise.resolve({ rows: [{ id: 67 }] });
+                }
+                if (sql.includes('UPDATE backfill_runs')) {
+                    return Promise.resolve({ rowCount: 1 });
+                }
+                return Promise.resolve({ rows: [] });
+            });
+
+            await schedulerService.runRagBackfill();
+
+            expect(embeddingModule.generateAndStore).toHaveBeenCalledTimes(1);
+            const updateCall = dbModule.query.mock.calls.find(
+                ([sql]) => sql && sql.includes('UPDATE backfill_runs') && sql.includes("status = 'completed'")
+            );
+            expect(updateCall).toBeDefined();
+            expect(updateCall[1]).toEqual([0, 67]);
         });
     });
 

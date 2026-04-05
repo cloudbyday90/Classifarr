@@ -78,9 +78,9 @@ const createLiveStats = () => ({
 describe('CommandCenter action modules', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    apiMock.getLiveStats.mockResolvedValue({ data: createLiveStats() })
-    apiMock.getClassificationProgress.mockResolvedValue({
-      data: [{
+    apiMock.getLiveStats.mockResolvedValue(createLiveStats())
+    apiMock.getClassificationProgress.mockResolvedValue([
+      {
         taskId: 10,
         title: 'Inception',
         year: 2010,
@@ -94,8 +94,8 @@ describe('CommandCenter action modules', () => {
           { name: 'queued', label: 'Queued', status: 'in_progress' },
           { name: 'metadata_fetch', label: 'Metadata Fetch', status: 'pending' },
         ],
-      }],
-    })
+      },
+    ])
     apiMock.getQueuePending.mockResolvedValue([{
       id: 33,
       task_type: 'classification',
@@ -114,8 +114,7 @@ describe('CommandCenter action modules', () => {
       payload: { title: 'The Matrix 5' },
     }])
     apiMock.getPendingClassifications.mockResolvedValue({
-      data: {
-        items: [{
+      items: [{
           id: 201,
           title: 'Motorvalley',
           year: 2026,
@@ -131,7 +130,6 @@ describe('CommandCenter action modules', () => {
             ],
           },
         }],
-      },
     })
     apiMock.retryClassifications.mockResolvedValue({
       data: {
@@ -141,12 +139,12 @@ describe('CommandCenter action modules', () => {
         results: [{ classificationId: 201, queued: true, taskId: 9011 }],
       },
     })
-    apiMock.getAiGenerationStatus.mockResolvedValue({ data: { isActive: false } })
-    apiMock.getAIUsage.mockResolvedValue({ data: { budget: { limit: 5, used: 4.6, percentUsed: 92 } } })
-    apiMock.getLibraries.mockResolvedValue({ data: [{ id: 10, name: 'TV Shows', media_type: 'tv', is_active: true }] })
-    apiMock.getLiveFeed.mockResolvedValue({ data: { items: [] } })
-    apiMock.getMediaServerConfig.mockResolvedValue({ data: { id: 1, name: 'Plex' } })
-    apiMock.getArrConfigStatus.mockResolvedValue({ data: { incompleteConfigs: [] } })
+    apiMock.getAiGenerationStatus.mockResolvedValue({ isActive: false })
+    apiMock.getAIUsage.mockResolvedValue({ budget: { limit: 5, used: 4.6, percentUsed: 92 } })
+    apiMock.getLibraries.mockResolvedValue([{ id: 10, name: 'TV Shows', media_type: 'tv', is_active: true }])
+    apiMock.getLiveFeed.mockResolvedValue({ items: [] })
+    apiMock.getMediaServerConfig.mockResolvedValue({ id: 1, name: 'Plex' })
+    apiMock.getArrConfigStatus.mockResolvedValue({ incompleteConfigs: [] })
   })
 
   it('renders module headers and unresolved counts from live data', async () => {
@@ -161,7 +159,6 @@ describe('CommandCenter action modules', () => {
 
   it('shows dispatch-check pause messaging without implying manual review is blocking the queue', async () => {
     apiMock.getLiveStats.mockResolvedValueOnce({
-      data: {
         ...createLiveStats(),
         queue: {
           pending: 4,
@@ -171,7 +168,6 @@ describe('CommandCenter action modules', () => {
           classificationPaused: true,
           classificationPauseReason: 'dispatch_check_failed',
         },
-      },
     })
 
     const wrapper = await mountCommandCenter()
@@ -183,8 +179,7 @@ describe('CommandCenter action modules', () => {
 
   it('flags stale policy questions in needs attention items', async () => {
     apiMock.getPendingClassifications.mockResolvedValueOnce({
-      data: {
-        items: [{
+      items: [{
           id: 202,
           title: 'The Lost Forest',
           year: 2024,
@@ -197,7 +192,6 @@ describe('CommandCenter action modules', () => {
             options: [{ label: 'Movies', value: 'movies', library_id: 8 }],
           },
         }],
-      },
     })
 
     const wrapper = await mountCommandCenter()
@@ -215,15 +209,13 @@ describe('CommandCenter action modules', () => {
 
   it('shows policy fallback copy when policy_question payload is missing', async () => {
     apiMock.getPendingClassifications.mockResolvedValueOnce({
-      data: {
-        items: [{
+      items: [{
           id: 999,
           title: 'No Prompt Title',
           media_type: 'movie',
           confidence: 40,
           policy_question: null,
         }],
-      },
     })
 
     const wrapper = await mountCommandCenter()
@@ -232,8 +224,8 @@ describe('CommandCenter action modules', () => {
   })
 
   it('renders locked 8-step phase list in processing panel', async () => {
-    apiMock.getClassificationProgress.mockResolvedValueOnce({
-      data: [{
+    apiMock.getClassificationProgress.mockResolvedValueOnce([
+      {
         taskId: 11,
         title: 'Partial Payload Item',
         currentPhase: 'queued',
@@ -242,8 +234,8 @@ describe('CommandCenter action modules', () => {
         progress: 5,
         phaseDuration: 80,
         phases: [{ name: 'queued', status: 'in_progress' }],
-      }],
-    })
+      },
+    ])
 
     const wrapper = await mountCommandCenter()
 
@@ -260,8 +252,8 @@ describe('CommandCenter action modules', () => {
   })
 
   it('renders skipped signal combine state when backend marks it skipped', async () => {
-    apiMock.getClassificationProgress.mockResolvedValueOnce({
-      data: [{
+    apiMock.getClassificationProgress.mockResolvedValueOnce([
+      {
         taskId: 12,
         title: 'Policy Prompt Item',
         currentPhase: 'decision',
@@ -278,8 +270,8 @@ describe('CommandCenter action modules', () => {
           { name: 'ai_analysis', label: 'AI Analysis', status: 'complete', duration_ms: 340 },
           { name: 'decision', label: 'Decision', status: 'in_progress' },
         ],
-      }],
-    })
+      },
+    ])
 
     const wrapper = await mountCommandCenter()
 
@@ -290,10 +282,8 @@ describe('CommandCenter action modules', () => {
 
   it('shows Up Next count from classification pending tasks only', async () => {
     apiMock.getLiveStats.mockResolvedValueOnce({
-      data: {
         ...createLiveStats(),
         queue: { pending: 0, processing: 0, completed: 12, failed: 0 },
-      },
     })
     apiMock.getQueuePending.mockResolvedValueOnce([
       {
@@ -364,8 +354,7 @@ describe('CommandCenter action modules', () => {
 
   it('shows batch routing warnings when confirm all resolves items but routing is skipped', async () => {
     apiMock.getPendingClassifications.mockResolvedValueOnce({
-      data: {
-        items: [
+      items: [
           {
             id: 201,
             title: 'Motorvalley',
@@ -389,7 +378,6 @@ describe('CommandCenter action modules', () => {
             },
           },
         ],
-      },
     })
     apiMock.resolvePendingClassification
       .mockResolvedValueOnce({ data: { routed: false, routingReason: 'missing_tvdb_id' } })
@@ -419,8 +407,7 @@ describe('CommandCenter action modules', () => {
 
   it('retries all needs-attention classifications from footer action', async () => {
     apiMock.getPendingClassifications.mockResolvedValueOnce({
-      data: {
-        items: [
+      items: [
           {
             id: 201,
             title: 'Motorvalley',
@@ -444,7 +431,6 @@ describe('CommandCenter action modules', () => {
             },
           },
         ],
-      },
     })
     apiMock.retryClassifications.mockResolvedValueOnce({
       data: {

@@ -6,6 +6,11 @@
  * See LICENSE file for details.
  */
 
+const {
+    buildImageStatusPayload,
+    resolveProviderOnline
+} = require('./ragStatusPresentation');
+
 function createRagStatusHelpers({
     db,
     ragLogger,
@@ -17,20 +22,6 @@ function createRagStatusHelpers({
     resolveEmbeddingAvailability,
     isEmbeddingProviderConfigured
 }) {
-    const resolveImageStatus = ({ enabled, mode, providerConfigured, stats, config }) => {
-        if (mode === 'disabled' || !enabled) {
-            return 'disabled';
-        }
-
-        if (!providerConfigured) {
-            return 'not_configured';
-        }
-
-        const totalEmbeddings = Number(stats?.total ?? 0);
-        const hasValidatedConfig = !!config?.image_embedding_models_cache_updated_at;
-        return (totalEmbeddings > 0 || hasValidatedConfig) ? 'configured' : 'not_configured';
-    };
-
     const getPgvectorSettings = async () => {
         let pgvectorVariant = null;
         let pgvectorBuild = null;
@@ -151,40 +142,19 @@ function createRagStatusHelpers({
             getPgvectorSettings()
         ]);
 
-        const circuitOk = circuitStatus.state !== 'OPEN';
         const providerConfigured = isEmbeddingProviderConfigured(config);
-        const effectiveProviderOnline = providerConfigured && circuitOk && embeddingAvailability.status === 'available';
-
-        const imageProviderConfigured = imageEmbeddingProvider.isConfigured(imageConfig);
-        const rawImageMode = imageConfig?.image_embedding_provider_mode || 'disabled';
-        const imageProviderMode = rawImageMode === 'local'
-            ? 'separate_local'
-            : (['disabled', 'separate_local', 'cloud'].includes(rawImageMode) ? rawImageMode : 'disabled');
-        const imageWeight = Number(config?.rag_image_weight ?? 0);
-        const imageEnabled = Number.isFinite(imageWeight) && imageWeight > 0;
-        const imageModeDisabled = imageProviderMode === 'disabled';
-        const imageProviderOnline = !imageModeDisabled && imageEnabled && imageProviderConfigured;
-        const imageStatus = resolveImageStatus({
-            enabled: imageEnabled,
-            mode: imageProviderMode,
-            providerConfigured: imageProviderConfigured,
-            stats: imageStats,
-            config: imageConfig
+        const effectiveProviderOnline = resolveProviderOnline({
+            providerConfigured,
+            circuitStatus,
+            embeddingAvailability
         });
-
-        let imageProvider = 'unknown';
-        if (imageModeDisabled) {
-            imageProvider = 'disabled';
-        } else if (imageProviderMode === 'cloud') {
-            imageProvider = imageConfig?.image_embedding_cloud_provider || 'cloud';
-        } else if (imageProviderMode === 'separate_local' || imageProviderMode === 'local') {
-            imageProvider = 'local';
-        } else {
-            imageProvider = imageConfig?.image_embedding_cloud_provider
-                || (imageConfig?.image_embedding_local_host ? 'local' : 'unknown');
-        }
-
-        const imageModel = imageConfig ? imageEmbeddingProvider.getEffectiveModel(imageConfig) : null;
+        const image = buildImageStatusPayload({
+            config,
+            imageConfig,
+            imageStats,
+            imageProviderConfigured: imageEmbeddingProvider.isConfigured(imageConfig),
+            imageEmbeddingProvider
+        });
 
         return {
             enabled: config?.rag_enabled || false,
@@ -197,16 +167,7 @@ function createRagStatusHelpers({
             circuitBreaker: circuitStatus,
             hasMinimumEmbeddings: hasMinimum,
             minimumRequired: config?.rag_min_history_count || 50,
-            image: {
-                enabled: imageModeDisabled ? false : imageEnabled,
-                providerOnline: imageProviderOnline,
-                providerConfigured: imageModeDisabled ? false : imageProviderConfigured,
-                status: imageStatus,
-                providerMode: imageProviderMode,
-                provider: imageProvider,
-                model: imageModel,
-                stats: imageStats
-            },
+            image,
             ...pgvectorSettings
         };
     };
@@ -238,9 +199,11 @@ function createRagStatusHelpers({
 
         const pendingCount = await embeddingService.getPendingCount({ includeImage });
         const providerConfigured = isEmbeddingProviderConfigured(config);
-        const providerOnline = circuitStatus.state !== 'OPEN'
-            && providerConfigured
-            && embeddingAvailability.status === 'available';
+        const providerOnline = resolveProviderOnline({
+            providerConfigured,
+            circuitStatus,
+            embeddingAvailability
+        });
 
         return {
             providerConfigured,
@@ -284,9 +247,11 @@ function createRagStatusHelpers({
 
         const stateHistory = embeddingRouter.getCircuitStateHistory(20);
         const providerConfigured = isEmbeddingProviderConfigured(config);
-        const providerOnline = providerConfigured
-            && circuitBreakerStatus?.state !== 'OPEN'
-            && embeddingAvailability.status === 'available';
+        const providerOnline = resolveProviderOnline({
+            providerConfigured,
+            circuitStatus: circuitBreakerStatus,
+            embeddingAvailability
+        });
 
         return {
             stats: {

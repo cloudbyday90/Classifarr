@@ -42,7 +42,7 @@ describe('SignalCollector', () => {
     describe('SIGNAL_TYPES', () => {
         it('should define all required signal types', () => {
             expect(SIGNAL_TYPES.EXACT_MATCH).toBe('exact_match');
-            expect(SIGNAL_TYPES.LEARNED_PATTERN).toBe('learned_pattern');
+            // LEARNED_PATTERN removed (Phase 7): constant retired alongside Phase 4B injection removal.
             expect(SIGNAL_TYPES.COLLECTION_MATCH).toBe('collection_match');
             expect(SIGNAL_TYPES.KEYWORD_MATCH).toBe('keyword_match');
             expect(SIGNAL_TYPES.GENRE_MATCH).toBe('genre_match');

@@ -11,6 +11,7 @@ import api from '../api'
 vi.mock('../api', () => ({
   default: {
     get: vi.fn(),
+    getData: vi.fn(),
     put: vi.fn(),
     post: vi.fn(),
     getAIConfig: vi.fn(),
@@ -84,8 +85,8 @@ describe('AdvancedTab Issue 275 UI controls', () => {
     api.getAIConfig.mockResolvedValue({ data: issue275Settings })
     api.getRagAdvancedConfig.mockResolvedValue({ data: baseAdvanced })
     api.getRagPromotionReadiness.mockResolvedValue({ data: promotionReadiness })
-    api.get.mockImplementation((url) => {
-      if (url === '/settings/embedding/retry') return Promise.resolve({ data: baseRetry })
+    api.getData.mockImplementation((url) => {
+      if (url === '/settings/embedding/retry') return Promise.resolve(baseRetry)
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
   }
@@ -106,8 +107,8 @@ describe('AdvancedTab Issue 275 UI controls', () => {
     api.getAIConfig.mockResolvedValue({ data: {} })
     api.getRagAdvancedConfig.mockResolvedValue({ data: baseAdvanced })
     api.getRagPromotionReadiness.mockRejectedValue(new Error('404'))
-    api.get.mockImplementation((url) => {
-      if (url === '/settings/embedding/retry') return Promise.resolve({ data: baseRetry })
+    api.getData.mockImplementation((url) => {
+      if (url === '/settings/embedding/retry') return Promise.resolve(baseRetry)
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
 

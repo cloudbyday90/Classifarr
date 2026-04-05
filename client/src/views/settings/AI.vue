@@ -579,14 +579,14 @@ onMounted(async () => {
       }
     }
     
-    if (usageResponse?.data) {
-      usageStats.value = usageResponse.data
+    if (usageResponse) {
+      usageStats.value = usageResponse
     }
-    if (patternConfigResponse?.data) {
-      patternConfig.value = { ...patternConfig.value, ...patternConfigResponse.data }
+    if (patternConfigResponse) {
+      patternConfig.value = { ...patternConfig.value, ...patternConfigResponse }
     }
-    if (costSummaryResponse?.data) {
-      costSummary.value = costSummaryResponse.data
+    if (costSummaryResponse) {
+      costSummary.value = costSummaryResponse
     }
   } catch (error) {
     console.error('Failed to load AI config:', error)

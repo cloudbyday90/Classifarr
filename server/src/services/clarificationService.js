@@ -19,6 +19,7 @@
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const classificationOutcomeService = require('./classificationOutcomeService');
+const classificationEvidenceService = require('./classificationEvidenceService');
 const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
 const {
   buildQuestionContextCacheKey,
@@ -755,27 +756,21 @@ class ClarificationService {
         // Check if this is a tmdb_id that was previously uncertain
         // Create an exact_match pattern so this exact item is remembered
 
-        const patternResult = await client.query(
-          `INSERT INTO learning_patterns 
-           (tmdb_id, media_type, library_id, pattern_type, confidence, metadata, created_by)
-           VALUES ($1, $2, $3, 'exact_match', 100, $4, $5)
-           ON CONFLICT (tmdb_id, media_type, pattern_type) 
-           DO UPDATE SET library_id = $3, confidence = 100, metadata = $4, created_by = $5, updated_at = NOW()
-           RETURNING *`,
-          [
-            metadata.tmdb_id,
-            classification.media_type,
-            selectedLibraryId,
-            JSON.stringify({
-              title: classification.title,
-              resolved_from: 'policy_question',
-              original_question: policyQuestion?.question || null,
-              selected_option: selectedOption,
-            }),
-            resolvedBy
-          ]
-        );
-        learnedPattern = patternResult.rows[0];
+        learnedPattern = await classificationEvidenceService.rememberExactMatch({
+          tmdbId: metadata.tmdb_id,
+          mediaType: classification.media_type,
+          libraryId: selectedLibraryId,
+          payload: {
+            title: classification.title,
+            resolved_from: 'policy_question',
+            original_question: policyQuestion?.question || null,
+            selected_option: selectedOption,
+          },
+          createdBy: resolvedBy,
+          client,
+          payloadColumn: 'metadata',
+          conflictMode: 'update_metadata'
+        });
 
         logger.info('Generated learned pattern from policy resolution', {
           tmdbId: metadata.tmdb_id,
@@ -787,48 +782,13 @@ class ClarificationService {
         // Each confirmation increments usage_count and slowly raises confidence (capped at 95).
         const itemGenres = normalizeMetadataList(metadata.genres);
         if (itemGenres.length > 0) {
-          for (const genre of itemGenres) {
-            const genreLower = genre.toLowerCase();
-            const genrePatternUpdateParams = [
-              classification.media_type,
-              selectedLibraryId,
-              genreLower
-            ];
-            const genrePatternInsertParams = [
-              classification.media_type,
-              selectedLibraryId,
-              genreLower,
-              resolvedBy
-            ];
-            await client.query(
-              'SELECT pg_advisory_xact_lock(hashtext($1::text), $2)',
-              [`genre_pattern:${classification.media_type}:${genreLower}`, selectedLibraryId]
-            );
-            const genrePatternUpdate = await client.query(
-              `UPDATE learning_patterns
-                  SET usage_count = learning_patterns.usage_count + 1,
-                      confidence = LEAST(learning_patterns.confidence + 2, 95),
-                      updated_at = NOW()
-                WHERE pattern_type = 'genre_pattern'
-                  AND media_type = $1
-                  AND library_id = $2
-                  AND pattern_data->>'genre' = $3::text
-                RETURNING id`,
-              genrePatternUpdateParams
-            );
-
-            if ((genrePatternUpdate.rowCount || 0) === 0) {
-              await client.query(
-                `INSERT INTO learning_patterns
-                   (tmdb_id, media_type, library_id, pattern_type, pattern_data,
-                    confidence, usage_count, success_rate, created_by)
-                 VALUES (NULL, $1, $2, 'genre_pattern',
-                         jsonb_build_object('genre', $3::text),
-                         85, 1, 100.00, $4)`,
-                genrePatternInsertParams
-              );
-            }
-          }
+          await classificationEvidenceService.reinforceGenrePatterns({
+            mediaType: classification.media_type,
+            libraryId: selectedLibraryId,
+            genres: itemGenres,
+            createdBy: resolvedBy,
+            client
+          });
           logger.info('Wrote genre patterns from policy resolution', {
             genres: itemGenres,
             libraryId: selectedLibraryId,

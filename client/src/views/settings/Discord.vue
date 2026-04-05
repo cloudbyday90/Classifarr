@@ -342,23 +342,23 @@ const connectionStatus = ref({
 
 onMounted(async () => {
   try {
-    const response = await api.get('/settings/notifications')
-    if (response.data) {
+    const response = await api.getData('/settings/notifications')
+    if (response) {
       config.value = {
-        bot_token: response.data.bot_token || '',
-        channel_id: response.data.channel_id || '',
-        enabled: response.data.enabled !== false,
-        notify_on_classification: response.data.notify_on_classification !== false,
-        notify_on_error: response.data.notify_on_error !== false,
-        notify_on_correction: response.data.notify_on_correction !== false,
-        show_poster: response.data.show_poster !== false,
-        show_confidence: response.data.show_confidence !== false,
-        show_method: response.data.show_method !== false,
-        show_reason: response.data.show_reason !== false,
-        show_metadata: response.data.show_metadata === true,
-        enable_corrections: response.data.enable_corrections !== false,
-        correction_buttons_count: response.data.correction_buttons_count || 3,
-        include_library_dropdown: response.data.include_library_dropdown !== false,
+        bot_token: response.bot_token || '',
+        channel_id: response.channel_id || '',
+        enabled: response.enabled !== false,
+        notify_on_classification: response.notify_on_classification !== false,
+        notify_on_error: response.notify_on_error !== false,
+        notify_on_correction: response.notify_on_correction !== false,
+        show_poster: response.show_poster !== false,
+        show_confidence: response.show_confidence !== false,
+        show_method: response.show_method !== false,
+        show_reason: response.show_reason !== false,
+        show_metadata: response.show_metadata === true,
+        enable_corrections: response.enable_corrections !== false,
+        correction_buttons_count: response.correction_buttons_count || 3,
+        include_library_dropdown: response.include_library_dropdown !== false,
       }
 
       // If we have a bot token and channel, we are configured
@@ -391,18 +391,18 @@ const startEditing = async () => {
 
 const fetchChannelDetails = async (channelId) => {
   try {
-    const response = await api.get(`/settings/discord/channel/${channelId}`);
-    if (response.data) {
-      configuredChannel.value = response.data;
+    const response = await api.getData(`/settings/discord/channel/${channelId}`);
+    if (response) {
+      configuredChannel.value = response;
       
       // Check if we got partial data (backend couldn't fetch full details)
-      if (response.data.partial) {
+      if (response.partial) {
         connectionStatus.value = {
           status: 'warning',
-          error: `Could not fetch current channel details: ${response.data.error || 'Discord client not ready'}. Please test connection to verify.`
+          error: `Could not fetch current channel details: ${response.error || 'Discord client not ready'}. Please test connection to verify.`
         };
       } else {
-        selectedServer.value = response.data.guildId;
+        selectedServer.value = response.guildId;
       }
     }
   } catch (error) {
@@ -424,10 +424,10 @@ const fetchChannelDetails = async (channelId) => {
 const loadServers = async () => {
   loadingServers.value = true
   try {
-    const response = await api.get('/settings/discord/servers', {
+    const response = await api.getData('/settings/discord/servers', {
       params: { bot_token: config.value.bot_token },
     })
-    servers.value = response.data || []
+    servers.value = response || []
   } catch (error) {
     console.error('Failed to load servers:', error)
     connectionStatus.value = {
@@ -446,10 +446,10 @@ const onServerChange = async () => {
   }
 
   try {
-    const response = await api.get(`/settings/discord/channels/${selectedServer.value}`, {
+    const response = await api.getData(`/settings/discord/channels/${selectedServer.value}`, {
       params: { bot_token: config.value.bot_token },
     })
-    channels.value = response.data || []
+    channels.value = response || []
   } catch (error) {
     console.error('Failed to load channels:', error)
     connectionStatus.value = { status: 'error', error: 'Failed to load channels' }

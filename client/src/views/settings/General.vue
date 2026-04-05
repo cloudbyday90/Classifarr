@@ -66,11 +66,11 @@ const status = ref(null)
 
 onMounted(async () => {
   try {
-    const response = await api.get('/settings')
-    if (response.data) {
+    const response = await api.getData('/settings')
+    if (response) {
       settings.value = {
-        app_name: response.data.app_name || 'Classifarr',
-        theme: response.data.theme || 'dark',
+        app_name: response.app_name || 'Classifarr',
+        theme: response.theme || 'dark',
       }
     }
   } catch (error) {

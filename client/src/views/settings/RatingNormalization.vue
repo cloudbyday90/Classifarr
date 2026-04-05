@@ -238,8 +238,7 @@ const progressPercent = computed(() => {
 async function fetchStats() {
   isRefreshing.value = true
   try {
-    const response = await api.get('/rating-normalization/stats')
-    stats.value = response.data
+    stats.value = await api.getData('/rating-normalization/stats')
   } catch (error) {
     console.error('Failed to fetch stats:', error)
     errorMessage.value = 'Failed to fetch statistics'

@@ -73,7 +73,7 @@
           <div class="space-y-3">
             <div v-for="method in stats.byMethod" :key="method.method" class="space-y-1">
               <div class="flex justify-between text-sm">
-                <span class="capitalize">{{ method.method || 'unknown' }}</span>
+                <span>{{ getMethodDisplayName(method.method) }}</span>
                 <span>{{ method.count }} ({{ method.avg_confidence }}%)</span>
               </div>
               <div class="w-full bg-gray-700 rounded-full h-2">
@@ -323,10 +323,7 @@ const {
   isStale
 } = useSWR(
   CACHE_KEYS.STATS_CLASSIFICATION,
-  async () => {
-    const response = await api.getDetailedStats()
-    return response.data
-  },
+  async () => await api.getDetailedStats(),
   { ttl: CACHE_TTL.MEDIUM, initialData: {} }
 )
 
@@ -352,11 +349,39 @@ const getMethodWidth = (count) => {
   return `${(count / totalMethods.value) * 100}%`
 }
 
+const getMethodDisplayName = (method) => {
+  const names = {
+    'exact_match': 'Exact Match',
+    'learned_pattern': 'Learned Pattern',
+    'policy_auto': 'Policy Engine',
+    'policy_engine': 'Policy Engine',
+    'policy_prompt': 'Policy Engine',
+    'policy_confirm': 'Policy Confirmed',
+    'policy_supported_by_related_evidence': 'Related Evidence',
+    'custom_rule': 'Custom Rule',
+    'ai_analysis': 'AI Analysis',
+    'ai_fallback': 'AI Analysis',
+    'ai_verified': 'AI Verified',
+    'source_library': 'Source Library',
+    'manual_correction': 'Manual Correction',
+    'manual_classification': 'Manual',
+    'existing_media': 'Existing Media',
+    'reclassification': 'Reclassified',
+    'rule_match': 'Rule Match',
+    'library_rule': 'Library Rule',
+    'learned_correction': 'Corrected',
+  }
+  return names[method] || method?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown'
+}
+
 const getMethodColor = (method) => {
   const colors = {
     // New standardized names
     'exact_match': 'bg-green-500',
     'learned_pattern': 'bg-blue-500',
+    'policy_auto': 'bg-indigo-500',
+    'policy_confirm': 'bg-blue-400',
+    'policy_supported_by_related_evidence': 'bg-sky-500',
     'custom_rule': 'bg-purple-500',
     'ai_analysis': 'bg-yellow-500',
     'source_library': 'bg-cyan-500',

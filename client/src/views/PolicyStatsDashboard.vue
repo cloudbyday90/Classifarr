@@ -118,22 +118,22 @@ export default {
 
     const loadOverview = async () => {
       const response = await api.getPolicyStatsOverview();
-      overview.value = response.data;
+      overview.value = response;
     };
 
     const loadPolicies = async () => {
       const response = await api.getPolicyStatsList();
-      policiesWithStats.value = response.data;
+      policiesWithStats.value = response;
     };
 
     const loadLiveFeed = async () => {
       const response = await api.getPolicyStatsLiveFeed(20);
-      liveFeed.value = response.data;
+      liveFeed.value = response;
     };
 
     const loadAlerts = async () => {
       const response = await api.getPolicyStatsAlerts();
-      alerts.value = response.data;
+      alerts.value = response;
     };
 
     const showPolicyDetails = (policy) => {

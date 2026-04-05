@@ -27,7 +27,8 @@ jest.mock('../services/embeddingService', () => ({
     getPendingEmbeddings: jest.fn(),
     generateAndStore: jest.fn(),
     generateImageEmbedding: jest.fn(),
-    getProviderAvailabilityStatus: jest.fn()
+    getProviderAvailabilityStatus: jest.fn(),
+    isProviderBusyError: jest.fn()
 }));
 jest.mock('../services/embeddingProvider', () => ({
     warmup: jest.fn()
@@ -69,6 +70,7 @@ describe('ManualBackfillService', () => {
             status: 'available',
             cooldownUntil: null
         });
+        embeddingService.isProviderBusyError.mockReturnValue(false);
 
         // Default: advisory lock acquired (so existing tests pass)
         const mockPoolClient = db._mockPoolClient;
@@ -405,6 +407,42 @@ describe('ManualBackfillService', () => {
         expect(manualBackfillService.state.status).toBe('paused');
         expect(manualBackfillService.state.error).toContain('Embedding provider unavailable until');
         expect(embeddingService.generateAndStore).toHaveBeenCalledTimes(1);
+    });
+
+    it('runBackfill pauses without incrementing processed when provider is busy', async () => {
+        manualBackfillService.state = {
+            status: 'running',
+            processed: 0,
+            total: 1,
+            startTime: Date.now(),
+            eta: null,
+            batchSize: 10,
+            error: null,
+            runId: 115,
+            includeImage: true
+        };
+
+        embeddingService.getPendingEmbeddings.mockResolvedValueOnce([
+            { id: 11, needsText: true, needsImage: false, metadata: {}, title: 'Busy', media_type: 'movie', library_name: 'Movies' }
+        ]);
+        embeddingService.generateAndStore.mockRejectedValueOnce(Object.assign(new Error('PROVIDER_BUSY'), {
+            code: 'EMBEDDING_PROVIDER_BUSY',
+            lockHolder: 'classification',
+            waitMs: 1600,
+            activeModel: 'gemma3:12b'
+        }));
+        embeddingService.isProviderBusyError.mockReturnValue(true);
+        db.query.mockResolvedValue({ rows: [] });
+
+        await manualBackfillService.runBackfill();
+
+        expect(manualBackfillService.state.status).toBe('paused');
+        expect(manualBackfillService.state.processed).toBe(0);
+        expect(manualBackfillService.state.error).toContain('Embedding provider busy held by classification');
+        expect(db.query).toHaveBeenCalledWith(
+            expect.stringContaining("SET status = 'paused'"),
+            [manualBackfillService.state.error, 0, 1, 115]
+        );
     });
 
     it('runBackfill completes when no pending items remain', async () => {

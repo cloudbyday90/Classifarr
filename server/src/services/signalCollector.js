@@ -27,7 +27,7 @@ const SIGNAL_TYPES = {
     EXISTING_MEDIA: 'existing_media',        // Already exists in media server
     CONTENT_ANALYSIS: 'content_analysis',    // Content type analysis result
     EXACT_MATCH: 'exact_match',              // Previously classified TMDB ID
-    LEARNED_PATTERN: 'learned_pattern',      // Pattern from previous corrections
+    // LEARNED_PATTERN retired (Phase 7): signal injection removed in Phase 4B; constant removed in Phase 7.
     COLLECTION_MATCH: 'collection_match',    // Part of same franchise/collection
     KEYWORD_MATCH: 'keyword_match',          // Keyword-based matching
     GENRE_MATCH: 'genre_match',              // Genre-based matching
@@ -342,19 +342,11 @@ class SignalCollector {
             }
         }
 
-        // 8. Learned Pattern Signal
-        if (detectors.checkLearnedPatterns) {
-            const pattern = await detectors.checkLearnedPatterns(metadata);
-            if (pattern && pattern.confidence >= 50) { // Lower threshold - let AI decide
-                const patternLib = libraries.find(l => l.id === pattern.library_id);
-                if (patternLib) {
-                    this.addSignal(SIGNAL_TYPES.LEARNED_PATTERN, {
-                        patternType: pattern.pattern_type,
-                        successRate: pattern.success_rate,
-                    }, pattern.confidence, patternLib);
-                }
-            }
-        }
+        // 8. LEARNED_PATTERN injection removed (Phase 4B).
+        // Related evidence is now scored inside PolicyEngine via scoreRelatedEvidence()
+        // and collected upfront in classification.js via classificationEvidenceService.
+        // The legacy signal injection has been retired — the policy path is now the
+        // single owner of unified related evidence.
 
         // 9. Collection/Franchise Signal
         const franchise = await this.checkFranchiseMembership(metadata.tmdb_id, metadata.media_type);

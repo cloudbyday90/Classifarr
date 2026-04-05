@@ -54,12 +54,13 @@ class QueueReadModel {
             stats.total = stats.pending + stats.processing + stats.completed + stats.failed;
 
             const runtimeState = this.getRuntimeState();
+            const classificationPausedForAi = runtimeState.workerRunning === true && runtimeState.aiAvailable === false;
             stats.aiAvailable = runtimeState.aiAvailable;
             stats.workerRunning = runtimeState.workerRunning;
-            stats.classificationPaused = Boolean(blockers.lookupFailed);
+            stats.classificationPaused = Boolean(blockers.lookupFailed || classificationPausedForAi);
             stats.classificationPauseReason = blockers.lookupFailed
                 ? 'dispatch_check_failed'
-                : null;
+                : (classificationPausedForAi ? 'ai_unavailable' : null);
 
             return stats;
         } catch (error) {

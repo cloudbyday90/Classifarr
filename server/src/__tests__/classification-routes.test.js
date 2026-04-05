@@ -59,6 +59,7 @@ jest.mock('../services/clarificationService');
 jest.mock('../services/classificationOutcomeService');
 jest.mock('../services/reclassificationService');
 jest.mock('../services/patternReinforcementService');
+jest.mock('../services/classificationEvidenceReinforcementService');
 jest.mock('../services/libraryProfileService');
 jest.mock('../services/classificationRetryService');
 

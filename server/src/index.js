@@ -17,13 +17,13 @@
  */
 
 /* eslint-disable no-console */
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
-const swaggerJsdoc = require('swagger-jsdoc');
+const generateSwaggerSpec = require('./utils/swaggerSpec');
 const swaggerUi = require('swagger-ui-express');
 const cookieParser = require('cookie-parser');
 
@@ -119,7 +119,7 @@ const swaggerOptions = {
   apis: ['./src/routes/*.js'],
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+const swaggerSpec = generateSwaggerSpec(swaggerOptions);
 
 // API Routes
 const userRouter = require('./routes/user');

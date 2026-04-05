@@ -8,13 +8,6 @@ import api from '@/api'
 import { useSWR } from '@/composables/useSWR'
 import { CACHE_TTL, POLL_INTERVALS } from '@/constants/cacheKeys'
 
-function unwrapResponse(response, fallback = null) {
-  if (response && typeof response === 'object' && Object.prototype.hasOwnProperty.call(response, 'data')) {
-    return response.data
-  }
-  return response ?? fallback
-}
-
 export function useCommandCenterData({ router }) {
   function getOperationalPollInterval() {
     return isOperationallyActive.value ? POLL_INTERVALS.FAST : POLL_INTERVALS.NORMAL
@@ -26,13 +19,13 @@ export function useCommandCenterData({ router }) {
 
   const { data: liveStatsData, isStale: liveStatsStale, refresh: refreshLiveStats, cacheTimestamp: liveStatsTimestamp } = useSWR(
     'command-center:live-stats',
-    async () => unwrapResponse(await api.getLiveStats(), {}),
+    async () => (await api.getLiveStats()) ?? {},
     { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
   )
 
   const { data: progressData, isStale: progressStale, refresh: refreshProgressData, cacheTimestamp: progressTimestamp } = useSWR(
     'command-center:progress',
-    async () => unwrapResponse(await api.getClassificationProgress(), []),
+    async () => (await api.getClassificationProgress()) ?? [],
     { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
   )
 
@@ -50,43 +43,43 @@ export function useCommandCenterData({ router }) {
 
   const { data: pendingClassificationData, isStale: pendingClassificationsStale, refresh: refreshPendingClassifications, cacheTimestamp: pendingClassificationsTimestamp } = useSWR(
     'command-center:pending-classifications',
-    async () => unwrapResponse(await api.getPendingClassifications(), { items: [] }),
+    async () => (await api.getPendingClassifications()) ?? { items: [] },
     { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
   )
 
   const { data: aiGenerationStatusData, isStale: aiGenerationStatusStale, refresh: refreshAiGenerationStatus, cacheTimestamp: aiGenerationStatusTimestamp } = useSWR(
     'command-center:ai-generation-status',
-    async () => unwrapResponse(await api.getAiGenerationStatus(), { isActive: false }),
+    async () => (await api.getAiGenerationStatus()) ?? { isActive: false },
     { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
   )
 
   const { data: aiUsageData, isStale: aiUsageStale, refresh: refreshAiUsage, cacheTimestamp: aiUsageTimestamp } = useSWR(
     'command-center:ai-usage',
-    async () => unwrapResponse(await api.getAIUsage(), { budget: { limit: null, used: 0, percentUsed: 0 } }),
+    async () => (await api.getAIUsage()) ?? { budget: { limit: null, used: 0, percentUsed: 0 } },
     { ttl: CACHE_TTL.MEDIUM, pollInterval: getSecondaryPollInterval, pollOnlyWhenVisible: true }
   )
 
   const { data: librariesData, refresh: refreshLibraries, cacheTimestamp: librariesTimestamp } = useSWR(
     'command-center:libraries',
-    async () => unwrapResponse(await api.getLibraries(), []),
+    async () => await api.getLibraries() ?? [],
     { ttl: CACHE_TTL.LONG, pollInterval: POLL_INTERVALS.SLOW, pollOnlyWhenVisible: true }
   )
 
   const { data: liveFeedData, isStale: liveFeedStale, refresh: refreshLiveFeed, cacheTimestamp: liveFeedTimestamp } = useSWR(
     'command-center:live-feed',
-    async () => unwrapResponse(await api.getLiveFeed(250), { items: [] }),
+    async () => (await api.getLiveFeed(250)) ?? { items: [] },
     { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
   )
 
   const { data: mediaServerConfigData, isStale: mediaServerConfigStale, refresh: refreshMediaServerConfig, cacheTimestamp: mediaServerConfigTimestamp } = useSWR(
     'command-center:media-server-config',
-    async () => unwrapResponse(await api.getMediaServerConfig(), null),
+    async () => (await api.getMediaServerConfig()) ?? null,
     { ttl: CACHE_TTL.LONG, pollInterval: POLL_INTERVALS.SLOW, pollOnlyWhenVisible: true }
   )
 
   const { data: arrConfigStatusData, isStale: arrConfigStatusStale, refresh: refreshArrConfigStatus, cacheTimestamp: arrConfigStatusTimestamp } = useSWR(
     'command-center:arr-config-status',
-    async () => unwrapResponse(await api.getArrConfigStatus(), { incompleteConfigs: [] }),
+    async () => (await api.getArrConfigStatus()) ?? { incompleteConfigs: [] },
     { ttl: CACHE_TTL.LONG, pollInterval: POLL_INTERVALS.SLOW, pollOnlyWhenVisible: true }
   )
 

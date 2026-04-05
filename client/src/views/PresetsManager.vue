@@ -226,8 +226,7 @@ async function fetchSystemPresets() {
   loadingSystem.value = true
   errorSystem.value = ''
   try {
-    const response = await presetsApi.getSystemPresets()
-    systemPresets.value = response.data
+    systemPresets.value = await presetsApi.getSystemPresets()
   } catch (error) {
     console.error('Error fetching system presets:', error)
     errorSystem.value = error.response?.data?.error || error.message
@@ -241,8 +240,7 @@ async function fetchCustomPresets() {
   loadingCustom.value = true
   errorCustom.value = ''
   try {
-    const response = await presetsApi.getCustomPresets()
-    customPresets.value = response.data
+    customPresets.value = await presetsApi.getCustomPresets()
   } catch (error) {
     console.error('Error fetching custom presets:', error)
     errorCustom.value = error.response?.data?.error || error.message

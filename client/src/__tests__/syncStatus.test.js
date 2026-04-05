@@ -24,7 +24,7 @@ import api from '../api'
 // Mock the API
 vi.mock('../api', () => ({
   default: {
-    get: vi.fn()
+    getData: vi.fn()
   }
 }))
 
@@ -56,12 +56,12 @@ describe('useSyncStatusStore', () => {
       }
     }
     
-    api.get.mockResolvedValueOnce(mockResponse)
+    api.getData.mockResolvedValueOnce(mockResponse.data)
     
     const store = useSyncStatusStore()
     await store.fetchStatus()
     
-    expect(api.get).toHaveBeenCalledWith('/sync/status')
+    expect(api.getData).toHaveBeenCalledWith('/sync/status')
     expect(store.isRunning).toBe(true)
     expect(store.type).toBe('library_sync')
     expect(store.progress).toBe(50)
@@ -70,7 +70,7 @@ describe('useSyncStatusStore', () => {
 
   it('handles fetch errors gracefully', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    api.get.mockRejectedValueOnce(new Error('Network error'))
+    api.getData.mockRejectedValueOnce(new Error('Network error'))
     
     const store = useSyncStatusStore()
     await store.fetchStatus()
@@ -131,7 +131,7 @@ describe('useSyncStatusStore', () => {
     vi.useFakeTimers()
     const store = useSyncStatusStore()
     
-    api.get.mockResolvedValue({ data: { isRunning: false } })
+    api.getData.mockResolvedValue({ isRunning: false })
     
     await store.startPolling()
     
@@ -145,7 +145,7 @@ describe('useSyncStatusStore', () => {
     vi.useFakeTimers()
     const store = useSyncStatusStore()
     
-    api.get.mockResolvedValue({ data: { isRunning: false } })
+    api.getData.mockResolvedValue({ isRunning: false })
     
     store.startPolling()
     
@@ -162,7 +162,7 @@ describe('useSyncStatusStore', () => {
     const store = useSyncStatusStore()
     
     // Initially not running
-    api.get.mockResolvedValueOnce({ data: { isRunning: false } })
+    api.getData.mockResolvedValueOnce({ isRunning: false })
     await store.fetchStatus()
     expect(store.isPollingActive).toBe(false)
     
@@ -171,7 +171,7 @@ describe('useSyncStatusStore', () => {
     expect(store.isPollingActive).toBe(false)
     
     // Sync starts
-    api.get.mockResolvedValueOnce({ data: { isRunning: true, type: 'library_sync' } })
+    api.getData.mockResolvedValueOnce({ isRunning: true, type: 'library_sync' })
     await store.fetchStatus()
     
     // Should switch to active polling
@@ -186,7 +186,7 @@ describe('useSyncStatusStore', () => {
     const store = useSyncStatusStore()
     
     // Initially running
-    api.get.mockResolvedValueOnce({ data: { isRunning: true, type: 'library_sync' } })
+    api.getData.mockResolvedValueOnce({ isRunning: true, type: 'library_sync' })
     await store.fetchStatus()
     
     // Start polling in active mode
@@ -194,7 +194,7 @@ describe('useSyncStatusStore', () => {
     expect(store.isPollingActive).toBe(true)
     
     // Sync finishes
-    api.get.mockResolvedValueOnce({ data: { isRunning: false } })
+    api.getData.mockResolvedValueOnce({ isRunning: false })
     await store.fetchStatus()
     
     // Should switch to idle polling

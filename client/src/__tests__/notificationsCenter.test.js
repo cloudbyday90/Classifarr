@@ -12,6 +12,7 @@ import NotificationsView from '@/views/Notifications.vue'
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
     get: vi.fn(),
+    getData: vi.fn(),
     post: vi.fn(),
     getNotifications: vi.fn(),
     getUnreadNotificationCount: vi.fn(),
@@ -86,9 +87,9 @@ async function createRouterForNotifications(path = '/') {
 describe('Notifications center UI', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    apiMock.getNotifications.mockResolvedValue({ data: buildNotificationsPayload() })
-    apiMock.getUnreadNotificationCount.mockResolvedValue({ data: { unread: 1 } })
-    apiMock.get.mockResolvedValue({ data: { username: 'admin', role: 'admin' } })
+    apiMock.getNotifications.mockResolvedValue(buildNotificationsPayload())
+    apiMock.getUnreadNotificationCount.mockResolvedValue({ unread: 1 })
+    apiMock.getData.mockResolvedValue({ username: 'admin', role: 'admin' })
     apiMock.post.mockResolvedValue({ data: { success: true } })
     apiMock.markAllNotificationsRead.mockResolvedValue({ data: { updated: 1 } })
     apiMock.markNotificationRead.mockResolvedValue({ data: { success: true } })
@@ -229,7 +230,6 @@ describe('Notifications center UI', () => {
   it('persists read-state across remount and keeps open-target routing behavior', async () => {
     let readPersisted = false
     apiMock.getNotifications.mockImplementation(async () => ({
-      data: {
         ...buildNotificationsPayload(),
         data: [{
           id: 902,
@@ -247,11 +247,8 @@ describe('Notifications center UI', () => {
         }],
         unreadCount: readPersisted ? 0 : 1,
         pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
-      },
     }))
-    apiMock.getUnreadNotificationCount.mockImplementation(async () => ({
-      data: { unread: readPersisted ? 0 : 1 },
-    }))
+    apiMock.getUnreadNotificationCount.mockImplementation(async () => ({ unread: readPersisted ? 0 : 1 }))
     apiMock.markNotificationRead.mockImplementation(async () => {
       readPersisted = true
       return { data: { success: true } }
@@ -297,8 +294,7 @@ describe('Notifications center UI', () => {
 
     for (const anchor of anchors) {
       apiMock.getNotifications.mockResolvedValueOnce({
-        data: {
-          data: [{
+        data: [{
             id: Math.floor(Math.random() * 100000),
             type: 'update_available',
             title: `Anchor test ${anchor}`,
@@ -312,9 +308,8 @@ describe('Notifications center UI', () => {
             actionMeta: null,
             dismissible: true,
           }],
-          unreadCount: 1,
-          pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
-        },
+        unreadCount: 1,
+        pagination: { page: 1, limit: 25, total: 1, totalPages: 1 },
       })
 
       const router = await createRouterForNotifications('/notifications')

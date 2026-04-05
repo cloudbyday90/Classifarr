@@ -201,13 +201,13 @@ const connectionStatus = ref({
 
 onMounted(async () => {
   try {
-    const response = await api.get('/settings/ollama')
-    if (response.data) {
+    const response = await api.getData('/settings/ollama')
+    if (response) {
       config.value = {
-        host: response.data.host || 'host.docker.internal',
-        port: response.data.port || 11434,
-        model: response.data.model || 'qwen3:14b',
-        temperature: response.data.temperature || 0.30,
+        host: response.host || 'host.docker.internal',
+        port: response.port || 11434,
+        model: response.model || 'qwen3:14b',
+        temperature: response.temperature || 0.30,
       }
       
       // If we got a response, mark as configured so we show the "Connected" card
@@ -227,13 +227,13 @@ onMounted(async () => {
 const refreshModels = async () => {
   loadingModels.value = true
   try {
-    const response = await api.get('/settings/ollama/models', {
+    const response = await api.getData('/settings/ollama/models', {
       params: {
         host: config.value.host,
         port: config.value.port,
       },
     })
-    models.value = response.data || []
+    models.value = response || []
     
     // Add current model if not in list
     if (config.value.model && !models.value.find(m => m.name === config.value.model)) {

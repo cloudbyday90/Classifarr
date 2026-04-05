@@ -331,8 +331,7 @@ onMounted(() => {
 
 async function loadStats() {
   try {
-    const response = await api.get('/logs/stats')
-    stats.value = response.data
+    stats.value = await api.getData('/logs/stats')
   } catch (err) {
     console.error('Failed to load stats:', err)
   }
@@ -353,10 +352,10 @@ async function loadLogs() {
     if (filters.value.resolved) params.append('resolved', filters.value.resolved)
     if (filters.value.retryAudit) params.append('audit', 'classification_retry')
     
-    const response = await api.get(`/logs?${params}`)
+    const response = await api.getData(`/logs?${params}`)
     
-    logs.value = response.data.logs
-    pagination.value = response.data.pagination
+    logs.value = response.logs
+    pagination.value = response.pagination
   } catch (err) {
     error.value = 'Failed to load logs: ' + (err.response?.data?.error || err.message)
   } finally {
@@ -396,8 +395,7 @@ function changePage(page) {
 
 async function viewDetails(errorId) {
   try {
-    const response = await api.get(`/logs/error/${errorId}`)
-    selectedLog.value = response.data
+    selectedLog.value = await api.getData(`/logs/error/${errorId}`)
     showModal.value = true
     copySuccess.value = false
   } catch (err) {
@@ -413,10 +411,10 @@ function closeModal() {
 
 async function copyBugReport() {
   try {
-    const response = await api.get(`/logs/error/${selectedLog.value.error_id}/report`)
+    const response = await api.getData(`/logs/error/${selectedLog.value.error_id}/report`)
     
     // Improved clipboard copy with fallback for insecure/non-https contexts
-    const text = response.data.report
+    const text = response.report
     
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text)
@@ -468,9 +466,9 @@ async function exportLogs() {
     if (filters.value.module) params.append('module', filters.value.module)
     if (filters.value.retryAudit) params.append('audit', 'classification_retry')
     
-    const response = await api.get(`/logs/export?${params}`)
+    const response = await api.getData(`/logs/export?${params}`)
     
-    const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify(response, null, 2)], { type: 'application/json' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

@@ -158,6 +158,12 @@ const router = createRouter({
           component: () => import('@/views/TuningSuggestionsDashboard.vue'),
         },
         {
+          path: '/evidence',
+          name: 'Evidence',
+          meta: { routeMode: 'primary' },
+          component: () => import('@/views/Evidence.vue'),
+        },
+        {
           path: '/policy-stats',
           name: 'PolicyStats',
           meta: { routeMode: 'primary' },
@@ -190,8 +196,7 @@ router.beforeEach(async (to, from, next) => {
 
   try {
     // Check if user account setup is required
-    const setupResponse = await api.getSetupStatus()
-    const setupData = setupResponse.data
+    const setupData = await api.getSetupStatus()
 
     // If no users exist yet, force the initial admin creation flow.
     // This includes redirecting away from /login, which would otherwise be a dead-end.

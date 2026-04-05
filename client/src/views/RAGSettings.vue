@@ -182,7 +182,7 @@ const loadStatusBar = async () => {
       textOnline: statusRes.data.providerOnline === true,
       imageState,
       imageOnline: statusRes.data.image?.providerOnline === true,
-      heartbeatActive: heartbeatRes.data?.active === true,
+      heartbeatActive: heartbeatRes.active === true,
       queueText: pendingBreakdown.text || 0,
       queueImage: pendingBreakdown.image || 0,
       totalTextEmbeddings: statusRes.data.stats?.total || 0,

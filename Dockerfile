@@ -60,7 +60,10 @@ LABEL org.opencontainers.image.licenses="GPL-3.0"
 
 # Install runtime dependencies including PostgreSQL 17
 # NOTE: pgvector is built from source to ensure PG17 compatibility
-RUN apk add --no-cache \
+# Note: --no-cache is intentionally omitted here so the postgresql-common post-install
+# trigger (pg_versions) can read the APK index without warnings. The cache is cleaned
+# in the same RUN layer so nothing bleeds into the final image.
+RUN apk add \
     tini \
     curl \
     tzdata \
@@ -81,37 +84,37 @@ RUN apk add --no-cache --virtual .build-deps make gcc musl-dev \
     && PG17_CONFIG="/usr/libexec/postgresql17/pg_config" \
     && PKGLIBDIR="$($PG17_CONFIG --pkglibdir)" \
     && if [ "$PGVECTOR_BUILD" = "generic" ]; then \
-        make clean || true; \
+        make clean PG_CONFIG=$PG17_CONFIG || true; \
         make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
         make install PG_CONFIG=$PG17_CONFIG; \
         cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_generic.so"; \
       elif [ "$PGVECTOR_BUILD" = "avx" ]; then \
-        make clean || true; \
+        make clean PG_CONFIG=$PG17_CONFIG || true; \
         make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
         make install PG_CONFIG=$PG17_CONFIG; \
         cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx.so"; \
       elif [ "$PGVECTOR_BUILD" = "avx2" ]; then \
-        make clean || true; \
+        make clean PG_CONFIG=$PG17_CONFIG || true; \
         make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
         make install PG_CONFIG=$PG17_CONFIG; \
         cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx2.so"; \
       else \
-        make clean || true; \
+        make clean PG_CONFIG=$PG17_CONFIG || true; \
         make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
         make install PG_CONFIG=$PG17_CONFIG; \
         cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_generic.so"; \
-        make clean || true; \
+        make clean PG_CONFIG=$PG17_CONFIG || true; \
         make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
         make install PG_CONFIG=$PG17_CONFIG; \
         cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx.so"; \
-        make clean || true; \
+        make clean PG_CONFIG=$PG17_CONFIG || true; \
         make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG17_CONFIG; \
         make install PG_CONFIG=$PG17_CONFIG; \
         cp "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_avx2.so"; \
-        ln -sf "$PKGLIBDIR/vector_generic.so" "$PKGLIBDIR/vector.so"; \
+        cp -f "$PKGLIBDIR/vector_generic.so" "$PKGLIBDIR/vector.so"; \
       fi \
     && cd / && rm -rf pgvector-0.8.0 pgvector.tar.gz \
-    && apk del .build-deps
+    && apk del --no-cache .build-deps
 
 # Remove setuid/setgid binaries for security (CIS Docker Benchmark 4.8)
 # This reduces privilege escalation attack surface

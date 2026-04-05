@@ -159,7 +159,7 @@ export default {
     const loadStats = async () => {
       try {
         const response = await api.getPolicyStatsDetail(props.policy.id);
-        stats.value = response.data;
+        stats.value = response;
       } catch (error) {
         console.error('Failed to load policy stats:', error);
       }
@@ -168,7 +168,7 @@ export default {
     const loadComparison = async () => {
       try {
         const response = await api.getPolicyStatsComparison(props.policy.id);
-        comparison.value = response.data;
+        comparison.value = response;
       } catch (error) {
         console.error('Failed to load comparison:', error);
       }

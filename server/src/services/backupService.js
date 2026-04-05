@@ -21,6 +21,8 @@ const crypto = require('crypto');
 const fs = require('fs').promises;
 const path = require('path');
 const db = require('../config/database');
+const classificationEvidenceService = require('./classificationEvidenceService');
+const classificationEvidenceRepository = require('./classificationEvidenceRepository');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('BackupService');
@@ -208,9 +210,14 @@ class BackupService {
 
       // Optionally include discovered patterns
       if (includePatterns) {
-        const learningPatterns = await db.query('SELECT * FROM learning_patterns ORDER BY id');
-        backup.data.learningPatterns = learningPatterns.rows;
-        backup.meta.learningPatternsCount = learningPatterns.rows.length;
+        const learningPatterns = await classificationEvidenceService.listLegacyPatterns();
+        backup.data.learningPatterns = learningPatterns;
+        backup.meta.learningPatternsCount = learningPatterns.length;
+
+        // Phase 2: also export unified classification_evidence rows
+        const classificationEvidence = await classificationEvidenceRepository.listAll();
+        backup.data.classificationEvidence = classificationEvidence;
+        backup.meta.classificationEvidenceCount = classificationEvidence.length;
       }
 
       logger.info('Backup data collected', backup.meta);
@@ -370,7 +377,9 @@ class BackupService {
         await client.query('DELETE FROM library_labels');
         await client.query('DELETE FROM library_policies');
         await client.query('DELETE FROM auto_learned_preferences');
-        await client.query('DELETE FROM learning_patterns');
+        await classificationEvidenceService.purgeAllLegacyPatterns({ client, actor: 'backup_restore', reason: 'replace_mode' });
+        // Phase 2: also clear the unified evidence table
+        await classificationEvidenceRepository.purgeAll({ client });
         await client.query('DELETE FROM scheduled_tasks');
         await client.query('DELETE FROM path_mappings');
         await client.query('DELETE FROM label_presets');
@@ -571,46 +580,38 @@ class BackupService {
         for (const pattern of backupData.data.learningPatterns) {
           const newLibraryId = libraryIdMap.get(pattern.library_id);
           if (!newLibraryId) continue;
+          await classificationEvidenceService.restoreLegacyPattern({
+            pattern,
+            libraryId: newLibraryId,
+            client
+          });
+        }
+      }
 
-          // Backups may come from older versions. Prefer the canonical columns when present.
-          const mediaType = pattern.media_type || 'unknown';
-          const patternType = pattern.pattern_type || 'exact_match';
-          const patternData = pattern.pattern_data ?? null;
-          const confidence = pattern.confidence ?? 100;
-          const usageCount = pattern.usage_count ?? 0;
-          const successRate = pattern.success_rate ?? 100.0;
-          const metadata = pattern.metadata ?? null;
-          const createdBy = pattern.created_by ?? null;
-          const createdAt = pattern.created_at ?? null;
-          const updatedAt = pattern.updated_at ?? null;
-
-          await client.query(
-            `INSERT INTO learning_patterns
-             (tmdb_id, media_type, library_id, pattern_type, pattern_data, confidence, usage_count, success_rate, metadata, created_by, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11, NOW()), COALESCE($12, NOW()))
-             ON CONFLICT (tmdb_id, media_type, pattern_type) DO UPDATE SET
-               library_id = EXCLUDED.library_id,
-               pattern_data = EXCLUDED.pattern_data,
-               confidence = EXCLUDED.confidence,
-               usage_count = EXCLUDED.usage_count,
-               success_rate = EXCLUDED.success_rate,
-               metadata = EXCLUDED.metadata,
-               created_by = EXCLUDED.created_by,
-               updated_at = NOW()`,
-            [
-              pattern.tmdb_id,
-              mediaType,
-              newLibraryId,
-              patternType,
-              patternData,
-              confidence,
-              usageCount,
-              successRate,
-              metadata,
-              createdBy,
-              createdAt,
-              updatedAt,
-            ]
+      // Phase 2: restore unified classification_evidence rows if included
+      if (backupData.data.classificationEvidence) {
+        for (const row of backupData.data.classificationEvidence) {
+          const newLibraryId = row.library_id != null
+            ? (libraryIdMap.get(row.library_id) ?? null)
+            : null;
+          await classificationEvidenceRepository.upsertEvidence(
+            {
+              scope: row.scope,
+              tmdbId: row.tmdb_id ?? null,
+              mediaType: row.media_type ?? null,
+              libraryId: newLibraryId,
+              evidenceKey: row.evidence_key ?? null,
+              evidenceData: row.evidence_data ?? null,
+              confidence: row.confidence ?? null,
+              usageCount: row.usage_count ?? 0,
+              successRate: row.success_rate ?? null,
+              provenance: row.provenance,
+              status: row.status ?? 'active',
+              createdBy: row.created_by ?? null,
+              sourceClassificationId: row.source_classification_id ?? null,
+              sourceSystem: row.source_system ?? null
+            },
+            { client, conflictMode: 'do_nothing' }
           );
         }
       }
@@ -748,7 +749,8 @@ class BackupService {
           librariesRestored: backupData.data.libraries?.length || 0,
           policiesRestored: backupData.data.libraryPolicies?.length || 0,
           rulesRestored: backupData.data.libraryCustomRules?.length || 0,
-          patternsRestored: backupData.data.learningPatterns?.length || 0
+          patternsRestored: backupData.data.learningPatterns?.length || 0,
+          classificationEvidenceRestored: backupData.data.classificationEvidence?.length || 0
         }
       };
     } catch (error) {

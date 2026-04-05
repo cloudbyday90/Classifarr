@@ -375,9 +375,9 @@ const loadConfig = async () => {
     ])
 
     heartbeat.value = {
-      timeout: heartbeatRes.data.heartbeat_timeout || 30000,
-      interval: heartbeatRes.data.heartbeat_interval || 5000,
-      maxWait: heartbeatRes.data.max_wait_time || 60000
+      timeout: heartbeatRes.heartbeat_timeout || 30000,
+      interval: heartbeatRes.heartbeat_interval || 5000,
+      maxWait: heartbeatRes.max_wait_time || 60000
     }
 
     const configData = backfillConfigRes.data || {}

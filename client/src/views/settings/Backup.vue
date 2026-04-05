@@ -422,7 +422,7 @@ const loadBackups = async () => {
   loadingBackups.value = true
   try {
     const response = await api.listBackups()
-    backups.value = response.data.backups
+    backups.value = response.backups
   } catch (error) {
     toast.error('Failed to load backups: ' + (error.response?.data?.error || error.message))
   } finally {

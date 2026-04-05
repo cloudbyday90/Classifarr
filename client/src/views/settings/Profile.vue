@@ -246,8 +246,7 @@ const changePassword = async () => {
 
 const fetchSessionInfo = async () => {
   try {
-    const { data } = await api.get('/auth/session')
-    session.value = data
+    session.value = await api.getData('/auth/session')
   } catch (error) {
     console.error('Failed to fetch session info:', error)
   }
@@ -261,7 +260,7 @@ const formatDate = (dateString) => {
 // Lifecycle
 onMounted(async () => {
   try {
-    const { data } = await api.get('/user/me')
+    const data = await api.getData('/user/me')
     username.value = data.username
     originalUsername.value = data.username
     userRole.value = data.role

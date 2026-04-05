@@ -183,8 +183,7 @@ const search = async () => {
   lastQuery.value = searchQuery.value
   
   try {
-    const response = await api.searchTMDB(searchQuery.value, searchType.value)
-    results.value = response.data
+    results.value = await api.searchTMDB(searchQuery.value, searchType.value)
     searchedOnce.value = true
   } catch (error) {
     console.error('Search failed:', error)
@@ -215,8 +214,7 @@ const submitRequest = async (item) => {
 
 const loadRecent = async () => {
   try {
-    const response = await api.getRecentManualRequests()
-    recentRequests.value = response.data
+    recentRequests.value = await api.getRecentManualRequests()
   } catch (error) {
     console.error('Failed to load recent requests:', error)
   }

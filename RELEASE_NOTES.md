@@ -1,6 +1,46 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.45.2-beta`. Package files use semver-safe versions such as `0.45.2-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.45.3-beta`. Package files use semver-safe versions such as `0.45.3-beta`.
+
+## v0.45.3-beta
+**Title: Learned classification evidence is unified and now has its own admin view**
+
+> [!IMPORTANT]
+> This release adds the `classification_evidence` table. The migration runs automatically on startup — no manual steps required.
+
+### 🎉 What You'll Notice
+- **A new Evidence screen is available to admins** — browse, filter, diagnose, and manage the classification evidence Classifarr has learned over time, all from one place.
+- **Classification learning is more consistent** — all learned patterns now flow through one unified evidence store, so scoring and reinforcement behave the same way regardless of how a pattern was discovered.
+- **Embedding and classification work respects AI availability** — when an AI provider is unavailable or busy, classification tasks pause cleanly instead of queuing up failed attempts.
+
+### 📊 Quick Visual
+```text
+v0.45.3-beta Snapshot
+Evidence visibility     [██████████] new admin screen: search, filter, diagnose, purge
+Learning consistency    [██████████] unified evidence store for all learned patterns
+AI-gate reliability     [█████████░] clean pause during AI cooldowns, no queued failures
+Code health             [█████████░] 35 lint warnings resolved, 0 npm vulnerabilities
+```
+
+### ✨ Highlights
+- **Evidence admin screen** — operators can see what Classifarr has learned, filter by library or scope, run diagnostics, and trigger decay/promote/purge operations directly from the UI.
+- **Classification evidence unified** — `learning_patterns` and `discovered_patterns` are backfilled into a single `classification_evidence` table, making pattern scoring and reinforcement deterministic and auditable.
+- **AI and embedding resilience** — embedding lock-contention is handled as deferred `PROVIDER_BUSY` behavior, and classification tasks no longer dequeue during AI cooldown windows.
+
+### 🔧 Reliability Improvements
+- PolicyEngine no longer short-circuits on learned patterns; all evidence is now scored through `scoreRelatedEvidence()` for consistent results.
+- Backup and restore now include `classification_evidence` rows with automatic library ID remapping.
+- Evidence summaries flow into AI prompts and clarification question payloads for better classification context.
+- 35 ESLint warnings eliminated and 0 npm vulnerabilities confirmed across server and client.
+
+### 👥 Who This Helps
+- **End users:** classification learns more consistently and is less likely to give divergent results over time.
+- **Operators/admins:** new Evidence screen gives direct visibility into what Classifarr has learned and tools to correct or tune that learning.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.45.2-beta
 **Title: Maintenance is quieter, upgrades are cleaner, and release safety is stronger**

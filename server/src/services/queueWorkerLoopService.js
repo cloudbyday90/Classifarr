@@ -15,12 +15,15 @@ class QueueWorkerLoopService {
             processing: 0,
             lastRecoveryCheck: 0,
             fullConcurrencyStartedAt: 0,
+            aiAvailable: true,
+            lastAiAvailabilityProbeAt: 0,
         }));
         this.setRunning = deps.setRunning || (() => {});
         this.incrementProcessing = deps.incrementProcessing || (() => {});
         this.decrementProcessing = deps.decrementProcessing || (() => {});
         this.setLastRecoveryCheck = deps.setLastRecoveryCheck || (() => {});
         this.setFullConcurrencyStartedAt = deps.setFullConcurrencyStartedAt || (() => {});
+        this.setLastAiAvailabilityProbeAt = deps.setLastAiAvailabilityProbeAt || (() => {});
         this.resetStaleProcessingTasks = deps.resetStaleProcessingTasks || (async () => 0);
         this.backgroundDrainIfBloated = deps.backgroundDrainIfBloated || (async () => {});
         this.hasClassificationDispatchBlocker = deps.hasClassificationDispatchBlocker || (async () => ({
@@ -35,6 +38,7 @@ class QueueWorkerLoopService {
         this.maxConcurrent = deps.maxConcurrent || 5;
         this.visibilityRecoveryIntervalMs = deps.visibilityRecoveryIntervalMs || 60_000;
         this.stallWarnIntervalMs = deps.stallWarnIntervalMs || 30_000;
+        this.aiAvailabilityProbeIntervalMs = deps.aiAvailabilityProbeIntervalMs || 30_000;
         this.wait = deps.wait || ((ms) => new Promise(resolve => setTimeout(resolve, ms)));
         this.yieldToEventLoop = deps.yieldToEventLoop || (() => new Promise(resolve => setImmediate(resolve)));
     }
@@ -85,8 +89,24 @@ class QueueWorkerLoopService {
         }
 
         const blockers = await this.hasClassificationDispatchBlocker();
+        let excludeClassification = blockers.lookupFailed || blockers.hasProcessingClassification;
+        let aiReadiness = null;
+
+        if (!excludeClassification && state.aiAvailable === false) {
+            const now = Date.now();
+            const shouldProbe = (now - (state.lastAiAvailabilityProbeAt || 0)) >= this.aiAvailabilityProbeIntervalMs;
+
+            if (shouldProbe) {
+                this.setLastAiAvailabilityProbeAt(now);
+                aiReadiness = await this.checkAIAvailability();
+                excludeClassification = !aiReadiness;
+            } else {
+                excludeClassification = true;
+            }
+        }
+
         const task = await this.dequeue({
-            excludeClassification: blockers.lookupFailed || blockers.hasProcessingClassification
+            excludeClassification
         });
 
         if (!task) {
@@ -94,7 +114,7 @@ class QueueWorkerLoopService {
         }
 
         if (task.task_type === 'classification') {
-            const aiReady = await this.checkAIAvailability();
+            const aiReady = aiReadiness ?? await this.checkAIAvailability();
             if (!aiReady) {
                 await this.requeueTask(task.id);
                 await this.wait(this.pollIntervalMs);

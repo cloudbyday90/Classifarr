@@ -152,7 +152,7 @@ class SchedulerService {
                 await this.runRagBackfill();
             }
         } catch (error) {
-            logger.error('Error checking RAG backfill schedule', { error: error.message });
+            logger.error('Error checking RAG backfill schedule', { error: error.message }, { error });
         }
     }
 
@@ -179,25 +179,36 @@ class SchedulerService {
             let processed = 0;
             let failed = 0;
             let providerUnavailable = false;
+            let providerBusy = false;
 
             for (const row of pending) {
                 try {
                     const metadata = row.metadata || {};
+                    let generationResult = null;
                     if (row.needsText) {
-                        await embeddingService.generateAndStore(row.id, {
+                        generationResult = await embeddingService.generateAndStore(row.id, {
                             ...metadata,
                             title: row.title,
                             media_type: row.media_type,
                             library_name: row.library_name
                         });
                     } else if (row.needsImage) {
-                        await embeddingService.generateImageEmbedding(row.id, {
+                        generationResult = await embeddingService.generateImageEmbedding(row.id, {
                             ...metadata,
                             title: row.title,
                             media_type: row.media_type,
                             library_name: row.library_name
                         });
                     }
+
+                    if (!generationResult) {
+                        logger.debug('RAG backfill item was not stored; leaving it pending', {
+                            id: row.id,
+                            title: row.title
+                        });
+                        continue;
+                    }
+
                     processed++;
                 } catch (error) {
                     if (error.message === 'PROVIDER_OFFLINE') {
@@ -205,6 +216,17 @@ class SchedulerService {
                         const availability = embeddingService.getProviderAvailabilityStatus();
                         logger.debug('RAG backfill batch paused: embedding provider unavailable', {
                             retryAt: availability.cooldownUntil
+                        });
+                        break;
+                    }
+
+                    if (embeddingService.isProviderBusyError(error)) {
+                        providerBusy = true;
+                        logger.debug('RAG backfill batch yielded to active provider traffic', {
+                            id: row.id,
+                            lockHolder: error.lockHolder || null,
+                            waitMs: error.waitMs || null,
+                            activeModel: error.activeModel || null
                         });
                         break;
                     }
@@ -219,11 +241,11 @@ class SchedulerService {
                 [processed, runId]
             );
 
-            if (processed > 0 || providerUnavailable) {
-                logger.info('RAG backfill batch complete', { processed, failed });
+            if (processed > 0 || providerUnavailable || providerBusy) {
+                logger.info('RAG backfill batch complete', { processed, failed, providerBusy });
             }
         } catch (error) {
-            logger.error('RAG backfill failed', { error: error.message });
+            logger.error('RAG backfill failed', { error: error.message }, { error });
             if (runId) {
                 await db.query(
                     `UPDATE backfill_runs SET status = 'failed', completed_at = NOW(), error = $1 WHERE id = $2`,

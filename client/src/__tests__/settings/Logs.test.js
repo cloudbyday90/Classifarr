@@ -13,7 +13,7 @@ import api from '@/api'
 
 vi.mock('@/api', () => ({
   default: {
-    get: vi.fn(),
+    getData: vi.fn(),
     post: vi.fn(),
     delete: vi.fn()
   }
@@ -44,39 +44,37 @@ describe('Settings Logs - retry audit trail filter', () => {
     vi.clearAllMocks()
     logUrls = []
 
-    api.get.mockImplementation((url) => {
+    api.getData.mockImplementation((url) => {
       if (url === '/logs/stats') {
-        return Promise.resolve({ data: baseStats })
+        return Promise.resolve(baseStats)
       }
 
       if (typeof url === 'string' && url.startsWith('/logs?')) {
         logUrls.push(url)
         return Promise.resolve({
-          data: {
-            logs: [
-              {
-                id: 11,
-                error_id: 'err-11',
-                level: 'INFO',
-                module: 'ClassificationRetryService',
-                message: 'Classification retry queued',
-                created_at: '2026-02-26T12:00:00.000Z',
-                resolved: false,
-                result: 'queued',
-                reason_code: 'queued',
-                correlation_id: 'corr-11'
-              }
-            ],
-            pagination: defaultPagination
-          }
+          logs: [
+            {
+              id: 11,
+              error_id: 'err-11',
+              level: 'INFO',
+              module: 'ClassificationRetryService',
+              message: 'Classification retry queued',
+              created_at: '2026-02-26T12:00:00.000Z',
+              resolved: false,
+              result: 'queued',
+              reason_code: 'queued',
+              correlation_id: 'corr-11'
+            }
+          ],
+          pagination: defaultPagination
         })
       }
 
       if (typeof url === 'string' && url.startsWith('/logs/export?')) {
-        return Promise.resolve({ data: [] })
+        return Promise.resolve([])
       }
 
-      return Promise.resolve({ data: {} })
+      return Promise.resolve({})
     })
   })
 

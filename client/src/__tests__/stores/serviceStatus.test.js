@@ -65,23 +65,21 @@ describe('useServiceStatusStore', () => {
   describe('fetchServiceStatus', () => {
     it('fetches and stores service status', async () => {
       const mockHealthData = {
-        data: {
-          database: 'connected',
-          mediaServer: 'connected',
-          radarr: 'not_configured',
-          sonarr: 'not_configured',
-          ollama: 'configured',
-          imageEmbeddings: 'degraded',
-          tmdb: 'configured',
-          omdb: 'not_configured',
-          discordBot: 'not_configured',
-          tavily: 'not_configured',
-          queueWorker: 'healthy',
-          details: {
-            database: { error: null },
-            mediaServer: { error: null },
-            imageEmbeddings: { readiness: 'warming_up', error: null }
-          }
+        database: 'connected',
+        mediaServer: 'connected',
+        radarr: 'not_configured',
+        sonarr: 'not_configured',
+        ollama: 'configured',
+        imageEmbeddings: 'degraded',
+        tmdb: 'configured',
+        omdb: 'not_configured',
+        discordBot: 'not_configured',
+        tavily: 'not_configured',
+        queueWorker: 'healthy',
+        details: {
+          database: { error: null },
+          mediaServer: { error: null },
+          imageEmbeddings: { readiness: 'warming_up', error: null }
         }
       }
 
@@ -112,7 +110,7 @@ describe('useServiceStatusStore', () => {
       expect(store.isLoading).toBe(true)
 
       // Cleanup - resolve the promise to avoid timeout
-      resolvePromise({ data: { database: 'connected' } })
+      resolvePromise({ database: 'connected' })
       await promise
     })
 
@@ -250,9 +248,7 @@ describe('useServiceStatusStore', () => {
   describe('Auto-refresh', () => {
     it('starts auto-refresh and fetches immediately', async () => {
       api.getSystemHealth.mockResolvedValue({
-        data: {
-          database: 'connected'
-        }
+        database: 'connected'
       })
 
       const store = useServiceStatusStore()
@@ -267,9 +263,7 @@ describe('useServiceStatusStore', () => {
 
     it('refreshes every 30 seconds', async () => {
       api.getSystemHealth.mockResolvedValue({
-        data: {
-          database: 'connected'
-        }
+        database: 'connected'
       })
 
       const store = useServiceStatusStore()
@@ -287,9 +281,7 @@ describe('useServiceStatusStore', () => {
 
     it('does not start multiple intervals', async () => {
       api.getSystemHealth.mockResolvedValue({
-        data: {
-          database: 'connected'
-        }
+        database: 'connected'
       })
 
       const store = useServiceStatusStore()
@@ -307,9 +299,7 @@ describe('useServiceStatusStore', () => {
 
     it('stops auto-refresh correctly', async () => {
       api.getSystemHealth.mockResolvedValue({
-        data: {
-          database: 'connected'
-        }
+        database: 'connected'
       })
 
       const store = useServiceStatusStore()

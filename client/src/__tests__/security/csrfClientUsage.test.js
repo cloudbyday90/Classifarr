@@ -17,6 +17,7 @@ const srcRoot = path.resolve(__dirname, '../..')
 const allowedDirectAxiosFiles = new Set([
   // Centralized API client is the only place direct axios usage is allowed.
   'api/index.js',
+  'api/core.js',
 ])
 
 function collectSourceFiles(dir, acc = []) {

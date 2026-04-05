@@ -243,8 +243,8 @@ const loadData = async () => {
       api.getLibraries(),
       api.getSettings()
     ])
-    tasks.value = tasksRes.data
-    libraries.value = libsRes.data
+    tasks.value = tasksRes
+    libraries.value = libsRes
     
     if (settingsRes.data && settingsRes.data.pattern_sync_frequency) {
       patternSyncFrequency.value = settingsRes.data.pattern_sync_frequency

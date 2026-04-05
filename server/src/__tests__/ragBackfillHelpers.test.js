@@ -197,4 +197,24 @@ describe('ragBackfillHelpers', () => {
             maxDuration: 7200000
         });
     });
+
+    test('updateBackfillConfig rejects invalid numeric values with a structured validation error', async () => {
+        const helpers = buildHelpers();
+
+        await expect(helpers.updateBackfillConfig({
+            idleThreshold: 0,
+            idleBatchSize: 'bad',
+            scheduledBatchSize: -5,
+            scheduledMaxDuration: 'NaN'
+        })).rejects.toMatchObject({
+            status: 400,
+            message: 'Validation failed',
+            details: [
+                'idle_threshold must be a positive integer',
+                'idle_batch_size must be a positive integer',
+                'scheduled_backfill_batch_size must be a positive integer',
+                'scheduled_backfill_max_duration must be a positive integer'
+            ]
+        });
+    });
 });

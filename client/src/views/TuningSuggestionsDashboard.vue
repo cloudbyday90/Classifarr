@@ -180,7 +180,7 @@ async function loadSuggestions() {
   try {
     loading.value = true;
     const response = await api.getSuggestions(statusFilter.value, policyFilter.value);
-    suggestions.value = response.data;
+    suggestions.value = response;
   } catch (error) {
     console.error('Failed to load suggestions:', error);
   } finally {
@@ -190,8 +190,7 @@ async function loadSuggestions() {
 
 async function loadPolicies() {
   try {
-    const response = await api.get('/policies');
-    policies.value = response.data;
+    policies.value = await api.getData('/policies');
   } catch (error) {
     console.error('Failed to load policies:', error);
   }
@@ -233,7 +232,7 @@ async function confirmReject(reason) {
 async function showDetails(suggestion) {
   try {
     const response = await api.getSuggestion(suggestion.id);
-    selectedSuggestion.value = response.data;
+    selectedSuggestion.value = response;
   } catch (error) {
     console.error('Failed to load suggestion details:', error);
   }

@@ -45,6 +45,25 @@ class EmbeddingService {
         return error;
     }
 
+    createProviderBusyError(upstreamError = null) {
+        const error = new Error('PROVIDER_BUSY');
+        error.code = 'EMBEDDING_PROVIDER_BUSY';
+        error.lockHolder = upstreamError?.lockHolder || upstreamError?.lockedBy || null;
+        error.waitMs = Number.isFinite(Number(upstreamError?.waitMs)) ? Number(upstreamError.waitMs) : null;
+        error.activeModel = upstreamError?.activeModel || null;
+        error.preemptRequested = upstreamError?.preemptRequested === true;
+        error.lastError = upstreamError?.message || null;
+        return error;
+    }
+
+    isProviderBusyError(error) {
+        const message = error?.message || '';
+        return error?.code === 'EMBEDDING_PROVIDER_BUSY' ||
+            error?.code === 'PROVIDER_LOCK_TIMEOUT' ||
+            message === 'PROVIDER_BUSY' ||
+            message.includes('[ProviderLock] Timeout waiting for lock');
+    }
+
     isProviderConnectionError(error) {
         const message = error?.message || '';
         const code = error?.code || '';
@@ -399,11 +418,23 @@ class EmbeddingService {
                 throw this.createProviderOfflineError(this.getProviderAvailabilityStatus());
             }
 
+            if (this.isProviderBusyError(error)) {
+                logger.warn('Embedding generation deferred: provider busy', {
+                    classificationId,
+                    error: error.message,
+                    lockHolder: error.lockHolder || error.lockedBy || null,
+                    waitMs: Number.isFinite(Number(error.waitMs)) ? Number(error.waitMs) : null,
+                    activeModel: error.activeModel || null
+                }, { error });
+
+                throw this.createProviderBusyError(error);
+            }
+
             // For other errors, log normally
             logger.error('Failed to generate embedding', {
                 classificationId,
                 error: error.message
-            });
+            }, { error });
 
             return null;
         }

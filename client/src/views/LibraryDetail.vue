@@ -412,8 +412,7 @@ const rules = ref([])
 
 onMounted(async () => {
   try {
-    const response = await api.getLibrary(route.params.id)
-    library.value = response.data
+    library.value = await api.getLibrary(route.params.id)
     
     // Load existing settings
     if (library.value.media_type === 'movie' && library.value.radarr_settings) {
@@ -429,8 +428,7 @@ onMounted(async () => {
     }
     
     // Load rules
-    const rulesResponse = await api.getLibraryRules(route.params.id)
-    rules.value = rulesResponse.data
+    rules.value = await api.getLibraryRules(route.params.id)
 
     // Load ARR options if arr_id is set
     if (library.value.arr_id) {
@@ -474,8 +472,7 @@ const applySuggestion = async (suggestion) => {
   try {
     await api.addLibraryRule(route.params.id, suggestion)
     // Reload rules and remove applied suggestion
-    const rulesResponse = await api.getLibraryRules(route.params.id)
-    rules.value = rulesResponse.data
+    rules.value = await api.getLibraryRules(route.params.id)
     suggestions.value = suggestions.value.filter(s => s !== suggestion)
     toast.success('Rule applied')
   } catch (error) {
@@ -501,8 +498,7 @@ const deleteRule = async (rule) => {
 const loadArrOptions = async () => {
   loadingArrOptions.value = true
   try {
-    const response = await api.getLibraryArrOptions(library.value.id)
-    arrOptions.value = response.data
+    arrOptions.value = await api.getLibraryArrOptions(library.value.id)
   } catch (error) {
     console.error('Failed to load ARR options:', error)
     toast.error('Failed to load ARR options')
@@ -561,15 +557,15 @@ const pollSyncStatus = async () => {
   
   if (isSyncing.value) {
     try {
-      const res = await api.getLibrary(library.value.id)
-      library.value = res.data
+      const updatedLibrary = await api.getLibrary(library.value.id)
+      library.value = updatedLibrary
       
       // Continue polling if still running
-      if (res.data.sync_status?.status === 'running') {
+      if (updatedLibrary.sync_status?.status === 'running') {
         setTimeout(pollSyncStatus, 2000)
       } else {
         syncing.value = false // Reset manual flag
-        if (res.data.item_count > 0) {
+        if (updatedLibrary.item_count > 0) {
            toast.success('Library sync complete')
         }
       }

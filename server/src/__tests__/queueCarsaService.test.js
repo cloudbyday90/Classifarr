@@ -73,4 +73,39 @@ describe('QueueCarsaService', () => {
         expect(scheduler.runGapAnalysis).toHaveBeenCalledTimes(1);
         expect(syncStatus.stop).toHaveBeenCalledTimes(1);
     });
+
+    it('uses the evidence service during cleanup instead of deleting learning patterns directly', async () => {
+        const evidenceService = {
+            purgeAllLegacyPatterns: jest.fn().mockResolvedValue({ deleted: 3, rows: [{ id: 1 }, { id: 2 }, { id: 3 }] })
+        };
+        const db = {
+            query: jest.fn().mockResolvedValue({ rowCount: 2, rows: [{ id: 1 }, { id: 2 }] }),
+            withTransaction: jest.fn((fn) => fn(db))
+        };
+        const syncStatus = {
+            updateProgress: jest.fn()
+        };
+
+        const service = new QueueCarsaService({
+            db,
+            logger: {
+                info: jest.fn(),
+                warn: jest.fn(),
+                error: jest.fn(),
+                debug: jest.fn(),
+            },
+            syncStatus,
+            evidenceService
+        });
+
+        const result = await service.performClearAndResyncCleanup();
+
+        expect(evidenceService.purgeAllLegacyPatterns).toHaveBeenCalledWith({
+            client: db,
+            actor: 'carsa',
+            reason: 'clear_and_resync'
+        });
+        expect(result.patternsResult.deleted).toBe(3);
+        expect(db.query).not.toHaveBeenCalledWith('DELETE FROM learning_patterns RETURNING id');
+    });
 });

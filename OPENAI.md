@@ -94,9 +94,13 @@ Errors are learning opportunities. When something breaks:
 
 - Backend dev: `npm --prefix server run dev`
 - Backend tests: `npm --prefix server test`
+- Backend tests (unit only): `npm --prefix server run test:unit`
+- Backend tests (targeted): `cd server && npx jest --testPathPatterns="<pattern>" --no-coverage`
 - Frontend dev: `npm --prefix client run dev`
 - Frontend tests: `npm --prefix client test`
 - Frontend build: `npm --prefix client run build`
+
+> **Jest note:** Use `--testPathPatterns` (plural). The singular `--testPathPattern` is deprecated in Jest 30+ and will print a warning. Always `cd server` before running `npx jest` directly.
 
 ## Notes
 

@@ -291,7 +291,7 @@ const loadApiKeys = async () => {
   loading.value = true
   try {
     const response = await api.getApiKeys()
-    apiKeys.value = response.data
+    apiKeys.value = response
   } catch (err) {
     console.error('Failed to load API keys:', err)
     error.value = 'Failed to load API keys'
@@ -321,7 +321,7 @@ const createKey = async () => {
 const revealKey = async (key) => {
   try {
     const response = await api.revealApiKey(key.id)
-    revealedKey.value = { ...response.data, justCreated: false }
+    revealedKey.value = { ...response, justCreated: false }
     showKeyDialog.value = true
   } catch (err) {
     console.error('Failed to reveal API key:', err)

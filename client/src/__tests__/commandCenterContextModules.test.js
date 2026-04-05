@@ -89,19 +89,18 @@ describe('CommandCenter context modules', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
-    apiMock.getLiveStats.mockResolvedValue({ data: createLiveStats() })
-    apiMock.getClassificationProgress.mockResolvedValue({ data: [] })
+    apiMock.getLiveStats.mockResolvedValue(createLiveStats())
+    apiMock.getClassificationProgress.mockResolvedValue([])
     apiMock.getQueuePending.mockResolvedValue([])
     apiMock.getQueueFailed.mockResolvedValue([])
-    apiMock.getPendingClassifications.mockResolvedValue({ data: { items: [] } })
-    apiMock.getAiGenerationStatus.mockResolvedValue({ data: { isActive: false } })
-    apiMock.getAIUsage.mockResolvedValue({ data: { budget: { limit: 5, used: 2.1, percentUsed: 42 } } })
-    apiMock.getLibraries.mockResolvedValue({
-      data: [{ id: 10, name: 'TV Shows', media_type: 'tv', is_active: true, item_count: 2104 }],
-    })
+    apiMock.getPendingClassifications.mockResolvedValue({ items: [] })
+    apiMock.getAiGenerationStatus.mockResolvedValue({ isActive: false })
+    apiMock.getAIUsage.mockResolvedValue({ budget: { limit: 5, used: 2.1, percentUsed: 42 } })
+    apiMock.getLibraries.mockResolvedValue([
+      { id: 10, name: 'TV Shows', media_type: 'tv', is_active: true, item_count: 2104 },
+    ])
     apiMock.getLiveFeed.mockResolvedValue({
-      data: {
-        items: [
+      items: [
           { id: 1, title: 'Toy Story 4', mediaType: 'movie', method: 'policy_engine', confidence: 98, library: 'Kids Movies', timestamp: new Date().toISOString() },
           { id: 2, title: 'Breaking Bad S01', mediaType: 'tv', method: 'policy_engine', confidence: 100, library: 'TV Shows', timestamp: new Date().toISOString() },
           { id: 3, title: 'John Wick 4', mediaType: 'movie', method: 'policy_engine', confidence: 94, library: '4K Movies', timestamp: new Date().toISOString() },
@@ -109,13 +108,12 @@ describe('CommandCenter context modules', () => {
           { id: 5, title: 'Oppenheimer', mediaType: 'movie', method: 'policy_engine', confidence: 92, library: '4K Movies', timestamp: new Date().toISOString() },
           { id: 6, title: 'Not Displayed', mediaType: 'movie', method: 'policy_engine', confidence: 90, library: 'Movies', timestamp: new Date().toISOString() },
         ],
-      },
     })
-    apiMock.getMediaServerConfig.mockResolvedValue({ data: { id: 1, name: 'Plex' } })
-    apiMock.getArrConfigStatus.mockResolvedValue({ data: { incompleteConfigs: [] } })
-    apiMock.searchTMDB.mockResolvedValue({
-      data: [{ id: 27205, media_type: 'movie', title: 'Inception', release_date: '2010-07-16' }],
-    })
+    apiMock.getMediaServerConfig.mockResolvedValue({ id: 1, name: 'Plex' })
+    apiMock.getArrConfigStatus.mockResolvedValue({ incompleteConfigs: [] })
+    apiMock.searchTMDB.mockResolvedValue([
+      { id: 27205, media_type: 'movie', title: 'Inception', release_date: '2010-07-16' },
+    ])
     apiMock.submitManualRequest.mockResolvedValue({ data: { success: true, queued: true } })
     apiMock.syncLibrary.mockResolvedValue({ data: { success: true } })
   })
@@ -150,9 +148,7 @@ describe('CommandCenter context modules', () => {
   it('renders relative time from live feed data', async () => {
     const oldTimestamp = new Date(Date.now() - 60 * 60 * 1000).toISOString()
     apiMock.getLiveFeed.mockResolvedValueOnce({
-      data: {
-        items: [{ id: 81, title: 'Old Item', mediaType: 'movie', method: 'policy_engine', confidence: 90, library: 'Movies', timestamp: oldTimestamp }],
-      },
+      items: [{ id: 81, title: 'Old Item', mediaType: 'movie', method: 'policy_engine', confidence: 90, library: 'Movies', timestamp: oldTimestamp }],
     })
 
     const { wrapper } = await mountCommandCenter()
@@ -248,11 +244,9 @@ describe('CommandCenter context modules', () => {
   })
 
   it('shows configure media server CTA when setup is incomplete', async () => {
-    apiMock.getMediaServerConfig.mockResolvedValueOnce({ data: null })
+    apiMock.getMediaServerConfig.mockResolvedValueOnce(null)
     apiMock.getArrConfigStatus.mockResolvedValueOnce({
-      data: {
-        incompleteConfigs: [{ type: 'Radarr', id: 1, missingField: 'quality_profile_id' }],
-      },
+      incompleteConfigs: [{ type: 'Radarr', id: 1, missingField: 'quality_profile_id' }],
     })
 
     const { wrapper } = await mountCommandCenter()

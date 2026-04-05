@@ -163,6 +163,7 @@ class ScheduledBackfillService {
                 let processed = 0;
                 const includeImage = await embeddingService.shouldIncludeImageEmbeddings();
                 let providerUnavailable = false;
+                let providerBusy = false;
 
                 logger.info('Starting scheduled backfill', {
                     batchSize: this.schedule.batchSize,
@@ -201,21 +202,31 @@ class ScheduledBackfillService {
                             }
 
                             try {
+                                let generationResult = null;
                                 if (item.needsText) {
-                                    await embeddingService.generateAndStore(item.id, {
+                                    generationResult = await embeddingService.generateAndStore(item.id, {
                                         ...item.metadata,
                                         title: item.title,
                                         media_type: item.media_type,
                                         library_name: item.library_name
                                     });
                                 } else if (item.needsImage) {
-                                    await embeddingService.generateImageEmbedding(item.id, {
+                                    generationResult = await embeddingService.generateImageEmbedding(item.id, {
                                         ...item.metadata,
                                         title: item.title,
                                         media_type: item.media_type,
                                         library_name: item.library_name
                                     });
                                 }
+
+                                if (!generationResult) {
+                                    logger.debug('Scheduled backfill item was not stored; leaving it pending', {
+                                        id: item.id,
+                                        title: item.title
+                                    });
+                                    continue;
+                                }
+
                                 processed++;
 
                                 // Update progress every 10 items
@@ -236,11 +247,24 @@ class ScheduledBackfillService {
                                     break;
                                 }
 
+                                if (embeddingService.isProviderBusyError(error)) {
+                                    providerBusy = true;
+                                    this.shouldContinueRunning = false;
+                                    logger.info('Scheduled backfill yielded to active provider traffic', {
+                                        id: item.id,
+                                        title: item.title,
+                                        lockHolder: error.lockHolder || null,
+                                        waitMs: error.waitMs || null,
+                                        activeModel: error.activeModel || null
+                                    });
+                                    break;
+                                }
+
                                 logger.error('Failed to generate embedding in scheduled backfill', {
                                     id: item.id,
                                     title: item.title,
                                     error: error.message
-                                });
+                                }, { error });
                             }
                         }
                     }
@@ -260,10 +284,11 @@ class ScheduledBackfillService {
 
                     logger.info(`Scheduled backfill ${finalStatus}`, {
                         processed,
-                        durationMs: duration
+                        durationMs: duration,
+                        providerBusy
                     });
                 } catch (error) {
-                    logger.error('Scheduled backfill error', { error: error.message });
+                    logger.error('Scheduled backfill error', { error: error.message }, { error });
 
                     await db.query(`
                         UPDATE backfill_runs 

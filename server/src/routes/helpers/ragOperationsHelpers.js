@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+const { getRagResetConfigDefaults } = require('./ragConfigDefaults');
+
 function createRagOperationsHelpers({
     db
 }) {
@@ -244,34 +246,60 @@ function createRagOperationsHelpers({
     };
 
     const resetConfig = async () => {
+        const defaults = getRagResetConfigDefaults();
         await db.query(`
             UPDATE ai_provider_config SET
-                embedding_provider_mode = 'same',
-                embedding_ollama_host = NULL,
-                embedding_ollama_port = 11434,
-                embedding_ollama_model = NULL,
-                embedding_cloud_provider = NULL,
-                embedding_cloud_api_key = NULL,
-                embedding_cloud_model = NULL,
-                realtime_embedding_enabled = true,
-                idle_backfill_enabled = true,
-                idle_threshold = 30000,
-                idle_batch_size = 10,
-                scheduled_backfill_enabled = true,
-                scheduled_backfill_time = '02:00',
-                scheduled_backfill_days = '0,1,2,3,4,5,6',
-                scheduled_backfill_batch_size = 100,
-                scheduled_backfill_max_duration = 3600000,
-                manual_backfill_batch_size = 50,
-                max_retries = 3,
-                retry_delay = 1000,
-                request_timeout = 30000,
-                cache_enabled = false,
-                cache_ttl = 24,
-                verbose_logging = false,
-                log_embedding_content = false
+                embedding_provider_mode = $1,
+                embedding_ollama_host = $2,
+                embedding_ollama_port = $3,
+                embedding_ollama_model = $4,
+                embedding_cloud_provider = $5,
+                embedding_cloud_api_key = $6,
+                embedding_cloud_model = $7,
+                realtime_embedding_enabled = $8,
+                idle_backfill_enabled = $9,
+                idle_threshold = $10,
+                idle_batch_size = $11,
+                scheduled_backfill_enabled = $12,
+                scheduled_backfill_time = $13,
+                scheduled_backfill_days = $14,
+                scheduled_backfill_batch_size = $15,
+                scheduled_backfill_max_duration = $16,
+                manual_backfill_batch_size = $17,
+                max_retries = $18,
+                retry_delay = $19,
+                request_timeout = $20,
+                cache_enabled = $21,
+                cache_ttl = $22,
+                verbose_logging = $23,
+                log_embedding_content = $24
             WHERE id = 1
-        `);
+        `, [
+            defaults.embedding_provider_mode,
+            defaults.embedding_ollama_host,
+            defaults.embedding_ollama_port,
+            defaults.embedding_ollama_model,
+            defaults.embedding_cloud_provider,
+            defaults.embedding_cloud_api_key,
+            defaults.embedding_cloud_model,
+            defaults.realtime_embedding_enabled,
+            defaults.idle_backfill_enabled,
+            defaults.idle_threshold,
+            defaults.idle_batch_size,
+            defaults.scheduled_backfill_enabled,
+            defaults.scheduled_backfill_time,
+            defaults.scheduled_backfill_days,
+            defaults.scheduled_backfill_batch_size,
+            defaults.scheduled_backfill_max_duration,
+            defaults.manual_backfill_batch_size,
+            defaults.max_retries,
+            defaults.retry_delay,
+            defaults.request_timeout,
+            defaults.cache_enabled,
+            defaults.cache_ttl,
+            defaults.verbose_logging,
+            defaults.log_embedding_content
+        ]);
 
         await db.query(`
             INSERT INTO rag_logs (level, type, message)

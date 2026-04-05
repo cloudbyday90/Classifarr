@@ -65,10 +65,10 @@ class FormulaEngine {
             const config = result.rows[0] || {};
 
             return {
-                profile: config.formula_pattern_weight || 0.40, // v0.38.0: renamed from pattern to profile
-                rule: config.formula_rule_weight || 0.30,
-                rag: config.formula_rag_weight || 0.20,
-                history: config.formula_history_weight || 0.10
+                profile: config.formula_pattern_weight ?? 0.40, // v0.38.0: renamed from pattern to profile
+                rule: config.formula_rule_weight ?? 0.30,
+                rag: config.formula_rag_weight ?? 0.20,
+                history: config.formula_history_weight ?? 0.10
             };
         } catch (error) {
             logger.error('Failed to get formula weights', { error: error.message });

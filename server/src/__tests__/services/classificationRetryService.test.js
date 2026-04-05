@@ -32,6 +32,8 @@ describe('ClassificationRetryService', () => {
   let db;
   let client;
   let service;
+  let followupService;
+  let evidenceService;
 
   beforeEach(() => {
     logger = createMockLogger();
@@ -45,7 +47,16 @@ describe('ClassificationRetryService', () => {
         connect: jest.fn().mockResolvedValue(client)
       }
     };
-    service = new ClassificationRetryService({ db, logger });
+    followupService = {
+      enqueueMetadataEnrichmentTask: jest.fn()
+    };
+    evidenceService = {
+      purgeEvidence: jest.fn().mockResolvedValue({
+        deleted: 0,
+        deletedByScope: { item_exact: 0 }
+      })
+    };
+    service = new ClassificationRetryService({ db, logger, followupService, evidenceService });
     jest.spyOn(service, 'captureRetryLineage').mockResolvedValue(null);
   });
 
@@ -270,7 +281,6 @@ describe('ClassificationRetryService', () => {
           }]
         };
       }
-      if (sql.includes('DELETE FROM learning_patterns')) return { rowCount: 1, rows: [] };
       if (sql.includes('UPDATE classification_history') && sql.includes("status = 'reclassified'")) return { rowCount: 1, rows: [] };
       if (sql.includes('INSERT INTO task_queue')) return { rows: [{ id: 9901 }] };
       throw new Error(`Unexpected query: ${sql}`);
@@ -290,7 +300,15 @@ describe('ClassificationRetryService', () => {
       enrichmentMetadataReset: true,
       enrichmentCleanupSkipped: null
     });
-    db.query.mockResolvedValueOnce({ rows: [{ id: 9902 }] });
+    evidenceService.purgeEvidence.mockResolvedValueOnce({
+      deleted: 1,
+      deletedByScope: { item_exact: 1 }
+    });
+    followupService.enqueueMetadataEnrichmentTask.mockResolvedValueOnce({
+      metadataEnrichmentQueued: true,
+      metadataEnrichmentTaskId: 9902,
+      metadataEnrichmentReason: 'queued'
+    });
 
     const result = await service.retrySingle(client, {
       classificationId: 304,
@@ -323,10 +341,19 @@ describe('ClassificationRetryService', () => {
       media_request_ids: [41, 42],
       webhook_log_ids: [88]
     });
-    expect(db.query).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO task_queue'),
-      expect.arrayContaining(['metadata_enrichment', expect.any(String), 1, 'manual_retry_followup', 5])
-    );
+    expect(followupService.enqueueMetadataEnrichmentTask).toHaveBeenCalledWith(expect.objectContaining({
+      classificationId: 304,
+      mediaItemId: 7001,
+      metadataEnrichmentSource: 'manual_retry_followup'
+    }));
+    expect(evidenceService.purgeEvidence).toHaveBeenCalledWith(expect.objectContaining({
+      tmdbId: 555,
+      mediaType: 'movie',
+      scopes: ['item_exact'],
+      client,
+      actor: 'admin',
+      reason: 'classification_retry'
+    }));
     expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(304, expect.objectContaining({
       type: 'retried',
       source: 'manual_retry',
@@ -361,7 +388,6 @@ describe('ClassificationRetryService', () => {
           }]
         };
       }
-      if (sql.includes('DELETE FROM learning_patterns')) return { rowCount: 0, rows: [] };
       if (sql.includes('UPDATE classification_history') && sql.includes("status = 'reclassified'")) return { rowCount: 1, rows: [] };
       if (sql.includes('INSERT INTO task_queue')) return { rows: [{ id: 9903 }] };
       throw new Error(`Unexpected query: ${sql}`);
@@ -376,7 +402,11 @@ describe('ClassificationRetryService', () => {
       enrichmentMetadataReset: true,
       enrichmentCleanupSkipped: null
     });
-    db.query.mockRejectedValueOnce(new Error('metadata enqueue failed'));
+    followupService.enqueueMetadataEnrichmentTask.mockResolvedValueOnce({
+      metadataEnrichmentQueued: false,
+      metadataEnrichmentTaskId: null,
+      metadataEnrichmentReason: 'enqueue_failed'
+    });
 
     const result = await service.retrySingle(client, {
       classificationId: 306,
@@ -394,14 +424,10 @@ describe('ClassificationRetryService', () => {
       metadataEnrichmentTaskId: null,
       metadataEnrichmentReason: 'enqueue_failed'
     });
-    expect(logger.warn).toHaveBeenCalledWith(
-      'Metadata enrichment enqueue skipped after classification retry',
-      expect.objectContaining({
-        classificationId: 306,
-        reasonCode: 'metadata_enqueue_failed',
-        result: 'skipped'
-      })
-    );
+    expect(followupService.enqueueMetadataEnrichmentTask).toHaveBeenCalledWith(expect.objectContaining({
+      classificationId: 306,
+      mediaItemId: 7010
+    }));
   });
 
   test('retrySingle returns failed result and logs error on transaction failure', async () => {
@@ -420,7 +446,6 @@ describe('ClassificationRetryService', () => {
           }]
         };
       }
-      if (sql.includes('DELETE FROM learning_patterns')) return { rowCount: 0, rows: [] };
       if (sql.includes('UPDATE classification_history') && sql.includes("status = 'reclassified'")) return { rowCount: 1, rows: [] };
       if (sql.includes('INSERT INTO task_queue')) throw new Error('insert failed');
       throw new Error(`Unexpected query: ${sql}`);

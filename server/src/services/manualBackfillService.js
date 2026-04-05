@@ -139,10 +139,15 @@ class ManualBackfillService {
         return `Embedding provider unavailable until ${availability.cooldownUntil || 'recovery probe succeeds'}`;
     }
 
+    buildProviderBusyMessage(error = {}) {
+        const holder = error.lockHolder ? ` held by ${error.lockHolder}` : '';
+        return `Embedding provider busy${holder}. Backfill yielded to active traffic; resume later.`;
+    }
+
     launchTrackedRun(errorLogMessage) {
         const runPromise = this.runBackfill()
             .catch(error => {
-                logger.error(errorLogMessage, { error: error.message });
+                logger.error(errorLogMessage, { error: error.message }, { error });
                 this.state.error = error.message;
                 this.state.status = 'failed';
             })
@@ -286,21 +291,31 @@ class ManualBackfillService {
                     }
 
                     try {
+                        let generationResult = null;
                         if (item.needsText) {
-                            await embeddingService.generateAndStore(item.id, {
+                            generationResult = await embeddingService.generateAndStore(item.id, {
                                 ...item.metadata,
                                 title: item.title,
                                 media_type: item.media_type,
                                 library_name: item.library_name
                             });
                         } else if (item.needsImage) {
-                            await embeddingService.generateImageEmbedding(item.id, {
+                            generationResult = await embeddingService.generateImageEmbedding(item.id, {
                                 ...item.metadata,
                                 title: item.title,
                                 media_type: item.media_type,
                                 library_name: item.library_name
                             });
                         }
+
+                        if (!generationResult) {
+                            logger.debug('Manual backfill item was not stored; leaving it pending', {
+                                id: item.id,
+                                title: item.title
+                            });
+                            continue;
+                        }
+
                         this.state.processed++;
                         this.updateETA();
 
@@ -322,11 +337,24 @@ class ManualBackfillService {
                             break;
                         }
 
+                        if (embeddingService.isProviderBusyError(error)) {
+                            this.state.status = 'paused';
+                            this.state.error = this.buildProviderBusyMessage(error);
+                            logger.info('Manual backfill paused: embedding provider busy', {
+                                id: item.id,
+                                title: item.title,
+                                lockHolder: error.lockHolder || null,
+                                waitMs: error.waitMs || null,
+                                activeModel: error.activeModel || null
+                            });
+                            break;
+                        }
+
                         logger.error('Failed to generate embedding', {
                             id: item.id,
                             title: item.title,
                             error: error.message
-                        });
+                        }, { error });
                         const itemErrorMessage = `Item ${item.id}: ${error.message}`;
                         if (this.state.error) {
                             this.state.error += ` | ${itemErrorMessage}`;
@@ -384,7 +412,7 @@ class ManualBackfillService {
                 logger.info('Manual backfill completed', { processed: this.state.processed });
             }
         } catch (error) {
-            logger.error('Backfill run error', { error: error.message });
+            logger.error('Backfill run error', { error: error.message }, { error });
             this.state.error = error.message;
             this.state.status = 'failed';
 

@@ -85,6 +85,28 @@ describe('QueueReadModel', () => {
         expect(stats.classificationPauseReason).toBe('dispatch_check_failed');
     });
 
+    it('marks classification as paused when AI is unavailable while the worker is running', async () => {
+        getRuntimeState.mockReturnValueOnce({
+            aiAvailable: false,
+            workerRunning: true,
+        });
+        db.query.mockResolvedValueOnce({
+            rows: [{
+                pending: '1',
+                processing: '0',
+                completed: '2',
+                failed: '0',
+            }],
+        });
+
+        const stats = await readModel.getStats();
+
+        expect(stats.aiAvailable).toBe(false);
+        expect(stats.workerRunning).toBe(true);
+        expect(stats.classificationPaused).toBe(true);
+        expect(stats.classificationPauseReason).toBe('ai_unavailable');
+    });
+
     it('calculates gap analysis progress and ETA', async () => {
         db.query
             .mockResolvedValueOnce({ rows: [{ count: '750' }] })

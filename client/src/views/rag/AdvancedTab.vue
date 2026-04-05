@@ -643,7 +643,7 @@ const loadPromotionMetrics = async () => {
 const loadConfig = async () => {
   const [advancedRes, retryRes, aiRes] = await Promise.allSettled([
     api.getRagAdvancedConfig(),
-    api.get('/settings/embedding/retry'),
+    api.getData('/settings/embedding/retry'),
     api.getAIConfig()
   ])
 
@@ -662,7 +662,7 @@ const loadConfig = async () => {
     }
 
     if (retryRes.status === 'fulfilled') {
-      const data = retryRes.value.data || {}
+      const data = retryRes.value || {}
       retryConfig.value = {
         request_timeout: data.request_timeout ?? 30000,
         warmup_timeout: data.warmup_timeout ?? 120000,

@@ -7,6 +7,10 @@
  */
 
 const { parseDaysConfig, formatDaysConfig } = require('../../utils/backfillHelpers');
+const {
+    getRagBackfillConfigDefaults,
+    validateRagBackfillConfigUpdate
+} = require('./ragConfigDefaults');
 
 const parseManualBackfillStartOptions = (body = {}) => {
     const rawBatchSize = body.batchSize ?? body.limit;
@@ -74,17 +78,7 @@ function createRagBackfillHelpers({
         `);
 
         if (result.rows.length === 0) {
-            return {
-                realtime_embedding_enabled: true,
-                idle_backfill_enabled: true,
-                idle_threshold: 30000,
-                idle_batch_size: 10,
-                scheduled_backfill_enabled: true,
-                scheduled_backfill_time: '02:00',
-                scheduled_backfill_days: '0,1,2,3,4,5,6',
-                scheduled_backfill_batch_size: 100,
-                scheduled_backfill_max_duration: 3600000
-            };
+            return getRagBackfillConfigDefaults();
         }
 
         return result.rows[0];
@@ -111,6 +105,13 @@ function createRagBackfillHelpers({
         scheduledBatchSize,
         scheduledMaxDuration
     }) => {
+        validateRagBackfillConfigUpdate({
+            idle_threshold: idleThreshold,
+            idle_batch_size: idleBatchSize,
+            scheduled_backfill_batch_size: scheduledBatchSize,
+            scheduled_backfill_max_duration: scheduledMaxDuration
+        });
+
         const normalizedScheduledDays = typeof scheduledDays === 'string'
             ? scheduledDays
             : formatDaysConfig(scheduledDays);
@@ -271,6 +272,9 @@ function registerRagBackfillRoutes({
 
             res.json({ success: true, config: await getBackfillConfigPayload() });
         } catch (error) {
+            if (error.status) {
+                return res.status(error.status).json({ error: error.message, details: error.details });
+            }
             logger.error('Failed to update backfill config', { error: error.message });
             res.status(500).json({ error: error.message });
         }

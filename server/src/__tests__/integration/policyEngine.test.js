@@ -18,6 +18,7 @@
 
 const db = require('../../config/database');
 const policyEngine = require('../../services/policyEngine');
+const policyCandidateRanker = require('../../services/policyCandidateRanker');
 
 describe('PolicyEngine Integration Tests', () => {
     let testLibraryId;
@@ -629,7 +630,7 @@ describe('PolicyEngine Integration Tests', () => {
                 }
             ];
 
-            const result = policyEngine.determineAction(ranked);
+            const result = policyCandidateRanker.determineAction(ranked);
 
             expect(result.action).toBe('auto_classify');
             expect(result.confidence).toBe(90);
@@ -648,7 +649,7 @@ describe('PolicyEngine Integration Tests', () => {
                 }
             ];
 
-            const result = policyEngine.determineAction(ranked);
+            const result = policyCandidateRanker.determineAction(ranked);
 
             expect(result.action).toBe('prompt_confirm');
             expect(result.confidence).toBe(70);
@@ -666,7 +667,7 @@ describe('PolicyEngine Integration Tests', () => {
                 }
             ];
 
-            const result = policyEngine.determineAction(ranked);
+            const result = policyCandidateRanker.determineAction(ranked);
 
             expect(result.action).toBe('prompt_select');
             expect(result.confidence).toBe(50);
@@ -684,7 +685,7 @@ describe('PolicyEngine Integration Tests', () => {
                 }
             ];
 
-            const result = policyEngine.determineAction(ranked);
+            const result = policyCandidateRanker.determineAction(ranked);
 
             expect(result.action).toBe('manual');
             expect(result.confidence).toBe(39);
@@ -692,7 +693,7 @@ describe('PolicyEngine Integration Tests', () => {
         });
 
         test('should return manual if no rankings', () => {
-            const result = policyEngine.determineAction([]);
+            const result = policyCandidateRanker.determineAction([]);
 
             expect(result.action).toBe('manual');
             expect(result.confidence).toBe(0);
@@ -759,7 +760,7 @@ describe('PolicyEngine Integration Tests', () => {
                 { policy_id: 3, score: 65 }
             ];
 
-            const ranked = await policyEngine.rankResults(evaluations);
+            const ranked = await policyCandidateRanker.rankResults(evaluations);
 
             expect(ranked[0].score).toBe(80);
             expect(ranked[1].score).toBe(65);
@@ -773,7 +774,7 @@ describe('PolicyEngine Integration Tests', () => {
                 { policy_id: 3, score: 65 }
             ];
 
-            const ranked = await policyEngine.rankResults(evaluations);
+            const ranked = await policyCandidateRanker.rankResults(evaluations);
 
             expect(ranked.length).toBe(2);
             expect(ranked.find(r => r.score === 0)).toBeUndefined();

@@ -6,6 +6,15 @@
  * See LICENSE file for details.
  */
 
+const {
+    normalizeTextModelMode,
+    resolveSelectedTextModelProvider,
+    resolveTextModelApiKey,
+    resolveTextModelApiEndpoint,
+    resolveImageModelsCacheForLookup,
+    resolveImageCloudApiKey
+} = require('./ragModelMetadataPolicy');
+
 function createRagModelMetadataHelpers({
     db,
     logger,
@@ -40,69 +49,14 @@ function createRagModelMetadataHelpers({
         }
     };
 
-    const normalizeTextModelMode = (mode) => {
-        if (['same', 'separate_ollama', 'cloud'].includes(mode)) {
-            return mode;
-        }
-        return 'same';
-    };
-
-    const resolveSelectedTextModelProvider = ({ mode, provider, config }) => {
-        const normalizedProvider = (provider || '').trim().toLowerCase();
-        if (normalizedProvider) {
-            return normalizedProvider;
-        }
-
-        if (mode === 'separate_ollama') {
-            return 'ollama';
-        }
-
-        if (mode === 'cloud') {
-            return (config?.embedding_cloud_provider || '').trim().toLowerCase() || null;
-        }
-
-        try {
-            return embeddingProvider.getSameModeProvider(config).provider;
-        } catch (_error) {
-            return null;
-        }
-    };
-
-    const resolveTextModelApiKey = ({ mode, provider, apiKey, config }) => {
-        if (apiKey && !isMaskedToken(apiKey)) {
-            return apiKey;
-        }
-
-        if (!provider || provider === 'ollama') {
-            return '';
-        }
-
-        if (mode === 'cloud') {
-            return config?.embedding_cloud_api_key || '';
-        }
-
-        return config?.api_key || '';
-    };
-
-    const resolveTextModelApiEndpoint = ({ mode, apiEndpoint, config }) => {
-        if (apiEndpoint) {
-            return apiEndpoint;
-        }
-
-        if (mode === 'same') {
-            return config?.api_endpoint || '';
-        }
-
-        return '';
-    };
-
     const resolveTextModelMetadata = async (payload = {}) => {
         const config = await embeddingRouter.getConfig();
         const mode = normalizeTextModelMode(payload.mode || config?.embedding_provider_mode || 'same');
         const provider = resolveSelectedTextModelProvider({
             mode,
             provider: payload.provider,
-            config
+            config,
+            embeddingProvider
         });
         const catalog = embeddingProvider.getRecommendedModels();
         const recommended = provider ? (catalog[provider] || []) : [];
@@ -113,7 +67,8 @@ function createRagModelMetadataHelpers({
                 mode,
                 provider,
                 apiKey: payload.api_key,
-                config
+                config,
+                isMaskedToken
             });
             const apiEndpoint = resolveTextModelApiEndpoint({
                 mode,
@@ -148,37 +103,6 @@ function createRagModelMetadataHelpers({
             cloudProvider: (payload.cloud_provider || config?.image_embedding_cloud_provider || '').trim(),
             cloudApiEndpoint: payload.cloud_api_endpoint ?? config?.image_embedding_cloud_api_endpoint ?? ''
         };
-    };
-
-    const resolveImageModelsCacheForLookup = ({ config, mode, localHost, localPort, cloudProvider, cloudApiEndpoint }) => {
-        const cache = config?.image_embedding_models_cache || {};
-
-        if (mode === 'cloud') {
-            const entry = cache.cloud || null;
-            if (!entry) return null;
-            const providerMatch = (entry.provider || '') === cloudProvider;
-            const endpointMatch = (entry.api_endpoint || '') === cloudApiEndpoint;
-            if (!providerMatch || !endpointMatch) return null;
-            return { scope: 'cloud', entry };
-        }
-
-        if (mode === 'separate_local') {
-            const entry = cache.local || null;
-            if (!entry) return null;
-            const hostMatch = (entry.host || '') === localHost;
-            const portMatch = Number(entry.port || 8000) === Number(localPort || 8000);
-            if (!hostMatch || !portMatch) return null;
-            return { scope: 'local', entry };
-        }
-
-        return null;
-    };
-
-    const resolveImageCloudApiKey = ({ apiKey, config }) => {
-        if (apiKey && !isMaskedToken(apiKey)) {
-            return apiKey;
-        }
-        return config?.image_embedding_cloud_api_key || '';
     };
 
     const resolveImageModelMetadata = async (payload = {}) => {
@@ -231,7 +155,8 @@ function createRagModelMetadataHelpers({
                 provider: cloudProvider,
                 api_key: resolveImageCloudApiKey({
                     apiKey: payload.cloud_api_key,
-                    config
+                    config,
+                    isMaskedToken
                 }),
                 api_endpoint: cloudApiEndpoint
             });

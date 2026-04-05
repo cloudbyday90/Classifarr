@@ -19,7 +19,8 @@ jest.mock('../services/embeddingService', () => ({
     getPendingEmbeddings: jest.fn(),
     generateAndStore: jest.fn(),
     generateImageEmbedding: jest.fn(),
-    getProviderAvailabilityStatus: jest.fn()
+    getProviderAvailabilityStatus: jest.fn(),
+    isProviderBusyError: jest.fn()
 }));
 
 jest.mock('../utils/logger', () => ({
@@ -56,6 +57,7 @@ describe('ScheduledBackfillService', () => {
             status: 'available',
             cooldownUntil: null
         });
+        embeddingService.isProviderBusyError.mockReturnValue(false);
     });
 
     afterEach(() => {
@@ -114,7 +116,7 @@ describe('ScheduledBackfillService', () => {
             .mockResolvedValueOnce([]);
         embeddingService.generateAndStore.mockImplementationOnce(() => new Promise((resolve) => {
             markFirstItemStarted();
-            resolveFirstItem = resolve;
+            resolveFirstItem = () => resolve({});
         }));
 
         const runPromise = scheduledBackfillService.runScheduledBackfill();
@@ -143,5 +145,38 @@ describe('ScheduledBackfillService', () => {
         await scheduledBackfillService.runScheduledBackfill();
 
         expect(db.withSessionAdvisoryLock).not.toHaveBeenCalled();
+    });
+
+    it('yields without counting progress when provider is busy', async () => {
+        db.withSessionAdvisoryLock.mockImplementation(async (_lockKey, fn) => {
+            await fn();
+            return true;
+        });
+
+        db.query
+            .mockResolvedValueOnce({ rows: [{ id: 25 }] })
+            .mockResolvedValueOnce({ rows: [] });
+
+        embeddingService.shouldIncludeImageEmbeddings.mockResolvedValue(false);
+        embeddingService.getPendingEmbeddings.mockResolvedValueOnce([
+            { id: 1, needsText: true, needsImage: false, metadata: {}, title: 'Busy', media_type: 'movie', library_name: 'Movies' },
+            { id: 2, needsText: true, needsImage: false, metadata: {}, title: 'Later', media_type: 'movie', library_name: 'Movies' }
+        ]);
+        embeddingService.generateAndStore.mockRejectedValueOnce(Object.assign(new Error('PROVIDER_BUSY'), {
+            code: 'EMBEDDING_PROVIDER_BUSY',
+            lockHolder: 'classification',
+            waitMs: 1400,
+            activeModel: 'gemma3:12b'
+        }));
+        embeddingService.isProviderBusyError.mockReturnValue(true);
+
+        await scheduledBackfillService.runScheduledBackfill();
+
+        expect(embeddingService.generateAndStore).toHaveBeenCalledTimes(1);
+        expect(scheduledBackfillService.isRunning).toBe(false);
+        expect(db.query).toHaveBeenLastCalledWith(
+            expect.stringContaining('SET status = $1'),
+            ['cancelled', 0, 25]
+        );
     });
 });

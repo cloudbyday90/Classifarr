@@ -105,8 +105,7 @@ onMounted(async () => {
 const fetchPolicies = async () => {
   loading.value = true
   try {
-    const response = await api.get('/policies')
-    policies.value = response.data
+    policies.value = await api.getData('/policies')
   } catch (error) {
     console.error('Failed to fetch policies:', error)
     alert('Failed to load policies: ' + error.message)
@@ -117,8 +116,7 @@ const fetchPolicies = async () => {
 
 const fetchLibraries = async () => {
   try {
-    const response = await api.get('/libraries')
-    libraries.value = response.data
+    libraries.value = await api.getData('/libraries')
   } catch (error) {
     console.error('Failed to fetch libraries:', error)
   }
@@ -127,8 +125,7 @@ const fetchLibraries = async () => {
 const editPolicy = async (policy) => {
   try {
     // Fetch full policy details with presets
-    const response = await api.get(`/policies/${policy.id}`)
-    editingPolicy.value = response.data
+    editingPolicy.value = await api.getData(`/policies/${policy.id}`)
     selectedLibraryId.value = policy.library_id
     showCreateModal.value = false
   } catch (error) {

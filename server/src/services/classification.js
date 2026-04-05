@@ -36,9 +36,10 @@ const { SignalCollector, SIGNAL_TYPES } = require('./signalCollector');
 const confidenceCalculator = require('./confidenceCalculator');
 const ragRetriever = require('./ragRetriever');
 const embeddingService = require('./embeddingService');
-const patternReinforcementService = require('./patternReinforcementService');
+const classificationEvidenceReinforcementService = require('./classificationEvidenceReinforcementService');
 const policyEngine = require('./policyEngine');
 const policyQuestionBuilder = require('./policyQuestionBuilder');
+const classificationEvidenceService = require('./classificationEvidenceService');
 const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
 const libraryProfileService = require('./libraryProfileService');
@@ -243,10 +244,11 @@ class ClassificationService {
           // Async reinforcement - don't wait
           setImmediate(async () => {
             try {
-              await patternReinforcementService.reinforceOnAccept(
+              await classificationEvidenceReinforcementService.reinforceOnAccept(
                 classificationId,
                 patternSignals,
-                result.library.id
+                result.library.id,
+                { metadata, mediaType: metadata.media_type }
               );
             } catch (error) {
               logger.debug('Pattern reinforcement error', { error: error.message });
@@ -2499,16 +2501,20 @@ ${response}
       };
     }
 
-    // Step 2: Check learned patterns (high confidence)
-    const learnedPattern = await this.checkLearnedPatterns(metadata);
-    if (learnedPattern && learnedPattern.confidence >= 80) {
-      return {
-        library: libraries.find(l => l.id === learnedPattern.library_id),
-        confidence: learnedPattern.confidence,
-        method: 'learned_pattern',
-        reason: 'Matched learned pattern from previous corrections',
-        libraries: libraries,
-      };
+    // Step 2: Collect related evidence for PolicyEngine scoring (Phase 4 cutover)
+    // The learned-pattern early-return shortcut has been removed; evidence now flows
+    // through PolicyEngine as a scored channel so every item receives full policy scoring.
+    const relatedEvidence = await classificationEvidenceService.collectRelatedEvidence({ metadata });
+    if (relatedEvidence.length > 0) {
+      const top = [...relatedEvidence].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
+      logger.info('Related evidence collected for PolicyEngine scoring', {
+        title: metadata.title,
+        evidenceCount: relatedEvidence.length,
+        topLibraryId: top?.libraryId ?? null,
+        topConfidence: top?.confidence ?? 0,
+        topScope: top?.scope ?? null,
+        uniqueScopes: [...new Set(relatedEvidence.map(e => e.scope).filter(Boolean))],
+      });
     }
 
     // NOTE: Legacy rule-based matching (Step 3) removed in v0.37.8c.
@@ -2519,7 +2525,28 @@ ${response}
     let policyResult = null;
     let policySignalContext = null;
 
-    const buildPolicySignalContext = (result, candidates, rankedList) => {
+    // Phase 4C: Build a compact summary of related evidence for AI and clarification prompts.
+    // The summary is informational-only — policy scores remain authoritative.
+    const buildRelatedEvidenceSummary = (evidence, candidates) => {
+      if (!Array.isArray(evidence) || evidence.length === 0) return null;
+      const sorted = [...evidence].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
+      const top = sorted[0];
+      const topLibraryObj = top?.libraryId
+        ? (candidates || []).find(l => l.id === top.libraryId)
+        : null;
+      const topLibrary = topLibraryObj?.name ?? null;
+      const topScopes = sorted.slice(0, 5).map(e => ({
+        scope: e.scope,
+        label: e.evidenceData?.genre ?? e.evidenceData?.studio ?? e.evidenceData?.franchise ?? e.evidenceKey ?? e.scope,
+        confidence: e.confidence ?? 0,
+        provenance: e.provenance ?? null,
+      }));
+      const uniqueLibraryIds = new Set(sorted.map(e => e.libraryId).filter(Boolean));
+      const hasConflict = uniqueLibraryIds.size > 1;
+      return { topLibrary, confidence: top?.confidence ?? 0, topScopes, hasConflict };
+    };
+
+    const buildPolicySignalContext = (result, candidates, rankedList, evidence = []) => {
       const ranked = Array.isArray(rankedList) ? rankedList : [];
       const top = ranked[0] || null;
       const suggestedLibrary = top ? candidates.find(l => l.id === top.library_id) : null;
@@ -2541,7 +2568,8 @@ ${response}
         ranked,
         scores: top?.scores || null,
         weights: top?.weights || null,
-        hasConflict
+        hasConflict,
+        relatedEvidenceSummary: buildRelatedEvidenceSummary(evidence, candidates),
       };
     };
 
@@ -2551,7 +2579,7 @@ ${response}
       }
 
       logger.info('Evaluating with PolicyEngine', { title: metadata.title });
-      policyResult = await policyEngine.evaluateItem(metadata);
+      policyResult = await policyEngine.evaluateItem(metadata, { relatedEvidence });
 
       if (policyResult?.action === 'auto_classify' && policyResult.library) {
         // HIGH CONFIDENCE - Skip AI entirely, trust PolicyEngine
@@ -2579,7 +2607,7 @@ ${response}
 
       if (policyResult?.ranked && policyResult.ranked.length > 0) {
         metadata.policyResult = policyResult;
-        policySignalContext = buildPolicySignalContext(policyResult, libraries, policyResult.ranked);
+        policySignalContext = buildPolicySignalContext(policyResult, libraries, policyResult.ranked, relatedEvidence);
       }
     } catch (policyError) {
       logger.warn('PolicyEngine evaluation failed, falling back to legacy signals', {
@@ -2726,7 +2754,8 @@ ${response}
       findExistingMedia: mediaSyncService.findExistingMedia.bind(mediaSyncService),
       analyzeContent: contentTypeAnalyzer.analyze.bind(contentTypeAnalyzer),
       checkExactMatch: this.checkExactMatch.bind(this),
-      checkLearnedPatterns: this.checkLearnedPatterns.bind(this),
+      // checkLearnedPatterns removed from detectors (Phase 4B): LEARNED_PATTERN signal
+      // injection is retired. Related evidence is now owned by PolicyEngine scoring.
       matchRules: this.matchRules.bind(this),
     };
 
@@ -2794,6 +2823,7 @@ ${response}
       ragContext,
       signals: signalCollector.getSignals(),
       patternSignals: signalCollector.getPatternSignals(),
+      relatedEvidenceSummary: buildRelatedEvidenceSummary(relatedEvidence, libraries),
     };
 
     try {
@@ -2893,44 +2923,11 @@ ${response}
   }
 
   async checkExactMatch(tmdbId, mediaType = null) {
-    const params = [tmdbId];
-    let where = `tmdb_id = $1 AND pattern_type = 'exact_match'`;
-
-    if (mediaType) {
-      params.push(mediaType);
-      where += ` AND media_type = $2`;
-    }
-
-    const result = await db.query(
-      `SELECT library_id FROM learning_patterns 
-       WHERE ${where}
-       ORDER BY updated_at DESC LIMIT 1`,
-      params
-    );
-    return result.rows[0] || null;
+    const exactMatch = await classificationEvidenceService.findExactMatch({ tmdbId, mediaType });
+    return exactMatch ? { library_id: exactMatch.libraryId, confidence: exactMatch.confidence } : null;
   }
 
-  async checkLearnedPatterns(metadata) {
-    // Check for genre-level patterns learned from user clarification responses.
-    // Returns null immediately when the item has no genres to avoid a pointless query.
-    const genres = normalizeMetadataListLower(metadata.genres);
-    if (genres.length === 0) return null;
-
-    const mediaType = metadata.media_type || metadata.mediaType || null;
-
-    const result = await db.query(
-      `SELECT library_id, confidence, usage_count
-       FROM learning_patterns
-       WHERE pattern_type = 'genre_pattern'
-         AND success_rate >= 70
-         AND ($1::text[] IS NULL OR (pattern_data->>'genre') = ANY($1::text[]))
-         AND ($2::text IS NULL OR media_type = $2)
-       ORDER BY usage_count DESC, confidence DESC
-       LIMIT 1`,
-      [genres, mediaType]
-    );
-    return result.rows[0] || null;
-  }
+  // checkLearnedPatterns removed (Phase 7): dead method retired alongside LEARNED_PATTERN signal removal.
 
   /**
    * Check for learned corrections from user feedback
@@ -3557,11 +3554,18 @@ Think step by step, then respond with ONLY one of the formats above.`;
               id: classificationId,
               retryAt: embedError.cooldownUntil || null
             });
+          } else if (embeddingService.isProviderBusyError(embedError)) {
+            logger.debug('[Embedding] Real-time generation deferred: provider busy', {
+              id: classificationId,
+              lockHolder: embedError.lockHolder || null,
+              waitMs: embedError.waitMs || null,
+              activeModel: embedError.activeModel || null
+            });
           } else {
             logger.error('[Embedding] Real-time generation failed, will retry in backfill', {
               id: classificationId,
               error: embedError.message
-            });
+            }, { error: embedError });
           }
         }
       } else {
@@ -4242,7 +4246,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
       libraries,
       suggestedLibrary: result.library || null,
       ragContext,
-      aiResult: result
+      aiResult: result,
+      relatedEvidenceSummary: result.signalContext?.relatedEvidenceSummary ?? null,
     });
 
     if (policyQuestion) {

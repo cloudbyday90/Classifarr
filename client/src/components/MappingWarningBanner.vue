@@ -44,8 +44,8 @@ const hasWarning = ref(false)
 
 onMounted(async () => {
   try {
-    const response = await api.getActiveNotifications()
-    const mappingWarning = response.data.find(
+    const notifications = await api.getActiveNotifications()
+    const mappingWarning = notifications.find(
       n => n.severity === 'warning' && n.title?.toLowerCase().includes('mapping')
     )
     if (mappingWarning) {

@@ -171,8 +171,7 @@ onMounted(async () => {
 const runHealthCheck = async () => {
   healthLoading.value = true
   try {
-    const response = await api.get('/settings/path-test/health')
-    health.value = response.data
+    health.value = await api.getData('/settings/path-test/health')
   } catch (error) {
     console.error('Health check failed:', error)
     toast.error('Health check failed')

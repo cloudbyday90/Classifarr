@@ -65,7 +65,7 @@ describe('MappingWarningBanner.vue', () => {
   }
 
   it('renders when hasWarning is true', async () => {
-    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    api.getActiveNotifications.mockResolvedValueOnce([mappingWarning])
     const wrapper = mountBanner()
     await flushPromises()
 
@@ -75,7 +75,7 @@ describe('MappingWarningBanner.vue', () => {
   })
 
   it('does not render when hasWarning is false', async () => {
-    api.getActiveNotifications.mockResolvedValueOnce({ data: [] })
+    api.getActiveNotifications.mockResolvedValueOnce([])
     const wrapper = mountBanner()
     await flushPromises()
 
@@ -83,7 +83,7 @@ describe('MappingWarningBanner.vue', () => {
   })
 
   it('fetches notifications on mount', async () => {
-    api.getActiveNotifications.mockResolvedValueOnce({ data: [] })
+    api.getActiveNotifications.mockResolvedValueOnce([])
     mountBanner()
     await flushPromises()
     expect(api.getActiveNotifications).toHaveBeenCalled()
@@ -110,7 +110,7 @@ describe('MappingWarningBanner.vue', () => {
   })
 
   it('dismisses notification successfully', async () => {
-    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    api.getActiveNotifications.mockResolvedValueOnce([mappingWarning])
     api.dismissNotification.mockResolvedValueOnce({})
     const wrapper = mountBanner()
     await flushPromises()
@@ -123,7 +123,7 @@ describe('MappingWarningBanner.vue', () => {
   })
 
   it('navigates to Radarr settings', async () => {
-    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    api.getActiveNotifications.mockResolvedValueOnce([mappingWarning])
     const wrapper = mountBanner()
     await flushPromises()
 
@@ -137,7 +137,7 @@ describe('MappingWarningBanner.vue', () => {
   })
 
   it('navigates to Sonarr settings', async () => {
-    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    api.getActiveNotifications.mockResolvedValueOnce([mappingWarning])
     const wrapper = mountBanner()
     await flushPromises()
 
@@ -152,7 +152,7 @@ describe('MappingWarningBanner.vue', () => {
 
   it('hides banner locally even if dismiss API fails', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    api.getActiveNotifications.mockResolvedValueOnce({ data: [mappingWarning] })
+    api.getActiveNotifications.mockResolvedValueOnce([mappingWarning])
     api.dismissNotification.mockRejectedValueOnce(new Error('Network error'))
     const wrapper = mountBanner()
     await flushPromises()

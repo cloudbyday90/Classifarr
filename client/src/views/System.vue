@@ -487,8 +487,8 @@ const loadHealth = async (silent = false) => {
       api.getAIConfig().catch(() => ({ data: {} }))
     ])
     
-    if (response.data) {
-      const statusMap = response.data
+    if (response) {
+      const statusMap = response
       healthDetails.value = statusMap.details || {}
       const aiConfig = aiConfigResponse?.data || {}
       const aiProviderLabel = healthDetails.value.ollama?.provider
@@ -753,9 +753,9 @@ const loadStatus = async () => {
   try {
     const response = await api.getSystemStatus()
     
-    if (response.data) {
-      systemStatus.value = response.data
-      healthServices.value = upsertPgvectorService(healthServices.value, response.data.pgvector)
+    if (response) {
+      systemStatus.value = response
+      healthServices.value = upsertPgvectorService(healthServices.value, response.pgvector)
     }
   } catch (error) {
     console.error('Failed to load system status:', error)

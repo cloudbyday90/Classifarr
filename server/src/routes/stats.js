@@ -654,7 +654,32 @@ async function getStatsByMethod() {
     ORDER BY count DESC
   `);
 
-  return result.rows;
+  const METHOD_LABELS = {
+    'exact_match':                          'Exact Match',
+    'learned_pattern':                      'Learned Pattern',
+    'policy_auto':                          'Policy Engine',
+    'policy_engine':                        'Policy Engine',
+    'policy_prompt':                        'Policy Engine',
+    'policy_confirm':                       'Policy Confirmed',
+    'policy_supported_by_related_evidence': 'Related Evidence',
+    'ai_analysis':                          'AI Analysis',
+    'ai_fallback':                          'AI Analysis',
+    'ai_verified':                          'AI Verified',
+    'source_library':                       'Source Library',
+    'manual_classification':                'Manual',
+    'manual_correction':                    'Manual',
+    'existing_media':                       'Existing Media',
+    'reclassification':                     'Reclassified',
+    'rule_match':                           'Rule Match',
+    'custom_rule':                          'Custom Rule',
+  };
+
+  return result.rows.map(row => ({
+    ...row,
+    methodLabel: METHOD_LABELS[row.method]
+      ?? row.method?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      ?? 'Unknown'
+  }));
 }
 
 async function getConfidenceDistribution() {

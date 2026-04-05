@@ -29,7 +29,7 @@ export default {
    * @returns {Promise}
    */
   getAttachablePresets(params = {}) {
-    return api.get('/policies/presets/all', { params })
+    return api.getData('/policies/presets/all', { params })
   },
 
   /**
@@ -38,7 +38,7 @@ export default {
    * @returns {Promise}
    */
   getSystemPresets(params = {}) {
-    return api.get('/policies/presets/all', {
+    return api.getData('/policies/presets/all', {
       params: {
         ...params,
         include_custom: false
@@ -51,7 +51,7 @@ export default {
    * @returns {Promise}
    */
   getCustomPresets() {
-    return api.get('/presets/custom')
+    return api.getData('/presets/custom')
   },
 
   /**
@@ -60,7 +60,7 @@ export default {
    * @returns {Promise}
    */
   getCustomPreset(id) {
-    return api.get(`/presets/custom/${id}`)
+    return api.getData(`/presets/custom/${id}`)
   },
 
   /**
@@ -97,7 +97,7 @@ export default {
    * @returns {Promise}
    */
   async getAllPresets(params = {}) {
-    return api.get('/presets/all', { params })
+    return api.getData('/presets/all', { params })
   },
 
   /**
@@ -106,6 +106,6 @@ export default {
    * @returns {Promise}
    */
   getPresetUsageCount(id) {
-    return api.get(`/policies/presets/${id}/usage`)
+    return api.getData(`/policies/presets/${id}/usage`)
   }
 }

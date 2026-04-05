@@ -47,7 +47,7 @@ describe('ArrConfigWarning.vue', () => {
   describe('Rendering', () => {
     it('renders without crashing when no incomplete configs', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: { incompleteConfigs: [] }
+        incompleteConfigs: []
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -58,7 +58,7 @@ describe('ArrConfigWarning.vue', () => {
 
     it('does not display warning when all configs are complete', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: { incompleteConfigs: [] }
+        incompleteConfigs: []
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -69,11 +69,9 @@ describe('ArrConfigWarning.vue', () => {
 
     it('displays warning banner when incomplete configs exist', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -85,11 +83,9 @@ describe('ArrConfigWarning.vue', () => {
 
     it('displays warning icon', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -102,11 +98,9 @@ describe('ArrConfigWarning.vue', () => {
   describe('Incomplete Configs Display', () => {
     it('displays single Radarr incomplete config', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -119,11 +113,9 @@ describe('ArrConfigWarning.vue', () => {
 
     it('displays single Sonarr incomplete config', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Sonarr', name: 'Sonarr Anime', id: 2, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Sonarr', name: 'Sonarr Anime', id: 2, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -136,12 +128,10 @@ describe('ArrConfigWarning.vue', () => {
 
     it('displays multiple incomplete configs', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' },
-            { type: 'Sonarr', name: 'Sonarr HD', id: 2, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' },
+          { type: 'Sonarr', name: 'Sonarr HD', id: 2, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -155,12 +145,10 @@ describe('ArrConfigWarning.vue', () => {
 
     it('uses unique keys for multiple configs', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: 'Radarr 1', id: 1, missingField: 'quality_profile_id' },
-            { type: 'Radarr', name: 'Radarr 2', id: 2, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: 'Radarr 1', id: 1, missingField: 'quality_profile_id' },
+          { type: 'Radarr', name: 'Radarr 2', id: 2, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -176,11 +164,9 @@ describe('ArrConfigWarning.vue', () => {
   describe('Navigation', () => {
     it('navigates to Radarr settings when Configure Radarr Now is clicked', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: 'Radarr 4K', id: 1, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -194,11 +180,9 @@ describe('ArrConfigWarning.vue', () => {
 
     it('navigates to Sonarr settings when Configure Sonarr Now is clicked', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Sonarr', name: 'Sonarr HD', id: 2, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Sonarr', name: 'Sonarr HD', id: 2, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -214,11 +198,9 @@ describe('ArrConfigWarning.vue', () => {
   describe('Dismiss Functionality', () => {
     it('hides warning when dismiss button is clicked', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -234,11 +216,9 @@ describe('ArrConfigWarning.vue', () => {
 
     it('displays dismiss button with correct icon', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -253,7 +233,7 @@ describe('ArrConfigWarning.vue', () => {
   describe('API Integration', () => {
     it('calls API endpoint on mount', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: { incompleteConfigs: [] }
+        incompleteConfigs: []
       });
 
       mount(ArrConfigWarning);
@@ -278,11 +258,9 @@ describe('ArrConfigWarning.vue', () => {
 
     it('does not call API if already dismissed', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: 'Radarr Main', id: 1, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -303,11 +281,9 @@ describe('ArrConfigWarning.vue', () => {
   describe('Edge Cases', () => {
     it('handles missing config name gracefully', async () => {
       api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {
-          incompleteConfigs: [
-            { type: 'Radarr', name: null, id: 1, missingField: 'quality_profile_id' }
-          ]
-        }
+        incompleteConfigs: [
+          { type: 'Radarr', name: null, id: 1, missingField: 'quality_profile_id' }
+        ]
       });
 
       const wrapper = mount(ArrConfigWarning);
@@ -318,9 +294,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('handles null response data', async () => {
-      api.getArrConfigStatus.mockResolvedValueOnce({
-        data: null
-      });
+      api.getArrConfigStatus.mockResolvedValueOnce(null);
 
       const wrapper = mount(ArrConfigWarning);
       await flushPromises();
@@ -330,9 +304,7 @@ describe('ArrConfigWarning.vue', () => {
     });
 
     it('handles undefined incompleteConfigs', async () => {
-      api.getArrConfigStatus.mockResolvedValueOnce({
-        data: {}
-      });
+      api.getArrConfigStatus.mockResolvedValueOnce({});
 
       const wrapper = mount(ArrConfigWarning);
       await flushPromises();

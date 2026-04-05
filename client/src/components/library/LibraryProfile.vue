@@ -140,8 +140,7 @@ const refreshing = ref(false)
 const loadProfile = async () => {
   try {
     loading.value = true
-    const res = await api.getLibraryProfile(props.libraryId)
-    profile.value = res.data
+    profile.value = await api.getLibraryProfile(props.libraryId)
   } catch (err) {
     console.error('Failed to load profile:', err)
     profile.value = null

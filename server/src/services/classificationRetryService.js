@@ -8,8 +8,15 @@
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const classificationOutcomeService = require('./classificationOutcomeService');
-const { ENRICHMENT_METADATA_KEYS, buildJsonbDeleteChain } = require('../utils/metadataEnrichment');
-const { normalizeMetadataList } = require('../utils/metadataNormalization');
+const ClassificationRetryFollowupService = require('./classificationRetryFollowupService');
+const ClassificationRetryStateService = require('./classificationRetryStateService');
+const classificationEvidenceService = require('./classificationEvidenceService');
+const {
+  buildRetryIdentity,
+  buildRetryPayload,
+  safeParseJsonObject,
+  toPositiveInt,
+} = require('../utils/classificationRetryPayloads');
 
 const logger = createLogger('ClassificationRetryService');
 
@@ -19,123 +26,13 @@ const RETRY_ROUTE = '/api/classification/retry';
 const DEFAULT_RETRY_TASK_SOURCE = 'manual_retry';
 const DEFAULT_RETRY_FOLLOWUP_SOURCE = 'manual_retry_followup';
 
-function isFinitePositiveInt(value) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0;
-}
-
-function toPositiveInt(value) {
-  return isFinitePositiveInt(value) ? Number.parseInt(value, 10) : null;
-}
-
-function safeParseJsonObject(value, fallback = {}) {
-  if (value === null || value === undefined) return fallback;
-  if (typeof value === 'object') return value;
-  if (typeof value !== 'string') return fallback;
-  const trimmed = value.trim();
-  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return fallback;
-  try {
-    const parsed = JSON.parse(trimmed);
-    return parsed && typeof parsed === 'object' ? parsed : fallback;
-  } catch (_error) {
-    return fallback;
-  }
-}
-
-function normalizeTitle(value) {
-  return String(value || '').trim().toLowerCase();
-}
-
-function normalizeYear(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const asString = String(value).trim();
-  return asString.length > 0 ? asString : null;
-}
-
-function buildRetryPayload(row, metadata, mediaItemId) {
-  const mediaType = row.media_type || metadata.media_type || 'movie';
-  const tmdbId = toPositiveInt(row.tmdb_id ?? metadata.tmdb_id ?? metadata.tmdbId);
-  const tvdbId = toPositiveInt(metadata.tvdb_id ?? metadata.tvdbId);
-  const year = row.year || metadata.year || null;
-  const requestedSeasons = Array.isArray(metadata.requested_seasons) ? metadata.requested_seasons : null;
-  const payload = {
-    title: row.title || metadata.title || 'Unknown',
-    year,
-    tmdb_id: tmdbId,
-    media_type: mediaType,
-    overview: metadata.overview || '',
-    genres: normalizeMetadataList(metadata.genres),
-    keywords: normalizeMetadataList(metadata.keywords),
-    content_rating: metadata.content_rating || metadata.certification || null,
-    original_language: metadata.original_language || 'en',
-    requested_seasons: requestedSeasons,
-    include_specials: metadata.include_specials === true,
-    retry_count: Number.isInteger(Number(row.retry_count)) ? Number(row.retry_count) : 0,
-    max_retries: Number.isInteger(Number(row.max_retries)) && Number(row.max_retries) > 0
-      ? Number(row.max_retries)
-      : 3,
-    source_library_id: toPositiveInt(metadata.source_library_id),
-    source_library_name: metadata.source_library_name || null,
-    itemId: toPositiveInt(mediaItemId || metadata.itemId || metadata.item_id || metadata.media_item_id),
-    media: {
-      media_type: mediaType,
-      tmdbId,
-      tvdbId,
-      title: row.title || metadata.title || null,
-      year,
-    }
-  };
-
-  if (!requestedSeasons) delete payload.requested_seasons;
-  if (!payload.itemId) delete payload.itemId;
-  if (metadata.retry_lineage && typeof metadata.retry_lineage === 'object') {
-    payload.retry_lineage = metadata.retry_lineage;
-  }
-
-  return payload;
-}
-
-function buildMetadataEnrichmentPayload(retryPayload, metadata, mediaItemId) {
-  if (!mediaItemId) return null;
-
-  return {
-    title: retryPayload.title,
-    year: retryPayload.year || null,
-    overview: retryPayload.overview || '',
-    genres: normalizeMetadataList(retryPayload.genres),
-    keywords: normalizeMetadataList(retryPayload.keywords),
-    content_rating: retryPayload.content_rating || null,
-    original_language: retryPayload.original_language || 'en',
-    tmdb_id: retryPayload.tmdb_id || null,
-    tvdb_id: retryPayload.media?.tvdbId || null,
-    imdb_id: metadata.imdb_id || metadata.imdbId || null,
-    posterPath: metadata.posterPath || null,
-    itemId: mediaItemId,
-    source_library_id: retryPayload.source_library_id || null,
-    source_library_name: retryPayload.source_library_name || null,
-    media: {
-      media_type: retryPayload.media_type || 'movie'
-    }
-  };
-}
-
-function getIdentity(row, metadata) {
-  const tmdbId = toPositiveInt(row.tmdb_id ?? metadata.tmdb_id ?? metadata.tmdbId);
-  const mediaType = row.media_type || metadata.media_type || 'movie';
-  const title = normalizeTitle(row.title || metadata.title);
-  const year = normalizeYear(row.year || metadata.year);
-  return {
-    tmdbId,
-    mediaType,
-    title,
-    year,
-  };
-}
-
 class ClassificationRetryService {
   constructor(deps = {}) {
     this.db = deps.db || db;
     this.logger = deps.logger || logger;
+    this.followupService = deps.followupService || new ClassificationRetryFollowupService();
+    this.stateService = deps.stateService || new ClassificationRetryStateService();
+    this.evidenceService = deps.evidenceService || classificationEvidenceService;
   }
 
   normalizeIds(rawIds) {
@@ -237,258 +134,23 @@ class ClassificationRetryService {
   }
 
   async hasPendingClassificationTask(client, identity) {
-    if (identity.tmdbId) {
-      const result = await client.query(
-        `SELECT id, status
-         FROM task_queue
-         WHERE task_type = 'classification'
-           AND status IN ('pending', 'processing')
-           AND COALESCE(payload->'media'->>'media_type', payload->>'media_type', 'movie') = $2
-           AND (
-             ((payload->'media'->>'tmdbId') ~ '^[0-9]+$' AND (payload->'media'->>'tmdbId')::int = $1)
-             OR ((payload->>'tmdb_id') ~ '^[0-9]+$' AND (payload->>'tmdb_id')::int = $1)
-           )
-         ORDER BY created_at ASC
-         LIMIT 1`,
-        [identity.tmdbId, identity.mediaType]
-      );
-      if (result.rows[0]) {
-        return result.rows[0];
-      }
-    }
-
-    if (!identity.title) return null;
-
-    const result = await client.query(
-      `SELECT id, status
-       FROM task_queue
-       WHERE task_type = 'classification'
-         AND status IN ('pending', 'processing')
-         AND COALESCE(payload->'media'->>'media_type', payload->>'media_type', 'movie') = $3
-         AND LOWER(TRIM(COALESCE(payload->>'title', payload->>'subject', payload->'media'->>'title', ''))) = $1
-         AND COALESCE(NULLIF(COALESCE(payload->>'year', payload->'media'->>'year', ''), ''), '') = COALESCE($2, '')
-       ORDER BY created_at ASC
-       LIMIT 1`,
-      [identity.title, identity.year, identity.mediaType]
-    );
-
-    return result.rows[0] || null;
+    return this.stateService.hasPendingClassificationTask(client, identity);
   }
 
   async resolveMediaItemId(client, metadata, identity) {
-    const fromMetadata = toPositiveInt(metadata.itemId || metadata.item_id || metadata.media_item_id);
-    if (fromMetadata) return fromMetadata;
-    const sourceLibraryId = toPositiveInt(metadata.source_library_id);
-
-    if (identity.tmdbId) {
-      const byTmdb = sourceLibraryId
-        ? await client.query(
-          `SELECT id
-           FROM media_server_items
-           WHERE tmdb_id = $1
-             AND media_type = $2
-             AND library_id = $3
-           ORDER BY last_synced DESC NULLS LAST, id DESC
-           LIMIT 1`,
-          [identity.tmdbId, identity.mediaType, sourceLibraryId]
-        )
-        : await client.query(
-          `SELECT id
-           FROM media_server_items
-           WHERE tmdb_id = $1
-             AND media_type = $2
-           ORDER BY last_synced DESC NULLS LAST, id DESC
-           LIMIT 1`,
-          [identity.tmdbId, identity.mediaType]
-        );
-      if (byTmdb.rows[0]?.id) return byTmdb.rows[0].id;
-    }
-
-    if (!identity.title) return null;
-
-    const byTitle = sourceLibraryId
-      ? await client.query(
-        `SELECT id
-         FROM media_server_items
-         WHERE LOWER(TRIM(title)) = $1
-           AND media_type = $2
-           AND COALESCE(NULLIF(year::text, ''), '') = COALESCE($3, '')
-           AND library_id = $4
-         ORDER BY last_synced DESC NULLS LAST, id DESC
-         LIMIT 1`,
-        [identity.title, identity.mediaType, identity.year, sourceLibraryId]
-      )
-      : await client.query(
-        `SELECT id
-         FROM media_server_items
-         WHERE LOWER(TRIM(title)) = $1
-           AND media_type = $2
-           AND COALESCE(NULLIF(year::text, ''), '') = COALESCE($3, '')
-         ORDER BY last_synced DESC NULLS LAST, id DESC
-         LIMIT 1`,
-        [identity.title, identity.mediaType, identity.year]
-      );
-    return byTitle.rows[0]?.id || null;
+    return this.stateService.resolveMediaItemId(client, metadata, identity);
   }
 
   async cleanupClassificationArtifacts(client, classificationId) {
-    await client.query('UPDATE media_requests SET classification_id = NULL WHERE classification_id = $1', [classificationId]);
-    await client.query('UPDATE webhook_log SET classification_id = NULL WHERE classification_id = $1', [classificationId]);
-    await client.query(
-      `DELETE FROM app_notifications
-       WHERE data IS NOT NULL
-         AND (
-           (data ? 'classificationId' AND (data->>'classificationId') ~ '^[0-9]+$' AND (data->>'classificationId')::int = $1)
-           OR (data ? 'classification_id' AND (data->>'classification_id') ~ '^[0-9]+$' AND (data->>'classification_id')::int = $1)
-         )`,
-      [classificationId]
-    );
-    await client.query('DELETE FROM clarification_responses WHERE classification_id = $1', [classificationId]);
-    await client.query('DELETE FROM content_analysis_log WHERE classification_id = $1', [classificationId]);
-    await client.query('DELETE FROM classification_corrections WHERE classification_id = $1', [classificationId]);
-    await client.query('DELETE FROM classification_embeddings WHERE classification_id = $1', [classificationId]);
-    await client.query('DELETE FROM embedding_errors WHERE classification_id = $1', [classificationId]);
-    await client.query('DELETE FROM pattern_match_log WHERE classification_id = $1', [classificationId]);
+    return this.stateService.cleanupClassificationArtifacts(client, classificationId);
   }
 
   async captureRetryLineage(client, classificationId) {
-    const mediaRequestsResult = await client.query(
-      `SELECT id
-       FROM media_requests
-       WHERE classification_id = $1
-       ORDER BY id ASC`,
-      [classificationId]
-    );
-
-    const webhookLogResult = await client.query(
-      `SELECT id
-       FROM webhook_log
-       WHERE classification_id = $1
-       ORDER BY id ASC`,
-      [classificationId]
-    );
-
-    const mediaRequestIds = mediaRequestsResult.rows
-      .map((row) => toPositiveInt(row.id))
-      .filter(Boolean);
-    const webhookLogIds = webhookLogResult.rows
-      .map((row) => toPositiveInt(row.id))
-      .filter(Boolean);
-
-    if (mediaRequestIds.length === 0 && webhookLogIds.length === 0) {
-      return null;
-    }
-
-    return {
-      original_classification_id: classificationId,
-      media_request_ids: mediaRequestIds,
-      webhook_log_ids: webhookLogIds
-    };
+    return this.stateService.captureRetryLineage(client, classificationId);
   }
 
   async cleanupEnrichmentState(client, mediaItemId) {
-    if (!mediaItemId) {
-      return {
-        enrichmentQueueRowsRemoved: 0,
-        metadataEnrichmentTasksRemoved: 0,
-        enrichmentMetadataReset: false,
-        enrichmentCleanupSkipped: 'no_media_item_link',
-      };
-    }
-
-    const retryQueueResult = await client.query(
-      `DELETE FROM enrichment_retry_queue
-       WHERE media_item_id = $1`,
-      [mediaItemId]
-    );
-
-    const metadataTaskResult = await client.query(
-      `DELETE FROM task_queue
-       WHERE task_type = 'metadata_enrichment'
-         AND status IN ('pending', 'processing')
-         AND (
-           ((payload->>'itemId') ~ '^[0-9]+$' AND (payload->>'itemId')::int = $1)
-           OR ((payload->>'media_item_id') ~ '^[0-9]+$' AND (payload->>'media_item_id')::int = $1)
-         )`,
-      [mediaItemId]
-    );
-
-    const metadataResetResult = await client.query(
-      `UPDATE media_server_items
-       SET metadata = (
-         ${buildJsonbDeleteChain("COALESCE(metadata, '{}'::jsonb)", ENRICHMENT_METADATA_KEYS)}
-       ),
-           enrichment_status = 'pending'
-       WHERE id = $1`,
-      [mediaItemId]
-    );
-
-    return {
-      enrichmentQueueRowsRemoved: retryQueueResult.rowCount || 0,
-      metadataEnrichmentTasksRemoved: metadataTaskResult.rowCount || 0,
-      enrichmentMetadataReset: (metadataResetResult.rowCount || 0) > 0,
-      enrichmentCleanupSkipped: null,
-    };
-  }
-
-  async enqueueMetadataEnrichmentTask({
-    classificationId,
-    mediaItemId,
-    retryPayload,
-    metadata,
-    actor,
-    correlationId,
-    metadataEnrichmentSource,
-    route
-  }) {
-    if (!mediaItemId) {
-      return {
-        metadataEnrichmentQueued: false,
-        metadataEnrichmentTaskId: null,
-        metadataEnrichmentReason: 'no_media_item_link'
-      };
-    }
-
-    const enrichmentPayload = buildMetadataEnrichmentPayload(retryPayload, metadata, mediaItemId);
-    if (!enrichmentPayload) {
-      return {
-        metadataEnrichmentQueued: false,
-        metadataEnrichmentTaskId: null,
-        metadataEnrichmentReason: 'payload_unavailable'
-      };
-    }
-
-    try {
-      const result = await this.db.query(
-        `INSERT INTO task_queue (task_type, payload, priority, source, max_attempts)
-         VALUES ($1, $2::jsonb, $3, $4, $5)
-         RETURNING id`,
-        ['metadata_enrichment', JSON.stringify(enrichmentPayload), 1, metadataEnrichmentSource, 5]
-      );
-
-      const taskId = result.rows[0]?.id || null;
-      return {
-        metadataEnrichmentQueued: Boolean(taskId),
-        metadataEnrichmentTaskId: taskId,
-        metadataEnrichmentReason: taskId ? 'queued' : 'not_queued'
-      };
-    } catch (error) {
-        this.logger.warn('Metadata enrichment enqueue skipped after classification retry', {
-        correlationId,
-        actor,
-        route,
-        classificationId,
-        mediaItemId,
-        result: 'skipped',
-        reasonCode: 'metadata_enqueue_failed',
-        error: error.message
-      });
-      return {
-        metadataEnrichmentQueued: false,
-        metadataEnrichmentTaskId: null,
-        metadataEnrichmentReason: 'enqueue_failed'
-      };
-    }
+    return this.stateService.cleanupEnrichmentState(client, mediaItemId);
   }
 
   async retrySingle(client, {
@@ -560,7 +222,7 @@ class ClassificationRetryService {
       }
 
       const metadata = safeParseJsonObject(row.metadata, {});
-      const identity = getIdentity(row, metadata);
+      const identity = buildRetryIdentity(row, metadata);
       const existingTask = await this.hasPendingClassificationTask(client, identity);
       if (existingTask) {
         await client.query('ROLLBACK');
@@ -588,14 +250,15 @@ class ClassificationRetryService {
 
       let purgedLearning = false;
       if (purgeLearning && identity.tmdbId) {
-        const learningResult = await client.query(
-          `DELETE FROM learning_patterns
-           WHERE pattern_type = 'exact_match'
-             AND tmdb_id = $1
-             AND media_type = $2`,
-          [identity.tmdbId, identity.mediaType]
-        );
-        purgedLearning = (learningResult.rowCount || 0) > 0;
+        const learningResult = await this.evidenceService.purgeEvidence({
+          tmdbId: identity.tmdbId,
+          mediaType: identity.mediaType,
+          scopes: ['item_exact'],
+          client,
+          actor,
+          reason: 'classification_retry'
+        });
+        purgedLearning = (learningResult.deletedByScope?.item_exact || 0) > 0;
       }
 
       const retryPayload = buildRetryPayload(row, metadata, mediaItemId);
@@ -626,7 +289,7 @@ class ClassificationRetryService {
 
       await client.query('COMMIT');
 
-      const metadataEnrichmentResult = await this.enqueueMetadataEnrichmentTask({
+      const metadataEnrichmentResult = await this.followupService.enqueueMetadataEnrichmentTask({
         classificationId,
         mediaItemId,
         retryPayload,

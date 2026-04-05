@@ -190,8 +190,7 @@ onMounted(async () => {
 const loadMappings = async () => {
   loading.value = true
   try {
-    const response = await api.get('/settings/path-mappings')
-    mappings.value = response.data
+    mappings.value = await api.getData('/settings/path-mappings')
   } catch (error) {
     console.error('Failed to load path mappings:', error)
     toast.error('Failed to load path mappings')

@@ -14,6 +14,7 @@ describe('QueueAdminService', () => {
     let logger;
     let classificationService;
     let ragGraphExtractor;
+    let evidenceService;
     let adminService;
 
     beforeEach(() => {
@@ -39,11 +40,15 @@ describe('QueueAdminService', () => {
                 cast_names: ['Actor'],
             }),
         };
+        evidenceService = {
+            rememberExactMatch: jest.fn().mockResolvedValue({ id: 9001 }),
+        };
         adminService = new QueueAdminService({
             db,
             logger,
             classificationService,
             ragGraphExtractor,
+            evidenceService,
         });
     });
 
@@ -102,10 +107,15 @@ describe('QueueAdminService', () => {
             expect.objectContaining({ title: 'Hoppers', tmdb_id: 1327819 }),
             expect.objectContaining({ id: 7, name: 'Family' })
         );
-        expect(client.query).toHaveBeenCalledWith(
-            expect.stringContaining('INSERT INTO learning_patterns'),
-            expect.arrayContaining([1327819, 'movie', 7])
-        );
+        expect(evidenceService.rememberExactMatch).toHaveBeenCalledWith(expect.objectContaining({
+            tmdbId: 1327819,
+            mediaType: 'movie',
+            libraryId: 7,
+            createdBy: 'admin-user',
+            client,
+            payloadColumn: 'metadata',
+            conflictMode: 'update_metadata'
+        }));
     });
 
     it('does not write history or task state when routing fails', async () => {

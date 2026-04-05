@@ -32,10 +32,14 @@ const { withConsoleSpy } = require('../setup/consoleHelpers');
 
 describe('Queue Robustness Integration Tests', () => {
     beforeEach(async () => {
+        jest.restoreAllMocks();
         await db.query('DELETE FROM task_queue');
         await db.query('DELETE FROM classification_history');
         // Reset in-memory counter to a known state before each test
         queueService.processing = 0;
+        queueService.running = false;
+        queueService.aiAvailable = true;
+        queueService.lastAiAvailabilityProbeAt = 0;
     });
 
     // =========================================================================
@@ -233,6 +237,45 @@ describe('Queue Robustness Integration Tests', () => {
             expect(blockers.hasProcessingClassification).toBe(true);
             expect(task).not.toBeNull();
             expect(task.task_type).toBe('metadata_enrichment');
+        });
+
+        test('worker-level dispatch excludes classification while AI is unavailable and a recent probe exists', async () => {
+            await db.query(`
+                INSERT INTO task_queue (task_type, status, payload, priority)
+                VALUES
+                    ('classification', 'pending', '{"title":"Classification Waiting"}', 10),
+                    ('metadata_enrichment', 'pending', '{"title":"Enrichment Ready","itemId":123}', 5)
+            `);
+
+            queueService.aiAvailable = false;
+            queueService.lastAiAvailabilityProbeAt = Date.now();
+
+            const processTaskSpy = jest.spyOn(queueService, 'processTask').mockResolvedValue(undefined);
+            const checkAIAvailabilitySpy = jest.spyOn(queueService, 'checkAIAvailability');
+
+            const dispatched = await queueService.queueWorkerLoopService.maybeDispatchTask();
+            await new Promise((resolve) => setImmediate(resolve));
+
+            expect(dispatched).toBe(true);
+            expect(checkAIAvailabilitySpy).not.toHaveBeenCalled();
+            expect(processTaskSpy).toHaveBeenCalledWith(
+                expect.objectContaining({ task_type: 'metadata_enrichment' })
+            );
+
+            const rows = await db.query(`
+                SELECT task_type, status
+                FROM task_queue
+                ORDER BY CASE task_type
+                    WHEN 'classification' THEN 1
+                    WHEN 'metadata_enrichment' THEN 2
+                    ELSE 3
+                END
+            `);
+
+            expect(rows.rows).toEqual([
+                expect.objectContaining({ task_type: 'classification', status: 'pending' }),
+                expect.objectContaining({ task_type: 'metadata_enrichment', status: 'processing' }),
+            ]);
         });
     });
 

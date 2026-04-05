@@ -90,6 +90,7 @@ import {
   PresentationChartLineIcon,
   DocumentDuplicateIcon,
   SwatchIcon,
+  CircleStackIcon,
 } from "@heroicons/vue/24/outline";
 
 defineProps({
@@ -115,6 +116,7 @@ const classificationMenuItems = [
   { path: "/policies", label: "Policies", icon: DocumentDuplicateIcon },
   { path: "/presets", label: "Presets", icon: SwatchIcon },
   { path: "/tuning-suggestions", label: "Tuning", icon: LightBulbIcon },
+  { path: "/evidence", label: "Evidence", icon: CircleStackIcon },
 ];
 
 const insightsMenuItems = [

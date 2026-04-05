@@ -61,8 +61,8 @@ describe('System.vue', () => {
 
   const mountSystem = async (statusOverrides = {}) => {
     api.getAIConfig.mockResolvedValue({ data: {} })
-    api.getSystemHealth.mockResolvedValue({ data: baseHealth })
-    api.getSystemStatus.mockResolvedValue({ data: { ...baseStatus, ...statusOverrides } })
+    api.getSystemHealth.mockResolvedValue(baseHealth)
+    api.getSystemStatus.mockResolvedValue({ ...baseStatus, ...statusOverrides })
 
     const wrapper = mount(SystemView, {
       global: {

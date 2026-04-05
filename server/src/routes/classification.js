@@ -23,7 +23,8 @@ const classificationRetryService = require('../services/classificationRetryServi
 const classificationOutcomeService = require('../services/classificationOutcomeService');
 const reclassificationService = require('../services/reclassificationService');
 const clarificationService = require('../services/clarificationService');
-const patternReinforcementService = require('../services/patternReinforcementService');
+const classificationEvidenceService = require('../services/classificationEvidenceService');
+const classificationEvidenceReinforcementService = require('../services/classificationEvidenceReinforcementService');
 const { PATTERN_SIGNAL_TYPES } = require('../services/signalCollector');
 const { createLogger } = require('../utils/logger');
 const { requireReadWrite } = require('../middleware/apiKeyAuth');
@@ -384,12 +385,14 @@ router.post('/corrections', async (req, res) => {
     });
 
     // Extract learning pattern
-    await db.query(
-      `INSERT INTO learning_patterns (tmdb_id, media_type, library_id, pattern_type, pattern_data, confidence)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT DO NOTHING`,
-      [tmdb_id, media_type || 'unknown', corrected_library_id, 'exact_match', metadata, 100.00]
-    );
+    await classificationEvidenceService.rememberExactMatch({
+      tmdbId: tmdb_id,
+      mediaType: media_type || 'unknown',
+      libraryId: corrected_library_id,
+      payload: metadata,
+      payloadColumn: 'pattern_data',
+      conflictMode: 'do_nothing'
+    });
 
     // Pattern reinforcement - async, don't wait
     setImmediate(async () => {
@@ -406,10 +409,11 @@ router.post('/corrections', async (req, res) => {
           const patternSignals = signals.filter(s => s.type && PATTERN_SIGNAL_TYPES.includes(s.type));
           
           if (patternSignals.length > 0) {
-            await patternReinforcementService.reinforceOnCorrection(
+            await classificationEvidenceReinforcementService.reinforceOnCorrection(
               classification_id,
               patternSignals,
-              corrected_library_id
+              corrected_library_id,
+              { metadata, mediaType: media_type }
             );
           }
         }

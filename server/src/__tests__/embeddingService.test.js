@@ -152,10 +152,43 @@ describe('EmbeddingService', () => {
             expect(embeddingRouter.embed).not.toHaveBeenCalled();
         });
 
+        it('should rethrow provider lock timeouts as provider busy errors', async () => {
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingRouter.embed.mockRejectedValue(Object.assign(
+                new Error('[ProviderLock] Timeout waiting for lock (requestor: embedding)'),
+                {
+                    code: 'PROVIDER_LOCK_TIMEOUT',
+                    lockHolder: 'classification',
+                    waitMs: 1700,
+                    activeModel: 'gemma3:12b',
+                    preemptRequested: true
+                }
+            ));
+
+            await expect(embeddingService.generateAndStore(1, {
+                title: 'Test Title',
+                overview: 'Test Overview'
+            })).rejects.toMatchObject({
+                message: 'PROVIDER_BUSY',
+                code: 'EMBEDDING_PROVIDER_BUSY',
+                lockHolder: 'classification',
+                waitMs: 1700,
+                activeModel: 'gemma3:12b',
+                preemptRequested: true
+            });
+        });
+
         it('should handle errors gracefully', async () => {
             // It catches errors and returns null
             const result = await embeddingService.generateAndStore(1, null);
             expect(result).toBeNull();
+        });
+
+        it('should detect structured provider busy errors', () => {
+            expect(embeddingService.isProviderBusyError({
+                code: 'PROVIDER_LOCK_TIMEOUT',
+                message: '[ProviderLock] Timeout waiting for lock (requestor: embedding)'
+            })).toBe(true);
         });
     });
 

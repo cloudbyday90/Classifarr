@@ -154,10 +154,10 @@ const connectionStatus = ref({
 
 onMounted(async () => {
   try {
-    const response = await api.get('/settings/tmdb')
-    if (response.data) {
-      apiKey.value = response.data.api_key || ''
-      language.value = response.data.language || 'en-US'
+    const response = await api.getData('/settings/tmdb')
+    if (response) {
+      apiKey.value = response.api_key || ''
+      language.value = response.language || 'en-US'
       
       if (apiKey.value) {
         isConfigured.value = true

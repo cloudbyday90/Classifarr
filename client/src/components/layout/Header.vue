@@ -222,10 +222,7 @@ const accountContainerRef = ref(null);
 
 const { data: userResponse } = useSWR(
   "header:user",
-  async () => {
-    const response = await api.get('/user/me');
-    return response.data;
-  },
+  () => api.getData('/user/me'),
   { ttl: CACHE_TTL.LONG, pollInterval: POLL_INTERVALS.SLOW, pollOnlyWhenVisible: true }
 );
 
@@ -236,19 +233,13 @@ const accountUsername = computed(() => {
 
 const { data: notificationsResponse, refresh: refreshNotifications } = useSWR(
   "header:notifications:list",
-  async () => {
-    const response = await api.getNotifications({ page: 1, limit: 10, filter: "all" });
-    return response.data;
-  },
+  () => api.getNotifications({ page: 1, limit: 10, filter: "all" }),
   { ttl: CACHE_TTL.SHORT, pollInterval: POLL_INTERVALS.FAST, pollOnlyWhenVisible: true }
 );
 
 const { data: unreadResponse, refresh: refreshUnreadCount } = useSWR(
   "header:notifications:unread",
-  async () => {
-    const response = await api.getUnreadNotificationCount();
-    return response.data;
-  },
+  () => api.getUnreadNotificationCount(),
   { ttl: CACHE_TTL.SHORT, pollInterval: POLL_INTERVALS.FAST, pollOnlyWhenVisible: true }
 );
 

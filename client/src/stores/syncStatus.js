@@ -47,13 +47,13 @@ export const useSyncStatusStore = defineStore('syncStatus', {
   actions: {
     async fetchStatus() {
       try {
-        const response = await api.get('/sync/status')
+        const status = await api.getData('/sync/status')
         const wasRunning = this.isRunning
-        this.isRunning = response.data.isRunning
-        this.type = response.data.type
-        this.progress = response.data.progress
-        this.currentLibrary = response.data.currentLibrary
-        this.startedAt = response.data.startedAt
+        this.isRunning = status.isRunning
+        this.type = status.type
+        this.progress = status.progress
+        this.currentLibrary = status.currentLibrary
+        this.startedAt = status.startedAt
         
         // If sync just started and we're in slow polling mode, switch to fast polling
         if (this.isRunning && !wasRunning && !this.isPollingActive) {

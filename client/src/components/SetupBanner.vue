@@ -57,8 +57,7 @@ export default {
 
     const fetchStatus = async () => {
       try {
-        const response = await api.getSetupWizardStatus();
-        status.value = response.data;
+        status.value = await api.getSetupWizardStatus();
         
         // Check if user dismissed banner this session
         const sessionDismissed = sessionStorage.getItem('setupBannerDismissed');

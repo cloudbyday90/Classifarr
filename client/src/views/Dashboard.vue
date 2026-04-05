@@ -403,12 +403,12 @@ const {
     const [statsRes, historyRes, pendingRes] = await Promise.all([
       api.getStats(),
       api.getHistory({ page: 1, limit: 8, excludeMethod: 'source_library' }),
-      api.get('/classification/pending/count')
+      api.getData('/classification/pending/count')
     ])
     return {
       stats: statsRes.data,
       recentHistory: historyRes.data.data || [],
-      awaitingDecisionCount: pendingRes.data.count || 0
+      awaitingDecisionCount: pendingRes.count || 0
     }
   },
   { ttl: CACHE_TTL.MEDIUM }
@@ -425,10 +425,10 @@ const {
   async () => {
     try {
       const liveRes = await api.getLiveStats()
-      if (liveRes?.data) {
+      if (liveRes) {
         return {
-          queueStats: liveRes.data.queue || { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true },
-          enrichmentStats: liveRes.data.enrichment || { totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 }
+          queueStats: liveRes.queue || { pending: 0, processing: 0, completed: 0, failed: 0, aiAvailable: true },
+          enrichmentStats: liveRes.enrichment || { totalItems: 0, enriched: 0, tavilyEnriched: 0, progress: 0 }
         }
       }
     } catch {

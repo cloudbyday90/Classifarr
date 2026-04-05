@@ -383,8 +383,7 @@ onMounted(async () => {
 
 const loadMediaServers = async () => {
   try {
-    const response = await api.getMediaServers()
-    mediaServers.value = response.data || []
+    mediaServers.value = await api.getMediaServers()
   } catch (error) {
     console.error('Failed to load media servers:', error)
   }

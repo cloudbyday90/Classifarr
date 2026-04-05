@@ -350,7 +350,7 @@ async function refreshData() {
 
 async function loadPendingClassifications() {
   try {
-    const data = await api.get('/classification/pending')
+    const data = await api.getData('/classification/pending')
     pendingClassifications.value = data.items || []
   } catch (error) {
     console.error('Failed to load pending classifications:', error)
@@ -359,9 +359,7 @@ async function loadPendingClassifications() {
 
 async function loadLibraries() {
   try {
-    const response = await api.get('/libraries')
-    // Handle different response structures
-    const libData = response.data || response
+    const libData = await api.getData('/libraries')
     libraries.value = Array.isArray(libData) ? libData.filter(lib => lib.is_active) : []
   } catch (error) {
     console.error('Failed to load libraries:', error)

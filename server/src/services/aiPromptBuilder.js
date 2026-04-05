@@ -269,7 +269,24 @@ class AIPromptBuilder {
         if (data.hasConflict) {
             lines.push('⚠️ CONFLICT: Multiple libraries have similar scores');
         }
-        
+
+        // Phase 4C: Include related evidence summary when present
+        if (data.relatedEvidenceSummary) {
+            const s = data.relatedEvidenceSummary;
+            lines.push('Related Evidence:');
+            if (s.topLibrary) {
+                lines.push(`  Top library from prior classifications: ${s.topLibrary} (${s.confidence}% confidence)`);
+            }
+            if (s.topScopes && s.topScopes.length > 0) {
+                for (const scope of s.topScopes.slice(0, 3)) {
+                    lines.push(`  ${scope.scope}: "${scope.label}" — ${scope.confidence}% (${scope.provenance ?? 'unknown'})`);
+                }
+            }
+            if (s.hasConflict) {
+                lines.push('  ⚠️ Related evidence points to multiple libraries');
+            }
+        }
+
         lines.push('=============================');
         
         return lines.join('\n');

@@ -207,7 +207,7 @@ async function fetchUsageCount() {
   try {
     // Try to fetch usage count from API
     const response = await presetsApi.getPresetUsageCount(props.preset.id)
-    usageCount.value = response.data.count
+    usageCount.value = response.count
   } catch (error) {
     console.error('Error fetching preset usage count:', error)
     // Silently fail - usage count is optional; hide indicator when unavailable

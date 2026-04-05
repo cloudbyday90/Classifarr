@@ -32,11 +32,11 @@ vi.mock('@/components/activity/ActivityItemProgress.vue', () => ({ default: { te
 // Mock API and Socket
 vi.mock('@/api', () => ({
   default: {
-    getLiveStats: vi.fn().mockResolvedValue({ data: { health: {}, today: {}, queue: {}, gapAnalysis: {}, enrichment: {} } }),
-    getLiveFeed: vi.fn().mockResolvedValue({ data: { items: [] } }),
+    getLiveStats: vi.fn().mockResolvedValue({ health: {}, today: {}, queue: {}, gapAnalysis: {}, enrichment: {} }),
+    getLiveFeed: vi.fn().mockResolvedValue({ items: [] }),
     getQueuePending: vi.fn().mockResolvedValue([]),
-    getAiGenerationStatus: vi.fn().mockResolvedValue({ data: { isActive: false } }),
-    getClassificationProgress: vi.fn().mockResolvedValue({ data: [] }),
+    getAiGenerationStatus: vi.fn().mockResolvedValue({ isActive: false }),
+    getClassificationProgress: vi.fn().mockResolvedValue([]),
     getQueueSettings: vi.fn().mockResolvedValue({ data: {} })
   }
 }))
@@ -69,7 +69,7 @@ describe('Activity.vue', () => {
     
     // We mock the API to return our test data
     const api = (await import('@/api')).default
-    api.getClassificationProgress.mockResolvedValue({ data: mockTasks })
+    api.getClassificationProgress.mockResolvedValue(mockTasks)
 
     wrapper = mount(Activity, {
       global: {

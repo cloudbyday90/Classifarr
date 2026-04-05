@@ -15,6 +15,7 @@ jest.mock('../services/classification', () => ({}))
 jest.mock('../services/reclassificationService', () => ({}))
 jest.mock('../services/clarificationService', () => ({}))
 jest.mock('../services/patternReinforcementService', () => ({}))
+jest.mock('../services/classificationEvidenceReinforcementService', () => ({ reinforceOnAccept: jest.fn(), reinforceOnCorrection: jest.fn() }))
 jest.mock('../services/libraryProfileService', () => ({}))
 jest.mock('../services/signalCollector', () => ({ PATTERN_SIGNAL_TYPES: [] }))
 

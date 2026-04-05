@@ -53,7 +53,7 @@ export function useQuickAdd({ refreshData }) {
     quickAddSearching.value = true
     try {
       const response = await api.searchTMDB(query, 'multi')
-      const normalized = normalizeTmdbResults(response?.data)
+      const normalized = normalizeTmdbResults(response)
       quickAddResults.value = normalized
       if (!normalized.length) quickAddError.value = 'No TMDB results found for that query.'
     } catch (error) {

@@ -138,8 +138,7 @@ export default {
     async loadRules() {
       this.loading = true;
       try {
-        const response = await api.getLibraryMigrationRules(this.library.library_id);
-        this.rules = response.data;
+        this.rules = await api.getLibraryMigrationRules(this.library.library_id);
       } catch (error) {
         console.error('Failed to load rules:', error);
         this.showNotification('error', error.response?.data?.error || 'Failed to load rules. Please try again.');
@@ -150,8 +149,7 @@ export default {
     async analyzeRule(rule) {
       this.analyzing = rule.id;
       try {
-        const response = await api.analyzeMigrationRule(rule.id);
-        const analysis = response.data;
+        const analysis = await api.analyzeMigrationRule(rule.id);
         
         this.analyses = { ...this.analyses, [rule.id]: analysis };
         

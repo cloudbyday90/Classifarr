@@ -317,8 +317,7 @@ onMounted(async () => {
 
 const loadMediaServers = async () => {
   try {
-    const response = await api.getMediaServers()
-    mediaServers.value = response.data || []
+    mediaServers.value = await api.getMediaServers()
     
     // Auto-select if only one
     if (mediaServers.value.length === 1) {
@@ -336,14 +335,14 @@ const loadMappings = async () => {
   loading.value = true
   try {
     const [mappingsRes, unmappedRes, instancesRes] = await Promise.all([
-      api.get(`/mappings/${selectedMediaServerId.value}`),
-      api.get(`/mappings/${selectedMediaServerId.value}/unmapped`),
-      api.get(`/mappings/${selectedMediaServerId.value}/arr-instances`)
+      api.getData(`/mappings/${selectedMediaServerId.value}`),
+      api.getData(`/mappings/${selectedMediaServerId.value}/unmapped`),
+      api.getData(`/mappings/${selectedMediaServerId.value}/arr-instances`)
     ])
     
-    mappings.value = mappingsRes.data || []
-    unmappedLibraries.value = unmappedRes.data || []
-    arrInstances.value = instancesRes.data || { radarr: [], sonarr: [] }
+    mappings.value = mappingsRes || []
+    unmappedLibraries.value = unmappedRes || []
+    arrInstances.value = instancesRes || { radarr: [], sonarr: [] }
   } catch (error) {
     console.error('Failed to load mappings:', error)
     toast.error('Failed to load library mappings')
@@ -401,8 +400,7 @@ const loadRootFolders = async () => {
   
   const [arrType, arrId] = mappingForm.value.arr_selection.split(':')
   try {
-    const response = await api.get(`/mappings/root-folders/${arrType}/${arrId}`)
-    rootFolders.value = response.data || []
+    rootFolders.value = await api.getData(`/mappings/root-folders/${arrType}/${arrId}`)
   } catch (error) {
     console.error('Failed to load root folders:', error)
     toast.error('Failed to load root folders')
@@ -460,9 +458,9 @@ const openFolderBrowser = async () => {
 const loadBrowserFolders = async (path) => {
   browserLoading.value = true
   try {
-    const response = await api.get(`/system/browse-folders?path=${encodeURIComponent(path)}`)
-    browsingPath.value = response.data.currentPath
-    browserFolders.value = response.data.folders || []
+    const response = await api.getData(`/system/browse-folders?path=${encodeURIComponent(path)}`)
+    browsingPath.value = response.currentPath
+    browserFolders.value = response.folders || []
   } catch (error) {
     console.error('Failed to browse folders:', error)
     toast.error(error.response?.data?.error || 'Failed to browse folders')

@@ -318,19 +318,19 @@ const loadMappings = async () => {
   try {
     // Get mappings for this specific arr instance
     const [mappingsRes, unmappedRes] = await Promise.all([
-      api.get(`/mappings/${props.mediaServerId}`),
-      api.get(`/mappings/${props.mediaServerId}/unmapped`)
+      api.getData(`/mappings/${props.mediaServerId}`),
+      api.getData(`/mappings/${props.mediaServerId}/unmapped`)
     ])
     
     // Filter to only show mappings for this arr type and instance
-    const allMappings = mappingsRes.data || []
+    const allMappings = mappingsRes || []
     mappings.value = allMappings.filter(m => 
       m.arr_type === props.arrType && 
       (!props.arrConfigId || m.arr_config_id === props.arrConfigId)
     )
     
     // Filter unmapped libraries to only show relevant media type
-    const allUnmapped = unmappedRes.data || []
+    const allUnmapped = unmappedRes || []
     const mediaType = props.arrType === 'radarr' ? 'movie' : 'tv'
     unmappedLibraries.value = allUnmapped.filter(lib => lib.media_type === mediaType)
   } catch (error) {
@@ -344,8 +344,7 @@ const loadRootFolders = async () => {
   if (!props.arrConfigId) return
   
   try {
-    const response = await api.get(`/mappings/root-folders/${props.arrType}/${props.arrConfigId}`)
-    rootFolders.value = response.data || []
+    rootFolders.value = await api.getData(`/mappings/root-folders/${props.arrType}/${props.arrConfigId}`)
   } catch (error) {
     console.error('Failed to load root folders:', error)
   }
@@ -480,9 +479,9 @@ const openFolderBrowser = async () => {
 const loadBrowserFolders = async (path) => {
   browserLoading.value = true
   try {
-    const response = await api.get(`/system/browse-folders?path=${encodeURIComponent(path)}`)
-    browsingPath.value = response.data.currentPath
-    browserFolders.value = response.data.folders || []
+    const response = await api.getData(`/system/browse-folders?path=${encodeURIComponent(path)}`)
+    browsingPath.value = response.currentPath
+    browserFolders.value = response.folders || []
   } catch (error) {
     console.error('Failed to browse folders:', error)
     toast.error(error.response?.data?.error || 'Failed to browse folders')

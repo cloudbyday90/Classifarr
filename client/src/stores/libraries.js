@@ -29,8 +29,7 @@ export const useLibrariesStore = defineStore('libraries', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.getLibraries()
-      libraries.value = response.data
+      libraries.value = await api.getLibraries()
     } catch (err) {
       error.value = err.message
       console.error('Failed to fetch libraries:', err)

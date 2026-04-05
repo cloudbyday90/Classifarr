@@ -608,15 +608,7 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
-          .mockResolvedValueOnce({
-            rows: [{
-              id: 1,
-              tmdb_id: 12345,
-              library_id: 2,
-              pattern_type: 'exact_match',
-              confidence: 100
-            }]
-          }) // INSERT learning pattern
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };
@@ -633,13 +625,13 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      const learningPatternCall = mockClient.query.mock.calls.find(call =>
-        call[0] && call[0].includes('INSERT INTO learning_patterns')
+      const evidenceInsertCall = mockClient.query.mock.calls.find(call =>
+        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
       );
-      expect(learningPatternCall).toBeDefined();
+      expect(evidenceInsertCall).toBeDefined();
 
-      const metadataParam = JSON.parse(learningPatternCall[1][3]);
-      expect(metadataParam.selected_option).toBe('Yes');
+      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
+      expect(evidenceDataParam.selected_option).toBe('Yes');
       expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(1, expect.objectContaining({
         type: 'resolved',
         source: 'policy_question',
@@ -673,15 +665,7 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
-          .mockResolvedValueOnce({ 
-            rows: [{ 
-              id: 1, 
-              tmdb_id: 12345, 
-              library_id: 2,
-              pattern_type: 'exact_match',
-              confidence: 100 
-            }] 
-          }) // INSERT learning pattern
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };
@@ -700,16 +684,16 @@ describe('ClarificationService', () => {
       expect(result.classificationId).toBe(1);
       expect(result.libraryId).toBe(2);
       
-      // Verify that the learning pattern was created with correct metadata
-      const learningPatternCall = mockClient.query.mock.calls.find(call => 
-        call[0] && call[0].includes('INSERT INTO learning_patterns')
+      // Verify that item_exact evidence was written with correct payload
+      const evidenceInsertCall = mockClient.query.mock.calls.find(call => 
+        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
       );
-      expect(learningPatternCall).toBeDefined();
+      expect(evidenceInsertCall).toBeDefined();
       
-      // Parse the metadata parameter
-      const metadataParam = JSON.parse(learningPatternCall[1][3]);
-      expect(metadataParam.original_question).toBe('Is this a documentary?');
-      expect(metadataParam.selected_option).toBe('No');
+      // Parse the evidenceData parameter (position 5 in upsertEvidence params)
+      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
+      expect(evidenceDataParam.original_question).toBe('Is this a documentary?');
+      expect(evidenceDataParam.selected_option).toBe('No');
 
       const updateCall = mockClient.query.mock.calls.find(call =>
         call[0] && call[0].includes('UPDATE classification_history')
@@ -737,15 +721,7 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
-          .mockResolvedValueOnce({ 
-            rows: [{ 
-              id: 1, 
-              tmdb_id: 12345, 
-              library_id: 2,
-              pattern_type: 'exact_match',
-              confidence: 100 
-            }] 
-          }) // INSERT learning pattern
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };
@@ -762,16 +738,16 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
       
-      // Verify that the learning pattern was created with correct metadata
-      const learningPatternCall = mockClient.query.mock.calls.find(call => 
-        call[0] && call[0].includes('INSERT INTO learning_patterns')
+      // Verify item_exact evidence was written with correct payload
+      const evidenceInsertCall = mockClient.query.mock.calls.find(call => 
+        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
       );
-      expect(learningPatternCall).toBeDefined();
+      expect(evidenceInsertCall).toBeDefined();
       
-      // Parse the metadata parameter
-      const metadataParam = JSON.parse(learningPatternCall[1][3]);
-      expect(metadataParam.original_question).toBe('Is this a documentary?');
-      expect(metadataParam.selected_option).toBe('No');
+      // Parse the evidenceData parameter (position 5 in upsertEvidence params)
+      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
+      expect(evidenceDataParam.original_question).toBe('Is this a documentary?');
+      expect(evidenceDataParam.selected_option).toBe('No');
     });
 
     test('should handle null policy_question gracefully', async () => {
@@ -794,15 +770,7 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
-          .mockResolvedValueOnce({ 
-            rows: [{ 
-              id: 1, 
-              tmdb_id: 12345, 
-              library_id: 2,
-              pattern_type: 'exact_match',
-              confidence: 100 
-            }] 
-          }) // INSERT learning pattern
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };
@@ -819,14 +787,14 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
       
-      // Verify that the metadata was created with null original_question
-      const learningPatternCall = mockClient.query.mock.calls.find(call => 
-        call[0] && call[0].includes('INSERT INTO learning_patterns')
+      // Verify item_exact evidence was written with null original_question in payload
+      const evidenceInsertCall = mockClient.query.mock.calls.find(call => 
+        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
       );
-      expect(learningPatternCall).toBeDefined();
+      expect(evidenceInsertCall).toBeDefined();
       
-      const metadataParam = JSON.parse(learningPatternCall[1][3]);
-      expect(metadataParam.original_question).toBeNull();
+      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
+      expect(evidenceDataParam.original_question).toBeNull();
     });
 
     test('should handle invalid policy_question string gracefully', async () => {
@@ -848,15 +816,7 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification
-          .mockResolvedValueOnce({ 
-            rows: [{ 
-              id: 1, 
-              tmdb_id: 12345, 
-              library_id: 2,
-              pattern_type: 'exact_match',
-              confidence: 100 
-            }] 
-          }) // INSERT learning pattern
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };
@@ -873,13 +833,13 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      const learningPatternCall = mockClient.query.mock.calls.find(call =>
-        call[0] && call[0].includes('INSERT INTO learning_patterns')
+      const evidenceInsertCall = mockClient.query.mock.calls.find(call =>
+        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
       );
-      expect(learningPatternCall).toBeDefined();
+      expect(evidenceInsertCall).toBeDefined();
 
-      const metadataParam = JSON.parse(learningPatternCall[1][3]);
-      expect(metadataParam.original_question).toBeNull();
+      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
+      expect(evidenceDataParam.original_question).toBeNull();
     });
   });
 
@@ -904,13 +864,9 @@ describe('ClarificationService', () => {
           { rows: [mockClassification] }, // Get classification
           { rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }, // selected library
           { rows: [] }, // UPDATE classification_history
-          { rows: [{ id: 1, tmdb_id: 99999, library_id: 5, pattern_type: 'exact_match', confidence: 100 }] }, // INSERT exact_match
-          { rows: [] }, // advisory lock: documentary
-          { rowCount: 0, rows: [] }, // UPDATE genre_pattern: documentary
-          { rows: [] }, // INSERT genre_pattern: documentary
-          { rows: [] }, // advisory lock: family
-          { rowCount: 0, rows: [] }, // UPDATE genre_pattern: family
-          { rows: [] }, // INSERT genre_pattern: family
+          { rows: [{ id: 1 }] }, // Phase 7: INSERT classification_evidence (item_exact)
+          { rows: [{ id: 2 }] }, // Phase 7: INSERT classification_evidence (genre: documentary)
+          { rows: [{ id: 3 }] }, // Phase 7: INSERT classification_evidence (genre: family)
           { rows: [] }, // COMMIT
         ]),
         release: jest.fn()
@@ -944,15 +900,9 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
-          .mockResolvedValueOnce({
-            rows: [{ id: 1, tmdb_id: 99999, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
-          }) // INSERT exact_match pattern
-          .mockResolvedValueOnce({ rows: [] }) // advisory lock: documentary
-          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern: documentary
-          .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern: documentary
-          .mockResolvedValueOnce({ rows: [] }) // advisory lock: family
-          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern: family
-          .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern: family
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
+          .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary)
+          .mockResolvedValueOnce({ rows: [{ id: 3 }] }) // Phase 7: INSERT classification_evidence (genre: family)
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };
@@ -963,18 +913,14 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      const genrePatternUpdateCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].startsWith('UPDATE learning_patterns')
+      // Phase 7: genre evidence is written via INSERT INTO classification_evidence with ON CONFLICT DO UPDATE
+      const genreEvidenceCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
       );
-      const genrePatternInsertCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].startsWith('INSERT INTO learning_patterns') && call[0].includes("'genre_pattern'")
-      );
-      const advisoryLockCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].includes('pg_advisory_xact_lock')
-      );
-      expect(advisoryLockCalls).toHaveLength(2);
-      expect(genrePatternUpdateCalls).toHaveLength(2);
-      expect(genrePatternInsertCalls).toHaveLength(2);
+      expect(genreEvidenceCalls).toHaveLength(2);
+      // evidence_key is params[4]: 'genre:documentary', 'genre:family'
+      expect(genreEvidenceCalls[0][1][4]).toBe('genre:documentary');
+      expect(genreEvidenceCalls[1][1][4]).toBe('genre:family');
     });
 
     test('stores genre lowercase in genre_pattern update and insert params', async () => {
@@ -997,12 +943,8 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
-          .mockResolvedValueOnce({
-            rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
-          }) // INSERT exact_match
-          .mockResolvedValueOnce({ rows: [] }) // advisory lock
-          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern
-          .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
+          .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary)
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };
@@ -1011,20 +953,13 @@ describe('ClarificationService', () => {
 
       await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
 
-      const genreUpdateCall = mockClient.query.mock.calls.find(call =>
-        call[0] && call[0].startsWith('UPDATE learning_patterns')
+      // Phase 7: genre evidence uses INSERT INTO classification_evidence with ON CONFLICT DO UPDATE (evidence_key is lowercase)
+      const genreEvidenceCall = mockClient.query.mock.calls.find(call =>
+        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
       );
-      const genreInsertCall = mockClient.query.mock.calls.find(call =>
-        call[0] && call[0].startsWith('INSERT INTO learning_patterns') && call[0].includes("'genre_pattern'")
-      );
-      expect(genreUpdateCall).toBeDefined();
-      expect(genreInsertCall).toBeDefined();
-      expect(genreInsertCall[0]).toContain("jsonb_build_object('genre', $3::text)");
-      // Genre value (3rd param, index 2) should be lowercase
-      expect(genreUpdateCall[1]).toHaveLength(3);
-      expect(genreUpdateCall[1][2]).toBe('documentary');
-      expect(genreInsertCall[1]).toHaveLength(4);
-      expect(genreInsertCall[1][2]).toBe('documentary');
+      expect(genreEvidenceCall).toBeDefined();
+      // evidence_key (params[4]) should be lowercase
+      expect(genreEvidenceCall[1][4]).toBe('genre:documentary');
     });
 
     test('handles object-shaped metadata genres when writing genre_pattern rows', async () => {
@@ -1047,15 +982,9 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
-          .mockResolvedValueOnce({
-            rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
-          }) // INSERT exact_match
-          .mockResolvedValueOnce({ rows: [] }) // advisory lock
-          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern
-          .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern
-          .mockResolvedValueOnce({ rows: [] }) // advisory lock
-          .mockResolvedValueOnce({ rowCount: 0, rows: [] }) // UPDATE genre_pattern
-          .mockResolvedValueOnce({ rows: [] }) // INSERT genre_pattern
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
+          .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary)
+          .mockResolvedValueOnce({ rows: [{ id: 3 }] }) // Phase 7: INSERT classification_evidence (genre: family)
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };
@@ -1066,12 +995,13 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      const genrePatternInsertCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].startsWith('INSERT INTO learning_patterns') && call[0].includes("'genre_pattern'")
+      // Phase 7: genres are written as classification_evidence rows with lowercase evidence_key
+      const genreEvidenceCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
       );
-      expect(genrePatternInsertCalls).toHaveLength(2);
-      expect(genrePatternInsertCalls[0][1][2]).toBe('documentary');
-      expect(genrePatternInsertCalls[1][1][2]).toBe('family');
+      expect(genreEvidenceCalls).toHaveLength(2);
+      expect(genreEvidenceCalls[0][1][4]).toBe('genre:documentary');
+      expect(genreEvidenceCalls[1][1][4]).toBe('genre:family');
     });
 
     test('updates an existing genre_pattern without inserting a duplicate row', async () => {
@@ -1094,11 +1024,8 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
           .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [] }) // UPDATE classification_history
-          .mockResolvedValueOnce({
-            rows: [{ id: 1, tmdb_id: 88888, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
-          }) // INSERT exact_match
-          .mockResolvedValueOnce({ rows: [] }) // advisory lock
-          .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 77 }] }) // UPDATE genre_pattern
+          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
+          .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary) — always upserts, no duplication
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };
@@ -1109,14 +1036,12 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      const genrePatternUpdateCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].startsWith('UPDATE learning_patterns')
+      // Phase 7: single upsert per genre — ON CONFLICT DO UPDATE handles the existing-row case
+      const genreEvidenceCalls = mockClient.query.mock.calls.filter(call =>
+        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
       );
-      const genrePatternInsertCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].startsWith('INSERT INTO learning_patterns') && call[0].includes("'genre_pattern'")
-      );
-      expect(genrePatternUpdateCalls).toHaveLength(1);
-      expect(genrePatternInsertCalls).toHaveLength(0);
+      expect(genreEvidenceCalls).toHaveLength(1);
+      expect(genreEvidenceCalls[0][1][4]).toBe('genre:documentary');
     });
 
     test('skips genre_pattern INSERTs when metadata has no genres', async () => {
@@ -1138,6 +1063,7 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({
             rows: [{ id: 1, tmdb_id: 77777, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
           }) // INSERT exact_match
+          .mockResolvedValueOnce({ rows: [] }) // Phase 3 shadow-write: item_exact (classification_evidence)
           .mockResolvedValueOnce({ rows: [] }), // COMMIT
         release: jest.fn()
       };

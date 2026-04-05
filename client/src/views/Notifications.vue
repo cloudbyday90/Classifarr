@@ -166,16 +166,13 @@ const filterOptions = [
 
 const { data, isLoading, refresh } = useSWR(
   'notifications:view',
-  async () => {
-    const response = await api.getNotifications({
+  () => api.getNotifications({
       page: page.value,
       limit: pageSize,
       filter: activeFilter.value,
       sort: sort.value,
       search: search.value || undefined,
-    });
-    return response.data;
-  },
+    }),
   { ttl: CACHE_TTL.SHORT, pollInterval: POLL_INTERVALS.NORMAL, pollOnlyWhenVisible: true }
 );
 

@@ -111,6 +111,30 @@ describe('ProviderLockService', () => {
       expect(result).toBe(true);
       expect(providerLock.lockState.lockedBy).toBe('classification');
     });
+
+    test('should throw structured timeout metadata when wait time is exceeded', async () => {
+      providerLock.lockState = {
+        isLocked: true,
+        lockedBy: 'embedding',
+        lastHeartbeat: Date.now(),
+        startTime: Date.now() - 1000,
+        preemptRequested: true,
+        activeModel: 'nomic-embed-text',
+      };
+      providerLock.config.maxWaitTime = 10;
+      jest.spyOn(providerLock, 'sleep').mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 15));
+      });
+
+      await expect(providerLock.acquireLock('classification', 'normal')).rejects.toMatchObject({
+        message: '[ProviderLock] Timeout waiting for lock (requestor: classification)',
+        code: 'PROVIDER_LOCK_TIMEOUT',
+        requestor: 'classification',
+        lockHolder: 'embedding',
+        activeModel: 'nomic-embed-text',
+        preemptRequested: true
+      });
+    });
   });
 
   describe('Lock Preemption', () => {

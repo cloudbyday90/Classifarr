@@ -10,6 +10,7 @@
 
 const defaultDb = require('../config/database');
 const defaultClassificationService = require('./classification');
+const classificationEvidenceService = require('./classificationEvidenceService');
 const ragGraphExtractor = require('./ragGraphExtractor');
 
 class QueueAdminService {
@@ -18,6 +19,7 @@ class QueueAdminService {
         this.logger = deps.logger;
         this.classificationService = deps.classificationService || defaultClassificationService;
         this.ragGraphExtractor = deps.ragGraphExtractor || ragGraphExtractor;
+        this.evidenceService = deps.evidenceService || classificationEvidenceService;
     }
 
     async manualClassifyTask(taskId, libraryId, resolvedBy = 'admin') {
@@ -101,14 +103,16 @@ class QueueAdminService {
             );
 
             if (tmdbId) {
-                await client.query(
-                    `INSERT INTO learning_patterns
-                     (tmdb_id, media_type, library_id, pattern_type, confidence, metadata, created_by)
-                     VALUES ($1, $2, $3, 'exact_match', 100, $4, $5)
-                     ON CONFLICT (tmdb_id, media_type, pattern_type)
-                     DO UPDATE SET library_id = $3, confidence = 100, metadata = $4, created_by = $5, updated_at = NOW()`,
-                    [tmdbId, mediaType, libraryId, JSON.stringify({ title, resolved_by: resolvedBy }), resolvedBy]
-                );
+                await this.evidenceService.rememberExactMatch({
+                    tmdbId,
+                    mediaType,
+                    libraryId,
+                    payload: { title, resolved_by: resolvedBy },
+                    createdBy: resolvedBy,
+                    client,
+                    payloadColumn: 'metadata',
+                    conflictMode: 'update_metadata'
+                });
             }
 
             const classificationId = insertResult.rows[0].id;

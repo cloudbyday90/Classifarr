@@ -55,8 +55,8 @@ const checkIncompleteConfigs = async () => {
   
   try {
     const response = await api.getArrConfigStatus()
-    if (response.data && response.data.incompleteConfigs) {
-      incompleteConfigs.value = response.data.incompleteConfigs
+    if (response?.incompleteConfigs) {
+      incompleteConfigs.value = response.incompleteConfigs
       hasIncompleteConfigs.value = incompleteConfigs.value.length > 0
     }
   } catch (error) {

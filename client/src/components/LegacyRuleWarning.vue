@@ -45,8 +45,7 @@ export default {
   methods: {
     async checkLegacyRules() {
       try {
-        const response = await api.getLibraryMigrationRules(this.libraryId);
-        const rules = response.data;
+        const rules = await api.getLibraryMigrationRules(this.libraryId);
         this.ruleCount = Array.isArray(rules) ? rules.length : 0;
       } catch (error) {
         console.error('Failed to check legacy rules:', error);

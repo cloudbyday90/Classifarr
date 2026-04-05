@@ -368,34 +368,49 @@ describe('Database Resilience', () => {
         it('does not log for fast queries', async () => {
             jest.resetModules();
             delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
-            const mockQueryResult = { rows: [] };
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({ rows: [] }),
+                release: jest.fn()
+            };
             jest.mock('pg', () => ({
                 Pool: jest.fn().mockImplementation(() => ({
                     on: jest.fn(),
-                    query: jest.fn().mockResolvedValue(mockQueryResult),
-                    connect: jest.fn()
+                    query: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
                 }))
             }));
             const db = require('../config/database');
             await db.query('SELECT 1');
             expect(warnSpy.spy).not.toHaveBeenCalled();
+            expect(mockClient.release).toHaveBeenCalled();
         });
 
         it('logs [SLOW QUERY] when query exceeds threshold', async () => {
             jest.resetModules();
             // Use -1 as threshold so any query (even sub-millisecond) always logs
             process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = '-1';
-            const mockQueryResult = { rows: [] };
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({ rows: [] }),
+                release: jest.fn()
+            };
             jest.mock('pg', () => ({
                 Pool: jest.fn().mockImplementation(() => ({
                     on: jest.fn(),
-                    query: jest.fn().mockResolvedValue(mockQueryResult),
-                    connect: jest.fn()
+                    query: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient),
+                    totalCount: 15,
+                    idleCount: 4,
+                    waitingCount: 2,
                 }))
             }));
             const db = require('../config/database');
             await db.query('SELECT slow_thing FROM table');
             expect(warnSpy.spy).toHaveBeenCalledWith(expect.stringContaining('[SLOW QUERY]'));
+            expect(warnSpy.spy).toHaveBeenCalledWith(expect.stringContaining('total='));
+            expect(warnSpy.spy).toHaveBeenCalledWith(expect.stringContaining('poolWait='));
+            expect(warnSpy.spy).toHaveBeenCalledWith(expect.stringContaining('exec='));
+            expect(warnSpy.spy).toHaveBeenCalledWith(expect.stringContaining('pool total=15 idle=4 waiting=2'));
+            expect(mockClient.release).toHaveBeenCalled();
             delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
         });
 
@@ -404,20 +419,23 @@ describe('Database Resilience', () => {
             // Use -1 as threshold so any query (even sub-millisecond) always logs
             process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = '-1';
             const longQuery = 'SELECT ' + 'a'.repeat(300) + ' FROM t';
-            const mockQueryResult = { rows: [] };
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({ rows: [] }),
+                release: jest.fn()
+            };
             jest.mock('pg', () => ({
                 Pool: jest.fn().mockImplementation(() => ({
                     on: jest.fn(),
-                    query: jest.fn().mockResolvedValue(mockQueryResult),
-                    connect: jest.fn()
+                    query: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
                 }))
             }));
             const db = require('../config/database');
             await db.query(longQuery);
             expect(warnSpy.spy).toHaveBeenCalled();
             const warnCall = warnSpy.spy.mock.calls[0][0];
-            // Extract the query portion after the duration
-            const queryPart = warnCall.split('— ')[1];
+            // Extract the query text before structured metadata is appended.
+            const queryPart = warnCall.split('— ')[1].split(' {')[0];
             expect(queryPart.length).toBeLessThanOrEqual(120);
             delete process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS;
         });
@@ -425,12 +443,15 @@ describe('Database Resilience', () => {
         it('POSTGRES_SLOW_QUERY_THRESHOLD_MS env var controls threshold', async () => {
             jest.resetModules();
             process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = '999999';
-            const mockQueryResult = { rows: [] };
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({ rows: [] }),
+                release: jest.fn()
+            };
             jest.mock('pg', () => ({
                 Pool: jest.fn().mockImplementation(() => ({
                     on: jest.fn(),
-                    query: jest.fn().mockResolvedValue(mockQueryResult),
-                    connect: jest.fn()
+                    query: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
                 }))
             }));
             const db = require('../config/database');
@@ -589,12 +610,15 @@ describe('Database Resilience', () => {
         it('falls back to 500ms when env var is a non-numeric string', async () => {
             jest.resetModules();
             process.env.POSTGRES_SLOW_QUERY_THRESHOLD_MS = 'not-a-number';
-            const mockQueryResult = { rows: [] };
+            const mockClient = {
+                query: jest.fn().mockResolvedValue({ rows: [] }),
+                release: jest.fn()
+            };
             jest.mock('pg', () => ({
                 Pool: jest.fn().mockImplementation(() => ({
                     on: jest.fn(),
-                    query: jest.fn().mockResolvedValue(mockQueryResult),
-                    connect: jest.fn()
+                    query: jest.fn(),
+                    connect: jest.fn().mockResolvedValue(mockClient)
                 }))
             }));
             const db = require('../config/database');

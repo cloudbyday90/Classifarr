@@ -23,7 +23,8 @@ import api from '../api';
 
 vi.mock('../api', () => ({
   default: {
-    get: vi.fn()
+    get: vi.fn(),
+    getData: vi.fn()
   }
 }));
 
@@ -68,6 +69,7 @@ describe('PolicyBuilderModal.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    api.getData.mockImplementation((...args) => api.get(...args).then((response) => response.data));
     window.localStorage.clear();
     document.body.innerHTML = '';
   });

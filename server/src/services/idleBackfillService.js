@@ -154,6 +154,7 @@ class IdleBackfillService {
                     logger.info('Starting idle backfill...', { pending: pendingCount, runId });
 
                     let totalProcessed = 0;
+                    let deferredForBusy = false;
 
                     try {
                         // Note: For optimal performance with multiple models, configure your Ollama:
@@ -190,21 +191,31 @@ class IdleBackfillService {
                                 }
 
                                 try {
+                                    let generationResult = null;
                                     if (item.needsText) {
-                                        await embeddingService.generateAndStore(item.id, {
+                                        generationResult = await embeddingService.generateAndStore(item.id, {
                                             ...item.metadata,
                                             title: item.title,
                                             media_type: item.media_type,
                                             library_name: item.library_name
                                         });
                                     } else if (item.needsImage) {
-                                        await embeddingService.generateImageEmbedding(item.id, {
+                                        generationResult = await embeddingService.generateImageEmbedding(item.id, {
                                             ...item.metadata,
                                             title: item.title,
                                             media_type: item.media_type,
                                             library_name: item.library_name
                                         });
                                     }
+
+                                    if (!generationResult) {
+                                        logger.debug('Idle backfill item was not stored; leaving it pending', {
+                                            id: item.id,
+                                            title: item.title
+                                        });
+                                        continue;
+                                    }
+
                                     totalProcessed++;
 
                                     // Update run progress
@@ -224,11 +235,24 @@ class IdleBackfillService {
                                         break; 
                                     }
 
+                                    if (embeddingService.isProviderBusyError(error)) {
+                                        deferredForBusy = true;
+                                        logger.info('Idle backfill yielded to active provider traffic', {
+                                            id: item.id,
+                                            title: item.title,
+                                            lockHolder: error.lockHolder || null,
+                                            waitMs: error.waitMs || null,
+                                            activeModel: error.activeModel || null
+                                        });
+                                        this.isRunning = false;
+                                        break;
+                                    }
+
                                     logger.error('Failed to generate embedding in idle backfill', {
                                         id: item.id,
                                         title: item.title,
                                         error: error.message
-                                    });
+                                    }, { error });
                                 }
                             }
 
@@ -247,9 +271,12 @@ class IdleBackfillService {
                             WHERE id = $2
                         `, [totalProcessed, runId]);
 
-                        logger.info('Idle backfill completed', { processed: totalProcessed });
+                        logger.info('Idle backfill completed', {
+                            processed: totalProcessed,
+                            deferredForBusy
+                        });
                     } catch (error) {
-                        logger.error('Idle backfill error', { error: error.message });
+                        logger.error('Idle backfill error', { error: error.message }, { error });
 
                         await db.query(`
                             UPDATE backfill_runs 

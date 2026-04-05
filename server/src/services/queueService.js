@@ -45,6 +45,7 @@ const defaultSyncStatus = require('./syncStatus');
 const defaultTmdbService = require('./tmdb');
 const defaultOmdbService = require('./omdb');
 const defaultEnrichmentRetryService = require('./enrichmentRetryService');
+const defaultClassificationEvidenceService = require('./classificationEvidenceService');
 const { QueueReadModel } = require('./queueReadModel');
 const { QueueMutationService } = require('./queueMutationService');
 const { QueueAdminService } = require('./queueAdminService');
@@ -105,6 +106,7 @@ class QueueService {
         this.tmdbService = deps.tmdbService || defaultTmdbService;
         this.omdbService = deps.omdbService || defaultOmdbService;
         this.enrichmentRetryService = deps.enrichmentRetryService || defaultEnrichmentRetryService;
+        this.evidenceService = deps.evidenceService || defaultClassificationEvidenceService;
         this.logger = deps.logger || createLogger('QueueService');
 
         // Instance state
@@ -120,6 +122,9 @@ class QueueService {
         this.lastRecoveryCheck = 0;
         // Tracks when the worker first reached MAX_CONCURRENT (for stall detection)
         this.fullConcurrencyStartedAt = 0;
+        // When AI is unavailable, the worker probes on a cadence instead of
+        // repeatedly dequeuing and requeueing classification tasks.
+        this.lastAiAvailabilityProbeAt = 0;
 
         this.queueReadModel = deps.queueReadModel || new QueueReadModel({
             db: this.db,
@@ -144,6 +149,7 @@ class QueueService {
             db: this.db,
             logger: this.logger,
             syncStatus: this.syncStatus,
+            evidenceService: this.evidenceService,
             getWorkerState: () => ({
                 running: this.running,
                 processing: this.processing,
@@ -171,6 +177,8 @@ class QueueService {
                 processing: this.processing,
                 lastRecoveryCheck: this.lastRecoveryCheck,
                 fullConcurrencyStartedAt: this.fullConcurrencyStartedAt,
+                aiAvailable: this.aiAvailable,
+                lastAiAvailabilityProbeAt: this.lastAiAvailabilityProbeAt,
             }),
             setRunning: (running) => {
                 this.running = running;
@@ -186,6 +194,9 @@ class QueueService {
             },
             setFullConcurrencyStartedAt: (value) => {
                 this.fullConcurrencyStartedAt = value;
+            },
+            setLastAiAvailabilityProbeAt: (value) => {
+                this.lastAiAvailabilityProbeAt = value;
             },
             resetStaleProcessingTasks: (...args) => this.resetStaleProcessingTasks(...args),
             backgroundDrainIfBloated: (...args) => this._backgroundDrainIfBloated(...args),

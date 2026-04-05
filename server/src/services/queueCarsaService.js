@@ -9,6 +9,7 @@
  */
 
 const defaultMediaSyncService = require('./mediaSync');
+const defaultClassificationEvidenceService = require('./classificationEvidenceService');
 
 function getDefaultScheduler() {
     // Lazy require avoids the scheduler <-> queueService <-> queueCarsaService
@@ -22,6 +23,7 @@ class QueueCarsaService {
         this.logger = deps.logger;
         this.syncStatus = deps.syncStatus;
         this.mediaSyncService = deps.mediaSyncService || defaultMediaSyncService;
+        this.evidenceService = deps.evidenceService || defaultClassificationEvidenceService;
         this.getScheduler = deps.getScheduler || (() => deps.scheduler || getDefaultScheduler());
         this.getWorkerState = deps.getWorkerState || (() => ({ running: false, processing: 0 }));
         this.startWorker = deps.startWorker || (async () => {});
@@ -422,7 +424,11 @@ class QueueCarsaService {
 
             this.syncStatus.updateProgress(40, 'Clearing classification history...');
 
-            const patternsResult = await dbClient.query('DELETE FROM learning_patterns RETURNING id');
+            const patternsResult = await this.evidenceService.purgeAllLegacyPatterns({
+                client: dbClient,
+                actor: 'carsa',
+                reason: 'clear_and_resync'
+            });
             const correctionsResult = await dbClient.query('DELETE FROM classification_corrections RETURNING id');
 
             this.syncStatus.updateProgress(50, 'Clearing learning data...');
@@ -607,7 +613,7 @@ class QueueCarsaService {
                 queueCleared: queueResult.rowCount,
                 embeddingsCleared: embeddingsResult.rowCount,
                 historyCleared: historyResult.rowCount,
-                patternsCleared: patternsResult.rowCount,
+                patternsCleared: patternsResult.deleted,
                 correctionsCleared: correctionsResult.rowCount,
                 rulesCleared: rulesV2Result.rowCount,
                 syncStatusRowsCleared: syncStatusRowsResult.rowCount,

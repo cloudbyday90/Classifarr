@@ -349,27 +349,27 @@ const refreshData = async () => {
       api.getLiveStats(),
       api.getLiveFeed(50),
       api.getQueuePending(5),
-      api.getAiGenerationStatus().catch(() => ({ data: { isActive: false } })),
-      api.getClassificationProgress().catch(() => ({ data: [] }))
+      api.getAiGenerationStatus().catch(() => ({ isActive: false })),
+      api.getClassificationProgress().catch(() => [])
     ])
 
     // Update stats
-    if (liveStats.data) {
+    if (liveStats) {
       // Safeguard: merge with defaults to ensure expected fields exist
       const defaultHealth = { ai: false, worker: false, database: false }
       stats.value = {
-        classifiedToday: liveStats.data.today?.allClassified || liveStats.data.today?.classified || 0,
-        avgConfidence: liveStats.data.today?.allAvgConfidence || liveStats.data.today?.avgConfidence || 0,
-        queuePending: liveStats.data.queue?.pending || 0,
-        health: { ...defaultHealth, ...liveStats.data.health },
-        gapAnalysis: liveStats.data.gapAnalysis,
-        enrichment: liveStats.data.enrichment
+        classifiedToday: liveStats.today?.allClassified || liveStats.today?.classified || 0,
+        avgConfidence: liveStats.today?.allAvgConfidence || liveStats.today?.avgConfidence || 0,
+        queuePending: liveStats.queue?.pending || 0,
+        health: { ...defaultHealth, ...liveStats.health },
+        gapAnalysis: liveStats.gapAnalysis,
+        enrichment: liveStats.enrichment
       }
     }
 
     // Update activity feed
-    if (liveFeed.data?.items) {
-      activityFeed.value = liveFeed.data.items
+    if (liveFeed?.items) {
+      activityFeed.value = liveFeed.items
     }
 
     // Update up next queue (only pending items, not ghost processing)
@@ -380,18 +380,18 @@ const refreshData = async () => {
     }
 
     // Update Ollama status
-    if (aiStatus.data) {
-      aiGenerationStatus.value = aiStatus.data
+    if (aiStatus) {
+      aiGenerationStatus.value = aiStatus
     }
 
     // Update active classifications (initial state, then WebSocket takes over)
-    if (progressData.data) {
+    if (progressData) {
       // Merge with existing to preserve animation state if possible, or just replace
       // If we have socket updates, those are newer, so maybe only replace if empty?
       // Actually, HTTP is snapshot, Socket is delta. 
       // Ideally we trust Socket, but use HTTP for initial population.
       if (!socket || !socket.connected) {
-         activeClassifications.value = progressData.data
+         activeClassifications.value = progressData
       }
     }
 
@@ -455,6 +455,8 @@ const formatMethod = (method) => {
     'exact_match': 'Exact',
     'manual_correction': 'Corrected',
     'learned_pattern': 'Learned',
+    'policy_confirm': 'Confirmed',
+    'policy_supported_by_related_evidence': 'Related',
     'existing_media': 'Exists',
     'reclassification': 'Reclassified',
     // Legacy names (backwards compatibility)
@@ -475,6 +477,8 @@ const getMethodIcon = (method) => {
     'exact_match': '🎯',
     'manual_correction': '✏️',
     'learned_pattern': '🧠',
+    'policy_confirm': '🧠',
+    'policy_supported_by_related_evidence': '🔗',
     'existing_media': '✅',
     'reclassification': '🔄',
     // Legacy names (backwards compatibility)
