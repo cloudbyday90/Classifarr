@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`classificationMetadataService` extracted (Phase 1 of 6)** — Seven metadata-related methods extracted from `classification.js` into a focused `classificationMetadataService` module: `parseOverseerrPayload`, `enrichWithTMDB`, `getTavilyConfig`, `enrichWithWebSearch`, `detectEventTypesFromMetadata`, `mightBeAnime`, `mergeMetadataForRecheck`. Original methods replaced with thin delegation wrappers; all existing `jest.spyOn()` call sites remain compatible. 73 new unit tests added. (`server/src/services/classificationMetadataService.js`, `server/src/__tests__/classificationMetadataService.test.js`, `server/src/services/classification.js`)
+
+### Planned
+
+- **`classification.js` decomposition — 5 phases remaining** — Phase 1 (`classificationMetadataService`) complete. Remaining: `classificationUtilsService` (timeout, retry, error classification helpers), `classificationRoutingService` (Radarr/Sonarr add flow, settings resolution), `classificationAiService` (AI interaction, prompt building, response parsing and repair), `classificationPersistenceService` (DB persistence, state derivation, retry lineage rebinding), `classificationRagLoopService` (second-pass RAG evaluation, rollout automation). After all extractions the orchestrator facade (`classify()` + `runDecisionTree()`) will shrink from ~4,500 lines to ~800–1,000 lines. Detailed plan in `docs/implementation_plan_classification_decomposition.md`.
+
+### Changed
+
 - **npm dependencies refreshed** — `axios` updated to `1.15.0` across root, server, and client (fixes SSRF via `no_proxy` hostname normalisation bypass and unrestricted cloud metadata exfiltration via header injection chain); `dotenv` updated to `17.4.2` in root and server; `testcontainers` / `@testcontainers/postgresql` updated to `11.14.0` in server; client tooling updated: `vite` `8.0.3→8.0.8`, `vitest` / `@vitest/coverage-v8` `4.1.2→4.1.4`, `@vitejs/plugin-vue` `6.0.5→6.0.6`, `jsdom` `29.0.1→29.0.2`, `postcss` `8.5.8→8.5.9`, `globals` `17.4.0→17.5.0`. GitHub Actions updated: `docker/login-action` `4.0.0→4.1.0`, `docker/build-push-action` `7.0.0→7.1.0`. 0 vulnerabilities confirmed across all manifests. (`package.json`, `server/package.json`, `client/package.json`, `.github/workflows/ci.yml`)
 
 ## [v0.45.3-beta] — 2026-04-04
