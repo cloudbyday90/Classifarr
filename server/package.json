@@ -44,7 +44,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-    "@testcontainers/postgresql": "^11.13.0",
+    "@testcontainers/postgresql": "^11.14.0",
     "eslint": "^10.1.0",
     "eslint-plugin-security": "^4.0.0",
     "jest": "^30.3.0",
