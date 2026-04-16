@@ -221,7 +221,7 @@ async evaluateRagLoopSecondPass({ metadata, libraries, ..., aiClassifyFn }) {
 
 - [x] Phase 1 — classificationMetadataService
 - [x] Phase 2 — classificationUtilsService
-- [ ] Phase 3 — classificationRoutingService
+- [x] Phase 3 — classificationRoutingService
 - [ ] Phase 4 — classificationAiService
 - [ ] Phase 5 — classificationPersistenceService
 - [ ] Phase 6 — classificationRagLoopService
