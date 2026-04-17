@@ -27,6 +27,7 @@ jest.mock('../../services/ragRetriever', () => ({
 }));
 
 const classificationService = require('../../services/classification');
+const classificationRagLoopService = require('../../services/classificationRagLoopService');
 const policyEngine = require('../../services/policyEngine');
 const ragRetriever = require('../../services/ragRetriever');
 const ragLoopResilienceManager = require('../../services/ragLoopResilienceManager');
@@ -214,10 +215,10 @@ describe('Issue 275 rag loop integration flows', () => {
             ]
         });
 
-        jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValueOnce(buildConfig('shadow'));
+        jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValueOnce(buildConfig('shadow'));
         const shadowResult = await classificationService.evaluateRagLoopSecondPass(inputFixture());
 
-        jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValueOnce(buildConfig('apply'));
+        jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValueOnce(buildConfig('apply'));
         const applyResult = await classificationService.evaluateRagLoopSecondPass(inputFixture());
 
         expect(shadowResult.library.id).toBe(1);
