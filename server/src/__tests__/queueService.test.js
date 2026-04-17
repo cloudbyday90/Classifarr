@@ -26,8 +26,10 @@ jest.mock('../services/omdb', () => ({
 jest.mock('../services/tavily', () => ({
     getContentAdvisory: jest.fn(),
     search: jest.fn(),
-    searchAnimeInfo: jest.fn()
-}), { virtual: true });
+    searchAnimeInfo: jest.fn(),
+    searchIMDB: jest.fn(),
+    formatForAI: jest.fn(),
+}));
 
 jest.mock('../services/enrichmentRetryService', () => ({
     queueForRetry: jest.fn().mockResolvedValue(),

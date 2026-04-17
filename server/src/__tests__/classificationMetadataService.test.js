@@ -495,9 +495,11 @@ describe('enrichWithWebSearch', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    // Default: no active Tavily config — prevents stale once-queue from other
-    // test files from leaking through when running with --runInBand.
+    db.query.mockReset();
+    tavilyService.searchIMDB.mockReset();
+    tavilyService.getContentAdvisory.mockReset();
+    tavilyService.searchAnimeInfo.mockReset();
+    // Default: no active Tavily config
     db.query.mockResolvedValue({ rows: [] });
   });
 
@@ -610,7 +612,7 @@ describe('enrichWithWebSearch', () => {
 // ---------------------------------------------------------------------------
 describe('getTavilyConfig', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    db.query.mockReset();
     db.query.mockResolvedValue({ rows: [] });
   });
 
