@@ -13,6 +13,7 @@
     "dev": "nodemon src/index.js",
     "test": "node ./scripts/run-jest.mjs --runInBand && node ./scripts/run-jest.mjs -c jest.integration.config.js --runInBand",
     "test:unit": "node ./scripts/run-jest.mjs --runInBand",
+    "test:bail": "node ./scripts/run-jest.mjs --runInBand --bail=1 --no-coverage",
     "test:integration": "node ./scripts/run-jest.mjs -c jest.integration.config.js --runInBand",
     "test:coverage": "node ./scripts/run-jest.mjs --coverage",
     "test:coverage:unit": "node ./scripts/run-jest.mjs --coverage",

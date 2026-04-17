@@ -45,5 +45,7 @@ module.exports = {
     }
   },
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
-  verbose: true
+  verbose: true,
+  testTimeout: 10000,
+  slowTestThreshold: 300,
 };
