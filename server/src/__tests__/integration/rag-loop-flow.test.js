@@ -164,7 +164,7 @@ describe('Issue 275 rag loop integration flows', () => {
     });
 
     test('policy-first targeted re-check upgrades decision in apply mode for ambiguous item', async () => {
-        jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildConfig('apply'));
+        jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(buildConfig('apply'));
         policyEngine.evaluateItem.mockResolvedValue({
             action: 'prompt_confirm',
             confidence: 74,
@@ -223,6 +223,9 @@ describe('Issue 275 rag loop integration flows', () => {
 
         expect(shadowResult.library.id).toBe(1);
         expect(applyResult.library.id).toBe(2);
+        // Verify each call ran in the intended mode (prevents silent spy-miss regressions)
+        expect(shadowResult.ragLoopTrace.mode).toBe('shadow');
+        expect(applyResult.ragLoopTrace.mode).toBe('apply');
         expect(shadowResult.ragLoopTrace.trigger).toBe(applyResult.ragLoopTrace.trigger);
         expect(shadowResult.ragLoopTrace.strategy).toBe(applyResult.ragLoopTrace.strategy);
         expect(shadowResult.ragLoopTrace.diagnostics.pass1.top_similarity)
