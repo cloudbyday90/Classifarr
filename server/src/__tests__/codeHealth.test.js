@@ -577,3 +577,168 @@ describe('Code Health — dotenv.config() must include { quiet: true }', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// 13. clearAllMocks() in beforeEach alongside mock setup
+// ---------------------------------------------------------------------------
+
+describe('Code Health — prefer mockReset over clearAllMocks in beforeEach', () => {
+  /**
+   * jest.clearAllMocks() clears call history but does NOT flush
+   * mockResolvedValueOnce / mockReturnValueOnce queues. When a beforeEach
+   * uses clearAllMocks() AND also sets a static fallback via mockResolvedValue()
+   * or mockReturnValue(), leftover Once-queue entries from the previous test
+   * can bleed through and shadow the intended fallback, silently breaking the
+   * next test's assumptions.
+   *
+   * The fix: call .mockReset() on each individual mock in beforeEach, which
+   * clears both call history AND the queued Once values.
+   *
+   * Excluded from detection:
+   *  - mockImplementation() — function-based branching logic doesn't produce
+   *    a static value that can be shadowed by a queued Once return, so it is
+   *    not subject to the same leakage mechanism.
+   *  - jest.spyOn() — creates a fresh spy on every call, immune to queue state.
+   *
+   * Reference: jest docs — "mockReset() does everything that mockClear() does,
+   * and also removes any mocked return values or implementations."
+   */
+  // Only static-value setters are dangerous; Implementation is excluded.
+  const SETUP_RE = /\.mock(?:ResolvedValue|RejectedValue|ReturnValue)\s*\(/;
+  const ONCE_SUFFIX = /Once\s*\(/;
+
+  for (const filePath of TEST_FILES) {
+    test(`${rel(filePath)} — no clearAllMocks() + mock setup in the same beforeEach`, () => {
+      const source = fs.readFileSync(filePath, 'utf8');
+      const lines = source.split('\n');
+      const hits = [];
+
+      lines.forEach((line, i) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+        if (!trimmed.includes('jest.clearAllMocks()')) return;
+
+        // Only flag if this clearAllMocks() is directly inside a beforeEach block.
+        // Scan backward (counting braces) to find the containing block opener.
+        // clearAllMocks() inside it/test bodies is intentional and does not carry
+        // cross-test queue leakage risk.
+        let containingBlock = null;
+        let bDepth = 0;
+        for (let k = i - 1; k >= Math.max(0, i - 40); k--) {
+          for (const ch of lines[k]) {
+            if (ch === '}') bDepth++;
+            else if (ch === '{') bDepth--;
+          }
+          if (bDepth < 0) {
+            if (/\bbeforeEach\s*\(/.test(lines[k])) containingBlock = 'beforeEach';
+            break;
+          }
+        }
+        if (containingBlock !== 'beforeEach') return;
+
+        // Look forward up to 20 lines for a static mock value setup at similar indent
+        const clearIndent = line.search(/\S/);
+        let blockHasExplicitReset = false;
+        const blockHits = [];
+
+        for (let j = i + 1; j < Math.min(i + 20, lines.length); j++) {
+          const peer = lines[j];
+          const peerTrimmed = peer.trim();
+          if (peerTrimmed.startsWith('//') || peerTrimmed.startsWith('*')) continue;
+          // Stop scanning if we've left the block (hit the closing `});`)
+          if (/^\s*\}\s*[);]/.test(peer) && peer.search(/\S/) <= clearIndent) break;
+          // An explicit .mockReset() in the block means the author is already using
+          // the correct pattern — clearAllMocks() is just redundant, not dangerous.
+          if (/\.mockReset\s*\(/.test(peerTrimmed)) {
+            blockHasExplicitReset = true;
+            continue;
+          }
+          // jest.spyOn() creates a fresh spy — not subject to Once-queue leakage
+          if (/^\s*jest\.spyOn\s*\(/.test(peer)) continue;
+          if (SETUP_RE.test(peerTrimmed) && !ONCE_SUFFIX.test(peerTrimmed)) {
+            blockHits.push(
+              `  line ${i + 1}: jest.clearAllMocks() followed by mock setup at line ${j + 1}` +
+              ` — use .mockReset() on each mock instead`
+            );
+            break;
+          }
+        }
+
+        if (!blockHasExplicitReset) {
+          hits.push(...blockHits);
+        }
+      });
+
+      if (hits.length > 0) {
+        throw new Error(
+          `jest.clearAllMocks() does NOT flush mockResolvedValueOnce queues.\n` +
+          `beforeEach blocks that clear mocks AND set fallback values must use\n` +
+          `individual .mockReset() calls to prevent cross-test queue leakage:\n` +
+          hits.join('\n')
+        );
+      }
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 14. jest.mock() with { virtual: true } on real files
+// ---------------------------------------------------------------------------
+
+describe('Code Health — no { virtual: true } for real files', () => {
+  /**
+   * { virtual: true } tells Jest to mock a module that does NOT exist on disk.
+   * When used on a real file, Jest registers an alternative factory in its
+   * module registry that can leak into subsequent test files during a
+   * --runInBand run, overwriting the real module's mock with a different shape.
+   *
+   * Example: queueService.test.js mocked ../services/tavily with
+   * { virtual: true } but the file exists. This caused the virtual factory
+   * (missing searchIMDB and formatForAI) to bleed into classificationMetadata-
+   * Service.test.js and classificationAiService.test.js.
+   *
+   * Fix: remove { virtual: true } when the target file exists on disk. Jest
+   * will resolve it normally and the factory override still applies.
+   *
+   * Reference: Jest docs — "virtual: Optionally mock a module that doesn't
+   * exist in Node, e.g. a module that you have to polyfill yourself."
+   */
+  // Matches: jest.mock('some/path', ..., { virtual: true })
+  const VIRTUAL_MOCK_RE = /jest\.mock\(\s*(['"`])([^'"` \n]+)\1[^)]*\bvirtual\s*:\s*true/g;
+
+  for (const filePath of TEST_FILES) {
+    test(`${rel(filePath)} — no { virtual: true } for real files`, () => {
+      const source = fs.readFileSync(filePath, 'utf8');
+      const testDir = path.dirname(filePath);
+      const hits = [];
+
+      let match;
+      VIRTUAL_MOCK_RE.lastIndex = 0;
+      while ((match = VIRTUAL_MOCK_RE.exec(source)) !== null) {
+        const mockPath = match[2];
+        // Only check relative paths — absolute/node_module paths are always valid
+        if (!mockPath.startsWith('.')) continue;
+
+        const resolved = path.resolve(testDir, mockPath);
+        const exists =
+          fs.existsSync(resolved + '.js') ||
+          fs.existsSync(path.join(resolved, 'index.js'));
+
+        if (exists) {
+          hits.push(
+            `  jest.mock('${mockPath}', ..., { virtual: true }) — ` +
+            `file exists at ${path.relative(SERVER_SRC, resolved)}.js`
+          );
+        }
+      }
+
+      if (hits.length > 0) {
+        throw new Error(
+          `{ virtual: true } used for a module that exists on disk.\n` +
+          `Remove { virtual: true } so Jest uses the real file as the mock target:\n` +
+          hits.join('\n')
+        );
+      }
+    });
+  }
+});
