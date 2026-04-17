@@ -23,15 +23,15 @@ jest.mock('../utils/logger', () => ({
 
 jest.mock('../utils/operationController', () => ({
   OperationController: class OperationController {}
-}), { virtual: true });
+}));
 
 jest.mock('../services/classification', () => ({
   withTimeout: jest.fn()
-}), { virtual: true });
+}));
 
 jest.mock('../utils/ragLogger', () => ({
   logStageEvent: jest.fn()
-}), { virtual: true });
+}));
 
 const db = require('../config/database');
 

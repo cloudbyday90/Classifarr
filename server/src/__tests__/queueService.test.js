@@ -17,12 +17,10 @@ jest.mock('../utils/logger', () => ({
     })
 }));
 
-// Mock dynamic requires
 jest.mock('../services/omdb', () => ({
     getByTitle: jest.fn(),
     checkHealth: jest.fn()
-}), { virtual: true });
-
+}));
 jest.mock('../services/tavily', () => ({
     getContentAdvisory: jest.fn(),
     search: jest.fn(),
@@ -41,7 +39,7 @@ jest.mock('../services/enrichmentRetryService', () => ({
         enrichmentType: 'tavily',
         reason: 'items_missing_omdb_data'
     })
-}), { virtual: true });
+}));
 
 jest.mock('../utils/rateLimiter', () => ({
     rateLimiters: {
@@ -55,11 +53,11 @@ jest.mock('../services/mediaSync', () => ({
     syncLibrary: jest.fn().mockResolvedValue({}),
     syncLibrariesFromMediaServer: jest.fn().mockResolvedValue([]),
     syncAllLibraries: jest.fn().mockResolvedValue()
-}), { virtual: true });
+}));
 
 jest.mock('../services/scheduler', () => ({
     runGapAnalysis: jest.fn().mockResolvedValue({})
-}), { virtual: true });
+}));
 
 const queueService = require('../services/queueService');
 const db = require('../config/database');
