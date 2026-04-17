@@ -14,6 +14,7 @@ local_test_*.js
 
 # Test output files
 test_output*.txt
+test-output*.txt
 logs*.txt
 test_results*.json
 full-test-output.txt
