@@ -37,11 +37,12 @@ describe('ProviderLockService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    db.query.mockReset();
 
     // Don't reset modules - work with the singleton
     providerLock = require('../services/providerLock');
 
-    // Mock successful DB query for loadConfig  
+    // Mock successful DB query for loadConfig
     db.query.mockResolvedValue({
       rows: [{
         heartbeat_timeout: 30000,

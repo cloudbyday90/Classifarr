@@ -26,7 +26,9 @@ jest.mock('axios');
 describe('Sonarr Season Mapping Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+    axios.post.mockReset();
+    axios.get.mockReset();
+
     // Default successful Sonarr API responses
     axios.post.mockResolvedValue({
       data: {

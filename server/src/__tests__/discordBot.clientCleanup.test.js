@@ -64,6 +64,7 @@ const discordBot = require('../services/discordBot');
 describe('discordBot temporary client cleanup', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    db.query.mockReset();
     mockClients.length = 0;
     mockNextClientSetup = null;
     db.query.mockResolvedValue({

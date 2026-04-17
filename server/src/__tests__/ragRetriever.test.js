@@ -59,6 +59,12 @@ describe('RAGRetriever', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        imageEmbeddingProvider.embedImageFromUrl.mockReset();
+        imageEmbeddingProvider.getConfig.mockReset();
+        imageEmbeddingProvider.isConfigured.mockReset();
+        embeddingService.formatForEmbedding.mockReset();
+        embeddingService.resolvePosterUrl.mockReset();
+        db.pool.connect.mockReset();
         imageEmbeddingProvider.embedImageFromUrl.mockResolvedValue(null);
         imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'disabled' });
         imageEmbeddingProvider.isConfigured.mockReturnValue(false);
@@ -529,6 +535,16 @@ describe('RAGRetriever', () => {
         beforeEach(() => {
             jest.restoreAllMocks();
             jest.clearAllMocks();
+            db.query.mockReset();
+            embeddingRouter.isEnabled.mockReset();
+            embeddingService.hasMinimumEmbeddings.mockReset();
+            embeddingRouter.getConfig.mockReset();
+            embeddingRouter.embed.mockReset();
+            embeddingService.formatForEmbedding.mockReset();
+            embeddingService.resolvePosterUrl.mockReset();
+            imageEmbeddingProvider.getConfig.mockReset();
+            imageEmbeddingProvider.isConfigured.mockReset();
+            imageEmbeddingProvider.embedImageFromUrl.mockReset();
             db.query.mockResolvedValue({ rows: [] });
             embeddingRouter.isEnabled.mockResolvedValue(true);
             embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
@@ -673,6 +689,8 @@ describe('RAGRetriever', () => {
         beforeEach(() => {
             jest.restoreAllMocks();
             jest.clearAllMocks();
+            ragLogger.logOperation.mockReset();
+            ragLogger.logError.mockReset();
             ragLogger.logOperation.mockResolvedValue(undefined);
             ragLogger.logError.mockResolvedValue(undefined);
         });
@@ -1114,6 +1132,8 @@ describe('RAGRetriever', () => {
         beforeEach(() => {
             jest.restoreAllMocks();
             jest.clearAllMocks();
+            ragLogger.logOperation.mockReset();
+            ragLogger.logError.mockReset();
             ragLogger.logOperation.mockResolvedValue(undefined);
             ragLogger.logError.mockResolvedValue(undefined);
         });

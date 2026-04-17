@@ -549,6 +549,15 @@ describe('ClassificationService', () => {
 describe('Phase Tracking in classify()', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    db.query.mockReset();
+    tmdbService.getMovieDetails.mockReset();
+    tmdbService.getCertification.mockReset();
+    policyEngine.evaluateItem.mockReset();
+    confidenceCalculator.calculate.mockReset();
+    confidenceCalculator.toAIContext.mockReset();
+    contentTypeAnalyzer.analyze.mockReset();
+    classificationPhaseService.updatePhase.mockReset();
+    classificationPhaseService.completeTracking.mockReset();
 
     // Setup default mocks
     db.query.mockResolvedValue({ rows: [] });
@@ -620,6 +629,10 @@ describe('Phase Tracking in classify()', () => {
 describe('PolicyEngine -> AI flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    db.query.mockReset();
+    tmdbService.getMovieDetails.mockReset();
+    tmdbService.getCertification.mockReset();
+    policyQuestionBuilder.build.mockReset();
 
     db.query.mockResolvedValue({ rows: [] });
     tmdbService.getMovieDetails.mockResolvedValue({ title: 'Test Movie', genres: [] });
@@ -684,6 +697,11 @@ describe('PolicyEngine -> AI flow', () => {
 describe('Classification Details Storage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    db.query.mockReset();
+    tmdbService.getMovieDetails.mockReset();
+    tmdbService.getCertification.mockReset();
+    policyQuestionBuilder.build.mockReset();
+    contentTypeAnalyzer.analyze.mockReset();
 
     db.query.mockResolvedValue({ rows: [] });
     tmdbService.getMovieDetails.mockResolvedValue({ title: 'Test Movie', genres: [] });
@@ -971,6 +989,7 @@ describe('Classification Details Storage', () => {
 describe('retry lineage outcome linking', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    db.query.mockReset();
     db.query.mockResolvedValue({ rows: [] });
   });
 
@@ -1001,6 +1020,9 @@ describe('Issue 275 rag loop orchestration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     ragLoopResilienceManager.reset();
+    ragRetriever.semanticSearchCandidates.mockReset();
+    ragRetriever.hybridSearch.mockReset();
+    ragRetriever.getSuggestedLibrary.mockReset();
     ragRetriever.semanticSearchCandidates.mockResolvedValue([
       { libraryId: 1, libraryName: 'Movies', similarity: 0.61 },
       { libraryId: 2, libraryName: 'Family', similarity: 0.60 }
@@ -2793,6 +2815,10 @@ describe('AI availability fallback handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     ragLoopResilienceManager.reset();
+    tmdbService.getMovieDetails.mockReset();
+    tmdbService.getCertification.mockReset();
+    contentTypeAnalyzer.analyze.mockReset();
+    policyQuestionBuilder.build.mockReset();
 
     tmdbService.getMovieDetails.mockResolvedValue({ title: 'Test Movie', genres: [] });
     tmdbService.getCertification.mockResolvedValue('PG');

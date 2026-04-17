@@ -77,6 +77,9 @@ describe('Libraries routes coverage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    radarrService.getMinimumAvailabilityOptions.mockReset();
+    sonarrService.getSeriesTypeOptions.mockReset();
+    sonarrService.getSeasonMonitoringOptions.mockReset();
     app = express();
     app.use(express.json());
     app.use('/api/libraries', librariesRouter);

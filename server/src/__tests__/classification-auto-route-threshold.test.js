@@ -43,6 +43,7 @@ const clarificationService = require('../services/clarificationService');
 describe('ClassificationService auto-routing thresholds', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clarificationService.isRequireAllConfirmationsEnabled.mockReset();
     clarificationService.isRequireAllConfirmationsEnabled.mockResolvedValue(
       false,
     );

@@ -31,6 +31,7 @@ describe('ragLogger', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        db.query.mockReset();
         ragLogger = new RAGLogger();
         db.query.mockResolvedValue({ rows: [] });
     });

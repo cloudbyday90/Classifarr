@@ -86,6 +86,10 @@ function makeInteraction(overrides = {}) {
 
 beforeEach(() => {
     jest.clearAllMocks();
+    db.query.mockReset();
+    autoLearningService.learnFromFeedback.mockReset();
+    clarificationService.resolvePolicyQuestion.mockReset();
+    clarificationService.recordResponse.mockReset();
     // Sensible defaults so tests that don't care about DB details still pass.
     db.query.mockResolvedValue({ rows: [], rowCount: 0 });
     autoLearningService.learnFromFeedback.mockResolvedValue({ learned: false, preferences: [] });

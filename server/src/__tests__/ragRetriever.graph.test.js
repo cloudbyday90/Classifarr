@@ -186,6 +186,8 @@ describe('calculateWeightedRRF', () => {
 describe('graphSearch', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        ragGraphExtractor.extract.mockReset();
+        db.query.mockReset();
         // Default extractor returns no relationships
         ragGraphExtractor.extract.mockReturnValue({
             director_name: null,
@@ -546,6 +548,15 @@ describe('hybridSearch — graph integration', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         jest.restoreAllMocks();
+
+        db.pool.connect.mockReset();
+        db.query.mockReset();
+        embeddingService.formatForEmbedding.mockReset();
+        embeddingService.resolvePosterUrl.mockReset();
+        imageEmbeddingProvider.getConfig.mockReset();
+        imageEmbeddingProvider.isConfigured.mockReset();
+        imageEmbeddingProvider.embedImageFromUrl.mockReset();
+        ragGraphExtractor.extract.mockReset();
 
         mockPoolClient = {
             query: jest.fn().mockResolvedValue({ rows: [] }),

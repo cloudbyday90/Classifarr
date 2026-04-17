@@ -169,6 +169,11 @@ describe('BackupService classification_evidence restore mapping (Phase 6A)', () 
 
   beforeEach(() => {
     jest.clearAllMocks();
+    db.pool.connect.mockReset();
+    classificationEvidenceService.purgeAllLegacyPatterns.mockReset();
+    classificationEvidenceRepository.purgeAll.mockReset();
+    classificationEvidenceRepository.upsertEvidence.mockReset();
+    classificationEvidenceService.restoreLegacyPattern.mockReset();
     client = {
       query: jest.fn().mockResolvedValue({ rows: [{ id: 1 }], rowCount: 1 }),
       release: jest.fn()

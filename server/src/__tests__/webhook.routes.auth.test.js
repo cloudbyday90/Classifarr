@@ -50,6 +50,11 @@ describe('Webhook Routes - authentication enforcement', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    webhookService.sanitizePayload.mockReset();
+    webhookService.parsePayload.mockReset();
+    webhookService.logReceived.mockReset();
+    webhookService.updateLogStatus.mockReset();
+    webhookService.updateRequestStatus.mockReset();
     app = express();
     app.use(express.json());
     app.use('/api/webhook', webhookRouter);

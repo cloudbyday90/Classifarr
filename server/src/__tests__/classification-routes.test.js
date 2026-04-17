@@ -87,8 +87,9 @@ describe('Classification Routes - Pending Resolution', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    clarificationService.getPendingClassifications.mockReset();
     clarificationService.getPendingClassifications.mockResolvedValue([]);
-    
+
     // Reset default mock implementations
     db.query.mockImplementation(async (sql) => {
       if (typeof sql === 'string' && sql.includes('SELECT id FROM libraries')) {
