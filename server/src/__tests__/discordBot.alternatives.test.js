@@ -100,3 +100,108 @@ describe('discordBot top alternatives formatting', () => {
         expect(description).not.toContain('Suggested library: undefined');
     });
 });
+describe('discordBot.sendSystemAlert — Issue #330 Gap 5.6', () => {
+    beforeEach(() => {
+        // Reset cooldown map between tests by clearing any prior alerts
+        // (The map is module-scoped but we can work around it by using unique service keys per test)
+        discordBot.isInitialized = false;
+        discordBot.client = null;
+        discordBot.channelId = null;
+    });
+
+    it('does nothing when the bot is not initialized', async () => {
+        discordBot.isInitialized = false;
+        discordBot.client = null;
+        // Should resolve without throwing
+        await expect(discordBot.sendSystemAlert('imageEmbeddings', 'disconnected', 'connected')).resolves.toBeUndefined();
+    });
+
+    it('does nothing when notify_on_system_errors is false', async () => {
+        discordBot.isInitialized = true;
+        const mockChannel = { send: jest.fn() };
+        discordBot.client = { channels: { fetch: jest.fn().mockResolvedValue(mockChannel) } };
+        discordBot.channelId = 'chan-1';
+        discordBot.loadConfig = jest.fn().mockResolvedValue({ notify_on_system_errors: false });
+
+        await discordBot.sendSystemAlert('svc_flag_test', 'degraded', 'connected');
+
+        expect(mockChannel.send).not.toHaveBeenCalled();
+    });
+
+    it('sends an embed with red color for disconnected status', async () => {
+        discordBot.isInitialized = true;
+        const mockChannel = { send: jest.fn().mockResolvedValue({}) };
+        discordBot.client = { channels: { fetch: jest.fn().mockResolvedValue(mockChannel) } };
+        discordBot.channelId = 'chan-1';
+        discordBot.loadConfig = jest.fn().mockResolvedValue({ notify_on_system_errors: true });
+
+        await discordBot.sendSystemAlert('svc_disconnected_test', 'disconnected', 'connected');
+
+        expect(mockChannel.send).toHaveBeenCalledTimes(1);
+        const sentEmbeds = mockChannel.send.mock.calls[0][0].embeds;
+        expect(sentEmbeds).toHaveLength(1);
+        const embedJson = sentEmbeds[0].toJSON();
+        expect(embedJson.color).toBe(0xE74C3C); // red
+        expect(embedJson.title).toContain('Disconnected');
+    });
+
+    it('sends an embed with green color for recovery (connected)', async () => {
+        discordBot.isInitialized = true;
+        const mockChannel = { send: jest.fn().mockResolvedValue({}) };
+        discordBot.client = { channels: { fetch: jest.fn().mockResolvedValue(mockChannel) } };
+        discordBot.channelId = 'chan-1';
+        discordBot.loadConfig = jest.fn().mockResolvedValue({ notify_on_system_errors: true });
+
+        await discordBot.sendSystemAlert('svc_recovery_test', 'connected', 'disconnected');
+
+        const sentEmbeds = mockChannel.send.mock.calls[0][0].embeds;
+        const embedJson = sentEmbeds[0].toJSON();
+        expect(embedJson.color).toBe(0x2ECC71); // green
+        expect(embedJson.title).toContain('Recovered');
+    });
+
+    it('sends a yellow embed for degraded status', async () => {
+        discordBot.isInitialized = true;
+        const mockChannel = { send: jest.fn().mockResolvedValue({}) };
+        discordBot.client = { channels: { fetch: jest.fn().mockResolvedValue(mockChannel) } };
+        discordBot.channelId = 'chan-1';
+        discordBot.loadConfig = jest.fn().mockResolvedValue({ notify_on_system_errors: true });
+
+        await discordBot.sendSystemAlert('svc_degraded_test', 'degraded', 'connected');
+
+        const sentEmbeds = mockChannel.send.mock.calls[0][0].embeds;
+        const embedJson = sentEmbeds[0].toJSON();
+        expect(embedJson.color).toBe(0xF0A500); // yellow
+        expect(embedJson.title).toContain('Degraded');
+    });
+
+    it('recovery alert bypasses the 15-minute cooldown', async () => {
+        discordBot.isInitialized = true;
+        const mockChannel = { send: jest.fn().mockResolvedValue({}) };
+        discordBot.client = { channels: { fetch: jest.fn().mockResolvedValue(mockChannel) } };
+        discordBot.channelId = 'chan-1';
+        discordBot.loadConfig = jest.fn().mockResolvedValue({ notify_on_system_errors: true });
+
+        // First call: degraded (sets cooldown)
+        await discordBot.sendSystemAlert('svc_cooldown_test', 'degraded', 'connected');
+        // Second call immediately: still degraded — should be suppressed by cooldown
+        await discordBot.sendSystemAlert('svc_cooldown_test', 'degraded', 'connected');
+        // Third call: recovery — should bypass cooldown and send
+        await discordBot.sendSystemAlert('svc_cooldown_test', 'connected', 'degraded');
+
+        // Only 2 sends: first degraded + recovery; second degraded is suppressed
+        expect(mockChannel.send).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not throw when Discord send fails — swallows the error', async () => {
+        discordBot.isInitialized = true;
+        const mockChannel = { send: jest.fn().mockRejectedValue(new Error('discord send failed')) };
+        discordBot.client = { channels: { fetch: jest.fn().mockResolvedValue(mockChannel) } };
+        discordBot.channelId = 'chan-1';
+        discordBot.loadConfig = jest.fn().mockResolvedValue({ notify_on_system_errors: true });
+
+        await expect(
+            discordBot.sendSystemAlert('svc_throw_test', 'error', 'connected')
+        ).resolves.toBeUndefined();
+    });
+});

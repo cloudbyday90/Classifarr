@@ -142,6 +142,33 @@ async function measureTime(fn) {
     }
 }
 
+// Statuses that represent a service in a degraded or failed state.
+// Used to filter Discord system alerts to meaningful transitions only.
+const UNHEALTHY_STATUSES = new Set(['disconnected', 'degraded', 'error', 'partial']);
+
+/**
+ * Fire a Discord system alert when a service status transitions.
+ * Rules:
+ *   - No-op when previous === next (no change).
+ *   - First-poll silent: unknown/undefined → healthy is not alertable.
+ *   - First-poll alertable: unknown/undefined → unhealthy fires immediately.
+ *   - Only alerts when at least one side of the transition is an unhealthy status.
+ *
+ * @param {string} serviceKey   - Key used in sendSystemAlert (e.g. 'imageEmbeddings')
+ * @param {string} previousStatus - Status before this check cycle
+ * @param {string} newStatus      - Status after this check cycle
+ */
+function maybeSendHealthAlert(serviceKey, previousStatus, newStatus) {
+    if (previousStatus === newStatus) return;
+    // First-poll: unknown/undefined → healthy is silent
+    if ((!previousStatus || previousStatus === 'unknown') && !UNHEALTHY_STATUSES.has(newStatus)) return;
+    // Only fire when at least one end of the transition is an unhealthy status
+    if (!UNHEALTHY_STATUSES.has(newStatus) && !UNHEALTHY_STATUSES.has(previousStatus)) return;
+    // Normalise 'unknown' to null for the alert message (callers see a cleaner embed)
+    const prevForAlert = (previousStatus && previousStatus !== 'unknown') ? previousStatus : null;
+    discordBotService.sendSystemAlert(serviceKey, newStatus, prevForAlert).catch(() => {});
+}
+
 /**
  * Check database connectivity
  */
@@ -176,7 +203,7 @@ async function checkDiscordBot() {
         // Check if Discord is configured
         let isConfigured = false;
         try {
-            const config = await db.query('SELECT bot_token FROM discord_config LIMIT 1');
+            const config = await db.query("SELECT bot_token FROM notification_config WHERE type = 'discord' LIMIT 1");
             isConfigured = config.rows.length > 0 && config.rows[0].bot_token;
         } catch (_dbError) {
             // Table doesn't exist or query failed - treat as not configured
@@ -917,6 +944,7 @@ async function checkImageEmbeddings() {
             previousResponseTime: previous.responseTime
         };
     } catch (error) {
+        logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', { error: error.message });
         healthCache.imageEmbeddings = {
             status: 'error',
             lastCheck: new Date().toISOString(),
@@ -927,6 +955,8 @@ async function checkImageEmbeddings() {
             ready: null,
             previousStatus: previous.status
         };
+    } finally {
+        maybeSendHealthAlert('imageEmbeddings', previous.status, healthCache.imageEmbeddings.status);
     }
 
     return healthCache.imageEmbeddings;

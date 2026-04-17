@@ -19,6 +19,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useServiceStatusStore } from '@/stores/serviceStatus'
+import { useToastStore } from '@/stores/toast'
 import api from '@/api'
 
 // Mock the API
@@ -333,6 +334,95 @@ describe('useServiceStatusStore', () => {
       }
 
       expect(store.isSystemHealthy).toBe(false)
+    })
+  })
+
+  describe('fetchServiceStatus — transition toasts (Issue #330)', () => {
+    const buildHealthResponse = (overrides = {}) => ({
+      database: 'connected',
+      mediaServer: 'connected',
+      radarr: 'not_configured',
+      sonarr: 'not_configured',
+      ollama: 'configured',
+      imageEmbeddings: 'connected',
+      tmdb: 'configured',
+      omdb: 'not_configured',
+      discordBot: 'not_configured',
+      tavily: 'not_configured',
+      queueWorker: 'healthy',
+      details: {},
+      ...overrides
+    })
+
+    it('first-poll with all-healthy statuses fires no toasts', async () => {
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse())
+      const store = useServiceStatusStore()
+      await store.fetchServiceStatus()
+      expect(useToastStore().toasts).toHaveLength(0)
+    })
+
+    it('first-poll with a disconnected service fires a warning toast', async () => {
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse({ imageEmbeddings: 'disconnected' }))
+      const store = useServiceStatusStore()
+      await store.fetchServiceStatus()
+      const toasts = useToastStore().toasts
+      expect(toasts).toHaveLength(1)
+      expect(toasts[0].type).toBe('warning')
+      expect(toasts[0].message).toContain('Image Embeddings')
+    })
+
+    it('first-poll with a degraded service fires a warning toast containing \'degraded\'', async () => {
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse({ imageEmbeddings: 'degraded' }))
+      const store = useServiceStatusStore()
+      await store.fetchServiceStatus()
+      const toasts = useToastStore().toasts
+      expect(toasts).toHaveLength(1)
+      expect(toasts[0].type).toBe('warning')
+      expect(toasts[0].message).toContain('degraded')
+    })
+
+    it('same status on second poll fires no additional toast', async () => {
+      const store = useServiceStatusStore()
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse({ imageEmbeddings: 'disconnected' }))
+      await store.fetchServiceStatus()
+      const countAfterFirst = useToastStore().toasts.length
+
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse({ imageEmbeddings: 'disconnected' }))
+      await store.fetchServiceStatus()
+      expect(useToastStore().toasts.length).toBe(countAfterFirst)
+    })
+
+    it('connected → disconnected transition fires a warning toast', async () => {
+      const store = useServiceStatusStore()
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse())
+      await store.fetchServiceStatus()
+      expect(useToastStore().toasts).toHaveLength(0)
+
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse({ imageEmbeddings: 'disconnected' }))
+      await store.fetchServiceStatus()
+      const toasts = useToastStore().toasts
+      expect(toasts).toHaveLength(1)
+      expect(toasts[0].type).toBe('warning')
+      expect(toasts[0].message).toContain('Image Embeddings')
+    })
+
+    it('disconnected → connected recovery fires a success toast', async () => {
+      const store = useServiceStatusStore()
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse({ imageEmbeddings: 'disconnected' }))
+      await store.fetchServiceStatus()
+
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse({ imageEmbeddings: 'connected' }))
+      await store.fetchServiceStatus()
+      const successToasts = useToastStore().toasts.filter(t => t.type === 'success')
+      expect(successToasts).toHaveLength(1)
+      expect(successToasts[0].message).toContain('Image Embeddings')
+    })
+
+    it('_previousStatuses tracks last known status per service after each poll', async () => {
+      const store = useServiceStatusStore()
+      api.getSystemHealth.mockResolvedValueOnce(buildHealthResponse({ imageEmbeddings: 'degraded' }))
+      await store.fetchServiceStatus()
+      expect(store._previousStatuses.imageEmbeddings).toBe('degraded')
     })
   })
 })

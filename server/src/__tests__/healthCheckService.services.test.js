@@ -12,7 +12,7 @@ jest.mock('../services/sonarr', () => ({ testConnection: jest.fn() }));
 jest.mock('../services/ollama', () => ({ testConnection: jest.fn() }));
 jest.mock('../services/tmdb', () => ({ testConnection: jest.fn() }));
 jest.mock('../services/omdb', () => ({ testConnection: jest.fn() }));
-jest.mock('../services/discordBot', () => ({ client: null }));
+jest.mock('../services/discordBot', () => ({ client: null, sendSystemAlert: jest.fn().mockResolvedValue(undefined) }));
 jest.mock('axios', () => ({ get: jest.fn() }));
 jest.mock('../utils/logger', () => ({
   createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })
@@ -31,7 +31,6 @@ describe('healthCheckService - all service checks', () => {
 
   beforeEach(() => {
     jest.resetModules();
-    jest.clearAllMocks();
 
     // Re-require after resetModules so module-level state (healthCache, heartbeatInterval) is fresh
     jest.mock('../config/database', () => ({ query: jest.fn() }));
@@ -40,7 +39,7 @@ describe('healthCheckService - all service checks', () => {
     jest.mock('../services/ollama', () => ({ testConnection: jest.fn() }));
     jest.mock('../services/tmdb', () => ({ testConnection: jest.fn() }));
     jest.mock('../services/omdb', () => ({ testConnection: jest.fn() }));
-    jest.mock('../services/discordBot', () => ({ client: null }));
+    jest.mock('../services/discordBot', () => ({ client: null, sendSystemAlert: jest.fn().mockResolvedValue(undefined) }));
     jest.mock('axios', () => ({ get: jest.fn() }));
     jest.mock('../utils/logger', () => ({
       createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() })

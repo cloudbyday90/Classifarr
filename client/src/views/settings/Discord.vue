@@ -228,6 +228,11 @@
             <input type="checkbox" v-model="config.notify_on_correction" class="w-4 h-4 rounded-sm" />
             <span class="text-sm">Notify on Correction</span>
           </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" v-model="config.notify_on_system_errors" class="w-4 h-4 rounded-sm" />
+            <span class="text-sm">Notify on System Health Alerts</span>
+          </label>
+          <p class="text-xs text-gray-400 pl-6">Send a Discord message when a service (e.g. Image Embeddings) goes offline, degrades, or recovers. Alerts are rate-limited to once per 15 minutes per service.</p>
         </div>
         
         <div class="space-y-2">
@@ -312,6 +317,7 @@ const config = ref({
   notify_on_classification: true,
   notify_on_error: true,
   notify_on_correction: true,
+  notify_on_system_errors: true,
   show_poster: true,
   show_confidence: true,
   show_method: true,
@@ -351,6 +357,7 @@ onMounted(async () => {
         notify_on_classification: response.notify_on_classification !== false,
         notify_on_error: response.notify_on_error !== false,
         notify_on_correction: response.notify_on_correction !== false,
+        notify_on_system_errors: response.notify_on_system_errors !== false,
         show_poster: response.show_poster !== false,
         show_confidence: response.show_confidence !== false,
         show_method: response.show_method !== false,

@@ -173,7 +173,8 @@ describe('Settings Discord Routes', () => {
         true,
         false,
         5,
-        false
+        false,
+        true   // notify_on_system_errors — defaults to true when not in existing row
       ]
     );
     expect(discordBotService.reinitialize).toHaveBeenCalledTimes(1);
@@ -417,6 +418,68 @@ describe('Settings Discord Routes', () => {
       guildName: 'Server details unavailable',
       partial: true,
       error: 'lookup failed'
+    });
+  });
+
+  describe('notify_on_system_errors — Issue #330 Gap 5.6', () => {
+    it('persists notify_on_system_errors=false when explicitly sent in PUT /settings/notifications', async () => {
+      const client = { query: jest.fn(), release: jest.fn() };
+      db.pool.connect.mockResolvedValue(client);
+
+      let capturedParams;
+      client.query.mockImplementation(async (sql, params) => {
+        if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+        if (sql === 'SELECT * FROM notification_config WHERE type = $1 LIMIT 1') {
+          return { rows: [{ bot_token: 'tok', notify_on_system_errors: true }] };
+        }
+        if (typeof sql === 'string' && sql.includes('INSERT INTO notification_config')) {
+          capturedParams = params;
+          return { rows: [{ bot_token: 'tok', notify_on_system_errors: false }] };
+        }
+        return { rows: [] };
+      });
+
+      const res = await request(app)
+        .put('/settings/notifications')
+        .send({ notify_on_system_errors: false });
+
+      expect(res.status).toBe(200);
+      // notify_on_system_errors is the 15th param ($15)
+      expect(capturedParams[14]).toBe(false);
+    });
+
+    it('defaults notify_on_system_errors to true when column is absent from existing row', async () => {
+      const client = { query: jest.fn(), release: jest.fn() };
+      db.pool.connect.mockResolvedValue(client);
+
+      let capturedParams;
+      client.query.mockImplementation(async (sql, params) => {
+        if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+        if (sql === 'SELECT * FROM notification_config WHERE type = $1 LIMIT 1') {
+          // Simulate a row that pre-dates the migration (column absent)
+          return { rows: [{ bot_token: 'tok' }] };
+        }
+        if (typeof sql === 'string' && sql.includes('INSERT INTO notification_config')) {
+          capturedParams = params;
+          return { rows: [{ bot_token: 'tok', notify_on_system_errors: true }] };
+        }
+        return { rows: [] };
+      });
+
+      await request(app).put('/settings/notifications').send({});
+
+      expect(capturedParams[14]).toBe(true);
+    });
+
+    it('GET /settings/notifications returns notify_on_system_errors from stored config', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ type: 'discord', bot_token: 'tok', notify_on_system_errors: false }]
+      });
+
+      const res = await request(app).get('/settings/notifications');
+
+      expect(res.status).toBe(200);
+      expect(res.body.notify_on_system_errors).toBe(false);
     });
   });
 });

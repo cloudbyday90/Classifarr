@@ -16,6 +16,9 @@ local_test_*.js
 test_output*.txt
 logs*.txt
 test_results*.json
+full-test-output.txt
+full-verbose.txt
+svc-test-output.txt
 
 # Intermediate processing artifacts
 .tmp/

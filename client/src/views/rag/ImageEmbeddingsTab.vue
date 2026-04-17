@@ -137,6 +137,16 @@
             </div>
           </div>
           <p class="text-xs text-gray-400">Local image model names depend on your service; list shows common defaults.</p>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">API Key <span class="text-gray-500 font-normal">(optional)</span></label>
+            <input
+              v-model="config.image_local_api_key"
+              type="password"
+              placeholder="Leave blank if your sidecar has no auth"
+              class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="text-xs text-gray-400 mt-1">Set the <code class="text-gray-300">SERVICE_API_KEY</code> from your sidecar's <code class="text-gray-300">.env</code>. Leave blank for open access.</p>
+          </div>
         </div>
 
         <div v-else-if="config.image_mode === 'cloud'" class="space-y-4 p-4 bg-gray-700/30 rounded-lg">
@@ -270,6 +280,18 @@
                   class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              <div v-if="config.image_mode === 'separate_local'">
+                <label class="block text-sm font-medium text-gray-300 mb-2">Request Timeout (ms)</label>
+                <input
+                  v-model.number="config.image_local_timeout_ms"
+                  type="number"
+                  min="1000"
+                  max="120000"
+                  step="1000"
+                  class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                />
+                <p class="mt-1 text-xs text-gray-500">Per-request HTTP timeout for embed &amp; model calls (default: 15000 ms).</p>
+              </div>
             </div>
           </details>
           <details class="bg-gray-900/40 rounded-lg p-3">
@@ -330,7 +352,9 @@ const config = ref({
   image_concurrency: 2,
   image_batch_size: 1,
   image_cache_ttl_hours: 24,
-  image_cache_max_mb: 1024
+  image_cache_max_mb: 1024,
+  image_local_api_key: '',
+  image_local_timeout_ms: 15000
 })
 
 const originalConfig = ref({})
@@ -644,7 +668,9 @@ const loadConfig = async () => {
       image_concurrency: data.image_embedding_concurrency || 2,
       image_batch_size: data.image_embedding_batch_size || 1,
       image_cache_ttl_hours: data.image_embedding_cache_ttl_hours || 24,
-      image_cache_max_mb: data.image_embedding_cache_max_mb || 1024
+      image_cache_max_mb: data.image_embedding_cache_max_mb || 1024,
+      image_local_api_key: data.image_embedding_local_api_key || '',
+      image_local_timeout_ms: data.image_embedding_local_timeout_ms || 15000
     }
 
     originalConfig.value = { ...config.value }
@@ -857,7 +883,9 @@ const saveConfig = async ({ silent = false } = {}) => {
       image_embedding_concurrency: config.value.image_concurrency,
       image_embedding_batch_size: config.value.image_batch_size,
       image_embedding_cache_ttl_hours: config.value.image_cache_ttl_hours,
-      image_embedding_cache_max_mb: config.value.image_cache_max_mb
+      image_embedding_cache_max_mb: config.value.image_cache_max_mb,
+      image_embedding_local_api_key: config.value.image_local_api_key,
+      image_embedding_local_timeout_ms: config.value.image_local_timeout_ms
     })
     if (!silent) {
       toast.success('Image embedding configuration saved successfully')

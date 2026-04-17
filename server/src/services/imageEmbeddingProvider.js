@@ -12,17 +12,29 @@ const axios = require('axios');
 const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const { withRetry } = require('../utils/retryUtils');
+const { decryptValue, parseEncryptedValue } = require('../utils/encryption');
+const CircuitBreaker = require('./circuitBreaker');
 
 const logger = createLogger('ImageEmbeddingProvider');
 
 const DEFAULTS = {
     image_size: 512,
-    rps: 2,
+    rps: 0.5, // 30 req/min — matches sidecar default rate_limit_embed (Gap 3.10)
     concurrency: 2,
     batch_size: 1,
     cache_ttl_hours: 24,
     cache_max_mb: 1024
 };
+
+// Module-level singleton — survives across getConfig() / resetConfig() cycles,
+// ensuring failure state is preserved across settings refreshes.
+// resetConfig() explicitly resets this when the circuit is not CLOSED (Gap 3.19).
+const embedCircuitBreaker = new CircuitBreaker({
+    name: 'ImageEmbedding',    // logs as [CircuitBreaker:ImageEmbedding] (Gap 3.22)
+    failureThreshold: 5,
+    recoveryTimeout: 60000,    // 60s: fast HALF_OPEN probe for image-specific breaker
+    halfOpenMaxAttempts: 2
+});
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -80,6 +92,7 @@ class ImageEmbeddingProvider {
         this.config = null;
         this.limiter = null;
         this.limiterKey = null;
+        this._localApiKey = null;
     }
 
     normalizeMode(mode) {
@@ -91,9 +104,16 @@ class ImageEmbeddingProvider {
     }
 
     resetConfig() {
+        // If the circuit has tripped (e.g. repeated 401s from a wrong key), reset it
+        // immediately when the operator saves corrected settings (Gap 3.19).
+        if (embedCircuitBreaker.state !== 'CLOSED') {
+            logger.info('[EMBED] Config changed — circuit breaker reset to CLOSED to allow immediate validation.');
+            embedCircuitBreaker.reset();
+        }
         this.config = null;
         this.limiter = null;
         this.limiterKey = null;
+        this._localApiKey = null;
     }
 
     async getConfig() {
@@ -109,6 +129,8 @@ class ImageEmbeddingProvider {
                     image_embedding_cloud_api_key,
                     image_embedding_cloud_model,
                     image_embedding_cloud_api_endpoint,
+                    image_embedding_local_api_key,
+                    image_embedding_local_timeout_ms,
                     image_embedding_image_size,
                     image_embedding_rps,
                     image_embedding_concurrency,
@@ -126,7 +148,20 @@ class ImageEmbeddingProvider {
                 return null;
             }
 
-            this.config = result.rows[0];
+            const row = result.rows[0];
+            // Decrypt the sidecar credential at load time — store plaintext in memory only
+            if (row.image_embedding_local_api_key) {
+                try {
+                    const { encrypted, iv, authTag } = parseEncryptedValue(row.image_embedding_local_api_key);
+                    this._localApiKey = decryptValue(encrypted, iv, authTag);
+                } catch (decryptErr) {
+                    logger.error('[EMBED] Failed to decrypt sidecar API key — key may be stale after encryption key rotation', { error: decryptErr.message });
+                    this._localApiKey = null;
+                }
+            } else {
+                this._localApiKey = null;
+            }
+            this.config = row;
             return this.config;
         } catch (error) {
             logger.error('Failed to get image embedding config', { error: error.message });
@@ -220,18 +255,54 @@ class ImageEmbeddingProvider {
             return await this.embedLocal(imageUrl, config, { model, imageSize });
         };
 
-        const wrapped = withRetry(run, {
-            maxRetries: 2,
-            onRetry: (error, attempt, delay) => {
-                logger.warn('Retrying image embedding request', {
-                    error: error.message,
-                    attempt,
-                    delay
+        const host = config.image_embedding_local_host;
+        const port = config.image_embedding_local_port;
+
+        // Circuit breaker OUTERMOST — isAllowed() checked before limiter.schedule() queues
+        // anything, preventing limiter queue buildup when the breaker is OPEN (Gap 3.18).
+        // .run() encapsulates isAllowed/recordSuccess/recordFailure (Gap 3.21).
+        try {
+            return await embedCircuitBreaker.run(async () => {
+                return limiter.schedule(async () => {
+                    const wrapped = withRetry(run, {
+                        maxRetries: 2,
+                        onRetry: (error, attempt) => {
+                            logger.warn('[EMBED_RETRY] Retrying image embed request', {
+                                attempt,
+                                statusCode: error.response?.status,
+                                host,
+                                port,
+                                error: error.message
+                            });
+                        }
+                    });
+                    return await wrapped();
+                });
+            });
+        } catch (err) {
+            // Classified logging (Gaps 3.16, 3.24) — always re-throw.
+            // warn for CIRCUIT_OPEN: high-frequency rejections must not flood error_log.
+            if (err.code === 'CIRCUIT_OPEN') {
+                logger.warn('[EMBED_CIRCUIT_OPEN] Circuit breaker OPEN — image embedding calls suspended', {
+                    recoveryTimeout: embedCircuitBreaker.recoveryTimeout
+                });
+            } else if (err.response?.status === 401) {
+                logger.error('[EMBED_AUTH_FAIL] Sidecar rejected request: API key missing or incorrect', {
+                    statusCode: 401,
+                    host,
+                    port,
+                    hint: 'Verify the key in Settings → RAG & Embeddings → Image Embeddings'
+                });
+            } else {
+                logger.error('[EMBED_FAIL] Image embedding request failed after retries', {
+                    error: err.message,
+                    host,
+                    port,
+                    statusCode: err.response?.status
                 });
             }
-        });
-
-        return limiter.schedule(wrapped);
+            throw err;
+        }
     }
 
     async embedCloud(imageUrl, config, { model, imageSize }) {
@@ -263,6 +334,11 @@ class ImageEmbeddingProvider {
     async embedLocal(imageUrl, config, { model, imageSize }) {
         const host = config.image_embedding_local_host || 'localhost';
         const port = config.image_embedding_local_port || 8000;
+        const timeout = config.image_embedding_local_timeout_ms ?? 15000;
+        const headers = {};
+        if (this._localApiKey) {
+            headers['X-Api-Key'] = this._localApiKey; // Gap 3.1
+        }
 
         const response = await axios.post(
             `http://${host}:${port}/embed-image`,
@@ -272,7 +348,7 @@ class ImageEmbeddingProvider {
                 normalize: true,
                 image_size: imageSize
             },
-            { timeout: 15000 }
+            { timeout, headers } // Gap 3.5 — configurable timeout
         );
 
         const embedding = response.data?.embedding || [];
@@ -289,12 +365,18 @@ class ImageEmbeddingProvider {
     async getLocalModels(config) {
         const host = config?.image_embedding_local_host;
         const port = config?.image_embedding_local_port || 8000;
+        const timeout = config?.image_embedding_local_timeout_ms ?? 15000; // Gap 3.17 — same configurable timeout as embedLocal
 
         if (!host) {
             throw new Error('Image embedding local host is not configured');
         }
 
-        const response = await axios.get(`http://${host}:${port}/models`, { timeout: 10000 });
+        const headers = {};
+        if (this._localApiKey) {
+            headers['X-Api-Key'] = this._localApiKey; // Gap 3.1 — /models requires auth
+        }
+
+        const response = await axios.get(`http://${host}:${port}/models`, { timeout, headers });
         const models = response.data?.models || [];
 
         return models.map((model) => ({

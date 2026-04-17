@@ -66,6 +66,16 @@ jest.mock('../utils/ragLoopConfig', () => ({
   validateIssue275PayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] }))
 }));
 
+jest.mock('../utils/encryption', () => ({
+  encryptValue: jest.fn((v) => ({ encrypted: `enc_${v}`, iv: 'testiv', authTag: 'testtag' })),
+  formatEncryptedValue: jest.fn((e, iv, at) => `${e}$${iv}$${at}`),
+  parseEncryptedValue: jest.fn((v) => {
+    const parts = v.split('$');
+    return { encrypted: parts[0], iv: parts[1] || 'testiv', authTag: parts[2] || 'testtag' };
+  }),
+  decryptValue: jest.fn((e) => e.replace(/^enc_/, ''))
+}));
+
 const db = require('../config/database');
 const cloudLLMService = require('../services/cloudLLM');
 const ollamaService = require('../services/ollama');
@@ -715,5 +725,130 @@ describe('Settings AI Routes', () => {
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: 'reset failed' });
+  });
+
+  describe('sidecar API key (image_embedding_local_api_key) — Issue #330 Gap 5.3', () => {
+    it('GET /settings/ai — masks image_embedding_local_api_key when an encrypted value is stored', async () => {
+      // Stored value is formatted as enc_<plaintext>$iv$tag (per our mock)
+      db.query.mockResolvedValueOnce({
+        rows: [{
+          id: 1,
+          image_embedding_local_api_key: 'enc_mysecretkey$testiv$testtag'
+        }]
+      });
+
+      const res = await request(app).get('/settings/ai');
+
+      expect(res.status).toBe(200);
+      // Should not expose the raw encrypted string
+      expect(res.body.image_embedding_local_api_key).not.toBe('enc_mysecretkey$testiv$testtag');
+      // Should not expose the plaintext (decrypted value via mock = 'mysecretkey')
+      expect(res.body.image_embedding_local_api_key).not.toBe('mysecretkey');
+      // Should be a masked token (starts with bullet dots)
+      expect(res.body.image_embedding_local_api_key).toMatch(/^••••••••/);
+    });
+
+    it('GET /settings/ai — leaves image_embedding_local_api_key falsy when column is null', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{ id: 1, image_embedding_local_api_key: null }]
+      });
+
+      const res = await request(app).get('/settings/ai');
+
+      expect(res.status).toBe(200);
+      expect(res.body.image_embedding_local_api_key).toBeFalsy();
+    });
+
+    it('PUT /settings/ai — encrypts image_embedding_local_api_key when a new plaintext key is sent', async () => {
+      const { encryptValue, formatEncryptedValue } = require('../utils/encryption');
+      const client = { query: jest.fn(), release: jest.fn() };
+      db.pool.connect.mockResolvedValueOnce(client);
+
+      let capturedParams;
+      client.query.mockImplementation(async (sql, params) => {
+        if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') return { rows: [{}] };
+        if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
+          capturedParams = params;
+          return { rows: [] };
+        }
+        return { rows: [{}] };
+      });
+
+      await request(app).put('/settings/ai').send({ image_embedding_local_api_key: 'newsecret' });
+
+      // encryptValue and formatEncryptedValue should have been called with the plaintext
+      expect(encryptValue).toHaveBeenCalledWith('newsecret');
+      expect(formatEncryptedValue).toHaveBeenCalled();
+      // The stored param ($59, index 58) should be the formatted encrypted string, not the plaintext
+      expect(capturedParams[58]).toBe('enc_newsecret$testiv$testtag');
+    });
+
+    it('PUT /settings/ai — preserves existing encrypted key when a masked value is sent', async () => {
+      const client = { query: jest.fn(), release: jest.fn() };
+      db.pool.connect.mockResolvedValueOnce(client);
+
+      let capturedParams;
+      client.query.mockImplementation(async (sql, params) => {
+        if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+          return { rows: [{ image_embedding_local_api_key: 'enc_existing$testiv$testtag' }] };
+        }
+        if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
+          capturedParams = params;
+          return { rows: [] };
+        }
+        return { rows: [{}] };
+      });
+
+      await request(app).put('/settings/ai').send({ image_embedding_local_api_key: '••••••••abcd' });
+
+      // Existing encrypted value should be preserved unchanged
+      expect(capturedParams[58]).toBe('enc_existing$testiv$testtag');
+    });
+
+    it('PUT /settings/ai — sets image_embedding_local_api_key to null when empty string is sent (clear)', async () => {
+      const client = { query: jest.fn(), release: jest.fn() };
+      db.pool.connect.mockResolvedValueOnce(client);
+
+      let capturedParams;
+      client.query.mockImplementation(async (sql, params) => {
+        if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+          return { rows: [{ image_embedding_local_api_key: 'enc_existing$testiv$testtag' }] };
+        }
+        if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
+          capturedParams = params;
+          return { rows: [] };
+        }
+        return { rows: [{}] };
+      });
+
+      await request(app).put('/settings/ai').send({ image_embedding_local_api_key: '' });
+
+      // Empty string → null (key cleared)
+      expect(capturedParams[58]).toBeNull();
+    });
+
+    it('PUT /settings/ai — passes image_embedding_local_timeout_ms to the DB ($60)', async () => {
+      const client = { query: jest.fn(), release: jest.fn() };
+      db.pool.connect.mockResolvedValueOnce(client);
+
+      let capturedParams;
+      client.query.mockImplementation(async (sql, params) => {
+        if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') return { rows: [{}] };
+        if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
+          capturedParams = params;
+          return { rows: [] };
+        }
+        return { rows: [{}] };
+      });
+
+      await request(app).put('/settings/ai').send({ image_embedding_local_timeout_ms: 30000 });
+
+      // $60 is at index 59
+      expect(capturedParams[59]).toBe(30000);
+    });
   });
 });

@@ -242,4 +242,82 @@ describe('CircuitBreaker', () => {
             expect(metrics.failedRequests).toBe(1);
         });
     });
+
+    describe('name option (Gap 3.22)', () => {
+        it('should use named logger when name is provided', () => {
+            const { createLogger } = require('../utils/logger');
+            const named = new CircuitBreaker({ name: 'ImageEmbedding' });
+            expect(named.name).toBe('ImageEmbedding');
+            // createLogger is mocked — the instance is the shared mockLogger;
+            // just verify the property is set correctly
+            expect(named._logger).toBeDefined();
+        });
+
+        it('should have null name when not provided', () => {
+            const unnamed = new CircuitBreaker({});
+            expect(unnamed.name).toBeNull();
+        });
+    });
+
+    describe('stateChanges cap (Gap 3.20)', () => {
+        it('should cap stateChanges at 100 entries', () => {
+            // Force 110 state transitions by alternating OPEN↔CLOSED
+            for (let i = 0; i < 55; i++) {
+                // Trip to OPEN
+                circuitBreaker.failureCount = circuitBreaker.failureThreshold - 1;
+                circuitBreaker.state = STATES.CLOSED;
+                circuitBreaker.recordFailure(new Error('trip'));
+                // Force back to CLOSED via reset
+                circuitBreaker.state = STATES.CLOSED;
+                circuitBreaker.failureCount = 0;
+                circuitBreaker.transitionTo(STATES.OPEN, 'test');
+                circuitBreaker.transitionTo(STATES.CLOSED, 'test');
+            }
+
+            expect(circuitBreaker.metrics.stateChanges.length).toBeLessThanOrEqual(100);
+        });
+    });
+
+    describe('run(fn) (Gap 3.21)', () => {
+        it('should return result on success', async () => {
+            const result = await circuitBreaker.run(async () => 'value');
+            expect(result).toBe('value');
+            expect(circuitBreaker.metrics.successfulRequests).toBeGreaterThan(0);
+        });
+
+        it('should throw CIRCUIT_OPEN when circuit is open', async () => {
+            // Trip to OPEN
+            circuitBreaker.recordFailure(new Error('a'));
+            circuitBreaker.recordFailure(new Error('b'));
+            circuitBreaker.recordFailure(new Error('c'));
+            expect(circuitBreaker.state).toBe(STATES.OPEN);
+
+            await expect(circuitBreaker.run(async () => {})).rejects.toMatchObject({
+                code: 'CIRCUIT_OPEN'
+            });
+        });
+
+        it('should record failure and rethrow on regular error', async () => {
+            const before = circuitBreaker.metrics.failedRequests;
+            const err = new Error('provider down');
+
+            await expect(
+                circuitBreaker.run(async () => { throw err; })
+            ).rejects.toThrow('provider down');
+
+            expect(circuitBreaker.metrics.failedRequests).toBe(before + 1);
+        });
+
+        it('should NOT record failure for AbortError', async () => {
+            const before = circuitBreaker.metrics.failedRequests;
+            const abortErr = new Error('aborted');
+            abortErr.name = 'AbortError';
+
+            await expect(
+                circuitBreaker.run(async () => { throw abortErr; })
+            ).rejects.toMatchObject({ name: 'AbortError' });
+
+            expect(circuitBreaker.metrics.failedRequests).toBe(before);
+        });
+    });
 });

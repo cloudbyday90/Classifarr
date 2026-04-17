@@ -439,6 +439,28 @@ Then in Classifarr:
 - Host: `image-embedder` (same compose network) or `host.docker.internal` (cross-container host access)
 - Port: `8000`
 
+#### Securing the sidecar with an API key
+
+The sidecar supports optional API key authentication. When `REQUIRE_API_KEY=true` (the default in the sidecar's reference configuration), all `/embed-image` and `/models` requests must carry a valid `X-Api-Key` header. Classifarr handles this automatically once you paste the key into Settings.
+
+**One-time setup:**
+
+1. On the machine running the sidecar, generate a key:
+   ```bash
+   python scripts/generate_env.py
+   ```
+   This writes a random `SERVICE_API_KEY` to the sidecar's `.env` file and prints it to stdout. The key is never committed to source control.
+
+2. Copy the printed `SERVICE_API_KEY` value.
+
+3. In Classifarr: **Settings → RAG & Embeddings → Image Embeddings → Sidecar API Key** — paste the key and save.
+
+Classifarr encrypts the key at rest. If you rotate the sidecar key, re-run `generate_env.py`, restart the sidecar, and update the field in Classifarr Settings.
+
+If the key is wrong or missing and `REQUIRE_API_KEY=true`, the sidecar returns `401`. Classifarr logs `[EMBED_AUTH_FAIL]` and will not retry the request automatically. Correct the key in Settings and the circuit resets immediately — no restart required.
+
+To use the sidecar **without** authentication, set `REQUIRE_API_KEY=false` in the sidecar's `.env` and leave the Sidecar API Key field in Classifarr empty.
+
 ### Cloud Image Embeddings: Availability
 
 Yes, cloud image embedding providers do exist, and Classifarr currently supports:

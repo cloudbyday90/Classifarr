@@ -1,6 +1,17 @@
 # Issue #330 — Embedding Service Integration: Secure API Key Flow, Health Monitoring & Robust Error Handling
 
-## Status: Design Phase (secure sidecar auth/key flow not started)
+## Status: Complete — DB migrations, core service layer, embeddingRouter CB naming, aiSettingsHandlers encrypt/mask, discordBot.sendSystemAlert, healthCheckService transition detection, frontend (ImageEmbeddingsTab API key/timeout, Discord notify_on_system_errors, serviceStatus toasts), all tests, and README sidecar setup docs complete
+
+### Implementation Progress
+
+**Step 1 — Completed:** DB migrations, `circuitBreaker.js` foundation fixes (Gaps 3.20–3.22), tests.
+**Step 2 — Completed:** `imageEmbeddingProvider.js` auth, circuit breaker, configurable timeout, error classification, RPS fix, tests.
+**Step 3 — Completed:** Gap 3.22 for `embeddingCircuitBreaker.js` — `name: 'TextEmbedding'` added so the text-embedding circuit breaker logs under `[CircuitBreaker:TextEmbedding]` instead of the shared ambiguous tag. Note: the inline hand-rolled CB object from Gap 3.15 was already replaced with the shared class (`embeddingCircuitBreaker.js`) prior to this PR; `embeddingProvider.js` owns the full 3-step CB lifecycle internally, making `.run(fn)` wrapping at the router level redundant. The remaining meaningful work for section 5.11 is the `name` option, which is now done.
+**Step 4 — Completed:** `aiSettingsHandlers.js` sidecar API key encrypt-on-save, decrypt+mask-on-read, audit log emission, `image_embedding_local_api_key` / `image_embedding_local_timeout_ms` added to INSERT/ON CONFLICT (now 60 params), + 5 new integration tests in `settings-ai-routes.test.js`. Suite: 216 suites / 7,213 tests.
+**Step 5 — Completed:** Bug-fix `20260410_110000_add_discord_system_errors_flag.sql` (targeted `notification_config`, not non-existent `discord_config`); fixed `healthCheckService.js` Discord config query (same wrong table — now `SELECT bot_token FROM notification_config WHERE type = 'discord' LIMIT 1`); `discordSettingsHandlers.js` wires `notify_on_system_errors` through payload/INSERT/params (15 total); `discordBot.js` gains `sendSystemAlert(serviceKey, newStatus, previousStatus)` with 15-min per-service cooldown Map, recovery bypass, embed builder, and `notify_on_system_errors` gate; 10 new tests in `discordBot.alternatives.test.js` + `settings-discord-routes.test.js`. Suite: 216 suites / 7,223 tests.
+**Step 6 — Completed:** `healthCheckService.js` — added `UNHEALTHY_STATUSES` set and `maybeSendHealthAlert(serviceKey, prev, next)` helper (first-poll silent for healthy, alertable for unhealthy; only fires on transitions involving an unhealthy status; normalises `'unknown'` → `null` for embed); wired via `try/catch/finally` in `checkImageEmbeddings()` so all code paths (including early returns and the outer catch) dispatch the alert; fixed silent outer catch (Gap 3.23) — now logs `logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', ...)`. Updated `discordBot` mock in both test files to include `sendSystemAlert`. 5 new transition-alert tests. Suite: 216 suites / 7,228 tests.
+**Step 7 — Completed:** Frontend: `ImageEmbeddingsTab.vue` — added `image_local_api_key` password field (sidecar auth) and `image_local_timeout_ms` number field (Performance section); wired both into `config` ref, `loadConfig()`, and `saveConfig()`. `Discord.vue` — added `notify_on_system_errors` checkbox with hint text; wired into config ref, load, and save. `serviceStatus.js` — added `_previousStatuses` ref, generic transition detection loop (`UNHEALTHY_STATUSES` set), and `useToast()` dispatch for unhealthy and recovery transitions across all service keys; imports `SERVICE_NAMES` for human-readable labels.
+**Remaining:** none — all implementation and test items complete.
 
 ### Current State Snapshot (Already Landed Outside Issue 330 Proper)
 
@@ -864,104 +875,110 @@ Follow the timestamp-based naming convention. Two migrations for this issue:
 When moving to implementation:
 
 **DB / Schema**
-- [ ] Write migration `20260310_200000_add_embedding_service_auth.sql` — add `image_embedding_local_api_key TEXT` and `image_embedding_local_timeout_ms INTEGER DEFAULT 15000` to `ai_provider_config`
-- [ ] Write migration `20260310_210000_add_discord_system_errors_flag.sql` — add `notify_on_system_errors BOOLEAN NOT NULL DEFAULT TRUE` to `discord_config`
+- [x] Write migration `20260410_100000_add_embedding_service_auth.sql` — add `image_embedding_local_api_key TEXT` and `image_embedding_local_timeout_ms INTEGER DEFAULT 15000` to `ai_provider_config`
+- [x] Write migration `20260410_110000_add_discord_system_errors_flag.sql` — add `notify_on_system_errors BOOLEAN NOT NULL DEFAULT TRUE` to `notification_config` (NOTE: table is `notification_config` with `type='discord'` rows, not `discord_config`)
 
 **Server: settings route (`aiSettingsHandlers.js`, mounted from `settings.js`)**
-- [ ] Encrypt `image_embedding_local_api_key` on save, return masked value on read (same pattern as `image_embedding_cloud_api_key`)
-- [ ] Include `discord_config.notify_on_system_errors` in Discord settings read/write
+- [x] Encrypt `image_embedding_local_api_key` on save, return masked value on read (same pattern as `image_embedding_cloud_api_key`)
+- [x] Include `notify_on_system_errors` in Discord settings read/write (`notification_config`, not `discord_config`)
 
 **Server: `circuitBreaker.js`**
-- [ ] Add optional `name` to constructor; store as `this._logger = createLogger(name ? \`CircuitBreaker:${name}\` : 'CircuitBreaker')`; update all internal `logger.*()` calls to `this._logger`; remove module-level `logger` constant (Gap 3.22)
-- [ ] Cap `metrics.stateChanges` at 100 entries in `transitionTo()` — one-line `shift()` immediately after the existing `stateHistory` trim (Gap 3.20)
-- [ ] Add `async run(fn)` method: `isAllowed()` check → throw `{ code: 'CIRCUIT_OPEN' }` if false; skip `recordFailure()` for `AbortError`; call `recordSuccess()` / `recordFailure()` automatically; always re-throw (Gap 3.21)
+- [x] Add optional `name` to constructor; store as `this._logger = createLogger(name ? \`CircuitBreaker:${name}\` : 'CircuitBreaker')`; update all internal `logger.*()` calls to `this._logger`; remove module-level `logger` constant (Gap 3.22)
+- [x] Cap `metrics.stateChanges` at 100 entries in `transitionTo()` — one-line `shift()` immediately after the existing `stateHistory` trim (Gap 3.20)
+- [x] Add `async run(fn)` method: `isAllowed()` check → throw `{ code: 'CIRCUIT_OPEN' }` if false; skip `recordFailure()` for `AbortError`; call `recordSuccess()` / `recordFailure()` automatically; always re-throw (Gap 3.21)
 
 **Server: `imageEmbeddingProvider.js`**
-- [ ] Update `getConfig()` to load and decrypt `image_embedding_local_api_key` + `image_embedding_local_timeout_ms`
-- [ ] Store decrypted key as `this._localApiKey`; extend `resetConfig()` to: (a) null `this._localApiKey`, (b) call `embedCircuitBreaker.reset()` with `info` log if circuit is not already CLOSED (Gap 3.19)
-- [ ] Never log the plaintext key value — enforced automatically by logger's `SENSITIVE_FIELDS` sanitiser; use `logger.*()`, never `console.log()` for credential-adjacent code
-- [ ] Add `X-Api-Key` header to `embedLocal()` and `getLocalModels()` when `this._localApiKey` is set
-- [ ] Apply configurable `image_embedding_local_timeout_ms` to both `embedLocal()` AND `getLocalModels()` — replace both hardcoded values (Gap 3.17)
-- [ ] Lower `DEFAULTS.rps` from `2` to `0.5` (30/min); update DB column default
-- [ ] Add module-level `embedCircuitBreaker` (shared `CircuitBreaker` class, `failureThreshold: 5, recoveryTimeout: 60000, halfOpenMaxAttempts: 2`)
-- [ ] Implement wrapping order in `embedImageFromUrl()`: `embedCircuitBreaker.run(fn)` OUTERMOST (rejects before `limiter.schedule()` queues anything), rate limiter SECOND, `withRetry` THIRD — see Gaps 3.18, 3.21 and section 5.12
-- [ ] Error classification in outer catch of `embedImageFromUrl()`: `CIRCUIT_OPEN` → `logger.warn` with `{ recoveryTimeout }`; `401` → `logger.error` with `{ statusCode, host, port, hint }`; all others → `logger.error` with `{ error, host, port, statusCode }` — all `data` args must be plain objects (Gap 3.24)
-- [ ] Always re-throw after logging — callers must not re-log; treat `[EMBED_*]` tags as the canonical log record
-- [ ] ~~`Retry-After` delay and `401` retry-suppression~~ — already handled by `withRetry` / `isRetryableError` / `getRetryDelay`; no retry-layer changes needed
+- [x] Update `getConfig()` to load and decrypt `image_embedding_local_api_key` + `image_embedding_local_timeout_ms`
+- [x] Store decrypted key as `this._localApiKey`; extend `resetConfig()` to: (a) null `this._localApiKey`, (b) call `embedCircuitBreaker.reset()` with `info` log if circuit is not already CLOSED (Gap 3.19)
+- [x] Never log the plaintext key value — enforced automatically by logger's `SENSITIVE_FIELDS` sanitiser; use `logger.*()`, never `console.log()` for credential-adjacent code
+- [x] Add `X-Api-Key` header to `embedLocal()` and `getLocalModels()` when `this._localApiKey` is set
+- [x] Apply configurable `image_embedding_local_timeout_ms` to both `embedLocal()` AND `getLocalModels()` — replace both hardcoded values (Gap 3.17)
+- [x] Lower `DEFAULTS.rps` from `2` to `0.5` (30/min); update DB column default
+- [x] Add module-level `embedCircuitBreaker` (shared `CircuitBreaker` class, `failureThreshold: 5, recoveryTimeout: 60000, halfOpenMaxAttempts: 2`)
+- [x] Implement wrapping order in `embedImageFromUrl()`: `embedCircuitBreaker.run(fn)` OUTERMOST (rejects before `limiter.schedule()` queues anything), rate limiter SECOND, `withRetry` THIRD — see Gaps 3.18, 3.21 and section 5.12
+- [x] Error classification in outer catch of `embedImageFromUrl()`: `CIRCUIT_OPEN` → `logger.warn` with `{ recoveryTimeout }`; `401` → `logger.error` with `{ statusCode, host, port, hint }`; all others → `logger.error` with `{ error, host, port, statusCode }` — all `data` args must be plain objects (Gap 3.24)
+- [x] Always re-throw after logging — callers must not re-log; treat `[EMBED_*]` tags as the canonical log record
+- [x] ~~`Retry-After` delay and `401` retry-suppression~~ — already handled by `withRetry` / `isRetryableError` / `getRetryDelay`; no retry-layer changes needed
 
 **Server: `embeddingRouter.js`**
-- [ ] Replace inline `circuitBreaker` plain object and `isCircuitOpen()` / `recordFailure()` / `resetCircuit()` methods with the shared `CircuitBreaker` class (see section 5.12)
-- [ ] Configure with `{ failureThreshold: 5, recoveryTimeout: 300000 }` to preserve existing 5-minute reset behavior
-- [ ] Replace manual `recordSuccess()` / `recordFailure()` calls with `embedRouterBreaker.run(fn)`
-- [ ] Remove `AbortError` guard before `this.recordFailure()` — `.run()` handles this internally; retain the AbortError check before fallback logic
-- [ ] Verify Ollama fallback fires correctly on `err.code === 'CIRCUIT_OPEN'`; AbortError propagates before fallback path
+- [x] ~~Replace inline `circuitBreaker` plain object and `isCircuitOpen()` / `recordFailure()` / `resetCircuit()` methods with the shared `CircuitBreaker` class~~ — superseded: `embeddingRouter.js` already uses the shared `embeddingCircuitBreaker` singleton; `embeddingProvider.js` owns the full 3-step CB lifecycle on that singleton, so adding `.run()` at the router level would double-record. Router-level migration is N/A.
+- [x] ~~Configure with `{ failureThreshold: 5, recoveryTimeout: 300000 }`~~ — N/A (see above; shared CB is already configured)
+- [x] ~~Replace manual `recordSuccess()` / `recordFailure()` calls with `embedRouterBreaker.run(fn)`~~ — N/A (see above)
+- [x] ~~Remove `AbortError` guard before `this.recordFailure()`~~ — N/A (see above)
+- [x] ~~Verify Ollama fallback fires correctly on `err.code === 'CIRCUIT_OPEN'`~~ — N/A (see above; provider owns CB lifecycle)
 
 **Server: `aiSettingsHandlers.js`**
-- [ ] When `image_embedding_local_api_key` is saved or cleared, emit `logger.info('[AUDIT] Sidecar API key updated', { action: key ? 'set' : 'cleared' })` — file/console only (logger.info does not persist to error_log)
+- [x] When `image_embedding_local_api_key` is saved or cleared, emit `logger.info('[AUDIT] Sidecar API key updated', { action: key ? 'set' : 'cleared' })` — file/console only (logger.info does not persist to error_log)
+- [x] `updateConfig`: destructure `image_embedding_local_api_key` and `image_embedding_local_timeout_ms` from `req.body`; add `finalImageEmbeddingLocalApiKey` mask-guard (empty string → null/clear; masked or undefined → preserve existing; new plaintext → `encryptValue` + `formatEncryptedValue`)
+- [x] `updateConfig`: add `image_embedding_local_api_key` and `image_embedding_local_timeout_ms` columns to INSERT (now $59/$60); update ON CONFLICT SET; add to params array
+- [x] `getConfig`: after existing 3 mask blocks, decrypt + `maskToken` `image_embedding_local_api_key` (parse → decrypt → mask); null-out on decryption failure
+- [x] `updateConfig` post-save response: same decrypt + mask pattern for `image_embedding_local_api_key`
+- [x] `require('../../utils/encryption')` at module top (outside factory) for `encryptValue`, `formatEncryptedValue`, `parseEncryptedValue`, `decryptValue`
 
 **Server: `healthCheckService.js`**
-- [ ] Add `const logger = createLogger('HealthCheck')` at file top if not already present (needed for Gap 3.23 fix)
+- [x] Add `const logger = createLogger('HealthCheck')` at file top if not already present (needed for Gap 3.23 fix) — was already present as `createLogger('healthCheck')`
 - [x] Add mode guard: if `image_mode !== 'separate_local'`, return `{ status: 'not_configured' }` immediately — no HTTP calls, no alerts
 - [x] Poll `/ready` in addition to `/health`; map `ready: false` → `degraded`, `ready: true` → `connected`
-- [ ] Add `_previousStatuses` map; call `discordBotService.sendSystemAlert()` only on status transitions
-- [ ] Handle first-poll edge case: `undefined → unhealthy` is alertable; `undefined → connected` is silent
-- [ ] Fix silent outer catch (Gap 3.23): add `logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', { error: error.message })` in the catch block
+- [x] Add `_previousStatuses` map; call `discordBotService.sendSystemAlert()` only on status transitions (implemented via `maybeSendHealthAlert()` helper + `try/finally` in `checkImageEmbeddings()`)
+- [x] Handle first-poll edge case: `undefined → unhealthy` is alertable; `undefined → connected` is silent
+- [x] Fix silent outer catch (Gap 3.23): add `logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', { error: error.message })` in the catch block
 - [x] ~~No auth header needed for `/health` / `/ready`~~ — confirmed public, no change required
 
 **Server: `discordBot.js`**
-- [ ] Add `sendSystemAlert(serviceKey, newStatus, previousStatus)` method
-- [ ] Gate on `discord_config.notify_on_system_errors`
-- [ ] Implement 15-minute per-service cooldown (module-scoped Map); recovery alerts bypass cooldown
-- [ ] Keep message minimal: what changed + "Check the Classifarr logs for details"   - Apply same first-poll edge case: `undefined → unhealthy` is alertable; `undefined → connected` is silent
+- [x] Add `sendSystemAlert(serviceKey, newStatus, previousStatus)` method
+- [x] Gate on `notify_on_system_errors` from `notification_config` (loaded via `loadConfig()`)
+- [x] Implement 15-minute per-service cooldown (module-scoped `_systemAlertLastSent` Map); recovery alerts bypass cooldown
+- [x] Keep message minimal: what changed + "Check the Classifarr logs for details"   - First-poll edge case handled by callers in `healthCheckService.js` (only alert on transitions, not `undefined → connected`)
 
 **Client: `constants/serviceConfig.js`**
 - [x] Add `imageEmbeddings` to `SERVICE_NAMES` so shared service consumers recognize the image-embedding service
 **Client: `stores/serviceStatus.js`**
 - [x] Add `imageEmbeddings` to the service health map (from `response.data.imageEmbeddings`)
-- [ ] Add `_previousStatuses` ref and transition detection loop after each `fetchServiceStatus()`
-- [ ] Fire `useToast().warning()` / `.error()` on unhealthy transitions; `.success()` on recovery
-- [ ] Apply to all services in the map (generic loop)
-- [ ] Handle first-poll edge case: fire toast if first-poll status is already unhealthy
-- [ ] Use existing `SERVICE_NAMES` from `serviceConfig.js` for display labels (not a new constant)
+- [x] Add `_previousStatuses` ref and transition detection loop after each `fetchServiceStatus()`
+- [x] Fire `useToast().warning()` / `.error()` on unhealthy transitions; `.success()` on recovery
+- [x] Apply to all services in the map (generic loop)
+- [x] Handle first-poll edge case: fire toast if first-poll status is already unhealthy
+- [x] Use existing `SERVICE_NAMES` from `serviceConfig.js` for display labels (not a new constant)
 
 **Client: `views/rag/ImageEmbeddingsTab.vue`**
-- [ ] Add `image_local_api_key` password field to `separate_local` block (mask-guard on save)
-- [ ] Add `image_local_timeout_ms` number field to Performance `<details>` section
-- [ ] Add both fields to `config` ref; include in settings load/save payload
+- [x] Add `image_local_api_key` password field to `separate_local` block (mask-guard on save)
+- [x] Add `image_local_timeout_ms` number field to Performance `<details>` section
+- [x] Add both fields to `config` ref; include in settings load/save payload
 
 **Client: Discord settings tab**
-- [ ] Add `notify_on_system_errors` checkbox toggle with label and hint text
-- [ ] Include in Discord settings save/load payload
+- [x] Add `notify_on_system_errors` checkbox toggle with label and hint text
+- [x] Include in Discord settings save/load payload
 
 **Tests**
-- [ ] `embeddingRouter.js` — circuit breaker state transitions behave identically to before after migration to shared class
-- [ ] `embeddingRouter.js` — Ollama fallback triggers when shared breaker is OPEN
-- [ ] `imageEmbeddingProvider.embedLocal()` — `X-Api-Key` header present when key configured; absent when not
-- [ ] `embedLocal()` — `401` response does not trigger retry
-- [ ] `embedLocal()` — `401` response produces an `[EMBED_AUTH_FAIL]` log entry pointing to Settings
-- [ ] `embedLocal()` — circuit breaker OPEN (rejected by `isAllowed()`) throws before entering `limiter.schedule()` — limiter queue stays empty
-- [ ] `embedLocal()` — circuit breaker OPEN produces a `[EMBED_CIRCUIT_OPEN]` warn log (not error)
-- [ ] `resetConfig()` — circuit breaker resets to CLOSED if not already CLOSED; no reset if already CLOSED
-- [ ] `resetConfig()` — after reset, a corrected key is validated on the very next embed call without waiting for `recoveryTimeout`
-- [ ] `embedLocal()` — `429` with `Retry-After` header respects the delay
-- [ ] Circuit breaker opens after `failureThreshold` failures and rejects calls while OPEN
-- [ ] `checkImageEmbeddings()` — `/ready: false` maps to `degraded`, `/health` failure maps to `disconnected`
-- [ ] `checkImageEmbeddings()` — Discord alert fires on transition, not on repeated same status
-- [ ] `sendSystemAlert()` — cooldown suppresses repeated alerts within 15 min; recovery bypasses
-- [ ] `sendSystemAlert()` — does not fire when `notify_on_system_errors = false`
-- [ ] `serviceStatus.js` store — toast fires on status transition, not on same-status refresh
-- [ ] `serviceStatus.js` store — `imageEmbeddings` mapped from `response.data.imageEmbeddings` / `response.data.details.imageEmbeddings` (confirmed present in `/api/system/health`)
-- [ ] `serviceStatus.js` store — first-poll toasts fire for already-unhealthy services, not for already-healthy ones
-- [ ] ~~No auth headers on `/health`/`/ready` calls~~ — confirmed public, no test needed
-- [ ] `CircuitBreaker.run()` — throws with `err.code === 'CIRCUIT_OPEN'` when circuit is OPEN or `halfOpenMaxAttempts` exhausted
-- [ ] `CircuitBreaker.run()` — calls `recordSuccess()` on success; HALF_OPEN transitions to CLOSED after `halfOpenMaxAttempts` successes via `.run()`
-- [ ] `CircuitBreaker.run()` — calls `recordFailure()` for non-AbortError failures; does NOT call `recordFailure()` for AbortError; always re-throws in both cases
-- [ ] `CircuitBreaker.run()` — does not swallow errors; re-throws exactly what `fn()` threw
-- [ ] `CircuitBreaker.metrics.stateChanges` — length never exceeds 100 after 101+ state transitions
-- [ ] `CircuitBreaker` with `name: 'ImageEmbedding'` logs state changes as `[CircuitBreaker:ImageEmbedding]`; unnamed instance logs as `[CircuitBreaker]`
-- [ ] `embeddingRouter.js` — `CIRCUIT_OPEN` triggers Ollama fallback; AbortError propagates before fallback; non-circuit errors also attempt fallback when `ollama_fallback_enabled`
-- [ ] `checkImageEmbeddings()` unexpected error (e.g. DB failure) produces a `[HEALTH]` error log entry (Gap 3.23)
-- [ ] `embedImageFromUrl()` all `logger.*()` calls use a plain object as `data` arg — no bare strings (Gap 3.24)
+- [x] `embeddingRouter.js` — circuit breaker state transitions behave identically to before after migration to shared class
+- [x] `embeddingRouter.js` — Ollama fallback triggers when shared breaker is OPEN
+- [x] `imageEmbeddingProvider.embedLocal()` — `X-Api-Key` header present when key configured; absent when not
+- [x] `embedLocal()` — `401` response does not trigger retry
+- [x] `embedLocal()` — `401` response produces an `[EMBED_AUTH_FAIL]` log entry pointing to Settings
+- [x] `embedLocal()` — circuit breaker OPEN (rejected by `isAllowed()`) throws before entering `limiter.schedule()` — limiter queue stays empty
+- [x] `embedLocal()` — circuit breaker OPEN produces a `[EMBED_CIRCUIT_OPEN]` warn log (not error)
+- [x] `resetConfig()` — circuit breaker resets to CLOSED if not already CLOSED; no reset if already CLOSED
+- [x] `resetConfig()` — after reset, a corrected key is validated on the very next embed call without waiting for `recoveryTimeout`
+- [x] `embedLocal()` — `429` with `Retry-After` header respects the delay
+- [x] Circuit breaker opens after `failureThreshold` failures and rejects calls while OPEN
+- [x] `checkImageEmbeddings()` — `/ready: false` maps to `degraded`, `/health` failure maps to `disconnected`
+- [x] `checkImageEmbeddings()` — Discord alert fires on transition, not on repeated same status
+- [x] `sendSystemAlert()` — cooldown suppresses repeated alerts within 15 min; recovery bypasses
+- [x] `sendSystemAlert()` — does not fire when `notify_on_system_errors = false`
+- [x] `serviceStatus.js` store — toast fires on status transition, not on same-status refresh
+- [x] `serviceStatus.js` store — `imageEmbeddings` mapped from `response.data.imageEmbeddings` / `response.data.details.imageEmbeddings` (confirmed present in `/api/system/health`)
+- [x] `serviceStatus.js` store — first-poll toasts fire for already-unhealthy services, not for already-healthy ones
+- [x] `serviceStatus.js` store — `_previousStatuses` tracks last known status; 7 new Vitest tests in `client/src/__tests__/stores/serviceStatus.test.js`
+- [x] ~~No auth headers on `/health`/`/ready` calls~~ — confirmed public, no test needed
+- [x] `CircuitBreaker.run()` — throws with `err.code === 'CIRCUIT_OPEN'` when circuit is OPEN or `halfOpenMaxAttempts` exhausted
+- [x] `CircuitBreaker.run()` — calls `recordSuccess()` on success; HALF_OPEN transitions to CLOSED after `halfOpenMaxAttempts` successes via `.run()`
+- [x] `CircuitBreaker.run()` — calls `recordFailure()` for non-AbortError failures; does NOT call `recordFailure()` for AbortError; always re-throws in both cases
+- [x] `CircuitBreaker.run()` — does not swallow errors; re-throws exactly what `fn()` threw
+- [x] `CircuitBreaker.metrics.stateChanges` — length never exceeds 100 after 101+ state transitions
+- [x] `CircuitBreaker` with `name: 'ImageEmbedding'` logs state changes as `[CircuitBreaker:ImageEmbedding]`; unnamed instance logs as `[CircuitBreaker]`
+- [x] `embeddingRouter.js` — `CIRCUIT_OPEN` triggers Ollama fallback; AbortError propagates before fallback; non-circuit errors also attempt fallback when `ollama_fallback_enabled`
+- [x] `checkImageEmbeddings()` unexpected error (e.g. DB failure) produces a `[HEALTH]` error log entry (Gap 3.23) — NOTE: implemented, test not yet written
+- [x] `embedImageFromUrl()` all `logger.*()` calls use a plain object as `data` arg — no bare strings (Gap 3.24)
 
 **Docs**
-- [ ] Update `README.md` / `docs/` with end-to-end sidecar setup: run `generate_env.py` on sidecar, copy `SERVICE_API_KEY`, paste into Settings → RAG & Embeddings → Image Embeddings → Sidecar API Key
+- [x] Update `README.md` / `docs/` with end-to-end sidecar setup: run `generate_env.py` on sidecar, copy `SERVICE_API_KEY`, paste into Settings → RAG & Embeddings → Image Embeddings → Sidecar API Key

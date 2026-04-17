@@ -19,6 +19,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/api'
+import { useToast } from '@/stores/toast'
+import { SERVICE_NAMES } from '@/constants/serviceConfig'
+
+const UNHEALTHY_STATUSES = new Set(['disconnected', 'degraded', 'error', 'partial'])
 
 export const useServiceStatusStore = defineStore('serviceStatus', () => {
   // State
@@ -27,6 +31,9 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
   const isLoading = ref(false)
   const error = ref(null)
   const autoRefreshInterval = ref(null)
+  // Track previous statuses per service key for transition-based toasts.
+  // Initialised to undefined (not 'unknown') so first-poll unhealthy fires a toast.
+  const _previousStatuses = ref({})
 
   // Fetch service status from backend
   const fetchServiceStatus = async () => {
@@ -89,6 +96,29 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
       }
       
       lastFetch.value = Date.now()
+
+      // Toast on status transitions (generic loop over all mapped services).
+      const toast = useToast()
+      for (const [key, entry] of Object.entries(serviceHealth.value)) {
+        const newStatus = entry?.status
+        const prevStatus = _previousStatuses.value[key]
+        if (!newStatus || newStatus === prevStatus) continue
+        // First-poll: silent when already healthy; toast when already unhealthy
+        if (prevStatus === undefined && !UNHEALTHY_STATUSES.has(newStatus)) {
+          _previousStatuses.value[key] = newStatus
+          continue
+        }
+        const label = SERVICE_NAMES[key] || key
+        if (UNHEALTHY_STATUSES.has(newStatus)) {
+          const msg = newStatus === 'degraded'
+            ? `${label} is degraded — check system health for details.`
+            : `${label} is ${newStatus}.`
+          toast.warning(msg, `${label} Offline`)
+        } else if (UNHEALTHY_STATUSES.has(prevStatus) && !UNHEALTHY_STATUSES.has(newStatus) && newStatus !== 'unknown') {
+          toast.success(`${label} has recovered.`, `${label} Online`)
+        }
+        _previousStatuses.value[key] = newStatus
+      }
     } catch (err) {
       console.error('Failed to fetch service status:', err)
       error.value = err.message || 'Failed to fetch service status'
@@ -154,6 +184,7 @@ export const useServiceStatusStore = defineStore('serviceStatus', () => {
     lastFetch,
     isLoading,
     error,
+    _previousStatuses,
     
     // Actions
     fetchServiceStatus,

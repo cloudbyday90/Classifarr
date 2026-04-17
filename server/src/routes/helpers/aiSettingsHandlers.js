@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+const { encryptValue, formatEncryptedValue, parseEncryptedValue, decryptValue } = require('../../utils/encryption');
+
 function createAiSettingsHandlers({
   db,
   logger,
@@ -45,6 +47,15 @@ function createAiSettingsHandlers({
         }
         if (config.image_embedding_cloud_api_key) {
           config.image_embedding_cloud_api_key = maskToken(config.image_embedding_cloud_api_key);
+        }
+        if (config.image_embedding_local_api_key) {
+          try {
+            const { encrypted, iv, authTag } = parseEncryptedValue(config.image_embedding_local_api_key);
+            const plaintext = decryptValue(encrypted, iv, authTag);
+            config.image_embedding_local_api_key = maskToken(plaintext);
+          } catch {
+            config.image_embedding_local_api_key = null;
+          }
         }
 
         return res.json(config);
@@ -123,6 +134,8 @@ function createAiSettingsHandlers({
           image_embedding_batch_size,
           image_embedding_cache_ttl_hours,
           image_embedding_cache_max_mb,
+          image_embedding_local_api_key,
+          image_embedding_local_timeout_ms,
           rag_graph_enabled,
           rag_graph_weight,
           rag_graph_collection_enabled,
@@ -165,6 +178,21 @@ function createAiSettingsHandlers({
           finalImageEmbeddingCloudApiKey = existing.image_embedding_cloud_api_key || '';
         } else if (image_embedding_cloud_api_key === undefined) {
           finalImageEmbeddingCloudApiKey = existing.image_embedding_cloud_api_key || '';
+        }
+
+        let finalImageEmbeddingLocalApiKey;
+        if (image_embedding_local_api_key === '') {
+          // Client sent empty string — operator explicitly cleared the key
+          finalImageEmbeddingLocalApiKey = null;
+          logger.info('[AUDIT] Sidecar API key updated', { action: 'cleared' });
+        } else if (image_embedding_local_api_key === undefined || isMaskedToken(image_embedding_local_api_key)) {
+          // Masked sentinel or field omitted — preserve the existing encrypted value
+          finalImageEmbeddingLocalApiKey = existing.image_embedding_local_api_key || null;
+        } else {
+          // New plaintext key provided — encrypt before storing
+          const { encrypted, iv, authTag } = encryptValue(image_embedding_local_api_key);
+          finalImageEmbeddingLocalApiKey = formatEncryptedValue(encrypted, iv, authTag);
+          logger.info('[AUDIT] Sidecar API key updated', { action: 'set' });
         }
 
         let normalizedImageEmbeddingMode = image_embedding_provider_mode;
@@ -250,12 +278,13 @@ function createAiSettingsHandlers({
                 rag_graph_collection_enabled, rag_graph_director_enabled, rag_graph_studio_enabled,
                 rag_graph_cast_enabled, rag_graph_genre_enabled,
                 rag_graph_min_matches_to_apply, rag_graph_candidates_limit,
+                image_embedding_local_api_key, image_embedding_local_timeout_ms,
                 updated_at
             ) VALUES (
                 1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
                 $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
                 $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49,
-                $50, $51, $52, $53, $54, $55, $56, $57, $58, NOW()
+                $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, NOW()
             )
             ON CONFLICT (id) DO UPDATE SET
                 primary_provider = EXCLUDED.primary_provider,
@@ -316,6 +345,8 @@ function createAiSettingsHandlers({
                 rag_graph_genre_enabled = EXCLUDED.rag_graph_genre_enabled,
                 rag_graph_min_matches_to_apply = EXCLUDED.rag_graph_min_matches_to_apply,
                 rag_graph_candidates_limit = EXCLUDED.rag_graph_candidates_limit,
+                image_embedding_local_api_key = EXCLUDED.image_embedding_local_api_key,
+                image_embedding_local_timeout_ms = EXCLUDED.image_embedding_local_timeout_ms,
                 updated_at = NOW()
         `, [
           primary_provider ?? existing.primary_provider ?? 'none',
@@ -375,7 +406,9 @@ function createAiSettingsHandlers({
           rag_graph_cast_enabled ?? existing.rag_graph_cast_enabled ?? false,
           rag_graph_genre_enabled ?? existing.rag_graph_genre_enabled ?? false,
           rag_graph_min_matches_to_apply ?? existing.rag_graph_min_matches_to_apply ?? 1,
-          rag_graph_candidates_limit ?? existing.rag_graph_candidates_limit ?? 20
+          rag_graph_candidates_limit ?? existing.rag_graph_candidates_limit ?? 20,
+          finalImageEmbeddingLocalApiKey ?? null,
+          image_embedding_local_timeout_ms ?? existing.image_embedding_local_timeout_ms ?? 15000
         ]);
 
         const ragLoopKeys = Object.keys(normalizedRagLoopConfig);
@@ -443,6 +476,15 @@ function createAiSettingsHandlers({
         }
         if (config.image_embedding_cloud_api_key) {
           config.image_embedding_cloud_api_key = maskToken(config.image_embedding_cloud_api_key);
+        }
+        if (config.image_embedding_local_api_key) {
+          try {
+            const { encrypted, iv, authTag } = parseEncryptedValue(config.image_embedding_local_api_key);
+            const plaintext = decryptValue(encrypted, iv, authTag);
+            config.image_embedding_local_api_key = maskToken(plaintext);
+          } catch {
+            config.image_embedding_local_api_key = null;
+          }
         }
 
         return res.json(config);

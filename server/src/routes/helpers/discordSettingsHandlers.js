@@ -60,7 +60,8 @@ function buildDiscordConfigPayload(body = {}, existing = {}) {
     show_metadata: body.show_metadata ?? existing.show_metadata ?? false,
     enable_corrections: body.enable_corrections ?? existing.enable_corrections ?? true,
     correction_buttons_count: body.correction_buttons_count ?? existing.correction_buttons_count ?? 3,
-    include_library_dropdown: body.include_library_dropdown ?? existing.include_library_dropdown ?? true
+    include_library_dropdown: body.include_library_dropdown ?? existing.include_library_dropdown ?? true,
+    notify_on_system_errors: body.notify_on_system_errors ?? existing.notify_on_system_errors ?? true
   };
 }
 
@@ -88,9 +89,10 @@ function createDiscordSettingsHandlers({ db, service, logger }) {
             id, type, bot_token, channel_id, enabled,
             notify_on_classification, notify_on_error, notify_on_correction,
             show_poster, show_confidence, show_method, show_reason, show_metadata,
-            enable_corrections, correction_buttons_count, include_library_dropdown
+            enable_corrections, correction_buttons_count, include_library_dropdown,
+            notify_on_system_errors
           )
-           VALUES (1, 'discord', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+           VALUES (1, 'discord', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
            ON CONFLICT (id) DO UPDATE
            SET bot_token = $1,
                channel_id = $2,
@@ -106,6 +108,7 @@ function createDiscordSettingsHandlers({ db, service, logger }) {
                enable_corrections = $12,
                correction_buttons_count = $13,
                include_library_dropdown = $14,
+               notify_on_system_errors = $15,
                updated_at = NOW()
            RETURNING *`,
           [
@@ -122,7 +125,8 @@ function createDiscordSettingsHandlers({ db, service, logger }) {
             payload.show_metadata,
             payload.enable_corrections,
             payload.correction_buttons_count,
-            payload.include_library_dropdown
+            payload.include_library_dropdown,
+            payload.notify_on_system_errors
           ]
         );
 

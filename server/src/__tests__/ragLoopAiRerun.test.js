@@ -17,6 +17,9 @@
  */
 
 const classificationService = require('../services/classification');
+const classificationRagLoopService = require('../services/classificationRagLoopService');
+const classificationAiService = require('../services/classificationAiService');
+const classificationUtilsService = require('../services/classificationUtilsService');
 const db = require('../config/database');
 const policyEngine = require('../services/policyEngine');
 const ragRetriever = require('../services/ragRetriever');
@@ -82,7 +85,7 @@ describe('RAG Loop AI Rerun Logic', () => {
 
     describe('ai_rerun execution conditions', () => {
         test('applies ai_rerun when material improvement gate is satisfied', async () => {
-            classificationService.getRagLoopConfig = jest.fn().mockReturnValue({
+            classificationRagLoopService.getRagLoopConfig = jest.fn().mockReturnValue({
                 rag_retrieval_loop_enabled: true,
                 rag_loop_low_confidence_threshold: 80,
                 rag_loop_conflict_detection_enabled: false,
@@ -115,7 +118,7 @@ describe('RAG Loop AI Rerun Logic', () => {
                 { libraryId: 1, similarity: 0.50, libraryName: 'Movies' }
             ]);
 
-            const aiClassifySpy = jest.spyOn(classificationService, 'aiClassify').mockImplementation(async () => {
+            const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify').mockImplementation(async () => {
                 mockDateNow += 500;
                 return {
                     confidence: 90,
@@ -144,7 +147,7 @@ describe('RAG Loop AI Rerun Logic', () => {
         });
 
         test('skips ai_rerun when no material improvement', async () => {
-            classificationService.getRagLoopConfig = jest.fn().mockReturnValue({
+            classificationRagLoopService.getRagLoopConfig = jest.fn().mockReturnValue({
                 rag_retrieval_loop_enabled: true,
                 rag_loop_low_confidence_threshold: 80,
                 rag_loop_conflict_detection_enabled: false,
@@ -174,7 +177,7 @@ describe('RAG Loop AI Rerun Logic', () => {
                 { libraryId: 1, similarity: 0.55, libraryName: 'Movies' }
             ]);
 
-            const aiClassifySpy = jest.spyOn(classificationService, 'aiClassify').mockImplementation(async () => ({
+            const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify').mockImplementation(async () => ({
                 confidence: 90,
                 library: libraries[0],
                 verified_by_ai: true
@@ -195,7 +198,7 @@ describe('RAG Loop AI Rerun Logic', () => {
         });
 
         test('skips ai_rerun when ai call budget exhausted', async () => {
-            classificationService.getRagLoopConfig = jest.fn().mockReturnValue({
+            classificationRagLoopService.getRagLoopConfig = jest.fn().mockReturnValue({
                 rag_retrieval_loop_enabled: true,
                 rag_loop_low_confidence_threshold: 80,
                 rag_loop_conflict_detection_enabled: false,
@@ -224,7 +227,7 @@ describe('RAG Loop AI Rerun Logic', () => {
                 { libraryId: 1, similarity: 0.50, libraryName: 'Movies' }
             ]);
 
-            const aiClassifySpy = jest.spyOn(classificationService, 'aiClassify').mockImplementation(async () => ({
+            const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify').mockImplementation(async () => ({
                 confidence: 90,
                 library: libraries[0],
                 verified_by_ai: true
@@ -247,7 +250,7 @@ describe('RAG Loop AI Rerun Logic', () => {
 
     describe('error handling', () => {
         test('records error event when ai_rerun execution fails with non-transient error', async () => {
-            classificationService.getRagLoopConfig = jest.fn().mockReturnValue({
+            classificationRagLoopService.getRagLoopConfig = jest.fn().mockReturnValue({
                 rag_retrieval_loop_enabled: true,
                 rag_loop_low_confidence_threshold: 80,
                 rag_loop_conflict_detection_enabled: false,
@@ -279,8 +282,8 @@ describe('RAG Loop AI Rerun Logic', () => {
             const testError = new Error('Ollama connection failed');
             testError.code = 'ECONNREFUSED';
             
-            jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(testError);
-            jest.spyOn(classificationService, 'isAiTransientAvailabilityError').mockReturnValue(false);
+            jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(testError);
+            jest.spyOn(classificationUtilsService, 'isAiTransientAvailabilityError').mockReturnValue(false);
 
             const result = await classificationService.evaluateRagLoopSecondPass({
                 metadata,
@@ -300,7 +303,7 @@ describe('RAG Loop AI Rerun Logic', () => {
         });
 
         test('records error event when mocked ai error object is non-standard', async () => {
-            classificationService.getRagLoopConfig = jest.fn().mockReturnValue({
+            classificationRagLoopService.getRagLoopConfig = jest.fn().mockReturnValue({
                 rag_retrieval_loop_enabled: true,
                 rag_loop_low_confidence_threshold: 80,
                 rag_loop_conflict_detection_enabled: false,
@@ -331,8 +334,8 @@ describe('RAG Loop AI Rerun Logic', () => {
 
             const weirdError = { code: 'WEIRD_ERROR' };
             
-            jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(weirdError);
-            jest.spyOn(classificationService, 'isAiTransientAvailabilityError').mockReturnValue(false);
+            jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(weirdError);
+            jest.spyOn(classificationUtilsService, 'isAiTransientAvailabilityError').mockReturnValue(false);
 
             const result = await classificationService.evaluateRagLoopSecondPass({
                 metadata,

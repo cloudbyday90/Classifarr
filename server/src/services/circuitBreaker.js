@@ -10,8 +10,6 @@
 
 const { createLogger } = require('../utils/logger');
 
-const logger = createLogger('CircuitBreaker');
-
 /**
  * Circuit breaker states
  */
@@ -32,6 +30,11 @@ const STATES = {
  */
 class CircuitBreaker {
     constructor(options = {}) {
+        this.name = options.name || null;
+        // Named logger so each instance is distinguishable in log output (Gap 3.22):
+        // e.g. name='ImageEmbedding' → [CircuitBreaker:ImageEmbedding]
+        this._logger = createLogger(this.name ? `CircuitBreaker:${this.name}` : 'CircuitBreaker');
+
         this.failureThreshold = options.failureThreshold || 5;
         this.recoveryTimeout = options.recoveryTimeout || 60000; // 60 seconds
         this.halfOpenMaxAttempts = options.halfOpenMaxAttempts || 3;
@@ -150,7 +153,7 @@ class CircuitBreaker {
         this.failureCount++;
         this.lastFailureTime = Date.now();
 
-        logger.debug('Circuit breaker recorded failure', {
+        this._logger.debug('Circuit breaker recorded failure', {
             state: this.state,
             failureCount: this.failureCount,
             threshold: this.failureThreshold,
@@ -184,7 +187,7 @@ class CircuitBreaker {
      * Manually reset the circuit breaker
      */
     reset() {
-        logger.info('Circuit breaker manually reset', null, { skipDbPersist: true });
+        this._logger.info('Circuit breaker manually reset', null, { skipDbPersist: true });
         this.failureCount = 0;
         this.successCount = 0;
         this.halfOpenAttempts = 0;
@@ -220,7 +223,12 @@ class CircuitBreaker {
             this.stateHistory.shift();
         }
 
-        logger.info('Circuit breaker state changed', {
+        // Mirror the stateHistory cap — prevents unbounded growth during long uptime (Gap 3.20)
+        if (this.metrics.stateChanges.length > 100) {
+            this.metrics.stateChanges.shift();
+        }
+
+        this._logger.info('Circuit breaker state changed', {
             from: oldState,
             to: newState,
             reason
@@ -272,6 +280,36 @@ class CircuitBreaker {
             failureCount: this.failureCount,
             successCount: this.successCount
         };
+    }
+
+    /**
+     * Execute a function with circuit breaker protection (Gap 3.21).
+     * Encapsulates the isAllowed() / recordSuccess() / recordFailure() sequence.
+     *
+     * @param {Function} fn - Async function to execute
+     * @returns {Promise<*>} Result of fn on success
+     * @throws {Error} err.code === 'CIRCUIT_OPEN' if the circuit rejects the call
+     * @throws {Error} Re-throws fn's error after recording failure (non-AbortError).
+     *                 AbortError is re-thrown without recording failure — user-initiated
+     *                 cancellations are not provider failures and must not trip the breaker.
+     */
+    async run(fn) {
+        if (!this.isAllowed()) {
+            const err = new Error('Circuit breaker is OPEN — request rejected');
+            err.code = 'CIRCUIT_OPEN';
+            throw err;
+        }
+        try {
+            const result = await fn();
+            this.recordSuccess();
+            return result;
+        } catch (err) {
+            // AbortErrors are user-initiated cancellations — do not penalize the provider.
+            if (err.name !== 'AbortError') {
+                this.recordFailure(err);
+            }
+            throw err;
+        }
     }
 }
 

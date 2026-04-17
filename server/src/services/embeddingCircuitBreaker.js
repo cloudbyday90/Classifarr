@@ -11,6 +11,7 @@ const CircuitBreaker = require('./circuitBreaker');
 const OPEN_CIRCUIT_ERROR_MESSAGE = 'Circuit breaker is OPEN - embedding provider cooldown active';
 
 const embeddingCircuitBreaker = new CircuitBreaker({
+    name: 'TextEmbedding',
     failureThreshold: 5,
     recoveryTimeout: 60000,
     halfOpenMaxAttempts: 3

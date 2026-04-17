@@ -33,6 +33,11 @@ const classificationOutcomeService = require("./classificationOutcomeService");
 const classificationEvidenceService = require("./classificationEvidenceService");
 
 const logger = createLogger("discordBot");
+
+// Module-scoped cooldown map for system alerts — key: serviceKey, value: last-alert timestamp (ms).
+// Resets on server restart, which is acceptable (Discord is a signal, not a log).
+const _systemAlertLastSent = new Map();
+const SYSTEM_ALERT_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
 const clarificationService = require("./clarificationService");
 const autoLearningService = require("./autoLearningService");
 
@@ -2223,6 +2228,77 @@ class DiscordBotService {
       return `${rounded}%`;
     }
     return `${rounded.toFixed(2).replace(/\.?0+$/, "")}%`;
+  }
+
+  /**
+   * Send a system health alert to Discord when a service status transitions.
+   *
+   * @param {string} serviceKey   — e.g. 'imageEmbeddings'
+   * @param {string} newStatus    — e.g. 'degraded', 'disconnected', 'error', 'connected'
+   * @param {string|undefined} previousStatus — status before the transition
+   */
+  async sendSystemAlert(serviceKey, newStatus, previousStatus) {
+    try {
+      if (!this.isInitialized || !this.client) {
+        return;
+      }
+
+      // Guard: check notify_on_system_errors flag
+      const config = await this.loadConfig();
+      if (!config || config.notify_on_system_errors === false) {
+        return;
+      }
+
+      // Guard: per-service cooldown (recovery alerts bypass the cooldown)
+      const isRecovery = newStatus === 'connected';
+      if (!isRecovery) {
+        const last = _systemAlertLastSent.get(serviceKey);
+        if (last && Date.now() - last < SYSTEM_ALERT_COOLDOWN_MS) {
+          return;
+        }
+      }
+
+      const channel = await this.client.channels.fetch(this.channelId);
+      if (!channel) {
+        return;
+      }
+
+      // Severity → title emoji + embed color
+      const STATUS_META = {
+        degraded:     { emoji: '⚠️',  color: 0xF0A500, label: 'Degraded' },
+        disconnected: { emoji: '🔴',  color: 0xE74C3C, label: 'Disconnected' },
+        error:        { emoji: '🔴',  color: 0xE74C3C, label: 'Error' },
+        connected:    { emoji: '✅',  color: 0x2ECC71, label: 'Recovered' }
+      };
+      const SERVICE_LABELS = {
+        imageEmbeddings: 'Image Embedding Service',
+        textEmbeddings:  'Text Embedding Service',
+        ollama:          'Ollama',
+        discordBot:      'Discord Bot',
+        plex:            'Plex'
+      };
+
+      const meta = STATUS_META[newStatus] || { emoji: 'ℹ️', color: 0x95A5A6, label: newStatus };
+      const serviceLabel = SERVICE_LABELS[serviceKey] || serviceKey;
+
+      const prevLabel = previousStatus ? ` (was: ${previousStatus})` : '';
+      const description = isRecovery
+        ? `${serviceLabel} has recovered and is now online${prevLabel}.`
+        : `${serviceLabel} status changed to **${meta.label}**${prevLabel}. Check the Classifarr logs for details.`;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${meta.emoji} ${serviceLabel} — ${meta.label}`)
+        .setDescription(description)
+        .setColor(meta.color)
+        .setFooter({ text: 'Classifarr · System Health' })
+        .setTimestamp();
+
+      await channel.send({ embeds: [embed] });
+
+      _systemAlertLastSent.set(serviceKey, Date.now());
+    } catch (err) {
+      logger.warn('[HEALTH] Failed to send system alert to Discord', { error: err.message });
+    }
   }
 }
 

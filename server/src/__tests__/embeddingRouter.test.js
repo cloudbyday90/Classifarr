@@ -160,6 +160,10 @@ describe('EmbeddingRouter', () => {
     });
 
     describe('circuit breaker', () => {
+        it('circuit breaker instance is named TextEmbedding for per-instance logging (Gap 3.22)', () => {
+            expect(embeddingCircuitBreaker.name).toBe('TextEmbedding');
+        });
+
         it('isCircuitOpen should return false when state is CLOSED', () => {
             const status = embeddingRouter.getCircuitStatus();
             expect(status.state).toBe('CLOSED');
@@ -268,6 +272,60 @@ describe('EmbeddingRouter', () => {
 
             await expect(embeddingRouter.embed('test text')).rejects.toThrow('No API key configured');
             expect(embeddingRouter.getCircuitStatus().failures).toBe(0);
+        });
+    });
+
+    describe('embed — Issue #330 AbortError and cloud-circuit fallback', () => {
+        it('AbortError from primary provider propagates without attempting Ollama fallback', async () => {
+            jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'cloud',
+                ollama_fallback_enabled: true
+            });
+            const abortError = new Error('The operation was aborted');
+            abortError.name = 'AbortError';
+            embeddingProvider.getEmbedding.mockRejectedValue(abortError);
+
+            await expect(embeddingRouter.embed('test')).rejects.toMatchObject({ name: 'AbortError' });
+            expect(ollamaService.embed).not.toHaveBeenCalled();
+        });
+
+        it('AbortError from Ollama fallback propagates without logging "Fallback embedding also failed"', async () => {
+            jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'cloud',
+                ollama_fallback_enabled: true
+            });
+            embeddingProvider.getEmbedding.mockRejectedValue(new Error('cloud timeout'));
+            const abortError = new Error('The operation was aborted');
+            abortError.name = 'AbortError';
+            ollamaService.embed.mockRejectedValue(abortError);
+
+            await expect(embeddingRouter.embed('test')).rejects.toMatchObject({ name: 'AbortError' });
+            expect(mockLogger.error).not.toHaveBeenCalledWith(
+                'Fallback embedding also failed',
+                expect.anything()
+            );
+        });
+
+        it('cloud mode: CIRCUIT_OPEN error from embeddingProvider routes to Ollama fallback when ollama_fallback_enabled', async () => {
+            jest.spyOn(embeddingRouter, 'isEnabled').mockResolvedValue(true);
+            jest.spyOn(embeddingRouter, 'getConfig').mockResolvedValue({
+                rag_enabled: true,
+                embedding_provider_mode: 'cloud',
+                ollama_fallback_enabled: true
+            });
+            const circuitError = new Error('Circuit breaker is OPEN - embedding provider cooldown active');
+            circuitError.code = 'EMBEDDING_CIRCUIT_OPEN';
+            embeddingProvider.getEmbedding.mockRejectedValue(circuitError);
+            ollamaService.embed.mockResolvedValue({ embedding: [0.5, 0.6], dims: 2 });
+
+            const result = await embeddingRouter.embed('test text');
+
+            expect(ollamaService.embed).toHaveBeenCalledWith('test text', 'nomic-embed-text-v2-moe', '5m', null);
+            expect(result).toMatchObject({ provider: 'ollama', model: 'nomic-embed-text-v2-moe', fallback: true });
         });
     });
 });

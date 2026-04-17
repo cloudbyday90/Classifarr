@@ -17,6 +17,11 @@
  */
 
 const classificationService = require('../services/classification');
+const classificationPersistenceService = require('../services/classificationPersistenceService');
+const classificationRagLoopService = require('../services/classificationRagLoopService');
+const classificationAiService = require('../services/classificationAiService');
+const classificationMetadataService = require('../services/classificationMetadataService');
+const classificationUtilsService = require('../services/classificationUtilsService');
 const classificationPhaseService = require('../services/classificationPhaseService');
 const db = require('../config/database');
 const tmdbService = require('../services/tmdb');
@@ -1086,13 +1091,13 @@ describe('Issue 275 rag loop orchestration', () => {
       policy_recheck_metadata_enrichment_enabled: true,
       policy_recheck_metadata_max_attempts: 2
     };
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
 
     const timeoutError = new Error('metadata_enrichment_timeout');
     timeoutError.name = 'TimeoutError';
     timeoutError.code = 'ETIMEDOUT';
 
-    const enrichSpy = jest.spyOn(classificationService, 'enrichWithTMDB')
+    const enrichSpy = jest.spyOn(classificationMetadataService, 'enrichWithTMDB')
       .mockRejectedValueOnce(timeoutError)
       .mockResolvedValueOnce({
         tmdb_id: 123,
@@ -1180,8 +1185,8 @@ describe('Issue 275 rag loop orchestration', () => {
       policy_recheck_metadata_enrichment_enabled: true,
       policy_recheck_metadata_max_attempts: 1
     };
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
-    jest.spyOn(classificationService, 'enrichWithTMDB').mockResolvedValue({
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
+    jest.spyOn(classificationMetadataService, 'enrichWithTMDB').mockResolvedValue({
       tmdb_id: 123,
       media_type: 'movie',
       title: 'Example',
@@ -1268,9 +1273,9 @@ describe('Issue 275 rag loop orchestration', () => {
       policy_recheck_metadata_enrichment_enabled: true,
       policy_recheck_metadata_max_attempts: 0
     };
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
 
-    const enrichSpy = jest.spyOn(classificationService, 'enrichWithTMDB');
+    const enrichSpy = jest.spyOn(classificationMetadataService, 'enrichWithTMDB');
 
     const result = await classificationService.evaluateRagLoopSecondPass({
       metadata: {
@@ -1320,7 +1325,7 @@ describe('Issue 275 rag loop orchestration', () => {
       ...buildRagConfig('apply'),
       rag_loop_max_passes: 1
     };
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
 
     const result = await classificationService.evaluateRagLoopSecondPass({
       metadata: {
@@ -1366,7 +1371,7 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('shadow mode remains non-invasive while attaching trace', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('shadow'));
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('shadow'));
 
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'prompt_confirm',
@@ -1434,7 +1439,7 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('apply mode can adopt policy recheck result when comparator gates pass', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
 
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'prompt_confirm',
@@ -1502,7 +1507,7 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('apply mode preserves baseline when second-pass conflict persists despite improvement', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
 
     ragRetriever.semanticSearchCandidates.mockResolvedValue([
       { libraryId: 1, libraryName: 'Movies', similarity: 0.76 },
@@ -1577,7 +1582,7 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('uses one unified pass2 evidence pool for diagnostics, rag context, and policy recheck cache', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
 
     ragRetriever.semanticSearchCandidates.mockResolvedValue([
       { libraryId: 1, libraryName: 'Movies', similarity: 0.78 },
@@ -1661,7 +1666,7 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('policy-first trigger fails open with deterministic guard reason when tmdb mapping is missing', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
 
     const baselineResult = {
       library: { id: 1, name: 'Movies' },
@@ -1709,7 +1714,7 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('non-actionable policy results still allow low-confidence ai second pass', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('shadow'));
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('shadow'));
 
     const result = await classificationService.evaluateRagLoopSecondPass({
       metadata: {
@@ -1747,7 +1752,7 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('skips second pass when policy prompt risk is clear and confidence already exceeds auto threshold', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue({
       ...buildRagConfig('apply'),
       policy_recheck_skip_when_ai_confident_enabled: true
     });
@@ -1799,13 +1804,13 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('retries pass1 candidate retrieval on transient timeout and records specific retry reason', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue({
       ...buildRagConfig('apply'),
       rag_loop_retry_backoff_ms: 1
     });
 
     let pass1Attempts = 0;
-    jest.spyOn(classificationService, 'withTimeout').mockImplementation(async (operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') => {
+    jest.spyOn(classificationUtilsService, 'withTimeout').mockImplementation(async (operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') => {
       if (timeoutMessage === 'rag_pass1_candidate_timeout') {
         pass1Attempts += 1;
         if (pass1Attempts === 1) {
@@ -1889,13 +1894,13 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('retries pass2 retrieval and reports specific provider failure reason when retries are exhausted', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue({
       ...buildRagConfig('apply'),
       rag_loop_retry_backoff_ms: 1
     });
 
     let pass2Attempts = 0;
-    jest.spyOn(classificationService, 'withTimeout').mockImplementation(async (operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') => {
+    jest.spyOn(classificationUtilsService, 'withTimeout').mockImplementation(async (operationOrPromise, timeoutMs, timeoutMessage = 'operation_timeout') => {
       if (timeoutMessage === 'rag_pass1_candidate_timeout') {
         return [
           { libraryId: 1, libraryName: 'Movies', similarity: 0.64 },
@@ -1979,7 +1984,7 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('retries retryable sqlstate conflicts during policy recheck and records deterministic reason', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue({
       ...buildRagConfig('apply'),
       policy_recheck_max_attempts: 2
     });
@@ -2054,7 +2059,7 @@ describe('Issue 275 rag loop orchestration', () => {
   });
 
   test('skips policy recheck when the configured policy recheck attempt cap is zero', async () => {
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue({
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue({
       ...buildRagConfig('apply'),
       policy_recheck_max_attempts: 0
     });
@@ -2104,7 +2109,7 @@ describe('Issue 275 rag loop orchestration', () => {
 
   test('scoped rag_pass2 breaker skip is fail-open and traceable', async () => {
     const config = buildRagConfig('shadow');
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
 
     const timeoutError = new Error('timeout');
     timeoutError.code = 'ETIMEDOUT';
@@ -2149,8 +2154,8 @@ describe('Issue 275 rag loop orchestration', () => {
       ...buildRagConfig('apply'),
       policy_recheck_max_ai_calls_per_item: 1
     };
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
-    const aiClassifySpy = jest.spyOn(classificationService, 'aiClassify');
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
+    const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify');
 
     const result = await classificationService.evaluateRagLoopSecondPass({
       metadata: {
@@ -2189,7 +2194,7 @@ describe('Issue 275 rag loop orchestration', () => {
       ...buildRagConfig('apply'),
       policy_recheck_max_ai_calls_per_item: 2
     };
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
     ragRetriever.semanticSearchCandidates.mockImplementation(async (_metadata, _limit, options = {}) => {
       if (options.pass === 'pass1') {
         return [
@@ -2215,7 +2220,7 @@ describe('Issue 275 rag loop orchestration', () => {
       }]
     });
 
-    const aiClassifySpy = jest.spyOn(classificationService, 'aiClassify').mockResolvedValue({
+    const aiClassifySpy = jest.spyOn(classificationAiService, 'aiClassify').mockResolvedValue({
       library: { id: 2, name: 'Family' },
       confidence: 74,
       verified_by_ai: true,
@@ -2266,7 +2271,7 @@ describe('Issue 275 rag loop orchestration', () => {
       ...buildRagConfig('apply'),
       policy_recheck_max_ai_calls_per_item: 1
     };
-    jest.spyOn(classificationService, 'getRagLoopConfig').mockResolvedValue(config);
+    jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
 
     const schemaError = new Error('relation missing');
     schemaError.code = '42P01';
@@ -2788,7 +2793,7 @@ describe('Classification retry persistence', () => {
       return { rows: [] };
     });
 
-    jest.spyOn(classificationService, 'normalizePolicyQuestion').mockResolvedValue('{"problem_summary":"Unable to auto-classify"}');
+    jest.spyOn(classificationPersistenceService, 'normalizePolicyQuestion').mockResolvedValue('{"problem_summary":"Unable to auto-classify"}');
 
     await classificationService.logClassification(
       { tmdb_id: 55, media_type: 'movie', title: 'Fallback Test', year: 2026 },
