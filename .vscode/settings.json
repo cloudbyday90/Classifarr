@@ -2,6 +2,8 @@
     "css.validate": false,
     "scss.validate": false,
     "less.validate": false,
+    "files.eol": "\n",
+    "files.insertFinalNewline": true,
     "tailwindCSS.includeLanguages": {
         "vue": "html"
     },

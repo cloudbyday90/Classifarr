@@ -12,22 +12,34 @@
 
 # Config/data files - always use LF
 *.json text eol=lf
+*.jsonc text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
 *.toml text eol=lf
+
+# Environment/runtime markers - always use LF
+.env.example text eol=lf
+.nvmrc text eol=lf
+LICENSE text eol=lf
 
 # Web files - always use LF
 *.html text eol=lf
 *.css text eol=lf
 *.scss text eol=lf
 *.less text eol=lf
+*.svg text eol=lf
+
+# Markup/templates - always use LF
+*.xml text eol=lf
 
 # Documentation - always use LF
 *.md text eol=lf
 *.txt text eol=lf
+*.backup text eol=lf
 
 # Database files - always use LF
 *.sql text eol=lf
+*.bak text eol=lf
 
 # Shell scripts must always use LF
 *.sh text eol=lf
