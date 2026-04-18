@@ -130,7 +130,7 @@ If copyright check fails, fix headers:
 npm run update-copyright
 ```
 
-Then manually add headers to any files the auto-updater missed.
+This handles both cases: inserts the full GPL-3.0 block into files missing a header entirely, and updates the year range in headers that already exist. Re-run `npm run check-copyright` to confirm all files pass.
 
 If coverage ratchet fails:
 ```bash

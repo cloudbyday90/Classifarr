@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
+import api from '@/api'
 import Header from '@/components/layout/Header.vue'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import CommandCenter from '@/views/CommandCenter.vue'
@@ -18,6 +19,7 @@ vi.mock('@vueuse/core', () => ({
 
 vi.mock('@/api', () => ({
   default: {
+    getData: vi.fn().mockResolvedValue({ username: 'admin' }),
     getLiveStats: vi.fn().mockResolvedValue({ data: { queue: {}, gapAnalysis: {}, enrichment: {}, health: {} } }),
     getClassificationProgress: vi.fn().mockResolvedValue({ data: [] }),
     getQueuePending: vi.fn().mockResolvedValue([]),
@@ -87,6 +89,7 @@ const createTestRouter = async (path = '/') => {
 describe('Command Center shell navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    api.getData.mockResolvedValue({ username: 'admin' })
   })
 
   it('renders locked global header controls', async () => {

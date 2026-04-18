@@ -27,11 +27,13 @@ const { withConsoleSpy } = require('../setup/consoleHelpers');
 
 // Create test app for API key management
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use('/api/keys', apiKeysRouter);
 
 // Create test app for protected routes
 const protectedApp = express();
+protectedApp.set('trust proxy', 1);
 protectedApp.use(express.json());
 protectedApp.use('/api/libraries', authenticateTokenOrApiKey, librariesRouter);
 
@@ -42,6 +44,8 @@ describe('API Keys Integration Tests', () => {
     let testApiKey;
     let testReadOnlyKeyId;
     let testReadOnlyKey;
+    let testEmbeddingServiceKeyId;
+    let testEmbeddingServiceKey;
 
     // Setup test user and JWT token
     beforeAll(async () => {
@@ -64,7 +68,11 @@ describe('API Keys Integration Tests', () => {
     // Clean up after all tests
     afterAll(async () => {
         // Delete test API keys
-        await db.query('DELETE FROM api_keys WHERE id = $1 OR id = $2', [testApiKeyId, testReadOnlyKeyId]);
+        await db.query('DELETE FROM api_keys WHERE id = ANY($1)', [[
+            testApiKeyId,
+            testReadOnlyKeyId,
+            testEmbeddingServiceKeyId,
+        ].filter(Boolean)]);
         // Delete test user
         await db.query('DELETE FROM users WHERE id = $1', [testUserId]);
     });
@@ -138,6 +146,21 @@ describe('API Keys Integration Tests', () => {
 
             // Clean up
             await db.query('DELETE FROM api_keys WHERE id = $1', [response.body.id]);
+        });
+
+        test('should create a new API key with embed_service permissions', async () => {
+            const response = await request(app)
+                .post('/api/keys')
+                .set('Authorization', `Bearer ${testToken}`)
+                .send({
+                    name: 'Embedding Service Key',
+                    permissions: 'embed_service'
+                })
+                .expect(200);
+
+            expect(response.body.permissions).toBe('embed_service');
+            testEmbeddingServiceKeyId = response.body.id;
+            testEmbeddingServiceKey = response.body.key;
         });
 
         test('should create API key with expiration date', async () => {
@@ -423,6 +446,7 @@ describe('API Keys Integration Tests', () => {
             const createResponse = await request(app)
                 .post('/api/keys')
                 .set('Authorization', `Bearer ${testToken}`)
+                .set('X-Forwarded-For', '10.99.0.55')
                 .send({
                     name: 'Expired Key',
                     permissions: 'read_write',
@@ -460,7 +484,7 @@ describe('API Keys Integration Tests', () => {
         });
 
         test('read_write key should access POST endpoints', async () => {
-            await withConsoleSpy('warn', async ({ getMessages }) => {
+            await withConsoleSpy('warn', { suppress: true }, async ({ getMessages }) => {
                 // Note: This will fail if library doesn't exist, but should not fail on permission
                 const response = await request(protectedApp)
                     .post('/api/libraries/999999/sync')
@@ -472,6 +496,13 @@ describe('API Keys Integration Tests', () => {
 
                 expect(getMessages()).toContain('Library not found during sync');
             });
+        });
+
+        test('embed_service key should be denied on GET endpoints', async () => {
+            await request(protectedApp)
+                .get('/api/libraries')
+                .set('X-API-Key', testEmbeddingServiceKey)
+                .expect(403);
         });
     });
 

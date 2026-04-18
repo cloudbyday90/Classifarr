@@ -26,6 +26,7 @@ vi.mock('../../api', () => ({
   default: {
     getQueueStats: vi.fn(),
     getQueueSettings: vi.fn(),
+    getData: vi.fn(),
     get: vi.fn(),
     clearAndResync: vi.fn(),
     updateQueueSettings: vi.fn(),
@@ -38,8 +39,11 @@ vi.mock('../../api', () => ({
 }))
 
 describe('Queue.vue - CARSA Dialog Integration', () => {
+  let consoleErrorSpy
+
   beforeEach(() => {
     vi.clearAllMocks()
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     
     // Setup default mocks
     api.getQueueStats.mockResolvedValue({
@@ -62,6 +66,7 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
       }
     })
     
+    api.getData.mockResolvedValue(null)
     api.get.mockResolvedValue({ data: null })
     api.updateQueueSettings.mockResolvedValue({ data: { ok: true } })
     api.clearCompletedTasks.mockResolvedValue({ data: { count: 100 } })
@@ -70,6 +75,10 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
     api.cancelAllPendingTasks.mockResolvedValue({ data: { count: 5 } })
     api.reprocessCompleted.mockResolvedValue({ data: { count: 12 } })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore()
   })
 
   it('renders CARSA button', async () => {
@@ -321,6 +330,7 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
 
     expect(wrapper.vm.saveSuccess).toBe(false)
     expect(wrapper.vm.saveMessage).toContain('Failed to save settings')
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to save settings:', expect.any(Error))
   })
 
   it('runs maintenance actions and refreshes stats', async () => {
@@ -378,7 +388,6 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
   it('handles queue stats and settings load errors without crashing', async () => {
     api.getQueueStats.mockRejectedValueOnce(new Error('stats failed'))
     api.getQueueSettings.mockRejectedValueOnce(new Error('settings failed'))
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const wrapper = mount(Queue, {
       global: {
@@ -391,10 +400,9 @@ describe('Queue.vue - CARSA Dialog Integration', () => {
 
     await flushPromises()
 
-    expect(consoleError).toHaveBeenCalledWith('Failed to load queue stats:', expect.any(Error))
-    expect(consoleError).toHaveBeenCalledWith('Failed to load queue settings:', expect.any(Error))
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to load queue stats:', expect.any(Error))
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to load queue settings:', expect.any(Error))
     expect(wrapper.exists()).toBe(true)
-    consoleError.mockRestore()
   })
 
   it('disables CARSA button when action is loading', async () => {

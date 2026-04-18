@@ -53,7 +53,7 @@ describe('Queue Robustness Integration Tests', () => {
                 VALUES ('classification', 'processing', '{}', 5, NOW() - INTERVAL '1 second')
             `);
 
-            const count = await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+            const count = await withConsoleSpy('warn', { suppress: true }, async ({ getMessages, spy }) => {
                 const recoveredCount = await queueService.recoverExpiredVisibilityTasks();
 
                 expect(spy).toHaveBeenCalledTimes(1);
@@ -98,7 +98,7 @@ describe('Queue Robustness Integration Tests', () => {
 
             queueService.processing = 3; // Simulate 3 occupied slots
 
-            const count = await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+            const count = await withConsoleSpy('warn', { suppress: true }, async ({ getMessages, spy }) => {
                 const recoveredCount = await queueService.recoverExpiredVisibilityTasks();
 
                 expect(spy).toHaveBeenCalledTimes(1);
@@ -124,7 +124,7 @@ describe('Queue Robustness Integration Tests', () => {
 
             queueService.processing = 1; // Under-reported (shouldn't happen, but guard holds)
 
-            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+            await withConsoleSpy('warn', { suppress: true }, async ({ getMessages, spy }) => {
                 await queueService.recoverExpiredVisibilityTasks();
 
                 expect(spy).toHaveBeenCalledTimes(1);
@@ -142,7 +142,7 @@ describe('Queue Robustness Integration Tests', () => {
                 VALUES ('classification', 'processing', '{}', 5, NOW() - INTERVAL '1 second')
             `);
 
-            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+            await withConsoleSpy('warn', { suppress: true }, async ({ getMessages, spy }) => {
                 await queueService.recoverExpiredVisibilityTasks();
 
                 expect(spy).toHaveBeenCalledTimes(1);

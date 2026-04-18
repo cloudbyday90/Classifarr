@@ -13,6 +13,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 import GraphTab from '../views/rag/GraphTab.vue'
 import api from '../api'
 
+let consoleErrorSpy
+
 vi.mock('../api', () => ({
   default: {
     put: vi.fn(),
@@ -56,6 +58,11 @@ const mockApiSuccess = (configOverrides = {}) => {
 describe('GraphTab.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore()
   })
 
   it('renders the Graph Retrieval header badge', async () => {
@@ -187,6 +194,7 @@ describe('GraphTab.vue', () => {
     await saveBtn.trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('DB error')
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to save graph retrieval config:', expect.anything())
   })
 
   it('falls back to generic error message when save error has no response body', async () => {
@@ -198,6 +206,7 @@ describe('GraphTab.vue', () => {
     await saveBtn.trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('Failed to save configuration')
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to save graph retrieval config:', expect.anything())
   })
 
   it('handles loadConfig gracefully when /settings/ai fails', async () => {
@@ -216,6 +225,7 @@ describe('GraphTab.vue', () => {
     const wrapper = mount(GraphTab)
     await flushPromises()
     expect(wrapper.text()).toContain('Graph Retrieval')
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to load graph retrieval config:', expect.any(Error))
   })
 
   describe('fillRateBarClass helper', () => {

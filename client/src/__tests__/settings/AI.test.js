@@ -71,6 +71,11 @@ const baseConfig = {
 function mountView() {
   return mount(AI, {
     global: {
+      mocks: {
+        $router: {
+          push: vi.fn()
+        }
+      },
       stubs: {
         Card: CardStub,
         Button: ButtonStub,
@@ -186,5 +191,150 @@ describe('AI Settings', () => {
     expect(api.updatePatternConfig).not.toHaveBeenCalled()
     expect(toast.error).toHaveBeenCalledWith('provider save failed')
     expect(toast.warning).not.toHaveBeenCalled()
+  })
+
+  it('parses a legacy Ollama URL into host and port fields on load', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      data: {
+        primary_provider: 'ollama',
+        ollama_host: 'http://192.168.50.95:11434',
+        ollama_model: 'llama3.2'
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const hostInput = wrapper.find('input[placeholder="192.168.1.100"]')
+    const portInput = wrapper.find('input[placeholder="11434"]')
+
+    expect(hostInput.element.value).toBe('192.168.50.95')
+    expect(portInput.element.value).toBe('11434')
+  })
+
+  it('clears the selected model and prior test result when the provider changes', async () => {
+    api.testAIConnection.mockResolvedValueOnce({
+      data: {
+        success: true,
+        message: 'Connection ready'
+      }
+    })
+    api.getAIModels.mockResolvedValue({
+      data: {
+        models: [{ id: 'gpt-5', name: 'GPT-5' }]
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test Connection'))
+    await testButton.trigger('click')
+    await flushPromises()
+
+    const providerSelect = wrapper.find('select')
+    await providerSelect.setValue('gemini')
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Connection ready')
+    expect(wrapper.text()).toContain('Select a model...')
+  })
+
+  it('fetches models after a successful provider connection test', async () => {
+    api.testAIConnection.mockResolvedValueOnce({
+      data: {
+        success: true,
+        message: 'Connection ready'
+      }
+    })
+    api.getAIModels.mockResolvedValueOnce({
+      data: {
+        models: [{ id: 'gpt-5', name: 'GPT-5' }, { id: 'gpt-5-mini', name: 'GPT-5 Mini' }]
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test Connection'))
+    await testButton.trigger('click')
+    await flushPromises()
+
+    expect(api.testAIConnection).toHaveBeenCalledWith({
+      primary_provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'sk-masked'
+    })
+    expect(api.getAIModels).toHaveBeenCalledWith({
+      primary_provider: 'openai',
+      api_endpoint: 'https://api.openai.com/v1',
+      api_key: 'sk-masked'
+    })
+    expect(toast.success).toHaveBeenCalledWith('Connection successful!')
+    expect(wrapper.text()).toContain('Connection ready')
+  })
+
+  it('filters embedding models out of the Ollama generation dropdown', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      data: {
+        primary_provider: 'ollama',
+        ollama_host: 'localhost',
+        ollama_port: 11434,
+        ollama_model: 'llama3.2'
+      }
+    })
+    api.getOllamaModels.mockResolvedValueOnce({
+      data: [
+        { name: 'llama3.2' },
+        { name: 'nomic-embed-text' },
+        { name: 'bge-large' },
+        { name: 'mistral' }
+      ]
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const fetchButtons = wrapper.findAll('button').filter((button) => button.text().includes('🔄'))
+    await fetchButtons[0].trigger('click')
+    await flushPromises()
+
+    expect(api.getOllamaModels).toHaveBeenCalledWith('localhost', 11434)
+    expect(wrapper.text()).toContain('llama3.2')
+    expect(wrapper.text()).toContain('mistral')
+    expect(wrapper.text()).not.toContain('nomic-embed-text')
+    expect(wrapper.text()).not.toContain('bge-large')
+  })
+
+  it('tests Ollama connectivity and auto-fetches models on success', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      data: {
+        primary_provider: 'ollama',
+        ollama_host: 'localhost',
+        ollama_port: 11434,
+        ollama_model: 'llama3.2'
+      }
+    })
+    api.testOllama.mockResolvedValueOnce({
+      data: {
+        success: true,
+        message: 'Ollama is reachable'
+      }
+    })
+    api.getOllamaModels.mockResolvedValueOnce({
+      data: [{ name: 'llama3.2' }]
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test Connection'))
+    await testButton.trigger('click')
+    await flushPromises()
+
+    expect(api.testOllama).toHaveBeenCalledWith('localhost', 11434)
+    expect(api.getOllamaModels).toHaveBeenCalledWith('localhost', 11434)
+    expect(toast.success).toHaveBeenCalledWith('Ollama connected!')
+    expect(wrapper.text()).toContain('Ollama is reachable')
   })
 })

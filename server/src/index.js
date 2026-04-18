@@ -36,13 +36,14 @@ const discordBot = require('./services/discordBot');
 const queueService = require('./services/queueService');
 const errorHandler = require('./middleware/errorHandler');
 const { ensureCsrfCookie, csrfProtection } = require('./middleware/csrf');
-const { setLoggerDb } = require('./utils/logger');
+const { setLoggerDb, createLogger } = require('./utils/logger');
 const { evaluateCorsOrigin } = require('./utils/corsPolicy');
 const providerLock = require('./services/providerLock');
 const avxGuard = require('./services/avxGuard');
 const runtimeSettings = require('./config/runtimeSettings');
 
 const app = express();
+const logger = createLogger('Server');
 let server = null; // module-scope ref used by graceful shutdown handler
 const PORT = process.env.PORT || 21324;
 const SECURITY_HEADERS_STRICT = (process.env.SECURITY_HEADERS_STRICT || 'true').toLowerCase() !== 'false';
@@ -516,3 +517,43 @@ async function gracefulShutdown(signal) {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
+
+function normalizeUnhandledReason(reason) {
+  if (reason instanceof Error) {
+    return {
+      name: reason.name,
+      message: reason.message
+    };
+  }
+
+  if (typeof reason === 'string') {
+    return { message: reason };
+  }
+
+  return { reason };
+}
+
+process.on('unhandledRejection', (reason, promise) => {
+  const payload = {
+    ...normalizeUnhandledReason(reason),
+    promiseType: typeof promise
+  };
+  const options = reason instanceof Error ? { error: reason } : {};
+  logger.error('Unhandled promise rejection', payload, options);
+});
+
+process.on('uncaughtException', (error) => {
+  const forceExit = setTimeout(() => {
+    process.exit(1);
+  }, 5000);
+  forceExit.unref();
+
+  logger.error(
+    'Uncaught exception encountered; exiting process',
+    { error: error.message, name: error.name },
+    { error }
+  ).finally(() => {
+    clearTimeout(forceExit);
+    process.exit(1);
+  });
+});

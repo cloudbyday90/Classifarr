@@ -29,7 +29,7 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('apiKeyService');
 
-const VALID_PERMISSIONS = ['read_only', 'read_write', 'webhook_only', 'admin'];
+const VALID_PERMISSIONS = ['read_only', 'read_write', 'webhook_only', 'embed_service', 'admin'];
 
 function generateApiKey() {
   const key = generateRandomKey('clf_', 24);
@@ -58,6 +58,10 @@ async function createApiKey(name = 'API Key', permissions = 'read_write', expire
     ...result.rows[0],
     key,
   };
+}
+
+async function createEmbeddingServiceApiKey(name = 'Embedding Service API Key', expiresAt = null) {
+  return createApiKey(name, 'embed_service', expiresAt);
 }
 
 async function validateApiKey(key) {
@@ -235,6 +239,7 @@ async function logAudit(apiKeyId, action, options = {}) {
 module.exports = {
   generateApiKey,
   createApiKey,
+  createEmbeddingServiceApiKey,
   validateApiKey,
   updateLastUsed,
   listApiKeys,

@@ -124,7 +124,7 @@ describe('Migration Routes Integration', () => {
   test('returns 404 when preset does not exist', async () => {
     const ruleId = await createRule();
 
-    const response = await withConsoleSpy('error', async ({ getMessages }) => {
+    const response = await withConsoleSpy('error', { suppress: true }, async ({ getMessages }) => {
       const result = await request(app)
         .post(`/api/migration/rules/${ruleId}/migrate`)
         .send({
@@ -161,7 +161,7 @@ describe('Migration Routes Integration', () => {
 
     const ruleId = await createRule();
 
-    const response = await withConsoleSpy('error', async ({ getMessages }) => {
+    const response = await withConsoleSpy('error', { suppress: true }, async ({ getMessages }) => {
       const result = await request(app)
         .post(`/api/migration/rules/${ruleId}/migrate`)
         .send({
@@ -267,7 +267,7 @@ describe('Migration Routes Integration', () => {
 
     const ruleId = await createRule();
 
-    const response = await withConsoleSpy('log', async ({ getMessages }) => {
+    const response = await withConsoleSpy('log', { suppress: true }, async ({ getMessages }) => {
       const result = await request(app)
         .post(`/api/migration/rules/${ruleId}/migrate`)
         .send({

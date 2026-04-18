@@ -60,7 +60,7 @@ beforeAll(() => {
 describe('MediaSyncService: library-not-found handling', () => {
     describe('syncLibrary()', () => {
         it('throws LibraryNotFoundError (not a generic Error) when library does not exist', async () => {
-            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+            await withConsoleSpy('warn', { suppress: true }, async ({ getMessages, spy }) => {
                 await expect(
                     mediaSyncService.syncLibrary(NONEXISTENT_LIBRARY_ID)
                 ).rejects.toBeInstanceOf(LibraryNotFoundError);
@@ -79,7 +79,7 @@ describe('MediaSyncService: library-not-found handling', () => {
             );
             const countBefore = parseInt(before.rows[0].count);
 
-            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+            await withConsoleSpy('warn', { suppress: true }, async ({ getMessages, spy }) => {
                 await expect(
                     mediaSyncService.syncLibrary(NONEXISTENT_LIBRARY_ID)
                 ).rejects.toBeInstanceOf(LibraryNotFoundError);
@@ -100,7 +100,7 @@ describe('MediaSyncService: library-not-found handling', () => {
 
     describe('getLibraryItems()', () => {
         it('throws LibraryNotFoundError (not a generic Error) when library does not exist', async () => {
-            await withConsoleSpy('warn', async ({ getMessages, spy }) => {
+            await withConsoleSpy('warn', { suppress: true }, async ({ getMessages, spy }) => {
                 await expect(
                     mediaSyncService.getLibraryItems(NONEXISTENT_LIBRARY_ID)
                 ).rejects.toBeInstanceOf(LibraryNotFoundError);

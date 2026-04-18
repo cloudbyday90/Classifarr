@@ -665,24 +665,6 @@ describe('getPendingClassifications', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolvePolicyQuestion', () => {
-  function makeClient({
-    classRows = [],
-    libraryRows = [{ id: 5, name: 'Movies', arr_type: 'radarr', media_type: 'movie', is_active: true }],
-    updateRows = [],
-    existenceRows = [],
-    libraryCheckRows = [{ id: 5 }]
-  } = {}) {
-    const client = makeMockClient();
-    client.query
-      .mockResolvedValueOnce({})                         // BEGIN
-      .mockResolvedValueOnce({ rows: classRows })         // FOR UPDATE lock
-      .mockResolvedValueOnce({ rows: libraryRows })       // library lookup
-      .mockResolvedValueOnce({ rows: updateRows })        // UPDATE classification_history
-      .mockResolvedValueOnce({})                          // COMMIT
-      ;
-    return client;
-  }
-
   test('resolves successfully when classification is awaiting_decision', async () => {
     const client = makeMockClient();
     db.pool.connect.mockResolvedValueOnce(client);

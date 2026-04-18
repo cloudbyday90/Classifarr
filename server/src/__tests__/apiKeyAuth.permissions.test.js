@@ -155,4 +155,31 @@ describe('API Key auth middleware - additional permission and fallback branches'
     expect(errorSpy.spy).toHaveBeenCalled();
     errorSpy.restore();
   });
+
+  test('authenticateApiKey blocks embed_service keys from Classifarr API routes', async () => {
+    req.headers['x-api-key'] = 'clf_embedkey0000000000000000000000';
+    apiKeyService.validateApiKey.mockResolvedValueOnce({ id: 81, permissions: 'embed_service' });
+
+    await authenticateApiKey(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'Embedding-service keys are reserved for sidecar authentication and cannot access Classifarr API endpoints.',
+    });
+    expect(next).not.toHaveBeenCalled();
+    expect(apiKeyService.updateLastUsed).not.toHaveBeenCalled();
+    expect(apiKeyService.logAudit).not.toHaveBeenCalled();
+  });
+
+  test('requireReadWrite blocks embed_service API keys', () => {
+    req.apiKey = { id: 11, permissions: 'embed_service' };
+
+    requireReadWrite(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'This endpoint requires a standard Classifarr API key. Embedding-service keys are reserved for sidecar authentication.',
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
 });

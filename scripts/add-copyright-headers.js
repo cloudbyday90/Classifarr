@@ -119,7 +119,7 @@ function addHeader(filePath) {
 function main() {
   console.log(`\n➕ Adding copyright headers to files without them...\n`);
   
-  const files = FILE_PATTERNS.flatMap(pattern => glob.sync(pattern));
+  const files = FILE_PATTERNS.flatMap(pattern => glob.sync(pattern)).filter(f => fs.statSync(f).isFile());
   let added = 0;
   
   files.forEach(file => {

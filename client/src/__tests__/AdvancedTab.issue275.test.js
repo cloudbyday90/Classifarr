@@ -104,6 +104,7 @@ describe('AdvancedTab Issue 275 UI controls', () => {
   })
 
   it('shows compatibility message when Issue 275 keys are unavailable', async () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     api.getAIConfig.mockResolvedValue({ data: {} })
     api.getRagAdvancedConfig.mockResolvedValue({ data: baseAdvanced })
     api.getRagPromotionReadiness.mockRejectedValue(new Error('404'))
@@ -116,6 +117,8 @@ describe('AdvancedTab Issue 275 UI controls', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Second-pass controls are unavailable')
+    expect(consoleWarnSpy).toHaveBeenCalledWith('Promotion metrics endpoint unavailable:', '404')
+    consoleWarnSpy.mockRestore()
   })
 
   it('saves second-pass settings through /settings/ai when available', async () => {

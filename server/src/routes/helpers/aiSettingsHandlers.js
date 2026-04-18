@@ -181,16 +181,20 @@ function createAiSettingsHandlers({
         }
 
         let finalImageEmbeddingLocalApiKey;
-        if (image_embedding_local_api_key === '') {
+        const normalizedImageEmbeddingLocalApiKey = typeof image_embedding_local_api_key === 'string'
+          ? image_embedding_local_api_key.trim()
+          : image_embedding_local_api_key;
+
+        if (normalizedImageEmbeddingLocalApiKey === '') {
           // Client sent empty string — operator explicitly cleared the key
           finalImageEmbeddingLocalApiKey = null;
           logger.info('[AUDIT] Sidecar API key updated', { action: 'cleared' });
-        } else if (image_embedding_local_api_key === undefined || isMaskedToken(image_embedding_local_api_key)) {
+        } else if (normalizedImageEmbeddingLocalApiKey === undefined || isMaskedToken(normalizedImageEmbeddingLocalApiKey)) {
           // Masked sentinel or field omitted — preserve the existing encrypted value
           finalImageEmbeddingLocalApiKey = existing.image_embedding_local_api_key || null;
         } else {
           // New plaintext key provided — encrypt before storing
-          const { encrypted, iv, authTag } = encryptValue(image_embedding_local_api_key);
+          const { encrypted, iv, authTag } = encryptValue(normalizedImageEmbeddingLocalApiKey);
           finalImageEmbeddingLocalApiKey = formatEncryptedValue(encrypted, iv, authTag);
           logger.info('[AUDIT] Sidecar API key updated', { action: 'set' });
         }

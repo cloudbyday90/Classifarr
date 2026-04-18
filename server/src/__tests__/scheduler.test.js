@@ -169,6 +169,54 @@ describe('SchedulerService', () => {
                 expect.objectContaining({ error: 'DB connection failed' })
             );
         });
+
+        it('runErrorLogCleanup uses settings.error_log_retention_days and deletes in batches', async () => {
+            const dbModule = require('../config/database');
+            dbModule.query
+                // Settings lookup
+                .mockResolvedValueOnce({ rows: [{ value: '14' }] })
+                // Delete batch 1 (full batch)
+                .mockResolvedValueOnce({ rowCount: 1000 })
+                // Delete batch 2 (final batch)
+                .mockResolvedValueOnce({ rowCount: 12 });
+
+            await scheduler.runErrorLogCleanup();
+
+            expect(dbModule.query).toHaveBeenCalledTimes(3);
+            const [, deleteCallOneParams] = dbModule.query.mock.calls[1];
+            expect(deleteCallOneParams).toEqual([14, 1000]);
+            expect(logger.info).toHaveBeenCalledWith(
+                'Error log cleanup complete',
+                expect.objectContaining({ deleted: 1012, retentionDays: 14 })
+            );
+        });
+
+        it('runErrorLogCleanup falls back to 30 days when setting is missing/invalid', async () => {
+            const dbModule = require('../config/database');
+            dbModule.query
+                .mockResolvedValueOnce({ rows: [{ value: 'not-a-number' }] })
+                .mockResolvedValueOnce({ rowCount: 0 });
+
+            await scheduler.runErrorLogCleanup();
+
+            const [, deleteParams] = dbModule.query.mock.calls[1];
+            expect(deleteParams).toEqual([30, 1000]);
+            expect(logger.debug).toHaveBeenCalledWith(
+                'Error log cleanup: no rows to delete',
+                expect.objectContaining({ retentionDays: 30 })
+            );
+        });
+
+        it('runErrorLogCleanup logs error and does not throw on DB failure', async () => {
+            const dbModule = require('../config/database');
+            dbModule.query.mockRejectedValue(new Error('DB connection failed'));
+
+            await expect(scheduler.runErrorLogCleanup()).resolves.toBeUndefined();
+            expect(logger.error).toHaveBeenCalledWith(
+                'Error log cleanup failed',
+                expect.objectContaining({ error: 'DB connection failed' })
+            );
+        });
     });
 
     describe('cleanupStaleAwaitingDecisions', () => {

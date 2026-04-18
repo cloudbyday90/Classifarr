@@ -619,15 +619,12 @@ describe('Code Health — TODO stubs are tracked', () => {
       // Soft warning — log them but don't fail the suite unless the count
       // exceeds a threshold (keeps the list manageable).
       const MAX_TODOS = 20;
-      const message = `${todos.length} TODO comment(s) in client source:\n${todos.join('\n')}`;
       if (todos.length > MAX_TODOS) {
         throw new Error(
           `TODO count (${todos.length}) exceeds the allowed maximum of ${MAX_TODOS}.\n` +
           `Resolve or convert to GitHub issues:\n${todos.join('\n')}`
         );
       }
-      // Under the threshold — pass but make the list visible in verbose output
-      console.info(`[codeHealth] ${message}`);
     }
 
     expect(todos.length).toBeLessThanOrEqual(20);

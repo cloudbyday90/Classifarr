@@ -16,96 +16,32 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const path = require('path');
-const { randomUUID } = require('crypto');
 const db = require('../config/database');
 const tmdbService = require('./tmdb');
-const ollamaService = require('./ollama');
-const radarrService = require('./radarr');
-const sonarrService = require('./sonarr');
 const discordBot = require('./discordBot');
-const tavilyService = require('./tavily');
 const mediaSyncService = require('./mediaSync');
 const contentTypeAnalyzer = require('./contentTypeAnalyzer');
 const clarificationService = require('./clarificationService');
 const classificationPhaseService = require('./classificationPhaseService');
 const classificationRetryService = require('./classificationRetryService');
-const classificationOutcomeService = require('./classificationOutcomeService');
-const aiRouter = require('./aiRouter');
 const { SignalCollector, SIGNAL_TYPES } = require('./signalCollector');
 const confidenceCalculator = require('./confidenceCalculator');
 const ragRetriever = require('./ragRetriever');
-const embeddingService = require('./embeddingService');
 const classificationEvidenceReinforcementService = require('./classificationEvidenceReinforcementService');
 const policyEngine = require('./policyEngine');
 const policyQuestionBuilder = require('./policyQuestionBuilder');
 const classificationEvidenceService = require('./classificationEvidenceService');
-const providerLock = require('./providerLock');
 const idleDetector = require('../utils/idleDetector');
-const libraryProfileService = require('./libraryProfileService');
-const aiPromptBuilder = require('./aiPromptBuilder');
-const aiResponseParser = require('./aiResponseParser');
 const { createLogger } = require('../utils/logger');
-const ragLogger = require('../utils/ragLogger');
-const { mapSecondPassError } = require('../utils/ragErrorHandler');
-const { normalizeMetadataList, normalizeMetadataListLower } = require('../utils/metadataNormalization');
-const {
-  extractQuestionContext,
-  getPolicyQuestionContextVersion,
-  stampPolicyQuestionContext,
-} = require('../utils/policyQuestionContext');
-const ragLoopMetricsCollector = require('./ragLoopMetricsCollector');
-const ragLoopResilienceManager = require('./ragLoopResilienceManager');
+const { normalizeMetadataListLower } = require('../utils/metadataNormalization');
 const classificationMetadataService = require('./classificationMetadataService');
 const classificationUtilsService = require('./classificationUtilsService');
 const classificationRoutingService = require('./classificationRoutingService');
 const classificationAiService = require('./classificationAiService');
 const classificationPersistenceService = require('./classificationPersistenceService');
 const classificationRagLoopService = require('./classificationRagLoopService');
-const { validateAndNormalizeRagLoopConfig } = require('../utils/ragLoopConfig');
-const { OperationController } = require('../utils/operationController');
-const {
-  RAG_LOOP_FALLBACK_ACTIONS,
-  RAG_LOOP_REASON_CODES,
-  applyOrShadowDecision,
-  buildRagLoopTrace,
-  classifyDbSqlState,
-  comparePassResults,
-  detectRagConflict,
-  evaluatePolicyRecheckGate,
-  expandRetrievalMetadata,
-  extractVerifiableEvidence,
-  getRecheckEligibility,
-  getMetadataCompleteness,
-  isRetryableDbConflictError,
-  isAiRerunEligible,
-  isLearningEligible,
-  isMetadataEnrichmentEligible,
-  resolvePolicyContextOrFallback,
-  resolveConflictDecision,
-  selectRetryStrategy,
-  shouldTriggerSecondPass,
-  summarizePassDiagnostics
-} = require('../utils/ragLoopHelpers');
 
 const logger = createLogger('classification');
-const ROOT_PACKAGE_PATH = path.resolve(__dirname, '../../../package.json');
-let APP_VERSION = 'unknown';
-try {
-  APP_VERSION = require(ROOT_PACKAGE_PATH).version || 'unknown';
-} catch {
-  APP_VERSION = 'unknown';
-}
-
-// Constants
-// Retry delay between failed classification attempts when AI is unavailable.
-// Set to 5 minutes as a conservative backoff to avoid hammering external providers
-// (TMDB, LLMs, etc.) while still allowing eventual progress without manual intervention.
-// Configurable via this constant - adjust based on your provider rate limits and needs.
-const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
-const RAG_LOOP_MIN_TIMEOUT_MS = 1000;
-const RAG_LOOP_MAX_TIMEOUT_MS = 15000;
-const AI_PARSE_CONTRACT_VERSION = 'phase1_v1';
 
 class ClassificationService {
   async classify(overseerrPayload) {

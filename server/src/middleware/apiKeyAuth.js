@@ -30,6 +30,10 @@ function isWebhookEndpoint(path) {
   return WEBHOOK_ENDPOINTS.some(ep => path.startsWith(ep));
 }
 
+function isReservedIntegrationKey(permission) {
+  return permission === 'embed_service';
+}
+
 async function authenticateApiKey(req, res, next) {
   try {
     const apiKey = req.headers['x-api-key'];
@@ -42,6 +46,12 @@ async function authenticateApiKey(req, res, next) {
     
     if (!validKey) {
       return res.status(401).json({ error: 'Invalid or expired API key' });
+    }
+
+    if (isReservedIntegrationKey(validKey.permissions)) {
+      return res.status(403).json({
+        error: 'Embedding-service keys are reserved for sidecar authentication and cannot access Classifarr API endpoints.'
+      });
     }
     
     const ip = req.ip || req.connection.remoteAddress;
@@ -103,6 +113,11 @@ async function authenticateTokenOrApiKey(req, res, next) {
 
 function requireReadWrite(req, res, next) {
   if (req.apiKey) {
+    if (isReservedIntegrationKey(req.apiKey.permissions)) {
+      return res.status(403).json({
+        error: 'This endpoint requires a standard Classifarr API key. Embedding-service keys are reserved for sidecar authentication.'
+      });
+    }
     if (req.apiKey.permissions === 'read_only') {
       return res.status(403).json({ error: 'This endpoint requires read-write permissions' });
     }
@@ -146,4 +161,5 @@ module.exports = {
   requireReadWrite,
   requireAdmin,
   requireWebhookOrAdmin,
+  isReservedIntegrationKey,
 };

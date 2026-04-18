@@ -37,9 +37,33 @@ describe('API Key Service - database-backed behavior', () => {
 
   test('createApiKey rejects invalid permissions', async () => {
     await expect(apiKeyService.createApiKey('Bad Key', 'unknown_perm')).rejects.toThrow(
-      'Invalid permissions. Must be one of: read_only, read_write, webhook_only, admin'
+      'Invalid permissions. Must be one of: read_only, read_write, webhook_only, embed_service, admin'
     );
     expect(db.query).not.toHaveBeenCalled();
+  });
+
+  test('createEmbeddingServiceApiKey creates a reserved integration key', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 7,
+          name: 'Embedding Service API Key',
+          key_prefix: 'clf_test',
+          permissions: 'embed_service',
+          created_at: new Date(),
+          expires_at: null,
+          is_active: true,
+        },
+      ],
+    });
+
+    const result = await apiKeyService.createEmbeddingServiceApiKey();
+    const [, params] = db.query.mock.calls[0];
+
+    expect(params[0]).toBe('Embedding Service API Key');
+    expect(params[3]).toBe('embed_service');
+    expect(result.permissions).toBe('embed_service');
+    expect(result.key).toMatch(/^clf_/);
   });
 
   test('createApiKey inserts and returns persisted fields with plaintext key', async () => {
@@ -222,7 +246,7 @@ describe('API Key Service - database-backed behavior', () => {
 
   test('updateApiKey rejects invalid permissions', async () => {
     await expect(apiKeyService.updateApiKey(1, { permissions: 'invalid' })).rejects.toThrow(
-      'Invalid permissions. Must be one of: read_only, read_write, webhook_only, admin'
+      'Invalid permissions. Must be one of: read_only, read_write, webhook_only, embed_service, admin'
     );
   });
 

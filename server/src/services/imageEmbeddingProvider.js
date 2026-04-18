@@ -153,7 +153,8 @@ class ImageEmbeddingProvider {
             if (row.image_embedding_local_api_key) {
                 try {
                     const { encrypted, iv, authTag } = parseEncryptedValue(row.image_embedding_local_api_key);
-                    this._localApiKey = decryptValue(encrypted, iv, authTag);
+                    const decryptedApiKey = decryptValue(encrypted, iv, authTag);
+                    this._localApiKey = typeof decryptedApiKey === 'string' ? decryptedApiKey.trim() : decryptedApiKey;
                 } catch (decryptErr) {
                     logger.error('[EMBED] Failed to decrypt sidecar API key — key may be stale after encryption key rotation', { error: decryptErr.message });
                     this._localApiKey = null;
@@ -372,8 +373,12 @@ class ImageEmbeddingProvider {
         }
 
         const headers = {};
-        if (this._localApiKey) {
-            headers['X-Api-Key'] = this._localApiKey; // Gap 3.1 — /models requires auth
+        const rawApiKey = config?.image_embedding_local_api_key !== undefined
+            ? config.image_embedding_local_api_key
+            : this._localApiKey;
+        const apiKey = typeof rawApiKey === 'string' ? rawApiKey.trim() : rawApiKey;
+        if (apiKey) {
+            headers['X-Api-Key'] = apiKey; // Gap 3.1 — /models requires auth
         }
 
         const response = await axios.get(`http://${host}:${port}/models`, { timeout, headers });

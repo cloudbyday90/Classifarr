@@ -187,11 +187,10 @@ const router = createRouter({
 })
 
 // Navigation guard to check setup status and authentication
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to) => {
   // Always allow setup pages through to avoid redirect loops.
   if (to.name === 'SetupAccount' || to.name === 'SetupWizard') {
-    next()
-    return
+    return true
   }
 
   try {
@@ -202,17 +201,14 @@ router.beforeEach(async (to, from, next) => {
     // This includes redirecting away from /login, which would otherwise be a dead-end.
     if (setupData.setupRequired) {
       if (to.name !== 'SetupAccount') {
-        next('/setup-account')
-        return
+        return '/setup-account'
       }
-      next()
-      return
+      return true
     }
 
     // Setup is complete; allow /login, but protect all other routes.
     if (to.name === 'Login') {
-      next()
-      return
+      return true
     }
 
     // Check for valid authentication using cookie-based auth.
@@ -226,8 +222,7 @@ router.beforeEach(async (to, from, next) => {
         await api.getMe()
       } catch (_authError) {
         // Both the access token and the refresh attempt failed — require login.
-        next({ name: 'Login', query: { redirect: to.fullPath } })
-        return
+        return { name: 'Login', query: { redirect: to.fullPath } }
       }
     }
 
@@ -244,10 +239,10 @@ router.beforeEach(async (to, from, next) => {
       next()
     }
     */
-    next()
+    return true
   } catch (error) {
     console.error('Failed to check setup status:', error)
-    next()
+    return true
   }
 })
 

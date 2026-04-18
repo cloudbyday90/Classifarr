@@ -207,7 +207,7 @@ describe('Legacy Migration Integration Tests', () => {
                 preset_id: presetId
             };
 
-            await withConsoleSpy('log', async ({ getMessages }) => {
+            await withConsoleSpy('log', { suppress: true }, async ({ getMessages }) => {
                 await legacyMigration.migrateRule(ruleId, migrationChoice, null);
                 expect(getMessages()).toContain('Rule migrated successfully');
                 expect(getMessages()).toContain('migrationType');
@@ -242,7 +242,7 @@ describe('Legacy Migration Integration Tests', () => {
                 }
             };
 
-            await withConsoleSpy('log', async ({ getMessages }) => {
+            await withConsoleSpy('log', { suppress: true }, async ({ getMessages }) => {
                 await legacyMigration.migrateRule(ruleId, migrationChoice, null);
                 expect(getMessages()).toContain('Rule migrated successfully');
                 expect(getMessages()).toContain('migrationType');
@@ -267,7 +267,7 @@ describe('Legacy Migration Integration Tests', () => {
 
             const ruleId = ruleResult.rows[0].id;
 
-            await withConsoleSpy('error', async ({ getMessages: _getMessages }) => {
+            await withConsoleSpy('error', { suppress: true }, async ({ getMessages: _getMessages }) => {
                 const migrationChoice = {
                     type: 'preset',
                     preset_id: 9999 // Non-existent preset
@@ -304,7 +304,9 @@ describe('Legacy Migration Integration Tests', () => {
                     ($1, 'Rule 2', 'Test', '{"field": "genres", "value": "Action"}', true)
             `, [testLibraryId]);
 
-            const results = await legacyMigration.migrateLibrary(testLibraryId, null, true);
+            const results = await withConsoleSpy('log', { suppress: true }, async () => (
+                legacyMigration.migrateLibrary(testLibraryId, null, true)
+            ));
 
             expect(results).toHaveLength(2);
             expect(results.filter(r => r.migrated).length).toBe(2);

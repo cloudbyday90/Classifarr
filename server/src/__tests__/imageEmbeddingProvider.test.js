@@ -330,7 +330,6 @@ describe('ImageEmbeddingProvider', () => {
 
     describe('DEFAULTS.rps (Gap 3.10)', () => {
         it('defaults rps to 0.5 (30 req/min, matching sidecar default)', () => {
-            const { DEFAULTS: d } = jest.requireActual('../services/imageEmbeddingProvider');
             // We can't directly read DEFAULTS since it's not exported, but we can confirm
             // that a limiter created without config uses 0.5 rps by checking its minIntervalMs
             imageEmbeddingProvider.resetConfig();

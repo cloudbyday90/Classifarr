@@ -245,7 +245,6 @@ describe('CircuitBreaker', () => {
 
     describe('name option (Gap 3.22)', () => {
         it('should use named logger when name is provided', () => {
-            const { createLogger } = require('../utils/logger');
             const named = new CircuitBreaker({ name: 'ImageEmbedding' });
             expect(named.name).toBe('ImageEmbedding');
             // createLogger is mocked — the instance is the shared mockLogger;

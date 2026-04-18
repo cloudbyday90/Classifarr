@@ -149,6 +149,44 @@ describe('ragCoreHelpers', () => {
         });
     });
 
+    test('testImageConnection with masked local key loads config but does not pass encrypted DB value as header key', async () => {
+        const imageEmbeddingProvider = {
+            normalizeMode: jest.fn(() => 'separate_local'),
+            getLocalModels: jest.fn().mockResolvedValue([
+                { id: 'ViT-B-16', dims: 512 }
+            ]),
+            getConfig: jest.fn().mockResolvedValue({
+                image_embedding_local_api_key: 'enc:v1:abcdef'
+            })
+        };
+        const helpers = buildHelpers({
+            isMaskedToken: jest.fn((token) => token === '••••••••abcd'),
+            imageEmbeddingProvider
+        });
+
+        const result = await helpers.testImageConnection({
+            mode: 'separate_local',
+            local_host: 'host.docker.internal',
+            local_port: 8000,
+            local_model: 'ViT-B-16',
+            local_api_key: '••••••••abcd'
+        });
+
+        expect(imageEmbeddingProvider.getConfig).toHaveBeenCalledTimes(1);
+        expect(imageEmbeddingProvider.getLocalModels).toHaveBeenCalledWith({
+            image_embedding_local_host: 'host.docker.internal',
+            image_embedding_local_port: 8000
+        });
+        expect(result).toEqual({
+            success: true,
+            provider: 'local',
+            model: 'ViT-B-16',
+            dims: 512,
+            image_size: null,
+            modelsCount: 1
+        });
+    });
+
     test('testImageConnection rejects missing cloud provider and unsupported modes', async () => {
         const helpers = buildHelpers({
             imageEmbeddingProvider: {

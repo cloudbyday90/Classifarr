@@ -730,7 +730,7 @@ describe('aiClassify', () => {
 
   test('attaches parse_diagnostics with mode and attemptCount=1 on success', async () => {
     setupHappyPath();
-    const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+    await classificationAiService.aiClassify(baseMetadata, baseLibraries);
     expect(classificationUtilsService.buildParseDiagnostics).toHaveBeenCalledWith(
       expect.objectContaining({ mode: 'classify', attemptCount: 1 })
     );

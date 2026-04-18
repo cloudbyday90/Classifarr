@@ -40,6 +40,7 @@ function createRagCoreHelpers({
             local_host,
             local_port,
             local_model,
+            local_api_key,
             cloud_provider,
             cloud_api_key,
             cloud_model,
@@ -61,10 +62,29 @@ function createRagCoreHelpers({
                 return { success: false, error: 'Local host is required' };
             }
 
-            const models = await imageEmbeddingProvider.getLocalModels({
+            const localApiKeyValue = typeof local_api_key === 'string'
+                ? local_api_key.trim()
+                : local_api_key;
+            const localApiKey = (localApiKeyValue && !isMaskedToken(localApiKeyValue))
+                ? localApiKeyValue
+                : null;
+
+            // Ensure provider config is loaded so masked/omitted local API key uses
+            // the decrypted in-memory sidecar key rather than encrypted DB text.
+            if (!localApiKey) {
+                await imageEmbeddingProvider.getConfig();
+            }
+
+            const modelRequest = {
                 image_embedding_local_host: host,
                 image_embedding_local_port: port
-            });
+            };
+
+            if (localApiKey) {
+                modelRequest.image_embedding_local_api_key = localApiKey;
+            }
+
+            const models = await imageEmbeddingProvider.getLocalModels(modelRequest);
 
             const selected = (local_model || '').trim();
             const match = models.find(model => (model.id || model.name) === selected);

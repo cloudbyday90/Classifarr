@@ -43,6 +43,18 @@ const idleDetector = require('../utils/idleDetector');
 const idleBackfillService = require('../services/idleBackfillService');
 const embeddingService = require('../services/embeddingService');
 
+function makeEnabledIdleConfig(overrides = {}) {
+    return {
+        rag_enabled: true,
+        idle_backfill_enabled: true,
+        idle_threshold: 30000,
+        idle_batch_size: 10,
+        embedding_provider_mode: 'same',
+        primary_provider: 'ollama',
+        ...overrides
+    };
+}
+
 describe('IdleBackfillService', () => {
     beforeEach(() => {
         jest.resetAllMocks();
@@ -116,12 +128,7 @@ describe('IdleBackfillService', () => {
         test('should start processing when enabled and idle', async () => {
             db.query
                 .mockResolvedValueOnce({ // loadConfig
-                    rows: [{
-                        rag_enabled: true,
-                        idle_backfill_enabled: true,
-                        idle_threshold: 30000,
-                        idle_batch_size: 10
-                    }]
+                    rows: [makeEnabledIdleConfig()]
                 })
                 .mockResolvedValueOnce({ // INSERT backfill_runs
                     rows: [{ id: 1 }]
@@ -157,12 +164,7 @@ describe('IdleBackfillService', () => {
         test('should not set isRunning when no pending embeddings', async () => {
             db.query
                 .mockResolvedValueOnce({ // loadConfig
-                    rows: [{
-                        rag_enabled: true,
-                        idle_backfill_enabled: true,
-                        idle_threshold: 30000,
-                        idle_batch_size: 10
-                    }]
+                    rows: [makeEnabledIdleConfig()]
                 })
                 .mockResolvedValueOnce({ rows: [] });
 
@@ -210,12 +212,7 @@ describe('IdleBackfillService', () => {
         test('should reset isRunning on database error during backfill', async () => {
             db.query
                 .mockResolvedValueOnce({ // loadConfig
-                    rows: [{
-                        rag_enabled: true,
-                        idle_backfill_enabled: true,
-                        idle_threshold: 30000,
-                        idle_batch_size: 10
-                    }]
+                    rows: [makeEnabledIdleConfig()]
                 })
                 .mockRejectedValueOnce(new Error('Database error')); // INSERT backfill_runs fails
 
@@ -235,12 +232,7 @@ describe('IdleBackfillService', () => {
             
             db.query
                 .mockResolvedValueOnce({ // loadConfig
-                    rows: [{
-                        rag_enabled: true,
-                        idle_backfill_enabled: true,
-                        idle_threshold: 30000,
-                        idle_batch_size: 10
-                    }]
+                    rows: [makeEnabledIdleConfig()]
                 })
                 .mockResolvedValueOnce({ // INSERT backfill_runs
                     rows: [{ id: runId }]
@@ -283,12 +275,7 @@ describe('IdleBackfillService', () => {
         test('releases the run immediately and records a cooldown instead of sleeping under the lock', async () => {
             db.query
                 .mockResolvedValueOnce({
-                    rows: [{
-                        rag_enabled: true,
-                        idle_backfill_enabled: true,
-                        idle_threshold: 30000,
-                        idle_batch_size: 10
-                    }]
+                    rows: [makeEnabledIdleConfig()]
                 })
                 .mockResolvedValueOnce({ rows: [{ id: 51 }] })
                 .mockResolvedValueOnce({ rows: [] });
@@ -321,12 +308,7 @@ describe('IdleBackfillService', () => {
             });
 
             db.query.mockResolvedValueOnce({
-                rows: [{
-                    rag_enabled: true,
-                    idle_backfill_enabled: true,
-                    idle_threshold: 30000,
-                    idle_batch_size: 10
-                }]
+                rows: [makeEnabledIdleConfig()]
             });
 
             await idleBackfillService.startIdleBackfill();
@@ -338,12 +320,7 @@ describe('IdleBackfillService', () => {
         test('yields without counting progress when provider lock is busy', async () => {
             db.query
                 .mockResolvedValueOnce({
-                    rows: [{
-                        rag_enabled: true,
-                        idle_backfill_enabled: true,
-                        idle_threshold: 30000,
-                        idle_batch_size: 10
-                    }]
+                    rows: [makeEnabledIdleConfig()]
                 })
                 .mockResolvedValueOnce({ rows: [{ id: 52 }] })
                 .mockResolvedValueOnce({ rows: [] });
@@ -411,12 +388,7 @@ describe('IdleBackfillService', () => {
         test('skips backfill when advisory lock is not acquired', async () => {
             // Set up config so the service would normally proceed
             db.query.mockResolvedValueOnce({
-                rows: [{
-                    rag_enabled: true,
-                    idle_backfill_enabled: true,
-                    idle_threshold: 300,
-                    idle_batch_size: 10
-                }]
+                rows: [makeEnabledIdleConfig({ idle_threshold: 300 })]
             });
             idleDetector.isIdle.mockReturnValue(true);
 

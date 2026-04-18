@@ -395,6 +395,9 @@ class EmbeddingService {
             try {
                 await this.generateImageEmbedding(classificationId, metadata);
             } catch (imageError) {
+                if (imageError.message === 'PROVIDER_OFFLINE') {
+                    throw imageError;
+                }
                 logger.warn('Image embedding failed', {
                     classificationId,
                     error: imageError.message
@@ -428,6 +431,25 @@ class EmbeddingService {
                 }, { error });
 
                 throw this.createProviderBusyError(error);
+            }
+
+            // When text provider is not configured, image embedding can still run independently
+            if (error.isConfigurationError || error.name === 'ConfigurationError') {
+                logger.debug('Text embedding provider not configured; skipping text embedding', {
+                    classificationId
+                });
+                try {
+                    await this.generateImageEmbedding(classificationId, metadata);
+                } catch (imageError) {
+                    if (imageError.message === 'PROVIDER_OFFLINE') {
+                        throw imageError;
+                    }
+                    logger.warn('Image embedding failed', {
+                        classificationId,
+                        error: imageError.message
+                    });
+                }
+                return null;
             }
 
             // For other errors, log normally
@@ -477,7 +499,10 @@ class EmbeddingService {
                 error.message.includes('ETIMEDOUT') ||
                 error.message.includes('fetch failed');
 
-            if (isConnectionError) {
+            const isCircuitOpen = error.code === 'CIRCUIT_OPEN' ||
+                error.code === 'EMBEDDING_CIRCUIT_OPEN';
+
+            if (isConnectionError || isCircuitOpen) {
                 throw new Error('PROVIDER_OFFLINE');
             }
 
@@ -787,12 +812,24 @@ class EmbeddingService {
     /**
      * Get count of pending embeddings
      */
-    async getPendingCount({ includeImage = false } = {}) {
+    async getPendingCount({ includeText = true, includeImage = false } = {}) {
         try {
             const posterCondition = "NULLIF(COALESCE(ch.metadata->>'poster_path', ch.metadata->>'posterPath', msi.metadata->>'posterPath', msi.metadata->>'poster_path'), '') IS NOT NULL";
-            const imageClause = includeImage
-                ? ` OR (ce.id IS NOT NULL AND ce.image_embedding IS NULL AND ${posterCondition})`
-                : '';
+            const filters = [];
+
+            if (includeText) {
+                filters.push('ce.id IS NULL');
+            }
+
+            if (includeImage) {
+                filters.push(`(ce.id IS NOT NULL AND ce.image_embedding IS NULL AND ${posterCondition})`);
+            }
+
+            if (filters.length === 0) {
+                return 0;
+            }
+
+            const whereClause = filters.join(' OR ');
 
             const result = await db.query(`
                 SELECT COUNT(*) as count
@@ -801,7 +838,7 @@ class EmbeddingService {
                 LEFT JOIN media_server_items msi
                   ON msi.tmdb_id = ch.tmdb_id
                  AND msi.media_type = ch.media_type
-                WHERE ce.id IS NULL${imageClause}
+                WHERE ${whereClause}
             `);
 
             return parseInt(result.rows[0].count) || 0;
@@ -848,15 +885,30 @@ class EmbeddingService {
     /**
      * Get pending embeddings
      */
-    async getPendingEmbeddings({ limit = 10, includeImage = false } = {}) {
+    async getPendingEmbeddings({ limit = 10, includeText = true, includeImage = false } = {}) {
         try {
             const posterCondition = "NULLIF(COALESCE(ch.metadata->>'poster_path', ch.metadata->>'posterPath', msi.metadata->>'posterPath', msi.metadata->>'poster_path'), '') IS NOT NULL";
+            const needsTextExpr = includeText
+                ? '(ce.id IS NULL)'
+                : 'false';
             const needsImageExpr = includeImage
                 ? `(ce.id IS NOT NULL AND ce.image_embedding IS NULL AND ${posterCondition})`
                 : 'false';
-            const imageClause = includeImage
-                ? ` OR (ce.id IS NOT NULL AND ce.image_embedding IS NULL AND ${posterCondition})`
-                : '';
+            const filters = [];
+
+            if (includeText) {
+                filters.push('ce.id IS NULL');
+            }
+
+            if (includeImage) {
+                filters.push(`(ce.id IS NOT NULL AND ce.image_embedding IS NULL AND ${posterCondition})`);
+            }
+
+            if (filters.length === 0) {
+                return [];
+            }
+
+            const whereClause = filters.join(' OR ');
 
             const result = await db.query(`
                 SELECT
@@ -865,14 +917,14 @@ class EmbeddingService {
                     ch.media_type,
                     ch.library_name,
                     ch.metadata,
-                    (ce.id IS NULL) AS needs_text,
+                    ${needsTextExpr} AS needs_text,
                     ${needsImageExpr} AS needs_image
                 FROM classification_history ch
                 LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
                 LEFT JOIN media_server_items msi
                   ON msi.tmdb_id = ch.tmdb_id
                  AND msi.media_type = ch.media_type
-                WHERE ce.id IS NULL${imageClause}
+                WHERE ${whereClause}
                 ORDER BY ch.created_at DESC
                 LIMIT $1
             `, [limit]);

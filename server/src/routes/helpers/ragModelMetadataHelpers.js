@@ -94,12 +94,19 @@ function createRagModelMetadataHelpers({
     const resolveImageModelLookup = async (payload = {}) => {
         const config = await imageEmbeddingProvider.getConfig();
         const mode = imageEmbeddingProvider.normalizeMode(payload.mode || config?.image_embedding_provider_mode);
+        const localApiKeyValue = typeof payload.local_api_key === 'string'
+            ? payload.local_api_key.trim()
+            : payload.local_api_key;
+        const localApiKey = (localApiKeyValue && !isMaskedToken(localApiKeyValue))
+            ? localApiKeyValue
+            : null;
 
         return {
             config,
             mode,
             localHost: (payload.local_host || config?.image_embedding_local_host || '').trim(),
             localPort: Number(payload.local_port || config?.image_embedding_local_port || 8000),
+            localApiKey,
             cloudProvider: (payload.cloud_provider || config?.image_embedding_cloud_provider || '').trim(),
             cloudApiEndpoint: payload.cloud_api_endpoint ?? config?.image_embedding_cloud_api_endpoint ?? ''
         };
@@ -107,7 +114,7 @@ function createRagModelMetadataHelpers({
 
     const resolveImageModelMetadata = async (payload = {}) => {
         const lookup = await resolveImageModelLookup(payload);
-        const { config, mode, localHost, localPort, cloudProvider, cloudApiEndpoint } = lookup;
+        const { config, mode, localHost, localPort, localApiKey, cloudProvider, cloudApiEndpoint } = lookup;
 
         if (mode === 'disabled') {
             return {
@@ -191,10 +198,16 @@ function createRagModelMetadataHelpers({
             };
         }
 
-        const models = await imageEmbeddingProvider.getLocalModels({
+        const localModelRequest = {
             image_embedding_local_host: localHost,
             image_embedding_local_port: localPort
-        });
+        };
+
+        if (localApiKey) {
+            localModelRequest.image_embedding_local_api_key = localApiKey;
+        }
+
+        const models = await imageEmbeddingProvider.getLocalModels(localModelRequest);
         const fetchedAt = new Date().toISOString();
 
         await updateImageModelsCache({

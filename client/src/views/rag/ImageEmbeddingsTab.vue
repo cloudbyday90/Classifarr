@@ -142,6 +142,10 @@
             <input
               v-model="config.image_local_api_key"
               type="password"
+              autocomplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              spellcheck="false"
               placeholder="Leave blank if your sidecar has no auth"
               class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             />
@@ -556,7 +560,7 @@ const statusLabel = computed(() => {
     case 'disabled':
       return 'Disabled'
     case 'configured':
-      return 'Configured'
+      return 'Ready (Configured)'
     case 'not_configured':
       return 'Not configured'
     case 'online':
@@ -767,6 +771,7 @@ const fetchImageLocalModels = async ({ silent = false } = {}) => {
       mode: 'separate_local',
       local_host: host,
       local_port: port,
+      local_api_key: config.value.image_local_api_key,
       refresh: true
     })
     const models = response.data?.models || []
@@ -821,6 +826,7 @@ const testImageConnection = async () => {
       local_host: config.value.image_local_host,
       local_port: config.value.image_local_port,
       local_model: config.value.image_local_model,
+      local_api_key: config.value.image_local_api_key,
       cloud_provider: config.value.image_cloud_provider,
       cloud_api_key: config.value.image_cloud_api_key,
       cloud_model: config.value.image_cloud_model,
@@ -968,6 +974,7 @@ const getImageModelRequest = ({ refresh = false } = {}) => ({
   mode: config.value.image_mode,
   local_host: config.value.image_local_host,
   local_port: config.value.image_local_port,
+  local_api_key: config.value.image_local_api_key,
   cloud_provider: config.value.image_cloud_provider,
   cloud_api_key: config.value.image_cloud_api_key,
   cloud_api_endpoint: config.value.image_cloud_api_endpoint,

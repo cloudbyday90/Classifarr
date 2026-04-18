@@ -80,6 +80,11 @@ class SchedulerService {
         // No advisory lock: idempotent batch DELETE, safe to run twice
         this.schedule('api-key-audit-prune', '10 3 * * *', () => this.runApiKeyAuditPrune());
 
+        // Daily pruning of old error_log rows (3:12 AM)
+        // Uses settings.error_log_retention_days and batch deletes to avoid long lock holds.
+        // No advisory lock: idempotent batch DELETE, safe to run twice.
+        this.schedule('error-log-cleanup', '12 3 * * *', () => this.runErrorLogCleanup());
+
         // Daily cleanup of stale awaiting_decision rows (4 AM)
         // Re-queues items stuck waiting for Discord responses for more than 7 days
         this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions(), DB_ADVISORY_LOCKS.STALE_CLEANUP);
@@ -200,6 +205,55 @@ class SchedulerService {
             logger.info('API key audit prune complete', { deleted: result.rowCount, retentionDays });
         } catch (error) {
             logger.error('API key audit prune failed', { error: error.message });
+        }
+    }
+
+    /**
+     * Daily cleanup of old error_log rows using settings.error_log_retention_days.
+     * Batch-deletes rows to avoid long lock holds on large instances.
+     */
+    async runErrorLogCleanup() {
+        const BATCH_SIZE = 1000;
+
+        try {
+            const settingsResult = await db.query(
+                `SELECT value
+                 FROM settings
+                 WHERE key = 'error_log_retention_days'
+                 LIMIT 1`
+            );
+
+            const configuredValue = settingsResult.rows[0]?.value;
+            const parsedRetentionDays = parseInt(configuredValue, 10);
+            const retentionDays = Number.isFinite(parsedRetentionDays) && parsedRetentionDays > 0
+                ? parsedRetentionDays
+                : 30;
+
+            let totalDeleted = 0;
+            let deletedInBatch = 0;
+
+            do {
+                const result = await db.query(
+                    `DELETE FROM error_log
+                     WHERE id IN (
+                         SELECT id FROM error_log
+                         WHERE created_at < NOW() - ($1 || ' days')::INTERVAL
+                         LIMIT $2
+                     )`,
+                    [retentionDays, BATCH_SIZE]
+                );
+
+                deletedInBatch = result.rowCount;
+                totalDeleted += deletedInBatch;
+            } while (deletedInBatch === BATCH_SIZE);
+
+            if (totalDeleted > 0) {
+                logger.info('Error log cleanup complete', { deleted: totalDeleted, retentionDays });
+            } else {
+                logger.debug('Error log cleanup: no rows to delete', { retentionDays });
+            }
+        } catch (error) {
+            logger.error('Error log cleanup failed', { error: error.message });
         }
     }
 

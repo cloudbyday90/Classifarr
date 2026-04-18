@@ -21,6 +21,8 @@ import { mount, flushPromises } from '@vue/test-utils';
 import BackfillTab from '../views/rag/BackfillTab.vue';
 import api from '../api';
 
+let consoleErrorSpy;
+
 vi.mock('../api', () => ({
   default: {
     getHeartbeatSettings: vi.fn(),
@@ -39,9 +41,12 @@ describe('BackfillTab.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    global.alert = vi.fn();
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
+    consoleErrorSpy.mockRestore();
     vi.useRealTimers();
   });
 
@@ -49,7 +54,7 @@ describe('BackfillTab.vue', () => {
 
   const mockConfigEndpoints = () => {
     api.getHeartbeatSettings.mockResolvedValue({
-      data: { heartbeat_timeout: 30000, heartbeat_interval: 5000, max_wait_time: 60000 }
+      heartbeat_timeout: 30000, heartbeat_interval: 5000, max_wait_time: 60000
     });
     api.getBackfillConfig.mockResolvedValue({
       data: {
@@ -76,6 +81,12 @@ describe('BackfillTab.vue', () => {
         pendingBreakdown: { text: 2, image: 5 }
       }
     });
+    api.updateHeartbeatSettings.mockResolvedValue({ data: { success: true } });
+    api.updateBackfillConfig.mockResolvedValue({ data: { success: true } });
+    api.startManualBackfill.mockResolvedValue({ data: { success: true } });
+    api.pauseManualBackfill.mockResolvedValue({ data: { success: true } });
+    api.resumeManualBackfill.mockResolvedValue({ data: { success: true } });
+    api.clearManualBackfill.mockResolvedValue({ data: { success: true } });
   };
 
   it('renders pending breakdown for text and image', async () => {
@@ -104,7 +115,7 @@ describe('BackfillTab.vue', () => {
 
   it('shows provider cooldown state and disables start and resume', async () => {
     api.getHeartbeatSettings.mockResolvedValue({
-      data: { heartbeat_timeout: 30000, heartbeat_interval: 5000, max_wait_time: 60000 }
+      heartbeat_timeout: 30000, heartbeat_interval: 5000, max_wait_time: 60000
     });
     api.getBackfillConfig.mockResolvedValue({
       data: {
@@ -142,6 +153,120 @@ describe('BackfillTab.vue', () => {
     const buttons = wrapper.findAll('button');
     expect(buttons[0].attributes('disabled')).toBeDefined();
     expect(buttons[2].attributes('disabled')).toBeDefined();
+
+    wrapper.unmount();
+  });
+
+  it('saves heartbeat and scheduled backfill settings with the converted duration', async () => {
+    mockConfigEndpoints();
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const numberInputs = wrapper.findAll('input[type="number"]');
+    await numberInputs[0].setValue('45000');
+    await numberInputs[1].setValue('7000');
+    await numberInputs[2].setValue('90000');
+    await numberInputs[6].setValue('90');
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Queue Settings'));
+    await saveButton.trigger('click');
+    await flushPromises();
+
+    expect(api.updateHeartbeatSettings).toHaveBeenCalledWith({
+      heartbeat_timeout: 45000,
+      heartbeat_interval: 7000,
+      max_wait_time: 90000
+    });
+    expect(api.updateBackfillConfig).toHaveBeenCalledWith(expect.objectContaining({
+      realtime_embedding_enabled: true,
+      idle_backfill_enabled: true,
+      scheduled_backfill_enabled: true,
+      scheduled_backfill_max_duration: 5400000
+    }));
+    expect(wrapper.text()).toContain('Queue settings saved successfully');
+
+    wrapper.unmount();
+  });
+
+  it('alerts when starting manual backfill fails', async () => {
+    mockConfigEndpoints();
+    api.getBackfillStatus.mockResolvedValueOnce({
+      data: {
+        manual: { status: 'idle', processed: 0, total: 0, eta: null },
+        embeddingAvailability: { status: 'available' },
+        pending: 7,
+        pendingBreakdown: { text: 2, image: 5 }
+      }
+    });
+    api.startManualBackfill.mockRejectedValueOnce({
+      response: {
+        data: {
+          error: 'provider is cooling down'
+        }
+      }
+    });
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    const startButton = wrapper.findAll('button').find((button) => button.text() === 'Start');
+    await startButton.trigger('click');
+    await flushPromises();
+
+    expect(api.startManualBackfill).toHaveBeenCalledWith({});
+    expect(global.alert).toHaveBeenCalledWith('provider is cooling down');
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to start backfill:', expect.anything());
+
+    wrapper.unmount();
+  });
+
+  it('runs pause, resume, and clear actions against the manual backfill controls', async () => {
+    mockConfigEndpoints();
+
+    const wrapper = mountComponent();
+    await flushPromises();
+
+    api.getBackfillStatus.mockResolvedValueOnce({
+      data: {
+        manual: { status: 'paused', processed: 10, total: 100, eta: 120 },
+        embeddingAvailability: { status: 'available' },
+        pending: 7,
+        pendingBreakdown: { text: 2, image: 5 }
+      }
+    });
+
+    let buttons = wrapper.findAll('button');
+    await buttons[1].trigger('click');
+    await flushPromises();
+
+    api.getBackfillStatus.mockResolvedValueOnce({
+      data: {
+        manual: { status: 'idle', processed: 0, total: 0, eta: null },
+        embeddingAvailability: { status: 'available' },
+        pending: 0,
+        pendingBreakdown: { text: 0, image: 0 }
+      }
+    });
+    buttons = wrapper.findAll('button');
+    await buttons[2].trigger('click');
+    await flushPromises();
+
+    api.getBackfillStatus.mockResolvedValueOnce({
+      data: {
+        manual: { status: 'idle', processed: 0, total: 0, eta: null },
+        embeddingAvailability: { status: 'available' },
+        pending: 0,
+        pendingBreakdown: { text: 0, image: 0 }
+      }
+    });
+    buttons = wrapper.findAll('button');
+    await buttons[3].trigger('click');
+    await flushPromises();
+
+    expect(api.pauseManualBackfill).toHaveBeenCalledTimes(1);
+    expect(api.resumeManualBackfill).toHaveBeenCalledTimes(1);
+    expect(api.clearManualBackfill).toHaveBeenCalledTimes(1);
 
     wrapper.unmount();
   });

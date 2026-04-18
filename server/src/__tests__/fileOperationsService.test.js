@@ -52,11 +52,6 @@ const FILE_STAT = {
   size: 1024, mode: 0o644, uid: 1000, gid: 1000,
   atime: new Date(), mtime: new Date()
 };
-const DIR_STAT = {
-  isDirectory: () => true, isFile: () => false,
-  size: 0, mode: 0o755, uid: 1000, gid: 1000,
-  atime: new Date(), mtime: new Date()
-};
 
 beforeEach(() => {
   // Reset all fs mocks individually (no jest.clearAllMocks)

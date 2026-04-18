@@ -24,7 +24,28 @@ class IdleBackfillService {
         this.batchSize = 10;
         this.config = null;
         this.manualBackfillService = null; // Will be set by orchestrator
+        this.includeText = true;
         this.includeImage = false;
+    }
+
+    isTextBackfillConfigured(config = {}) {
+        const mode = String(config.embedding_provider_mode || 'same').toLowerCase();
+
+        if (mode === 'same') {
+            const provider = String(config.primary_provider || '').toLowerCase();
+            return provider !== '' && provider !== 'none';
+        }
+
+        if (mode === 'separate_ollama') {
+            return String(config.embedding_ollama_host || '').trim().length > 0;
+        }
+
+        if (mode === 'cloud') {
+            return String(config.embedding_cloud_provider || '').trim().length > 0
+                && String(config.embedding_cloud_api_key || '').trim().length > 0;
+        }
+
+        return false;
     }
 
     /**
@@ -44,7 +65,12 @@ class IdleBackfillService {
                     rag_enabled,
                     idle_backfill_enabled,
                     idle_threshold,
-                    idle_batch_size
+                    idle_batch_size,
+                    embedding_provider_mode,
+                    primary_provider,
+                    embedding_ollama_host,
+                    embedding_cloud_provider,
+                    embedding_cloud_api_key
                 FROM ai_provider_config 
                 WHERE id = 1
             `);
@@ -74,7 +100,10 @@ class IdleBackfillService {
      * Get pending embeddings count
      */
     async getPendingCount() {
-        return await embeddingService.getPendingCount({ includeImage: this.includeImage });
+        return await embeddingService.getPendingCount({
+            includeText: this.includeText,
+            includeImage: this.includeImage
+        });
     }
 
     /**
@@ -83,6 +112,7 @@ class IdleBackfillService {
     async getPendingEmbeddings(limit = 10) {
         return await embeddingService.getPendingEmbeddings({
             limit,
+            includeText: this.includeText,
             includeImage: this.includeImage
         });
     }
@@ -132,7 +162,13 @@ class IdleBackfillService {
             const lockAcquired = await withSessionAdvisoryLock(
                 DB_ADVISORY_LOCKS.BACKFILL_OWNER,
                 async () => {
+                    this.includeText = this.isTextBackfillConfigured(config);
                     this.includeImage = await embeddingService.shouldIncludeImageEmbeddings();
+
+                    if (!this.includeText && !this.includeImage) {
+                        logger.info('Idle backfill NOT started: text and image embedding providers are not configured');
+                        return;
+                    }
 
                     // Check for pending items BEFORE setting isRunning
                     const pendingCount = await this.getPendingCount();
