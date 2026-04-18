@@ -108,6 +108,14 @@ describe('API Key auth middleware - additional permission and fallback branches'
     expect(next).toHaveBeenCalled();
   });
 
+  test('requireAdmin rejects requests with no authenticated principal', () => {
+    requireAdmin(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Authentication required' });
+    expect(next).not.toHaveBeenCalled();
+  });
+
   test('requireWebhookOrAdmin blocks webhook_only key on non-webhook route', () => {
     req.apiKey = { id: 1, permissions: 'webhook_only' };
     req.originalUrl = '/api/settings';
@@ -136,6 +144,14 @@ describe('API Key auth middleware - additional permission and fallback branches'
 
     requireWebhookOrAdmin(req, res, next);
     expect(next).toHaveBeenCalled();
+  });
+
+  test('requireWebhookOrAdmin rejects requests with no authenticated principal', () => {
+    requireWebhookOrAdmin(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Authentication required' });
+    expect(next).not.toHaveBeenCalled();
   });
 
   test('authenticateApiKey continues when audit/update side effects fail asynchronously', async () => {
@@ -180,6 +196,14 @@ describe('API Key auth middleware - additional permission and fallback branches'
     expect(res.json).toHaveBeenCalledWith({
       error: 'This endpoint requires a standard Classifarr API key. Embedding-service keys are reserved for sidecar authentication.',
     });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('requireReadWrite rejects requests with no authenticated principal', () => {
+    requireReadWrite(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Authentication required' });
     expect(next).not.toHaveBeenCalled();
   });
 });

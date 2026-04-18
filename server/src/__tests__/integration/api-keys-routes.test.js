@@ -419,23 +419,42 @@ describe('API Keys Integration Tests', () => {
         });
 
         test('should track last used timestamp and IP', async () => {
+            await db.query('DELETE FROM api_key_audit WHERE api_key_id = $1', [testApiKeyId]);
+
+            const forwardedIp = '10.24.1.7';
+            const userAgent = 'api-key-integration-test/1.0';
+
             // Use the key
             await request(protectedApp)
                 .get('/api/libraries')
+                .set('X-Forwarded-For', forwardedIp)
+                .set('User-Agent', userAgent)
                 .set('X-API-Key', testApiKey)
                 .expect(200);
 
-            // Small delay to ensure timestamp is updated
-            await new Promise(resolve => setTimeout(resolve, 100));
-
             // Check last used was updated
             const keyInfo = await db.query(
-                'SELECT last_used_at, last_used_ip FROM api_keys WHERE id = $1',
+                'SELECT last_used_at, host(last_used_ip) AS last_used_ip FROM api_keys WHERE id = $1',
+                [testApiKeyId]
+            );
+
+            const auditInfo = await db.query(
+                `SELECT action, endpoint, host(ip_address) AS ip_address, user_agent
+                 FROM api_key_audit
+                 WHERE api_key_id = $1
+                 ORDER BY id DESC
+                 LIMIT 1`,
                 [testApiKeyId]
             );
 
             expect(keyInfo.rows[0].last_used_at).not.toBeNull();
-            expect(keyInfo.rows[0].last_used_ip).not.toBeNull();
+            expect(keyInfo.rows[0].last_used_ip).toBe(forwardedIp);
+            expect(auditInfo.rows[0]).toMatchObject({
+                action: 'used',
+                endpoint: '/api/libraries',
+                ip_address: forwardedIp,
+                user_agent: userAgent,
+            });
         });
 
         test('should fail with expired API key', async () => {

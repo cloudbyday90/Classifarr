@@ -334,12 +334,12 @@ describe('API Key Authentication Middleware', () => {
       expect(res.status).not.toHaveBeenCalled();
     });
 
-    test('should allow request with no authentication info (for chaining)', () => {
-      // This case would normally be blocked by authenticateTokenOrApiKey first
+    test('should reject request with no authentication info', () => {
       requireReadWrite(req, res, next);
 
-      expect(next).toHaveBeenCalled();
-      expect(res.status).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Authentication required' });
+      expect(next).not.toHaveBeenCalled();
     });
   });
 

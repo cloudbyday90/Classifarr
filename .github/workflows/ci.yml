@@ -114,7 +114,10 @@ jobs:
   database-tests:
     name: Tests with Database
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.mode == 'ci')
     needs: build-and-test
 
     permissions:
@@ -162,7 +165,7 @@ jobs:
           cd server
           npm ci
 
-      - name: Run tests with database available
+      - name: Run integration tests
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
@@ -172,9 +175,7 @@ jobs:
           NODE_ENV: test
         run: |
           cd server
-          # Run tests with database available for future integration tests
-          # Current tests are unit tests with mocks
-          npm test
+          npm run test:integration
 
   docker-release:
     name: Build and Push Docker Images

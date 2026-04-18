@@ -100,6 +100,10 @@ describe('Classification Routes - Pending Resolution', () => {
     
     app = express();
     app.use(express.json());
+    app.use((req, _res, next) => {
+      req.user = { id: 1, username: 'admin', role: 'admin' };
+      next();
+    });
     app.use('/api/classification', classificationRouter);
   });
 

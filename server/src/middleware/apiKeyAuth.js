@@ -34,6 +34,37 @@ function isReservedIntegrationKey(permission) {
   return permission === 'embed_service';
 }
 
+function ensureAuthenticatedPrincipal(req, res) {
+  if (req.apiKey || req.user) {
+    return true;
+  }
+
+  res.status(401).json({ error: 'Authentication required' });
+  return false;
+}
+
+async function recordApiKeyUsage(apiKeyId, metadata) {
+  const { endpoint, ipAddress, userAgent } = metadata;
+  const results = await Promise.allSettled([
+    apiKeyService.updateLastUsed(apiKeyId, ipAddress),
+    apiKeyService.logAudit(apiKeyId, 'used', {
+      endpoint,
+      ipAddress,
+      userAgent
+    })
+  ]);
+
+  const [lastUsedResult, auditResult] = results;
+
+  if (lastUsedResult.status === 'rejected') {
+    logger.error('Error updating API key last used for key %s: %s', apiKeyId, lastUsedResult.reason.message);
+  }
+
+  if (auditResult.status === 'rejected') {
+    logger.error('Error logging API key audit for key %s: %s', apiKeyId, auditResult.reason.message);
+  }
+}
+
 async function authenticateApiKey(req, res, next) {
   try {
     const apiKey = req.headers['x-api-key'];
@@ -57,19 +88,13 @@ async function authenticateApiKey(req, res, next) {
     const ip = req.ip || req.connection.remoteAddress;
     const endpoint = req.originalUrl || req.url;
     const userAgent = req.headers['user-agent'];
-    
-    apiKeyService.updateLastUsed(validKey.id, ip).catch(err => {
-      logger.error('Error updating API key last used for key %s: %s', validKey.id, err.message);
-    });
-    
-    apiKeyService.logAudit(validKey.id, 'used', {
+
+    await recordApiKeyUsage(validKey.id, {
       endpoint,
       ipAddress: ip,
       userAgent
-    }).catch(err => {
-      logger.error('Error logging API key audit:', err.message);
     });
-    
+
     req.apiKey = validKey;
     
     next();
@@ -112,6 +137,10 @@ async function authenticateTokenOrApiKey(req, res, next) {
 }
 
 function requireReadWrite(req, res, next) {
+  if (!ensureAuthenticatedPrincipal(req, res)) {
+    return;
+  }
+
   if (req.apiKey) {
     if (isReservedIntegrationKey(req.apiKey.permissions)) {
       return res.status(403).json({
@@ -130,6 +159,10 @@ function requireReadWrite(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
+  if (!ensureAuthenticatedPrincipal(req, res)) {
+    return;
+  }
+
   if (req.apiKey) {
     if (req.apiKey.permissions !== 'admin') {
       return res.status(403).json({ error: 'This endpoint requires admin permissions' });
@@ -146,6 +179,10 @@ function requireAdmin(req, res, next) {
 }
 
 function requireWebhookOrAdmin(req, res, next) {
+  if (!ensureAuthenticatedPrincipal(req, res)) {
+    return;
+  }
+
   if (req.apiKey) {
     if (req.apiKey.permissions === 'webhook_only' && !isWebhookEndpoint(req.originalUrl || req.url)) {
       return res.status(403).json({ error: 'Webhook-only keys can only access webhook endpoints' });

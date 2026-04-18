@@ -41,6 +41,7 @@ let runtime;
 let adminPool;
 let pool;
 let suiteDatabaseName;
+let isTearingDown = false;
 
 function quoteIdentifier(value) {
     return `"${String(value).replace(/"/g, '""')}"`;
@@ -49,6 +50,26 @@ function quoteIdentifier(value) {
 function buildSuiteDatabaseName() {
     const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
     return `classifarr_suite_${suffix}`;
+}
+
+function isExpectedTeardownError(error) {
+    return Boolean(
+        isTearingDown && error && (
+            error.code === '57P01' ||
+            /terminating connection due to administrator command/i.test(error.message || '')
+        )
+    );
+}
+
+function attachPoolErrorHandler(targetPool, label) {
+    targetPool.on('error', (error) => {
+        if (isExpectedTeardownError(error)) {
+            log(`[integration-test] Ignoring ${label} pool error during teardown: ${error.message}`);
+            return;
+        }
+
+        console.error(`[integration-test] Unexpected ${label} pool error:`, error.message);
+    });
 }
 
 async function dropSuiteDatabase() {
@@ -71,6 +92,7 @@ beforeAll(async () => {
     if (!runtime.runId) {
         throw new Error('Integration runtime is missing runId');
     }
+    isTearingDown = false;
     suiteDatabaseName = buildSuiteDatabaseName();
 
     adminPool = new Pool({
@@ -80,6 +102,7 @@ beforeAll(async () => {
         user: runtime.user,
         password: runtime.password,
     });
+    attachPoolErrorHandler(adminPool, 'admin');
 
     log(`Creating integration suite database ${suiteDatabaseName} from template ${runtime.templateDatabase}`);
 
@@ -95,9 +118,12 @@ beforeAll(async () => {
         user: runtime.user,
         password: runtime.password,
     });
+    attachPoolErrorHandler(pool, 'suite');
 }, 120000);
 
 afterAll(async () => {
+    isTearingDown = true;
+
     if (pool) {
         await pool.end();
         pool = null;

@@ -19,6 +19,17 @@
 const Docker = require('dockerode');
 const { clearRuntime, getDockerConnection, getRuntimeRunId, readRuntime } = require('./runtime');
 
+function isIgnorableCleanupError(error) {
+    if (!error) {
+        return false;
+    }
+
+    return error.statusCode === 304 ||
+        error.statusCode === 404 ||
+        /no such container/i.test(error.message || '') ||
+        /is not running/i.test(error.message || '');
+}
+
 module.exports = async () => {
     let runtime;
     let expectedRunId;
@@ -37,18 +48,29 @@ module.exports = async () => {
     const { options } = getDockerConnection();
     const docker = new Docker(options);
     const container = docker.getContainer(runtime.containerId);
+    const cleanupErrors = [];
 
     try {
         await container.stop({ t: 0 });
-    } catch (_error) {
-        // Container may already be stopped.
+    } catch (error) {
+        if (!isIgnorableCleanupError(error)) {
+            cleanupErrors.push(`stop failed: ${error.message}`);
+            console.error('[integration-test] Failed to stop container during teardown:', error.message);
+        }
     }
 
     try {
         await container.remove({ force: true, v: true });
-    } catch (_error) {
-        // Container may already be removed.
+    } catch (error) {
+        if (!isIgnorableCleanupError(error)) {
+            cleanupErrors.push(`remove failed: ${error.message}`);
+            console.error('[integration-test] Failed to remove container during teardown:', error.message);
+        }
     }
 
     clearRuntime();
+
+    if (cleanupErrors.length > 0) {
+        throw new Error(`Integration global teardown failed for container ${runtime.containerId}: ${cleanupErrors.join('; ')}`);
+    }
 };
