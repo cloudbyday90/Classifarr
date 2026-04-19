@@ -433,6 +433,90 @@
       </div>
     </Card>
 
+    <Card v-if="showOllamaPreflightPanel" title="🩺 Ollama Scheduled Preflight">
+      <div class="space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <p class="text-sm text-gray-400">
+            This shows the last background preflight run using the saved Ollama configuration. It is separate from the manual Test Connection button above.
+          </p>
+          <Button variant="secondary" size="sm" @click="refreshOllamaPreflight" :disabled="loadingOllamaPreflight">
+            <span v-if="loadingOllamaPreflight">Refreshing...</span>
+            <span v-else>Refresh Status</span>
+          </Button>
+        </div>
+
+        <p v-if="!ollamaPreflightState.ai && !ollamaPreflightState.embedding" class="text-sm text-gray-500">
+          No scheduled preflight has run yet.
+        </p>
+
+        <div v-else class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div v-if="ollamaPreflightState.ai" class="space-y-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-medium text-gray-200">AI Model</h3>
+              <span :class="getPreflightStatusClass(ollamaPreflightState.ai)">
+                {{ getPreflightStatusLabel(ollamaPreflightState.ai) }}
+              </span>
+            </div>
+
+            <div class="space-y-2 text-sm">
+              <div class="flex items-start justify-between gap-3">
+                <span class="text-gray-400">Model</span>
+                <span class="text-right text-gray-200">{{ ollamaPreflightState.ai.model || config.ollama_model || 'Unknown' }}</span>
+              </div>
+              <div class="flex items-start justify-between gap-3">
+                <span class="text-gray-400">Last checked</span>
+                <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.ai.checkedAt || ollamaPreflightState.ai.checked_at) }}</span>
+              </div>
+              <div v-if="ollamaPreflightState.ai.failureType" class="flex items-start justify-between gap-3">
+                <span class="text-gray-400">Failure type</span>
+                <span class="text-right text-amber-300">{{ ollamaPreflightState.ai.failureType }}</span>
+              </div>
+              <div v-if="ollamaPreflightState.ai.nextScheduledAt" class="flex items-start justify-between gap-3">
+                <span class="text-gray-400">Next scheduled attempt</span>
+                <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.ai.nextScheduledAt) }}</span>
+              </div>
+              <div v-if="ollamaPreflightState.ai.error" class="space-y-1">
+                <div class="text-gray-400">Error</div>
+                <div class="text-red-300 break-words">{{ ollamaPreflightState.ai.error }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="ollamaPreflightState.embedding" class="space-y-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-medium text-gray-200">Embedding Model</h3>
+              <span :class="getPreflightStatusClass(ollamaPreflightState.embedding)">
+                {{ getPreflightStatusLabel(ollamaPreflightState.embedding) }}
+              </span>
+            </div>
+
+            <div class="space-y-2 text-sm">
+              <div class="flex items-start justify-between gap-3">
+                <span class="text-gray-400">Model</span>
+                <span class="text-right text-gray-200">{{ ollamaPreflightState.embedding.model || 'Unknown' }}</span>
+              </div>
+              <div class="flex items-start justify-between gap-3">
+                <span class="text-gray-400">Last checked</span>
+                <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.embedding.checkedAt || ollamaPreflightState.embedding.checked_at) }}</span>
+              </div>
+              <div v-if="ollamaPreflightState.embedding.failureType" class="flex items-start justify-between gap-3">
+                <span class="text-gray-400">Failure type</span>
+                <span class="text-right text-amber-300">{{ ollamaPreflightState.embedding.failureType }}</span>
+              </div>
+              <div v-if="ollamaPreflightState.embedding.nextScheduledAt" class="flex items-start justify-between gap-3">
+                <span class="text-gray-400">Next scheduled attempt</span>
+                <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.embedding.nextScheduledAt) }}</span>
+              </div>
+              <div v-if="ollamaPreflightState.embedding.error" class="space-y-1">
+                <div class="text-gray-400">Error</div>
+                <div class="text-red-300 break-words">{{ ollamaPreflightState.embedding.error }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+
     <!-- Save Button -->
     <div class="flex justify-end">
       <Button @click="saveConfig" :disabled="saving">
@@ -460,11 +544,13 @@ const testing = ref(false)
 const testingOllama = ref(false)
 const loadingModels = ref(false)
 const loadingOllamaModels = ref(false)
+const loadingOllamaPreflight = ref(false)
 const showAdvanced = ref(false)
 const testResult = ref(null)
 const ollamaTestResult = ref(null)
 const availableModels = ref([])
 const ollamaModels = ref([])
+const ollamaPreflightState = ref({ ai: null, embedding: null })
 const usageStats = ref(null)
 
 const config = ref({
@@ -497,6 +583,11 @@ const config = ref({
 // (as opposed to local providers like Ollama which are free)
 const isApiProvider = computed(() => {
   return ['openai', 'gemini', 'openrouter', 'litellm', 'custom'].includes(config.value.primary_provider)
+})
+
+const showOllamaPreflightPanel = computed(() => {
+  return config.value.primary_provider === 'ollama' ||
+    (config.value.primary_provider !== 'none' && config.value.ollama_fallback_enabled)
 })
 
 const budgetPercentUsed = computed(() => {
@@ -546,13 +637,59 @@ const parseOllamaHost = (hostValue) => {
   }
 }
 
+const formatPreflightTimestamp = (timestamp) => {
+  if (!timestamp) return 'Not available'
+
+  const parsed = new Date(timestamp)
+  if (Number.isNaN(parsed.getTime())) {
+    return String(timestamp)
+  }
+
+  return parsed.toLocaleString()
+}
+
+const getPreflightStatusLabel = (result) => {
+  if (!result) return 'Not run'
+  if (result.skipped) return 'Skipped'
+  return result.success ? 'Healthy' : 'Degraded'
+}
+
+const getPreflightStatusClass = (result) => {
+  if (!result) return 'text-xs font-medium text-gray-400'
+  if (result.skipped) return 'text-xs font-medium text-amber-300'
+  return result.success
+    ? 'text-xs font-medium text-green-400'
+    : 'text-xs font-medium text-red-300'
+}
+
+const loadOllamaPreflightStatus = async ({ notifyOnError = false } = {}) => {
+  loadingOllamaPreflight.value = true
+
+  try {
+    const response = await api.getLastOllamaPreflight()
+    ollamaPreflightState.value = response?.data || { ai: null, embedding: null }
+  } catch (error) {
+    ollamaPreflightState.value = { ai: null, embedding: null }
+    if (notifyOnError) {
+      toast.error(error.response?.data?.error || 'Failed to load Ollama scheduled preflight status')
+    }
+  } finally {
+    loadingOllamaPreflight.value = false
+  }
+}
+
+const refreshOllamaPreflight = async () => {
+  await loadOllamaPreflightStatus({ notifyOnError: true })
+}
+
 onMounted(async () => {
   try {
-    const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse] = await Promise.all([
+    const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse, ollamaPreflightResponse] = await Promise.all([
       api.getAIConfig(),
       api.getAIUsage().catch(() => null),
       api.getPatternConfig().catch(() => null),
-      api.getCostSummary().catch(() => null)
+      api.getCostSummary().catch(() => null),
+      api.getLastOllamaPreflight().catch(() => null)
     ])
     
     if (configResponse.data) {
@@ -587,6 +724,9 @@ onMounted(async () => {
     }
     if (costSummaryResponse) {
       costSummary.value = costSummaryResponse
+    }
+    if (ollamaPreflightResponse?.data) {
+      ollamaPreflightState.value = ollamaPreflightResponse.data
     }
   } catch (error) {
     console.error('Failed to load AI config:', error)

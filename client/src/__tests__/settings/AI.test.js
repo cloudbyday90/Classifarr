@@ -26,7 +26,8 @@ vi.mock('@/api', () => ({
     updateAIConfig: vi.fn(),
     updatePatternConfig: vi.fn(),
     testOllama: vi.fn(),
-    getOllamaModels: vi.fn()
+    getOllamaModels: vi.fn(),
+    getLastOllamaPreflight: vi.fn()
   }
 }))
 
@@ -94,6 +95,7 @@ describe('AI Settings', () => {
     api.getAIUsage.mockResolvedValue({ data: null })
     api.getPatternConfig.mockResolvedValue({})
     api.getCostSummary.mockResolvedValue(null)
+    api.getLastOllamaPreflight.mockResolvedValue({ data: { ai: null, embedding: null } })
     api.updateAIConfig.mockResolvedValue({ data: { success: true } })
     api.updatePatternConfig.mockResolvedValue({ data: { success: true } })
   })
@@ -336,5 +338,38 @@ describe('AI Settings', () => {
     expect(api.getOllamaModels).toHaveBeenCalledWith('localhost', 11434)
     expect(toast.success).toHaveBeenCalledWith('Ollama connected!')
     expect(wrapper.text()).toContain('Ollama is reachable')
+  })
+
+  it('renders scheduled Ollama preflight failure details in the settings UI', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      data: {
+        primary_provider: 'ollama',
+        ollama_host: 'localhost',
+        ollama_port: 11434,
+        ollama_model: 'gemma3:12b'
+      }
+    })
+    api.getLastOllamaPreflight.mockResolvedValueOnce({
+      data: {
+        ai: {
+          success: false,
+          model: 'gemma3:12b',
+          checkedAt: '2026-04-18T01:40:37.126Z',
+          failureType: 'generation_timeout',
+          nextScheduledAt: '2026-04-18T01:45:37.126Z',
+          error: 'Connected, but generation probe failed: timeout of 15000ms exceeded'
+        },
+        embedding: null
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('This shows the last background preflight run using the saved Ollama configuration')
+    expect(wrapper.text()).toContain('Failure type')
+    expect(wrapper.text()).toContain('generation_timeout')
+    expect(wrapper.text()).toContain('Next scheduled attempt')
+    expect(wrapper.text()).toContain('Connected, but generation probe failed: timeout of 15000ms exceeded')
   })
 })

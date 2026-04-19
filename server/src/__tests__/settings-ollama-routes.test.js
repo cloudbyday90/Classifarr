@@ -206,6 +206,31 @@ describe('Settings Ollama route helpers', () => {
     expect(res.body.success).toBe(true);
   });
 
+  it('returns the last scheduled preflight payload from /settings/ollama/preflight/last', async () => {
+    ollamaService.getLastScheduledPreflight.mockReturnValueOnce({
+      ai: {
+        success: false,
+        failureType: 'generation_timeout',
+        nextScheduledAt: '2026-04-18T01:45:37.126Z'
+      },
+      embedding: null
+    });
+
+    const res = await request(app)
+      .get('/settings/ollama/preflight/last')
+      .expect(200);
+
+    expect(ollamaService.getLastScheduledPreflight).toHaveBeenCalledTimes(1);
+    expect(res.body).toEqual({
+      ai: {
+        success: false,
+        failureType: 'generation_timeout',
+        nextScheduledAt: '2026-04-18T01:45:37.126Z'
+      },
+      embedding: null
+    });
+  });
+
   it('passes host/port query overrides through /settings/ollama/models', async () => {
     ollamaService.getModels.mockResolvedValueOnce([{ name: 'qwen3:14b' }]);
 

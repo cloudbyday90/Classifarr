@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Ollama scheduled preflight is now less noisy, more resilient under slow model warmup or temporary load, and visible in the AI settings UI** — the daily background preflight no longer relies on a single fixed-interval retry pattern with hard-coded timeouts. It now uses configurable connectivity and generation-probe timeouts, classifies failures so generation timeouts are distinguishable from connection and model-availability failures, retries failed scheduled checks with jittered backoff instead of waiting a full day, avoids overlapping runs, records the next scheduled attempt in the last-preflight state, and emits an explicit recovery log after transient failures clear. Repeated scheduled WARNs can now be deduped with an in-memory window, warn-level `error_log` rows only persist a stack trace when a real upstream exception exists instead of attaching a synthetic timer stack to every background warning, and the AI settings view now shows the last scheduled Ollama preflight status, failure type, and next scheduled attempt for operators who need to inspect background health without digging through logs. (`server/src/services/ollama.js`, `server/src/utils/logger.js`, `client/src/views/settings/AI.vue`, `client/src/api/settings.js`, `server/src/__tests__/ollama.test.js`, `server/src/__tests__/logger.test.js`, `client/src/__tests__/settings/AI.test.js`)
+
 ## [v0.45.4-beta] — 2026-04-18
 
 Package version: `0.45.4-beta`

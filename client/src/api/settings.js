@@ -95,6 +95,10 @@ export default {
     return apiClient.get('/settings/ollama/models', { params: { host, port } })
   },
 
+  getLastOllamaPreflight() {
+    return apiClient.get('/settings/ollama/preflight/last')
+  },
+
   getTavilyConfig() {
     return apiClient.get('/settings/tavily')
   },

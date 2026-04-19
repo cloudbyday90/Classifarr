@@ -4,17 +4,19 @@
  * Licensed under GPL-3.0
  */
 
+const mockLogger = {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn()
+};
+
 jest.mock('axios');
 jest.mock('../config/database', () => ({
     query: jest.fn()
 }));
 jest.mock('../utils/logger', () => ({
-    createLogger: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn()
-    })
+    createLogger: () => mockLogger
 }));
 
 const axios = require('axios');
@@ -25,17 +27,29 @@ const ollamaService = require('../services/ollama');
 describe('OllamaService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        delete process.env.OLLAMA_CONNECTIVITY_TIMEOUT_MS;
+        delete process.env.OLLAMA_PROBE_TIMEOUT_MS;
+        delete process.env.OLLAMA_PREFLIGHT_RETRY_BASE_MS;
+        delete process.env.OLLAMA_PREFLIGHT_RETRY_MAX_MS;
+        delete process.env.OLLAMA_PREFLIGHT_WARN_DEDUPE_MS;
+        ollamaService.stopScheduledPreflight();
         ollamaService.host = null;
         ollamaService.port = null;
+        ollamaService.model = null;
         ollamaService.baseUrl = null;
         ollamaService.preflightCache.clear();
+        ollamaService.lastScheduledPreflight = null;
+        ollamaService.lastEmbeddingPreflight = null;
+        ollamaService.scheduledPreflightFailureCount = 0;
+        ollamaService.scheduledPreflightInFlight = false;
+        ollamaService.scheduledPreflightEnabled = false;
 
         db.query.mockImplementation((sql) => {
             if (sql.includes('ollama_config')) {
                 return Promise.resolve({ rows: [] });
             }
             if (sql.includes('ai_provider_config')) {
-                return Promise.resolve({ rows: [{ ollama_host: 'localhost', ollama_port: 11434 }] });
+                return Promise.resolve({ rows: [{ ollama_host: 'localhost', ollama_port: 11434, ollama_model: 'test-model' }] });
             }
             return Promise.resolve({ rows: [] });
         });
@@ -251,6 +265,64 @@ describe('OllamaService', () => {
             expect(result.ai).toBeNull();
             expect(result.embedding).toBeNull();
         });
+
+        it('should retry failed scheduled preflight with backoff and recover to base interval', async () => {
+            process.env.OLLAMA_PREFLIGHT_RETRY_BASE_MS = '10000';
+            process.env.OLLAMA_PREFLIGHT_RETRY_MAX_MS = '60000';
+            const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+            jest.spyOn(ollamaService, 'preflightConnection')
+                .mockResolvedValueOnce({
+                    success: false,
+                    host: 'localhost',
+                    port: 11434,
+                    model: 'test-model',
+                    error: 'Connected, but generation probe failed: timeout of 15000ms exceeded',
+                    errorCode: 'ECONNABORTED',
+                    failureType: 'generation_timeout'
+                })
+                .mockResolvedValueOnce({
+                    success: true,
+                    host: 'localhost',
+                    port: 11434,
+                    model: 'test-model',
+                    models: [{ name: 'test-model' }],
+                    latency_ms: 123
+                });
+
+            ollamaService.startScheduledPreflight(60000);
+
+            await jest.advanceTimersByTimeAsync(60000);
+
+            expect(ollamaService.lastScheduledPreflight.success).toBe(false);
+            expect(ollamaService.lastScheduledPreflight.consecutiveFailures).toBe(1);
+            expect(ollamaService.lastScheduledPreflight.nextAttemptInMs).toBe(5000);
+            expect(mockLogger.warn).toHaveBeenCalledWith(
+                'Scheduled Ollama preflight failed',
+                expect.objectContaining({
+                    failureType: 'generation_timeout',
+                    consecutiveFailures: 1,
+                    nextAttemptInMs: 5000
+                }),
+                expect.objectContaining({
+                    dedupeKey: expect.stringContaining('scheduled-preflight:localhost:11434:test-model:generation_timeout')
+                })
+            );
+
+            await jest.advanceTimersByTimeAsync(5000);
+
+            expect(ollamaService.lastScheduledPreflight.success).toBe(true);
+            expect(ollamaService.lastScheduledPreflight.consecutiveFailures).toBe(0);
+            expect(ollamaService.lastScheduledPreflight.nextAttemptInMs).toBe(60000);
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Scheduled Ollama preflight recovered',
+                expect.objectContaining({
+                    recoveredAfterFailures: 1,
+                    nextScheduledAt: expect.any(String)
+                })
+            );
+
+            randomSpy.mockRestore();
+        });
     });
 
     describe('preflightCache', () => {
@@ -268,6 +340,40 @@ describe('OllamaService', () => {
             ollamaService.preflightCache.set('test-key', cachedResult);
 
             expect(ollamaService.preflightCache.get('test-key')).toEqual(cachedResult);
+        });
+
+        it('should classify generation timeouts and use configured connectivity and probe timeouts', async () => {
+            axios.get.mockResolvedValueOnce({
+                data: {
+                    models: [{ name: 'test-model' }]
+                }
+            });
+            const timeoutError = new Error('timeout of 23000ms exceeded');
+            timeoutError.code = 'ECONNABORTED';
+            axios.post.mockRejectedValueOnce(timeoutError);
+
+            const result = await ollamaService.preflightConnection({
+                host: 'localhost',
+                port: 11434,
+                model: 'test-model',
+                probeGeneration: true,
+                force: true,
+                connectivityTimeoutMs: 7000,
+                probeTimeoutMs: 23000
+            });
+
+            expect(result.success).toBe(false);
+            expect(result.errorCode).toBe('ECONNABORTED');
+            expect(result.failureType).toBe('generation_timeout');
+            expect(axios.get).toHaveBeenCalledWith(
+                'http://localhost:11434/api/tags',
+                expect.objectContaining({ timeout: 7000 })
+            );
+            expect(axios.post).toHaveBeenCalledWith(
+                'http://localhost:11434/api/generate',
+                expect.any(Object),
+                expect.objectContaining({ timeout: 23000 })
+            );
         });
     });
 

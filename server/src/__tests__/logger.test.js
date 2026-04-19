@@ -25,7 +25,7 @@ jest.mock('fs', () => ({
 }));
 
 const db = require('../config/database');
-const { createLogger, sanitizeData, getSystemContext, setLoggerDb } = require('../utils/logger');
+const { Logger, createLogger, sanitizeData, getSystemContext, setLoggerDb } = require('../utils/logger');
 const { createConsoleSpy } = require('./setup/consoleHelpers');
 
 describe('Logger', () => {
@@ -35,6 +35,8 @@ describe('Logger', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        Logger.logDedupeCache.clear();
+        Logger.dedupeWriteCount = 0;
         setLoggerDb(db);
         logger = createLogger('TestModule');
         consoleErrorSpy = createConsoleSpy('error', { suppress: true });
@@ -136,6 +138,50 @@ describe('Logger', () => {
 
             const result = await logger.warn('Test warning', { data: 'test' });
             expect(result).toBe('warn-uuid-456');
+        });
+
+        test('should not persist a synthetic stack for warn without upstream error', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ error_id: 'warn-uuid-457' }]
+            });
+
+            await logger.warn('Test warning', { data: 'test' });
+
+            expect(db.query).toHaveBeenCalled();
+            const params = db.query.mock.calls[0][1];
+            expect(params[3]).toBeNull();
+        });
+
+        test('should persist upstream error stack for warn when provided', async () => {
+            db.query.mockResolvedValueOnce({
+                rows: [{ error_id: 'warn-uuid-458' }]
+            });
+
+            const upstream = new Error('Warn upstream');
+            await logger.warn('Test warning', { error: upstream });
+
+            expect(db.query).toHaveBeenCalled();
+            const params = db.query.mock.calls[0][1];
+            expect(params[3]).toBe(upstream.stack);
+        });
+
+        test('should dedupe warn logs when dedupe key is reused inside the window', async () => {
+            db.query.mockResolvedValue({
+                rows: [{ error_id: 'warn-uuid-459' }]
+            });
+
+            await logger.warn('Repeated warning', { data: 'first' }, {
+                dedupeKey: 'repeated-warning',
+                dedupeWindowMs: 60000
+            });
+
+            await logger.warn('Repeated warning', { data: 'second' }, {
+                dedupeKey: 'repeated-warning',
+                dedupeWindowMs: 60000
+            });
+
+            expect(consoleWarnSpy.spy).toHaveBeenCalledTimes(1);
+            expect(db.query).toHaveBeenCalledTimes(1);
         });
     });
 

@@ -23,6 +23,9 @@ const path = require('path');
 const zlib = require('zlib');
 
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
+const LOG_DEDUPE_DEFAULT_WINDOW_MS = 30000;
+const LOG_DEDUPE_CACHE_MAX_ENTRIES = 1000;
+const LOG_DEDUPE_PRUNE_INTERVAL = 100;
 
 // Log file configuration
 const LOG_CONFIG = {
@@ -307,6 +310,54 @@ class Logger {
     this.level = LOG_LEVELS[process.env.LOG_LEVEL || 'INFO'];
   }
 
+  static shouldPruneDedupeCache() {
+    Logger.dedupeWriteCount += 1;
+    return (
+      Logger.dedupeWriteCount % LOG_DEDUPE_PRUNE_INTERVAL === 0 ||
+      Logger.logDedupeCache.size > LOG_DEDUPE_CACHE_MAX_ENTRIES
+    );
+  }
+
+  static pruneDedupeCache(now = Date.now(), maxAge = LOG_DEDUPE_DEFAULT_WINDOW_MS * 4) {
+    for (const [fingerprint, seenAt] of Logger.logDedupeCache.entries()) {
+      if ((now - seenAt) > maxAge) {
+        Logger.logDedupeCache.delete(fingerprint);
+      }
+    }
+  }
+
+  buildDedupeFingerprint(level, message, options = {}) {
+    const dedupeKey = typeof options?.dedupeKey === 'string' ? options.dedupeKey.trim() : '';
+    if (!dedupeKey) {
+      return null;
+    }
+
+    return [this.module, level, dedupeKey, message].join('|');
+  }
+
+  shouldThrottleLog(level, message, options = {}) {
+    const fingerprint = this.buildDedupeFingerprint(level, message, options);
+    if (!fingerprint) {
+      return false;
+    }
+
+    const dedupeWindowMs = Number.isFinite(Number(options?.dedupeWindowMs)) && Number(options.dedupeWindowMs) > 0
+      ? Number(options.dedupeWindowMs)
+      : LOG_DEDUPE_DEFAULT_WINDOW_MS;
+    const now = Date.now();
+    const previous = Logger.logDedupeCache.get(fingerprint);
+    if (previous && (now - previous) < dedupeWindowMs) {
+      return true;
+    }
+
+    Logger.logDedupeCache.set(fingerprint, now);
+    if (Logger.shouldPruneDedupeCache()) {
+      Logger.pruneDedupeCache(now, Math.max(LOG_DEDUPE_DEFAULT_WINDOW_MS * 4, dedupeWindowMs * 4));
+    }
+
+    return false;
+  }
+
   // Try to extract an upstream Error object from common metadata shapes.
   // We persist the stack trace separately from metadata so operators can debug failures.
   static extractError(data, options = {}) {
@@ -353,7 +404,7 @@ class Logger {
       const systemContext = getSystemContext();
       const requestContext = options.req ? getRequestContext(options.req) : null;
 
-      const stack = upstreamError?.stack || new Error().stack;
+      const stack = upstreamError?.stack || (level === 'ERROR' ? new Error().stack : null);
 
       const result = await db.query(
         `INSERT INTO error_log (level, module, message, stack_trace, request_context, system_context, metadata)
@@ -406,6 +457,10 @@ class Logger {
 
   async warn(message, data, options = {}) {
     if (this.level >= LOG_LEVELS.WARN) {
+      if (this.shouldThrottleLog('WARN', message, options)) {
+        return null;
+      }
+
       const formattedMsg = this.formatMessage('WARN', message, data);
       // Synchronous logging - always succeeds
       // eslint-disable-next-line no-console
@@ -449,6 +504,8 @@ class Logger {
 }
 
 Logger.db = null;
+Logger.logDedupeCache = new Map();
+Logger.dedupeWriteCount = 0;
 
 const setLoggerDb = (db) => {
   Logger.db = db;
