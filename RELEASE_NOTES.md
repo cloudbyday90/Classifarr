@@ -1,6 +1,43 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.45.3-beta`. Package files use semver-safe versions such as `0.45.3-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.45.4-beta`. Package files use semver-safe versions such as `0.45.4-beta`.
+
+## v0.45.4-beta
+**Title: Classification is more trustworthy, health alerts are clearer, and local Docker builds are smoother**
+
+### 🎉 What You'll Notice
+- Classification decisions are more conservative when confidence is ambiguous, so edge cases are less likely to auto-route into the wrong library.
+- Image embedding sidecar authentication and health reporting are easier to trust, with cleaner failure handling and clearer status transitions.
+- Local source builds are smarter on modern CPUs, so Docker setups start with a better pgvector build instead of relying on fragile runtime switching.
+
+### 📊 Quick Visual
+```text
+v0.45.4-beta Snapshot
+Classification trust   [██████████] safer threshold handling and ambiguity fallbacks
+Operator visibility    [█████████░] clearer health alerts and sidecar status changes
+Local Docker setup     [█████████░] smarter CPU-aware pgvector builds
+Release confidence     [██████████] broad regression coverage and full-suite reruns
+```
+
+### ✨ Highlights
+- **Safer classification decisions** — threshold handling, policy ranking, confidence math, and routing rules were hardened so malformed values, close-score ties, and conflicting signals do not quietly produce overconfident actions.
+- **Sidecar auth and health flow are stronger** — local image embedding API-key handling is more robust, system-health alerting is clearer, and service-state transitions are easier for admins to follow.
+- **Local Docker builds are now CPU-aware** — when you build from source locally, Classifarr can choose an AVX2, AVX, generic, or portable pgvector build before the read-only container starts.
+
+### 🔧 Reliability Improvements
+- Policy thresholds now enforce a valid prompt/auto ladder instead of relying on loose coercion and incidental ordering.
+- Confidence scoring no longer lets neutral or missing evidence quietly inflate totals, and conflicting authoritative inputs now degrade conservatively.
+- Read-only Docker runtimes no longer emit the pgvector filesystem write error on startup, and startup logs now report the real active variant.
+- Regression coverage was expanded across policy math, routing, schema enforcement, and Docker-related startup behavior.
+
+### 👥 Who This Helps
+- **End users:** fewer incorrect auto-classifications when evidence is close, incomplete, or contradictory.
+- **Operators/admins:** clearer sidecar troubleshooting, better health visibility, and a smoother local source-build path.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.45.3-beta
 **Title: Learned classification evidence is unified and now has its own admin view**

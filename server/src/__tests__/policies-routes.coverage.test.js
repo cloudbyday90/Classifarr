@@ -37,7 +37,9 @@ describe('Policies routes coverage', () => {
   let app;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    db.query.mockReset();
+    db.withTransaction.mockReset();
+    db.withTransaction.mockImplementation(async (fn) => fn({ query: db.query }));
     app = express();
     app.use(express.json());
     app.use('/api/policies', policiesRouter);
@@ -486,6 +488,25 @@ describe('Policies routes coverage', () => {
           presets: [{ preset_id: 9, weight: -1 }]
         })
         .expect(400);
+
+      await request(app)
+        .post('/api/policies')
+        .send({
+          library_id: 1,
+          name: 'Inverted thresholds',
+          auto_classify_threshold: 70,
+          prompt_threshold: 80,
+        })
+        .expect(400);
+
+      await request(app)
+        .post('/api/policies')
+        .send({
+          library_id: 1,
+          name: 'Null threshold',
+          auto_classify_threshold: null,
+        })
+        .expect(400);
     });
 
     test('rejects unsupported combination modes on create', async () => {
@@ -571,6 +592,29 @@ describe('Policies routes coverage', () => {
       expect(db.query).not.toHaveBeenCalled();
     });
 
+    test('rejects merged updates that invert the threshold ladder', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [{
+          id: 8,
+          auto_classify_threshold: 85,
+          prompt_threshold: 60,
+          preset_weight: 0.35,
+          profile_weight: 0.25,
+          pattern_weight: 0.15,
+          rag_weight: 0.15,
+          history_weight: 0.1,
+        }]
+      });
+
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({ prompt_threshold: 90 })
+        .expect(400);
+
+      expect(res.body.error).toContain('prompt_threshold must be less than or equal to auto_classify_threshold');
+      expect(db.withTransaction).not.toHaveBeenCalled();
+    });
+
     test('rejects unsupported combination modes on update', async () => {
       const res = await request(app)
         .put('/api/policies/8')
@@ -604,7 +648,7 @@ describe('Policies routes coverage', () => {
     test('updates policy with preset replacement', async () => {
       db.query
         .mockResolvedValueOnce({
-          rows: [{ id: 8, preset_weight: 0.35, profile_weight: 0.25, pattern_weight: 0.15, rag_weight: 0.15, history_weight: 0.1 }]
+          rows: [{ id: 8, preset_weight: 0.35, profile_weight: 0.25, pattern_weight: 0.15, rag_weight: 0.15, history_weight: 0.1, auto_classify_threshold: 85, prompt_threshold: 60 }]
         }) // SELECT existing policy weights
         .mockResolvedValueOnce({}) // UPDATE policy
         .mockResolvedValueOnce({}) // DELETE presets
@@ -636,7 +680,7 @@ describe('Policies routes coverage', () => {
 
     test('rejects partial updates that break merged weight totals', async () => {
       db.query.mockResolvedValueOnce({
-        rows: [{ id: 8, preset_weight: 0.35, profile_weight: 0.25, pattern_weight: 0.15, rag_weight: 0.15, history_weight: 0.1 }]
+        rows: [{ id: 8, preset_weight: 0.35, profile_weight: 0.25, pattern_weight: 0.15, rag_weight: 0.15, history_weight: 0.1, auto_classify_threshold: 85, prompt_threshold: 60 }]
       });
 
       const res = await request(app)

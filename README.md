@@ -157,6 +157,12 @@ Start:
 docker compose up -d
 ```
 
+For local source builds from this repo, prefer the smart wrapper so the pgvector build matches the host CPU before the read-only container starts:
+
+```bash
+npm run docker:smart:up
+```
+
 Open:
 
 - `http://localhost:21324`

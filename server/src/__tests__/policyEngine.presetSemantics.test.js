@@ -149,6 +149,34 @@ describe('PolicyEngine preset semantics', () => {
             const score = await policyEngine.evaluatePresetSignals(signals, item);
             expect(score).toBe(0);
         });
+
+        test('treats media_type as a scored preset signal when it is the only configured signal', async () => {
+            const signals = {
+                media_type: {
+                    include: ['movie'],
+                    weight: 1.0
+                }
+            };
+
+            const item = {
+                media_type: 'movie'
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, item);
+            expect(score).toBe(100);
+        });
+
+        test('returns neutral media_type score when the item is missing media_type', async () => {
+            const signals = {
+                media_type: {
+                    include: ['movie'],
+                    weight: 1.0
+                }
+            };
+
+            const score = await policyEngine.evaluatePresetSignals(signals, {});
+            expect(score).toBe(50);
+        });
     });
 
     describe('evaluateItem', () => {

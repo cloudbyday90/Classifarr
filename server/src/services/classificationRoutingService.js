@@ -70,9 +70,35 @@ function normalizeSettings(settings) {
  * @returns {number|null}
  */
 function normalizeQualityProfileId(value) {
-  if (value === null || value === undefined) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  return parsePositiveInteger(value);
+}
+
+function parseStrictInteger(value) {
+  if (typeof value === 'number') {
+    return Number.isSafeInteger(value) ? value : null;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function parsePositiveInteger(value) {
+  const parsed = parseStrictInteger(value);
+  return parsed !== null && parsed > 0 ? parsed : null;
+}
+
+function parseNonNegativeInteger(value) {
+  const parsed = parseStrictInteger(value);
+  return parsed !== null && parsed >= 0 ? parsed : null;
 }
 
 /**
@@ -320,10 +346,11 @@ async function routeToArr(metadata, library) {
         return routingResult;
       }
 
+      const normalizedYear = parsePositiveInteger(metadata.year);
       const movieData = {
         title: metadata.title,
         tmdbId: metadata.tmdb_id,
-        year: parseInt(metadata.year),
+        ...(normalizedYear !== null ? { year: normalizedYear } : {}),
         qualityProfileId: settings.quality_profile_id,
         rootFolderPath: settings.root_folder_path,
         monitored: settings.monitor !== false,
@@ -426,7 +453,9 @@ async function routeToArr(metadata, library) {
         tvdbId = externalIds?.tvdb_id || externalIds?.tvdbId || null;
       }
 
-      if (!tvdbId) {
+      const normalizedTvdbId = parsePositiveInteger(tvdbId);
+
+      if (!normalizedTvdbId) {
         logger.warn('Missing TVDB ID; skipping Sonarr routing', {
           title: metadata.title,
           tmdbId: metadata.tmdb_id
@@ -435,12 +464,12 @@ async function routeToArr(metadata, library) {
         return routingResult;
       }
 
-      const lookupResults = await sonarrService.searchSeries(baseUrl, config.api_key, tvdbId);
-      const lookupSeries = lookupResults.find(s => s.tvdbId === parseInt(tvdbId, 10)) || lookupResults[0];
+      const lookupResults = await sonarrService.searchSeries(baseUrl, config.api_key, normalizedTvdbId);
+      const lookupSeries = lookupResults.find(series => parsePositiveInteger(series?.tvdbId) === normalizedTvdbId) || lookupResults[0];
       if (!lookupSeries) {
         logger.warn('Sonarr lookup returned no series', {
           title: metadata.title,
-          tvdbId
+          tvdbId: normalizedTvdbId
         });
         routingResult.reason = 'lookup_no_series';
         return routingResult;
@@ -448,7 +477,7 @@ async function routeToArr(metadata, library) {
       if (!lookupSeries.title || !lookupSeries.title.toString().trim()) {
         logger.warn('Sonarr lookup missing English title; skipping add', {
           title: metadata.title,
-          tvdbId
+          tvdbId: normalizedTvdbId
         });
         routingResult.reason = 'lookup_missing_title';
         return routingResult;
@@ -477,8 +506,8 @@ async function routeToArr(metadata, library) {
 
       const requestedSeasons = Array.isArray(metadata.requested_seasons)
         ? metadata.requested_seasons
-            .map(season => (typeof season === 'string' ? parseInt(season, 10) : season))
-            .filter(season => Number.isInteger(season))
+            .map(season => parseNonNegativeInteger(season))
+            .filter(season => season !== null)
         : [];
       const requestedSeasonSet = new Set(requestedSeasons);
       const includeSpecials = metadata.include_specials === true;
@@ -505,10 +534,10 @@ async function routeToArr(metadata, library) {
       if (Array.isArray(seriesData.seasons) && requestedSeasonSet.size > 0) {
         seriesData.seasons = seriesData.seasons.map(season => {
           const seasonNumber = season?.seasonNumber ?? season?.season_number ?? season?.season ?? season?.number;
-          const normalizedNumber = typeof seasonNumber === 'string' ? parseInt(seasonNumber, 10) : seasonNumber;
+          const normalizedNumber = parseNonNegativeInteger(seasonNumber);
           let monitored = season?.monitored;
 
-          if (Number.isInteger(normalizedNumber)) {
+          if (normalizedNumber !== null) {
             monitored = requestedSeasonSet.has(normalizedNumber);
           }
 
@@ -524,7 +553,7 @@ async function routeToArr(metadata, library) {
       // Pre-check: skip add if series is already in the Sonarr library
       let existingSeries = null;
       try {
-        existingSeries = await sonarrService.getSeriesByTvdbId(baseUrl, config.api_key, tvdbId);
+        existingSeries = await sonarrService.getSeriesByTvdbId(baseUrl, config.api_key, normalizedTvdbId);
       } catch (_) {
         // pre-check failed; fall through and attempt the add
       }
@@ -532,7 +561,7 @@ async function routeToArr(metadata, library) {
       if (existingSeries) {
         logger.info(`Series already in Sonarr library (pre-check): ${metadata.title}`, {
           sonarrId: existingSeries.id,
-          tvdbId,
+          tvdbId: normalizedTvdbId,
           monitored: existingSeries.monitored,
         });
         routingResult.routed = true;
@@ -556,7 +585,7 @@ async function routeToArr(metadata, library) {
       } catch (sonarrError) {
         logger.error('Failed to add series to Sonarr', {
           title: metadata.title,
-          tvdbId,
+          tvdbId: normalizedTvdbId,
           error: sonarrError.message,
           payload: {
             qualityProfileId: seriesData.qualityProfileId,

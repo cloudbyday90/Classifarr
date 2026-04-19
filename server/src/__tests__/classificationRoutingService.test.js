@@ -202,8 +202,20 @@ describe('normalizeQualityProfileId', () => {
     expect(classificationRoutingService.normalizeQualityProfileId('abc')).toBeNull();
   });
 
-  test('truncates float string to integer ("3.7" → 3)', () => {
-    expect(classificationRoutingService.normalizeQualityProfileId('3.7')).toBe(3);
+  test('returns null for float string', () => {
+    expect(classificationRoutingService.normalizeQualityProfileId('3.7')).toBeNull();
+  });
+
+  test('returns null for alphanumeric string', () => {
+    expect(classificationRoutingService.normalizeQualityProfileId('12abc')).toBeNull();
+  });
+
+  test('returns null for exponent notation', () => {
+    expect(classificationRoutingService.normalizeQualityProfileId('1e3')).toBeNull();
+  });
+
+  test('trims whitespace around valid numeric strings', () => {
+    expect(classificationRoutingService.normalizeQualityProfileId(' 7 ')).toBe(7);
   });
 
   test('returns large valid integer', () => {
@@ -660,6 +672,18 @@ describe('routeToArr', () => {
     expect(addCall.qualityProfileId).toBe(9);
   });
 
+  test('radarr: invalid quality_profile_id falls back instead of truncating', async () => {
+    db.query.mockResolvedValueOnce({ rows: [radarrConfigRow({ quality_profile_id: 9 })] });
+    radarrService.getMovieByTmdbId.mockResolvedValueOnce(null);
+    radarrService.addMovie.mockResolvedValueOnce({ id: 1 });
+    const lib = radarrLibrary({
+      radarr_settings: { root_folder_path: '/movies', quality_profile_id: '12abc' },
+    });
+    await classificationRoutingService.routeToArr(baseMetadata, lib);
+    const addCall = radarrService.addMovie.mock.calls[0][2];
+    expect(addCall.qualityProfileId).toBe(9);
+  });
+
   test('radarr: quality_profile_id resolved from API when settings and config both missing', async () => {
     db.query
       .mockResolvedValueOnce({ rows: [radarrConfigRow({ quality_profile_id: null })] }) // radarr_config
@@ -687,6 +711,16 @@ describe('routeToArr', () => {
     expect(result.routed).toBe(true);
     const addCall = radarrService.addMovie.mock.calls[0][2];
     expect(addCall.rootFolderPath).toBe('/legacy-movies');
+  });
+
+  test('radarr: omits invalid year instead of truncating it', async () => {
+    db.query.mockResolvedValueOnce({ rows: [radarrConfigRow()] });
+    radarrService.getMovieByTmdbId.mockResolvedValueOnce(null);
+    radarrService.addMovie.mockResolvedValueOnce({ id: 1 });
+    const metadata = { ...baseMetadata, year: '2024x' };
+    await classificationRoutingService.routeToArr(metadata, radarrLibrary());
+    const addCall = radarrService.addMovie.mock.calls[0][2];
+    expect(addCall.year).toBeUndefined();
   });
 
   // --- Sonarr path ---
@@ -803,6 +837,15 @@ describe('routeToArr', () => {
     expect(result.routed).toBe(true);
   });
 
+  test('sonarr: invalid tvdb_id fails cleanly instead of truncating', async () => {
+    db.query.mockResolvedValueOnce({ rows: [sonarrConfigRow()] });
+    const metadata = { ...baseTvMetadata, tvdb_id: '12345abc' };
+    const result = await classificationRoutingService.routeToArr(metadata, sonarrLibrary());
+    expect(result).toMatchObject({ routed: false, reason: 'missing_tvdb_id' });
+    expect(sonarrService.searchSeries).not.toHaveBeenCalled();
+    expect(sonarrService.addSeries).not.toHaveBeenCalled();
+  });
+
   test('sonarr: seriesType defaults to "standard" when not in settings or lookupSeries', async () => {
     db.query.mockResolvedValueOnce({ rows: [sonarrConfigRow()] });
     sonarrService.searchSeries.mockResolvedValueOnce([lookupSeries({ seriesType: undefined })]);
@@ -870,6 +913,27 @@ describe('routeToArr', () => {
     const addCall = sonarrService.addSeries.mock.calls[0][2];
     expect(addCall.seasons.find(s => s.seasonNumber === 1).monitored).toBe(true);
     expect(addCall.seasons.find(s => s.seasonNumber === 2).monitored).toBe(true);
+  });
+
+  test('sonarr: malformed requested_seasons entries are dropped while padded integers are accepted', async () => {
+    db.query.mockResolvedValueOnce({ rows: [sonarrConfigRow()] });
+    sonarrService.searchSeries.mockResolvedValueOnce([
+      lookupSeries({
+        seasons: [
+          { seasonNumber: 0, monitored: true },
+          { seasonNumber: 1, monitored: true },
+          { seasonNumber: 2, monitored: true },
+          { seasonNumber: 3, monitored: true },
+        ],
+      }),
+    ]);
+    sonarrService.getSeriesByTvdbId.mockResolvedValueOnce(null);
+    sonarrService.addSeries.mockResolvedValueOnce({ id: 1 });
+    const meta = { ...baseTvMetadata, requested_seasons: ['03', '2x'] };
+    await classificationRoutingService.routeToArr(meta, sonarrLibrary());
+    const addCall = sonarrService.addSeries.mock.calls[0][2];
+    expect(addCall.seasons.find(s => s.seasonNumber === 2).monitored).toBe(false);
+    expect(addCall.seasons.find(s => s.seasonNumber === 3).monitored).toBe(true);
   });
 
   test('sonarr: season_monitoring "all_seasons" maps to "all"', async () => {

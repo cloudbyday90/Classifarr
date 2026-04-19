@@ -16,7 +16,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const POLICY_PROMPT_SELECT_MIN_CONFIDENCE = 40;
+const {
+  normalizePolicyDecisionThresholds,
+  POLICY_PROMPT_SELECT_MIN_CONFIDENCE,
+} = require('../utils/policyThresholds');
 
 class PolicyDecisionBuilder {
   deriveTopCandidate(result) {
@@ -42,9 +45,10 @@ class PolicyDecisionBuilder {
     const ranked = Array.isArray(result.ranked) ? result.ranked : [];
     const top = ranked[0] || null;
     const topCandidate = this.deriveTopCandidate({ ...result, ranked });
+    const normalizedThresholds = top ? normalizePolicyDecisionThresholds(top) : null;
     const thresholds = result.thresholds || {
-      auto_classify: top?.auto_classify_threshold ?? null,
-      prompt: top?.prompt_threshold ?? null,
+      auto_classify: normalizedThresholds?.autoClassifyThreshold ?? null,
+      prompt: normalizedThresholds?.promptThreshold ?? null,
       prompt_select: POLICY_PROMPT_SELECT_MIN_CONFIDENCE
     };
 

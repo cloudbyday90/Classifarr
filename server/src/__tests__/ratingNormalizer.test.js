@@ -19,6 +19,7 @@ describe('RatingNormalizer', () => {
     test('recognizes standard TV ratings', () => {
       expect(ratingNormalizer.isStandardRating('TV-Y', 'tv')).toBe(true);
       expect(ratingNormalizer.isStandardRating('TV-Y7', 'tv')).toBe(true);
+      expect(ratingNormalizer.isStandardRating('TV-Y7-FV', 'tv')).toBe(true);
       expect(ratingNormalizer.isStandardRating('TV-G', 'tv')).toBe(true);
       expect(ratingNormalizer.isStandardRating('TV-PG', 'tv')).toBe(true);
       expect(ratingNormalizer.isStandardRating('TV-14', 'tv')).toBe(true);
@@ -91,6 +92,7 @@ describe('RatingNormalizer', () => {
     test('passes through already standard ratings', () => {
       expect(ratingNormalizer.normalizeRating('PG-13', 'movie')).toBe('PG-13');
       expect(ratingNormalizer.normalizeRating('R', 'movie')).toBe('R');
+      expect(ratingNormalizer.normalizeRating('TV-Y7-FV', 'tv')).toBe('TV-Y7-FV');
       expect(ratingNormalizer.normalizeRating('TV-14', 'tv')).toBe('TV-14');
       expect(ratingNormalizer.normalizeRating('TV-MA', 'tv')).toBe('TV-MA');
     });
@@ -182,6 +184,12 @@ describe('RatingNormalizer', () => {
         metadata: {}
       };
       expect(ratingNormalizer.getPriorityRating(item)).toBe('TV-14');
+    });
+  });
+
+  describe('getNeedsNormalizationSQL', () => {
+    test('treats TV-Y7-FV as a standard rating in the SQL filter', () => {
+      expect(ratingNormalizer.getNeedsNormalizationSQL()).toContain("'TV-Y7-FV'");
     });
   });
 });

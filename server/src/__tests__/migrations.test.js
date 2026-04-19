@@ -4,6 +4,7 @@
  * Licensed under GPL-3.0 - See LICENSE file for details.
  */
 
+const fs = require('fs');
 const path = require('path');
 
 describe('Migration Path Resolution', () => {
@@ -52,6 +53,14 @@ describe('Migration Path Resolution', () => {
             // Verify the constructor respected the env var override
             expect(migrationRunner.schemaFile).toBe(customSchemaPath);
         });
+    });
+
+    test('init.sql should use script-relative migration includes', () => {
+        const initSqlPath = path.resolve(__dirname, '../../../database/init.sql');
+        const initSql = fs.readFileSync(initSqlPath, 'utf8');
+
+        expect(initSql).toContain('\\ir migrations/001_add_arr_settings.sql');
+        expect(initSql).not.toContain('/app/database/migrations/');
     });
 });
 

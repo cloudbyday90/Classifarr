@@ -125,6 +125,7 @@ describe('getWeights', () => {
   test('includes all expected default signal types', () => {
     const weights = confidenceCalculator.getWeights();
     expect(weights).toHaveProperty('source_library', 100);
+    expect(weights).toHaveProperty('custom_rule', 35);
     expect(weights).toHaveProperty('semantic_similarity', 75);
     expect(weights).toHaveProperty('genre_match', 10);
   });
@@ -221,14 +222,43 @@ describe('calculate — authoritative signals', () => {
     expect(result.requiresAI).toBe(true);
   });
 
-  test('multiple authoritative signals — uses first encountered', () => {
+  test('multiple authoritative signals for the same library remain authoritative', () => {
     const result = confidenceCalculator.calculate([
       sig('source_library', lib(1, 'Movies'), 100),
-      sig('manual_correction', lib(2, 'Anime'), 100)
+      sig('manual_correction', lib(1, 'Movies'), 100)
     ]);
     expect(result.isAuthoritative).toBe(true);
     expect(result.suggestedLibrary).toEqual(lib(1, 'Movies'));
     expect(result.authoritativeSignal).toBe('source_library');
+    expect(result.authoritativeSignals).toEqual([
+      { type: 'source_library', libraryId: 1, libraryName: 'Movies' },
+      { type: 'manual_correction', libraryId: 1, libraryName: 'Movies' }
+    ]);
+  });
+
+  test('conflicting authoritative signals downgrade to a conservative conflict result', () => {
+    const result = confidenceCalculator.calculate([
+      sig('source_library', lib(2, 'Anime'), 100),
+      sig('manual_correction', lib(1, 'Movies'), 100)
+    ]);
+
+    expect(result.isAuthoritative).toBe(false);
+    expect(result.authoritativeConflict).toBe(true);
+    expect(result.requiresAI).toBe(true);
+    expect(result.hasConflict).toBe(true);
+    expect(result.confidence).toBe(0);
+    expect(result.rawConfidence).toBe(0);
+    expect(result.meetsThreshold).toBe(false);
+    expect(result.authoritativeConflictLibraries).toEqual([
+      {
+        library: lib(2, 'Anime'),
+        signalTypes: ['source_library']
+      },
+      {
+        library: lib(1, 'Movies'),
+        signalTypes: ['manual_correction']
+      }
+    ]);
   });
 
   test('authoritative result includes full breakdown', () => {
@@ -237,8 +267,7 @@ describe('calculate — authoritative signals', () => {
       sig('genre_match', lib(1, 'Movies'), 80)
     ]);
     expect(result.breakdown).toHaveLength(2);
-    // The service stores the raw JS `&&` result (the library object), not a boolean.
-    expect(result.breakdown[0].isAuthoritative).toBeTruthy();
+    expect(result.breakdown[0].isAuthoritative).toBe(true);
     expect(result.breakdown[1].isAuthoritative).toBeFalsy();
   });
 });
@@ -248,12 +277,23 @@ describe('calculate — authoritative signals', () => {
 // ---------------------------------------------------------------------------
 
 describe('calculate — regular signal scoring', () => {
+  test('custom_rule contributes confidence by default', () => {
+    const result = confidenceCalculator.calculate([
+      sig('custom_rule', lib(1, 'Movies'), 90)
+    ]);
+
+    expect(result.confidence).toBe(32);
+    expect(result.rawConfidence).toBeCloseTo(31.5);
+    expect(result.suggestedLibrary).toEqual(lib(1, 'Movies'));
+  });
+
   test('single regular signal: weighted score = (weight/100) * rawScore', () => {
     // semantic_similarity weight=75, rawScore=100 → 75 pts
     const result = confidenceCalculator.calculate([
       sig('semantic_similarity', lib(1, 'Movies'), 100)
     ]);
     expect(result.confidence).toBe(75);
+    expect(result.rawConfidence).toBe(75);
     expect(result.isAuthoritative).toBe(false);
     expect(result.requiresAI).toBe(true);
     expect(result.suggestedLibrary).toEqual(lib(1, 'Movies'));
@@ -342,6 +382,37 @@ describe('calculate — regular signal scoring', () => {
     expect(result.suggestedLibraryScore).toBeCloseTo(75);
     expect(result.alternativeLibraryScore).toBeCloseTo(60);
   });
+
+  test('uses raw confidence for threshold checks even when display confidence rounds up', () => {
+    confidenceCalculator.threshold = 80;
+    confidenceCalculator.weights['genre_match'] = 88.5;
+
+    const result = confidenceCalculator.calculate([
+      sig('genre_match', lib(1, 'Movies'), 90)
+    ]);
+
+    expect(result.rawConfidence).toBeCloseTo(79.65);
+    expect(result.confidence).toBe(80);
+    expect(result.displayConfidence).toBe(80);
+    expect(result.meetsThreshold).toBe(false);
+  });
+
+  test('profile scores below the neutral baseline do not increase confidence', () => {
+    const belowNeutral = confidenceCalculator.calculate([
+      sig('profile_score', lib(1, 'Movies'), 49)
+    ]);
+    const neutral = confidenceCalculator.calculate([
+      sig('profile_score', lib(1, 'Movies'), 50)
+    ]);
+    const aboveNeutral = confidenceCalculator.calculate([
+      sig('profile_score', lib(1, 'Movies'), 75)
+    ]);
+
+    expect(belowNeutral.rawConfidence).toBe(0);
+    expect(neutral.rawConfidence).toBe(0);
+    expect(aboveNeutral.rawConfidence).toBeCloseTo(30);
+    expect(aboveNeutral.confidence).toBe(30);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -393,9 +464,11 @@ describe('calculate — breakdown', () => {
     expect(result.breakdown[0]).toEqual({
       type: 'semantic_similarity',
       rawScore: 90,
+      normalizedScore: 90,
       weight: 75,
       isAuthoritative: false,
-      library: 'Movies'
+      library: 'Movies',
+      weightedScore: 67.5
     });
   });
 
@@ -410,8 +483,7 @@ describe('calculate — breakdown', () => {
     const result = confidenceCalculator.calculate([
       sig('source_library', lib(1, 'Movies'), 100)
     ]);
-    // The service stores the raw JS `&&` result (library object), not boolean true.
-    expect(result.breakdown[0].isAuthoritative).toBeTruthy();
+    expect(result.breakdown[0].isAuthoritative).toBe(true);
   });
 });
 
@@ -458,6 +530,7 @@ describe('toAIContext', () => {
     const calc = {
       isAuthoritative: false,
       confidence: 72,
+      displayConfidence: 72,
       threshold: 80,
       meetsThreshold: false,
       suggestedLibrary: lib(1, 'Movies'),
@@ -476,6 +549,7 @@ describe('toAIContext', () => {
     const calc = {
       isAuthoritative: false,
       confidence: 75,
+      displayConfidence: 75,
       threshold: 80,
       meetsThreshold: false,
       suggestedLibrary: lib(1, 'Movies'),
@@ -484,6 +558,29 @@ describe('toAIContext', () => {
       breakdown: []
     };
     const text = confidenceCalculator.toAIContext(calc);
+    expect(text).not.toContain('CONFLICT DETECTED');
+  });
+
+  test('authoritative conflicts render the dedicated conflict diagnostic', () => {
+    const calc = {
+      isAuthoritative: false,
+      confidence: 0,
+      displayConfidence: 0,
+      threshold: 80,
+      meetsThreshold: false,
+      suggestedLibrary: lib(2, 'Anime'),
+      suggestedLibraryScore: 0,
+      hasConflict: true,
+      authoritativeConflict: true,
+      authoritativeConflictLibraries: [
+        { library: lib(2, 'Anime'), signalTypes: ['source_library'] },
+        { library: lib(1, 'Movies'), signalTypes: ['manual_correction'] }
+      ],
+      breakdown: []
+    };
+    const text = confidenceCalculator.toAIContext(calc);
+    expect(text).toContain('AUTHORITATIVE CONFLICT');
+    expect(text).toContain('source_library');
     expect(text).not.toContain('CONFLICT DETECTED');
   });
 });
@@ -528,6 +625,32 @@ describe('loadWeights', () => {
     await confidenceCalculator.loadWeights();
     // parseInt('notanumber') === NaN → falls back to DEFAULT_WEIGHTS['genre_match'] = 10
     expect(confidenceCalculator.getWeight('genre_match')).toBe(DEFAULT_WEIGHTS['genre_match']);
+  });
+
+  test('malformed numeric strings are rejected instead of partially parsed', async () => {
+    db.query
+      .mockResolvedValueOnce({
+        rows: [{ setting_key: 'weight_genre_match', setting_value: '15px' }]
+      })
+      .mockResolvedValueOnce({ rows: [{ setting_value: '1e3watts' }] });
+
+    await confidenceCalculator.loadWeights();
+
+    expect(confidenceCalculator.getWeight('genre_match')).toBe(DEFAULT_WEIGHTS['genre_match']);
+    expect(confidenceCalculator.getThreshold()).toBe(DEFAULT_THRESHOLD);
+  });
+
+  test('preserves zero-valued persisted settings', async () => {
+    db.query
+      .mockResolvedValueOnce({
+        rows: [{ setting_key: 'weight_genre_match', setting_value: '0' }]
+      })
+      .mockResolvedValueOnce({ rows: [{ setting_value: '0' }] });
+
+    await confidenceCalculator.loadWeights();
+
+    expect(confidenceCalculator.getWeight('genre_match')).toBe(0);
+    expect(confidenceCalculator.getThreshold()).toBe(0);
   });
 
   test('does not throw when db errors (uses defaults silently)', async () => {

@@ -31,6 +31,9 @@ const { normalizeMetadataList } = require('../utils/metadataNormalization');
 const logger = createLogger('FormulaEngine');
 
 const FORMULA_CONFIDENCE_CAP = 95;
+const RULE_MATCH_BASE_SCORE = 80;
+const RULE_MATCH_BONUS_SCORE = 5;
+const MIN_HISTORY_OBSERVATIONS = 2;
 
 class FormulaEngine {
     normalizeRuleFieldValue(fieldValue) {
@@ -143,7 +146,7 @@ class FormulaEngine {
     /**
      * Score rules for a library (0-95)
      * Uses library custom rules to evaluate rules
-     * Returns average confidence of matching rules
+     * Returns a corroboration score for matching rules
      */
     async scoreRules(metadata, library) {
         try {
@@ -159,14 +162,11 @@ class FormulaEngine {
             }
 
             let matchCount = 0;
-            let totalConfidence = 0;
 
             for (const rule of result.rows) {
                 const matches = this.evaluateRule(metadata, rule.rule_json);
                 if (matches) {
                     matchCount++;
-                    // Each matching rule contributes a base confidence of 80
-                    totalConfidence += 80;
                 }
             }
 
@@ -174,9 +174,9 @@ class FormulaEngine {
                 return 0;
             }
 
-            // Return average confidence, capped at 95
-            const avgConfidence = totalConfidence / matchCount;
-            return Math.min(avgConfidence, FORMULA_CONFIDENCE_CAP);
+            const corroborationBonus = Math.max(0, matchCount - 1) * RULE_MATCH_BONUS_SCORE;
+            const score = RULE_MATCH_BASE_SCORE + corroborationBonus;
+            return Math.min(score, FORMULA_CONFIDENCE_CAP);
         } catch (error) {
             logger.error('Failed to score rules', {
                 error: error.message,
@@ -286,14 +286,13 @@ class FormulaEngine {
 
     /**
      * Score based on user correction history (0-95)
-     * Calculates: 100 - (correction_rate * 100)
-     * Returns 50 (neutral) when no history exists
+     * Returns 0 when history is missing or insufficient.
      */
     async scoreHistory(metadata, library) {
         try {
             // Check if this TMDB ID has been classified before
             if (!metadata.tmdb_id) {
-                return 50; // Neutral score when no TMDB ID
+                return 0;
             }
 
             // Get classification history for this TMDB ID
@@ -305,7 +304,7 @@ class FormulaEngine {
             `, [metadata.tmdb_id]);
 
             if (historyResult.rows.length === 0) {
-                return 50; // Neutral score when no history
+                return 0;
             }
 
             // Count how many times it was classified to this library vs others
@@ -313,17 +312,22 @@ class FormulaEngine {
             let otherLibraryCount = 0;
 
             for (const row of historyResult.rows) {
+                const count = Number.parseInt(row.count, 10);
+                if (!Number.isInteger(count) || count <= 0) {
+                    continue;
+                }
+
                 if (row.library_id === library.id) {
-                    thisLibraryCount = parseInt(row.count);
+                    thisLibraryCount = count;
                 } else {
-                    otherLibraryCount += parseInt(row.count);
+                    otherLibraryCount += count;
                 }
             }
 
             const totalCount = thisLibraryCount + otherLibraryCount;
 
-            if (totalCount === 0) {
-                return 50; // Neutral score
+            if (totalCount < MIN_HISTORY_OBSERVATIONS) {
+                return 0;
             }
 
             // Calculate success rate: percentage of times it was classified to this library
@@ -339,7 +343,7 @@ class FormulaEngine {
                 error: error.message,
                 library: library.name
             });
-            return 50; // Neutral score on error
+            return 0;
         }
     }
 

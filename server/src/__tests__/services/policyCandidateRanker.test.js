@@ -16,7 +16,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-const { PolicyCandidateRanker, POLICY_PROMPT_SELECT_MIN_CONFIDENCE } = require('../../services/policyCandidateRanker');
+const {
+  PolicyCandidateRanker,
+  POLICY_CLOSE_SCORE_MARGIN,
+  POLICY_PROMPT_SELECT_MIN_CONFIDENCE,
+} = require('../../services/policyCandidateRanker');
 
 // Helper to build a minimal evaluation object with threshold fields
 function makeEval({ id = 1, score = 50, auto = 90, prompt = 70 } = {}) {
@@ -64,6 +68,25 @@ describe('PolicyCandidateRanker', () => {
       ];
       const ranked = await ranker.rankResults(evals);
       expect(ranked.map(e => e.policy_id)).toEqual([2, 3, 1]);
+    });
+
+    it('uses deterministic secondary ordering for equal scores', async () => {
+      const evals = [
+        makeEval({ id: 2, score: 80 }),
+        makeEval({ id: 1, score: 80 }),
+      ];
+
+      const ranked = await ranker.rankResults(evals);
+      expect(ranked.map((evaluation) => evaluation.policy_id)).toEqual([1, 2]);
+    });
+
+    it('normalizes invalid thresholds on ranked evaluations', async () => {
+      const ranked = await ranker.rankResults([
+        makeEval({ id: 1, score: 88, auto: 120, prompt: null }),
+      ]);
+
+      expect(ranked[0].auto_classify_threshold).toBe(95);
+      expect(ranked[0].prompt_threshold).toBe(95);
     });
 
     it('preserves a single passing evaluation', async () => {
@@ -115,6 +138,40 @@ describe('PolicyCandidateRanker', () => {
       const ranked = [makeEval({ score: POLICY_PROMPT_SELECT_MIN_CONFIDENCE - 1, auto: 90, prompt: 70 })];
       const result = ranker.determineAction(ranked);
       expect(result.action).toBe('manual');
+    });
+
+    it('uses conservative fallback thresholds instead of null coercion', () => {
+      const ranked = [makeEval({ score: 50, auto: null, prompt: null })];
+      const result = ranker.determineAction(ranked);
+
+      expect(result.action).toBe('prompt_select');
+      expect(result.thresholds).toEqual({
+        auto_classify: 95,
+        prompt: 95,
+        prompt_select: 40,
+      });
+    });
+
+    it('degrades exact top-score ties to prompt_select', () => {
+      const ranked = [
+        makeEval({ id: 1, score: 90, auto: 85, prompt: 60 }),
+        makeEval({ id: 2, score: 90, auto: 85, prompt: 60 }),
+      ];
+
+      const result = ranker.determineAction(ranked);
+      expect(result.action).toBe('prompt_select');
+      expect(result.library).toBeUndefined();
+    });
+
+    it('degrades near ties within the close-score margin to prompt_select', () => {
+      const ranked = [
+        makeEval({ id: 1, score: 90, auto: 85, prompt: 60 }),
+        makeEval({ id: 2, score: 90 - (POLICY_CLOSE_SCORE_MARGIN / 2), auto: 85, prompt: 60 }),
+      ];
+
+      const result = ranker.determineAction(ranked);
+      expect(result.action).toBe('prompt_select');
+      expect(result.library).toBeUndefined();
     });
 
     it('ranked array is preserved in result', () => {

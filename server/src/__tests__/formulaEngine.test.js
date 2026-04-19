@@ -218,7 +218,7 @@ describe('FormulaEngine', () => {
         const library = { id: 1, name: 'Movies' };
         const metadata = { genres: ['Action', 'Adventure'], certification: 'PG-13' };
 
-        it('should return average confidence when rules match', async () => {
+        it('should return the base score for one matching rule', async () => {
             db.query.mockResolvedValue({
                 rows: [
                     { id: 1, name: 'Action Rule', rule_json: { field: 'genres', operator: 'contains', value: 'Action' } }
@@ -228,6 +228,19 @@ describe('FormulaEngine', () => {
             const score = await formulaEngine.scoreRules(metadata, library);
 
             expect(score).toBe(80); // Base confidence for matching rule
+        });
+
+        it('should increase score when multiple rules corroborate the match', async () => {
+            db.query.mockResolvedValue({
+                rows: [
+                    { id: 1, rule_json: { field: 'genres', operator: 'contains', value: 'Action' } },
+                    { id: 2, rule_json: { field: 'genres', operator: 'contains', value: 'Adventure' } }
+                ]
+            });
+
+            const score = await formulaEngine.scoreRules(metadata, library);
+
+            expect(score).toBe(85);
         });
 
         it('should return 0 when no rules exist', async () => {
@@ -253,17 +266,19 @@ describe('FormulaEngine', () => {
         });
 
         it('should cap score at 95', async () => {
-            // Multiple matching rules should still cap at 95
             db.query.mockResolvedValue({
                 rows: [
                     { id: 1, rule_json: { field: 'genres', operator: 'contains', value: 'Action' } },
-                    { id: 2, rule_json: { field: 'genres', operator: 'contains', value: 'Adventure' } }
+                    { id: 2, rule_json: { field: 'genres', operator: 'contains', value: 'Adventure' } },
+                    { id: 3, rule_json: { field: 'certification', operator: 'equals', value: 'PG-13' } },
+                    { id: 4, rule_json: { field: 'genres', operator: 'is_one_of', value: ['Action', 'Comedy'] } },
+                    { id: 5, rule_json: { field: 'genres', operator: 'contains', value: 'Act' } }
                 ]
             });
 
             const score = await formulaEngine.scoreRules(metadata, library);
 
-            expect(score).toBeLessThanOrEqual(95);
+            expect(score).toBe(95);
         });
 
         it('should return 0 on error', async () => {
@@ -418,15 +433,15 @@ describe('FormulaEngine', () => {
     describe('scoreHistory', () => {
         const library = { id: 1, name: 'Movies' };
 
-        it('should return 50 when no TMDB ID provided', async () => {
+        it('should return 0 when no TMDB ID provided', async () => {
             const metadata = { title: 'Test Movie' };
 
             const score = await formulaEngine.scoreHistory(metadata, library);
 
-            expect(score).toBe(50);
+            expect(score).toBe(0);
         });
 
-        it('should return 50 when no history exists', async () => {
+        it('should return 0 when no history exists', async () => {
             const metadata = { tmdb_id: 12345 };
 
             db.query.mockResolvedValue({
@@ -435,7 +450,21 @@ describe('FormulaEngine', () => {
 
             const score = await formulaEngine.scoreHistory(metadata, library);
 
-            expect(score).toBe(50);
+            expect(score).toBe(0);
+        });
+
+        it('should return 0 when history is insufficient', async () => {
+            const metadata = { tmdb_id: 12345 };
+
+            db.query.mockResolvedValue({
+                rows: [
+                    { library_id: 1, count: '1' }
+                ]
+            });
+
+            const score = await formulaEngine.scoreHistory(metadata, library);
+
+            expect(score).toBe(0);
         });
 
         it('should return high score when always classified to this library', async () => {
@@ -482,14 +511,14 @@ describe('FormulaEngine', () => {
             expect(score).toBeCloseTo(57, 0);
         });
 
-        it('should return 50 on error', async () => {
+        it('should return 0 on error', async () => {
             const metadata = { tmdb_id: 12345 };
 
             db.query.mockRejectedValue(new Error('Database error'));
 
             const score = await formulaEngine.scoreHistory(metadata, library);
 
-            expect(score).toBe(50);
+            expect(score).toBe(0);
         });
     });
 

@@ -12,6 +12,56 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('ConfidenceCalculator');
 
+const PROFILE_SCORE_NEUTRAL_BASELINE = 50;
+
+function parseConfiguredNumber(value) {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+    }
+
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmedValue = value.trim();
+    if (trimmedValue.length === 0) {
+        return null;
+    }
+
+    const parsedValue = Number(trimmedValue);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
+}
+
+function getLibraryConflictKey(library) {
+    if (!library) {
+        return null;
+    }
+
+    if (library.id !== undefined && library.id !== null) {
+        return `id:${String(library.id)}`;
+    }
+
+    if (typeof library.name === 'string' && library.name.trim().length > 0) {
+        return `name:${library.name.trim().toLowerCase()}`;
+    }
+
+    return null;
+}
+
+function compareLibraries(left, right) {
+    const leftName = String(left?.name || '');
+    const rightName = String(right?.name || '');
+    if (leftName !== rightName) {
+        return leftName.localeCompare(rightName);
+    }
+
+    return String(left?.id || '').localeCompare(String(right?.id || ''));
+}
+
+function normalizeNumericPrecision(value) {
+    return Number(value.toFixed(6));
+}
+
 /**
  * Default weights for each signal type
  * Users can override these in the Confidence Settings
@@ -26,6 +76,7 @@ const DEFAULT_WEIGHTS = {
     [SIGNAL_TYPES.EXACT_MATCH]: 100,         // Previously confirmed for this TMDB ID
     [SIGNAL_TYPES.SEMANTIC_SIMILARITY]: 75,  // RAG-based similarity (dynamic: 50-90)
     [SIGNAL_TYPES.PROFILE_SCORE]: 60,        // Library profile match (v0.38.0+)
+    [SIGNAL_TYPES.CUSTOM_RULE]: 35,          // Matches confidence_settings migration default
     [SIGNAL_TYPES.COLLECTION_MATCH]: 25,     // Franchise consistency
     [SIGNAL_TYPES.LEARNED_PATTERN]: 20,      // AI-learned patterns
     [SIGNAL_TYPES.CONTENT_ANALYSIS]: 15,     // Content type analysis
@@ -48,6 +99,24 @@ class ConfidenceCalculator {
         this.threshold = 80; // Default confidence threshold
     }
 
+    normalizeSignalScore(signal) {
+        const parsedRawScore = parseConfiguredNumber(signal?.rawScore);
+        if (parsedRawScore === null) {
+            return 0;
+        }
+
+        const clampedRawScore = Math.min(100, Math.max(0, parsedRawScore));
+        if (signal?.type !== SIGNAL_TYPES.PROFILE_SCORE) {
+            return clampedRawScore;
+        }
+
+        if (clampedRawScore <= PROFILE_SCORE_NEUTRAL_BASELINE) {
+            return 0;
+        }
+
+        return ((clampedRawScore - PROFILE_SCORE_NEUTRAL_BASELINE) / (100 - PROFILE_SCORE_NEUTRAL_BASELINE)) * 100;
+    }
+
     /**
      * Load user-configured weights from database
      */
@@ -61,7 +130,15 @@ class ConfidenceCalculator {
 
             for (const row of result.rows) {
                 const signalType = row.setting_key.replace('weight_', '');
-                this.weights[signalType] = parseInt(row.setting_value) || DEFAULT_WEIGHTS[signalType];
+                const parsedWeight = parseConfiguredNumber(row.setting_value);
+                if (parsedWeight !== null) {
+                    this.weights[signalType] = parsedWeight;
+                    continue;
+                }
+
+                if (Object.prototype.hasOwnProperty.call(DEFAULT_WEIGHTS, signalType)) {
+                    this.weights[signalType] = DEFAULT_WEIGHTS[signalType];
+                }
             }
 
             // Load threshold
@@ -69,7 +146,10 @@ class ConfidenceCalculator {
                 `SELECT setting_value FROM confidence_settings WHERE setting_key = 'confidence_threshold'`
             );
             if (thresholdResult.rows.length > 0) {
-                this.threshold = parseInt(thresholdResult.rows[0].setting_value) || 80;
+                const parsedThreshold = parseConfiguredNumber(thresholdResult.rows[0].setting_value);
+                if (parsedThreshold !== null) {
+                    this.threshold = parsedThreshold;
+                }
             }
 
             logger.debug('Loaded confidence weights', { weights: this.weights, threshold: this.threshold });
@@ -127,25 +207,87 @@ class ConfidenceCalculator {
 
         for (const signal of signals) {
             const weight = this.getWeight(signal.type);
-            const isAuthoritative = weight >= 100 && signal.library;
+            const normalizedScore = this.normalizeSignalScore(signal);
+            const weightedScore = normalizeNumericPrecision((weight / 100) * normalizedScore);
+            const isAuthoritative = weight >= 100 && Boolean(signal.library);
 
             breakdown.push({
                 type: signal.type,
                 rawScore: signal.rawScore,
+                normalizedScore,
                 weight: weight,
                 isAuthoritative,
                 library: signal.library?.name || null,
+                weightedScore,
             });
 
             if (isAuthoritative) {
                 authoritativeSignals.push({ signal, weight });
             } else {
-                regularSignals.push({ signal, weight });
+                regularSignals.push({ signal, weight, normalizedScore, weightedScore });
             }
         }
 
-        // If we have authoritative signals, use the first one (they shouldn't conflict)
+        // If we have authoritative signals, they must agree on the same library.
         if (authoritativeSignals.length > 0) {
+            const authoritativeLibraries = new Map();
+            for (const { signal } of authoritativeSignals) {
+                const libraryKey = getLibraryConflictKey(signal.library);
+                if (!libraryKey) {
+                    continue;
+                }
+
+                if (!authoritativeLibraries.has(libraryKey)) {
+                    authoritativeLibraries.set(libraryKey, {
+                        library: signal.library,
+                        signalTypes: [signal.type],
+                    });
+                    continue;
+                }
+
+                authoritativeLibraries.get(libraryKey).signalTypes.push(signal.type);
+            }
+
+            if (authoritativeLibraries.size > 1) {
+                const conflictLibraries = [...authoritativeLibraries.values()]
+                    .sort((left, right) => compareLibraries(left.library, right.library))
+                    .map((entry) => ({
+                        library: entry.library,
+                        signalTypes: [...new Set(entry.signalTypes)].sort(),
+                    }));
+
+                logger.warn('Conflicting authoritative signals detected; downgrading to manual review', {
+                    libraries: conflictLibraries.map((entry) => ({
+                        id: entry.library?.id ?? null,
+                        name: entry.library?.name ?? null,
+                        signalTypes: entry.signalTypes,
+                    })),
+                });
+
+                return {
+                    confidence: 0,
+                    rawConfidence: 0,
+                    displayConfidence: 0,
+                    breakdown,
+                    suggestedLibrary: conflictLibraries[0]?.library || null,
+                    suggestedLibraryScore: 0,
+                    alternativeLibrary: conflictLibraries[1]?.library || null,
+                    alternativeLibraryScore: 0,
+                    isAuthoritative: false,
+                    requiresAI: true,
+                    authoritativeConflict: true,
+                    authoritativeConflictLibraries: conflictLibraries,
+                    authoritativeSignals: authoritativeSignals.map(({ signal }) => ({
+                        type: signal.type,
+                        libraryId: signal.library?.id ?? null,
+                        libraryName: signal.library?.name ?? null,
+                    })),
+                    hasConflict: true,
+                    meetsThreshold: false,
+                    threshold: this.threshold,
+                };
+            }
+
             const authoritative = authoritativeSignals[0];
             logger.info('Authoritative signal detected - auto-classifying', {
                 type: authoritative.signal.type,
@@ -154,11 +296,19 @@ class ConfidenceCalculator {
 
             return {
                 confidence: 100,
+                rawConfidence: 100,
+                displayConfidence: 100,
                 breakdown,
                 suggestedLibrary: authoritative.signal.library,
                 isAuthoritative: true,
                 requiresAI: false, // No AI needed for authoritative signals
                 authoritativeSignal: authoritative.signal.type,
+                authoritativeSignals: authoritativeSignals.map(({ signal }) => ({
+                    type: signal.type,
+                    libraryId: signal.library?.id ?? null,
+                    libraryName: signal.library?.name ?? null,
+                })),
+                authoritativeConflict: false,
                 hasConflict: false,
                 meetsThreshold: true,
                 threshold: this.threshold,
@@ -168,11 +318,7 @@ class ConfidenceCalculator {
         // STEP 2: No authoritative signals - sum regular signals by library
         const libraryScores = {};
 
-        for (const { signal, weight } of regularSignals) {
-            // Weight contribution: (weight / 100) * rawScore
-            // This means a 35-weight signal with 100% match contributes 35 points
-            const weightedScore = (weight / 100) * signal.rawScore;
-
+        for (const { signal, weightedScore } of regularSignals) {
             if (signal.library) {
                 const libId = signal.library.id;
                 if (!libraryScores[libId]) {
@@ -203,15 +349,17 @@ class ConfidenceCalculator {
             hasConflict = scoreDiff < (topLibrary.totalScore * 0.2);
         }
 
-        // Final confidence is the top library's total score, capped at 100
-        const confidence = topLibrary
-            ? Math.min(100, Math.round(topLibrary.totalScore))
+        const rawConfidence = topLibrary
+            ? normalizeNumericPrecision(Math.min(100, topLibrary.totalScore))
             : 0;
+        const confidence = Math.round(rawConfidence);
 
-        const meetsThreshold = confidence >= this.threshold;
+        const meetsThreshold = rawConfidence >= this.threshold;
 
         const result = {
             confidence,
+            rawConfidence,
+            displayConfidence: confidence,
             breakdown,
             suggestedLibrary: topLibrary?.library || null,
             suggestedLibraryScore: topLibrary?.totalScore || 0,
@@ -219,6 +367,7 @@ class ConfidenceCalculator {
             alternativeLibraryScore: secondLibrary?.totalScore || 0,
             isAuthoritative: false,
             requiresAI: true, // All non-authoritative signals require AI verification
+            authoritativeConflict: false,
             hasConflict,
             meetsThreshold,
             threshold: this.threshold,
@@ -226,6 +375,7 @@ class ConfidenceCalculator {
 
         logger.debug('Confidence calculated', {
             confidence: result.confidence,
+            rawConfidence: result.rawConfidence,
             suggested: result.suggestedLibrary?.name,
             hasConflict: result.hasConflict,
             meetsThreshold: result.meetsThreshold,
@@ -248,16 +398,23 @@ class ConfidenceCalculator {
             return lines.join('\n');
         }
 
-        lines.push(`Calculated confidence: ${calculationResult.confidence}%`);
+        lines.push(`Calculated confidence: ${calculationResult.displayConfidence ?? calculationResult.confidence}%`);
         lines.push(`Threshold: ${calculationResult.threshold}%`);
         lines.push(`Meets threshold: ${calculationResult.meetsThreshold ? 'YES' : 'NO'}`);
         lines.push(`AI verification: REQUIRED`);
+
+        if (calculationResult.authoritativeConflict) {
+            lines.push('⚠️ AUTHORITATIVE CONFLICT: conflicting authoritative signals point to different libraries');
+            for (const entry of calculationResult.authoritativeConflictLibraries || []) {
+                lines.push(`  ${entry.signalTypes.join(', ')} → "${entry.library?.name || 'Unknown'}"`);
+            }
+        }
 
         if (calculationResult.suggestedLibrary) {
             lines.push(`Suggested library: "${calculationResult.suggestedLibrary.name}" (score: ${calculationResult.suggestedLibraryScore.toFixed(1)})`);
         }
 
-        if (calculationResult.hasConflict) {
+        if (calculationResult.hasConflict && !calculationResult.authoritativeConflict) {
             lines.push(`⚠️ CONFLICT DETECTED: "${calculationResult.alternativeLibrary?.name}" is close (score: ${calculationResult.alternativeLibraryScore.toFixed(1)})`);
         }
 

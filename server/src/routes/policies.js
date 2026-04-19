@@ -22,6 +22,12 @@ const db = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const { describePresetRuntimeSemantics, normalizeSignalConfig } = require('../utils/policySignals');
 const { listPresets } = require('../utils/presetCatalog');
+const {
+    DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD,
+    DEFAULT_POLICY_PROMPT_THRESHOLD,
+    validatePolicyDecisionThresholds,
+    validatePolicyThresholdField,
+} = require('../utils/policyThresholds');
 
 const logger = createLogger('PoliciesRoute');
 const VALID_COMBINATION_MODES = new Set(['best_match', 'average', 'weighted_average', 'require_all']);
@@ -125,6 +131,11 @@ function validateCombinationMode(mode) {
         return `combination_mode must be one of: ${Array.from(VALID_COMBINATION_MODES).join(', ')}`;
     }
     return null;
+}
+
+function validatePolicyThresholdPayload(thresholds) {
+    const validation = validatePolicyDecisionThresholds(thresholds);
+    return validation.isValid ? null : validation.errors[0];
 }
 
 function buildMergedWeightSet(existingPolicy = {}, overrides = {}) {
@@ -599,8 +610,8 @@ router.post('/', async (req, res) => {
             enabled = true,
             priority = 5,
             sort_order = 0,
-            auto_classify_threshold = 85,
-            prompt_threshold = 60,
+            auto_classify_threshold = DEFAULT_POLICY_AUTO_CLASSIFY_THRESHOLD,
+            prompt_threshold = DEFAULT_POLICY_PROMPT_THRESHOLD,
             require_ai_validation = true,
             trust_patterns = true,
             trust_rag = true,
@@ -618,13 +629,16 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'library_id and name are required' });
         }
 
-        // Validate thresholds
-        if (auto_classify_threshold < 0 || auto_classify_threshold > 100) {
-            return res.status(400).json({ error: 'auto_classify_threshold must be between 0 and 100' });
+        const thresholdValidationError = validatePolicyThresholdPayload({
+            auto_classify_threshold,
+            prompt_threshold,
+        });
+        if (thresholdValidationError) {
+            return res.status(400).json({ error: thresholdValidationError });
         }
-        if (prompt_threshold < 0 || prompt_threshold > 100) {
-            return res.status(400).json({ error: 'prompt_threshold must be between 0 and 100' });
-        }
+
+        const normalizedAutoClassifyThreshold = Number(auto_classify_threshold);
+        const normalizedPromptThreshold = Number(prompt_threshold);
         const combinationModeError = validateCombinationMode(combination_mode);
         if (combinationModeError) {
             return res.status(400).json({ error: combinationModeError });
@@ -674,7 +688,7 @@ router.post('/', async (req, res) => {
                 RETURNING *
             `, [
                 library_id, name, description, enabled, priority, sort_order,
-                auto_classify_threshold, prompt_threshold, require_ai_validation,
+                normalizedAutoClassifyThreshold, normalizedPromptThreshold, require_ai_validation,
                 trust_patterns, trust_rag, trust_history,
                 preset_weight, profile_weight, pattern_weight, rag_weight, history_weight,
                 combination_mode
@@ -757,11 +771,14 @@ router.put('/:id', async (req, res) => {
         } = req.body;
 
         // Validate before opening a transaction — avoids consuming a pool slot for input errors
-        if (auto_classify_threshold !== undefined && (auto_classify_threshold < 0 || auto_classify_threshold > 100)) {
-            return res.status(400).json({ error: 'auto_classify_threshold must be between 0 and 100' });
+        const autoThresholdField = validatePolicyThresholdField(auto_classify_threshold, 'auto_classify_threshold');
+        if (!autoThresholdField.isValid) {
+            return res.status(400).json({ error: autoThresholdField.error });
         }
-        if (prompt_threshold !== undefined && (prompt_threshold < 0 || prompt_threshold > 100)) {
-            return res.status(400).json({ error: 'prompt_threshold must be between 0 and 100' });
+
+        const promptThresholdField = validatePolicyThresholdField(prompt_threshold, 'prompt_threshold');
+        if (!promptThresholdField.isValid) {
+            return res.status(400).json({ error: promptThresholdField.error });
         }
 
         const weightRangeError = [
@@ -788,7 +805,7 @@ router.put('/:id', async (req, res) => {
         }
 
         const existingPolicyResult = await db.query(`
-            SELECT id, preset_weight, profile_weight, pattern_weight, rag_weight, history_weight
+            SELECT id, auto_classify_threshold, prompt_threshold, preset_weight, profile_weight, pattern_weight, rag_weight, history_weight
             FROM library_policies
             WHERE id = $1
         `, [id]);
@@ -804,6 +821,17 @@ router.put('/:id', async (req, res) => {
             rag_weight,
             history_weight,
         });
+        const mergedThresholdError = validatePolicyThresholdPayload({
+            auto_classify_threshold: autoThresholdField.hasValue
+                ? autoThresholdField.value
+                : existingPolicyResult.rows[0].auto_classify_threshold,
+            prompt_threshold: promptThresholdField.hasValue
+                ? promptThresholdField.value
+                : existingPolicyResult.rows[0].prompt_threshold,
+        });
+        if (mergedThresholdError) {
+            return res.status(400).json({ error: mergedThresholdError });
+        }
         const weightSumError = validateWeightSum(mergedWeights);
         if (weightSumError) {
             return res.status(400).json({ error: weightSumError });
@@ -834,7 +862,7 @@ router.put('/:id', async (req, res) => {
                 WHERE id = $18
             `, [
                 name, description, enabled, priority, sort_order,
-                auto_classify_threshold, prompt_threshold, require_ai_validation,
+                autoThresholdField.value, promptThresholdField.value, require_ai_validation,
                 trust_patterns, trust_rag, trust_history,
                 preset_weight, profile_weight, pattern_weight, rag_weight, history_weight,
                 combination_mode, id

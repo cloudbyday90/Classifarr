@@ -8,11 +8,26 @@ Classifarr uses **embedded PostgreSQL 17** (Alpine package `postgresql17`) for d
 
 The pgvector extension can be compiled with AVX optimizations. On older CPUs without AVX support, vector similarity queries can crash PostgreSQL with `Illegal instruction`.
 
-Classifarr now ships a **multi-variant pgvector build** by default and auto-selects the best option at startup:
+Classifarr now ships a **multi-variant pgvector build** by default and prefers the best option at startup:
 
 - **AVX2 available** → uses the AVX2-optimized pgvector binary.
 - **AVX available** → uses the AVX-optimized pgvector binary.
 - **No AVX** → uses the generic (non-AVX) pgvector binary.
+
+On writable images, startup can swap `vector.so` to match the detected CPU. On read-only runtimes, Classifarr keeps the already-installed `vector.so` and reports that active variant instead. The default `multi` build installs the generic binary as the safe fallback, so read-only environments remain compatible even when they cannot switch to AVX or AVX2 at runtime.
+
+For local source builds in this repo, use the smart compose wrapper so the image is built for the host CPU before the read-only container starts:
+
+```bash
+npm run docker:smart:up
+```
+
+The wrapper detects host CPU support and sets `PGVECTOR_BUILD` to one of:
+
+- `avx2` when AVX2 is available
+- `avx` when AVX is available but AVX2 is not
+- `generic` when no AVX support is detected
+- `multi` when detection is unavailable and a portable fallback is safer
 
 ### Build Options
 

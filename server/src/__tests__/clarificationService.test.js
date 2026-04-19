@@ -234,6 +234,31 @@ describe('getTierFromPolicyThresholds', () => {
     const result = svc.getTierFromPolicyThresholds(70, eq);
     expect(result.tier).toBe('auto');
   });
+
+  test('normalizes missing policy thresholds conservatively', () => {
+    expect(
+      svc.getTierFromPolicyThresholds(84, { auto_classify_threshold: null, prompt_threshold: null })
+    ).toBeNull();
+  });
+
+  test('clamps auto threshold above 95 before tiering', () => {
+    const result = svc.getTierFromPolicyThresholds(90, {
+      auto_classify_threshold: 100,
+      prompt_threshold: 60,
+    });
+
+    expect(result.tier).toBe('verify');
+    expect(result.max_confidence).toBe(94);
+  });
+
+  test('uses the higher threshold when prompt exceeds auto', () => {
+    const result = svc.getTierFromPolicyThresholds(75, {
+      auto_classify_threshold: 70,
+      prompt_threshold: 80,
+    });
+
+    expect(result).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

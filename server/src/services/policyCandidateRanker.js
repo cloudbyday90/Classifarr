@@ -32,14 +32,57 @@
 
 const policyDecisionBuilder = require('./policyDecisionBuilder');
 const { createLogger } = require('../utils/logger');
+const {
+  normalizePolicyDecisionThresholds,
+  POLICY_CLOSE_SCORE_MARGIN,
+  POLICY_PROMPT_SELECT_MIN_CONFIDENCE,
+} = require('../utils/policyThresholds');
 
 const logger = createLogger('PolicyCandidateRanker');
 
-// Mirror the constant that governs the lowest score still worthy of a
-// prompt_select decision. Must stay in sync with policyEngine.js.
-const POLICY_PROMPT_SELECT_MIN_CONFIDENCE = 40;
+function normalizeRankedEvaluation(evaluation) {
+  const normalizedThresholds = normalizePolicyDecisionThresholds(evaluation);
+
+  return {
+    ...evaluation,
+    auto_classify_threshold: normalizedThresholds.autoClassifyThreshold,
+    prompt_threshold: normalizedThresholds.promptThreshold,
+  };
+}
+
+function compareRankedEvaluations(left, right) {
+  const scoreDelta = right.score - left.score;
+  if (scoreDelta !== 0) {
+    return scoreDelta;
+  }
+
+  const libraryDelta = Number(left.library_id || 0) - Number(right.library_id || 0);
+  if (libraryDelta !== 0) {
+    return libraryDelta;
+  }
+
+  const policyDelta = Number(left.policy_id || 0) - Number(right.policy_id || 0);
+  if (policyDelta !== 0) {
+    return policyDelta;
+  }
+
+  const libraryNameDelta = String(left.library_name || '').localeCompare(String(right.library_name || ''));
+  if (libraryNameDelta !== 0) {
+    return libraryNameDelta;
+  }
+
+  return String(left.policy_name || '').localeCompare(String(right.policy_name || ''));
+}
 
 class PolicyCandidateRanker {
+  getAmbiguousTopCandidates(ranked) {
+    if (!Array.isArray(ranked) || ranked.length < 2) {
+      return [];
+    }
+
+    const topScore = ranked[0].score;
+    return ranked.filter((candidate) => Math.abs(topScore - candidate.score) <= POLICY_CLOSE_SCORE_MARGIN);
+  }
 
   /**
    * Sort valid evaluations by score descending (zero-score entries removed).
@@ -50,8 +93,22 @@ class PolicyCandidateRanker {
   async rankResults(evaluations) {
     try {
       const ranked = evaluations
-        .filter(e => e.score > 0)
-        .sort((a, b) => b.score - a.score);
+        .filter((evaluation) => Number.isFinite(evaluation?.score) && evaluation.score > 0)
+        .map((evaluation) => {
+          const normalizedEvaluation = normalizeRankedEvaluation(evaluation);
+          const normalizedThresholds = normalizePolicyDecisionThresholds(evaluation);
+
+          if (normalizedThresholds.wasNormalized) {
+            logger.warn('Normalized invalid policy thresholds during ranking', {
+              policyId: evaluation?.policy_id,
+              libraryId: evaluation?.library_id,
+              reasons: normalizedThresholds.reasons,
+            });
+          }
+
+          return normalizedEvaluation;
+        })
+        .sort(compareRankedEvaluations);
 
       return ranked;
     } catch (error) {
@@ -69,7 +126,11 @@ class PolicyCandidateRanker {
    */
   determineAction(ranked) {
     try {
-      if (ranked.length === 0) {
+      const normalizedRanked = Array.isArray(ranked)
+        ? ranked.map((evaluation) => normalizeRankedEvaluation(evaluation))
+        : [];
+
+      if (normalizedRanked.length === 0) {
         return policyDecisionBuilder.normalizeResult({
           action: 'manual',
           confidence: 0,
@@ -77,13 +138,33 @@ class PolicyCandidateRanker {
         });
       }
 
-      const top = ranked[0];
+      const top = normalizedRanked[0];
+      const ambiguousTopCandidates = this.getAmbiguousTopCandidates(normalizedRanked);
+
+      if (ambiguousTopCandidates.length > 1) {
+        logger.info('Policy ranking is ambiguous; degrading to conservative selection', {
+          topScore: top.score,
+          closeScoreMargin: POLICY_CLOSE_SCORE_MARGIN,
+          candidateCount: ambiguousTopCandidates.length,
+          candidates: ambiguousTopCandidates.map((candidate) => ({
+            policy_id: candidate.policy_id,
+            library_id: candidate.library_id,
+            score: candidate.score,
+          })),
+        });
+
+        return policyDecisionBuilder.buildPolicyDecision({
+          action: top.score >= POLICY_PROMPT_SELECT_MIN_CONFIDENCE ? 'prompt_select' : 'manual',
+          top,
+          ranked: normalizedRanked,
+        });
+      }
 
       if (top.score >= top.auto_classify_threshold) {
         return policyDecisionBuilder.buildPolicyDecision({
           action: 'auto_classify',
           top,
-          ranked
+          ranked: normalizedRanked
         });
       }
 
@@ -91,7 +172,7 @@ class PolicyCandidateRanker {
         return policyDecisionBuilder.buildPolicyDecision({
           action: 'prompt_confirm',
           top,
-          ranked
+          ranked: normalizedRanked
         });
       }
 
@@ -99,14 +180,14 @@ class PolicyCandidateRanker {
         return policyDecisionBuilder.buildPolicyDecision({
           action: 'prompt_select',
           top,
-          ranked
+          ranked: normalizedRanked
         });
       }
 
       return policyDecisionBuilder.buildPolicyDecision({
         action: 'manual',
         top,
-        ranked
+        ranked: normalizedRanked
       });
 
     } catch (error) {
@@ -123,3 +204,4 @@ class PolicyCandidateRanker {
 module.exports = new PolicyCandidateRanker();
 module.exports.PolicyCandidateRanker = PolicyCandidateRanker;
 module.exports.POLICY_PROMPT_SELECT_MIN_CONFIDENCE = POLICY_PROMPT_SELECT_MIN_CONFIDENCE;
+module.exports.POLICY_CLOSE_SCORE_MARGIN = POLICY_CLOSE_SCORE_MARGIN;

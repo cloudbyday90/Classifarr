@@ -85,4 +85,25 @@ describe('PolicyDecisionBuilder', () => {
     expect(selectResult.library).toBeUndefined();
     expect(selectResult.topCandidate.library_id).toBe(12);
   });
+
+  test('normalizeResult exposes normalized threshold metadata from ranked results', () => {
+    const result = builder.normalizeResult({
+      action: 'prompt_select',
+      ranked: [{
+        library_id: 9,
+        library_name: 'Kids',
+        policy_id: 21,
+        policy_name: 'Family',
+        score: 74,
+        auto_classify_threshold: 120,
+        prompt_threshold: null,
+      }]
+    });
+
+    expect(result.thresholds).toEqual({
+      auto_classify: 95,
+      prompt: 95,
+      prompt_select: 40,
+    });
+  });
 });

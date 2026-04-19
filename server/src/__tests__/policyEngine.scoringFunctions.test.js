@@ -60,6 +60,10 @@ describe('PolicyEngine.scoreCertification', () => {
     expect(policyEngine.scoreCertification({ mode: 'max', max: 'PG' }, { certification: 'R' })).toBe(0);
   });
 
+  test('max mode: returns 50 when movie and TV certifications are mixed', () => {
+    expect(policyEngine.scoreCertification({ mode: 'max', max: 'PG-13' }, { media_type: 'movie', certification: 'TV-14' })).toBe(50);
+  });
+
   test('max mode: returns 50 when either cert is unknown to the order list', () => {
     expect(policyEngine.scoreCertification({ mode: 'max', max: 'UNRATED' }, { certification: 'PG' })).toBe(50);
   });
@@ -83,8 +87,12 @@ describe('PolicyEngine.scoreCertification', () => {
 describe('PolicyEngine.scoreGenres', () => {
   const anyItem = (genres) => ({ genres });
 
-  test('returns 0 when item has no genres', () => {
+  test('returns 0 when required genres are missing and item has no genres', () => {
     expect(policyEngine.scoreGenres({ require_any: ['Drama'] }, anyItem([]))).toBe(0);
+  });
+
+  test('returns 50 when item has no genres and config is advisory-only', () => {
+    expect(policyEngine.scoreGenres({ prefer: ['Drama'], exclude: ['Horror'] }, anyItem([]))).toBe(50);
   });
 
   test('require_all: returns 100 when all required genres are present', () => {
@@ -142,6 +150,19 @@ describe('PolicyEngine.scoreKeywords', () => {
 
   test('require_any: returns 0 when no keyword found in any text', () => {
     expect(policyEngine.scoreKeywords({ require_any: ['horror'] }, item(['comedy'], 'Light film', 'Fun'))).toBe(0);
+  });
+
+  test('does not satisfy require_any through substring accidents', () => {
+    expect(policyEngine.scoreKeywords({ require_any: ['art'] }, item([], 'A martial arts epic', 'The Cartographer'))).toBe(0);
+  });
+
+  test('does not trigger exclude through substring accidents', () => {
+    expect(policyEngine.scoreKeywords({ exclude: ['war'] }, item([], 'A story about reward points', 'Awards Night'))).toBe(50);
+  });
+
+  test('matches keywords across punctuation boundaries without dynamic regex construction', () => {
+    const score = policyEngine.scoreKeywords({ require_any: ['sci-fi'] }, item([], 'A bold sci-fi adventure', 'Launch Window'));
+    expect(score).toBeGreaterThanOrEqual(80);
   });
 
   test('prefer: boosts score for matching keywords', () => {
@@ -234,6 +255,10 @@ describe('PolicyEngine.scoreReleaseYear', () => {
     expect(policyEngine.scoreReleaseYear({ max: 2020 }, { year: 2010 })).toBe(80);
   });
 
+  test('treats zero as a real year value when comparing bounds', () => {
+    expect(policyEngine.scoreReleaseYear({ max: 1 }, { year: 0 })).toBe(80);
+  });
+
   test('returns 50 when no bounds are set', () => {
     expect(policyEngine.scoreReleaseYear({}, { year: 2010 })).toBe(50);
   });
@@ -267,6 +292,10 @@ describe('PolicyEngine.scoreVoteAverage', () => {
     expect(policyEngine.scoreVoteAverage({ min: 6 }, { rating: 8 })).toBe(80);
   });
 
+  test('treats zero as a real vote average when comparing bounds', () => {
+    expect(policyEngine.scoreVoteAverage({ max: 1 }, { vote_average: 0 })).toBe(80);
+  });
+
   test('returns 50 when item has no rating', () => {
     expect(policyEngine.scoreVoteAverage({ min: 7 }, {})).toBe(50);
   });
@@ -294,6 +323,10 @@ describe('PolicyEngine.scoreRuntime', () => {
 
   test('returns 80 with only one bound satisfied', () => {
     expect(policyEngine.scoreRuntime({ min_minutes: 60 }, { runtime: 90 })).toBe(80);
+  });
+
+  test('treats zero as a real runtime when comparing bounds', () => {
+    expect(policyEngine.scoreRuntime({ max_minutes: 1 }, { runtime: 0 })).toBe(80);
   });
 
   test('returns 50 when item has no runtime', () => {

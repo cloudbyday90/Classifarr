@@ -40,6 +40,7 @@ const classificationRoutingService = require('./classificationRoutingService');
 const classificationAiService = require('./classificationAiService');
 const classificationPersistenceService = require('./classificationPersistenceService');
 const classificationRagLoopService = require('./classificationRagLoopService');
+const { normalizePolicyDecisionThresholds } = require('../utils/policyThresholds');
 
 const logger = createLogger('classification');
 
@@ -179,8 +180,8 @@ class ClassificationService {
       const ranked = result?.policyResult?.ranked || [];
       if (Array.isArray(ranked) && ranked.length > 0 && result.library?.id) {
         const row = ranked.find((r) => r && r.library_id === result.library.id);
-        if (row && typeof row.auto_classify_threshold === 'number') {
-          policyAutoThreshold = row.auto_classify_threshold;
+        if (row) {
+          policyAutoThreshold = normalizePolicyDecisionThresholds(row).autoClassifyThreshold;
         }
       }
 

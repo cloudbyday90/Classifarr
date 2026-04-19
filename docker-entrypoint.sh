@@ -258,33 +258,56 @@ else
     PKGLIBDIR="/usr/lib/postgresql17/lib"
 fi
 
-SELECTED_VARIANT="generic"
+detect_active_pgvector_variant() {
+    if [ ! -f "$PKGLIBDIR/vector.so" ]; then
+        echo "unknown"
+        return
+    fi
+
+    for variant in avx2 avx generic; do
+        if [ -f "$PKGLIBDIR/vector_${variant}.so" ] && cmp -s "$PKGLIBDIR/vector.so" "$PKGLIBDIR/vector_${variant}.so"; then
+            echo "$variant"
+            return
+        fi
+    done
+
+    echo "unknown"
+}
+
+DESIRED_VARIANT="generic"
 if [ "$HAS_AVX2" = "true" ] && [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
-    SELECTED_VARIANT="avx2"
+    DESIRED_VARIANT="avx2"
 elif [ "$HAS_AVX" = "true" ] && [ -f "$PKGLIBDIR/vector_avx.so" ]; then
-    SELECTED_VARIANT="avx"
+    DESIRED_VARIANT="avx"
 elif [ -f "$PKGLIBDIR/vector_generic.so" ]; then
-    SELECTED_VARIANT="generic"
+    DESIRED_VARIANT="generic"
 elif [ -f "$PKGLIBDIR/vector_avx.so" ]; then
-    SELECTED_VARIANT="avx"
+    DESIRED_VARIANT="avx"
 elif [ -f "$PKGLIBDIR/vector_avx2.so" ]; then
-    SELECTED_VARIANT="avx2"
+    DESIRED_VARIANT="avx2"
 fi
 
-if [ -f "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" ]; then
-    if [ "$IS_ROOT" = "true" ] || [ -w "$PKGLIBDIR/vector.so" ]; then
-        cat "$PKGLIBDIR/vector_${SELECTED_VARIANT}.so" > "$PKGLIBDIR/vector.so" 2>/dev/null || \
-            echo "WARN: Unable to update pgvector binary (insufficient permissions)"
-    else
-        echo "WARN: Cannot update pgvector binary without root; using existing vector.so"
+ACTIVE_VARIANT="$(detect_active_pgvector_variant)"
+
+if [ -f "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" ]; then
+    if [ "$ACTIVE_VARIANT" != "$DESIRED_VARIANT" ]; then
+        if cp -f "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" "$PKGLIBDIR/vector.so" >/dev/null 2>&1; then
+            ACTIVE_VARIANT="$DESIRED_VARIANT"
+        else
+            echo "WARN: Unable to switch pgvector binary to $DESIRED_VARIANT; using existing vector.so ($ACTIVE_VARIANT)"
+        fi
     fi
-    export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="$SELECTED_VARIANT"
-    echo "pgvector selected: $SELECTED_VARIANT"
+    export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="$ACTIVE_VARIANT"
+    echo "pgvector selected: $ACTIVE_VARIANT"
 else
     echo "WARN: pgvector variant binaries not found in $PKGLIBDIR"
 fi
 
-if [ "$SELECTED_VARIANT" = "avx" ] && [ "$HAS_AVX" != "true" ]; then
+if [ "$ACTIVE_VARIANT" = "avx2" ] && [ "$HAS_AVX2" != "true" ]; then
+    echo "WARN: AVX2 not detected but AVX2 pgvector binary is selected. RAG queries may crash PostgreSQL."
+fi
+
+if [ "$ACTIVE_VARIANT" = "avx" ] && [ "$HAS_AVX" != "true" ]; then
     echo "WARN: AVX not detected but AVX pgvector binary is selected. RAG queries may crash PostgreSQL."
 fi
 

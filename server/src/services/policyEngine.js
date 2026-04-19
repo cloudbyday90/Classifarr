@@ -32,6 +32,8 @@ const logger = createLogger('PolicyEngine');
 // CRITICAL: 100% confidence is RESERVED for authoritative signals ONLY
 // Formula scores are CAPPED at 95% maximum
 const FORMULA_CONFIDENCE_CAP = 95;
+const MOVIE_CERTIFICATION_ORDER = ['G', 'PG', 'PG-13', 'R', 'NC-17'];
+const TV_CERTIFICATION_ORDER = ['TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA'];
 
 // Default weight for RAG scoring when not explicitly configured
 const DEFAULT_RAG_WEIGHT = 0.15;
@@ -40,6 +42,87 @@ const VALID_COMBINATION_MODES = new Set(['best_match', 'average', 'weighted_aver
 function normalizePresetAttachmentWeight(value) {
     const numeric = Number(value);
     return Number.isFinite(numeric) && numeric > 0 ? numeric : 1.0;
+}
+
+function parseFiniteNumber(value) {
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+    }
+
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmedValue = value.trim();
+    if (trimmedValue.length === 0) {
+        return null;
+    }
+
+    const numeric = Number(trimmedValue);
+    return Number.isFinite(numeric) ? numeric : null;
+}
+
+function hasConfiguredList(values) {
+    return Array.isArray(values) && values.length > 0;
+}
+
+function getCertificationOrder(value) {
+    const certification = String(value || '').toUpperCase();
+
+    if (MOVIE_CERTIFICATION_ORDER.includes(certification)) {
+        return MOVIE_CERTIFICATION_ORDER;
+    }
+
+    if (TV_CERTIFICATION_ORDER.includes(certification)) {
+        return TV_CERTIFICATION_ORDER;
+    }
+
+    return null;
+}
+
+function isAlphaNumericBoundary(text, index) {
+    if (index < 0 || index >= text.length) {
+        return true;
+    }
+
+    return !/[\p{L}\p{N}]/u.test(text[index]);
+}
+
+function textContainsWholeTerm(searchableText, normalizedTerm) {
+    let matchIndex = searchableText.indexOf(normalizedTerm);
+
+    while (matchIndex !== -1) {
+        const beforeIndex = matchIndex - 1;
+        const afterIndex = matchIndex + normalizedTerm.length;
+
+        if (
+            isAlphaNumericBoundary(searchableText, beforeIndex)
+            && isAlphaNumericBoundary(searchableText, afterIndex)
+        ) {
+            return true;
+        }
+
+        matchIndex = searchableText.indexOf(normalizedTerm, matchIndex + 1);
+    }
+
+    return false;
+}
+
+function keywordMatchesTerm(term, keywordList, searchableText) {
+    const normalizedTerm = String(term || '').trim().toLowerCase();
+    if (!normalizedTerm) {
+        return false;
+    }
+
+    if (keywordList.includes(normalizedTerm)) {
+        return true;
+    }
+
+    return textContainsWholeTerm(searchableText, normalizedTerm);
+}
+
+function isPositiveContribution(score) {
+    return Number.isFinite(score) && score > 0;
 }
 /**
  * Policy-Driven Classification Engine
@@ -394,29 +477,37 @@ class PolicyEngine {
                 history: policy.history_weight ?? 0.10
             };
 
+            const effectiveWeights = {
+                preset: isPositiveContribution(scores.preset) ? weights.preset : 0,
+                profile: isPositiveContribution(scores.profile) ? weights.profile : 0,
+                pattern: policy.trust_patterns && isPositiveContribution(scores.pattern) ? weights.pattern : 0,
+                rag: policy.trust_rag && isPositiveContribution(scores.rag) ? weights.rag : 0,
+                history: policy.trust_history && isPositiveContribution(scores.history) ? weights.history : 0
+            };
+
             const breakdown = [
-                { type: 'preset', score: scores.preset, weight: weights.preset },
-                { type: 'profile', score: scores.profile, weight: weights.profile },
-                { type: 'pattern', score: scores.pattern, weight: weights.pattern },
-                { type: 'rag', score: scores.rag, weight: weights.rag },
-                { type: 'history', score: scores.history, weight: weights.history }
+                { type: 'preset', score: scores.preset, weight: weights.preset, activeWeight: effectiveWeights.preset },
+                { type: 'profile', score: scores.profile, weight: weights.profile, activeWeight: effectiveWeights.profile },
+                { type: 'pattern', score: scores.pattern, weight: weights.pattern, activeWeight: effectiveWeights.pattern },
+                { type: 'rag', score: scores.rag, weight: weights.rag, activeWeight: effectiveWeights.rag },
+                { type: 'history', score: scores.history, weight: weights.history, activeWeight: effectiveWeights.history }
             ];
 
             // Calculate weighted score
             const weightedScore = 
-                (scores.preset * weights.preset) +
-                (scores.profile * weights.profile) +
-                (scores.pattern * weights.pattern) +
-                (scores.rag * weights.rag) +
-                (scores.history * weights.history);
+                (scores.preset * effectiveWeights.preset) +
+                (scores.profile * effectiveWeights.profile) +
+                (scores.pattern * effectiveWeights.pattern) +
+                (scores.rag * effectiveWeights.rag) +
+                (scores.history * effectiveWeights.history);
 
-            // Normalize to 0-100 using only enabled scoring methods' weights
+            // Normalize to 0-100 using only signals that contributed positive evidence.
             const totalWeight =
-                (policy.presets && policy.presets.length > 0 ? weights.preset : 0) +
-                weights.profile + // Profile is always enabled
-                (policy.trust_patterns ? weights.pattern : 0) +
-                (policy.trust_rag ? weights.rag : 0) +
-                (policy.trust_history ? weights.history : 0);
+                effectiveWeights.preset +
+                effectiveWeights.profile +
+                effectiveWeights.pattern +
+                effectiveWeights.rag +
+                effectiveWeights.history;
             const finalScore = totalWeight > 0 ? (weightedScore / totalWeight) : 0;
 
             // Signal agreement bonus: boost score when multiple independent signals agree
@@ -628,6 +719,9 @@ class PolicyEngine {
                 if (score === 0) {
                     return 0;
                 }
+                const weight = signals.media_type.weight ?? 1.0;
+                scores.push(score * weight);
+                totalWeight += weight;
             }
 
             // Calculate weighted average
@@ -663,12 +757,14 @@ class PolicyEngine {
             }
 
             if (config.mode === 'max') {
-                const certOrder = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA'];
                 const maxCert = config.max?.toUpperCase();
-                const maxIndex = certOrder.indexOf(maxCert);
-                const itemIndex = certOrder.indexOf(cert);
+                const maxOrder = getCertificationOrder(maxCert);
+                const itemOrder = getCertificationOrder(cert);
                 
-                if (maxIndex === -1 || itemIndex === -1) return 50;
+                if (!maxOrder || !itemOrder || maxOrder !== itemOrder) return 50;
+
+                const maxIndex = maxOrder.indexOf(maxCert);
+                const itemIndex = itemOrder.indexOf(cert);
                 return itemIndex <= maxIndex ? 100 : 0;
             }
 
@@ -684,7 +780,11 @@ class PolicyEngine {
     scoreGenres(config, item) {
         try {
             const genres = normalizeMetadataListLower(item.genres);
-            if (genres.length === 0) return 0;
+            if (genres.length === 0) {
+                return hasConfiguredList(config.require_all) || hasConfiguredList(config.require_any)
+                    ? 0
+                    : 50;
+            }
 
             let score = 50; // Base score
 
@@ -738,14 +838,14 @@ class PolicyEngine {
             const overview = (item.overview || '').toLowerCase();
             const title = (item.title || '').toLowerCase();
             
-            const allText = [...keywords, overview, title].join(' ');
+            const searchableText = [overview, title].filter(Boolean).join(' ');
 
             let score = 50;
 
             // require_any
             if (config.require_any && config.require_any.length > 0) {
                 const anyPresent = config.require_any.some(k => 
-                    allText.includes(k.toLowerCase())
+                    keywordMatchesTerm(k, keywords, searchableText)
                 );
                 if (!anyPresent) return 0;
                 score = 80;
@@ -754,7 +854,7 @@ class PolicyEngine {
             // prefer
             if (config.prefer && config.prefer.length > 0) {
                 const matchCount = config.prefer.filter(k => 
-                    allText.includes(k.toLowerCase())
+                    keywordMatchesTerm(k, keywords, searchableText)
                 ).length;
                 const matchPercent = matchCount / config.prefer.length;
                 score = Math.max(score, 50 + (matchPercent * 30));
@@ -763,7 +863,7 @@ class PolicyEngine {
             // exclude
             if (config.exclude && config.exclude.length > 0) {
                 const hasExcluded = config.exclude.some(k => 
-                    allText.includes(k.toLowerCase())
+                    keywordMatchesTerm(k, keywords, searchableText)
                 );
                 if (hasExcluded) return 0;
             }
@@ -830,20 +930,20 @@ class PolicyEngine {
      */
     scoreReleaseYear(config, item) {
         try {
-            const year = parseInt(item.year);
-            if (!year || isNaN(year)) return 50;
+            const year = parseFiniteNumber(item.year);
+            if (year === null) return 50;
 
-            const min = config.min;
-            const max = config.max;
+            const min = parseFiniteNumber(config.min);
+            const max = parseFiniteNumber(config.max);
 
-            if (min && year < min) return 0;
-            if (max && year > max) return 0;
+            if (min !== null && year < min) return 0;
+            if (max !== null && year > max) return 0;
 
             // Within range
-            if (min && max) {
+            if (min !== null && max !== null) {
                 // Full score if within range
                 return 100;
-            } else if (min || max) {
+            } else if (min !== null || max !== null) {
                 // Partial score if only one bound
                 return 80;
             }
@@ -859,19 +959,19 @@ class PolicyEngine {
      */
     scoreVoteAverage(config, item) {
         try {
-            const rating = parseFloat(item.rating || item.vote_average);
-            if (!rating || isNaN(rating)) return 50;
+            const rating = parseFiniteNumber(item.rating) ?? parseFiniteNumber(item.vote_average);
+            if (rating === null) return 50;
 
-            const min = config.min;
-            const max = config.max;
+            const min = parseFiniteNumber(config.min);
+            const max = parseFiniteNumber(config.max);
 
-            if (min && rating < min) return 0;
-            if (max && rating > max) return 0;
+            if (min !== null && rating < min) return 0;
+            if (max !== null && rating > max) return 0;
 
             // Within range
-            if (min && max) {
+            if (min !== null && max !== null) {
                 return 100;
-            } else if (min || max) {
+            } else if (min !== null || max !== null) {
                 return 80;
             }
 
@@ -886,18 +986,18 @@ class PolicyEngine {
      */
     scoreRuntime(config, item) {
         try {
-            const runtime = parseInt(item.runtime);
-            if (!runtime || isNaN(runtime)) return 50;
+            const runtime = parseFiniteNumber(item.runtime);
+            if (runtime === null) return 50;
 
-            const min = config.min_minutes;
-            const max = config.max_minutes;
+            const min = parseFiniteNumber(config.min_minutes);
+            const max = parseFiniteNumber(config.max_minutes);
 
-            if (min && runtime < min) return 0;
-            if (max && runtime > max) return 0;
+            if (min !== null && runtime < min) return 0;
+            if (max !== null && runtime > max) return 0;
 
-            if (min && max) {
+            if (min !== null && max !== null) {
                 return 100;
-            } else if (min || max) {
+            } else if (min !== null || max !== null) {
                 return 80;
             }
 

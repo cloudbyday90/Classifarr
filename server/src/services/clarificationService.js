@@ -27,6 +27,7 @@ const {
   getPolicyQuestionContextVersion,
   isPolicyQuestionStale,
 } = require('../utils/policyQuestionContext');
+const { normalizePolicyDecisionThresholds } = require('../utils/policyThresholds');
 
 const logger = createLogger('clarificationService');
 
@@ -161,8 +162,16 @@ class ClarificationService {
   ) {
     if (!thresholds) return null;
 
-    const auto = clampConfidence(thresholds.auto_classify_threshold);
-    const prompt = clampConfidence(thresholds.prompt_threshold);
+    const normalizedThresholds = normalizePolicyDecisionThresholds(thresholds);
+    if (normalizedThresholds.wasNormalized) {
+      logger.warn('Normalized invalid policy thresholds for clarification tiering', {
+        reasons: normalizedThresholds.reasons,
+        thresholds,
+      });
+    }
+
+    const auto = clampConfidence(normalizedThresholds.autoClassifyThreshold);
+    const prompt = clampConfidence(normalizedThresholds.promptThreshold);
     const roundedConfidence = Math.round(clampConfidence(confidence));
 
     // If the user requires confirmations, never return the "auto" tier.

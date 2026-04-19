@@ -122,5 +122,42 @@ describe('ClassificationService auto-routing thresholds', () => {
 
     expect(routeSpy).not.toHaveBeenCalled();
   });
+
+  test('should normalize policy auto thresholds above 95 before auto-routing', async () => {
+    const library = { id: 1, name: 'Movies', arr_type: 'radarr' };
+
+    jest
+      .spyOn(classificationService, 'runDecisionTree')
+      .mockResolvedValue({
+        library,
+        confidence: 95,
+        method: 'ai_analysis',
+        policyResult: {
+          ranked: [
+            {
+              library_id: 1,
+              auto_classify_threshold: 100,
+              prompt_threshold: 60,
+            },
+          ],
+        },
+      });
+
+    jest.spyOn(classificationService, 'logClassification').mockResolvedValue(1);
+
+    const routeSpy = jest
+      .spyOn(classificationService, 'routeToArr')
+      .mockResolvedValue();
+
+    await classificationService.classify({
+      media_type: 'movie',
+      tmdb_id: 123,
+      title: 'Threshold Clamp',
+      overview: 'x',
+      genres: ['Drama'],
+    });
+
+    expect(routeSpy).toHaveBeenCalledTimes(1);
+  });
 });
 

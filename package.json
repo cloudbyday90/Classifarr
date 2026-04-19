@@ -1,9 +1,14 @@
 {
   "name": "classifarr",
-  "version": "0.45.3-beta",
+  "version": "0.45.4-beta",
   "private": true,
   "license": "GPL-3.0-or-later",
   "scripts": {
+    "docker:smart": "node scripts/docker-compose-smart.js",
+    "docker:smart:build": "node scripts/docker-compose-smart.js build",
+    "docker:smart:up": "node scripts/docker-compose-smart.js up -d",
+    "docker:smart:down": "docker compose down",
+    "docker:smart:rebuild": "npm run docker:smart:down && npm run docker:smart:build && npm run docker:smart:up",
     "lint": "npm run lint:server && npm run lint:client",
     "lint:server": "npm run lint:server:tests && npm run lint:server:security",
     "lint:server:tests": "cd server && npm run lint:tests",

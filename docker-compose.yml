@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        PGVECTOR_BUILD: ${PGVECTOR_BUILD:-multi}
     image: ghcr.io/cloudbyday90/classifarr:latest
     container_name: classifarr
     user: "1000:1000"

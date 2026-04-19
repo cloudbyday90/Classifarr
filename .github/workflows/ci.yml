@@ -118,25 +118,9 @@ jobs:
       github.event_name == 'pull_request' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'ci')
-    needs: build-and-test
 
     permissions:
       contents: read
-
-    services:
-      postgres:
-        image: postgres:17.7-alpine3.23
-        env:
-          POSTGRES_DB: classifarr
-          POSTGRES_USER: classifarr
-          POSTGRES_PASSWORD: test_password
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
 
     steps:
       - name: Checkout code
@@ -149,17 +133,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
 
-      - name: Setup database paths for CI
-        run: |
-          sudo mkdir -p /app/database
-          sudo cp -r database/migrations /app/database/
-
-      - name: Initialize database
-        env:
-          PGPASSWORD: test_password
-        run: |
-          psql -h localhost -U classifarr -d classifarr -f database/init.sql
-
       - name: Install server dependencies
         run: |
           cd server
@@ -167,11 +140,6 @@ jobs:
 
       - name: Run integration tests
         env:
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
-          POSTGRES_DB: classifarr
-          POSTGRES_USER: classifarr
-          POSTGRES_PASSWORD: test_password
           NODE_ENV: test
         run: |
           cd server

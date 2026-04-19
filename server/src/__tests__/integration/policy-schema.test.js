@@ -96,6 +96,19 @@ describe('Policy-Driven Schema Integration Test', () => {
             expect(indexes).toContain('idx_library_policies_source');
         });
 
+        test('library_policies should enforce the threshold ladder constraint', async () => {
+            const res = await db.query(`
+                SELECT conname, pg_get_constraintdef(oid) AS definition
+                FROM pg_constraint
+                WHERE conrelid = 'public.library_policies'::regclass
+                  AND conname = 'chk_library_policies_threshold_ladder'
+            `);
+
+            expect(res.rows).toHaveLength(1);
+            expect(res.rows[0].definition).toContain('auto_classify_threshold <= 95');
+            expect(res.rows[0].definition).toContain('prompt_threshold <= auto_classify_threshold');
+        });
+
         test('library_policies should have foreign key to libraries', async () => {
             const res = await db.query(`
                 SELECT 
