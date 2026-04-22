@@ -318,6 +318,15 @@ class QueueService {
     }
 
     async hasClassificationDispatchBlocker() {
+        // Short-lived cache to prevent all workers from hammering this query in
+        // lockstep during burst dispatch loops (zero-sleep on task-available path).
+        // 250ms is imperceptibly stale for dispatch decisions but collapses N
+        // simultaneous pool checkouts into at most 1 per 250ms window.
+        const now = Date.now();
+        if (this._blockerCache && now < this._blockerCacheExpiresAt) {
+            return this._blockerCache;
+        }
+
         try {
             const result = await this.db.query(
                 `SELECT
@@ -332,10 +341,13 @@ class QueueService {
 
             const row = result.rows[0] || {};
 
-            return {
+            const value = {
                 hasProcessingClassification: row.has_processing_classification === true,
                 lookupFailed: false,
             };
+            this._blockerCache = value;
+            this._blockerCacheExpiresAt = Date.now() + 250;
+            return value;
         } catch (error) {
             this.logger.error('Failed to check classification dispatch blockers', { error: error.message });
             return {

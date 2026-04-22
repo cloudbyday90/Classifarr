@@ -83,6 +83,8 @@ describe('QueueService', () => {
         queueService.omdbSslBlockedUntil = 0;
         queueService.lastOmdbSslProbeAt = 0;
         queueService.lastAiAvailabilityProbeAt = 0;
+        queueService._blockerCache = null;
+        queueService._blockerCacheExpiresAt = 0;
 
         // The singleton captured defaultOmdbService at construction time (before jest.mock ran
         // at module scope with virtual:true). Wire the virtual mock into the instance so that

@@ -159,6 +159,9 @@ async function timedQuery(text, params) {
       const poolSuffix = hasPoolCounters
         ? ` [pool total=${pool.totalCount} idle=${pool.idleCount} waiting=${pool.waitingCount}]`
         : '';
+      // skipDbPersist: slow-query logs are advisory and do not need DB persistence.
+      // Without this flag, a slow error_log INSERT would itself trigger a second
+      // slow-query warn, creating a self-referential cascade of INSERT attempts.
       logger.warn(
         `[SLOW QUERY] ${timingSegments} — ${truncated}${poolSuffix}`,
         hasPoolCounters
@@ -174,7 +177,8 @@ async function timedQuery(text, params) {
             durationMs,
             poolWaitDurationMs,
             executionDurationMs,
-          }
+          },
+        { skipDbPersist: true }
       );
     }
   }

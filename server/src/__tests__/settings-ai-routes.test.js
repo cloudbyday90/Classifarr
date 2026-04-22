@@ -406,7 +406,7 @@ describe('Settings AI Routes', () => {
 
     expect(res.status).toBe(400);
     expect(res.body).toEqual({
-      error: 'Invalid Issue 275 configuration keys in payload',
+      error: 'Unsupported configuration keys in payload. Please reload the page and try again.',
       unknown_issue275_keys: ['foo'],
       disallowed_v11_keys: ['legacy_bar']
     });

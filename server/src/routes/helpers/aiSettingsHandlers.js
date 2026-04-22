@@ -58,6 +58,27 @@ function createAiSettingsHandlers({
           }
         }
 
+        // Strip internal auto-fallback/auto-recover state columns. These are written
+        // by background services and are not user-configurable settings. Sending them
+        // to the client causes them to be echoed back on save, triggering the payload
+        // key validator because they match Issue 275 prefixes but are not in V1_KEYS.
+        const INTERNAL_STATE_COLUMNS = [
+          'rag_loop_auto_fallback_breach_count',
+          'rag_loop_auto_fallback_last_breach_at',
+          'rag_loop_auto_fallback_last_triggered_at',
+          'rag_loop_auto_fallback_cooldown_until',
+          'rag_loop_auto_fallback_last_incident_id',
+          'rag_loop_auto_fallback_last_incident_payload',
+          'rag_loop_auto_fallback_last_version',
+          'rag_loop_auto_recover_last_attempt_version',
+          'rag_loop_auto_recover_last_attempt_at',
+          'image_embedding_models_cache',
+          'image_embedding_models_cache_updated_at'
+        ];
+        for (const col of INTERNAL_STATE_COLUMNS) {
+          delete config[col];
+        }
+
         return res.json(config);
       } catch (error) {
         if (error.code === '42P01') {
@@ -73,7 +94,7 @@ function createAiSettingsHandlers({
       const issue275KeyValidation = validateIssue275PayloadKeys(req.body || {});
       if (!issue275KeyValidation.valid) {
         return res.status(400).json({
-          error: 'Invalid Issue 275 configuration keys in payload',
+          error: 'Unsupported configuration keys in payload. Please reload the page and try again.',
           unknown_issue275_keys: issue275KeyValidation.unknownKeys,
           disallowed_v11_keys: issue275KeyValidation.disallowedKeys
         });
