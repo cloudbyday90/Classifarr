@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **axios updated to 1.15.1 across root, client, and server** — security release addressing seven CVEs and hardening vectors: header injection hardening (tightened header construction validation); CRLF stripping in multipart headers (prevents injection via field names and filenames); prototype pollution / auth bypass (`in` operator replaced with `hasOwnProperty` across config objects); `withXSRFToken` truthy bypass fixed (short-circuits on any truthy non-boolean, preventing silent cross-origin XSRF token leakage); `maxBodyLength` enforcement with zero redirects (closes oversized-body bypass when `maxRedirects: 0`); streamed `maxContentLength` bypass fixed (cap now applied to streaming responses); incomplete CVE fix completed (closes remaining regression window from a prior partial fix). (#399, #400, #402)
+
+- **vite updated to 8.0.9 in client** — security fix: HMR patch file requests are now rejected from non-trustworthy origins in bundled-dev mode (prevents cross-origin HMR abuse). Also includes rolldown updated to 1.0.0-rc.16, `emptyOutDir` fix for watch rebuilds, CSS unique-key collision fix for same-basename entries, and several optimizer/dev-server stability improvements. (#401)
+
 - **GitHub Actions dependencies updated** — `actions/setup-node` bumped from `v6.3.0` to `v6.4.0` (SHA `53b83947` → `48b55a01`); `github/codeql-action` bumped from `v4.35.1` to `v4.35.2` (SHA `c10b8064` → `95e58e9a`). Updated across `ci.yml`, `codeql.yml`, `copyright-compliance.yml`, and `trivy.yml`. (#398)
 
 ### Fixed
