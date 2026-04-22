@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **GitHub Actions dependencies updated** — `actions/setup-node` bumped from `v6.3.0` to `v6.4.0` (SHA `53b83947` → `48b55a01`); `github/codeql-action` bumped from `v4.35.1` to `v4.35.2` (SHA `c10b8064` → `95e58e9a`). Updated across `ci.yml`, `codeql.yml`, `copyright-compliance.yml`, and `trivy.yml`. (#398)
+
 ### Fixed
 
 - **Production pool exhaustion cascade from 2026-04-19 resolved — three linked queue bugs and one logger cascade eliminated** — a classification burst triggered a sequential scan on `task_queue` despite an existing composite index, because `pg_stats` recorded the `status` column as `{completed}` at frequency 1.0 (planner estimated zero `processing` rows and chose seq scan). Five workers querying `hasClassificationDispatchBlocker()` simultaneously held dedicated pool connections through the full scan duration, exhausting the pool and causing `recoverExpiredVisibilityTasks` and a second worker to each wait ~2s for a connection. A slow `error_log` INSERT then triggered a second `logger.warn()` via the same `timedQuery` path, creating a self-referential cascade. Fixed by: (1) a new partial index `idx_task_queue_processing_classification` predicated on `WHERE status = 'processing' AND task_type = 'classification'` that contains at most `MAX_CONCURRENT` rows so the EXISTS query is a trivial index non-empty check; (2) a 250ms TTL in-process cache on `hasClassificationDispatchBlocker()` that collapses lockstep per-worker DB calls into a single shared result; (3) `{ skipDbPersist: true }` added to the slow-query `logger.warn()` in `timedQuery`, breaking the slow-query → `error_log` INSERT → slow-query → … cascade. (`server/src/services/queueService.js`, `server/src/config/database.js`, `database/migrations/20260422_120000_add_task_queue_processing_classification_index.sql`, `server/src/__tests__/queueService.test.js`)
