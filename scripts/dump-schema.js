@@ -117,6 +117,25 @@ function runDockerPgDumpFallback() {
   });
 }
 
+function runDockerContainerPgDump(containerName) {
+  return execFileSync('docker', [
+    'exec',
+    '-i',
+    containerName,
+    'env',
+    `PGPASSWORD=${DB_PASSWORD}`,
+    'pg_dump',
+    ...buildPgDumpArgs({
+      host: 'localhost',
+      port: '5432',
+      user: DB_USER,
+      dbName: DB_NAME
+    })
+  ], {
+    encoding: 'utf8'
+  });
+}
+
 console.log('📦 Dumping current database schema...');
 
 try {
@@ -130,8 +149,14 @@ try {
     if (!missingHostBinary) {
       throw error;
     }
-    console.log('ℹ️ Host pg_dump not found; retrying via docker compose exec classifarr...');
-    schemaRaw = runDockerPgDumpFallback();
+    const dumpContainer = process.env.DUMP_CONTAINER;
+    if (dumpContainer) {
+      console.log(`ℹ️ Host pg_dump not found; retrying via docker exec ${dumpContainer}...`);
+      schemaRaw = runDockerContainerPgDump(dumpContainer);
+    } else {
+      console.log('ℹ️ Host pg_dump not found; retrying via docker compose exec classifarr...');
+      schemaRaw = runDockerPgDumpFallback();
+    }
   }
   // pg_dump from newer PostgreSQL versions can emit psql-only meta commands
   // (for example \restrict / \unrestrict) that are invalid through node-postgres.
