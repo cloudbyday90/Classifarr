@@ -1,15 +1,2 @@
-[[IgnoredVulns]]
-id = "GHSA-w5hq-g745-h8pq"
-reason = """
-uuid@14 (the patched version) dropped CommonJS support and is ESM-only.
-dockerode (a testcontainers dependency) uses require('uuid') which is CJS, so
-upgrading to uuid@14 breaks the runtime with ERR_REQUIRE_ESM. npm overrides
-cannot be used because the breaking change is the module format, not the version
-constraint. Additionally, the vulnerable code paths are uuid.v3/v5/v6 called
-with a caller-supplied Buffer argument; dockerode only calls uuid.v4() with no
-buf argument and is therefore not in a vulnerable code path. No actionable fix
-exists until dockerode migrates to ESM. Track upstream:
-https://github.com/apocas/dockerode for an ESM uuid migration.
-"""
 
 
