@@ -2,6 +2,44 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.45.4-beta`. Package files use semver-safe versions such as `0.45.4-beta`.
 
+## v0.45.5-beta
+**Title: Queue reliability is stronger, AI settings behave correctly, and Ollama health is visible**
+
+### 🎉 What You'll Notice
+- **Classification bursts no longer stall the queue** — a pool exhaustion cascade caused by a sequential full-table scan has been eliminated. Workers no longer race for connections, and the slow-query logger no longer triggers itself.
+- **AI settings save cleanly** — the "Unsupported configuration keys. Please reload the page" error is gone. Internal auto-fallback and cache state columns are now stripped before the config reaches the client.
+- **Ollama health checks are smarter and visible** — the scheduled preflight retries on transient failures with jittered backoff instead of waiting a full day, and the current status (last check, failure type, next attempt) is now visible in the AI settings UI.
+
+### 📊 Quick Visual
+```text
+v0.45.5-beta Snapshot
+Queue reliability       [██████████] pool exhaustion + partial index + log cascade fixed
+Service decomposition   [██████████] queue + classification fully modularized
+Ollama visibility       [█████████░] smart preflight, UI status, jittered retry
+AI settings UX          [█████████░] no more "reload page" on save
+```
+
+### ✨ Highlights
+- **Queue pool exhaustion eliminated** — a partial DB index (`idx_task_queue_processing_classification`) replaces a full-table scan, a 250ms in-process cache collapses concurrent per-worker DB calls, and `skipDbPersist` on the slow-query logger breaks a self-referential error cascade.
+- **AI settings save without errors** — eleven internal state columns that leaked into the config payload are now stripped server-side before the response reaches the client.
+- **Ollama preflight is observable** — configurable timeouts, jittered retry, failure classification, and UI status reporting replace the previous fixed-interval single-attempt pattern.
+- **Services continue to be decomposed** — the queue layer now spans `QueueMaintenanceService`, `QueueReadModel`, `QueueTaskProcessorService`, `QueueWorkerLoopService`, and `AIRouterService`; `classification.js` loses more responsibility to `libraryRulesService`, `libraryLabelsService`, and dedicated policy and legacy signal path services.
+
+### 🔧 Reliability Improvements
+- uuid vulnerability GHSA-w5hq-g745-h8pq resolved via `uuid@14` npm override; axios, vite, vitest, Vue, and vue-router refreshed.
+- `buildRagLoopSummary` now returns a baseline summary when trace is disabled but events are present, instead of returning `null`.
+- Code-health rule added: no silently swallowed errors — empty `catch` blocks and silent `.catch(() => {})` calls are now flagged in CI unless explicitly suppressed with a reason comment.
+- Integration test cache isolation hardened so queue-robustness tests no longer intermittently read stale blocker state from the previous test.
+
+### 👥 Who This Helps
+- **End users:** fewer classification queue stalls on busy systems with multiple concurrent workers; Ollama is more resilient when models are slow to warm up.
+- **Operators/admins:** Ollama health status visible in the UI without digging through logs; AI settings save reliably without the reload-required error.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.45.4-beta
 **Title: Classification is more trustworthy, health alerts are clearer, and local Docker builds are smoother**
 
