@@ -159,7 +159,7 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
         return res.status(401).json({ error: 'Invalid or expired refresh token' });
       }
     } catch (rotationError) {
-      await authService.revokeRefreshToken(newRefreshToken, req.ip).catch(() => {});
+      await authService.revokeRefreshToken(newRefreshToken, req.ip).catch(() => {}); // swallow-error: best-effort revocation of newly issued token in error path; original error is re-thrown regardless
       throw rotationError;
     }
 

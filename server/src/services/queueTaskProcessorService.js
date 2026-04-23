@@ -12,6 +12,11 @@ const { QueueTmdbResolutionService } = require('./queueTmdbResolutionService');
 const { QueueClassificationHistoryService } = require('./queueClassificationHistoryService');
 const { hasTavilyEnrichmentMetadata } = require('../utils/metadataEnrichment');
 
+function parseEnvMs(envValue, defaultValue) {
+    const parsed = Number.parseInt(envValue || '', 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+}
+
 class QueueTaskProcessorService {
     constructor(deps = {}) {
         this.db = deps.db;
@@ -21,26 +26,44 @@ class QueueTaskProcessorService {
         this.tmdbService = deps.tmdbService;
         this.completeTask = deps.completeTask || (async () => {});
         this.failTask = deps.failTask || (async () => {});
-        this.queryWithTimeout = deps.queryWithTimeout || (async () => ({}));
-        this.isOmdbSslBlocked = deps.isOmdbSslBlocked || (async () => false);
-        this.getOmdbRuntimeState = deps.getOmdbRuntimeState || (() => ({
-            omdbLimitHit: false,
-            lastOmdbCircuitWarnAt: 0,
-            lastOmdbSslWarnAt: 0,
-            omdbSslBlockedUntil: 0,
-        }));
-        this.setOmdbRuntimeState = deps.setOmdbRuntimeState || (() => {});
+        // queryWithTimeout: allow test injection; default delegates to real method
+        this.queryWithTimeout = deps.queryWithTimeout || ((...args) => this._queryWithTimeout(...args));
+        // OMDb runtime state fields (moved from queueService in Phase 1.5)
+        this.omdbLimitHit = false;
+        this.lastOmdbCircuitWarnAt = 0;
+        this.lastOmdbSslWarnAt = 0;
+        this.omdbSslBlockedUntil = 0;
+        this.lastOmdbSslProbeAt = 0;
         this.omdbCircuitWarnThrottleMs = deps.omdbCircuitWarnThrottleMs || 60_000;
-        this.omdbSslWarnThrottleMs = deps.omdbSslWarnThrottleMs || 15 * 60 * 1000;
-        this.omdbSslBlockMs = deps.omdbSslBlockMs || 15 * 60 * 1000;
+        this.omdbSslWarnThrottleMs = deps.omdbSslWarnThrottleMs || parseEnvMs(process.env.OMDB_SSL_WARN_THROTTLE_MS, 15 * 60 * 1000);
+        this.omdbSslBlockMs = deps.omdbSslBlockMs || parseEnvMs(process.env.OMDB_SSL_BLOCK_MS, 15 * 60 * 1000);
+        this.omdbSslRecoveryProbeMs = deps.omdbSslRecoveryProbeMs || parseEnvMs(process.env.OMDB_SSL_RECOVERY_PROBE_MS, 60 * 1000);
         this.queueOmdbEnrichmentService = deps.queueOmdbEnrichmentService || new QueueOmdbEnrichmentService({
             db: this.db,
             logger: this.logger,
             omdbService: this.omdbService,
             queryWithTimeout: (...args) => this.queryWithTimeout(...args),
             isOmdbSslBlocked: (...args) => this.isOmdbSslBlocked(...args),
-            getRuntimeState: () => this.getOmdbRuntimeState(),
-            setRuntimeState: (patch) => this.setOmdbRuntimeState(patch),
+            getRuntimeState: () => ({
+                omdbLimitHit: this.omdbLimitHit,
+                lastOmdbCircuitWarnAt: this.lastOmdbCircuitWarnAt,
+                lastOmdbSslWarnAt: this.lastOmdbSslWarnAt,
+                omdbSslBlockedUntil: this.omdbSslBlockedUntil,
+            }),
+            setRuntimeState: (patch) => {
+                if (Object.prototype.hasOwnProperty.call(patch, 'omdbLimitHit')) {
+                    this.omdbLimitHit = patch.omdbLimitHit;
+                }
+                if (Object.prototype.hasOwnProperty.call(patch, 'lastOmdbCircuitWarnAt')) {
+                    this.lastOmdbCircuitWarnAt = patch.lastOmdbCircuitWarnAt;
+                }
+                if (Object.prototype.hasOwnProperty.call(patch, 'lastOmdbSslWarnAt')) {
+                    this.lastOmdbSslWarnAt = patch.lastOmdbSslWarnAt;
+                }
+                if (Object.prototype.hasOwnProperty.call(patch, 'omdbSslBlockedUntil')) {
+                    this.omdbSslBlockedUntil = patch.omdbSslBlockedUntil;
+                }
+            },
             omdbCircuitWarnThrottleMs: this.omdbCircuitWarnThrottleMs,
             omdbSslWarnThrottleMs: this.omdbSslWarnThrottleMs,
             omdbSslBlockMs: this.omdbSslBlockMs,
@@ -127,7 +150,7 @@ class QueueTaskProcessorService {
 
             await client.query('COMMIT');
         } catch (error) {
-            await client.query('ROLLBACK').catch(() => {});
+            await client.query('ROLLBACK').catch(() => {}); // swallow-error: ROLLBACK is best-effort; original error is logged and re-thrown below
             this.logger.error('Rating normalization failed', {
                 itemId: media_item_id,
                 error: error.message
@@ -393,6 +416,107 @@ class QueueTaskProcessorService {
                 );
             }
         }
+    }
+
+    /**
+     * Run a SQL query with a per-statement timeout using a dedicated pool
+     * connection. Falls back to db.query() when pool.connect() is unavailable
+     * (e.g. in unit tests that do not configure db.pool).
+     *
+     * @param {string} sql    Parameterised SQL string
+     * @param {Array}  params Bind parameters
+     * @param {number} [timeoutMs=30000]  Statement timeout in milliseconds
+     */
+    async _queryWithTimeout(sql, params, timeoutMs = 30_000) {
+        let client;
+        try {
+            if (this.db.pool && typeof this.db.pool.connect === 'function') {
+                client = await this.db.pool.connect();
+            }
+        } catch (_) {
+            // Pool unavailable — fall through to regular query
+        }
+
+        // If we didn't get a real client (e.g. test auto-mock returns undefined),
+        // fall back to the standard db.query so tests don't need db.pool set up.
+        if (!client || typeof client.query !== 'function') {
+            return this.db.query(sql, params);
+        }
+
+        try {
+            await client.query('BEGIN');
+            await client.query(`SET LOCAL statement_timeout = '${timeoutMs}'`); // sql-interpolation: SET LOCAL param cannot use $N placeholders; timeoutMs is a validated positive integer
+            const result = await client.query(sql, params);
+            await client.query('COMMIT');
+            return result;
+        } catch (err) {
+            await client.query('ROLLBACK').catch(() => {}); // swallow-error: ROLLBACK is best-effort; original error is re-thrown
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Returns true if OMDb is currently in an SSL-blocked state, probing for
+     * recovery on the configured cadence.
+     */
+    async isOmdbSslBlocked(omdbApiKey, title) {
+        const now = Date.now();
+
+        if (this.omdbSslBlockedUntil === 0 || now >= this.omdbSslBlockedUntil) {
+            return false;
+        }
+
+        if ((now - this.lastOmdbSslProbeAt) < this.omdbSslRecoveryProbeMs) {
+            return true;
+        }
+
+        this.lastOmdbSslProbeAt = now;
+
+        try {
+            const health = await this.omdbService.checkHealth(omdbApiKey);
+            if (health?.healthy) {
+                this.omdbSslBlockedUntil = 0;
+                this.lastOmdbSslWarnAt = 0;
+                this.logger.info('OMDb SSL recovery detected; resuming OMDb enrichment', { title });
+                return false;
+            }
+
+            if (health?.ssl_error) {
+                this.omdbSslBlockedUntil = now + this.omdbSslBlockMs;
+                if ((now - this.lastOmdbSslWarnAt) >= this.omdbSslWarnThrottleMs) {
+                    this.lastOmdbSslWarnAt = now;
+                    this.logger.warn('OMDb SSL certificate issue persists; OMDb enrichment remains temporarily paused', {
+                        title,
+                        message: health.message
+                    });
+                } else {
+                    this.logger.debug('OMDb SSL persistent warning suppressed', { title });
+                }
+                return true;
+            }
+        } catch (healthError) {
+            this.logger.debug('OMDb SSL recovery probe failed', {
+                title,
+                error: healthError.message
+            });
+        }
+
+        return true;
+    }
+
+    /**
+     * Reset all OMDb runtime state fields to their zero values.
+     * Called by queueCarsaService during CARSA (clear-and-resync) to ensure
+     * OMDb circuit-breaker state is cleared when the queue is wiped.
+     */
+    resetOmdbState() {
+        this.omdbLimitHit = false;
+        this.lastOmdbCircuitWarnAt = 0;
+        this.lastOmdbSslWarnAt = 0;
+        this.omdbSslBlockedUntil = 0;
+        this.lastOmdbSslProbeAt = 0;
     }
 }
 

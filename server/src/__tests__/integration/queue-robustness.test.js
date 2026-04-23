@@ -229,6 +229,9 @@ describe('Queue Robustness Integration Tests', () => {
                     ('metadata_enrichment', 'pending', '{"title":"Background Enrichment"}', 1, NULL)
             `);
 
+            // Invalidate the 250ms TTL cache so this test always reads fresh DB state
+            // regardless of how quickly the prior test ran.
+            queueService._blockerCacheExpiresAt = 0;
             const blockers = await queueService.hasClassificationDispatchBlocker();
             const task = await queueService.dequeue({
                 excludeClassification: blockers.lookupFailed || blockers.hasProcessingClassification

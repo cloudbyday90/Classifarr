@@ -223,6 +223,35 @@ class ClassificationEvidenceService {
       client
     });
   }
+
+  /**
+   * Summarise a related-evidence array for use in AI prompts and clarification question builders.
+   * Informational-only — policy scores remain authoritative.
+   *
+   * @param {object[]} evidence  - from collectRelatedEvidence()
+   * @param {object[]} libraries - active libraries for this media type
+   * @returns {{ topLibrary, confidence, topScopes, hasConflict }|null}
+   */
+  buildRelatedEvidenceSummary(evidence, libraries) {
+    if (!Array.isArray(evidence) || evidence.length === 0) return null;
+
+    const sorted = [...evidence].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
+    const top = sorted[0];
+    const topLibraryObj = top?.libraryId
+      ? (libraries || []).find(l => l.id === top.libraryId)
+      : null;
+    const topLibrary = topLibraryObj?.name ?? null;
+    const topScopes = sorted.slice(0, 5).map(e => ({
+      scope: e.scope,
+      label: e.evidenceData?.genre ?? e.evidenceData?.studio ?? e.evidenceData?.franchise ?? e.evidenceKey ?? e.scope,
+      confidence: e.confidence ?? 0,
+      provenance: e.provenance ?? null,
+    }));
+    const uniqueLibraryIds = new Set(sorted.map(e => e.libraryId).filter(Boolean));
+    const hasConflict = uniqueLibraryIds.size > 1;
+
+    return { topLibrary, confidence: top?.confidence ?? 0, topScopes, hasConflict };
+  }
 }
 
 module.exports = new ClassificationEvidenceService();

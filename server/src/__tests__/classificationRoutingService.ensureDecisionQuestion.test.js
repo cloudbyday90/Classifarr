@@ -1,0 +1,125 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+const { ensureDecisionQuestion } = require('../services/classificationRoutingService');
+
+// Mock policyQuestionBuilder before requiring the module
+jest.mock('../services/policyQuestionBuilder', () => ({
+    build: jest.fn(),
+}));
+
+const policyQuestionBuilder = require('../services/policyQuestionBuilder');
+
+describe('ensureDecisionQuestion', () => {
+    beforeEach(() => {
+        policyQuestionBuilder.build.mockReset();
+    });
+
+    it('returns result unchanged when result is null', async () => {
+        const result = await ensureDecisionQuestion({ metadata: {}, result: null });
+        expect(result).toBeNull();
+    });
+
+    it('returns result unchanged when needs_retry is true', async () => {
+        const result = { needs_retry: true };
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+        expect(out).toBe(result);
+        expect(policyQuestionBuilder.build).not.toHaveBeenCalled();
+    });
+
+    it('clears clarification fields when not required', async () => {
+        const result = {
+            needs_clarification: false,
+            method: 'rule',
+            confidence: 95,
+            clarification: 'stale',
+            policy_question: 'stale',
+            pending_reason: 'stale',
+        };
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+        expect(out.needs_clarification).toBe(false);
+        expect(out.clarification).toBeNull();
+        expect(out.policy_question).toBeNull();
+        expect(out.pending_reason).toBeNull();
+        expect(policyQuestionBuilder.build).not.toHaveBeenCalled();
+    });
+
+    it('propagates existing question without calling builder when already present', async () => {
+        const existingQ = { problem_summary: 'Which library?', question: 'Movies or Arthouse?' };
+        const result = {
+            needs_clarification: true,
+            clarification: existingQ,
+            policy_question: existingQ,
+            pending_reason: null,
+        };
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+        expect(policyQuestionBuilder.build).not.toHaveBeenCalled();
+        expect(out.needs_clarification).toBe(true);
+        expect(out.policy_question).toBe(existingQ);
+    });
+
+    it('builds and attaches a policy question when result has needs_clarification and no existing question', async () => {
+        const builtQ = { problem_summary: 'Ambiguous genre', question: 'Is this horror or thriller?' };
+        policyQuestionBuilder.build.mockResolvedValue(builtQ);
+
+        const result = { needs_clarification: true, clarification: null, policy_question: null };
+        const metadata = { tmdb_id: 1, title: 'Test' };
+        const libraries = [{ id: 1 }];
+
+        const out = await ensureDecisionQuestion({ metadata, result, libraries });
+        expect(out.needs_clarification).toBe(true);
+        expect(out.clarification).toBe(builtQ);
+        expect(out.policy_question).toBe(builtQ);
+        expect(out.pending_reason).toBe('Ambiguous genre');
+    });
+
+    it('requires clarification when method is fallback', async () => {
+        policyQuestionBuilder.build.mockResolvedValue(null);
+        const result = { method: 'fallback', clarification: null, policy_question: null };
+        await ensureDecisionQuestion({ metadata: {}, result });
+        expect(policyQuestionBuilder.build).toHaveBeenCalled();
+    });
+
+    it('requires clarification when confidence < 70', async () => {
+        policyQuestionBuilder.build.mockResolvedValue(null);
+        const result = { confidence: 55, clarification: null, policy_question: null };
+        await ensureDecisionQuestion({ metadata: {}, result });
+        expect(policyQuestionBuilder.build).toHaveBeenCalled();
+    });
+
+    it('does not set clarification fields when builder returns null', async () => {
+        policyQuestionBuilder.build.mockResolvedValue(null);
+        const result = { needs_clarification: true, clarification: null, policy_question: null };
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+        expect(out.needs_clarification).toBe(true);
+        expect(out.clarification).toBeNull();
+        expect(out.policy_question).toBeNull();
+    });
+
+    it('prefers result.policyResult over the passed-in policyResult arg', async () => {
+        policyQuestionBuilder.build.mockResolvedValue(null);
+        const innerPolicy = { rule: 'inner' };
+        const outerPolicy = { rule: 'outer' };
+        const result = { needs_clarification: true, policyResult: innerPolicy, clarification: null, policy_question: null };
+
+        await ensureDecisionQuestion({ metadata: {}, result, policyResult: outerPolicy });
+
+        const callArg = policyQuestionBuilder.build.mock.calls[0][0];
+        expect(callArg.policyResult).toBe(innerPolicy);
+    });
+});

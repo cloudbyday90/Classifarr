@@ -262,7 +262,7 @@ class RAGRetriever {
             `, [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit]);
                 await client.query('COMMIT');
             } catch (err) {
-                await client.query('ROLLBACK').catch(() => {});
+                await client.query('ROLLBACK').catch(() => {}); // swallow-error: ROLLBACK is best-effort; original error is re-thrown
                 throw err;
             } finally {
                 client.release();

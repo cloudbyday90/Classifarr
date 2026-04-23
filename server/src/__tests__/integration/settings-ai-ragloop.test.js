@@ -149,7 +149,7 @@ describe('Settings AI Issue 275 Integration', () => {
             })
             .expect(400);
 
-        expect(response.body.error).toContain('Invalid Issue 275 configuration keys');
+        expect(response.body.error).toContain('Unsupported configuration keys in payload');
         expect(response.body.unknown_issue275_keys).toContain('rag_loop_nonexistent_toggle');
     });
 
@@ -163,7 +163,7 @@ describe('Settings AI Issue 275 Integration', () => {
             })
             .expect(400);
 
-        expect(response.body.error).toContain('Invalid Issue 275 configuration keys');
+        expect(response.body.error).toContain('Unsupported configuration keys in payload');
         expect(response.body.disallowed_v11_keys).toContain('rag_loop_override');
     });
 

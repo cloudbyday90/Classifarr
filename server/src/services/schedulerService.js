@@ -250,7 +250,7 @@ class SchedulerService {
                 await db.query(
                     `UPDATE backfill_runs SET status = 'failed', completed_at = NOW(), error = $1 WHERE id = $2`,
                     [error.message, runId]
-                ).catch(() => {});
+                ).catch(() => {}); // swallow-error: fire-and-forget status update; backfill has already failed so a DB update failure is non-critical
             }
         }
     }

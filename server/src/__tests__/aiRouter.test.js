@@ -471,4 +471,100 @@ describe('AIRouterService', () => {
             expect(status.activeProvider).toBe('none');
         });
     });
+
+    describe('checkAvailability', () => {
+        let mockOllama;
+        let mockCallerLogger;
+
+        beforeEach(() => {
+            mockOllama = { testConnection: jest.fn() };
+            mockCallerLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+        });
+
+        it('returns false and logs transition when no provider configured', async () => {
+            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'none', ollama_fallback_enabled: false }] });
+
+            const result = await service.checkAvailability(true, mockOllama, mockCallerLogger);
+
+            expect(result).toBe(false);
+            expect(mockCallerLogger.info).toHaveBeenCalledWith('AI is disabled or no provider configured');
+        });
+
+        it('returns false silently when no provider and already unavailable', async () => {
+            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'none', ollama_fallback_enabled: false }] });
+
+            const result = await service.checkAvailability(false, mockOllama, mockCallerLogger);
+
+            expect(result).toBe(false);
+            expect(mockCallerLogger.info).not.toHaveBeenCalled();
+        });
+
+        it('returns true and logs recovery for cloud provider when previously unavailable', async () => {
+            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'openai', ollama_fallback_enabled: false }] });
+            mockCloudLLM.checkBudget.mockResolvedValue({ exhausted: false });
+
+            const result = await service.checkAvailability(false, mockOllama, mockCallerLogger);
+
+            expect(result).toBe(true);
+            expect(mockCallerLogger.info).toHaveBeenCalledWith(expect.stringContaining('Cloud AI provider available'));
+        });
+
+        it('returns true silently for cloud provider when already available', async () => {
+            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'openai', ollama_fallback_enabled: false }] });
+            mockCloudLLM.checkBudget.mockResolvedValue({ exhausted: false });
+
+            const result = await service.checkAvailability(true, mockOllama, mockCallerLogger);
+
+            expect(result).toBe(true);
+            expect(mockCallerLogger.info).not.toHaveBeenCalled();
+        });
+
+        it('returns true and logs recovery when Ollama probe succeeds and was unavailable', async () => {
+            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'ollama', ollama_host: 'http://ollama:11434' }] });
+            mockOllama.testConnection.mockResolvedValue({ success: true });
+
+            const result = await service.checkAvailability(false, mockOllama, mockCallerLogger);
+
+            expect(result).toBe(true);
+            expect(mockCallerLogger.info).toHaveBeenCalledWith('Ollama is now available');
+        });
+
+        it('returns false and logs warning when Ollama probe fails and was available', async () => {
+            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'ollama', ollama_host: 'http://ollama:11434' }] });
+            mockOllama.testConnection.mockResolvedValue({ success: false, error: 'connection refused' });
+
+            const result = await service.checkAvailability(true, mockOllama, mockCallerLogger);
+
+            expect(result).toBe(false);
+            expect(mockCallerLogger.warn).toHaveBeenCalledWith('Ollama is offline', { error: 'connection refused' });
+        });
+
+        it('returns false silently when Ollama probe fails and was already unavailable', async () => {
+            mockDb.query.mockResolvedValue({ rows: [{ primary_provider: 'ollama', ollama_host: 'http://ollama:11434' }] });
+            mockOllama.testConnection.mockResolvedValue({ success: false, error: 'timeout' });
+
+            const result = await service.checkAvailability(false, mockOllama, mockCallerLogger);
+
+            expect(result).toBe(false);
+            expect(mockCallerLogger.warn).not.toHaveBeenCalled();
+        });
+
+        it('returns false and logs on unexpected thrown error when currently available', async () => {
+            jest.spyOn(service, 'getProvider').mockRejectedValue(new Error('provider exploded'));
+
+            const result = await service.checkAvailability(true, mockOllama, mockCallerLogger);
+
+            expect(result).toBe(false);
+            expect(mockCallerLogger.warn).toHaveBeenCalledWith('AI availability check failed', { error: 'provider exploded' });
+        });
+
+        it('returns false silently on thrown error when already unavailable', async () => {
+            jest.spyOn(service, 'getProvider').mockRejectedValue(new Error('provider exploded'));
+
+            const result = await service.checkAvailability(false, mockOllama, mockCallerLogger);
+
+            expect(result).toBe(false);
+            expect(mockCallerLogger.warn).not.toHaveBeenCalled();
+        });
+    });
 });

@@ -672,7 +672,7 @@ describe('PolicyEngine -> AI flow', () => {
       ragCache: { matches: [], timestamp: Date.now() }
     });
 
-    const aiSpy = jest.spyOn(classificationService, 'aiClassify').mockResolvedValue({
+    const aiSpy = jest.spyOn(classificationAiService, 'aiClassify').mockResolvedValue({
       library: { id: 1, name: 'Movies' },
       confidence: 60,
       verified_by_ai: false
@@ -835,7 +835,7 @@ describe('Classification Details Storage', () => {
     };
 
     policyEngine.evaluateItem.mockResolvedValue(mockPolicyResult);
-    jest.spyOn(classificationService, 'aiClassify').mockResolvedValue({
+    jest.spyOn(classificationAiService, 'aiClassify').mockResolvedValue({
       library: { id: 1, name: 'Movies' },
       confidence: 85,
       verified_by_ai: false,
@@ -942,9 +942,33 @@ describe('Classification Details Storage', () => {
       ranked: []
     });
 
+    // Enable RAG loop so the gate runs and emits a skipped event with reason_code
+    db.query.mockImplementation((text) => {
+      const query = typeof text === 'string' ? text : '';
+      if (query.includes('ai_provider_config')) {
+        return { rows: [{ id: 1, rag_retrieval_loop_enabled: true }] };
+      }
+      if (query.includes('FROM libraries')) {
+        return { rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] };
+      }
+      if (query.includes('INSERT INTO classification_history') || query.includes('INSERT INTO logs') || query.includes('INSERT INTO error_logs')) {
+        return { rows: [{ id: 12345, error_id: 67890 }] };
+      }
+      return { rows: [] };
+    });
+
     // Mock confidence calculator to avoid undefined error
     confidenceCalculator.calculate.mockReturnValue({ confidence: 50, suggestedLibrary: null });
     confidenceCalculator.toAIContext.mockReturnValue('');
+
+    // Mock AI so it succeeds with confidence >= 70 — below that threshold,
+    // shouldTriggerSecondPass fires ai_low_confidence which would attempt real
+    // RAG retrieval (ragRetriever is auto-mocked and returns undefined).
+    jest.spyOn(classificationAiService, 'aiClassify').mockResolvedValue({
+      library: { id: 1, name: 'Movies' },
+      confidence: 75,
+      verified_by_ai: false,
+    });
 
     await classificationService.classify({
       media: { media_type: 'movie', tmdbId: 123 }
@@ -2862,7 +2886,7 @@ describe('AI availability fallback handling', () => {
       }]
     });
 
-    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+    jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(
       new Error('[ProviderLock] Timeout waiting for lock (requestor: classification)')
     );
 
@@ -2890,7 +2914,7 @@ describe('AI availability fallback handling', () => {
 
     const incompleteError = new Error('Generation ended before completion signal');
     incompleteError.code = 'EINCOMPLETE';
-    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(incompleteError);
+    jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(incompleteError);
 
     const result = await classificationService.classify({
       media: { media_type: 'movie', tmdbId: 123 }
@@ -2915,7 +2939,7 @@ describe('AI availability fallback handling', () => {
       }]
     });
 
-    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+    jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(
       new Error('[ProviderLock] Timeout waiting for lock (requestor: classification)')
     );
 
@@ -2950,7 +2974,7 @@ describe('AI availability fallback handling', () => {
       }]
     });
 
-    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+    jest.spyOn(classificationAiService, 'aiClassify').mockRejectedValue(
       new Error('[ProviderLock] Timeout waiting for lock (requestor: classification)')
     );
 
@@ -3105,6 +3129,7 @@ describe('Phase 1 AI contract and stream guard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    aiRouter.clearCache();
 
     providerLock.config = { heartbeatInterval: 10 };
     jest.spyOn(providerLock, 'acquireLock').mockResolvedValue(true);

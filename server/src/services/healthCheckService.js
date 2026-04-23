@@ -166,7 +166,7 @@ function maybeSendHealthAlert(serviceKey, previousStatus, newStatus) {
     if (!UNHEALTHY_STATUSES.has(newStatus) && !UNHEALTHY_STATUSES.has(previousStatus)) return;
     // Normalise 'unknown' to null for the alert message (callers see a cleaner embed)
     const prevForAlert = (previousStatus && previousStatus !== 'unknown') ? previousStatus : null;
-    discordBotService.sendSystemAlert(serviceKey, newStatus, prevForAlert).catch(() => {});
+    discordBotService.sendSystemAlert(serviceKey, newStatus, prevForAlert).catch(() => {}); // swallow-error: fire-and-forget alert; health-check result must not depend on Discord availability
 }
 
 /**

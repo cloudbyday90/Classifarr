@@ -8,6 +8,12 @@
  * (at your option) any later version.
  */
 
+const {
+    ENRICHMENT_METADATA_KEYS,
+    TAVILY_METADATA_KEYS,
+    buildJsonbPresenceOr
+} = require('../utils/metadataEnrichment');
+
 const GAP_ANALYSIS_BATCH_SIZE = 500;
 const GAP_ANALYSIS_INTERVAL_MINUTES = 5;
 
@@ -28,6 +34,7 @@ class QueueReadModel {
             aiAvailable: false,
             workerRunning: false,
         }));
+        this.enrichmentRetryService = deps.enrichmentRetryService || null;
     }
 
     async getStats() {
@@ -142,6 +149,82 @@ class QueueReadModel {
             this.logger.error('Failed to get failed tasks', { error: error.message });
             throw error;
         }
+    }
+
+    async getLiveStats() {
+        const anyEnrichmentSql = buildJsonbPresenceOr('metadata', ENRICHMENT_METADATA_KEYS);
+        const tavilyEnrichmentSql = buildJsonbPresenceOr('metadata', TAVILY_METADATA_KEYS);
+        const [queueStats, gapStats, todayResult, enrichmentResult, enrichmentQueueResult] = await Promise.all([
+            this.getStats(),
+            this.getGapAnalysisStats(),
+            this.db.query(`
+                SELECT 
+                    COUNT(*) FILTER (WHERE method != 'source_library') as new_classified,
+                    COUNT(*) as all_classified,
+                    AVG(confidence) FILTER (WHERE method != 'source_library') as new_avg_confidence,
+                    AVG(confidence) as all_avg_confidence
+                FROM classification_history 
+                WHERE created_at >= CURRENT_DATE
+            `),
+            this.db.query(`
+                SELECT 
+                    COUNT(*) as total_items,
+                    COUNT(*) FILTER (WHERE ${anyEnrichmentSql}) as enriched,
+                    COUNT(*) FILTER (WHERE ${tavilyEnrichmentSql}) as tavily_enriched,
+                    COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL) as omdb_enriched
+                FROM media_server_items
+            `),
+            this.db.query(`
+                SELECT COUNT(*) as pending FROM task_queue 
+                WHERE task_type = 'metadata_enrichment' AND status = 'pending'
+            `)
+        ]);
+
+        const enrichmentPending = parseInt(enrichmentQueueResult.rows[0]?.pending, 10) || 0;
+        const totalItems = parseInt(enrichmentResult.rows[0]?.total_items, 10) || 0;
+        const enrichedItems = parseInt(enrichmentResult.rows[0]?.enriched, 10) || 0;
+        const tavilyEnrichedItems = parseInt(enrichmentResult.rows[0]?.tavily_enriched, 10) || 0;
+        const omdbEnrichedItems = parseInt(enrichmentResult.rows[0]?.omdb_enriched, 10) || 0;
+        const enrichmentProgress = totalItems > 0 ? Math.round((enrichedItems / totalItems) * 100) : 0;
+        const newClassifiedToday = parseInt(todayResult.rows[0]?.new_classified, 10) || 0;
+        const allClassifiedToday = parseInt(todayResult.rows[0]?.all_classified, 10) || 0;
+        const newAvgConfidence = parseFloat(todayResult.rows[0]?.new_avg_confidence) || 0;
+        const allAvgConfidence = parseFloat(todayResult.rows[0]?.all_avg_confidence) || 0;
+
+        let retryQueueStats = { tavily: { pending: 0 }, total: { pending: 0 } };
+        if (this.enrichmentRetryService) {
+            try {
+                retryQueueStats = await this.enrichmentRetryService.getStats();
+            } catch (_error) {
+                // Retry queue table may not exist yet
+            }
+        }
+
+        return {
+            queue: queueStats,
+            gapAnalysis: gapStats,
+            today: {
+                classified: newClassifiedToday,
+                avgConfidence: Math.round(newAvgConfidence),
+                allClassified: allClassifiedToday,
+                allAvgConfidence: Math.round(allAvgConfidence)
+            },
+            enrichment: {
+                totalItems,
+                enriched: enrichedItems,
+                tavilyEnriched: tavilyEnrichedItems,
+                omdbEnriched: omdbEnrichedItems,
+                progress: enrichmentProgress,
+                pending: enrichmentPending,
+                retryQueue: retryQueueStats
+            },
+            health: {
+                ai: queueStats?.aiAvailable ?? false,
+                worker: queueStats?.workerRunning ?? false,
+                database: true
+            },
+            timestamp: new Date().toISOString()
+        };
     }
 }
 

@@ -316,7 +316,7 @@ class DiscordBotService {
       throw new Error(`Failed to fetch servers: ${error.message}`);
     } finally {
       if (testClient) {
-        await testClient.destroy().catch(() => {});
+        await testClient.destroy().catch(() => {}); // swallow-error: test-client teardown in finally; destroy errors must not mask the original exception
       }
     }
   }
@@ -379,7 +379,7 @@ class DiscordBotService {
       throw new Error(`Failed to fetch channels: ${error.message}`);
     } finally {
       if (testClient) {
-        await testClient.destroy().catch(() => {});
+        await testClient.destroy().catch(() => {}); // swallow-error: test-client teardown in finally; destroy errors must not mask the original exception
       }
     }
   }

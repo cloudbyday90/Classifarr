@@ -742,3 +742,211 @@ describe('Code Health — no { virtual: true } for real files', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// 15. Swallowed / suppressed errors
+// ---------------------------------------------------------------------------
+
+describe('Code Health — no silently swallowed errors', () => {
+  /**
+   * Silently discarding errors is one of the hardest bugs to diagnose because
+   * the system fails without any observable signal. The two highest-risk
+   * patterns are:
+   *
+   * In PRODUCTION code (services / routes / utils):
+   *   a) Empty catch blocks  `catch (e) {}`  — errors vanish with no trace
+   *   b) Arrow `.catch(() => {})` / `.catch(_ => {})` — promise rejections
+   *      discarded inline, bypassing all logging and monitoring
+   *
+   * In TEST code:
+   *   a) `.catch(() => {})` on awaited promises — a failing async expectation
+   *      can be silently swallowed, making the test always pass
+   *   b) try/catch blocks where the catch is empty and the try body contains
+   *      expect() calls — assertion failures are caught and discarded, making
+   *      the test vacuously succeed
+   *
+   * Allowed suppressions:
+   *   - Add `// swallow-error: <reason>` on the same line for documented
+   *     intentional suppressions (e.g. best-effort cleanup that must never
+   *     block the main path).
+   *   - Empty catch blocks that contain ONLY a comment are already permitted
+   *     by this rule (mirroring the ESLint `no-empty` rule which treats
+   *     comment-only blocks as intentionally documented).
+   *
+   * References:
+   *   - ESLint `no-empty` rule (recommends comments to document intent)
+   *   - Node.js Best Practices §error-handling-practices
+   *   - OWASP A09:2021 — Security Logging and Monitoring Failures
+   */
+
+  // ── Production files: empty catch blocks ─────────────────────────────────
+  // Matches: catch (<anything>) { } or a catch whose body contains no
+  // statements — only optional whitespace or comments.
+  // A body containing only a comment is allowed (mirrors ESLint no-empty).
+  const CATCH_OPEN_RE = /\bcatch\s*\([^)]*\)\s*\{/;
+
+  const PROD_FILES = SOURCE_FILES.filter(
+    f => !f.includes('/scripts/')
+  );
+
+  for (const filePath of PROD_FILES) {
+    test(`${rel(filePath)} — no empty catch blocks`, () => {
+      const source = fs.readFileSync(filePath, 'utf8');
+      const lines = source.split('\n');
+      const hits = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) continue;
+
+        // Inline suppression: // swallow-error: <reason>
+        if (/\/\/\s*swallow-error:/i.test(trimmed)) continue;
+
+        if (!CATCH_OPEN_RE.test(trimmed)) continue;
+
+        // Collect the catch body: scan forward until braces balance.
+        let depth = 0;
+        const bodyLines = [];
+        let started = false;
+
+        for (let j = i; j < Math.min(i + 30, lines.length); j++) {
+          for (const ch of lines[j]) {
+            if (ch === '{') { depth++; started = true; }
+            else if (ch === '}') depth--;
+          }
+          if (started) bodyLines.push(lines[j].trim());
+          if (started && depth === 0) break;
+        }
+
+        // A body is "empty" if every line is whitespace, a comment,
+        // the opening catch line, or the closing `}`.
+        const bodyContent = bodyLines
+          .join('\n')
+          .replace(/\/\/[^\n]*/g, '')           // strip single-line comments
+          .replace(/\/\*[\s\S]*?\*\//g, '')      // strip block comments
+          .replace(/[{}()\s]/g, '');             // strip structural chars + spaces
+
+        if (bodyContent.length === 0) {
+          hits.push(`  line ${i + 1}: ${trimmed.slice(0, 120)}`);
+        }
+      }
+
+      if (hits.length > 0) {
+        throw new Error(
+          `Empty catch block(s) silently discard errors — add logging or re-throw.\n` +
+          `Use // swallow-error: <reason> on the catch line to document intentional suppressions:\n` +
+          hits.join('\n')
+        );
+      }
+    });
+  }
+
+  // ── All files: silent .catch(() => {}) ───────────────────────────────────
+  // Matches inline arrow .catch handlers whose bodies have no statements.
+  // e.g.: promise.catch(() => {})  /  .catch(e => {})  /  .catch(_ => {})
+  // Allow if the same line has a swallow-error comment.
+  const SILENT_CATCH_RE = /\.catch\s*\(\s*(?:\(\s*\)|[a-zA-Z_$][a-zA-Z0-9_$]*)\s*=>\s*\{\s*\}\s*\)/;
+
+  // Exclude codeHealth.test.js itself — its own implementation strings contain
+  // the pattern (regex literals, error messages) which are not real violations.
+  const ALL_NON_SCRIPTS = ALL_JS_FILES.filter(
+    f => !f.includes('/scripts/') && !f.endsWith('codeHealth.test.js')
+  );
+
+  for (const filePath of ALL_NON_SCRIPTS) {
+    test(`${rel(filePath)} — no silent .catch(() => {}) handlers`, () => {
+      const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+      const hits = [];
+
+      lines.forEach((line, i) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+        if (/\/\/\s*swallow-error:/i.test(trimmed)) return;
+        if (SILENT_CATCH_RE.test(trimmed)) {
+          hits.push(`  line ${i + 1}: ${trimmed.slice(0, 120)}`);
+        }
+      });
+
+      if (hits.length > 0) {
+        throw new Error(
+          `Silent .catch(() => {}) discards the rejection silently.\n` +
+          `Log the error, re-throw, or use // swallow-error: <reason> to document intent:\n` +
+          hits.join('\n')
+        );
+      }
+    });
+  }
+
+  // ── Test files: try/catch wrapping expect() calls ─────────────────────────
+  // A try/catch block in a test that contains an expect() AND an empty catch
+  // will silently swallow assertion failures, making the test vacuously pass.
+  const EXPECT_IN_TRY_RE = /\bexpect\s*\(/;
+
+  for (const filePath of TEST_FILES) {
+    test(`${rel(filePath)} — no try/catch with empty catch wrapping expect()`, () => {
+      const source = fs.readFileSync(filePath, 'utf8');
+      const lines = source.split('\n');
+      const hits = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        if (!/^\s*try\s*\{/.test(lines[i])) continue;
+        const trimmedI = lines[i].trim();
+        if (/\/\/\s*swallow-error:/i.test(trimmedI)) continue;
+
+        // Collect the try body until braces balance
+        let depth = 0;
+        const tryLines = [];
+        let started = false;
+
+        for (let j = i; j < Math.min(i + 50, lines.length); j++) {
+          for (const ch of lines[j]) {
+            if (ch === '{') { depth++; started = true; }
+            else if (ch === '}') depth--;
+          }
+          if (started) tryLines.push(lines[j]);
+          if (started && depth === 0) break;
+        }
+
+        if (!EXPECT_IN_TRY_RE.test(tryLines.join('\n'))) continue;
+
+        // Check whether the corresponding catch is empty (or near-empty)
+        const tryEnd = i + tryLines.length;
+        let catchDepth = 0;
+        let inCatch = false;
+        const catchLines = [];
+
+        for (let k = tryEnd; k < Math.min(tryEnd + 10, lines.length); k++) {
+          const cl = lines[k].trim();
+          if (!inCatch && /\bcatch\s*\(/.test(cl)) inCatch = true;
+          if (!inCatch) continue;
+          for (const ch of lines[k]) {
+            if (ch === '{') catchDepth++;
+            else if (ch === '}') catchDepth--;
+          }
+          catchLines.push(cl);
+          if (catchDepth === 0) break;
+        }
+
+        if (catchLines.length === 0) continue;
+
+        const catchContent = catchLines
+          .join('\n')
+          .replace(/\/\/[^\n]*/g, '')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/[{}()\s]/g, '');
+
+        if (catchContent.length === 0) {
+          hits.push(`  line ${i + 1}: try block containing expect() has empty catch`);
+        }
+      }
+
+      if (hits.length > 0) {
+        throw new Error(
+          `try {} catch {} wrapping expect() calls swallows assertion failures.\n` +
+          `Use await expect(...).rejects.toThrow() or let the error propagate instead:\n` +
+          hits.join('\n')
+        );
+      }
+    });
+  }
+});

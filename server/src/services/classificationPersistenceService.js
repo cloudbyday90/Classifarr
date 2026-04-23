@@ -169,7 +169,11 @@ class ClassificationPersistenceService {
       };
     };
 
-    const decisionOutcome = trace?.decision?.outcome || null;
+    // When no trace exists but events were captured (e.g. rag_loop_trace_enabled=false
+    // but the gate ran and emitted log events), synthesize the baseline defaults that
+    // buildRagLoopTrace would produce for ran=false with no resolution.
+    const useFallbackDecision = trace === null && events.length > 0;
+    const decisionOutcome = trace?.decision?.outcome || (useFallbackDecision ? 'baseline' : null);
     const pass1Diagnostics = trace?.diagnostics?.pass1 || {};
     const pass2Diagnostics = trace?.diagnostics?.pass2 || {};
 
@@ -179,7 +183,7 @@ class ClassificationPersistenceService {
       trigger: trace?.trigger || logContext?.trigger || null,
       strategy: trace?.strategy || logContext?.strategy || null,
       decision_outcome: decisionOutcome,
-      decision_reason: trace?.decision?.reason || null,
+      decision_reason: trace?.decision?.reason || (useFallbackDecision ? 'not_ran' : null),
       comparator: trace?.decision?.comparator || null,
       adopted: decisionOutcome === 'pass2' || decisionOutcome === 'policy',
       had_error: events.some((event) => event?.outcome === 'error'),

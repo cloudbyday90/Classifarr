@@ -36,7 +36,6 @@
 
 // Default dependencies - loaded at module level for DI support
 const defaultDb = require('../config/database');
-const { DB_ADVISORY_LOCKS } = require('../config/database');
 const { createLogger } = require('../utils/logger');
 const defaultClassificationService = require('./classification');
 const defaultOllamaService = require('./ollama');
@@ -53,26 +52,13 @@ const { QueueCarsaService } = require('./queueCarsaService');
 const { QueueWorkerLoopService } = require('./queueWorkerLoopService');
 const { QueueTaskProcessorService } = require('./queueTaskProcessorService');
 const { QueueRefillService } = require('./queueRefillService');
-const {
-    ENRICHMENT_METADATA_KEYS,
-    TAVILY_METADATA_KEYS,
-    buildJsonbPresenceOr
-} = require('../utils/metadataEnrichment');
+const defaultQueueMaintenanceService = require('./queueMaintenanceService');
+
 // Configuration
 const POLL_INTERVAL_MS = 1000;  // Check queue every 1 second when idle
 const MAX_CONCURRENT = 5;       // Process up to 5 tasks concurrently
 const RETRY_DELAYS = [30, 60, 120, 300, 600]; // Seconds: 30s, 1m, 2m, 5m, 10m
 const OMDB_CIRCUIT_WARN_THROTTLE_MS = 60000;
-const DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS = 10000;
-
-function parseEnvMs(envValue, defaultValue) {
-    const parsed = Number.parseInt(envValue || '', 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
-}
-
-const OMDB_SSL_WARN_THROTTLE_MS = parseEnvMs(process.env.OMDB_SSL_WARN_THROTTLE_MS, 15 * 60 * 1000);
-const OMDB_SSL_BLOCK_MS = parseEnvMs(process.env.OMDB_SSL_BLOCK_MS, 15 * 60 * 1000);
-const OMDB_SSL_RECOVERY_PROBE_MS = parseEnvMs(process.env.OMDB_SSL_RECOVERY_PROBE_MS, 60 * 1000);
 
 // Visibility timeout: how long a worker holds exclusive ownership of a task before
 // another worker (or the periodic recovery job) may re-claim it. Must exceed the
@@ -108,16 +94,12 @@ class QueueService {
         this.enrichmentRetryService = deps.enrichmentRetryService || defaultEnrichmentRetryService;
         this.evidenceService = deps.evidenceService || defaultClassificationEvidenceService;
         this.logger = deps.logger || createLogger('QueueService');
+        this.queueMaintenanceService = deps.queueMaintenanceService || defaultQueueMaintenanceService;
 
         // Instance state
         this.running = false;
         this.processing = 0;
         this.aiAvailable = true;
-        this.omdbLimitHit = false; // Track if OMDb limit hit to prevent log spam
-        this.lastOmdbCircuitWarnAt = 0;
-        this.lastOmdbSslWarnAt = 0;
-        this.omdbSslBlockedUntil = 0;
-        this.lastOmdbSslProbeAt = 0;
         // Tracks when visibility-timeout recovery last ran in the worker loop
         this.lastRecoveryCheck = 0;
         // Tracks when the worker first reached MAX_CONCURRENT (for stall detection)
@@ -134,6 +116,7 @@ class QueueService {
                 aiAvailable: this.aiAvailable,
                 workerRunning: this.running,
             }),
+            enrichmentRetryService: this.enrichmentRetryService,
         });
         this.queueMutationService = deps.queueMutationService || new QueueMutationService({
             db: this.db,
@@ -161,13 +144,7 @@ class QueueService {
             remapMappings: (...args) => this.remapAllArrMappings(...args),
             notifyRemapFailures: (...args) => this.createRemapFailureNotification(...args),
             performCleanup: (...args) => this.performClearAndResyncCleanup(...args),
-            resetVolatileState: () => {
-                this.omdbLimitHit = false;
-                this.lastOmdbCircuitWarnAt = 0;
-                this.lastOmdbSslWarnAt = 0;
-                this.omdbSslBlockedUntil = 0;
-                this.lastOmdbSslProbeAt = 0;
-            },
+            resetVolatileState: () => this.queueTaskProcessorService.resetOmdbState(),
         });
         this.queueWorkerLoopService = deps.queueWorkerLoopService || new QueueWorkerLoopService({
             db: this.db,
@@ -187,7 +164,7 @@ class QueueService {
                 this.processing += 1;
             },
             decrementProcessing: () => {
-                this.processing -= 1;
+                this.processing = Math.max(0, this.processing - 1);
             },
             setLastRecoveryCheck: (value) => {
                 this.lastRecoveryCheck = value;
@@ -198,13 +175,12 @@ class QueueService {
             setLastAiAvailabilityProbeAt: (value) => {
                 this.lastAiAvailabilityProbeAt = value;
             },
-            resetStaleProcessingTasks: (...args) => this.resetStaleProcessingTasks(...args),
-            backgroundDrainIfBloated: (...args) => this._backgroundDrainIfBloated(...args),
+            resetStaleProcessingTasks: (...args) => this.queueWorkerLoopService.resetStaleProcessingTasks(...args),
+            backgroundDrainIfBloated: (...args) => this.queueMaintenanceService.backgroundDrainIfBloated(...args),
             hasClassificationDispatchBlocker: (...args) => this.hasClassificationDispatchBlocker(...args),
             dequeue: (...args) => this.dequeue(...args),
             checkAIAvailability: (...args) => this.checkAIAvailability(...args),
             processTask: (...args) => this.processTask(...args),
-            recoverExpiredVisibilityTasks: (...args) => this.recoverExpiredVisibilityTasks(...args),
             pollIntervalMs: POLL_INTERVAL_MS,
             maxConcurrent: MAX_CONCURRENT,
             visibilityRecoveryIntervalMs: VISIBILITY_RECOVERY_INTERVAL_MS,
@@ -217,31 +193,7 @@ class QueueService {
             tmdbService: this.tmdbService,
             completeTask: (...args) => this.completeTask(...args),
             failTask: (...args) => this.failTask(...args),
-            queryWithTimeout: (...args) => this._queryWithTimeout(...args),
-            isOmdbSslBlocked: (...args) => this.isOmdbSslBlocked(...args),
-            getOmdbRuntimeState: () => ({
-                omdbLimitHit: this.omdbLimitHit,
-                lastOmdbCircuitWarnAt: this.lastOmdbCircuitWarnAt,
-                lastOmdbSslWarnAt: this.lastOmdbSslWarnAt,
-                omdbSslBlockedUntil: this.omdbSslBlockedUntil,
-            }),
-            setOmdbRuntimeState: (patch) => {
-                if (Object.prototype.hasOwnProperty.call(patch, 'omdbLimitHit')) {
-                    this.omdbLimitHit = patch.omdbLimitHit;
-                }
-                if (Object.prototype.hasOwnProperty.call(patch, 'lastOmdbCircuitWarnAt')) {
-                    this.lastOmdbCircuitWarnAt = patch.lastOmdbCircuitWarnAt;
-                }
-                if (Object.prototype.hasOwnProperty.call(patch, 'lastOmdbSslWarnAt')) {
-                    this.lastOmdbSslWarnAt = patch.lastOmdbSslWarnAt;
-                }
-                if (Object.prototype.hasOwnProperty.call(patch, 'omdbSslBlockedUntil')) {
-                    this.omdbSslBlockedUntil = patch.omdbSslBlockedUntil;
-                }
-            },
             omdbCircuitWarnThrottleMs: OMDB_CIRCUIT_WARN_THROTTLE_MS,
-            omdbSslWarnThrottleMs: OMDB_SSL_WARN_THROTTLE_MS,
-            omdbSslBlockMs: OMDB_SSL_BLOCK_MS,
         });
         this.queueRefillService = deps.queueRefillService || new QueueRefillService({
             db: this.db,
@@ -250,48 +202,7 @@ class QueueService {
     }
 
     async isOmdbSslBlocked(omdbApiKey, title) {
-        const now = Date.now();
-
-        if (this.omdbSslBlockedUntil === 0 || now >= this.omdbSslBlockedUntil) {
-            return false;
-        }
-
-        if ((now - this.lastOmdbSslProbeAt) < OMDB_SSL_RECOVERY_PROBE_MS) {
-            return true;
-        }
-
-        this.lastOmdbSslProbeAt = now;
-
-        try {
-            const health = await this.omdbService.checkHealth(omdbApiKey);
-            if (health?.healthy) {
-                this.omdbSslBlockedUntil = 0;
-                this.lastOmdbSslWarnAt = 0;
-                this.logger.info('OMDb SSL recovery detected; resuming OMDb enrichment', { title });
-                return false;
-            }
-
-            if (health?.ssl_error) {
-                this.omdbSslBlockedUntil = now + OMDB_SSL_BLOCK_MS;
-                if ((now - this.lastOmdbSslWarnAt) >= OMDB_SSL_WARN_THROTTLE_MS) {
-                    this.lastOmdbSslWarnAt = now;
-                    this.logger.warn('OMDb SSL certificate issue persists; OMDb enrichment remains temporarily paused', {
-                        title,
-                        message: health.message
-                    });
-                } else {
-                    this.logger.debug('OMDb SSL persistent warning suppressed', { title });
-                }
-                return true;
-            }
-        } catch (healthError) {
-            this.logger.debug('OMDb SSL recovery probe failed', {
-                title,
-                error: healthError.message
-            });
-        }
-
-        return true;
+        return this.queueTaskProcessorService.isOmdbSslBlocked(omdbApiKey, title);
     }
 
     /**
@@ -455,57 +366,14 @@ class QueueService {
      * Check if AI is available (respects configured provider)
      */
     async checkAIAvailability() {
-        try {
-            // Get the configured AI provider
-            const provider = await this.aiRouterService.getProvider('classification');
-
-            // No provider configured or AI disabled
-            if (!provider) {
-                if (this.aiAvailable) {
-                    this.logger.info('AI is disabled or no provider configured');
-                }
-                this.aiAvailable = false;
-                return false;
-            }
-
-            // Cloud provider (OpenAI, Gemini, etc.) - assume available if configured
-            if (provider.isCloud) {
-                if (!this.aiAvailable) {
-                    this.logger.info(`Cloud AI provider available: ${provider.type}`);
-                }
-                this.aiAvailable = true;
-                return true;
-            }
-
-            // Ollama provider - need to check connection
-            if (provider.type === 'ollama') {
-                const result = await this.ollamaService.testConnection();
-
-                if (result.success) {
-                    if (!this.aiAvailable) {
-                        this.logger.info('Ollama is now available');
-                    }
-                    this.aiAvailable = true;
-                    return true;
-                } else {
-                    if (this.aiAvailable) {
-                        this.logger.warn('Ollama is offline', { error: result.error });
-                    }
-                    this.aiAvailable = false;
-                    return false;
-                }
-            }
-
-            // Unknown provider type
-            this.logger.warn('Unknown AI provider type', { type: provider.type });
-            return false;
-        } catch (error) {
-            if (this.aiAvailable) {
-                this.logger.warn('AI availability check failed', { error: error.message });
-            }
-            this.aiAvailable = false;
-            return false;
-        }
+        const wasAvailable = this.aiAvailable;
+        const nowAvailable = await this.aiRouterService.checkAvailability(
+            wasAvailable,
+            this.ollamaService,
+            this.logger
+        );
+        this.aiAvailable = nowAvailable;
+        return nowAvailable;
     }
 
     /**
@@ -529,46 +397,7 @@ class QueueService {
      * already holds the lock it is already doing the reset — skip silently.
      */
     async resetStaleProcessingTasks() {
-        let client;
-        try {
-            client = await this.db.pool.connect();
-            await client.query('BEGIN');
-            const lockResult = await client.query(
-                'SELECT pg_try_advisory_xact_lock($1) AS acquired',
-                [DB_ADVISORY_LOCKS.STARTUP_RESET]
-            );
-            if (!lockResult.rows[0].acquired) {
-                this.logger.info('resetStaleProcessingTasks: skipped (another container holds startup lock)');
-                await client.query('ROLLBACK');
-                return 0;
-            }
-            const result = await client.query(
-                // Age guard: only reset tasks that have been processing for more than
-                // VISIBILITY_TIMEOUT_MINUTES. Tasks started very recently (e.g. during
-                // a rolling restart overlap) are left alone and will self-recover via
-                // the visibility timeout in the worker loop.
-                `UPDATE task_queue 
-                 SET status = 'pending', started_at = NULL, visible_at = NULL,
-                     error_message = 'Reset on startup - previous worker crashed'
-                 WHERE status = 'processing'
-                   AND (started_at IS NULL OR started_at < NOW() - INTERVAL '${VISIBILITY_TIMEOUT_MINUTES} minutes')
-                 RETURNING id`
-            );
-            await client.query('COMMIT');
-            if (result.rowCount > 0) {
-                this.logger.warn('Reset stale processing tasks on startup', {
-                    count: result.rowCount,
-                    taskIds: result.rows.map(r => r.id)
-                });
-            }
-            return result.rowCount;
-        } catch (error) {
-            if (client) await client.query('ROLLBACK').catch(() => {});
-            this.logger.error('Failed to reset stale tasks', { error: error.message });
-            return 0;
-        } finally {
-            if (client) client.release();
-        }
+        return this.queueWorkerLoopService.resetStaleProcessingTasks();
     }
 
     /**
@@ -598,53 +427,11 @@ class QueueService {
      * @returns {Promise<number>} number of tasks recovered
      */
     async recoverExpiredVisibilityTasks() {
-        try {
-            const result = await this.db.query(
-                `UPDATE task_queue
-                 SET status = 'pending', started_at = NULL, visible_at = NULL,
-                     error_message = 'Recovered: visibility timeout expired'
-                 WHERE status = 'processing'
-                   AND visible_at IS NOT NULL
-                   AND visible_at <= NOW()
-                 RETURNING id`
-            );
-            if (result.rowCount > 0) {
-                // Compensate the in-memory counter so dequeue() can resume immediately.
-                // Without this, this.processing stays at MAX_CONCURRENT even though the
-                // DB rows have been reset to 'pending', and no new tasks are ever dequeued.
-                this.processing = Math.max(0, this.processing - result.rowCount);
-                this.logger.warn('Recovered tasks with expired visibility timeout; decremented processing counter', {
-                    count: result.rowCount,
-                    taskIds: result.rows.map(r => r.id),
-                    processingAfter: this.processing,
-                });
-            }
-            return result.rowCount;
-        } catch (error) {
-            this.logger.error('Failed to recover expired visibility tasks', { error: error.message });
-            return 0;
-        }
+        return this.queueWorkerLoopService.recoverExpiredVisibilityTasks();
     }
 
     async gracefulShutdown() {
-        this.stopWorker();
-        try {
-            const result = await this.db.query(
-                `UPDATE task_queue
-                 SET status = 'pending', started_at = NULL, visible_at = NULL,
-                     error_message = 'Reset by graceful shutdown'
-                 WHERE status = 'processing'
-                 RETURNING id`
-            );
-            if (result.rowCount > 0) {
-                this.logger.info('Graceful shutdown: reset in-flight tasks to pending', {
-                    count: result.rowCount,
-                    taskIds: result.rows.map(r => r.id),
-                });
-            }
-        } catch (err) {
-            this.logger.error('Graceful shutdown: failed to reset in-flight tasks', { error: err.message });
-        }
+        return this.queueWorkerLoopService.gracefulShutdown();
     }
 
     /**
@@ -662,77 +449,7 @@ class QueueService {
     }
 
     async getLiveStats() {
-        const anyEnrichmentSql = buildJsonbPresenceOr('metadata', ENRICHMENT_METADATA_KEYS);
-        const tavilyEnrichmentSql = buildJsonbPresenceOr('metadata', TAVILY_METADATA_KEYS);
-        const [queueStats, gapStats, todayResult, enrichmentResult, enrichmentQueueResult] = await Promise.all([
-            this.getStats(),
-            this.getGapAnalysisStats(),
-            this.db.query(`
-                SELECT 
-                    COUNT(*) FILTER (WHERE method != 'source_library') as new_classified,
-                    COUNT(*) as all_classified,
-                    AVG(confidence) FILTER (WHERE method != 'source_library') as new_avg_confidence,
-                    AVG(confidence) as all_avg_confidence
-                FROM classification_history 
-                WHERE created_at >= CURRENT_DATE
-            `),
-            this.db.query(`
-                SELECT 
-                    COUNT(*) as total_items,
-                    COUNT(*) FILTER (WHERE ${anyEnrichmentSql}) as enriched,
-                    COUNT(*) FILTER (WHERE ${tavilyEnrichmentSql}) as tavily_enriched,
-                    COUNT(*) FILTER (WHERE metadata->'omdb' IS NOT NULL) as omdb_enriched
-                FROM media_server_items
-            `),
-            this.db.query(`
-                SELECT COUNT(*) as pending FROM task_queue 
-                WHERE task_type = 'metadata_enrichment' AND status = 'pending'
-            `)
-        ]);
-
-        const enrichmentPending = parseInt(enrichmentQueueResult.rows[0]?.pending, 10) || 0;
-        const totalItems = parseInt(enrichmentResult.rows[0]?.total_items, 10) || 0;
-        const enrichedItems = parseInt(enrichmentResult.rows[0]?.enriched, 10) || 0;
-        const tavilyEnrichedItems = parseInt(enrichmentResult.rows[0]?.tavily_enriched, 10) || 0;
-        const omdbEnrichedItems = parseInt(enrichmentResult.rows[0]?.omdb_enriched, 10) || 0;
-        const enrichmentProgress = totalItems > 0 ? Math.round((enrichedItems / totalItems) * 100) : 0;
-        const newClassifiedToday = parseInt(todayResult.rows[0]?.new_classified, 10) || 0;
-        const allClassifiedToday = parseInt(todayResult.rows[0]?.all_classified, 10) || 0;
-        const newAvgConfidence = parseFloat(todayResult.rows[0]?.new_avg_confidence) || 0;
-        const allAvgConfidence = parseFloat(todayResult.rows[0]?.all_avg_confidence) || 0;
-
-        let retryQueueStats = { tavily: { pending: 0 }, total: { pending: 0 } };
-        try {
-            retryQueueStats = await this.getEnrichmentRetryStats();
-        } catch (_error) {
-            // Retry queue table may not exist yet
-        }
-
-        return {
-            queue: queueStats,
-            gapAnalysis: gapStats,
-            today: {
-                classified: newClassifiedToday,
-                avgConfidence: Math.round(newAvgConfidence),
-                allClassified: allClassifiedToday,
-                allAvgConfidence: Math.round(allAvgConfidence)
-            },
-            enrichment: {
-                totalItems,
-                enriched: enrichedItems,
-                tavilyEnriched: tavilyEnrichedItems,
-                omdbEnriched: omdbEnrichedItems,
-                progress: enrichmentProgress,
-                pending: enrichmentPending,
-                retryQueue: retryQueueStats
-            },
-            health: {
-                ai: queueStats?.aiAvailable ?? false,
-                worker: queueStats?.workerRunning ?? false,
-                database: true
-            },
-            timestamp: new Date().toISOString()
-        };
+        return this.queueReadModel.getLiveStats();
     }
 
     /**
@@ -894,34 +611,8 @@ class QueueService {
      * @param {Array}  params Bind parameters
      * @param {number} [timeoutMs=30000]  Statement timeout in milliseconds
      */
-    async _queryWithTimeout(sql, params, timeoutMs = 30_000) {
-        let client;
-        try {
-            if (this.db.pool && typeof this.db.pool.connect === 'function') {
-                client = await this.db.pool.connect();
-            }
-        } catch (_) {
-            // Pool unavailable — fall through to regular query
-        }
-
-        // If we didn't get a real client (e.g. test auto-mock returns undefined),
-        // fall back to the standard db.query so tests don't need db.pool set up.
-        if (!client || typeof client.query !== 'function') {
-            return this.db.query(sql, params);
-        }
-
-        try {
-            await client.query('BEGIN');
-            await client.query(`SET LOCAL statement_timeout = '${timeoutMs}'`); // sql-interpolation: SET LOCAL param cannot use $N placeholders; timeoutMs is a validated positive integer
-            const result = await client.query(sql, params);
-            await client.query('COMMIT');
-            return result;
-        } catch (err) {
-            await client.query('ROLLBACK').catch(() => {});
-            throw err;
-        } finally {
-            client.release();
-        }
+    async _queryWithTimeout(sql, params, timeoutMs) {
+        return this.queueTaskProcessorService._queryWithTimeout(sql, params, timeoutMs);
     }
 
     async withOptionalTransaction(work, context = 'transaction') {
@@ -947,127 +638,6 @@ class QueueService {
      * Finds items that need analysis and adds them to the queue
      * This is used by the scheduler (gap analysis) and manual ingestion triggers
      */
-    /**
-     * Drain old completed/failed/cancelled task_queue rows in the background.
-     * Called once at worker startup. Loops in batches of 5 000 until no more
-     * rows older than TASK_QUEUE_RETENTION_DAYS remain, then applies a
-     * count-based cap so high-volume instances don't accumulate hundreds of
-     * thousands of recent completed rows within the retention window.
-     *
-     * Two triggers (either may fire independently):
-     *   1. Age-based  — rows older than TASK_QUEUE_RETENTION_DAYS
-     *   2. Count-based — total completed/failed/cancelled rows > MAX_TOTAL_ROWS
-     *      → keeps only the MAX_TOTAL_ROWS most-recent rows (deletes the oldest)
-     *
-     * The count check fires when the stale row count exceeds BLOAT_THRESHOLD
-     * (1 000) to avoid unnecessary DB round-trips on healthy instances.
-     */
-    async _backgroundDrainIfBloated() {
-        const BLOAT_THRESHOLD = 1000;
-        // Hard cap on total completed/failed/cancelled rows regardless of age.
-        // Prevents slow INSERT/index-maintenance on high-throughput instances
-        // where every row is still within the retention window.
-        const MAX_TOTAL_ROWS = parseInt(process.env.TASK_QUEUE_MAX_TOTAL_ROWS, 10) || DEFAULT_TASK_QUEUE_MAX_TOTAL_ROWS;
-        const BATCH = 5000;
-
-        const parsed = parseInt(process.env.TASK_QUEUE_RETENTION_DAYS, 10);
-        const retentionDays = Number.isFinite(parsed) && parsed > 0 ? parsed : 7;
-
-        // Single query gets both the age-based stale count and the total count.
-        const countResult = await this.db.query(
-            `SELECT
-               COUNT(*) FILTER (WHERE created_at < NOW() - ($1 || ' days')::INTERVAL) AS stale_count,
-               COUNT(*) AS total_count
-             FROM task_queue
-             WHERE status IN ('completed', 'failed', 'cancelled')`,
-            [retentionDays]
-        );
-        const staleCount = parseInt(countResult.rows[0].stale_count) || 0;
-        const totalCount = parseInt(countResult.rows[0].total_count) || 0;
-
-        const ageBloated = staleCount > BLOAT_THRESHOLD;
-        const countBloated = totalCount > MAX_TOTAL_ROWS;
-
-        if (!ageBloated && !countBloated) return;
-
-        this.logger.warn('task_queue bloat detected at startup; running background drain', {
-            staleRows: staleCount,
-            totalRows: totalCount,
-            retentionDays,
-            maxTotalRows: MAX_TOTAL_ROWS,
-            trigger: ageBloated && countBloated ? 'age+count' : ageBloated ? 'age' : 'count'
-        });
-
-        let totalDeleted = 0;
-        let batchDeleted;
-
-        // --- Age-based drain (existing behaviour) ---
-        if (ageBloated) {
-            do {
-                const result = await this.db.query(
-                    `DELETE FROM task_queue
-                     WHERE id IN (
-                         SELECT id FROM task_queue
-                         WHERE status IN ('completed', 'failed', 'cancelled')
-                           AND created_at < NOW() - ($1 || ' days')::INTERVAL
-                         LIMIT $2
-                     )`,
-                    [retentionDays, BATCH]
-                );
-                batchDeleted = result.rowCount;
-                totalDeleted += batchDeleted;
-                // Yield between batches so the drain doesn't starve the event loop
-                await new Promise(resolve => setTimeout(resolve, 50));
-            } while (batchDeleted === BATCH);
-        }
-
-        // --- Count-based drain (new) ---
-        // After the age drain, re-check or use the original total; if still over
-        // the cap, delete the oldest completed/failed/cancelled rows until only
-        // MAX_TOTAL_ROWS remain.
-        const remainingAfterAge = totalCount - totalDeleted;
-        if (countBloated && remainingAfterAge > MAX_TOTAL_ROWS) {
-            const excess = remainingAfterAge - MAX_TOTAL_ROWS;
-            this.logger.warn('task_queue count cap exceeded; trimming oldest rows', {
-                remaining: remainingAfterAge,
-                maxTotalRows: MAX_TOTAL_ROWS,
-                toDelete: excess
-            });
-            let countDeleted = 0;
-            do {
-                const batchSize = Math.min(BATCH, excess - countDeleted);
-                if (batchSize <= 0) break;
-                const result = await this.db.query(
-                    `DELETE FROM task_queue
-                     WHERE id IN (
-                         SELECT id FROM task_queue
-                         WHERE status IN ('completed', 'failed', 'cancelled')
-                         ORDER BY created_at ASC
-                         LIMIT $1
-                     )`,
-                    [batchSize]
-                );
-                batchDeleted = result.rowCount;
-                countDeleted += batchDeleted;
-                totalDeleted += batchDeleted;
-                await new Promise(resolve => setTimeout(resolve, 50));
-            } while (batchDeleted > 0 && countDeleted < excess);
-        }
-
-        this.logger.info('Background task_queue drain complete', { deleted: totalDeleted, retentionDays });
-
-        // Refresh query planner statistics after bulk delete so subsequent queries don't
-        // plan against a stale row-count estimate.  VACUUM ANALYZE runs outside any
-        // transaction (pool autocommit), so it is safe to call here.
-        try {
-            await this.db.query('VACUUM ANALYZE task_queue');
-            this.logger.info('task_queue VACUUM ANALYZE complete after background drain');
-        } catch (vacuumErr) {
-            this.logger.warn('task_queue VACUUM ANALYZE failed after background drain (non-fatal)', {
-                error: vacuumErr.message
-            });
-        }
-    }
 
     async refillQueue() {
         try {

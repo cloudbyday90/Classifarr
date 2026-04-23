@@ -645,6 +645,14 @@ Operational notes:
 - Retry queue stale processing rows are auto-recovered.
 - Retry queue rows already enriched are auto-resolved to prevent inflated pending counts.
 
+## Database Tuning
+
+| Variable | Default | Effect |
+|---|---|---|
+| `POSTGRES_SLOW_QUERY_THRESHOLD_MS` | `500` | Queries exceeding this threshold (ms) emit a `[SLOW QUERY]` warning with elapsed time and query text. Lower on fast NVMe storage; raise on spinning disk or NAS. Set to `-1` to disable. |
+| `POSTGRES_CONN_TIMEOUT_MS` | `5000` | Pool connection acquisition timeout (ms). |
+| `POSTGRES_STATEMENT_TIMEOUT_MS` | `30000` | Per-query statement timeout (ms). Kills runaway queries server-side. |
+
 ## Upgrade Notes for Existing Deployments
 
 - Existing compose files continue to work.

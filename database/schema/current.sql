@@ -7197,6 +7197,13 @@ CREATE INDEX idx_task_queue_priority ON public.task_queue USING btree (priority 
 
 
 --
+-- Name: idx_task_queue_processing_classification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_queue_processing_classification ON public.task_queue USING btree (id) WHERE (((status)::text = 'processing'::text) AND ((task_type)::text = 'classification'::text));
+
+
+--
 -- Name: idx_task_queue_processing_stale; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7208,6 +7215,13 @@ CREATE INDEX idx_task_queue_processing_stale ON public.task_queue USING btree (s
 --
 
 CREATE INDEX idx_task_queue_status ON public.task_queue USING btree (status);
+
+
+--
+-- Name: idx_task_queue_task_type_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_task_queue_task_type_status ON public.task_queue USING btree (task_type, status);
 
 
 --
@@ -8046,6 +8060,7 @@ VALUES (
 -- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
 -- ═══════════════════════════════════════════════════════════════════════════
 
+
 -- ============================================================================
 -- SIGNAL SCHEMA REFERENCE (TypeScript)
 -- ============================================================================
@@ -8362,6 +8377,7 @@ ON CONFLICT (key, user_id) DO UPDATE SET
 -- Depends on: Migration 043 (Initial 46 Content Presets)
 -- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
 -- ═══════════════════════════════════════════════════════════════════════════
+
 
 -- ============================================================================
 -- CONTENT PRESETS EXPANSION - 122 NEW PRESETS
@@ -8932,6 +8948,7 @@ ON CONFLICT (key, user_id) DO UPDATE SET
 -- Parent Epic: #82 (v0.37.0 Formula-Based Classification Engine)
 -- ═══════════════════════════════════════════════════════════════════════════
 
+
 -- ============================================================================
 -- EVENT DETECTION PRESETS - 6 new presets
 -- ============================================================================
@@ -9035,6 +9052,7 @@ SET
 -- This function migrates existing libraries using event_detection_type to use
 -- the new event presets via PolicyEngine
 -- ============================================================================
+
 
 
 

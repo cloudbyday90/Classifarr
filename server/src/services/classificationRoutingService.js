@@ -36,6 +36,7 @@ const tmdbService = require('./tmdb');
 const radarrService = require('./radarr');
 const sonarrService = require('./sonarr');
 const { createLogger } = require('../utils/logger');
+const policyQuestionBuilder = require('./policyQuestionBuilder');
 
 const logger = createLogger('classificationRoutingService');
 
@@ -640,6 +641,67 @@ function suggestSeriesType(metadata, appliedLabels = []) {
   return 'standard';
 }
 
+/**
+ * Ensure a policy/clarification question is attached to a classification result
+ * that needs one. Mutates and returns the result object.
+ *
+ * @param {object} params
+ * @param {object} params.metadata
+ * @param {object} params.result
+ * @param {object|null} params.policyResult
+ * @param {object[]} params.libraries
+ * @param {object|null} params.ragContext
+ * @returns {Promise<object>} mutated result
+ */
+async function ensureDecisionQuestion({ metadata, result, policyResult = null, libraries = [], ragContext = null }) {
+  if (!result || result.needs_retry) {
+    return result;
+  }
+
+  const requiresDecisionQuestion = Boolean(
+    result.needs_clarification ||
+    result.method === 'fallback' ||
+    (result.confidence && result.confidence < 70)
+  );
+
+  if (!requiresDecisionQuestion) {
+    result.needs_clarification = false;
+    result.clarification = null;
+    result.policy_question = null;
+    result.pending_reason = null;
+    return result;
+  }
+
+  const existingQuestion = result.policy_question || result.clarification || null;
+  if (existingQuestion) {
+    result.needs_clarification = true;
+    result.clarification = result.clarification || existingQuestion;
+    result.policy_question = result.policy_question || existingQuestion;
+    result.pending_reason = result.pending_reason || existingQuestion.problem_summary || result.reason || null;
+    return result;
+  }
+
+  const effectivePolicyResult = result.policyResult || policyResult || null;
+  const policyQuestion = await policyQuestionBuilder.build({
+    metadata,
+    policyResult: effectivePolicyResult,
+    libraries,
+    suggestedLibrary: result.library || null,
+    ragContext,
+    aiResult: result,
+    relatedEvidenceSummary: result.signalContext?.relatedEvidenceSummary ?? null,
+  });
+
+  if (policyQuestion) {
+    result.needs_clarification = true;
+    result.clarification = policyQuestion;
+    result.policy_question = policyQuestion;
+    result.pending_reason = policyQuestion.problem_summary;
+  }
+
+  return result;
+}
+
 module.exports = {
   normalizeSettings,
   normalizeQualityProfileId,
@@ -649,4 +711,5 @@ module.exports = {
   resolveRoutingConfig,
   routeToArr,
   suggestSeriesType,
+  ensureDecisionQuestion,
 };

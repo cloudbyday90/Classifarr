@@ -77,11 +77,11 @@ describe('QueueService', () => {
         queueService.processing = 0;
         queueService.running = false;
         queueService.aiAvailable = true;
-        queueService.omdbLimitHit = false;
-        queueService.lastOmdbCircuitWarnAt = 0;
-        queueService.lastOmdbSslWarnAt = 0;
-        queueService.omdbSslBlockedUntil = 0;
-        queueService.lastOmdbSslProbeAt = 0;
+        queueService.queueTaskProcessorService.omdbLimitHit = false;
+        queueService.queueTaskProcessorService.lastOmdbCircuitWarnAt = 0;
+        queueService.queueTaskProcessorService.lastOmdbSslWarnAt = 0;
+        queueService.queueTaskProcessorService.omdbSslBlockedUntil = 0;
+        queueService.queueTaskProcessorService.lastOmdbSslProbeAt = 0;
         queueService.lastAiAvailabilityProbeAt = 0;
         queueService._blockerCache = null;
         queueService._blockerCacheExpiresAt = 0;
@@ -90,7 +90,12 @@ describe('QueueService', () => {
         // at module scope with virtual:true). Wire the virtual mock into the instance so that
         // tests can control getByTitle / checkHealth via mock methods.
         queueService.omdbService = require('../services/omdb');
+        // Also wire into queueTaskProcessorService which now owns isOmdbSslBlocked
+        queueService.queueTaskProcessorService.omdbService = queueService.omdbService;
         queueService.enrichmentRetryService = require('../services/enrichmentRetryService');
+        // Keep queueReadModel.enrichmentRetryService in sync with the mocked service
+        // (queueReadModel captured the default at construction time, before jest.mock ran)
+        queueService.queueReadModel.enrichmentRetryService = queueService.enrichmentRetryService;
         queueService.queueCarsaService.mediaSyncService = require('../services/mediaSync');
         queueService.queueCarsaService.getScheduler = () => require('../services/scheduler');
         queueService.evidenceService = {
@@ -516,8 +521,8 @@ describe('QueueService', () => {
             const omdbService = require('../services/omdb');
             const enrichmentRetryService = require('../services/enrichmentRetryService');
 
-            queueService.omdbSslBlockedUntil = Date.now() + 60_000;
-            queueService.lastOmdbSslProbeAt = 0;
+            queueService.queueTaskProcessorService.omdbSslBlockedUntil = Date.now() + 60_000;
+            queueService.queueTaskProcessorService.lastOmdbSslProbeAt = 0;
 
             omdbService.checkHealth.mockResolvedValue({
                 healthy: true,
@@ -706,9 +711,9 @@ describe('QueueService', () => {
                     rows: [{ pending: '7' }]
                 });
 
-            jest.spyOn(queueService, 'getStats').mockResolvedValue({ pending: 2, aiAvailable: true, workerRunning: true });
-            jest.spyOn(queueService, 'getGapAnalysisStats').mockResolvedValue({ unprocessed: 3 });
-            jest.spyOn(queueService, 'getEnrichmentRetryStats').mockResolvedValue({ tavily: { pending: 1 }, total: { pending: 1 } });
+            jest.spyOn(queueService.queueReadModel, 'getStats').mockResolvedValue({ pending: 2, aiAvailable: true, workerRunning: true });
+            jest.spyOn(queueService.queueReadModel, 'getGapAnalysisStats').mockResolvedValue({ unprocessed: 3 });
+            jest.spyOn(queueService.queueReadModel.enrichmentRetryService, 'getStats').mockResolvedValue({ tavily: { pending: 1 }, total: { pending: 1 } });
 
             const result = await queueService.getLiveStats();
             const enrichmentSql = db.query.mock.calls[1][0];
@@ -737,9 +742,9 @@ describe('QueueService', () => {
                     rows: [{ pending: '0' }]
                 });
 
-            jest.spyOn(queueService, 'getStats').mockResolvedValue({ pending: 0, aiAvailable: true, workerRunning: true });
-            jest.spyOn(queueService, 'getGapAnalysisStats').mockResolvedValue({ unprocessed: 0 });
-            jest.spyOn(queueService, 'getEnrichmentRetryStats').mockRejectedValue(new Error('retry stats unavailable'));
+            jest.spyOn(queueService.queueReadModel, 'getStats').mockResolvedValue({ pending: 0, aiAvailable: true, workerRunning: true });
+            jest.spyOn(queueService.queueReadModel, 'getGapAnalysisStats').mockResolvedValue({ unprocessed: 0 });
+            jest.spyOn(queueService.queueReadModel.enrichmentRetryService, 'getStats').mockRejectedValue(new Error('retry stats unavailable'));
 
             const result = await queueService.getLiveStats();
 
@@ -771,7 +776,7 @@ describe('QueueService', () => {
     describe('startWorker', () => {
         it('should start worker loop', async () => {
             // Mock internal methods to avoid loop and DB calls
-            jest.spyOn(queueService, 'resetStaleProcessingTasks').mockResolvedValue();
+            jest.spyOn(queueService.queueWorkerLoopService, 'resetStaleProcessingTasks').mockResolvedValue();
             jest.spyOn(queueService, 'hasClassificationDispatchBlocker').mockResolvedValue({
                 hasProcessingClassification: false
             });
@@ -799,16 +804,16 @@ describe('QueueService', () => {
 
         it('should not start if already running', async () => {
             queueService.running = true;
-            jest.spyOn(queueService, 'resetStaleProcessingTasks').mockResolvedValue();
+            jest.spyOn(queueService.queueWorkerLoopService, 'resetStaleProcessingTasks').mockResolvedValue();
 
             await queueService.startWorker();
 
             // Should exit immediately without calling resetStale
-            expect(queueService.resetStaleProcessingTasks).not.toHaveBeenCalled();
+            expect(queueService.queueWorkerLoopService.resetStaleProcessingTasks).not.toHaveBeenCalled();
         });
 
         it('should skip new classification dequeue while another classification is processing', async () => {
-            jest.spyOn(queueService, 'resetStaleProcessingTasks').mockResolvedValue();
+            jest.spyOn(queueService.queueWorkerLoopService, 'resetStaleProcessingTasks').mockResolvedValue();
             jest.spyOn(queueService, 'hasClassificationDispatchBlocker').mockResolvedValue({
                 hasProcessingClassification: true,
                 lookupFailed: false
@@ -903,6 +908,40 @@ describe('QueueService', () => {
                 'Failed to check classification dispatch blockers',
                 expect.objectContaining({ error: 'lookup failed' })
             );
+        });
+
+        it('should serve cached result within 250ms TTL without a second DB query', async () => {
+            db.query.mockResolvedValue({
+                rows: [{ has_processing_classification: true }]
+            });
+
+            const first = await queueService.hasClassificationDispatchBlocker();
+            const second = await queueService.hasClassificationDispatchBlocker();
+
+            // Cache should serve the same object reference
+            expect(second).toBe(first);
+            // DB should only have been queried once
+            expect(db.query).toHaveBeenCalledTimes(1);
+        });
+
+        it('should re-query DB after 250ms TTL expires', async () => {
+            db.query.mockResolvedValue({
+                rows: [{ has_processing_classification: false }]
+            });
+
+            await queueService.hasClassificationDispatchBlocker();
+
+            // Force expiry
+            queueService._blockerCacheExpiresAt = 0;
+
+            db.query.mockResolvedValue({
+                rows: [{ has_processing_classification: true }]
+            });
+
+            const result = await queueService.hasClassificationDispatchBlocker();
+
+            expect(db.query).toHaveBeenCalledTimes(2);
+            expect(result.hasProcessingClassification).toBe(true);
         });
     });
 
@@ -1020,6 +1059,33 @@ describe('QueueService', () => {
             expect(stats.workerRunning).toBe(true);
             expect(stats.classificationPaused).toBe(true);
             expect(stats.classificationPauseReason).toBe('ai_unavailable');
+        });
+    });
+
+    describe('checkAIAvailability', () => {
+        it('delegates to aiRouterService.checkAvailability and updates this.aiAvailable', async () => {
+            queueService.aiAvailable = true;
+            jest.spyOn(queueService.aiRouterService, 'checkAvailability').mockResolvedValue(false);
+
+            const result = await queueService.checkAIAvailability();
+
+            expect(result).toBe(false);
+            expect(queueService.aiAvailable).toBe(false);
+            expect(queueService.aiRouterService.checkAvailability).toHaveBeenCalledWith(
+                true,
+                queueService.ollamaService,
+                queueService.logger
+            );
+        });
+
+        it('reflects true return from aiRouterService.checkAvailability', async () => {
+            queueService.aiAvailable = false;
+            jest.spyOn(queueService.aiRouterService, 'checkAvailability').mockResolvedValue(true);
+
+            const result = await queueService.checkAIAvailability();
+
+            expect(result).toBe(true);
+            expect(queueService.aiAvailable).toBe(true);
         });
     });
 
@@ -1240,12 +1306,12 @@ describe('QueueService', () => {
             });
 
             // Set a cache flag
-            queueService.omdbLimitHit = true;
+            queueService.queueTaskProcessorService.omdbLimitHit = true;
 
             await queueService.clearAndResync();
 
             // Verify cache was cleared
-            expect(queueService.omdbLimitHit).toBe(false);
+            expect(queueService.queueTaskProcessorService.omdbLimitHit).toBe(false);
         });
 
         it('should use syncAllLibraries for fresh sync', async () => {
@@ -2063,87 +2129,8 @@ describe('QueueService', () => {
         });
     });
 
-    describe('_backgroundDrainIfBloated', () => {
-        function mockCounts({ stale = 0, total = 0 } = {}) {
-            // First call: the combined count query
-            db.query.mockResolvedValueOnce({ rows: [{ stale_count: String(stale), total_count: String(total) }] });
-        }
-
-        it('returns early when neither age nor count threshold is exceeded', async () => {
-            mockCounts({ stale: 0, total: 500 });
-            await queueService._backgroundDrainIfBloated();
-            // Only the count query should have fired; no DELETE, no VACUUM
-            expect(db.query).toHaveBeenCalledTimes(1);
-        });
-
-        it('age-based drain: deletes rows older than retention window and runs VACUUM ANALYZE', async () => {
-            mockCounts({ stale: 3000, total: 3000 });
-            // One DELETE batch (returns fewer than BATCH → loop ends), then VACUUM
-            db.query
-                .mockResolvedValueOnce({ rowCount: 3000 }) // DELETE batch
-                .mockResolvedValueOnce({});                  // VACUUM ANALYZE
-
-            await queueService._backgroundDrainIfBloated();
-
-            const calls = db.query.mock.calls.map(([sql]) => (typeof sql === 'string' ? sql : ''));
-            expect(calls.some(s => s.includes('DELETE') && s.includes('created_at <'))).toBe(true);
-            expect(calls.some(s => s.includes('VACUUM ANALYZE task_queue'))).toBe(true);
-            expect(queueService.logger.warn).toHaveBeenCalledWith(
-                expect.stringContaining('bloat detected'),
-                expect.objectContaining({ trigger: 'age' })
-            );
-        });
-
-        it('count-based drain: deletes oldest rows when total exceeds MAX_TOTAL_ROWS', async () => {
-            // No age-stale rows, but 20 000 total (well over default 10 000 cap)
-            mockCounts({ stale: 0, total: 20000 });
-            // COUNT-based DELETE batch + VACUUM
-            db.query
-                .mockResolvedValueOnce({ rowCount: 5000 }) // count-based DELETE batch 1
-                .mockResolvedValueOnce({ rowCount: 5000 }) // count-based DELETE batch 2
-                .mockResolvedValueOnce({ rowCount: 0 }) // count-based DELETE batch 3
-                .mockResolvedValueOnce({});                  // VACUUM ANALYZE
-
-            await queueService._backgroundDrainIfBloated();
-
-            const calls = db.query.mock.calls.map(([sql]) => (typeof sql === 'string' ? sql : ''));
-            expect(calls.some(s => s.includes('DELETE') && s.includes('ORDER BY created_at ASC'))).toBe(true);
-            expect(calls.some(s => s.includes('VACUUM ANALYZE task_queue'))).toBe(true);
-            expect(queueService.logger.warn).toHaveBeenCalledWith(
-                expect.stringContaining('count cap exceeded'),
-                expect.objectContaining({ remaining: 20000, maxTotalRows: 10000 })
-            );
-        });
-
-        it('logs trigger as "age+count" when both thresholds are exceeded', async () => {
-            mockCounts({ stale: 5000, total: 20000 });
-            db.query
-                .mockResolvedValueOnce({ rowCount: 5000 }) // age DELETE
-                .mockResolvedValueOnce({ rowCount: 5000 }) // count DELETE batch 1
-                .mockResolvedValueOnce({ rowCount: 0 }) // count DELETE batch 2
-                .mockResolvedValueOnce({});                 // VACUUM ANALYZE
-
-            await queueService._backgroundDrainIfBloated();
-
-            expect(queueService.logger.warn).toHaveBeenCalledWith(
-                expect.stringContaining('bloat detected'),
-                expect.objectContaining({ trigger: 'age+count' })
-            );
-        });
-
-        it('continues and logs warning when VACUUM ANALYZE fails', async () => {
-            mockCounts({ stale: 2000, total: 2000 });
-            db.query
-                .mockResolvedValueOnce({ rowCount: 2000 })
-                .mockRejectedValueOnce(new Error('vacuum failed'));
-
-            await expect(queueService._backgroundDrainIfBloated()).resolves.toBeUndefined();
-            expect(queueService.logger.warn).toHaveBeenCalledWith(
-                expect.stringContaining('VACUUM ANALYZE failed'),
-                expect.objectContaining({ error: 'vacuum failed' })
-            );
-        });
-    });
+    // NOTE: _backgroundDrainIfBloated tests have been migrated to
+    // queueMaintenanceService.test.js (Phase 1.3 extraction).
 
     describe('gracefulShutdown', () => {
         it('sets error_message to diagnostic note instead of NULL on in-flight tasks', async () => {

@@ -51,7 +51,7 @@ async function enforceRateLimit() {
         releaseLock = resolve;
     });
 
-    await previousLock.catch(() => {});
+    await previousLock.catch(() => {}); // swallow-error: best-effort wait for previous rate-limit lock; a rejected lock promise does not affect the current request
 
     try {
         const now = Date.now();

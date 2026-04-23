@@ -207,6 +207,54 @@ class AIRouterService {
 
         return status;
     }
+
+    /**
+     * Full availability probe: checks provider configuration and tests Ollama
+     * connectivity when Ollama is the active provider.
+     *
+     * @param {boolean} currentlyAvailable  - caller's current state for transition logging
+     * @param {object}  ollamaService       - injected so aiRouter stays stateless
+     * @param {object}  callerLogger        - caller's logger for transition logging
+     * @returns {Promise<boolean>}
+     */
+    async checkAvailability(currentlyAvailable, ollamaService, callerLogger) {
+        try {
+            const provider = await this.getProvider('classification');
+
+            if (!provider) {
+                if (currentlyAvailable) {
+                    callerLogger.info('AI is disabled or no provider configured');
+                }
+                return false;
+            }
+
+            // Cloud provider — assume available if configured
+            if (provider.isCloud) {
+                if (!currentlyAvailable) {
+                    callerLogger.info(`Cloud AI provider available: ${provider.type}`);
+                }
+                return true;
+            }
+
+            // Ollama — probe connectivity
+            if (provider.type === 'ollama') {
+                const result = await ollamaService.testConnection();
+                if (result.success) {
+                    if (!currentlyAvailable) callerLogger.info('Ollama is now available');
+                    return true;
+                } else {
+                    if (currentlyAvailable) callerLogger.warn('Ollama is offline', { error: result.error });
+                    return false;
+                }
+            }
+
+            callerLogger.warn('Unknown AI provider type', { type: provider.type });
+            return false;
+        } catch (error) {
+            if (currentlyAvailable) callerLogger.warn('AI availability check failed', { error: error.message });
+            return false;
+        }
+    }
 }
 
 module.exports = new AIRouterService();
